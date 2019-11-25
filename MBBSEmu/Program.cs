@@ -110,8 +110,11 @@ namespace MBBSEmu
             var dis = new ModuleDisassembly(initCode.Data);
             dis.Disassemble();
             Console.WriteLine($"Disassembly Complete! {dis.Instructions.Count} instructions disassembled");
+            _cpu.Registers.CS = initCode.Ordinal;
+            _cpu.Registers.IP = 0;
             Console.WriteLine($"Beginning Module Emulation...");
             Console.WriteLine($"Executing {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
+
             Console.ReadKey();
         }
     }

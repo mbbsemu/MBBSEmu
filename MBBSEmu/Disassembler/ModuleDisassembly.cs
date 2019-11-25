@@ -20,6 +20,7 @@ namespace MBBSEmu.Disassembler
             _decoder.IP = 0x0;
 
             Instructions = new InstructionList();
+            
         }
 
         public void Disassemble()
