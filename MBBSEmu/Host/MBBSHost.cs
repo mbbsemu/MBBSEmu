@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using System;
 
 namespace MBBSEmu.Host
 {
@@ -72,10 +70,7 @@ namespace MBBSEmu.Host
         {
             var size = _cpu.StackMemory.Pop();
             //Get the current pointer
-            var pointer = _cpu.Memory.GetHostPointer();
-
-            //Increment the pointer to 'allocate' the memory
-            _cpu.Memory.IncrementHostPointer(size);
+            var pointer = _cpu.Memory.AllocateHostMemory(size);
 
             _cpu.Registers.AX = pointer;
             _cpu.Registers.DX = size;
