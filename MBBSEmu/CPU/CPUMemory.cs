@@ -85,6 +85,17 @@ namespace MBBSEmu.CPU
             Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, segmentOffset + offset, 2);
         }
 
+        public void PushByte(int stackPointer, byte value) => _moduleMemorySpace[STACK_BASE + stackPointer] = value;
+
+        public void PushWord(int stackPointer, ushort value)
+        {
+            Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, STACK_BASE + stackPointer, 2);
+        }
+
+        public byte PopByte(int stackPointer) => _moduleMemorySpace[STACK_BASE + stackPointer];
+        public ushort PopWord(int stackPointer) => BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
+
+
         public int GetHostByte(int offset) => _hostMemorySpace[offset];
         public int GetHostWord(int offset) => BitConverter.ToUInt16(_hostMemorySpace, offset);
         public void IncrementHostPointer(int offset = 1) => _hostMemoryPointer += offset;
