@@ -9,7 +9,6 @@ namespace MBBSEmu.Disassembler.Artifacts
     public class Segment
     {
         private ushort _flag;
-        public int Pointer { get; set; }
         public ushort Ordinal { get; set; }
         public uint Offset { get; set; }
         public ushort Length { get; set; }
@@ -67,7 +66,6 @@ namespace MBBSEmu.Disassembler.Artifacts
             Length = BitConverter.ToUInt16(segmentHeader, 2);
             Flag = BitConverter.ToUInt16(segmentHeader, 4);
             MinLength = BitConverter.ToUInt16(segmentHeader, 6);
-            Pointer = -1;
         }
     }
 }

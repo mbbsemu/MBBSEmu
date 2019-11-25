@@ -85,7 +85,7 @@ namespace MBBSEmu
             Console.WriteLine("Loading All Segments to Memory...");
             foreach (var seg in file.SegmentTable)
             {
-                var segmentOffset = _cpu.Memory.AddSegment(seg.Ordinal, seg.Data);
+                var segmentOffset = _cpu.Memory.AddSegment(seg);
                 Console.WriteLine($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
             }
 
@@ -114,8 +114,11 @@ namespace MBBSEmu
             _cpu.Registers.IP = 0;
             Console.WriteLine($"Beginning Module Emulation...");
             Console.WriteLine($"Executing {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
-
-            Console.ReadKey();
+            while (true)
+            {
+                _cpu.Tick();
+                Console.ReadKey();
+            }
         }
     }
 }

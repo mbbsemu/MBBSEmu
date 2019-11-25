@@ -1,6 +1,9 @@
 ﻿using MBBSEmu.CPU.Memory;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Iced.Intel;
+using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.CPU
 {
@@ -31,9 +34,10 @@ namespace MBBSEmu.CPU
 
         public Dictionary<int, RelocatedMemoryObject> _memoryRelocation;
         public Dictionary<int, int> _segmentAddressTable;
-
+        public Dictionary<int, InstructionList> _decodedSegments;
+        public Dictionary<int, Segment> _segments;
         public const int SEGMENT_BASE = 0x010000;
-        public const int STACK_BASE = 0x0;
+        public const int STACK_BASE = 0x8000;
 
         /// <summary>
         ///     As memory is allocated, this will be incremented
@@ -46,19 +50,43 @@ namespace MBBSEmu.CPU
             _hostMemorySpace = new byte[0x800000];
             _memoryRelocation = new Dictionary<int, RelocatedMemoryObject>();
             _segmentAddressTable = new Dictionary<int, int>();
+            _decodedSegments = new Dictionary<int, InstructionList>();
+            _segments = new Dictionary<int, Segment>();
             Console.WriteLine("X86_16 Memory Space Initialized!");
         }
 
-        public int AddSegment(int segmentNumber, byte[] segmentData)
+        public int AddSegment(Segment segment)
         {
             //Get Address for this Segment
             var segmentOffset = SEGMENT_BASE + (SEGMENT_BASE * _segmentAddressTable.Count);
             
             //Add the data to memory and record the segment offset in memory
-            Array.Copy(segmentData, 0, _moduleMemorySpace, segmentOffset, segmentData.Length);
-            _segmentAddressTable.Add(segmentNumber, segmentOffset);
+            Array.Copy(segment.Data, 0, _moduleMemorySpace, segmentOffset, segment.Data.Length);
+            _segmentAddressTable.Add(segment.Ordinal, segmentOffset);
 
+            if (segment.Flags.Contains(EnumSegmentFlags.Code))
+            {
+                //Decode the Segment
+                var instructionList = new InstructionList();
+                var codeReader = new ByteArrayCodeReader(segment.Data);
+                var decoder = Decoder.Create(16, codeReader);
+                decoder.IP = 0x0;
+
+                while (decoder.IP < (ulong)segment.Data.Length)
+                {
+                    decoder.Decode(out instructionList.AllocUninitializedElement());
+                }
+
+                _decodedSegments[segment.Ordinal] = instructionList;
+            }
+
+            _segments[segment.Ordinal] = segment;
             return segmentOffset;
+        }
+
+        public Instruction GetInstruction(int segment, int instructionPointer)
+        {
+            return _decodedSegments[segment].First(x => x.IP16 == instructionPointer);
         }
 
         public int GetByte(int segment, int offset)
