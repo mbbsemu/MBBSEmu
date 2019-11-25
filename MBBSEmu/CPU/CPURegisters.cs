@@ -2,7 +2,7 @@
 
 namespace MBBSEmu.CPU
 {
-    public class CPURegisters
+    public class CpuRegisters
     {
         /*
          * General Registers
@@ -148,9 +148,26 @@ namespace MBBSEmu.CPU
         /*
          * Memory Segmentation and Segment Registers
          */
+
+        /// <summary>
+        ///     Data Segment
+        /// </summary>
         public int DS { get; set; }
+
+        /// <summary>
+        ///     Extra Segment
+        /// </summary>
         public int ES { get; set; }
+
+        /// <summary>
+        ///     Stack Segment
+        ///     Default Destination for String Operations
+        /// </summary>
         public int SS { get; set; }
+
+        /// <summary>
+        ///     Code Segment
+        /// </summary>
         public int CS { get; set; }
 
         /// <summary>
@@ -168,7 +185,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public int MSW { get; set; }
 
-        public CPURegisters()
+        public CpuRegisters()
         {
             Console.WriteLine("X86_16 Registers Initialized!");
         }

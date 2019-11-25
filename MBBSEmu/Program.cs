@@ -80,19 +80,13 @@ namespace MBBSEmu
             var msg = new MsgFile(sInputPath, sInputModule);
 
             Console.WriteLine("Initializing new X86_16 CPU...");
-            var _cpu = new CPUCore();
+            var _cpu = new CpuCore();
 
             Console.WriteLine("Loading All Segments to Memory...");
-            var segmentMap = new Dictionary<int, int>();
             foreach (var seg in file.SegmentTable)
             {
-                var pointer = _cpu.Memory.AddPointer(seg.Data);
-                file.SegmentTable.Where(x => x.Ordinal == seg.Ordinal).Select(c =>
-                {
-                    c.Pointer = pointer;
-                    return c;
-                }).ToList();
-                Console.WriteLine($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded to pointer {pointer}");
+                var segmentOffset = _cpu.Memory.AddSegment(seg.Ordinal, seg.Data);
+                Console.WriteLine($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
             }
 
             Console.WriteLine("Locating _INIT_ function...");

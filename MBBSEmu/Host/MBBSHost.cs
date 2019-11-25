@@ -13,9 +13,9 @@ namespace MBBSEmu.Host
     /// </summary>
     public class MBBSHost
     {
-        private readonly CPUCore _cpu;
+        private readonly CpuCore _cpu;
 
-        public MBBSHost(CPUCore cpu)
+        public MBBSHost(CpuCore cpu)
         {
             _cpu = cpu;
         }
@@ -42,8 +42,9 @@ namespace MBBSEmu.Host
             var copyBytes = BitConverter.GetBytes(passedSeconds);
             Array.Copy(copyBytes, 0, b, 0, 4);
 
-            var pointer = _cpu.Memory.AddPointer(b);
-            _cpu.Registers.AX = pointer;
+
+            _cpu.Registers.AX = BitConverter.ToUInt16(b, 2);
+            _cpu.Registers.DX = BitConverter.ToUInt16(b, 0);
         }
 
         /// <summary>
@@ -70,7 +71,12 @@ namespace MBBSEmu.Host
         public void Func_Alczer()
         {
             var size = _cpu.StackMemory.Pop();
-            var pointer = _cpu.Memory.AddPointer(new byte[size]);
+            //Get the current pointer
+            var pointer = _cpu.Memory.GetHostPointer();
+
+            //Increment the pointer to 'allocate' the memory
+            _cpu.Memory.IncrementHostPointer(size);
+
             _cpu.Registers.AX = pointer;
             _cpu.Registers.DX = size;
         }

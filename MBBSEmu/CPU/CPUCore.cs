@@ -3,17 +3,17 @@ using System.Collections.Generic;
 
 namespace MBBSEmu.CPU
 {
-    public class CPUCore
+    public class CpuCore
     {
-        public readonly CPURegisters Registers;
+        public readonly CpuRegisters Registers;
         public readonly Stack<int> StackMemory;
-        public readonly CPUMemory Memory;
+        public readonly CpuMemory Memory;
 
-        public CPUCore()
+        public CpuCore()
         {
-            Registers = new CPURegisters();
+            Registers = new CpuRegisters();
             StackMemory = new Stack<int>();
-            Memory = new CPUMemory();
+            Memory = new CpuMemory();
         }
     }
 }
