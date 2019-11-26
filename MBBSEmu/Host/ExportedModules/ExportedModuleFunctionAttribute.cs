@@ -5,7 +5,7 @@ using System.Text;
 namespace MBBSEmu.Host
 {
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public class MbbsExportedFunctionAttribute : Attribute
+    public class ExportedModuleFunctionAttribute : Attribute
     {
         public int Ordinal;
         public string Name;

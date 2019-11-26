@@ -1,20 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Logging;
 using NLog;
+using System;
 
 namespace MBBSEmu.Host
 {
-    public class MbbsHostFunctions
+    /// <summary>
+    ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
+    ///     MAJORBBS.H.
+    ///
+    ///     While a majority of these functions are specific to MajorBBS/WG, some are just proxies for
+    ///     Borland C++ macros and are noted as such.
+    /// </summary>
+    public class Majorbbs
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         private readonly MbbsHostMemory _mbbsHostMemory;
         private readonly CpuCore _cpu;
 
-        public MbbsHostFunctions(CpuCore cpuCore)
+        public Majorbbs(CpuCore cpuCore)
         {
             _mbbsHostMemory = new MbbsHostMemory();
             _cpu = cpuCore;
@@ -27,7 +32,7 @@ namespace MBBSEmu.Host
         ///     Signature: time_t time (time_t* timer);
         ///     Return: Value is 32-Bit TIME_T (AX:DX)
         /// </summary>
-        [MbbsExportedFunction(Name = "TIME", Ordinal = 599)]
+        [ExportedModuleFunction(Name = "TIME", Ordinal = 599)]
         public void Func_Time()
         {
             //For now, ignore the input pointer for time_t

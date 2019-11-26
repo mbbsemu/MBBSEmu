@@ -1,11 +1,10 @@
-﻿using MBBSEmu.CPU.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Logging;
 using NLog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MBBSEmu.CPU
 {
@@ -30,10 +29,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte[] _moduleMemorySpace;
 
-        
 
-
-        public Dictionary<int, RelocatedMemoryObject> MemoryRelocations;
         public Dictionary<int, int> _segmentAddressTable;
         public Dictionary<int, InstructionList> _decodedSegments;
         public Dictionary<int, Segment> _segments;
@@ -45,8 +41,6 @@ namespace MBBSEmu.CPU
         public CpuMemory()
         {
             _moduleMemorySpace = new byte[0x800000];
-
-            MemoryRelocations = new Dictionary<int, RelocatedMemoryObject>();
             _segmentAddressTable = new Dictionary<int, int>();
             _decodedSegments = new Dictionary<int, InstructionList>();
             _segments = new Dictionary<int, Segment>();

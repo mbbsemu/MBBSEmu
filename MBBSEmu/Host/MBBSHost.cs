@@ -1,13 +1,12 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Logging;
+using MBBSEmu.Module;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using MBBSEmu.Module;
 
 namespace MBBSEmu.Host
 {
@@ -20,10 +19,10 @@ namespace MBBSEmu.Host
     public class MbbsHost
     {
         private delegate void ExportedFunctionDelegate();
-        private readonly Dictionary<int, ExportedFunctionDelegate> _exportedFunctionDelegates;
+        private readonly Dictionary<string,Dictionary<int, ExportedFunctionDelegate>> _exportedFunctionDelegates;
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         private readonly MbbsModule _module;
-        private readonly MbbsHostFunctions _hostFunctions;
+        private readonly Majorbbs _hostFunctions;
         private readonly CpuCore _cpu;
         private readonly Thread _hostThread;
         private bool _isRunning;
@@ -35,23 +34,23 @@ namespace MBBSEmu.Host
             _logger.Info("Constructing MbbsEmu Host...");
             _logger.Info("Initalizing x86_16 CPU Emulator...");
             _cpu = new CpuCore(InvokeHostedFunction);
-            _hostFunctions = new MbbsHostFunctions(_cpu);
+            _hostFunctions = new Majorbbs(_cpu);
 
             //Setup Function Delegates
-            _exportedFunctionDelegates = new Dictionary<int, ExportedFunctionDelegate>();
+            _exportedFunctionDelegates = new Dictionary<string, Dictionary<int, ExportedFunctionDelegate>>();
 
             var functionBindings = _hostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.GetCustomAttributes(typeof(MbbsExportedFunctionAttribute), false).Length > 0).Select(y => new
+                .Where(m => m.GetCustomAttributes(typeof(ExportedModuleFunctionAttribute), false).Length > 0).Select(y => new
                 {
                     binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _hostFunctions,
                         y.Name),
-                    definitions = y.GetCustomAttributes(typeof(MbbsExportedFunctionAttribute))
+                    definitions = y.GetCustomAttributes(typeof(ExportedModuleFunctionAttribute))
                 });
 
             foreach (var f in functionBindings)
             {
-                var ordinal = ((MbbsExportedFunctionAttribute) f.definitions.First()).Ordinal;
-                _exportedFunctionDelegates[ordinal] = f.binding;
+                var ordinal = ((ExportedModuleFunctionAttribute) f.definitions.First()).Ordinal;
+                _exportedFunctionDelegates["MAJORBBS"][ordinal] = f.binding;
             }
 
             foreach (var seg in _module.File.SegmentTable)
@@ -99,17 +98,21 @@ namespace MBBSEmu.Host
         {
             _isRunning = false;
         }
-       
-
+        
         /// <summary>
         ///     Invoked from the Executing x86 Code when an imported function from the MajorBBS/Worldgroup
         ///     host process is to be called.
         /// </summary>
-        /// <param name="cpuCore"></param>
-        /// <param name="functionOrdinal"></param>
-        private void InvokeHostedFunction(int functionOrdinal)
+        private void InvokeHostedFunction(string importedModuleName, int functionOrdinal)
         {
+            if(!_exportedFunctionDelegates.TryGetValue(importedModuleName, out var exportedModule))
+                throw new Exception($"Exported Module Not Found: {importedModuleName}");
 
+            if(!exportedModule.TryGetValue(functionOrdinal, out var function))
+                throw new Exception($"Exported Module Ordinal Not Found in {importedModuleName}: {functionOrdinal}");
+
+            //Execute it
+            function();
         }
 
         

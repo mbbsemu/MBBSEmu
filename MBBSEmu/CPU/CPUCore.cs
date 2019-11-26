@@ -1,4 +1,5 @@
-﻿using Iced.Intel;
+﻿using System;
+using Iced.Intel;
 using MBBSEmu.Logging;
 using NLog;
 using System.Linq;
@@ -8,7 +9,7 @@ namespace MBBSEmu.CPU
     public class CpuCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        public delegate void InvokeExternalFunctionDelegate(int functionOrdinal);
+        public delegate void InvokeExternalFunctionDelegate(string importedModuleName, int functionOrdinal);
 
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
@@ -114,6 +115,39 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register,
                         Registers.GetValue(_currentInstruction.Op1Register));
                     return;
+                }
+
+                //MOV r/m16,imm16
+                /*
+                 * The instruction in the question only uses a single constant offset so no effective address with registers.
+                 * As such, it's DS unless overridden by a prefix.
+                 */
+                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate16:
+                {
+                    Memory.SetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement, _currentInstruction.Immediate16);
+                    break;
+                } 
+                
+                
+                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Register:
+                {
+                    switch (_currentInstruction.MemorySize)
+                    {
+                        //MOV moffs16*,AX
+                        case MemorySize.UInt16:
+                            Memory.SetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement,
+                                (ushort) Registers.GetValue(_currentInstruction.Op1Register));
+                            break;
+                        //MOV moffs8*,AL
+                        case MemorySize.UInt8:
+                            Memory.SetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement,
+                                (byte) Registers.GetValue(_currentInstruction.Op1Register));
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException("Unsupported Memory type for MOV operation");
+                    }
+
+                    break;
                 }
             }
         }
