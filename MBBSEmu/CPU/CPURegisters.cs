@@ -1,4 +1,5 @@
 ﻿using System;
+using Iced.Intel;
 
 namespace MBBSEmu.CPU
 {
@@ -188,6 +189,129 @@ namespace MBBSEmu.CPU
         public CpuRegisters()
         {
             Console.WriteLine("X86_16 Registers Initialized!");
+        }
+
+        /// <summary>
+        ///     Gets Value based on the specified Register
+        /// </summary>
+        /// <param name="register"></param>
+        /// <returns></returns>
+        public int GetValue(Register register)
+        {
+            switch (register)
+            {
+                case Register.AX:
+                    return AX;
+                case Register.AL:
+                    return AL;
+                case Register.AH:
+                    return AH;
+                case Register.CL:
+                    return CL;
+                case Register.DL:
+                    return DL;
+                case Register.BL:
+                    return BL;
+                case Register.CH:
+                    return CH;
+                case Register.DH:
+                    return DH;
+                case Register.BH:
+                    return BH;
+                case Register.CX:
+                    return CX;
+                case Register.DX:
+                    return DX;
+                case Register.BX:
+                    return BX;
+                case Register.SP:
+                    return SP;
+                case Register.BP:
+                    return BP;
+                case Register.SI:
+                    return SI;
+                case Register.DI:
+                    return DI;
+                case Register.ES:
+                    return ES;
+                case Register.CS:
+                    return CS;
+                case Register.SS:
+                    return SS;
+                case Register.DS:
+                    return DS;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
+            }
+        }
+
+        public void SetValue(Register register, int value)
+        {
+            switch (register)
+            {
+                case Register.AX:
+                    AX = value;
+                    break;
+                case Register.AL:
+                    AL = value;
+                    break;
+                case Register.AH:
+                    AH = value;
+                    break;
+                case Register.CL:
+                    CL = value;
+                    break;
+                case Register.DL:
+                    DL = value;
+                    break;
+                case Register.BL:
+                    BL = value;
+                    break;
+                case Register.CH:
+                    CH = value;
+                    break;
+                case Register.DH:
+                    DH = value;
+                    break;
+                case Register.BH:
+                    BH = value;
+                    break;
+                case Register.CX:
+                    CX = value;
+                    break;
+                case Register.DX:
+                    DX = value;
+                    break;
+                case Register.BX:
+                    BX = value;
+                    break;
+                case Register.SP:
+                    SP = value;
+                    break;
+                case Register.BP:
+                    BP = value;
+                    break;
+                case Register.SI:
+                    SI = value;
+                    break;
+                case Register.DI:
+                    DI = value;
+                    break;
+                case Register.ES:
+                    ES = value;
+                    break;
+                case Register.CS:
+                    CS = value;
+                    break;
+                case Register.SS:
+                    SS = value;
+                    break;
+                case Register.DS:
+                    DS = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
+            }
         }
     }
 }

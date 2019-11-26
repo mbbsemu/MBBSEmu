@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using MBBSEmu.Logging;
+using NLog;
 
 namespace MBBSEmu.Module
 {
     public class MsgFile
     {
+        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         private readonly string _modulePath;
         private readonly string _moduleName;
         public readonly List<MsgRecord> MsgRecords;
@@ -20,15 +23,15 @@ namespace MBBSEmu.Module
 
             if (!File.Exists($"{modulePath}{moduleName}.JSON"))
             {
-                Console.WriteLine("Missing Converted JSON File!");
-                Console.WriteLine("Converting MSG file to JSON....");
+                _logger.Warn("Missing Converted JSON File!");
+                _logger.Warn("Converting MSG file to JSON....");
                 ConvertToJson($"{modulePath}{moduleName}.MSG");
-                Console.WriteLine("Conversion Complete!");
+                _logger.Warn("Conversion Complete!");
             }
 
-            Console.WriteLine("Loading MSG file JSON object...");
+            _logger.Info("Loading MSG file JSON object...");
             MsgRecords = JsonSerializer.Deserialize<List<MsgRecord>>(File.ReadAllText($"{modulePath}{moduleName}.JSON"));
-            Console.WriteLine("MSG file JSON object loaded!");
+            _logger.Info("MSG file JSON object loaded!");
         }
 
         private void ConvertToJson(string msgFile)

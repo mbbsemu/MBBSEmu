@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Logging;
+using NLog;
 
 namespace MBBSEmu.CPU
 {
@@ -21,38 +23,35 @@ namespace MBBSEmu.CPU
     /// </summary>
     public class CpuMemory
     {
+        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+
         /// <summary>
         ///     8MB Module Memory Space
         /// </summary>
         public byte[] _moduleMemorySpace;
 
-        /// <summary>
-        ///     Host Process Memory Space
-        /// </summary>
-        public byte[] _hostMemorySpace;
+        
 
 
-        public Dictionary<int, RelocatedMemoryObject> _memoryRelocation;
+        public Dictionary<int, RelocatedMemoryObject> MemoryRelocations;
         public Dictionary<int, int> _segmentAddressTable;
         public Dictionary<int, InstructionList> _decodedSegments;
         public Dictionary<int, Segment> _segments;
         public const int SEGMENT_BASE = 0x010000;
         public const int STACK_BASE = 0x8000;
 
-        /// <summary>
-        ///     As memory is allocated, this will be incremented
-        /// </summary>
-        private int _hostMemoryPointer = 0x0;
+        
 
         public CpuMemory()
         {
             _moduleMemorySpace = new byte[0x800000];
-            _hostMemorySpace = new byte[0x800000];
-            _memoryRelocation = new Dictionary<int, RelocatedMemoryObject>();
+
+            MemoryRelocations = new Dictionary<int, RelocatedMemoryObject>();
             _segmentAddressTable = new Dictionary<int, int>();
             _decodedSegments = new Dictionary<int, InstructionList>();
             _segments = new Dictionary<int, Segment>();
-            Console.WriteLine("X86_16 Memory Space Initialized!");
+
+            _logger.Info("CPU Memory Space Initialized");
         }
 
         public int AddSegment(Segment segment)
@@ -124,18 +123,6 @@ namespace MBBSEmu.CPU
         public ushort PopWord(int stackPointer) => BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
 
 
-        public int GetHostByte(int offset) => _hostMemorySpace[offset];
-        public int GetHostWord(int offset) => BitConverter.ToUInt16(_hostMemorySpace, offset);
-        public void IncrementHostPointer(int offset = 1) => _hostMemoryPointer += offset;
-        public int GetHostPointer() => _hostMemoryPointer;
-        public void SetHostByte(int offset, byte value) => _hostMemorySpace[offset] = value;
-        public void SetHostWord(int offset, ushort value) => Array.Copy(BitConverter.GetBytes(value), 0, _hostMemorySpace, offset, 2);
-
-        public int AllocateHostMemory(int size)
-        {
-            var currentPointer = _hostMemoryPointer;
-            _hostMemoryPointer += size;
-            return currentPointer;
-        }
+      
     }
 }

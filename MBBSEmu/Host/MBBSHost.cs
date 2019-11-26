@@ -1,5 +1,13 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Logging;
+using NLog;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using MBBSEmu.Module;
 
 namespace MBBSEmu.Host
 {
@@ -9,71 +17,103 @@ namespace MBBSEmu.Host
     ///
     ///     We'll perform the imported functions here
     /// </summary>
-    public class MBBSHost
+    public class MbbsHost
     {
+        private delegate void ExportedFunctionDelegate();
+        private readonly Dictionary<int, ExportedFunctionDelegate> _exportedFunctionDelegates;
+        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        private readonly MbbsModule _module;
+        private readonly MbbsHostFunctions _hostFunctions;
         private readonly CpuCore _cpu;
+        private readonly Thread _hostThread;
+        private bool _isRunning;
 
-        public MBBSHost(CpuCore cpu)
+        public MbbsHost(MbbsModule module)
         {
-            _cpu = cpu;
+            _module = module;
+            _hostThread = new Thread(Run);
+            _logger.Info("Constructing MbbsEmu Host...");
+            _logger.Info("Initalizing x86_16 CPU Emulator...");
+            _cpu = new CpuCore(InvokeHostedFunction);
+            _hostFunctions = new MbbsHostFunctions(_cpu);
+
+            //Setup Function Delegates
+            _exportedFunctionDelegates = new Dictionary<int, ExportedFunctionDelegate>();
+
+            var functionBindings = _hostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.GetCustomAttributes(typeof(MbbsExportedFunctionAttribute), false).Length > 0).Select(y => new
+                {
+                    binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _hostFunctions,
+                        y.Name),
+                    definitions = y.GetCustomAttributes(typeof(MbbsExportedFunctionAttribute))
+                });
+
+            foreach (var f in functionBindings)
+            {
+                var ordinal = ((MbbsExportedFunctionAttribute) f.definitions.First()).Ordinal;
+                _exportedFunctionDelegates[ordinal] = f.binding;
+            }
+
+            foreach (var seg in _module.File.SegmentTable)
+            {
+                var segmentOffset = _cpu.Memory.AddSegment(seg);
+                Console.WriteLine($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
+            }
+
+            _logger.Info("Constructed MbbsEmu Host!");
         }
 
         /// <summary>
-        ///     Get the current calendar time as a value of type time_t
-        ///     Epoch Time
-        /// 
-        ///     Signature: time_t time (time_t* timer);
-        ///     Return: Pointer for TIME_t assigned to AX, Value is 32-Bit TIME_T
+        ///     Starts a new instance of the MbbsHost running the specified MbbsModule
         /// </summary>
-        [MBBSHostFunction("TIME", 599)]
-        public void Func_Time()
+        public void Start()
         {
-            //For now, ignore the input pointer for time_t
-            _cpu.StackMemory.Pop();
-            _cpu.StackMemory.Pop();
+            _logger.Info("Preparing to Start MbbsEmu Host...");
+            _logger.Info("Locating _INIT_ function...");
+            var initResidentName = _module.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT_"));
+            if (initResidentName == null)
+                throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
 
-            var b = new byte[] { 10, 12, 12, 12 };
-            var now = DateTime.Now;
-            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var tsEpoch = now - epoch;
-            var passedSeconds = (int)tsEpoch.TotalSeconds;
-            var copyBytes = BitConverter.GetBytes(passedSeconds);
-            Array.Copy(copyBytes, 0, b, 0, 4);
+            _logger.Info($"Located Resident Name Table record for _INIT_: {initResidentName.Name}");
+            _logger.Info($"Ordinal in Entry Table: {initResidentName.IndexIntoEntryTable}");
+            var initEntryPoint = _module.File.EntryTable
+                .First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+            _logger.Info(
+                $"Located Entry Table Record, _INIT_ function located in Segment {initEntryPoint.SegmentNumber}");
 
-
-            _cpu.Registers.AX = BitConverter.ToUInt16(b, 2);
-            _cpu.Registers.DX = BitConverter.ToUInt16(b, 0);
+            _cpu.Registers.CS = initEntryPoint.SegmentNumber;
+            _cpu.Registers.IP = 0;
+            _logger.Info($"");
+            _logger.Info($"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
+            _hostThread.Start();
         }
+
+        private void Run()
+        {
+            _isRunning = true;
+            while(_isRunning)
+                _cpu.Tick();
+        }
+
+        public void Stop()
+        {
+            _isRunning = false;
+        }
+       
 
         /// <summary>
-        ///     Initializes the Pseudo-Random Number Generator with the given seen
-        ///
-        ///     Since we'll handle this internally, we'll just ignore this
-        ///
-        ///     Signature: void srand (unsigned int seed);
+        ///     Invoked from the Executing x86 Code when an imported function from the MajorBBS/Worldgroup
+        ///     host process is to be called.
         /// </summary>
-        [MBBSHostFunction("SRAND", 599)]
-        public void Func_Srand()
+        /// <param name="cpuCore"></param>
+        /// <param name="functionOrdinal"></param>
+        private void InvokeHostedFunction(int functionOrdinal)
         {
-            //Pop the input int, since we're ignoring this
-            _cpu.StackMemory.Pop();
+
         }
 
-        /// <summary>
-        ///     Allocate a new memory block and zeros it out
-        /// 
-        ///     Signature: char *alczer(unsigned nbytes);
-        ///     Return: AX = Pointer to memory
-        ///             DX = Size of memory
-        /// </summary>
-        public void Func_Alczer()
-        {
-            var size = _cpu.StackMemory.Pop();
-            //Get the current pointer
-            var pointer = _cpu.Memory.AllocateHostMemory(size);
+        
 
-            _cpu.Registers.AX = pointer;
-            _cpu.Registers.DX = size;
-        }
+        
     }
 }
