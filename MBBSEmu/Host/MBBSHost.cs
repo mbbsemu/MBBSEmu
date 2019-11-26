@@ -47,6 +47,8 @@ namespace MBBSEmu.Host
                     definitions = y.GetCustomAttributes(typeof(ExportedModuleFunctionAttribute))
                 });
 
+            _exportedFunctionDelegates["MAJORBBS"] = new Dictionary<int, ExportedFunctionDelegate>();
+
             foreach (var f in functionBindings)
             {
                 var ordinal = ((ExportedModuleFunctionAttribute) f.definitions.First()).Ordinal;
@@ -103,8 +105,10 @@ namespace MBBSEmu.Host
         ///     Invoked from the Executing x86 Code when an imported function from the MajorBBS/Worldgroup
         ///     host process is to be called.
         /// </summary>
-        private void InvokeHostedFunction(string importedModuleName, int functionOrdinal)
+        private void InvokeHostedFunction(int importedNameTableOrdinal, int functionOrdinal)
         {
+            var importedModuleName = _module.File.ImportedNameTable.First(x => x.Ordinal == importedNameTableOrdinal).Name;
+
             if(!_exportedFunctionDelegates.TryGetValue(importedModuleName, out var exportedModule))
                 throw new Exception($"Exported Module Not Found: {importedModuleName}");
 

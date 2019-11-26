@@ -26,6 +26,21 @@ namespace MBBSEmu.Host
         }
 
         /// <summary>
+        ///     Initializes the Pseudo-Random Number Generator with the given seen
+        ///
+        ///     Since we'll handle this internally, we'll just ignore this
+        ///
+        ///     Signature: void srand (unsigned int seed);
+        /// </summary>
+        [ExportedModuleFunction(Name = "SRAND", Ordinal = 561)]
+        public void Func_Srand()
+        {
+            //Pop the input int, since we're ignoring this
+            _cpu.Memory.PopWord(_cpu.Registers.SP);
+            _cpu.Registers.SP -= 2;
+        }
+
+        /// <summary>
         ///     Get the current calendar time as a value of type time_t
         ///     Epoch Time
         /// 
@@ -37,9 +52,9 @@ namespace MBBSEmu.Host
         {
             //For now, ignore the input pointer for time_t
             _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP -= 2;
+            _cpu.Registers.SP += 2;
             _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP -= 2;
+            _cpu.Registers.SP += 2;
 
             var outputArray = new byte[4];
             var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
@@ -49,23 +64,11 @@ namespace MBBSEmu.Host
             _cpu.Registers.DX = BitConverter.ToUInt16(outputArray, 0);
 
 #if DEBUG
-            _logger.Debug($"time() passed seconds: {passedSeconds} (AX:{_cpu.Registers.AX}, DX:{_cpu.Registers.DX}");
+            _logger.Debug($"time() passed seconds: {passedSeconds} (AX:{_cpu.Registers.AX:X4}, DX:{_cpu.Registers.DX:X4})");
 #endif
         }
 
-        /// <summary>
-        ///     Initializes the Pseudo-Random Number Generator with the given seen
-        ///
-        ///     Since we'll handle this internally, we'll just ignore this
-        ///
-        ///     Signature: void srand (unsigned int seed);
-        /// </summary>
-        public void Func_Srand()
-        {
-            //Pop the input int, since we're ignoring this
-            _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP -= 2;
-        }
+
 
         /// <summary>
         ///     Allocate a new memory block and zeros it out
@@ -74,6 +77,7 @@ namespace MBBSEmu.Host
         ///     Return: AX = Pointer to memory
         ///             DX = Size of memory
         /// </summary>
+        [ExportedModuleFunction(Name = "ALCZER", Ordinal = 68)]
         public void Func_Alczer()
         {
             var size = _cpu.Memory.PopByte(_cpu.Registers.SP);

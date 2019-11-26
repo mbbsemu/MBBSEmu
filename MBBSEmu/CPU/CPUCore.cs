@@ -9,9 +9,9 @@ namespace MBBSEmu.CPU
     public class CpuCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        public delegate void InvokeExternalFunctionDelegate(string importedModuleName, int functionOrdinal);
+        public delegate void InvokeExternalFunctionDelegate(int importedNameTableOrdinal, int functionOrdinal);
 
-        private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
+        private readonly InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
         public readonly CpuRegisters Registers;
         public readonly CpuMemory Memory;
@@ -36,6 +36,9 @@ namespace MBBSEmu.CPU
 
             switch (_currentInstruction.Mnemonic)
             {
+                case Mnemonic.Add:
+                    Op_Add();
+                    break;
                 case Mnemonic.Push:
                     Op_Push();
                     break;
@@ -50,6 +53,23 @@ namespace MBBSEmu.CPU
             Registers.IP += _currentInstruction.ByteLength;
         }
 
+        private void Op_Add()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register,
+                        Registers.GetValue(_currentInstruction.Op1Register));
+                    break;
+                
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
+                    Registers.SetValue(_currentInstruction.Op0Register, Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16);
+                    break;
+            }
+        }
+
         /// <summary>
         ///     Push Op Code
         /// </summary>
@@ -59,23 +79,22 @@ namespace MBBSEmu.CPU
             {
                 //PUSH r16
                 case OpKind.Register:
+                    Registers.SP -= 2;
                     Memory.PushWord(Registers.SP, (ushort)Registers.GetValue(_currentInstruction.Op0Register));
-                    Registers.SP += 2;
                     break;
 
                 //PUSH imm8
                 case OpKind.Immediate8:
-                    Memory.PushWord(Registers.SP, _currentInstruction.Immediate8);
-                    Registers.SP += 1;
+                    Registers.SP -= 1;
+                    Memory.PushByte(Registers.SP, _currentInstruction.Immediate8);
                     break;
 
                 //PUSH imm16
                 case OpKind.Immediate16:
+                    Registers.SP -= 2;
                     Memory.PushWord(Registers.SP, _currentInstruction.Immediate16);
-                    Registers.SP += 2;
+                    
                     break;
-
-                
             }
         }
 
@@ -154,6 +173,39 @@ namespace MBBSEmu.CPU
 
         private void Op_Call()
         {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
+                {
+                    //Check for a possible relocation
+                    int destinationValue;
+
+                    if (_currentInstruction.Immediate16 == ushort.MaxValue)
+                    {
+                        var relocationRecord = Memory._segments[Registers.CS].RelocationRecords
+                            .FirstOrDefault(x => x.Offset == Registers.IP + 1);
+
+                        if (relocationRecord == null)
+                        {
+                            destinationValue = ushort.MaxValue;
+                        }
+                        else
+                        {
+                            _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
+                                relocationRecord.TargetTypeValueTuple.Item3);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        destinationValue = _currentInstruction.Immediate16;
+                    }
+
+                    //TODO -- Perform actual call
+
+                    break;
+                }
+            }
 
         }
     }

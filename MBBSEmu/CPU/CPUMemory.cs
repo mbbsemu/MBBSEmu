@@ -36,8 +36,6 @@ namespace MBBSEmu.CPU
         public const int SEGMENT_BASE = 0x010000;
         public const int STACK_BASE = 0x8000;
 
-        
-
         public CpuMemory()
         {
             _moduleMemorySpace = new byte[0x800000];
@@ -106,11 +104,14 @@ namespace MBBSEmu.CPU
             Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, segmentOffset + offset, 2);
         }
 
-        public void PushByte(int stackPointer, byte value) => _moduleMemorySpace[STACK_BASE + stackPointer] = value;
+        public void PushByte(int stackPointer, byte value)
+        {
+            _moduleMemorySpace[STACK_BASE + stackPointer] = value;
+        } 
 
         public void PushWord(int stackPointer, ushort value)
         {
-            Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, STACK_BASE + stackPointer, 2);
+            Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
         }
 
         public byte PopByte(int stackPointer) => _moduleMemorySpace[STACK_BASE + stackPointer];
