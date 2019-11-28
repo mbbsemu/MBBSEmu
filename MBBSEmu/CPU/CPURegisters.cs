@@ -1,10 +1,13 @@
 ﻿using System;
 using Iced.Intel;
+using MBBSEmu.Logging;
+using NLog;
 
 namespace MBBSEmu.CPU
 {
     public class CpuRegisters
     {
+        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         /*
          * General Registers
          */
@@ -188,7 +191,7 @@ namespace MBBSEmu.CPU
 
         public CpuRegisters()
         {
-            Console.WriteLine("X86_16 Registers Initialized!");
+            _logger.Info("X86_16 Registers Initialized!");
         }
 
         /// <summary>

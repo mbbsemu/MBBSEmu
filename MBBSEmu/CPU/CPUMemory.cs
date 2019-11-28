@@ -104,20 +104,29 @@ namespace MBBSEmu.CPU
             Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, segmentOffset + offset, 2);
         }
 
-        public void PushByte(int stackPointer, byte value)
+        public ushort Pop(int stackPointer)
         {
-            _moduleMemorySpace[STACK_BASE + stackPointer] = value;
-        } 
+            return BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
+        }
 
-        public void PushWord(int stackPointer, ushort value)
+        public void Push(int stackPointer, byte[] value)
         {
-            Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
+            if (value.Length > 2)
+            {
+#if DEBUG
+                _logger.Warn($"{value.Length} bytes passed in, truncating to 16-bit. New value {BitConverter.ToUInt16(value)}");
+#endif
+                Array.Copy(value, 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
+                return;
+            }
+
+            if (value.Length == 0)
+                return;
+
+            Array.Copy(value, 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
         }
 
         public byte PopByte(int stackPointer) => _moduleMemorySpace[STACK_BASE + stackPointer];
         public ushort PopWord(int stackPointer) => BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
-
-
-      
     }
 }

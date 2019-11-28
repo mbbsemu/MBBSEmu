@@ -24,6 +24,7 @@ namespace MBBSEmu.CPU
             Registers = new CpuRegisters();
             Memory = new CpuMemory();
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
+            Registers.SP = CpuMemory.STACK_BASE;
         }
 
         public void Tick()
@@ -67,6 +68,10 @@ namespace MBBSEmu.CPU
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
                     Registers.SetValue(_currentInstruction.Op0Register, Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16);
                     break;
+                default:
+                    _logger.Error($"Unknown ADD: {_currentInstruction.Op0Kind}");
+                    break;
+
             }
         }
 
@@ -75,25 +80,21 @@ namespace MBBSEmu.CPU
         /// </summary>
         private void Op_Push()
         {
+            Registers.SP -= 2;
             switch (_currentInstruction.Op0Kind)
             {
                 //PUSH r16
                 case OpKind.Register:
-                    Registers.SP -= 2;
-                    Memory.PushWord(Registers.SP, (ushort)Registers.GetValue(_currentInstruction.Op0Register));
+                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.GetValue(_currentInstruction.Op0Register)));
                     break;
-
-                //PUSH imm8
+                //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:
-                    Registers.SP -= 1;
-                    Memory.PushByte(Registers.SP, _currentInstruction.Immediate8);
-                    break;
-
-                //PUSH imm16
+                case OpKind.Immediate8to16:
                 case OpKind.Immediate16:
-                    Registers.SP -= 2;
-                    Memory.PushWord(Registers.SP, _currentInstruction.Immediate16);
-                    
+                    Memory.Push(Registers.SP, BitConverter.GetBytes(_currentInstruction.Immediate16));
+                    break;
+                default:
+                    _logger.Error($"Unknown PUSH: {_currentInstruction.Op0Kind}");
                     break;
             }
         }
@@ -168,6 +169,9 @@ namespace MBBSEmu.CPU
 
                     break;
                 }
+                default:
+                    _logger.Error($"Unknown MOV: {_currentInstruction.Op0Kind}");
+                    break;
             }
         }
 
@@ -177,6 +181,21 @@ namespace MBBSEmu.CPU
             {
                 case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
                 {
+
+                    //We Handle this like a standard CALL function
+                    //where, we set the BP to the current SP then 
+
+                    //Set BP to the current stack pointer
+                    Registers.BP = Registers.SP;
+
+                    //We push CS:IP to the stack
+                    //Push the Current IP to the stack
+                    Registers.SP -= 2;
+                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.IP));
+                    Registers.SP -= 2;
+                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.CS));
+
+
                     //Check for a possible relocation
                     int destinationValue;
 

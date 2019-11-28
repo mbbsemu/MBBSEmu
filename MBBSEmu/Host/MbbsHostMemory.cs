@@ -31,6 +31,8 @@ namespace MBBSEmu.Host
         public void SetHostByte(int offset, byte value) => _hostMemorySpace[offset] = value;
         public void SetHostWord(int offset, ushort value) => Array.Copy(BitConverter.GetBytes(value), 0, _hostMemorySpace, offset, 2);
 
+        public void SetHostArray(int offset, byte[] array) => Array.Copy(array, 0, _hostMemorySpace, offset, array.Length);
+
         public int AllocateHostMemory(int size)
         {
             var currentPointer = _hostMemoryPointer;

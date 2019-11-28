@@ -2,6 +2,8 @@
 using MBBSEmu.Logging;
 using NLog;
 using System;
+using System.Text;
+using MBBSEmu.Module;
 
 namespace MBBSEmu.Host
 {
@@ -18,11 +20,13 @@ namespace MBBSEmu.Host
 
         private readonly MbbsHostMemory _mbbsHostMemory;
         private readonly CpuCore _cpu;
+        private readonly MbbsModule _module;
 
-        public Majorbbs(CpuCore cpuCore)
+        public Majorbbs(CpuCore cpuCore,  MbbsModule module)
         {
             _mbbsHostMemory = new MbbsHostMemory();
             _cpu = cpuCore;
+            _module = module;
         }
 
         /// <summary>
@@ -37,7 +41,7 @@ namespace MBBSEmu.Host
         {
             //Pop the input int, since we're ignoring this
             _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP -= 2;
+            _cpu.Registers.SP += 2;
         }
 
         /// <summary>
@@ -74,14 +78,14 @@ namespace MBBSEmu.Host
         ///     Allocate a new memory block and zeros it out
         /// 
         ///     Signature: char *alczer(unsigned nbytes);
-        ///     Return: AX = Pointer to memory
+        ///     Return: AX = Pointer to memory (host)
         ///             DX = Size of memory
         /// </summary>
         [ExportedModuleFunction(Name = "ALCZER", Ordinal = 68)]
         public void Func_Alczer()
         {
-            var size = _cpu.Memory.PopByte(_cpu.Registers.SP);
-            _cpu.Registers.SP -= 2;
+            
+            _cpu.Registers.SP += 2;
 
             //Get the current pointer
             var pointer = _mbbsHostMemory.AllocateHostMemory(size);
@@ -91,6 +95,46 @@ namespace MBBSEmu.Host
 
 #if DEBUG
             _logger.Debug($"alczer() allocated {size} bytes starting at {size:X4}");
+#endif
+        }
+
+        /// <summary>
+        ///     Get's a module's name from the specified .MDF file
+        /// 
+        ///     Signature: char *gmdnam(char *mdfnam);
+        ///     Return: AX = Pointer to Memory (host)
+        ///             DX = Size of memory
+        /// </summary>
+        [ExportedModuleFunction(Name = "GMDNAM", Ordinal = 331)]
+        public void Gmdnam()
+        {
+            var size = _cpu.Memory.Pop(_cpu.Registers.SP);
+            _cpu.Registers.SP += 2;
+            var dataSegment = _cpu.Memory.Pop(_cpu.Registers.SP);
+            _cpu.Registers.SP += 2;
+            var datSegmentOffset = _cpu.Memory.Pop(_cpu.Registers.SP);
+            _cpu.Registers.SP += 2;
+
+            //Get the current pointer
+            var pointer = _mbbsHostMemory.AllocateHostMemory(size);
+
+            //Get the Module Name from the Mdf
+            var moduleName = _module.Mdf.ModuleName;
+
+            //Sanity Check -- 
+            if (moduleName.Length > size)
+            {
+                _logger.Warn($"Module Name \"{moduleName}\" greater than specified size {size}, truncating");
+                moduleName = moduleName.Substring(0, size);
+            }
+
+            _mbbsHostMemory.SetHostArray(pointer, Encoding.ASCII.GetBytes(moduleName));
+
+            _cpu.Registers.AX = pointer;
+            _cpu.Registers.DX = size;
+
+#if DEBUG
+            _logger.Debug($"gmdnam() retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4} ({size} bytes)");
 #endif
         }
     }

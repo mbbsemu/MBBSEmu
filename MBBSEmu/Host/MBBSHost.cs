@@ -34,7 +34,7 @@ namespace MBBSEmu.Host
             _logger.Info("Constructing MbbsEmu Host...");
             _logger.Info("Initalizing x86_16 CPU Emulator...");
             _cpu = new CpuCore(InvokeHostedFunction);
-            _hostFunctions = new Majorbbs(_cpu);
+            _hostFunctions = new Majorbbs(_cpu, _module);
 
             //Setup Function Delegates
             _exportedFunctionDelegates = new Dictionary<string, Dictionary<int, ExportedFunctionDelegate>>();
@@ -58,7 +58,7 @@ namespace MBBSEmu.Host
             foreach (var seg in _module.File.SegmentTable)
             {
                 var segmentOffset = _cpu.Memory.AddSegment(seg);
-                Console.WriteLine($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
+                _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
             }
 
             _logger.Info("Constructed MbbsEmu Host!");
