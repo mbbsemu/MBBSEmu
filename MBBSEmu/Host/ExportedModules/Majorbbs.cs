@@ -91,7 +91,7 @@ namespace MBBSEmu.Host
             _cpu.Registers.DX = size;
 
 #if DEBUG
-            _logger.Debug($"alczer() allocated {size} bytes starting at {size:X4}");
+            _logger.Debug($"alczer() allocated {size} bytes starting at {pointer:X4}");
 #endif
         }
 

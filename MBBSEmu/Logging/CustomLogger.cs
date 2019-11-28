@@ -1,5 +1,7 @@
 ﻿using NLog;
+using NLog.Conditions;
 using NLog.Layouts;
+using NLog.Targets;
 
 namespace MBBSEmu.Logging
 {
@@ -17,14 +19,39 @@ namespace MBBSEmu.Logging
             var config = new NLog.Config.LoggingConfiguration();
 
             //Setup Console Logging
-            var logconsole = new NLog.Targets.ColoredConsoleTarget("logconsole")
+            var logconsole = new ColoredConsoleTarget("logconsole")
             {
                 Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
                 UseDefaultRowHighlightingRules = true
             };
+
+            logconsole.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
+            {
+                Condition = ConditionParser.ParseExpression("level == LogLevel.Debug"),
+                ForegroundColor = ConsoleOutputColor.Gray
+            });
+
+            logconsole.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
+            {
+                Condition = ConditionParser.ParseExpression("level == LogLevel.Info"),
+                ForegroundColor = ConsoleOutputColor.White
+            });
+
+            logconsole.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
+            {
+                Condition = ConditionParser.ParseExpression("level == LogLevel.Warn"),
+                ForegroundColor = ConsoleOutputColor.DarkYellow
+            });
+
+            logconsole.RowHighlightingRules.Add(new ConsoleRowHighlightingRule()
+            {
+                Condition = ConditionParser.ParseExpression("level == LogLevel.Error"),
+                ForegroundColor = ConsoleOutputColor.Red
+            });
+
             config.AddTarget(logconsole);
 
-            var logfile = new NLog.Targets.FileTarget("logfile")
+            var logfile = new FileTarget("logfile")
             {
                 FileName = @"c:\dos\log\log.txt",
                 Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
