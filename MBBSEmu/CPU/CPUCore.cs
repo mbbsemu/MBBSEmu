@@ -186,7 +186,7 @@ namespace MBBSEmu.CPU
                     //where, we set the BP to the current SP then 
 
                     //Set BP to the current stack pointer
-                    Registers.BP = Registers.SP;
+                    
 
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
@@ -194,10 +194,11 @@ namespace MBBSEmu.CPU
                     Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.IP));
                     Registers.SP -= 2;
                     Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.CS));
+                    Registers.BP = Registers.SP;
 
 
-                    //Check for a possible relocation
-                    int destinationValue;
+                        //Check for a possible relocation
+                        int destinationValue;
 
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {

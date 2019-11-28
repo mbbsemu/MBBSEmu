@@ -17,9 +17,10 @@ namespace MBBSEmu.Logging
             var config = new NLog.Config.LoggingConfiguration();
 
             //Setup Console Logging
-            var logconsole = new NLog.Targets.ConsoleTarget("logconsole")
+            var logconsole = new NLog.Targets.ColoredConsoleTarget("logconsole")
             {
-                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}")
+                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
+                UseDefaultRowHighlightingRules = true
             };
             config.AddTarget(logconsole);
 

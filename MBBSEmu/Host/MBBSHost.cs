@@ -84,7 +84,6 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.CS = initEntryPoint.SegmentNumber;
             _cpu.Registers.IP = 0;
-            _logger.Info($"");
             _logger.Info($"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
             _hostThread.Start();
         }
@@ -118,9 +117,5 @@ namespace MBBSEmu.Host
             //Execute it
             function();
         }
-
-        
-
-        
     }
 }

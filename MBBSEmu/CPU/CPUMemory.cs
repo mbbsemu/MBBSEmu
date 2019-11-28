@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
 
         public ushort Pop(int stackPointer)
         {
-            return BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
+            return BitConverter.ToUInt16(_moduleMemorySpace, stackPointer);
         }
 
         public void Push(int stackPointer, byte[] value)
@@ -116,17 +116,14 @@ namespace MBBSEmu.CPU
 #if DEBUG
                 _logger.Warn($"{value.Length} bytes passed in, truncating to 16-bit. New value {BitConverter.ToUInt16(value)}");
 #endif
-                Array.Copy(value, 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
+                Array.Copy(value, 0, _moduleMemorySpace,  stackPointer, 2);
                 return;
             }
 
             if (value.Length == 0)
                 return;
 
-            Array.Copy(value, 0, _moduleMemorySpace, STACK_BASE - stackPointer, 2);
+            Array.Copy(value, 0, _moduleMemorySpace,  stackPointer, 2);
         }
-
-        public byte PopByte(int stackPointer) => _moduleMemorySpace[STACK_BASE + stackPointer];
-        public ushort PopWord(int stackPointer) => BitConverter.ToUInt16(_moduleMemorySpace, STACK_BASE + stackPointer);
     }
 }

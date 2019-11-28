@@ -40,7 +40,7 @@ namespace MBBSEmu.Host
         public void Func_Srand()
         {
             //Pop the input int, since we're ignoring this
-            _cpu.Memory.PopWord(_cpu.Registers.SP);
+            _cpu.Memory.Pop(_cpu.Registers.SP);
             _cpu.Registers.SP += 2;
         }
 
@@ -55,10 +55,8 @@ namespace MBBSEmu.Host
         public void Func_Time()
         {
             //For now, ignore the input pointer for time_t
-            _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
-            _cpu.Memory.PopWord(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
+            var input1 = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var input2 = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
 
             var outputArray = new byte[4];
             var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
@@ -84,8 +82,7 @@ namespace MBBSEmu.Host
         [ExportedModuleFunction(Name = "ALCZER", Ordinal = 68)]
         public void Func_Alczer()
         {
-            
-            _cpu.Registers.SP += 2;
+            var size = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
             //Get the current pointer
             var pointer = _mbbsHostMemory.AllocateHostMemory(size);
@@ -108,12 +105,9 @@ namespace MBBSEmu.Host
         [ExportedModuleFunction(Name = "GMDNAM", Ordinal = 331)]
         public void Gmdnam()
         {
-            var size = _cpu.Memory.Pop(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
-            var dataSegment = _cpu.Memory.Pop(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
-            var datSegmentOffset = _cpu.Memory.Pop(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
+            var datSegmentOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var dataSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var size = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
 
             //Get the current pointer
             var pointer = _mbbsHostMemory.AllocateHostMemory(size);
