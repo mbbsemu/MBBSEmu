@@ -16,10 +16,17 @@ namespace MBBSEmu.Module
         private readonly string _moduleName;
         public readonly List<MsgRecord> MsgRecords;
 
+
+        public readonly string FileName;
+        public readonly string FileNameAtRuntime;
+
         public MsgFile(string modulePath, string moduleName)
         {
             _modulePath = modulePath;
             _moduleName = moduleName;
+
+            FileName = $"{moduleName.ToUpper()}.MSG";
+            FileNameAtRuntime = $"{moduleName.ToUpper()}.MCV";
 
             if (!File.Exists($"{modulePath}{moduleName}.JSON"))
             {

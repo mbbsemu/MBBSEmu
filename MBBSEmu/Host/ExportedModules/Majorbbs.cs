@@ -3,6 +3,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using MBBSEmu.Module;
@@ -31,12 +32,15 @@ namespace MBBSEmu.Host
         /// </summary>
         public readonly Dictionary<string, Tuple<int, int>> ModuleRoutines;
 
+        public readonly Dictionary<int, MsgFile> MsgFiles;
+
         public Majorbbs(CpuCore cpuCore,  MbbsModule module)
         {
             _mbbsHostMemory = new MbbsHostMemory();
             _cpu = cpuCore;
             _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
+            MsgFiles = new Dictionary<int, MsgFile>();
         }
 
         /// <summary>
@@ -172,14 +176,7 @@ namespace MBBSEmu.Host
             }
             else
             {
-                for (var i = 0; i < ushort.MaxValue; i++)
-                {
-                    bytesCopied++;
-                    var inputByte = (byte)_cpu.Memory.GetByte(srcSegment,srcOffset + i);
-                    inputBuffer.Add(inputByte);
-                    if (inputByte == 0)
-                        break;
-                }
+                inputBuffer.AddRange(_cpu.Memory.GetString(srcSegment, srcOffset));
             }
 
             if (destinationSegment == 0xFFFF)
@@ -247,5 +244,183 @@ namespace MBBSEmu.Host
             //Because we only support 1 module running at a time right now, we just set this to one
             _cpu.Registers.AX = 1;
         }
+
+        /// <summary>
+        ///     Opens the specified CNF file (.MCV in runtime form)
+        ///
+        ///     Signature: FILE *mbkprt=opnmsg(char *fileName)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment
+        /// </summary>
+        [ExportedModuleFunction(Name = "OPNMSG", Ordinal = 456)]
+        public void opnmsg()
+        {
+            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            var msgFileName = sourceSegment <= 0xFF
+                ? Encoding.ASCII.GetString(_cpu.Memory.GetString(sourceSegment, sourceOffset))
+                : Encoding.ASCII.GetString(_mbbsHostMemory.GetString(sourceSegment, sourceOffset));
+
+            msgFileName = msgFileName.TrimEnd('\0');
+
+            if(_module.Msg.FileNameAtRuntime != msgFileName)
+                throw new FileNotFoundException($"Module attempting to load unknown MSG file: {msgFileName}");
+
+            MsgFiles.Add(1, _module.Msg);
+
+#if DEBUG
+            _logger.Info($"opnmsg() opened MSG file: {msgFileName}, assigned to {(int)EnumHostSegments.MsgPointer:X4}:1");
+#endif
+
+            _cpu.Registers.AX = 1;
+            _cpu.Registers.DX = (int)EnumHostSegments.MsgPointer;
+        }
+
+        /// <summary>
+        ///     Retrieves a numeric option from MCV file
+        ///
+        ///     Signature: int numopt(int msgnum,int floor,int ceiling)
+        ///     Return: AX = Value retrieved
+        /// </summary>
+        [ExportedModuleFunction(Name = "OPNMSG", Ordinal = 441)]
+        public void numopt()
+        {
+            if(MsgFiles.Count == 0)
+                throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
+
+            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var floor = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var ceiling = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
+
+            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
+                ? int.Parse(msgRecord.DefaultValue)
+                : int.Parse(msgRecord.Value);
+
+            //Validate
+            if(outputValue < floor || outputValue >  ceiling)
+                throw new ArgumentOutOfRangeException($"{msgnum} ({msgRecord.Name}) value {outputValue} is outside specified bounds");
+
+#if DEBUG
+            _logger.Info($"numopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+#endif
+
+            _cpu.Registers.AX = outputValue;
+        }
+
+        /// <summary>
+        ///     Retrieves a yes/no option from an MCV file
+        ///
+        ///     Signature: int ynopt(int msgnum)
+        ///     Return: AX = 1/Yes, 0/No
+        /// </summary>
+        [ExportedModuleFunction(Name = "YNOPT", Ordinal = 650)]
+        public void ynopt()
+        {
+            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
+
+            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
+                ? msgRecord.DefaultValue.StartsWith('Y')
+                : msgRecord.Value.StartsWith('Y');
+
+#if DEBUG
+            _logger.Info($"ynopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+#endif
+
+            _cpu.Registers.AX = outputValue ? 1 : 0;
+        }
+
+        /// <summary>
+        ///     Gets a long (32-bit) numeric option from the MCV File
+        ///
+        ///     Signature: long lngopt(int msgnum,long floor,long ceiling)
+        ///     Return: AX = Most Significant 16-Bits
+        ///             DX = Least Significant 16-Bits
+        /// </summary>
+        [ExportedModuleFunction(Name = "LNGOPT", Ordinal = 389)]
+        public void lngopt()
+        {
+            var msgnum =  _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            var floorLow = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var floorHigh = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            var ceilingLow = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var ceilingHigh = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
+
+            var floor = floorHigh << 16 | floorLow;
+            var ceiling = ceilingHigh << 16 | ceilingLow;
+
+            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
+
+            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
+                ? int.Parse(msgRecord.DefaultValue)
+                : int.Parse(msgRecord.Value);
+
+            //Validate
+            if (outputValue < floor || outputValue > ceiling)
+                throw new ArgumentOutOfRangeException($"{msgnum} ({msgRecord.Name}) value {outputValue} is outside specified bounds");
+
+#if DEBUG
+            _logger.Info($"lngopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+#endif
+
+            _cpu.Registers.AX = (int) (outputValue & 0xFFFF0000);
+            _cpu.Registers.DX = outputValue & 0xFFFF;
+        }
+
+        /// <summary>
+        ///     Gets a string from an MCV file
+        ///
+        ///     Signature: char *string=stgopt(int msgnum)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment     
+        /// </summary>
+        [ExportedModuleFunction(Name = "STGOPT", Ordinal = 566)]
+        public void stgopt()
+        {
+            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
+
+            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
+                ? msgRecord.DefaultValue
+                : msgRecord.Value;
+
+            //Make the string null terminated
+            outputValue += '\0';
+
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputValue.Length);
+            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
+
+#if DEBUG
+            _logger.Info($"stgopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer}:{outputValueOffset}");
+#endif
+
+            _cpu.Registers.AX = outputValueOffset;
+            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+        }
+
+        /// <summary>
+        ///     Read value of CNF option (text blocks with ASCII compatible line terminators)
+        ///
+        ///     Functionally, as far as this helper method is concerned, there's no difference between this method and stgopt()
+        /// 
+        ///     Signature: char *bufadr=getasc(int msgnum)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment 
+        /// </summary>
+        [ExportedModuleFunction(Name = "GETASC", Ordinal = 316)]
+        public void getasc()
+        {
+#if DEBUG
+            _logger.Info($"getasc() called, redirecting to stgopt()");
+#endif
+            stgopt();
+        } 
     }
 }

@@ -100,6 +100,29 @@ namespace MBBSEmu.CPU
             return output;
         }
 
+
+        /// <summary>
+        ///     Reads an array of bytes from the specified segment:offset, stopping
+        ///     at the first null character denoting the end of the string.
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        public byte[] GetString(int segment, int offset)
+        {
+            var output = new List<byte>();
+            var segmentOffset = _segmentAddressTable[segment];
+            for (var i = 0; i < ushort.MaxValue; i++)
+            {
+                var inputByte = _moduleMemorySpace[segmentOffset + offset + i];
+                output.Add(inputByte);
+                if (inputByte == 0)
+                    break;
+            }
+
+            return output.ToArray();
+        }
+
         public void SetByte(int segment, int offset, byte value)
         {
             var segmentOffset = _segmentAddressTable[segment];
@@ -119,6 +142,8 @@ namespace MBBSEmu.CPU
             var segmentOffset = _segmentAddressTable[segment];
             Array.Copy(array, 0, _moduleMemorySpace, segmentOffset + offset, array.Length);
         }
+
+        
 
         public ushort Pop(int stackPointer)
         {
