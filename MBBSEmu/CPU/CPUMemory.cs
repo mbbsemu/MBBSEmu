@@ -92,11 +92,21 @@ namespace MBBSEmu.CPU
             return BitConverter.ToUInt16(_moduleMemorySpace, segmentOffset + offset);
         }
 
+        public byte[] GetArray(int segment, int offset, int count)
+        {
+            var output = new byte[count];
+            var segmentOffset = _segmentAddressTable[segment];
+            Array.Copy(_moduleMemorySpace, segmentOffset + offset, output, 0, count);
+            return output;
+        }
+
         public void SetByte(int segment, int offset, byte value)
         {
             var segmentOffset = _segmentAddressTable[segment];
             _moduleMemorySpace[segmentOffset + offset] = value;
         }
+
+        
 
         public void SetWord(int segment, int offset, ushort value)
         {

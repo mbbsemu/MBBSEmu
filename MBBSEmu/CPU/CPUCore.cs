@@ -18,7 +18,6 @@ namespace MBBSEmu.CPU
 
         private Instruction _currentInstruction;
 
-
         public CpuCore(InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
             Registers = new CpuRegisters();
