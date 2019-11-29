@@ -2,6 +2,7 @@
 using MBBSEmu.Logging;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using MBBSEmu.Module;
 
@@ -88,7 +89,7 @@ namespace MBBSEmu.Host
             var pointer = _mbbsHostMemory.AllocateHostMemory(size);
 
             _cpu.Registers.AX = pointer;
-            _cpu.Registers.DX = size;
+            _cpu.Registers.DX = 0xFFFF;
 
 #if DEBUG
             _logger.Debug($"alczer() allocated {size} bytes starting at {pointer:X4}");
@@ -125,10 +126,62 @@ namespace MBBSEmu.Host
             _mbbsHostMemory.SetHostArray(pointer, Encoding.ASCII.GetBytes(moduleName));
 
             _cpu.Registers.AX = pointer;
-            _cpu.Registers.DX = size;
+            _cpu.Registers.DX = 0xFFFF;
 
 #if DEBUG
-            _logger.Debug($"gmdnam() retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4} ({size} bytes)");
+            _logger.Debug($"gmdnam() retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4}");
+#endif
+        }
+
+        /// <summary>
+        ///     Copies the source string to the destination with a limit
+        ///
+        ///     Signature: stzcpy(char *dest, char *source, unsigned nbytes);
+        /// </summary>
+        [ExportedModuleFunction(Name = "STZCPY", Ordinal = 589)]
+        public void Stzcpy()
+        {
+            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+
+            var inputBuffer = new List<byte>();
+            int bytesCopied = 0;
+            if (srcSegment == 0xFFFF)
+            {
+                for (var i = 0; i < ushort.MaxValue; i++)
+                {
+                    bytesCopied++;
+                    var inputByte = (byte)_mbbsHostMemory.GetHostByte(srcOffset + i);
+                    inputBuffer.Add(inputByte);
+                    if (inputByte == 0)
+                        break;
+                }
+            }
+            else
+            {
+                for (var i = 0; i < ushort.MaxValue; i++)
+                {
+                    bytesCopied++;
+                    var inputByte = (byte)_cpu.Memory.GetByte(srcSegment,srcOffset + i);
+                    inputBuffer.Add(inputByte);
+                    if (inputByte == 0)
+                        break;
+                }
+            }
+
+            if (destinationSegment == 0xFFFF)
+            {
+                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+            }
+            else
+            {
+                _cpu.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer.ToArray());
+            }
+
+#if DEBUG
+            _logger.Debug($"stzcpy() copied {bytesCopied} from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
         }
     }

@@ -104,6 +104,12 @@ namespace MBBSEmu.CPU
             Array.Copy(BitConverter.GetBytes(value), 0, _moduleMemorySpace, segmentOffset + offset, 2);
         }
 
+        public void SetArray(int segment, int offset, byte[] array)
+        {
+            var segmentOffset = _segmentAddressTable[segment];
+            Array.Copy(array, 0, _moduleMemorySpace, segmentOffset + offset, array.Length);
+        }
+
         public ushort Pop(int stackPointer)
         {
             return BitConverter.ToUInt16(_moduleMemorySpace, stackPointer);
