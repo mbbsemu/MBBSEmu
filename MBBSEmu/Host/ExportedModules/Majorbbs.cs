@@ -283,7 +283,7 @@ namespace MBBSEmu.Host
         ///     Signature: int numopt(int msgnum,int floor,int ceiling)
         ///     Return: AX = Value retrieved
         /// </summary>
-        [ExportedModuleFunction(Name = "OPNMSG", Ordinal = 441)]
+        [ExportedModuleFunction(Name = "NUMOPT", Ordinal = 441)]
         public void numopt()
         {
             if(MsgFiles.Count == 0)

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using MBBSEmu.CPU;
-using MBBSEmu.Disassembler;
-using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.Host;
+﻿using MBBSEmu.Host;
 using MBBSEmu.Module;
+using System;
 
 namespace MBBSEmu
 {
