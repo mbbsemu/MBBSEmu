@@ -1,14 +1,19 @@
-﻿using MBBSEmu.Module.Enums;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Text.Json;
+﻿using System;
 using MBBSEmu.Logging;
 using NLog;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.Module
 {
+    /// <summary>
+    ///     Parses the Module MSG file and builds an output MCV
+    ///
+    ///     Only one language is supported, so anything other than English/ANSI will be
+    ///     ignored.
+    /// </summary>
     public class MsgFile
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
@@ -28,171 +33,77 @@ namespace MBBSEmu.Module
             FileName = $"{moduleName.ToUpper()}.MSG";
             FileNameAtRuntime = $"{moduleName.ToUpper()}.MCV";
 
-            if (!File.Exists($"{modulePath}{moduleName}.JSON"))
-            {
-                _logger.Warn("Missing Converted JSON File!");
-                _logger.Warn("Converting MSG file to JSON....");
-                ConvertToJson($"{modulePath}{moduleName}.MSG");
-                _logger.Warn("Conversion Complete!");
-            }
+            _logger.Info($"Building MCV from {moduleName.ToUpper()}.MSG");
+            BuildMCV();
+            _logger.Info($"Built {moduleName.ToUpper()}.MCV!");
 
-            _logger.Info("Loading MSG file JSON object...");
-            MsgRecords = JsonSerializer.Deserialize<List<MsgRecord>>(File.ReadAllText($"{modulePath}{moduleName}.JSON"));
-            _logger.Info("MSG file JSON object loaded!");
+            
         }
 
-        private void ConvertToJson(string msgFile)
+        private void BuildMCV()
         {
-            var currentLevel = EnumMsgFileLevel.None;
-            var output = new List<MsgRecord>();
-            var sbMsgRecord = new StringBuilder();
+            var _outputValues = new List<string>();
+
+            var sbCurrentValue = new StringBuilder();
             var bMsgRecordMultiline = false;
-            var ordinal = 0;
-            foreach (var s in File.ReadAllLines(msgFile))
+            foreach (var s in File.ReadAllLines($"{_modulePath}{FileName}"))
             {
                 if (string.IsNullOrEmpty(s) || (!s.Contains('{') && !bMsgRecordMultiline))
                     continue;
 
-                if (s.StartsWith("LEVEL3"))
+                //One line record
+                if (s.Contains('}') && !bMsgRecordMultiline)
                 {
-                    currentLevel = EnumMsgFileLevel.LEVEL3;
-                    ordinal++;
-                    continue;
+                    var startIndex = s.IndexOf('{') + 1;
+                    var endIndex = s.IndexOf('}');
+                    var length = endIndex - startIndex;
+                    sbCurrentValue.Append(s.Substring(startIndex, length));
                 }
 
-                if (s.StartsWith("LEVEL4"))
+                //First line of a new multi-line record
+                if (!s.Contains('}') && !bMsgRecordMultiline)
                 {
-                    currentLevel = EnumMsgFileLevel.LEVEL4;
-                    ordinal++;
-                    continue;
-                }
-
-                if (s.StartsWith("LEVEL99"))
-                {
-                    currentLevel = EnumMsgFileLevel.LEVEL99;
-                    ordinal++;
-                    continue;
-                }
-
-                sbMsgRecord.Append(s);
-
-                if (!s.Contains('}'))
-                {
-                    //We found a starting bracket but not a closing, must be a multi-line value
                     bMsgRecordMultiline = true;
+                    sbCurrentValue.Append(s.Substring(s.IndexOf('{') + 1));
                     continue;
                 }
 
-                //If we're here, we found the end, begin processing record
-                var newMsgRecord = new MsgRecord();
-                var originalMsgString = sbMsgRecord.ToString().Trim();
-
-                //Up to location of first { contains Record Name
-                newMsgRecord.Name = originalMsgString.Substring(0, originalMsgString.IndexOf('{')).Trim();
-                newMsgRecord.Ordinal = ordinal;
-                //Language Definitions, usually the 1st line
-                if (newMsgRecord.Name == "LANGUAGE")
+                //Middle of a Multi-Line Record
+                if (bMsgRecordMultiline && !s.Contains('}'))
                 {
-                    sbMsgRecord.Clear();
+                    sbCurrentValue.Append(s);
                     continue;
                 }
 
-                if (currentLevel == EnumMsgFileLevel.LEVEL3 || currentLevel == EnumMsgFileLevel.LEVEL4)
+                //End of a Multi-Line Record
+                if (bMsgRecordMultiline && s.Contains('}'))
                 {
-                    //Extract the Prompt and Default Value
-                    var promptStart = originalMsgString.IndexOf('{') + 1;
-                    var promptEnd = originalMsgString.IndexOf('}');
-                    var promptAndDefault = originalMsgString
-                        .Substring(promptStart, promptEnd - promptStart).Split(':');
-
-                    if (promptAndDefault.Length > 1)
-                    {
-                        newMsgRecord.Prompt = promptAndDefault[0].Trim();
-                        newMsgRecord.DefaultValue = promptAndDefault[1].Trim();
-                    }
-                    else
-                    {
-                        newMsgRecord.DefaultValue = promptAndDefault[0];
-                    }
-
-                    var bPredicatePresent = false;
-                    var predicateEnd = 0;
-                    //Extract Predicate (if present)
-                    if (originalMsgString.IndexOf('(', originalMsgString.IndexOf('}')) > -1)
-                    {
-                        bPredicatePresent = true;
-
-                        var predicateStart = originalMsgString.IndexOf('(', originalMsgString.IndexOf('}')) + 1;
-                        predicateEnd = originalMsgString.IndexOf(')', originalMsgString.IndexOf('}'));
-                        var predicateLength = predicateEnd - predicateStart;
-
-                        newMsgRecord.Predicate = originalMsgString.Substring(predicateStart, predicateLength);
-                    }
-
-
-                    var remainingLength = 0;
-                    remainingLength = bPredicatePresent
-                        ? originalMsgString.Length - predicateEnd - 1
-                        : originalMsgString.Length - originalMsgString.IndexOf('}') - 2;
-
-                    var typeDefinition = originalMsgString.Substring(originalMsgString.Length - remainingLength, remainingLength).Trim()
-                        .Split(' ');
-
-                    switch (typeDefinition.Length)
-                    {
-                        case 1 when typeDefinition[0] == "B":
-                            newMsgRecord.DataType = "B";
-                            break;
-                        case 1 when typeDefinition[0] == "T":
-                            newMsgRecord.DataType = "T";
-                            break;
-                        case 2 when typeDefinition[0] == "S":
-                            newMsgRecord.DataType = "S";
-                            newMsgRecord.MaxLength = int.Parse(typeDefinition[1]);
-                            break;
-                        case 2 when typeDefinition[0] == "T":
-                            newMsgRecord.DataType = "T";
-                            newMsgRecord.Description = typeDefinition[1];
-                            break;
-                        case 3 when typeDefinition[0] == "N":
-                            newMsgRecord.DataType = "N";
-                            newMsgRecord.MinValue = int.Parse(typeDefinition[1]);
-                            newMsgRecord.MaxValue = int.Parse(typeDefinition[2]);
-                            break;
-                        case 3 when typeDefinition[0] == "S":
-                            newMsgRecord.DataType = "S";
-                            newMsgRecord.MaxLength = int.Parse(typeDefinition[1]);
-                            newMsgRecord.Description = typeDefinition[2];
-                            break;
-                        case 3 when typeDefinition[0] == "L":
-                            newMsgRecord.DataType = "L";
-                            newMsgRecord.MinValue = int.Parse(typeDefinition[1]);
-                            newMsgRecord.MaxValue = int.Parse(typeDefinition[2]);
-                            break;
-                        default:
-                            throw new Exception("Unknown Type Definition in MSG File");
-                    }
+                    sbCurrentValue.Append(s.Substring(0, s.IndexOf('}')));
+                    bMsgRecordMultiline = false;
                 }
 
-                //These are mostly the ANSI/RIP Graphics
-                if (currentLevel == EnumMsgFileLevel.LEVEL99)
-                {
-                        newMsgRecord.DataType = "T";
-                        var valueStart = originalMsgString.IndexOf('{') + 1;
-                        var valueEnd = originalMsgString.IndexOf('}');
-                        var valueLength = valueEnd - valueStart;
-                        var value = originalMsgString.Substring(valueStart, valueLength);
-                        newMsgRecord.Value = value;
-                }
-
-                newMsgRecord.Ordinal = ordinal;
-                bMsgRecordMultiline = false;
-                output.Add(newMsgRecord);
-                sbMsgRecord.Clear();
-                ordinal++;
+                //Add Null Character than append it to the output values
+                sbCurrentValue.Append("\0");
+                _outputValues.Add(sbCurrentValue.ToString());
+                sbCurrentValue.Clear();
             }
 
-            File.WriteAllText($"{_modulePath}{_moduleName}.json",JsonSerializer.Serialize(output, new JsonSerializerOptions() { WriteIndented = true}));
+            //Build Final Statistics
+            var languageOffset = 0;
+            var lengthArrayOffset = 0;
+            var lengthArray = new List<int>();
+            var locationArrayOffset = 0;
+            var locationArray = new List<int>();
+            var languages = 1;
+            var messageCount = _outputValues.Count - 1; //Subtract 1 for language
+            var currentOffset = 13;
+            foreach (var msg in _outputValues)
+            {
+                if (msg == "English/ANSI\0")
+                    continue;
+                locationArray.Add(currentOffset);
+                lengthArray.Add(msg.Length);
+            }
         }
     }
 }
