@@ -149,9 +149,59 @@ namespace MBBSEmu.Host
         }
 
         /// <summary>
-        ///     Copies the source string to the destination with a limit
+        ///     Copies the C string pointed by source into the array pointed by destination, including the terminating null character
         ///
-        ///     Signature: stzcpy(char *dest, char *source, unsigned nbytes);
+        ///     Signature: char* strcpy(char* destination, const char* source );
+        ///     Return: AX = Offset in Segment
+        ///             DX = Data Segment
+        /// </summary>
+        [ExportedModuleFunction(Name = "STRCPY", Ordinal = 574)]
+        public void strcpy()
+        {
+            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+
+            var inputBuffer = new MemoryStream();
+            int bytesCopied = 0;
+            if (srcSegment == 0xFFFF)
+            {
+                for (var i = 0; i < ushort.MaxValue; i++)
+                {
+                    bytesCopied++;
+                    byte inputByte = (byte)_mbbsHostMemory.GetHostByte(srcOffset + i);
+                    inputBuffer.WriteByte(inputByte);
+                    if (inputByte == 0)
+                        break;
+                }
+            }
+            else
+            {
+                inputBuffer.Write(_cpu.Memory.GetString(srcSegment, srcOffset));
+            }
+
+            if (destinationSegment == 0xFFFF)
+            {
+                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+            }
+            else
+            {
+                _cpu.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer.ToArray());
+            }
+
+#if DEBUG
+            _logger.Info($"stzcpy() copied {bytesCopied} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+#endif
+
+            _cpu.Registers.AX = destinationOffset;
+            _cpu.Registers.DX = destinationSegment;
+        }
+
+        /// <summary>
+        ///     Copies a string with a limit
+        ///
+        ///     Signature: stzcpy(char *dest, char *source, int nbytes);
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
@@ -162,23 +212,25 @@ namespace MBBSEmu.Host
             var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
             var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
             var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var limit = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
 
-            var inputBuffer = new List<byte>();
+            var inputBuffer = new MemoryStream();
             int bytesCopied = 0;
+
             if (srcSegment == 0xFFFF)
             {
-                for (var i = 0; i < ushort.MaxValue; i++)
+                for (var i = 0; i < limit; i++)
                 {
                     bytesCopied++;
                     var inputByte = (byte)_mbbsHostMemory.GetHostByte(srcOffset + i);
-                    inputBuffer.Add(inputByte);
+                    inputBuffer.WriteByte(inputByte);
                     if (inputByte == 0)
                         break;
                 }
             }
             else
             {
-                inputBuffer.AddRange(_cpu.Memory.GetString(srcSegment, srcOffset));
+                inputBuffer.Write(_cpu.Memory.GetArray(srcSegment, srcOffset, limit));
             }
 
             if (destinationSegment == 0xFFFF)

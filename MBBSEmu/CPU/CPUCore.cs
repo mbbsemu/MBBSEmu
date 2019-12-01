@@ -42,12 +42,17 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Push:
                     Op_Push();
                     break;
+                case Mnemonic.Pop:
+                    Op_Pop();
+                    break;
                 case Mnemonic.Mov:
                     Op_Mov();
                     break;
                 case Mnemonic.Call:
                     Op_Call();
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += _currentInstruction.ByteLength;
@@ -74,6 +79,21 @@ namespace MBBSEmu.CPU
             }
         }
 
+        private void Op_Pop()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, Memory.Pop(Registers.SP));
+                    break;
+                default:
+                    _logger.Error($"Unknown POP: {_currentInstruction.Op0Kind}");
+                    break;
+            }
+
+            Registers.SP += 2;
+        }
+
         /// <summary>
         ///     Push Op Code
         /// </summary>
@@ -84,7 +104,8 @@ namespace MBBSEmu.CPU
             {
                 //PUSH r16
                 case OpKind.Register:
-                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.GetValue(_currentInstruction.Op0Register)));
+                    Memory.Push(Registers.SP,
+                        BitConverter.GetBytes(Registers.GetValue(_currentInstruction.Op0Register)));
                     break;
                 //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.Host
 {
@@ -61,6 +62,12 @@ namespace MBBSEmu.Host
                 _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
             }
 
+            //Verify that the imported functions are all supported by MbbsEmu
+            /*
+            if (!VerifyImportedFunctions())
+                throw new Exception("Module is currently unsupported by MbbEmu! :(");
+                */
+
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -82,6 +89,8 @@ namespace MBBSEmu.Host
             _logger.Info(
                 $"Located Entry Table Record, _INIT_ function located in Segment {initEntryPoint.SegmentNumber}");
 
+            
+
             _cpu.Registers.CS = initEntryPoint.SegmentNumber;
             _cpu.Registers.IP = 0;
             _logger.Info($"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
@@ -98,6 +107,29 @@ namespace MBBSEmu.Host
         public void Stop()
         {
             _isRunning = false;
+        }
+
+
+        public bool VerifyImportedFunctions()
+        {
+            _logger.Info("Scanning CODE segments to ensure all Imported Functions are supported by MbbsEmu...");
+            var scanResult = true;
+            var ordinalMajorBbs = _module.File.ImportedNameTable.First(x => x.Name == "MAJORBBS");
+            foreach (var seg in _module.File.SegmentTable.Where(x=> x.Flags.Contains(EnumSegmentFlags.Code)))
+            {
+                foreach (var relo in seg.RelocationRecords.Where(x =>
+                    x.Flag == EnumRecordsFlag.IMPORTORDINAL &&
+                    x.TargetTypeValueTuple.Item2 == ordinalMajorBbs.Ordinal))
+                {
+
+                    if (!_exportedFunctionDelegates["MAJORBBS"].ContainsKey(relo.TargetTypeValueTuple.Item3))
+                    {
+                        _logger.Error($"Module Relies on MAJORBBS Function {relo.TargetTypeValueTuple.Item3}, which is not implemented");
+                        scanResult = false;
+                    }
+                }
+            }
+            return scanResult;
         }
         
         /// <summary>
