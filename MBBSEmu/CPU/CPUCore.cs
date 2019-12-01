@@ -73,9 +73,7 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16);
                     break;
                 default:
-                    _logger.Error($"Unknown ADD: {_currentInstruction.Op0Kind}");
-                    break;
-
+                    throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -87,7 +85,7 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, Memory.Pop(Registers.SP));
                     break;
                 default:
-                    _logger.Error($"Unknown POP: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown POP: {_currentInstruction.Op0Kind}");
                     break;
             }
 
@@ -114,8 +112,7 @@ namespace MBBSEmu.CPU
                     Memory.Push(Registers.SP, BitConverter.GetBytes(_currentInstruction.Immediate16));
                     break;
                 default:
-                    _logger.Error($"Unknown PUSH: {_currentInstruction.Op0Kind}");
-                    break;
+                    throw new ArgumentOutOfRangeException($"Unknown PUSH: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -190,8 +187,7 @@ namespace MBBSEmu.CPU
                     break;
                 }
                 default:
-                    _logger.Error($"Unknown MOV: {_currentInstruction.Op0Kind}");
-                    break;
+                    throw new ArgumentOutOfRangeException($"Unknown MOV: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -233,6 +229,11 @@ namespace MBBSEmu.CPU
                         {
                             _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
+
+                            Registers.SetValue(Register.CS, Memory.Pop(Registers.SP));
+                            Registers.SP += 2;
+                            Registers.SetValue(Register.EIP, Memory.Pop(Registers.SP));
+                            Registers.SP += 2;
                             return;
                         }
                     }
@@ -245,6 +246,8 @@ namespace MBBSEmu.CPU
 
                     break;
                 }
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown CALL: {_currentInstruction.Op0Kind}");
             }
 
         }

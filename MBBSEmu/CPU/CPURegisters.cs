@@ -243,6 +243,8 @@ namespace MBBSEmu.CPU
                     return SS;
                 case Register.DS:
                     return DS;
+                case Register.EIP:
+                    return IP;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);
             }
@@ -311,6 +313,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Register.DS:
                     DS = value;
+                    break;
+                case Register.EIP:
+                    IP = value;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);

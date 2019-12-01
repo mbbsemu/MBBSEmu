@@ -55,9 +55,6 @@ namespace MBBSEmu.Host
         [ExportedModuleFunction(Name = "SRAND", Ordinal = 561)]
         public void srand()
         {
-            //Pop the input int, since we're ignoring this
-            _cpu.Memory.Pop(_cpu.Registers.SP);
-            _cpu.Registers.SP += 2;
         }
 
         /// <summary>
