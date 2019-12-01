@@ -25,6 +25,9 @@ namespace MBBSEmu.Host
         private readonly CpuCore _cpu;
         private readonly MbbsModule _module;
 
+        private readonly Dictionary<int, McvFile> McvFiles;
+        private McvFile CurrentMcvFile;
+
         /// <summary>
         ///     Imported Functions from the REGISTER_MODULE method are saved here.
         ///
@@ -32,7 +35,6 @@ namespace MBBSEmu.Host
         /// </summary>
         public readonly Dictionary<string, Tuple<int, int>> ModuleRoutines;
 
-        public readonly Dictionary<int, MsgFile> MsgFiles;
 
         public Majorbbs(CpuCore cpuCore,  MbbsModule module)
         {
@@ -40,7 +42,7 @@ namespace MBBSEmu.Host
             _cpu = cpuCore;
             _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
-            MsgFiles = new Dictionary<int, MsgFile>();
+            McvFiles = new Dictionary<int, McvFile>();
         }
 
         /// <summary>
@@ -264,17 +266,18 @@ namespace MBBSEmu.Host
 
             msgFileName = msgFileName.TrimEnd('\0');
 
-            if(_module.Msg.FileNameAtRuntime != msgFileName)
-                throw new FileNotFoundException($"Module attempting to load unknown MSG file: {msgFileName}");
+            CurrentMcvFile = new McvFile(msgFileName, _module.ModulePath);
 
-            MsgFiles.Add(1, _module.Msg);
+            if (McvFiles.Count == 0 || McvFiles.Values.All(x => x.FileName != msgFileName))
+                McvFiles.Add(McvFiles.Count, CurrentMcvFile);
 
 #if DEBUG
-            _logger.Info($"opnmsg() opened MSG file: {msgFileName}, assigned to {(int)EnumHostSegments.MsgPointer:X4}:1");
+            _logger.Info(
+                $"opnmsg() opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.MsgPointer:X4}:1");
 #endif
 
-            _cpu.Registers.AX = 1;
-            _cpu.Registers.DX = (int)EnumHostSegments.MsgPointer;
+            _cpu.Registers.AX = McvFiles.Count - 1;
+            _cpu.Registers.DX = (int) EnumHostSegments.MsgPointer;
         }
 
         /// <summary>
@@ -286,27 +289,22 @@ namespace MBBSEmu.Host
         [ExportedModuleFunction(Name = "NUMOPT", Ordinal = 441)]
         public void numopt()
         {
-            if(MsgFiles.Count == 0)
+            if(McvFiles.Count == 0)
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
 
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var floor = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
             var ceiling = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
 
-            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
-
-            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
-                ? int.Parse(msgRecord.DefaultValue)
-                : int.Parse(msgRecord.Value);
+            var outputValue = CurrentMcvFile.GetNumeric(msgnum);
 
             //Validate
             if(outputValue < floor || outputValue >  ceiling)
-                throw new ArgumentOutOfRangeException($"{msgnum} ({msgRecord.Name}) value {outputValue} is outside specified bounds");
+                throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"numopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+            _logger.Info($"numopt() retrieved option {msgnum}  value: {outputValue}");
 #endif
-
             _cpu.Registers.AX = outputValue;
         }
 
@@ -321,14 +319,10 @@ namespace MBBSEmu.Host
         {
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
-            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
-
-            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
-                ? msgRecord.DefaultValue.StartsWith('Y')
-                : msgRecord.Value.StartsWith('Y');
+            var outputValue = CurrentMcvFile.GetBool(msgnum);
 
 #if DEBUG
-            _logger.Info($"ynopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+            _logger.Info($"ynopt() retrieved option {msgnum} value: {outputValue}");
 #endif
 
             _cpu.Registers.AX = outputValue ? 1 : 0;
@@ -355,18 +349,14 @@ namespace MBBSEmu.Host
             var floor = floorHigh << 16 | floorLow;
             var ceiling = ceilingHigh << 16 | ceilingLow;
 
-            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
-
-            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
-                ? int.Parse(msgRecord.DefaultValue)
-                : int.Parse(msgRecord.Value);
+            var outputValue = CurrentMcvFile.GetLong(msgnum);
 
             //Validate
             if (outputValue < floor || outputValue > ceiling)
-                throw new ArgumentOutOfRangeException($"{msgnum} ({msgRecord.Name}) value {outputValue} is outside specified bounds");
+                throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"lngopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue}");
+            _logger.Info($"lngopt() retrieved option {msgnum} value: {outputValue}");
 #endif
 
             _cpu.Registers.AX = (int) (outputValue & 0xFFFF0000);
@@ -385,11 +375,7 @@ namespace MBBSEmu.Host
         {
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
-            var msgRecord = MsgFiles[1].MsgRecords.First(x => x.Ordinal == msgnum);
-
-            var outputValue = string.IsNullOrEmpty(msgRecord.Value)
-                ? msgRecord.DefaultValue
-                : msgRecord.Value;
+            var outputValue = CurrentMcvFile.GetString(msgnum);
 
             //Make the string null terminated
             outputValue += '\0';
@@ -398,7 +384,7 @@ namespace MBBSEmu.Host
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"stgopt() retrieved option {msgnum} ({msgRecord.Name}) value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer}:{outputValueOffset}");
+            _logger.Info($"stgopt() retrieved option {msgnum} value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;

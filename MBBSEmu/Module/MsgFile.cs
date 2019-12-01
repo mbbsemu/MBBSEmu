@@ -1,9 +1,7 @@
-﻿using System;
-using MBBSEmu.Logging;
+﻿using MBBSEmu.Logging;
 using NLog;
-using System.Collections.Generic;
+using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace MBBSEmu.Module
@@ -19,8 +17,6 @@ namespace MBBSEmu.Module
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         private readonly string _modulePath;
         private readonly string _moduleName;
-        public readonly List<MsgRecord> MsgRecords;
-
 
         public readonly string FileName;
         public readonly string FileNameAtRuntime;
@@ -33,16 +29,15 @@ namespace MBBSEmu.Module
             FileName = $"{moduleName.ToUpper()}.MSG";
             FileNameAtRuntime = $"{moduleName.ToUpper()}.MCV";
 
-            _logger.Info($"Building MCV from {moduleName.ToUpper()}.MSG");
+            _logger.Info($"Compiling MCV from {moduleName.ToUpper()}.MSG");
             BuildMCV();
-            _logger.Info($"Built {moduleName.ToUpper()}.MCV!");
-
-            
         }
 
+        /// <summary>
+        ///     Takes the Specified Msg File and compiles a MCV file to be used at runtime
+        /// </summary>
         private void BuildMCV()
         {
-
             var msOutput = new MemoryStream();
             var sbCurrentValue = new StringBuilder();
             var bMsgRecordMultiline = false;
@@ -97,10 +92,10 @@ namespace MBBSEmu.Module
                     continue;
                 }
 
-                messageCount++;
                 msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                 msMessages.Write(Encoding.ASCII.GetBytes(sbCurrentValue.ToString()));
                 msMessageLengths.Write(BitConverter.GetBytes(sbCurrentValue.Length));
+                messageCount++;
                 sbCurrentValue.Clear();
             }
 
@@ -118,6 +113,8 @@ namespace MBBSEmu.Module
 
             //Write it to the disk
             File.WriteAllBytes($"{_modulePath}{FileNameAtRuntime}", msOutput.ToArray());
+
+            _logger.Info($"Compiled {FileNameAtRuntime} ({msOutput.Length} bytes)");
         }
     }
 }

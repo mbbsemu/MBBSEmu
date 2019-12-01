@@ -10,7 +10,6 @@ namespace MBBSEmu.Module
     public class McvFile
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-
         public readonly string FileName;
         public readonly byte[] FileContent;
         public readonly Dictionary<int, string> Messages;
