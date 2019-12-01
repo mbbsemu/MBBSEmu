@@ -42,16 +42,20 @@ namespace MBBSEmu.Module
 
         private void BuildMCV()
         {
-            var _outputValues = new List<string>();
 
+            var msOutput = new MemoryStream();
             var sbCurrentValue = new StringBuilder();
             var bMsgRecordMultiline = false;
+            var messageCount = 0;
+            var msMessages = new MemoryStream();
+            var msMessageLengths = new MemoryStream();
+            var msMessageOffsets = new MemoryStream();
             foreach (var s in File.ReadAllLines($"{_modulePath}{FileName}"))
             {
                 if (string.IsNullOrEmpty(s) || (!s.Contains('{') && !bMsgRecordMultiline))
                     continue;
 
-                //One line record
+                //One Line Record
                 if (s.Contains('}') && !bMsgRecordMultiline)
                 {
                     var startIndex = s.IndexOf('{') + 1;
@@ -84,26 +88,36 @@ namespace MBBSEmu.Module
 
                 //Add Null Character than append it to the output values
                 sbCurrentValue.Append("\0");
-                _outputValues.Add(sbCurrentValue.ToString());
+
+                //Language doesn't technically count as a messages entry
+                if (s.StartsWith("LANGUAGE"))
+                {
+                    msMessages.Write(Encoding.ASCII.GetBytes(sbCurrentValue.ToString()));
+                    sbCurrentValue.Clear();
+                    continue;
+                }
+
+                messageCount++;
+                msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
+                msMessages.Write(Encoding.ASCII.GetBytes(sbCurrentValue.ToString()));
+                msMessageLengths.Write(BitConverter.GetBytes(sbCurrentValue.Length));
                 sbCurrentValue.Clear();
             }
 
-            //Build Final Statistics
-            var languageOffset = 0;
-            var lengthArrayOffset = 0;
-            var lengthArray = new List<int>();
-            var locationArrayOffset = 0;
-            var locationArray = new List<int>();
-            var languages = 1;
-            var messageCount = _outputValues.Count - 1; //Subtract 1 for language
-            var currentOffset = 13;
-            foreach (var msg in _outputValues)
-            {
-                if (msg == "English/ANSI\0")
-                    continue;
-                locationArray.Add(currentOffset);
-                lengthArray.Add(msg.Length);
-            }
+            //Build Final MCV File
+            msOutput.Write(msMessages.ToArray());
+            msOutput.Write(msMessageLengths.ToArray());
+            msOutput.Write(msMessageOffsets.ToArray());
+
+            //Final 16 Bytes of the MCV file contain the file information for parsing
+            msOutput.Write(BitConverter.GetBytes((int)0));
+            msOutput.Write(BitConverter.GetBytes((int)msMessages.Length));
+            msOutput.Write(BitConverter.GetBytes((int)msMessages.Length + (int)msMessageLengths.Length));
+            msOutput.Write(BitConverter.GetBytes((short)1));
+            msOutput.Write(BitConverter.GetBytes((short)messageCount));
+
+            //Write it to the disk
+            File.WriteAllBytes($"{_modulePath}{FileNameAtRuntime}", msOutput.ToArray());
         }
     }
 }
