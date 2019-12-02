@@ -459,6 +459,74 @@ namespace MBBSEmu.Host
             _logger.Info($"getasc() called, redirecting to stgopt()");
 #endif
             stgopt();
-        } 
+        }
+
+        /// <summary>
+        ///     Converts a long to an ASCII string
+        ///
+        ///     Signature: char *l2as(long longin)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment 
+        /// </summary>
+        [ExportedModuleFunction(Name = "L2AS", Ordinal = 377)]
+        public void l2as()
+        {
+            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            var outputValue = (highByte << 16 | lowByte) + "\0";
+
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputValue.Length);
+            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
+
+#if DEBUG
+            _logger.Info($"l2as() received value: {outputValue}, string saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+#endif
+
+            _cpu.Registers.AX = outputValueOffset;
+            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+        }
+
+        /// <summary>
+        ///     Converts string to a long integer
+        ///
+        ///     Signature: long int atol(const char *str)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment  
+        /// </summary>
+        [ExportedModuleFunction(Name = "ATOL", Ordinal = 77)]
+        public void atol()
+        {
+            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            var inputBuffer = new MemoryStream();
+            int bytesCopied = 0;
+            if (sourceSegment == 0xFFFF)
+            {
+                for (var i = 0; i < ushort.MaxValue; i++)
+                {
+                    bytesCopied++;
+                    byte inputByte = (byte)_mbbsHostMemory.GetHostByte(sourceOffset + i);
+                    inputBuffer.WriteByte(inputByte);
+                    if (inputByte == 0)
+                        break;
+                }
+            }
+            else
+            {
+                inputBuffer.Write(_cpu.Memory.GetString(sourceSegment, sourceOffset));
+            }
+
+            var inputValue = Encoding.ASCII.GetString(inputBuffer.ToArray());
+
+            if (!int.TryParse(inputValue, out var outputValue))
+                throw new InvalidCastException($"atol(): Unable to cast string value located at {sourceSegment:X4}:{sourceOffset:X4} to long");
+
+            _cpu.Registers.AX = (int)(outputValue & 0xFFFF0000);
+            _cpu.Registers.DX = outputValue & 0xFFFF;
+
+            
+        }
     }
 }
