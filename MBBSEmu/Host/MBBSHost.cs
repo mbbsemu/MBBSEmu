@@ -63,10 +63,10 @@ namespace MBBSEmu.Host
             }
 
             //Verify that the imported functions are all supported by MbbsEmu
-            /*
+
             if (!VerifyImportedFunctions())
                 throw new Exception("Module is currently unsupported by MbbEmu! :(");
-                */
+
 
             _logger.Info("Constructed MbbsEmu Host!");
         }

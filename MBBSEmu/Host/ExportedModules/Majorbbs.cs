@@ -28,6 +28,8 @@ namespace MBBSEmu.Host
         private readonly Dictionary<int, McvFile> _mcvFiles;
         private McvFile _currentMcvFile;
 
+        private int userStructOffset;
+
         /// <summary>
         ///     Imported Functions from the REGISTER_MODULE method are saved here.
         ///
@@ -43,6 +45,64 @@ namespace MBBSEmu.Host
             _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
             _mcvFiles = new Dictionary<int, McvFile>();
+
+            //Setup the user struct for *usrptr which holds the current user
+            AllocateUser();
+        }
+
+        /// <summary>
+        ///     Allocates the user struct for the current user and stores it
+        ///     so it can be referenced.
+        ///
+        ///     TODO -- This is static for the time being, probably need to update this
+        /// </summary>
+        private void AllocateUser()
+        {
+            /* From MAJORBBS.H:
+             *   struct user {                 // volatile per-user info maintained        
+                     int class;               //    class (offline, or flavor of online)  
+                     int *keys;               //    dynamically alloc'd array of key bits 
+                     int state;               //    state (module number in effect)       
+                     int substt;              //    substate (for convenience of module)  
+                     int lofstt;              //    state which has final lofrou() routine
+                     int usetmr;              //    usage timer (for nonlive timeouts etc)
+                     int minut4;              //    total minutes of use, times 4         
+                     int countr;              //    general purpose counter               
+                     int pfnacc;              //    profanity accumulator                 
+                     unsigned long flags;     //    runtime flags                         
+                     unsigned baud;           //    baud rate currently in effect         
+                     int crdrat;              //    credit-consumption rate               
+                     int nazapc;              //    no-activity auto-logoff counter       
+                     int linlim;              //    "logged in" module loop limit         
+                     struct clstab *cltptr;   //    pointer to guys current class in table
+                     void (*polrou)();        //    pointer to current poll routine       
+                     char lcstat;             //    LAN chan state (IPX.H) 0=nonlan/nonhdw
+                 };        
+             */
+            var output = new MemoryStream();
+            output.Write(BitConverter.GetBytes((short)0)); //class
+            output.Write(BitConverter.GetBytes((short)0)); //keys:segment
+            output.Write(BitConverter.GetBytes((short)0)); //keys:offset
+            output.Write(BitConverter.GetBytes((short)0)); //state
+            output.Write(BitConverter.GetBytes((short)0)); //substt
+            output.Write(BitConverter.GetBytes((short)0)); //lofstt
+            output.Write(BitConverter.GetBytes((short)0)); //usetmr
+            output.Write(BitConverter.GetBytes((short)0)); //minut4
+            output.Write(BitConverter.GetBytes((short)0)); //countr
+            output.Write(BitConverter.GetBytes((short)0)); //pfnacc
+            output.Write(BitConverter.GetBytes((int)0)); //flags
+            output.Write(BitConverter.GetBytes((ushort)0)); //baud
+            output.Write(BitConverter.GetBytes((short)0)); //crdrat
+            output.Write(BitConverter.GetBytes((short)0)); //nazapc
+            output.Write(BitConverter.GetBytes((short)0)); //linlim
+            output.Write(BitConverter.GetBytes((short)0)); //clsptr:segment
+            output.Write(BitConverter.GetBytes((short)0)); //clsptr:offset
+            output.Write(BitConverter.GetBytes((short)0)); //polrou:segment
+            output.Write(BitConverter.GetBytes((short)0)); //polrou:offset
+            output.Write(BitConverter.GetBytes('0')); //lcstat
+
+            userStructOffset = _mbbsHostMemory.AllocateHostMemory((int) output.Length);
+            _mbbsHostMemory.SetHostArray(userStructOffset, output.ToArray());
         }
 
         /// <summary>
@@ -529,10 +589,37 @@ namespace MBBSEmu.Host
 
         /// <summary>
         ///     Copies Struct into another Struct (Borland C++ Implicit Function)
+        ///     CX contains the number of bytes to be copied
+        ///
+        ///     Signature: None -- Compiler Generated
+        ///     Return: None
         /// </summary>
+        [ExportedModuleFunction(Name = "F_SCOPY", Ordinal = 665)]
         public void f_scopy()
         {
+            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
 
+            var inputBuffer = new MemoryStream();
+
+            inputBuffer.Write(srcSegment == 0xFFFF
+                ? _mbbsHostMemory.GetArray(0, srcOffset, _cpu.Registers.CX)
+                : _cpu.Memory.GetArray(srcSegment, srcOffset, _cpu.Registers.CX));
+
+            if (destinationSegment == 0xFFFF)
+            {
+                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+            }
+            else
+            {
+                _cpu.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer.ToArray());
+            }
+
+#if DEBUG
+            _logger.Info($"f_scopy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+#endif
         }
 
         /// <summary>

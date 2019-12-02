@@ -55,6 +55,13 @@ namespace MBBSEmu.Host
             return output.ToArray();
         }
 
+        public byte[] GetArray(int segment, int offset, int count)
+        {
+            var output = new byte[count];
+            Array.Copy(_hostMemorySpace, offset, output, 0, count);
+            return output;
+        }
+
 
         public int AllocateHostMemory(int size)
         {
