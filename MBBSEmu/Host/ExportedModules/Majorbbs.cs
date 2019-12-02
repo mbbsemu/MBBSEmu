@@ -196,7 +196,7 @@ namespace MBBSEmu.Host
         }
 
         /// <summary>
-        ///     Copies a string with a limit
+        ///     Copies a string with a fixed length
         ///
         ///     Signature: stzcpy(char *dest, char *source, int nbytes);
         ///     Return: AX = Offset in Segment
@@ -212,7 +212,7 @@ namespace MBBSEmu.Host
             var limit = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
 
             var inputBuffer = new MemoryStream();
-            int bytesCopied = 0;
+            var bytesCopied = 0;
 
             if (srcSegment == 0xFFFF)
             {
@@ -229,6 +229,12 @@ namespace MBBSEmu.Host
             {
                 inputBuffer.Write(_cpu.Memory.GetArray(srcSegment, srcOffset, limit));
             }
+
+            //If the value read is less than the limit, it'll be padded with null characters
+            //per the MajorBBS Development Guide
+            for (var i = inputBuffer.Length; i < limit; i++)
+                inputBuffer.WriteByte(0x0);
+
 
             if (destinationSegment == 0xFFFF)
             {
@@ -425,9 +431,6 @@ namespace MBBSEmu.Host
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
             var outputValue = CurrentMcvFile.GetString(msgnum);
-
-            //Make the string null terminated
-            outputValue += '\0';
 
             var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputValue.Length);
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
