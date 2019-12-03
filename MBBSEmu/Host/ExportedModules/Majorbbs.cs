@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Host.ExportedModules;
 using MBBSEmu.Logging;
 using MBBSEmu.Module;
 using NLog;
@@ -6,10 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-using MBBSEmu.Host.ExportedModules;
 
 namespace MBBSEmu.Host
 {
@@ -930,6 +928,171 @@ namespace MBBSEmu.Host
 
 #if DEBUG
             _logger.Info($"itoa() convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Does the user have the specified key
+        /// 
+        ///     Signature: int haskey(lock)
+        ///     Returns: AX = 1 == True
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "HASKEY", Ordinal = 334, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int haskey()
+        {
+            var lockValue = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+#if DEBUG
+            _logger.Info($"haskey() returning true for lock {lockValue}");
+#endif
+            _cpu.Registers.AX = 1;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Returns if the user has the key specified in an offline Security and Accounting option
+        ///
+        ///     Signature: int hasmkey(int msgnum)
+        ///     Returns: AX = 1 == True
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "HASMKEY", Ordinal = 335, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int hasmkey()
+        {
+            var key = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+#if DEBUG
+            _logger.Info($"hasmkey() returning true for key {key}");
+#endif
+            _cpu.Registers.AX = 1;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Returns a pseudo-random integral number in the range between 0 and RAND_MAX.
+        ///
+        ///     Signature: int rand (void)
+        ///     Returns: AX = 16-bit Random Number
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "RAND", Ordinal = 486, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int rand()
+        {
+            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(0, short.MaxValue);
+
+#if DEBUG
+            _logger.Info($"rand() generated random number {randomValue} and saved it to AX");
+#endif
+            _cpu.Registers.AX = randomValue;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Returns Packed Date as a char* in 'MM/DD/YY' format
+        ///
+        ///     Signature: char *ascdat=ncdate(int date)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment  
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "NCDATE", Ordinal = 428, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int ncdate()
+        {
+            /* From DOSFACE.H:
+                #define ddyear(date) ((((date)>>9)&0x007F)+1980)
+                #define ddmon(date)   (((date)>>5)&0x000F)
+                #define ddday(date)    ((date)    &0x001F)
+             */
+
+            var packedDate = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+
+            var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
+
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputDate.Length);
+            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
+
+#if DEBUG
+            _logger.Info($"ncdate() received value: {packedDate}, decoded string {outputDate} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+#endif
+
+            _cpu.Registers.AX = outputValueOffset;
+            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+            return 0;
+        }
+
+        /// <summary>
+        ///     Default Status Handler for status conditions this module is not specifically expecting
+        ///
+        ///     Ignored for now
+        /// 
+        ///     Signature: void dfsthn()
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "DFSTHN", Ordinal = 167, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int dfsthn()
+        {
+            return 0;
+        }
+
+        /// <summary>
+        ///     Closes the Specified Message File
+        ///
+        ///     Signature: void clsmsg(FILE *mbkprt)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "CLSMSG", Ordinal = 119, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int clsmsg()
+        {
+            var messagePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var messagePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            //We ignore this for now, and we'll just keep it open for the time being
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Register a real-time routine that needs to execute more than 1 time per second
+        ///
+        ///     Routines registered this way are executed at 18hz
+        /// 
+        ///     Signature: void rtihdlr(void (*rouptr)(void))
+        /// </summary>
+        [ExportedModule(Name = "RTIHDLR", Ordinal = 515, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int rtihdlr()
+        {
+            var routinePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var routinePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+#if DEBUG
+            _logger.Info($"rtihdlr() registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     'Kicks Off' the specified routine after the specified delay
+        ///
+        ///     Signature: void rtkick(int time, void *rouptr())
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "RTKICK", Ordinal = 516, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int rtkick()
+        {
+            var routinePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var routinePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var delaySeconds = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+#if DEBUG
+            _logger.Info($"rtkick() registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");
 #endif
             return 0;
         }
