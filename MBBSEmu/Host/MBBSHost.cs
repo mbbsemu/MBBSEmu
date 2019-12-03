@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Host.ExportedModules;
 
 namespace MBBSEmu.Host
 {
@@ -19,7 +20,7 @@ namespace MBBSEmu.Host
     /// </summary>
     public class MbbsHost
     {
-        private delegate void ExportedFunctionDelegate();
+        private delegate int ExportedFunctionDelegate();
         private readonly Dictionary<string,Dictionary<int, ExportedFunctionDelegate>> _exportedFunctionDelegates;
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         private readonly MbbsModule _module;
@@ -41,18 +42,18 @@ namespace MBBSEmu.Host
             _exportedFunctionDelegates = new Dictionary<string, Dictionary<int, ExportedFunctionDelegate>>();
 
             var functionBindings = _hostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.GetCustomAttributes(typeof(ExportedModuleFunctionAttribute), false).Length > 0).Select(y => new
+                .Where(m => m.GetCustomAttributes(typeof(ExportedModuleAttribute), false).Length > 0).Select(y => new
                 {
                     binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _hostFunctions,
                         y.Name),
-                    definitions = y.GetCustomAttributes(typeof(ExportedModuleFunctionAttribute))
+                    definitions = y.GetCustomAttributes(typeof(ExportedModuleAttribute))
                 });
 
             _exportedFunctionDelegates["MAJORBBS"] = new Dictionary<int, ExportedFunctionDelegate>();
 
             foreach (var f in functionBindings)
             {
-                var ordinal = ((ExportedModuleFunctionAttribute) f.definitions.First()).Ordinal;
+                var ordinal = ((ExportedModuleAttribute) f.definitions.First()).Ordinal;
                 _exportedFunctionDelegates["MAJORBBS"][ordinal] = f.binding;
             }
 
@@ -136,7 +137,7 @@ namespace MBBSEmu.Host
         ///     Invoked from the Executing x86 Code when an imported function from the MajorBBS/Worldgroup
         ///     host process is to be called.
         /// </summary>
-        private void InvokeHostedFunction(int importedNameTableOrdinal, int functionOrdinal)
+        private int InvokeHostedFunction(int importedNameTableOrdinal, int functionOrdinal)
         {
             var importedModuleName = _module.File.ImportedNameTable.First(x => x.Ordinal == importedNameTableOrdinal).Name;
 
@@ -147,7 +148,7 @@ namespace MBBSEmu.Host
                 throw new Exception($"Exported Module Ordinal Not Found in {importedModuleName}: {functionOrdinal}");
 
             //Execute it
-            function();
+            return function();
         }
     }
 }

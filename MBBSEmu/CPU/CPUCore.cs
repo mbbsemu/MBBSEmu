@@ -9,7 +9,7 @@ namespace MBBSEmu.CPU
     public class CpuCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        public delegate void InvokeExternalFunctionDelegate(int importedNameTableOrdinal, int functionOrdinal);
+        public delegate int InvokeExternalFunctionDelegate(int importedNameTableOrdinal, int functionOrdinal);
 
         private readonly InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 

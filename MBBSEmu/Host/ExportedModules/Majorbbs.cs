@@ -6,7 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using MBBSEmu.Host.ExportedModules;
 
 namespace MBBSEmu.Host
 {
@@ -29,6 +32,9 @@ namespace MBBSEmu.Host
         private McvFile _currentMcvFile;
 
         private int userStructOffset;
+        private int userStructLength;
+
+        private readonly MemoryStream outputBuffer;
 
         /// <summary>
         ///     Imported Functions from the REGISTER_MODULE method are saved here.
@@ -45,6 +51,7 @@ namespace MBBSEmu.Host
             _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
             _mcvFiles = new Dictionary<int, McvFile>();
+            outputBuffer = new MemoryStream();
 
             //Setup the user struct for *usrptr which holds the current user
             AllocateUser();
@@ -102,6 +109,7 @@ namespace MBBSEmu.Host
             output.Write(BitConverter.GetBytes('0')); //lcstat
 
             userStructOffset = _mbbsHostMemory.AllocateHostMemory((int) output.Length);
+            userStructLength = (int) output.Length;
             _mbbsHostMemory.SetHostArray(userStructOffset, output.ToArray());
         }
 
@@ -112,10 +120,8 @@ namespace MBBSEmu.Host
         ///
         ///     Signature: void srand (unsigned int seed);
         /// </summary>
-        [ExportedModuleFunction(Name = "SRAND", Ordinal = 561)]
-        public void srand()
-        {
-        }
+        [ExportedModule(Name = "SRAND", Ordinal = 561, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int srand() => 0;
 
         /// <summary>
         ///     Get the current calendar time as a value of type time_t
@@ -124,8 +130,8 @@ namespace MBBSEmu.Host
         ///     Signature: time_t time (time_t* timer);
         ///     Return: Value is 32-Bit TIME_T (AX:DX)
         /// </summary>
-        [ExportedModuleFunction(Name = "TIME", Ordinal = 599)]
-        public void time()
+        [ExportedModule(Name = "TIME", Ordinal = 599, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int time()
         {
             //For now, ignore the input pointer for time_t
             var input1 = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
@@ -141,6 +147,8 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"time() passed seconds: {passedSeconds} (AX:{_cpu.Registers.AX:X4}, DX:{_cpu.Registers.DX:X4})");
 #endif
+
+            return 0;
         }
 
 
@@ -152,8 +160,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
         /// </summary>
-        [ExportedModuleFunction(Name = "ALCZER", Ordinal = 68)]
-        public void alczer()
+        [ExportedModule(Name = "ALCZER", Ordinal = 68, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int alczer()
         {
             var size = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
@@ -166,6 +174,8 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"alczer() allocated {size} bytes starting at {pointer:X4}");
 #endif
+
+            return 0;
         }
 
         /// <summary>
@@ -175,8 +185,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedModuleFunction(Name = "GMDNAM", Ordinal = 331)]
-        public void gmdnam()
+        [ExportedModule(Name = "GMDNAM", Ordinal = 331, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int gmdnam()
         {
             var datSegmentOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var dataSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -203,6 +213,8 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"gmdnam() retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4}");
 #endif
+
+            return 0;
         }
 
         /// <summary>
@@ -212,8 +224,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedModuleFunction(Name = "STRCPY", Ordinal = 574)]
-        public void strcpy()
+        [ExportedModule(Name = "STRCPY", Ordinal = 574, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int strcpy()
         {
             var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -241,6 +253,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = destinationOffset;
             _cpu.Registers.DX = destinationSegment;
+
+            return 0;
         }
 
         /// <summary>
@@ -250,8 +264,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedModuleFunction(Name = "STZCPY", Ordinal = 589)]
-        public void stzcpy()
+        [ExportedModule(Name = "STZCPY", Ordinal = 589, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int stzcpy()
         {
             var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -299,6 +313,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = destinationOffset;
             _cpu.Registers.DX = destinationSegment;
+
+            return 0;
         }
 
         /// <summary>
@@ -307,8 +323,8 @@ namespace MBBSEmu.Host
         ///     Signature: int register_module(struct module *mod)
         ///     Return: AX = Value of usrptr->state whenever user is 'in' this module
         /// </summary>
-        [ExportedModuleFunction(Name = "REGISTER_MODULE", Ordinal = 492)]
-        public void register_module()
+        [ExportedModule(Name = "REGISTER_MODULE", Ordinal = 492, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int register_module()
         {
             var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -348,6 +364,8 @@ namespace MBBSEmu.Host
             //usrptr->state is the Module Number in use, as assigned by the host process
             //Because we only support 1 module running at a time right now, we just set this to one
             _cpu.Registers.AX = 1;
+
+            return 0;
         }
 
         /// <summary>
@@ -357,8 +375,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment
         /// </summary>
-        [ExportedModuleFunction(Name = "OPNMSG", Ordinal = 456)]
-        public void opnmsg()
+        [ExportedModule(Name = "OPNMSG", Ordinal = 456, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int opnmsg()
         {
             var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -381,6 +399,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = _mcvFiles.Count - 1;
             _cpu.Registers.DX = (int) EnumHostSegments.MsgPointer;
+
+            return 0;
         }
 
         /// <summary>
@@ -389,8 +409,8 @@ namespace MBBSEmu.Host
         ///     Signature: int numopt(int msgnum,int floor,int ceiling)
         ///     Return: AX = Value retrieved
         /// </summary>
-        [ExportedModuleFunction(Name = "NUMOPT", Ordinal = 441)]
-        public void numopt()
+        [ExportedModule(Name = "NUMOPT", Ordinal = 441, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int numopt()
         {
             if(_mcvFiles.Count == 0)
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
@@ -409,6 +429,8 @@ namespace MBBSEmu.Host
             _logger.Info($"numopt() retrieved option {msgnum}  value: {outputValue}");
 #endif
             _cpu.Registers.AX = outputValue;
+
+            return 0;
         }
 
         /// <summary>
@@ -417,8 +439,8 @@ namespace MBBSEmu.Host
         ///     Signature: int ynopt(int msgnum)
         ///     Return: AX = 1/Yes, 0/No
         /// </summary>
-        [ExportedModuleFunction(Name = "YNOPT", Ordinal = 650)]
-        public void ynopt()
+        [ExportedModule(Name = "YNOPT", Ordinal = 650, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int ynopt()
         {
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
@@ -429,6 +451,8 @@ namespace MBBSEmu.Host
 #endif
 
             _cpu.Registers.AX = outputValue ? 1 : 0;
+
+            return 0;
         }
 
         /// <summary>
@@ -438,8 +462,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Most Significant 16-Bits
         ///             DX = Least Significant 16-Bits
         /// </summary>
-        [ExportedModuleFunction(Name = "LNGOPT", Ordinal = 389)]
-        public void lngopt()
+        [ExportedModule(Name = "LNGOPT", Ordinal = 389, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int lngopt()
         {
             var msgnum =  _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
@@ -464,6 +488,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = (int) (outputValue & 0xFFFF0000);
             _cpu.Registers.DX = outputValue & 0xFFFF;
+
+            return 0;
         }
 
         /// <summary>
@@ -473,8 +499,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment     
         /// </summary>
-        [ExportedModuleFunction(Name = "STGOPT", Ordinal = 566)]
-        public void stgopt()
+        [ExportedModule(Name = "STGOPT", Ordinal = 566, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int stgopt()
         {
             var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
@@ -489,6 +515,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = outputValueOffset;
             _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+
+            return 0;
         }
 
         /// <summary>
@@ -500,13 +528,15 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        [ExportedModuleFunction(Name = "GETASC", Ordinal = 316)]
-        public void getasc()
+        [ExportedModule(Name = "GETASC", Ordinal = 316, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int getasc()
         {
 #if DEBUG
             _logger.Info($"getasc() called, redirecting to stgopt()");
 #endif
             stgopt();
+
+            return 0;
         }
 
         /// <summary>
@@ -516,8 +546,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        [ExportedModuleFunction(Name = "L2AS", Ordinal = 377)]
-        public void l2as()
+        [ExportedModule(Name = "L2AS", Ordinal = 377, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int l2as()
         {
             var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
             var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
@@ -533,6 +563,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = outputValueOffset;
             _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+
+            return 0;
         }
 
         /// <summary>
@@ -542,8 +574,8 @@ namespace MBBSEmu.Host
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment  
         /// </summary>
-        [ExportedModuleFunction(Name = "ATOL", Ordinal = 77)]
-        public void atol()
+        [ExportedModule(Name = "ATOL", Ordinal = 77, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int atol()
         {
             var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -565,6 +597,8 @@ namespace MBBSEmu.Host
 
             _cpu.Registers.AX = (int)(outputValue & 0xFFFF0000);
             _cpu.Registers.DX = outputValue & 0xFFFF;
+
+            return 0;
         }
 
         /// <summary>
@@ -573,8 +607,8 @@ namespace MBBSEmu.Host
         ///     Signature: int date=today()
         ///     Return: AX = Packed Date
         /// </summary>
-        [ExportedModuleFunction(Name = "TODAY", Ordinal = 601)]
-        public void today()
+        [ExportedModule(Name = "TODAY", Ordinal = 601, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int today()
         {
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
@@ -585,6 +619,8 @@ namespace MBBSEmu.Host
             _logger.Info($"today() returned packed date: {packedDate}");
 #endif
             _cpu.Registers.AX = (ushort)packedDate;
+
+            return 0;
         }
 
         /// <summary>
@@ -594,8 +630,8 @@ namespace MBBSEmu.Host
         ///     Signature: None -- Compiler Generated
         ///     Return: None
         /// </summary>
-        [ExportedModuleFunction(Name = "F_SCOPY", Ordinal = 665)]
-        public void f_scopy()
+        [ExportedModule(Name = "F_SCOPY", Ordinal = 665, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int f_scopy()
         {
             var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -620,6 +656,7 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"f_scopy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
+            return 0;
         }
 
         /// <summary>
@@ -628,8 +665,8 @@ namespace MBBSEmu.Host
         ///     Signature: int match=sameas(char *stgl, char* stg2)
         ///     Returns: AX = 1 if match
         /// </summary>
-        [ExportedModuleFunction(Name = "SAMEAS", Ordinal = 520)]
-        public void sameas()
+        [ExportedModule(Name = "SAMEAS", Ordinal = 520, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int sameas()
         {
             var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
@@ -655,6 +692,246 @@ namespace MBBSEmu.Host
             _logger.Info($"sameas() returned {result} comparing {string1InputValue} to {string2InputValue}");
 #endif
             _cpu.Registers.AX = result ? 1 : 0;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Property with the User Number (Channel) of the user currently being serviced
+        ///
+        ///     Signature: int usrnum
+        ///     Retrurns: int == User Number (Channel), always 1
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "USERNUM", Ordinal = 628, ExportedModuleType = EnumExportedModuleType.Value)]
+        public int usernum() => 0;
+
+        /// <summary>
+        ///     Gets the online user account info
+        /// 
+        ///     Signature: struct usracc *uaptr=uacoff(unum)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment  
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "UACOFF", Ordinal = 713, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int uacoff()
+        {
+            var userNumber = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            if(userNumber != 1)
+                throw new Exception($"uacoff() should only ever receive a User Number of 1, value passed in: {userNumber}");
+
+
+            _cpu.Registers.AX = userStructOffset;
+            _cpu.Registers.DX = (int) EnumHostSegments.MemoryPointer;
+            return 0;
+        }
+
+        /// <summary>
+        ///     Like printf(), except the converted text goes into a buffer
+        ///
+        ///     Signature: void prf(string)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "PRF", Ordinal = 474, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int prf()
+        {
+            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            var output = sourceSegment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, sourceOffset)
+                : _cpu.Memory.GetString(sourceSegment, sourceOffset);
+
+            outputBuffer.Write(output);
+
+#if DEBUG
+            _logger.Info($"prf() added {output.Length} bytes to the buffer");
+#endif
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Send prfbuf to a channel & clear
+        ///
+        ///     Signature: void outprf (unum)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "OUTPRF", Ordinal = 463, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int outprf()
+        {
+            //TODO -- this will need to write to a destination output delegate
+            Console.WriteLine(Encoding.ASCII.GetString(outputBuffer.ToArray()));
+            outputBuffer.Flush();
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Deduct real credits from online acct
+        ///
+        ///     Signature: int enuf=dedcrd(long amount, int asmuch)
+        ///     Returns: AX = 1 == Had enough, 0 == Not enough
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "DEDCRD", Ordinal = 160, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int dedcrd()
+        {
+            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            var creditsToDeduct = (highByte << 16 | lowByte);
+
+#if DEBUG
+            _logger.Info($"dedcrd() deducted {creditsToDeduct} from the current users account (unlimited)");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Points to that channels 'user' struct
+        ///     This is held in its own data segment on the host
+        ///
+        ///     Signature: struct user *usrptr;
+        ///     Returns: int = Segment on host for User Pointer
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "USRPTR", Ordinal = 629, ExportedModuleType = EnumExportedModuleType.Reference)]
+        public int usrptr() => (int) EnumHostSegments.UserPointer;
+
+        /// <summary>
+        ///     Like prf(), but the control string comes from an .MCV file
+        ///
+        ///     Signature: void prfmsg(msgnum,p1,p2, ..• ,pn);
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "PRFMSG", Ordinal = 476, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int prfmsg()
+        {
+            var messageNumber = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+
+            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputValue))
+                throw new Exception($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
+
+            outputBuffer.Write(Encoding.ASCII.GetBytes(outputValue));
+
+#if DEBUG
+            _logger.Info($"prfmsg() added {outputValue.Length} bytes to the buffer from message number {messageNumber}");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Displays a message in the Audit Trail
+        ///
+        ///     Signature: void shocst(char *summary, char *detail, p1, p1,...,pn);
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "SHOCST", Ordinal = 550, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int shocst()
+        {
+            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var string2Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var string2Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+
+            var string1InputBuffer = new MemoryStream();
+            string1InputBuffer.Write(string1Segment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, string1Offset)
+                : _cpu.Memory.GetString(string1Segment, string1Offset));
+
+            var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
+
+            var string2InputBuffer = new MemoryStream();
+            string1InputBuffer.Write(string2Segment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, string2Offset)
+                : _cpu.Memory.GetString(string2Segment, string2Offset));
+
+            var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
+
+            Console.WriteLine($"SUMMARY: {string1InputValue}");
+            Console.WriteLine($"DETAIL: {string2InputValue}");
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Array of chanel codes (as displayed)
+        ///
+        ///     Signature: int *channel
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "CHANNEL", Ordinal = 97, ExportedModuleType = EnumExportedModuleType.Reference)]
+        public int channel() => (int) EnumHostSegments.ChannelArrayPointer;
+
+        /// <summary>
+        ///     Post credits to the specified Users Account
+        ///
+        ///     signature: int addcrd(char *keyuid,char *tckstg,int real)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "ADDCRD", Ordinal = 59, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int addcrd()
+        {
+            var real = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var string2Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var string2Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
+
+            var string1InputBuffer = new MemoryStream();
+            string1InputBuffer.Write(string1Segment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, string1Offset)
+                : _cpu.Memory.GetString(string1Segment, string1Offset));
+
+            var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
+
+            var string2InputBuffer = new MemoryStream();
+            string1InputBuffer.Write(string2Segment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, string2Offset)
+                : _cpu.Memory.GetString(string2Segment, string2Offset));
+
+            var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
+
+#if DEBUG
+            _logger.Info($"addcrd() added {string1InputValue} credits to user account {string2InputValue} (unlimited -- this function is ignored)");
+#endif
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Converts an integer value to a null-terminated string using the specified base and stores the result in the array given by str
+        ///
+        ///     Signature: char *itoa(int value, char * str, int base)
+        /// </summary>
+        [ExportedModule(Name = "ITOA", Ordinal = 366, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int itoa()
+        {
+            var baseValue = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var integerValue = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+
+            var output = Convert.ToString(integerValue, baseValue);
+            output += "\0";
+
+            if (string1Segment == 0xFFFF)
+            {
+                _mbbsHostMemory.SetHostArray(string1Offset, Encoding.ASCII.GetBytes(output));
+            }
+            else
+            {
+                _cpu.Memory.SetArray(string1Segment, string1Offset, Encoding.ASCII.GetBytes(output));
+            }
+
+#if DEBUG
+            _logger.Info($"itoa() convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
+#endif
+            return 0;
         }
     }
 }

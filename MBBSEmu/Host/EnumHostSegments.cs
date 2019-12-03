@@ -10,6 +10,8 @@
         MemoryPointer = 0xFFFF,
         FilePointer = 0xFFFE,
         BtrPointer = 0xFFFD,
-        MsgPointer = 0xFFFC
+        MsgPointer = 0xFFFC,
+        UserPointer = 0xFFFB,
+        ChannelArrayPointer = 0xFFFA 
     }
 }

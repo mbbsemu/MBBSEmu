@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace MBBSEmu.Host
+namespace MBBSEmu.Host.ExportedModules
 {
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public class ExportedModuleFunctionAttribute : Attribute
+    public class ExportedModuleAttribute : Attribute
     {
         public int Ordinal;
         public string Name;
+        public EnumExportedModuleType ExportedModuleType;
     }
 }
