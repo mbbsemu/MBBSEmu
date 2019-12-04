@@ -28,6 +28,7 @@ namespace MBBSEmu.Host
 
         private readonly Dictionary<int, McvFile> _mcvFiles;
         private McvFile _currentMcvFile;
+        private McvFile _previousMcvFile;
 
         private int userStructOffset;
         private int userStructLength;
@@ -1094,6 +1095,41 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"rtkick() registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");
 #endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Sets 'current' MCV file to the specified pointer
+        ///
+        ///     Signature: FILE *setmbk(mbkptr)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "SETMBK", Ordinal = 543, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int setmbk()
+        {
+            var mcvFileOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var mcvFileSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            if(mcvFileSegment != (int)EnumHostSegments.MsgPointer)
+                throw new ArgumentException($"Specified Segment for MCV File {mcvFileSegment} does not match host MCV Segment {(int)EnumHostSegments.MsgPointer}");
+
+            _previousMcvFile = _currentMcvFile;
+            _currentMcvFile = _mcvFiles[mcvFileOffset];
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Restore previous MCV file block ptr from before last setmbk() call
+        /// 
+        ///     Signature: void rstmbk()
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "RSTMBK", Ordinal = 510, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int rstmbk()
+        {
+            _currentMcvFile = _previousMcvFile;
+
             return 0;
         }
     }
