@@ -57,11 +57,26 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Je:
                     Op_Je();
                     return;
+                case Mnemonic.Jne:
+                    Op_Jne();
+                    return;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
+        }
+
+        private void Op_Jne()
+        {
+            if (!Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
         }
 
         private void Op_Je()

@@ -907,7 +907,7 @@ namespace MBBSEmu.Host
             var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
 
             var string2InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string2Segment == 0xFFFF
+            string2InputBuffer.Write(string2Segment == 0xFFFF
                 ? _mbbsHostMemory.GetString(0, string2Offset)
                 : _cpu.Memory.GetString(string2Segment, string2Offset));
 
