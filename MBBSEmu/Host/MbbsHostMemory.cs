@@ -46,7 +46,7 @@ namespace MBBSEmu.Host
             var output = new List<byte>();
             for (var i = 0; i < ushort.MaxValue; i++)
             {
-                var inputByte = _hostMemorySpace[offset + 1];
+                var inputByte = _hostMemorySpace[offset + i];
                 output.Add(inputByte);
                 if (inputByte == 0)
                     break;

@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Extensions;
 using MBBSEmu.Host.ExportedModules;
 using MBBSEmu.Logging;
 using MBBSEmu.Module;
@@ -31,7 +32,6 @@ namespace MBBSEmu.Host
         private McvFile _previousMcvFile;
 
         private int userStructOffset;
-        private int userStructLength;
 
         private readonly MemoryStream outputBuffer;
 
@@ -108,7 +108,6 @@ namespace MBBSEmu.Host
             output.Write(BitConverter.GetBytes('0')); //lcstat
 
             userStructOffset = _mbbsHostMemory.AllocateHostMemory((int) output.Length);
-            userStructLength = (int) output.Length;
             _mbbsHostMemory.SetHostArray(userStructOffset, output.ToArray());
         }
 
@@ -247,7 +246,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"stzcpy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"strcpy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
 
             _cpu.Registers.AX = destinationOffset;
@@ -743,7 +742,61 @@ namespace MBBSEmu.Host
                 ? _mbbsHostMemory.GetString(0, sourceOffset)
                 : _cpu.Memory.GetString(sourceSegment, sourceOffset);
 
-            outputBuffer.Write(output);
+            var outputString = Encoding.ASCII.GetString(output);
+
+            //If the supplied string has any control characters for formatting, process them
+            if (outputString.CountPrintf() < 0)
+            {
+                var formatParameters = new List<object>();
+                var parameterOffsetAdjustment = 0;
+                for (var i = 0; i < outputString.CountPrintf(); i++)
+                {
+                    //Gets the control character for the ordinal provided
+                    switch (outputString.GetPrintf(i))
+                    {
+                        case 'c':
+                        {
+                            var charParameter = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
+                            formatParameters.Add((char)charParameter);
+                            parameterOffsetAdjustment += 2;
+                            break;
+                            }
+                        case 's':
+                        {
+                            var parameterOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
+                            var parameterSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10 + parameterOffsetAdjustment);
+
+                            var parameter = sourceSegment == 0xFFFF
+                                ? _mbbsHostMemory.GetString(0, parameterOffset)
+                                : _cpu.Memory.GetString(parameterSegment, parameterOffset);
+
+                            formatParameters.Add(Encoding.ASCII.GetString(parameter));
+                            parameterOffsetAdjustment += 4;
+                            break;
+                        }
+                        case 'd':
+                        {
+                            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
+                            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 10 + parameterOffsetAdjustment);
+
+                            var parameter = (highByte << 16 | lowByte);
+
+
+                            formatParameters.Add(parameter);
+                            parameterOffsetAdjustment += 4;
+                            break;
+                            }
+                        default:
+                            throw new InvalidDataException($"Unhandled Printf Control Character: {outputString.GetPrintf(i)}");
+                    }
+                }
+
+                outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
+            }
+
+
+
+            outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
 
 #if DEBUG
             _logger.Info($"prf() added {output.Length} bytes to the buffer");

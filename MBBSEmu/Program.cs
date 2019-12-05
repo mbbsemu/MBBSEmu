@@ -1,7 +1,6 @@
 ﻿using MBBSEmu.Host;
 using MBBSEmu.Module;
 using System;
-
 namespace MBBSEmu
 {
     class Program
