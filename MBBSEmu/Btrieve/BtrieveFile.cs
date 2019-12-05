@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection.Metadata.Ecma335;
+using System.Security.Cryptography.X509Certificates;
 using MBBSEmu.Logging;
 using NLog;
 
@@ -14,7 +16,7 @@ namespace MBBSEmu.Btrieve
         public int RecordCount;
         public int RecordLength;
 
-        public int CurrentRecordNumber;
+        public ushort CurrentRecordNumber;
         public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + 0x206;
 
         private byte[] _btrieveFileContent;
@@ -54,7 +56,7 @@ namespace MBBSEmu.Btrieve
 
         private void LoadRecords()
         {
-            for (var i = 0; i < RecordCount; i++)
+            for (ushort i = 0; i < RecordCount; i++)
             {
                 CurrentRecordNumber = i;
                 var recordArray = new byte[RecordLength];
@@ -71,5 +73,11 @@ namespace MBBSEmu.Btrieve
             CurrentRecordNumber = 0;
             return (ushort) (RecordCount == 0 ? 0 : 1);
         }
+
+        public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
+
+        public byte[] GetRecord(ushort recordNumber) => _btrieveRecords[recordNumber];
+
+
     }
 }

@@ -1283,14 +1283,24 @@ namespace MBBSEmu.Host
             }
 
             //Set Memory Values
-            _cpu.Memory.SetWord(_cpu.Registers.DS, btrieveRecordPointerSegment, (ushort)EnumHostSegments.BtrieveRecordPointer);
-            _cpu.Memory.SetWord(_cpu.Registers.DS, btrieveRecordPointerOffset, (ushort)_currentBtrieveFile.CurrentRecordNumber);
+            if (resultCode > 0)
+            {
+                //See if the segment lives on the host or in the module
+                if (btrieveRecordPointerSegment >= 0xFF00)
+                {
+                    _mbbsHostMemory.SetHostArray(btrieveRecordPointerOffset, _currentBtrieveFile.GetRecord());
+                }
+                else
+                {
+                    _cpu.Memory.SetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset, _currentBtrieveFile.GetRecord());
+                }
+            }
 
             //Set Register for Result
             _cpu.Registers.AX = resultCode;
 
 #if DEBUG
-            _logger.Info($"Performed Btrieve Step - New Record Set to {(ushort)EnumHostSegments.BtrieveRecordPointer:X4}:{_currentBtrieveFile.CurrentRecordNumber:X4}, AX: {resultCode}");
+            _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointerSegment:X4}:{btrieveRecordPointerOffset:X4}, AX: {resultCode}");
 #endif
             return 0;
         }
