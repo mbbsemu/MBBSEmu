@@ -103,7 +103,7 @@ namespace MBBSEmu.CPU
                 //PUSH r16
                 case OpKind.Register:
                     Memory.Push(Registers.SP,
-                        BitConverter.GetBytes(Registers.GetValue(_currentInstruction.Op0Register)));
+                        BitConverter.GetBytes((ushort)Registers.GetValue(_currentInstruction.Op0Register)));
                     break;
                 //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:
@@ -207,9 +207,9 @@ namespace MBBSEmu.CPU
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
                     Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.IP));
+                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort)Registers.IP));
                     Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes(Registers.CS));
+                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort)Registers.CS));
                     Registers.BP = Registers.SP;
 
 

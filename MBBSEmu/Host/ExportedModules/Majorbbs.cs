@@ -1,4 +1,5 @@
-﻿using MBBSEmu.CPU;
+﻿using MBBSEmu.Btrieve;
+using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.Host.ExportedModules;
 using MBBSEmu.Logging;
@@ -8,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MBBSEmu.Host
@@ -27,9 +29,12 @@ namespace MBBSEmu.Host
         private readonly CpuCore _cpu;
         private readonly MbbsModule _module;
 
-        private readonly Dictionary<int, McvFile> _mcvFiles;
+        private readonly PointerDictionary<McvFile> _mcvFiles;
         private McvFile _currentMcvFile;
         private McvFile _previousMcvFile;
+
+        private readonly PointerDictionary<BtrieveFile> _btrieveFiles;
+
 
         private int userStructOffset;
 
@@ -49,8 +54,10 @@ namespace MBBSEmu.Host
             _cpu = cpuCore;
             _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
-            _mcvFiles = new Dictionary<int, McvFile>();
+            _mcvFiles = new PointerDictionary<McvFile>();
             outputBuffer = new MemoryStream();
+
+            _btrieveFiles = new PointerDictionary<BtrieveFile>();
 
             //Setup the user struct for *usrptr which holds the current user
             AllocateUser();
@@ -143,7 +150,7 @@ namespace MBBSEmu.Host
             _cpu.Registers.DX = BitConverter.ToUInt16(outputArray, 0);
 
 #if DEBUG
-            _logger.Info($"time() passed seconds: {passedSeconds} (AX:{_cpu.Registers.AX:X4}, DX:{_cpu.Registers.DX:X4})");
+            _logger.Info($"Passed seconds: {passedSeconds} (AX:{_cpu.Registers.AX:X4}, DX:{_cpu.Registers.DX:X4})");
 #endif
 
             return 0;
@@ -170,7 +177,7 @@ namespace MBBSEmu.Host
             _cpu.Registers.DX = 0xFFFF;
 
 #if DEBUG
-            _logger.Info($"alczer() allocated {size} bytes starting at {pointer:X4}");
+            _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
 #endif
 
             return 0;
@@ -209,7 +216,7 @@ namespace MBBSEmu.Host
             _cpu.Registers.DX = 0xFFFF;
 
 #if DEBUG
-            _logger.Info($"gmdnam() retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4}");
+            _logger.Info($"Retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4}");
 #endif
 
             return 0;
@@ -246,7 +253,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"strcpy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
 
             _cpu.Registers.AX = destinationOffset;
@@ -306,7 +313,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"stzcpy() copied {bytesCopied} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"Copied {bytesCopied} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
 
             _cpu.Registers.AX = destinationOffset;
@@ -392,7 +399,7 @@ namespace MBBSEmu.Host
 
 #if DEBUG
             _logger.Info(
-                $"opnmsg() opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.MsgPointer:X4}:1");
+                $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.MsgPointer:X4}:1");
 #endif
 
             _cpu.Registers.AX = _mcvFiles.Count - 1;
@@ -424,7 +431,7 @@ namespace MBBSEmu.Host
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"numopt() retrieved option {msgnum}  value: {outputValue}");
+            _logger.Info($"Retrieved option {msgnum}  value: {outputValue}");
 #endif
             _cpu.Registers.AX = outputValue;
 
@@ -445,7 +452,7 @@ namespace MBBSEmu.Host
             var outputValue = _currentMcvFile.GetBool(msgnum);
 
 #if DEBUG
-            _logger.Info($"ynopt() retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             _cpu.Registers.AX = outputValue ? 1 : 0;
@@ -481,7 +488,7 @@ namespace MBBSEmu.Host
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"lngopt() retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             _cpu.Registers.AX = (int) (outputValue & 0xFFFF0000);
@@ -508,7 +515,7 @@ namespace MBBSEmu.Host
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"stgopt() retrieved option {msgnum} value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
@@ -530,7 +537,7 @@ namespace MBBSEmu.Host
         public int getasc()
         {
 #if DEBUG
-            _logger.Info($"getasc() called, redirecting to stgopt()");
+            _logger.Info($"Called, redirecting to stgopt()");
 #endif
             stgopt();
 
@@ -556,7 +563,7 @@ namespace MBBSEmu.Host
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"l2as() received value: {outputValue}, string saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Received value: {outputValue}, string saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
@@ -590,7 +597,7 @@ namespace MBBSEmu.Host
                 throw new InvalidCastException($"atol(): Unable to cast string value located at {sourceSegment:X4}:{sourceOffset:X4} to long");
 
 #if DEBUG
-            _logger.Info($"atol() cast {inputBuffer} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
+            _logger.Info($"Cast {inputBuffer} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
 #endif
 
             _cpu.Registers.AX = (int)(outputValue & 0xFFFF0000);
@@ -614,7 +621,7 @@ namespace MBBSEmu.Host
             var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + (DateTime.Now.Year << 9);
 
 #if DEBUG
-            _logger.Info($"today() returned packed date: {packedDate}");
+            _logger.Info($"Returned packed date: {packedDate}");
 #endif
             _cpu.Registers.AX = (ushort)packedDate;
 
@@ -652,7 +659,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"f_scopy() copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
             return 0;
         }
@@ -687,7 +694,7 @@ namespace MBBSEmu.Host
 
             var result = string1InputValue == string2InputValue;
 #if DEBUG
-            _logger.Info($"sameas() returned {result} comparing {string1InputValue} to {string2InputValue}");
+            _logger.Info($"Returned {result} comparing {string1InputValue} to {string2InputValue}");
 #endif
             _cpu.Registers.AX = result ? 1 : 0;
 
@@ -718,7 +725,7 @@ namespace MBBSEmu.Host
             var userNumber = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
             if(userNumber != 1)
-                throw new Exception($"uacoff() should only ever receive a User Number of 1, value passed in: {userNumber}");
+                throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
 
             _cpu.Registers.AX = userStructOffset;
@@ -799,7 +806,7 @@ namespace MBBSEmu.Host
             outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
 
 #if DEBUG
-            _logger.Info($"prf() added {output.Length} bytes to the buffer");
+            _logger.Info($"Added {output.Length} bytes to the buffer");
 #endif
 
             return 0;
@@ -838,7 +845,7 @@ namespace MBBSEmu.Host
             var creditsToDeduct = (highByte << 16 | lowByte);
 
 #if DEBUG
-            _logger.Info($"dedcrd() deducted {creditsToDeduct} from the current users account (unlimited)");
+            _logger.Info($"Deducted {creditsToDeduct} from the current users account (unlimited)");
 #endif
             return 0;
         }
@@ -871,7 +878,7 @@ namespace MBBSEmu.Host
             outputBuffer.Write(Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"prfmsg() added {outputValue.Length} bytes to the buffer from message number {messageNumber}");
+            _logger.Info($"Added {outputValue.Length} bytes to the buffer from message number {messageNumber}");
 #endif
             return 0;
         }
@@ -949,7 +956,7 @@ namespace MBBSEmu.Host
             var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
 
 #if DEBUG
-            _logger.Info($"addcrd() added {string1InputValue} credits to user account {string2InputValue} (unlimited -- this function is ignored)");
+            _logger.Info($"Added {string1InputValue} credits to user account {string2InputValue} (unlimited -- this function is ignored)");
 #endif
 
             return 0;
@@ -981,7 +988,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"itoa() convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
+            _logger.Info($"Convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
 #endif
             return 0;
         }
@@ -999,7 +1006,7 @@ namespace MBBSEmu.Host
             var lockValue = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
 #if DEBUG
-            _logger.Info($"haskey() returning true for lock {lockValue}");
+            _logger.Info($"Returning true for lock {lockValue}");
 #endif
             _cpu.Registers.AX = 1;
 
@@ -1019,7 +1026,7 @@ namespace MBBSEmu.Host
             var key = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
 #if DEBUG
-            _logger.Info($"hasmkey() returning true for key {key}");
+            _logger.Info($"Returning true for key {key}");
 #endif
             _cpu.Registers.AX = 1;
 
@@ -1039,7 +1046,7 @@ namespace MBBSEmu.Host
             var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(0, short.MaxValue);
 
 #if DEBUG
-            _logger.Info($"rand() generated random number {randomValue} and saved it to AX");
+            _logger.Info($"Generated random number {randomValue} and saved it to AX");
 #endif
             _cpu.Registers.AX = randomValue;
 
@@ -1075,7 +1082,7 @@ namespace MBBSEmu.Host
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
 
 #if DEBUG
-            _logger.Info($"ncdate() received value: {packedDate}, decoded string {outputDate} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
@@ -1127,7 +1134,7 @@ namespace MBBSEmu.Host
             var routinePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
             var routinePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
 #if DEBUG
-            _logger.Info($"rtihdlr() registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
 #endif
             return 0;
         }
@@ -1146,7 +1153,7 @@ namespace MBBSEmu.Host
             var delaySeconds = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
 
 #if DEBUG
-            _logger.Info($"rtkick() registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");
+            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");
 #endif
             return 0;
         }
@@ -1182,6 +1189,39 @@ namespace MBBSEmu.Host
         public int rstmbk()
         {
             _currentMcvFile = _previousMcvFile;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Opens a Btrieve file for I/O
+        ///
+        ///     Signature: BTVFILE *bbptr=opnbtv(char *filnae, int reclen)
+        ///     Return: AX = Offset to File Pointer
+        ///             DX = Host Btrieve Segment  
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "OPNBTV", Ordinal = 455, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int opnbtv()
+        {
+            var btrieveFilenameOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var btrieveFilenameSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var recordLength = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            var btrieveFilename = new MemoryStream();
+            btrieveFilename.Write(btrieveFilenameSegment == 0xFFFF
+                ? _mbbsHostMemory.GetString(0, btrieveFilenameOffset)
+                : _cpu.Memory.GetString(btrieveFilenameSegment, btrieveFilenameOffset));
+
+            var fileName = Encoding.ASCII.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
+
+            var btrieveFile = new BtrieveFile(fileName, _module.ModulePath);
+
+            var btrieveFilePointer = _btrieveFiles.Allocate(btrieveFile);
+
+#if DEBUG
+            _logger.Info($"Opened file {fileName} and allocated it to {(int)EnumHostSegments.BtrieveFilePointer:X4}:{btrieveFilePointer:X4}");
+#endif
 
             return 0;
         }

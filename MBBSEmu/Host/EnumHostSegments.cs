@@ -12,6 +12,7 @@
         BtrPointer = 0xFFFD,
         MsgPointer = 0xFFFC,
         UserPointer = 0xFFFB,
-        ChannelArrayPointer = 0xFFFA 
+        ChannelArrayPointer = 0xFFFA,
+        BtrieveFilePointer = 0xFFF9
     }
 }
