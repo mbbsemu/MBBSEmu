@@ -39,6 +39,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Add:
                     Op_Add();
                     break;
+                case Mnemonic.Imul:
+                    Op_Imul();
+                    break;
                 case Mnemonic.Push:
                     Op_Push();
                     break;
@@ -60,11 +63,89 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jne:
                     Op_Jne();
                     return;
+                case Mnemonic.Jmp:
+                    Op_Jmp();
+                    return;
+                case Mnemonic.Jl:
+                    Op_Jl();
+                    return;
+                case Mnemonic.Jge:
+                    Op_Jge();
+                    return;
+                case Mnemonic.Xor:
+                    Op_Xor();
+                    break;
+                case Mnemonic.Inc:
+                    Op_Inc();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
+        }
+
+        private ushort GetOpValue(OpKind opKind)
+        {
+            switch (opKind)
+            {
+                case OpKind.Register:
+                    return Registers.GetValue(_currentInstruction.Op0Register);
+                case OpKind.Immediate8:
+                    return _currentInstruction.Immediate8;
+                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                    return Memory.GetByte(Registers.DS, (int)_currentInstruction.MemoryDisplacement);
+                case OpKind.Immediate8to16:
+                    return (ushort)_currentInstruction.Immediate8to16;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
+            }
+        }
+
+        private void Op_Inc()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register,
+                        (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + 1));
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private void Op_Xor()
+        {
+            var value1 = GetOpValue(_currentInstruction.Op0Kind);
+            var value2 = GetOpValue(_currentInstruction.Op1Kind);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1 ^ value2));
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown XOR: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private void Op_Jmp()
+        {
+            Registers.IP = _currentInstruction.Immediate16;
+        }
+
+        private void Op_Jge()
+        {
+            if ((!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                 || (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
         }
 
         private void Op_Jne()
@@ -91,57 +172,22 @@ namespace MBBSEmu.CPU
             }
         }
 
-        private void Op_Add()
+        private void Op_Jl()
         {
-            switch (_currentInstruction.Op0Kind)
+            if (!Registers.F.IsFlagSet((ushort) EnumFlags.ZF) && Registers.F.IsFlagSet((ushort) EnumFlags.CF))
             {
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        Registers.GetValue(_currentInstruction.Op1Register));
-                    break;
-                
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
             }
         }
 
         private void Op_Cmp()
         {
-            ushort value1, value2;
-            switch (_currentInstruction.Op0Kind)
-            {
-                case OpKind.Register:
-                    value1 = Registers.GetValue(_currentInstruction.Op0Register);
-                    break;
-                case OpKind.Immediate8:
-                    value1 = _currentInstruction.Immediate8;
-                    break;
-                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                    value1 = Memory.GetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown Op0 for CMP: {_currentInstruction.Op0Kind}");
-            }
-
-            switch (_currentInstruction.Op1Kind)
-            {
-                case OpKind.Register:
-                    value2 = Registers.GetValue(_currentInstruction.Op1Register);
-                    break;
-                case OpKind.Immediate8:
-                    value2 = _currentInstruction.Immediate8;
-                    break;
-                case OpKind.Immediate8to16:
-                    value2 = (ushort) _currentInstruction.Immediate8to16;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown Op1 for CMP: {_currentInstruction.Op0Kind}");
-            }
+            var value1 = GetOpValue(_currentInstruction.Op0Kind);
+            var value2 = GetOpValue(_currentInstruction.Op1Kind);
 
             //Set Appropriate Flags
             if (value1 == value2)
@@ -158,6 +204,37 @@ namespace MBBSEmu.CPU
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+        }
+
+        private void Op_Add()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register,
+                        Registers.GetValue(_currentInstruction.Op1Register));
+                    break;
+
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private void Op_Imul()
+        {
+            var value1 = GetOpValue(_currentInstruction.Op1Kind);
+            var value2 = GetOpValue(_currentInstruction.Op2Kind);
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1*value2));
+                    return;
             }
         }
 

@@ -1,10 +1,8 @@
-﻿using System;
+﻿using MBBSEmu.Logging;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography.X509Certificates;
-using MBBSEmu.Logging;
-using NLog;
 
 namespace MBBSEmu.Btrieve
 {
@@ -13,14 +11,14 @@ namespace MBBSEmu.Btrieve
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         public string FileName;
-        public int RecordCount;
-        public int RecordLength;
+        public ushort RecordCount;
+        public ushort RecordLength;
 
         public ushort CurrentRecordNumber;
         public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + 0x206;
 
         private byte[] _btrieveFileContent;
-        private readonly Dictionary<int, byte[]> _btrieveRecords;
+        private readonly List<byte[]> _btrieveRecords;
 
         public BtrieveFile(string fileName, string path)
         {
@@ -41,7 +39,7 @@ namespace MBBSEmu.Btrieve
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
             _logger.Info($"Record Count: {RecordCount}");
 
-            _btrieveRecords = new Dictionary<int, byte[]>(RecordCount);
+            _btrieveRecords = new List<byte[]>(RecordCount);
             _logger.Info("Loading Records...");
             if (RecordCount > 0)
             {
@@ -61,7 +59,7 @@ namespace MBBSEmu.Btrieve
                 CurrentRecordNumber = i;
                 var recordArray = new byte[RecordLength];
                 Array.Copy(_btrieveFileContent, CurrentRecordOffset, recordArray, 0, RecordLength);
-                _btrieveRecords[i] = recordArray;
+                _btrieveRecords.Add(recordArray);
             }
 
             _logger.Info($"Loaded {CurrentRecordNumber} records. Resetting cursor to 0");
@@ -74,10 +72,36 @@ namespace MBBSEmu.Btrieve
             return (ushort) (RecordCount == 0 ? 0 : 1);
         }
 
+        public ushort StepNext()
+        {
+            CurrentRecordNumber++;
+
+            return 1;
+        }
+
         public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
 
         public byte[] GetRecord(ushort recordNumber) => _btrieveRecords[recordNumber];
 
 
+        public void Update(byte[] recordData) => Update(CurrentRecordNumber, recordData);
+
+        public void Update(ushort recordNumber, byte[] recordData)
+        {
+            if(recordData.Length != RecordLength)
+                throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
+
+            _btrieveRecords[recordNumber] = recordData;
+        }
+
+        public void Insert(byte[] recordData) => Insert(CurrentRecordNumber, recordData);
+
+        public void Insert(ushort recordNumber, byte[] recordData)
+        {
+            if (recordData.Length != RecordLength)
+                throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
+
+            _btrieveRecords.Insert(recordNumber, recordData);
+        }
     }
 }

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MBBSEmu.Host
@@ -22,13 +21,8 @@ namespace MBBSEmu.Host
     ///     While a majority of these functions are specific to MajorBBS/WG, some are just proxies for
     ///     Borland C++ macros and are noted as such.
     /// </summary>
-    public class Majorbbs
+    public class Majorbbs : ExportedModuleBase
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-
-        private readonly MbbsHostMemory _mbbsHostMemory;
-        private readonly CpuCore _cpu;
-        private readonly MbbsModule _module;
 
         private readonly PointerDictionary<McvFile> _mcvFiles;
         private McvFile _currentMcvFile;
@@ -36,7 +30,7 @@ namespace MBBSEmu.Host
 
         private readonly PointerDictionary<BtrieveFile> _btrieveFiles;
         private BtrieveFile _currentBtrieveFile;
-
+        private BtrieveFile _previousBtrieveFile;
 
         private int userStructOffset;
 
@@ -50,15 +44,11 @@ namespace MBBSEmu.Host
         public readonly Dictionary<string, Tuple<int, int>> ModuleRoutines;
 
 
-        public Majorbbs(CpuCore cpuCore,  MbbsModule module)
+        public Majorbbs(CpuCore cpuCore,  MbbsModule module) : base(cpuCore, module)
         {
-            _mbbsHostMemory = new MbbsHostMemory();
-            _cpu = cpuCore;
-            _module = module;
             ModuleRoutines = new Dictionary<string, Tuple<int, int>>();
             _mcvFiles = new PointerDictionary<McvFile>();
             outputBuffer = new MemoryStream();
-
             _btrieveFiles = new PointerDictionary<BtrieveFile>();
 
             //Setup the user struct for *usrptr which holds the current user
@@ -754,56 +744,11 @@ namespace MBBSEmu.Host
             var outputString = Encoding.ASCII.GetString(output);
 
             //If the supplied string has any control characters for formatting, process them
-            if (outputString.CountPrintf() < 0)
+            if (outputString.CountPrintf() > 0)
             {
-                var formatParameters = new List<object>();
-                var parameterOffsetAdjustment = 0;
-                for (var i = 0; i < outputString.CountPrintf(); i++)
-                {
-                    //Gets the control character for the ordinal provided
-                    switch (outputString.GetPrintf(i))
-                    {
-                        case 'c':
-                        {
-                            var charParameter = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
-                            formatParameters.Add((char)charParameter);
-                            parameterOffsetAdjustment += 2;
-                            break;
-                            }
-                        case 's':
-                        {
-                            var parameterOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
-                            var parameterSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10 + parameterOffsetAdjustment);
-
-                            var parameter = sourceSegment == 0xFFFF
-                                ? _mbbsHostMemory.GetString(0, parameterOffset)
-                                : _cpu.Memory.GetString(parameterSegment, parameterOffset);
-
-                            formatParameters.Add(Encoding.ASCII.GetString(parameter));
-                            parameterOffsetAdjustment += 4;
-                            break;
-                        }
-                        case 'd':
-                        {
-                            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8 + parameterOffsetAdjustment);
-                            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 10 + parameterOffsetAdjustment);
-
-                            var parameter = (highByte << 16 | lowByte);
-
-
-                            formatParameters.Add(parameter);
-                            parameterOffsetAdjustment += 4;
-                            break;
-                            }
-                        default:
-                            throw new InvalidDataException($"Unhandled Printf Control Character: {outputString.GetPrintf(i)}");
-                    }
-                }
-
+                var formatParameters = GetPrintfVariables(outputString, (ushort) (_cpu.Registers.BP + 8));
                 outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
             }
-
-
 
             outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
 
@@ -912,6 +857,14 @@ namespace MBBSEmu.Host
                 : _cpu.Memory.GetString(string2Segment, string2Offset));
 
             var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
+
+            //If the supplied string has any control characters for formatting, process them
+            if (string2InputValue.CountPrintf() > 0)
+            {
+                var formatParameters = GetPrintfVariables(string2InputValue, (ushort)(_cpu.Registers.BP + 12));
+                string2InputValue = string.Format(string2InputValue.FormatPrintf(), formatParameters.ToArray());
+            }
+
 
             Console.WriteLine($"SUMMARY: {string1InputValue}");
             Console.WriteLine($"DETAIL: {string2InputValue}");
@@ -1245,6 +1198,9 @@ namespace MBBSEmu.Host
             if(btrieveFileSegment != (int)EnumHostSegments.BtrieveFilePointer)
                 throw new InvalidDataException($"Invalid Btrieve File Segment provided. Actual: {btrieveFileSegment:X4} Expecting: {(int)EnumHostSegments.BtrieveFilePointer}");
 
+            if(_currentBtrieveFile != null)
+                _previousBtrieveFile = _currentBtrieveFile;
+
             _currentBtrieveFile = _btrieveFiles[btrieveFileOffset];
 
 #if DEBUG
@@ -1277,7 +1233,9 @@ namespace MBBSEmu.Host
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
                     resultCode = _currentBtrieveFile.StepFirst();
                     break;
-
+                case (ushort)EnumBtrieveOperationCodes.StepNext:
+                    resultCode = _currentBtrieveFile.StepNext();
+                    break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
             }
@@ -1302,6 +1260,85 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointerSegment:X4}:{btrieveRecordPointerOffset:X4}, AX: {resultCode}");
 #endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Restores the last Btrieve data block for use
+        ///
+        ///     Signature: void rstbtv (void)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "RSTBTV", Ordinal = 505, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int rstbtv()
+        {
+            if (_previousBtrieveFile == null)
+            {
+#if DEBUG
+                _logger.Info($"Previous Btrieve file == null, ignoring");
+#endif
+                return 0;
+            }
+
+            _currentBtrieveFile = _previousBtrieveFile;
+
+#if DEBUG
+            _logger.Info($"Set current Btreieve file to {_previousBtrieveFile.FileName}");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Update the Btrieve current record
+        ///
+        ///     Signature: void updbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "UPDBTV", Ordinal = 621, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int updbtv()
+        {
+            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            //See if the segment lives on the host or in the module
+            var btrieveRecord = new MemoryStream();
+            btrieveRecord.Write(btrieveRecordPointerSegment == 0xFFFF
+                ? _mbbsHostMemory.GetArray(0, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength)
+                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength));
+
+            _currentBtrieveFile.Update(btrieveRecord.ToArray());
+
+#if DEBUG
+            _logger.Info($"Updated current Btrieve record ({_currentBtrieveFile.CurrentRecordNumber}) with {btrieveRecord.Length} bytes");
+#endif
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Insert new fixed-length Btrieve record
+        /// 
+        ///     Signature: void insbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "INSBTV", Ordinal = 351, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int insbtv()
+        {
+            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            //See if the segment lives on the host or in the module
+            var btrieveRecord = new MemoryStream();
+            btrieveRecord.Write(btrieveRecordPointerSegment == 0xFFFF
+                ? _mbbsHostMemory.GetArray(0, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength)
+                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength));
+
+            _currentBtrieveFile.Insert(btrieveRecord.ToArray());
+
+#if DEBUG
+            _logger.Info($"Inserted Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {btrieveRecord.Length} bytes");
+#endif
+
             return 0;
         }
     }
