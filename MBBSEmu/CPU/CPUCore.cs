@@ -54,11 +54,26 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Cmp:
                     Op_Cmp();
                     break;
+                case Mnemonic.Je:
+                    Op_Je();
+                    return;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
+        }
+
+        private void Op_Je()
+        {
+            if (Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
         }
 
         private void Op_Add()
@@ -90,6 +105,9 @@ namespace MBBSEmu.CPU
                     break;
                 case OpKind.Immediate8:
                     value1 = _currentInstruction.Immediate8;
+                    break;
+                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                    value1 = Memory.GetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op0 for CMP: {_currentInstruction.Op0Kind}");
@@ -208,6 +226,13 @@ namespace MBBSEmu.CPU
                 {
                     Registers.SetValue(_currentInstruction.Op0Register,
                         Registers.GetValue(_currentInstruction.Op1Register));
+                    return;
+                }
+
+                //MOV AX,moffs16*
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Memory:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, Memory.GetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement));
                     return;
                 }
 

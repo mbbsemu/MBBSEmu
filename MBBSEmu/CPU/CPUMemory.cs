@@ -80,7 +80,7 @@ namespace MBBSEmu.CPU
             return _decodedSegments[segment].First(x => x.IP16 == instructionPointer);
         }
 
-        public int GetByte(int segment, int offset)
+        public byte GetByte(int segment, int offset)
         {
             var segmentOffset = _segmentAddressTable[segment];
             return _moduleMemorySpace[segmentOffset + offset];

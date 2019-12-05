@@ -599,7 +599,7 @@ namespace MBBSEmu.Host
                 throw new InvalidCastException($"atol(): Unable to cast string value located at {sourceSegment:X4}:{sourceOffset:X4} to long");
 
 #if DEBUG
-            _logger.Info($"Cast {inputBuffer} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
+            _logger.Info($"Cast {inputValue} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
 #endif
 
             _cpu.Registers.AX = (ushort) (outputValue & 0xFFFF0000);
