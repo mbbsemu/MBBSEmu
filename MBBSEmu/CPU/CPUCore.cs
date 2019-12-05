@@ -1,9 +1,9 @@
 ﻿using Iced.Intel;
+using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Linq;
-
 namespace MBBSEmu.CPU
 {
     public class CpuCore
@@ -51,6 +51,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Call:
                     Op_Call();
                     break;
+                case Mnemonic.Cmp:
+                    Op_Cmp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -74,6 +77,54 @@ namespace MBBSEmu.CPU
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private void Op_Cmp()
+        {
+            ushort value1, value2;
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    value1 = Registers.GetValue(_currentInstruction.Op0Register);
+                    break;
+                case OpKind.Immediate8:
+                    value1 = _currentInstruction.Immediate8;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown Op0 for CMP: {_currentInstruction.Op0Kind}");
+            }
+
+            switch (_currentInstruction.Op1Kind)
+            {
+                case OpKind.Register:
+                    value2 = Registers.GetValue(_currentInstruction.Op1Register);
+                    break;
+                case OpKind.Immediate8:
+                    value2 = _currentInstruction.Immediate8;
+                    break;
+                case OpKind.Immediate8to16:
+                    value2 = (ushort) _currentInstruction.Immediate8to16;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown Op1 for CMP: {_currentInstruction.Op0Kind}");
+            }
+
+            //Set Appropriate Flags
+            if (value1 == value2)
+            {
+                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+            else if (value1 < value2)
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else if (value1 > value2)
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
             }
         }
 
