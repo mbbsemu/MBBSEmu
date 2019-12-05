@@ -7,6 +7,7 @@ using MBBSEmu.Module;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -34,6 +35,7 @@ namespace MBBSEmu.Host
         private McvFile _previousMcvFile;
 
         private readonly PointerDictionary<BtrieveFile> _btrieveFiles;
+        private BtrieveFile _currentBtrieveFile;
 
 
         private int userStructOffset;
@@ -114,7 +116,7 @@ namespace MBBSEmu.Host
             output.Write(BitConverter.GetBytes((short)0)); //polrou:offset
             output.Write(BitConverter.GetBytes('0')); //lcstat
 
-            userStructOffset = _mbbsHostMemory.AllocateHostMemory((int) output.Length);
+            userStructOffset = _mbbsHostMemory.AllocateHostMemory((ushort) output.Length);
             _mbbsHostMemory.SetHostArray(userStructOffset, output.ToArray());
         }
 
@@ -402,7 +404,7 @@ namespace MBBSEmu.Host
                 $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.MsgPointer:X4}:1");
 #endif
 
-            _cpu.Registers.AX = _mcvFiles.Count - 1;
+            _cpu.Registers.AX = (ushort) (_mcvFiles.Count - 1);
             _cpu.Registers.DX = (int) EnumHostSegments.MsgPointer;
 
             return 0;
@@ -433,7 +435,7 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"Retrieved option {msgnum}  value: {outputValue}");
 #endif
-            _cpu.Registers.AX = outputValue;
+            _cpu.Registers.AX = (ushort) outputValue;
 
             return 0;
         }
@@ -455,7 +457,7 @@ namespace MBBSEmu.Host
             _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
-            _cpu.Registers.AX = outputValue ? 1 : 0;
+            _cpu.Registers.AX = (ushort) (outputValue ? 1 : 0);
 
             return 0;
         }
@@ -491,8 +493,8 @@ namespace MBBSEmu.Host
             _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
-            _cpu.Registers.AX = (int) (outputValue & 0xFFFF0000);
-            _cpu.Registers.DX = outputValue & 0xFFFF;
+            _cpu.Registers.AX = (ushort) (outputValue & 0xFFFF0000);
+            _cpu.Registers.DX = (ushort) (outputValue & 0xFFFF);
 
             return 0;
         }
@@ -511,7 +513,7 @@ namespace MBBSEmu.Host
 
             var outputValue = _currentMcvFile.GetString(msgnum);
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputValue.Length);
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputValue.Length);
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
@@ -559,7 +561,7 @@ namespace MBBSEmu.Host
 
             var outputValue = (highByte << 16 | lowByte) + "\0";
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputValue.Length);
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputValue.Length);
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
@@ -600,8 +602,8 @@ namespace MBBSEmu.Host
             _logger.Info($"Cast {inputBuffer} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
 #endif
 
-            _cpu.Registers.AX = (int)(outputValue & 0xFFFF0000);
-            _cpu.Registers.DX = outputValue & 0xFFFF;
+            _cpu.Registers.AX = (ushort) (outputValue & 0xFFFF0000);
+            _cpu.Registers.DX = (ushort) (outputValue & 0xFFFF);
 
             return 0;
         }
@@ -696,7 +698,7 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"Returned {result} comparing {string1InputValue} to {string2InputValue}");
 #endif
-            _cpu.Registers.AX = result ? 1 : 0;
+            _cpu.Registers.AX = (ushort) (result ? 1 : 0);
 
             return 0;
         }
@@ -728,8 +730,8 @@ namespace MBBSEmu.Host
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
 
-            _cpu.Registers.AX = userStructOffset;
-            _cpu.Registers.DX = (int) EnumHostSegments.MemoryPointer;
+            _cpu.Registers.AX = (ushort) userStructOffset;
+            _cpu.Registers.DX = (ushort) EnumHostSegments.MemoryPointer;
             return 0;
         }
 
@@ -1048,7 +1050,7 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"Generated random number {randomValue} and saved it to AX");
 #endif
-            _cpu.Registers.AX = randomValue;
+            _cpu.Registers.AX = (ushort) randomValue;
 
             return 0;
         }
@@ -1078,7 +1080,7 @@ namespace MBBSEmu.Host
 
             var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory(outputDate.Length);
+            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputDate.Length);
             _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
 
 #if DEBUG
@@ -1222,7 +1224,74 @@ namespace MBBSEmu.Host
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {(int)EnumHostSegments.BtrieveFilePointer:X4}:{btrieveFilePointer:X4}");
 #endif
+            _cpu.Registers.AX = (ushort) btrieveFilePointer;
+            _cpu.Registers.DX = (ushort) EnumHostSegments.BtrieveFilePointer;
 
+            return 0;
+        }
+
+        /// <summary>
+        ///     Used to set the Btrieve file for all subsequent database functions
+        ///
+        ///     Signature: void setbtv(BTVFILE *bbprt)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "SETBTV", Ordinal = 534, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int setbtv()
+        {
+            var btrieveFileOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var btrieveFileSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+
+            if(btrieveFileSegment != (int)EnumHostSegments.BtrieveFilePointer)
+                throw new InvalidDataException($"Invalid Btrieve File Segment provided. Actual: {btrieveFileSegment:X4} Expecting: {(int)EnumHostSegments.BtrieveFilePointer}");
+
+            _currentBtrieveFile = _btrieveFiles[btrieveFileOffset];
+
+#if DEBUG
+            _logger.Info($"Setting current Btrieve file to {_currentBtrieveFile.FileName} ({btrieveFileSegment:X4}:{btrieveFileOffset:X4})");
+#endif
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     'Step' based Btrieve operation
+        ///
+        ///     Signature: int stpbtv (void *recptr, int stpopt)
+        ///     Returns: AX = 1 == Record Found, 0 == Database Empty
+        /// </summary>
+        /// <returns></returns>
+        [ExportedModule(Name = "STPBTV", Ordinal = 569, ExportedModuleType = EnumExportedModuleType.Method)]
+        public int stpbtv()
+        {
+            if(_currentBtrieveFile == null)
+                throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
+
+            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var stpopt = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+
+            ushort resultCode;
+            switch (stpopt)
+            {
+                case (ushort)EnumBtrieveOperationCodes.StepFirst:
+                    resultCode = _currentBtrieveFile.StepFirst();
+                    break;
+
+                default:
+                    throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
+            }
+
+            //Set Memory Values
+            _cpu.Memory.SetWord(_cpu.Registers.DS, btrieveRecordPointerSegment, (ushort)EnumHostSegments.BtrieveRecordPointer);
+            _cpu.Memory.SetWord(_cpu.Registers.DS, btrieveRecordPointerOffset, (ushort)_currentBtrieveFile.CurrentRecordNumber);
+
+            //Set Register for Result
+            _cpu.Registers.AX = resultCode;
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Step - New Record Set to {(ushort)EnumHostSegments.BtrieveRecordPointer:X4}:{_currentBtrieveFile.CurrentRecordNumber:X4}, AX: {resultCode}");
+#endif
             return 0;
         }
     }

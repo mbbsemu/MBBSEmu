@@ -86,13 +86,13 @@ namespace MBBSEmu.CPU
             return _moduleMemorySpace[segmentOffset + offset];
         }
 
-        public int GetWord(int segment, int offset)
+        public ushort GetWord(int segment, int offset)
         {
             var segmentOffset = _segmentAddressTable[segment];
             return BitConverter.ToUInt16(_moduleMemorySpace, segmentOffset + offset);
         }
 
-        public byte[] GetArray(int segment, int offset, int count)
+        public byte[] GetArray(ushort segment, ushort offset, ushort count)
         {
             var output = new byte[count];
             var segmentOffset = _segmentAddressTable[segment];

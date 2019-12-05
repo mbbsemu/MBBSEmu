@@ -15,14 +15,14 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     AX Register
         /// </summary>
-        public int AX { get; set; }
+        public ushort AX { get; set; }
 
         /// <summary>
         ///     AX Low Byte
         /// </summary>
-        public int AL
+        public byte AL
         {
-            get => AX & 0xFF;
+            get => (byte) (AX & 0xFF);
             set
             {
                 AX &= 0xFF00;
@@ -33,27 +33,27 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     AX High Byte
         /// </summary>
-        public int AH
+        public byte AH
         {
-            get => AX >> 8;
+            get => (byte) (AX >> 8);
             set
             {
                 AX &= 0x00FF;
-                AX |= value << 8;
+                AX |= (ushort)(value << 8);
             }
         }
 
         /// <summary>
         ///     Base Register
         /// </summary>
-        public int BX { get; set; }
+        public ushort BX { get; set; }
 
         /// <summary>
         ///     BX Low Byte
         /// </summary>
-        public int BL
+        public byte BL
         {
-            get => BX & 0xFF;
+            get => (byte) (BX & 0xFF);
             set
             {
                 BX &= 0xFF00;
@@ -64,26 +64,26 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     BX High Byte
         /// </summary>
-        public int BH
+        public byte BH
         {
-            get => BX >> 8;
+            get => (byte) (BX >> 8);
             set
             {
                 BX &= 0x00FF;
-                BX |= value << 8;
+                BX |= (ushort)(value << 8);
             }
         }
 
 
 
-        public int CX { get; set; }
+        public ushort CX { get; set; }
 
         /// <summary>
         ///     CX Low Byte
         /// </summary>
-        public int CL
+        public byte CL
         {
-            get => CX & 0xFF;
+            get => (byte) (CX & 0xFF);
             set
             {
                 CX &= 0xFF00;
@@ -94,24 +94,24 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     CX High Byte
         /// </summary>
-        public int CH
+        public byte CH
         {
-            get => CX >> 8;
+            get => (byte) (CX >> 8);
             set
             {
                 CX &= 0x00FF;
-                CX |= value << 8;
+                CX |= (ushort)(value << 8);
             }
         }
 
-        public int DX { get; set; }
+        public ushort DX { get; set; }
 
         /// <summary>
         ///     DX Low Byte
         /// </summary>
-        public int DL
+        public byte DL
         {
-            get => DX & 0xFF;
+            get => (byte) (DX & 0xFF);
             set
             {
                 DX &= 0xFF00;
@@ -122,32 +122,32 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     DX High Byte
         /// </summary>
-        public int DH
+        public byte DH
         {
-            get => DX >> 8;
+            get => (byte) (DX >> 8);
             set
             {
                 DX &= 0x00FF;
-                DX |= value << 8;
+                DX |= (ushort)(value << 8);
             }
         }
 
         /// <summary>
         ///     Pointer Register
         /// </summary>
-        public int SP { get; set; }
+        public ushort SP { get; set; }
         /// <summary>
         ///     Base Register
         /// </summary>
-        public int BP { get; set; }
+        public ushort BP { get; set; }
         /// <summary>
         ///     Index Register
         /// </summary>
-        public int SI { get; set; }
+        public ushort SI { get; set; }
         /// <summary>
         ///     Index Register
         /// </summary>
-        public int DI { get; set; }
+        public ushort DI { get; set; }
 
         /*
          * Memory Segmentation and Segment Registers
@@ -156,33 +156,33 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Data Segment
         /// </summary>
-        public int DS { get; set; }
+        public ushort DS { get; set; }
 
         /// <summary>
         ///     Extra Segment
         /// </summary>
-        public int ES { get; set; }
+        public ushort ES { get; set; }
 
         /// <summary>
         ///     Stack Segment
         ///     Default Destination for String Operations
         /// </summary>
-        public int SS { get; set; }
+        public ushort SS { get; set; }
 
         /// <summary>
         ///     Code Segment
         /// </summary>
-        public int CS { get; set; }
+        public ushort CS { get; set; }
 
         /// <summary>
         ///     Flags
         /// </summary>
-        public int F { get; set; }
+        public ushort F { get; set; }
 
         /// <summary>
         ///     Instruction Pointer
         /// </summary>
-        public int IP { get; set; }
+        public ushort IP { get; set; }
 
         /// <summary>
         ///     Machine Status Word
@@ -199,7 +199,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         /// <param name="register"></param>
         /// <returns></returns>
-        public int GetValue(Register register)
+        public ushort GetValue(Register register)
         {
             switch (register)
             {
@@ -250,7 +250,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        public void SetValue(Register register, int value)
+        public void SetValue(Register register, ushort value)
         {
             switch (register)
             {
@@ -258,28 +258,28 @@ namespace MBBSEmu.CPU
                     AX = value;
                     break;
                 case Register.AL:
-                    AL = value;
+                    AL = (byte) value;
                     break;
                 case Register.AH:
-                    AH = value;
+                    AH = (byte) value;
                     break;
                 case Register.CL:
-                    CL = value;
+                    CL = (byte) value;
                     break;
                 case Register.DL:
-                    DL = value;
+                    DL = (byte) value;
                     break;
                 case Register.BL:
-                    BL = value;
+                    BL = (byte)value;
                     break;
                 case Register.CH:
-                    CH = value;
+                    CH = (byte)value;
                     break;
                 case Register.DH:
-                    DH = value;
+                    DH = (byte)value;
                     break;
                 case Register.BH:
-                    BH = value;
+                    BH = (byte)value;
                     break;
                 case Register.CX:
                     CX = value;

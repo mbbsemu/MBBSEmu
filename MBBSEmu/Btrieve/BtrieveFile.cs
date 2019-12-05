@@ -18,7 +18,7 @@ namespace MBBSEmu.Btrieve
         public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + 0x206;
 
         private byte[] _btrieveFileContent;
-        private Dictionary<int, byte[]> _btrieveRecords;
+        private readonly Dictionary<int, byte[]> _btrieveRecords;
 
         public BtrieveFile(string fileName, string path)
         {
@@ -39,17 +39,37 @@ namespace MBBSEmu.Btrieve
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
             _logger.Info($"Record Count: {RecordCount}");
 
-            _logger.Info("Loading Records (if any)...");
             _btrieveRecords = new Dictionary<int, byte[]>(RecordCount);
+            _logger.Info("Loading Records...");
+            if (RecordCount > 0)
+            {
+                LoadRecords();
+            }
+            else
+            {
+                _logger.Info($"No records to load");
+            }
+
         }
 
         private void LoadRecords()
         {
             for (var i = 0; i < RecordCount; i++)
             {
-                
-
+                CurrentRecordNumber = i;
+                var recordArray = new byte[RecordLength];
+                Array.Copy(_btrieveFileContent, CurrentRecordOffset, recordArray, 0, RecordLength);
+                _btrieveRecords[i] = recordArray;
             }
+
+            _logger.Info($"Loaded {CurrentRecordNumber} records. Resetting cursor to 0");
+            CurrentRecordNumber = 0;
+        }
+
+        public ushort StepFirst()
+        {
+            CurrentRecordNumber = 0;
+            return (ushort) (RecordCount == 0 ? 0 : 1);
         }
     }
 }

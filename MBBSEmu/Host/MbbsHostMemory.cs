@@ -63,11 +63,11 @@ namespace MBBSEmu.Host
         }
 
 
-        public int AllocateHostMemory(int size)
+        public ushort AllocateHostMemory(ushort size)
         {
             var currentPointer = _hostMemoryPointer;
             _hostMemoryPointer += size;
-            return currentPointer;
+            return (ushort) currentPointer;
         }
     }
 }

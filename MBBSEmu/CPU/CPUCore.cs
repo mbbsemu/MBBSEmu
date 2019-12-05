@@ -1,7 +1,7 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.Logging;
 using NLog;
+using System;
 using System.Linq;
 
 namespace MBBSEmu.CPU
@@ -55,7 +55,7 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
-            Registers.IP += _currentInstruction.ByteLength;
+            Registers.IP += (ushort)_currentInstruction.ByteLength;
         }
 
         private void Op_Add()
@@ -70,7 +70,7 @@ namespace MBBSEmu.CPU
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
-                    Registers.SetValue(_currentInstruction.Op0Register, Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16);
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
@@ -86,7 +86,6 @@ namespace MBBSEmu.CPU
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown POP: {_currentInstruction.Op0Kind}");
-                    break;
             }
 
             Registers.SP += 2;
@@ -103,13 +102,20 @@ namespace MBBSEmu.CPU
                 //PUSH r16
                 case OpKind.Register:
                     Memory.Push(Registers.SP,
-                        BitConverter.GetBytes((ushort)Registers.GetValue(_currentInstruction.Op0Register)));
+                        BitConverter.GetBytes((ushort) Registers.GetValue(_currentInstruction.Op0Register)));
                     break;
                 //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:
                 case OpKind.Immediate8to16:
                 case OpKind.Immediate16:
                     Memory.Push(Registers.SP, BitConverter.GetBytes(_currentInstruction.Immediate16));
+                    break;
+
+                //PUSH r/m16
+                case OpKind.Memory when _currentInstruction.MemorySegment == Register.DS:
+                    Memory.Push(Registers.SP,
+                        Memory.GetArray(Registers.GetValue(Register.DS),
+                            (ushort) _currentInstruction.MemoryDisplacement, 2));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown PUSH: {_currentInstruction.Op0Kind}");
@@ -127,7 +133,7 @@ namespace MBBSEmu.CPU
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
                 {
                     //Check for a possible relocation
-                    int destinationValue;
+                    ushort destinationValue;
 
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {

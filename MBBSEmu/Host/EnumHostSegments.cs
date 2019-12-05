@@ -5,7 +5,7 @@
     ///     we use these segment identifiers to identify which area of "memory"
     ///     the specified offset lives in on the host process
     /// </summary>
-    public enum EnumHostSegments 
+    public enum EnumHostSegments : ushort
     {
         MemoryPointer = 0xFFFF,
         FilePointer = 0xFFFE,
@@ -13,6 +13,7 @@
         MsgPointer = 0xFFFC,
         UserPointer = 0xFFFB,
         ChannelArrayPointer = 0xFFFA,
-        BtrieveFilePointer = 0xFFF9
+        BtrieveFilePointer = 0xFFF9,
+        BtrieveRecordPointer = 0xFFF8
     }
 }
