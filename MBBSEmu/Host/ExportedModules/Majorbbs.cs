@@ -630,10 +630,10 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "F_SCOPY", Ordinal = 665, ExportedModuleType = EnumExportedModuleType.Method)]
         public int f_scopy()
         {
-            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
 
             var inputBuffer = new MemoryStream();
 

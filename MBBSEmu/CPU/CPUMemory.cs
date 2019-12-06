@@ -44,6 +44,9 @@ namespace MBBSEmu.CPU
             _segments = new Dictionary<int, Segment>();
 
             _logger.Info("CPU Memory Space Initialized");
+
+            //Stack Segment
+            _segmentAddressTable.Add(0xFF, 0x0);
         }
 
         public int AddSegment(Segment segment)

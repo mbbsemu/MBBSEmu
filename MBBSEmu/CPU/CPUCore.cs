@@ -3,7 +3,10 @@ using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
+
 namespace MBBSEmu.CPU
 {
     public class CpuCore
@@ -18,20 +21,26 @@ namespace MBBSEmu.CPU
 
         private Instruction _currentInstruction;
 
+        private Queue<ushort> _basePointerBeforeOffset;
+
         public CpuCore(InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
             Registers = new CpuRegisters();
             Memory = new CpuMemory();
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
             Registers.SP = CpuMemory.STACK_BASE;
+            Registers.SS = 0xFF;
+            _basePointerBeforeOffset = new Queue<ushort>();
         }
+
+        
 
         public void Tick()
         {
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
-    _logger.Debug($"{_currentInstruction.ToString()}");
+    //_logger.Debug($"{_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -53,7 +62,7 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Call:
                     Op_Call();
-                    break;
+                    return;
                 case Mnemonic.Cmp:
                     Op_Cmp();
                     break;
@@ -72,11 +81,34 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jge:
                     Op_Jge();
                     return;
+                case Mnemonic.Jle:
+                    Op_Jle();
+                    return;
+                case Mnemonic.Jbe:
+                    Op_Jbe();
+                    return;
                 case Mnemonic.Xor:
                     Op_Xor();
                     break;
                 case Mnemonic.Inc:
                     Op_Inc();
+                    break;
+                case Mnemonic.Stosw:
+                    Op_Stosw();
+                    break;
+                case Mnemonic.Nop:
+                    break;
+                case Mnemonic.Enter:
+                    Op_Enter();
+                    break;
+                case Mnemonic.Leave:
+                    Op_Leave();
+                    break;
+                case Mnemonic.Lea:
+                    Op_Lea();
+                    break;
+                case Mnemonic.Shl:
+                    Op_Shl();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -93,12 +125,67 @@ namespace MBBSEmu.CPU
                     return Registers.GetValue(_currentInstruction.Op0Register);
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
-                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                case OpKind.Memory when (_currentInstruction.Op1Kind == OpKind.Immediate8 || _currentInstruction.Op1Kind == OpKind.Immediate8to16):
                     return Memory.GetByte(Registers.DS, (int)_currentInstruction.MemoryDisplacement);
                 case OpKind.Immediate8to16:
                     return (ushort)_currentInstruction.Immediate8to16;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
+            }
+        }
+
+        private void Op_Shl()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) << 1));
+                    return;
+            }
+        }
+
+        private void Op_Lea()
+        {
+            switch (_currentInstruction.MemoryBase)
+            {
+                case Register.BP:
+                {
+                    var baseOffset = ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1;
+                    Registers.SetValue(_currentInstruction.Op0Register,  (ushort) (Registers.BP - (ushort) baseOffset));
+                    break;
+                }
+            }
+        }
+
+        private void Op_Enter()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Immediate16:
+                    Registers.BP += _currentInstruction.Immediate16;
+                    Registers.SP = Registers.BP;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown ENTER: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private void Op_Leave()
+        {
+            Registers.SP = Registers.BP;
+            Registers.SetValue(Register.CS, Memory.Pop(Registers.SP));
+            Registers.SP += 2;
+            Registers.SetValue(Register.EIP, Memory.Pop(Registers.SP));
+            Registers.SP += 2;
+        }
+
+        private void Op_Stosw()
+        {
+            while (Registers.CX != 0)
+            {
+                Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
+                Registers.DI += 2;
+                Registers.CX -= 2;
             }
         }
 
@@ -130,15 +217,40 @@ namespace MBBSEmu.CPU
             }
         }
 
+        private void Op_Jbe()
+        {
+            if (Registers.F.IsFlagSet((ushort) EnumFlags.ZF) || Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
+        }
+
         private void Op_Jmp()
         {
             Registers.IP = _currentInstruction.Immediate16;
         }
 
+        public void Op_Jle()
+        {
+            if ((!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                || (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
+        }
+
         private void Op_Jge()
         {
             if ((!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF))
-                 || (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
+                 || (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -186,21 +298,21 @@ namespace MBBSEmu.CPU
 
         private void Op_Cmp()
         {
-            var value1 = GetOpValue(_currentInstruction.Op0Kind);
-            var value2 = GetOpValue(_currentInstruction.Op1Kind);
+            var destination = GetOpValue(_currentInstruction.Op0Kind);
+            var source = GetOpValue(_currentInstruction.Op1Kind);
 
             //Set Appropriate Flags
-            if (value1 == value2)
+            if (destination == source)
             {
                 Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
             }
-            else if (value1 < value2)
+            else if (destination < source)
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
             }
-            else if (value1 > value2)
+            else if (destination > source)
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
@@ -290,6 +402,13 @@ namespace MBBSEmu.CPU
         {
             switch (_currentInstruction.Op0Kind)
             {
+                //MOV r8*,imm8
+                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, _currentInstruction.Immediate8);
+                    return;
+                }
+
                 //MOV r16,imm16
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
                 {
@@ -360,6 +479,13 @@ namespace MBBSEmu.CPU
 
                     break;
                 }
+
+                //MOV moffs16*,imm8
+                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
+                {
+                    Memory.SetByte(Registers.DS, (int)_currentInstruction.MemoryDisplacement, _currentInstruction.Immediate8);
+                    return;
+                }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown MOV: {_currentInstruction.Op0Kind}");
             }
@@ -408,6 +534,7 @@ namespace MBBSEmu.CPU
                             Registers.SP += 2;
                             Registers.SetValue(Register.EIP, Memory.Pop(Registers.SP));
                             Registers.SP += 2;
+                            Registers.IP += (ushort) _currentInstruction.ByteLength;
                             return;
                         }
                     }
@@ -417,8 +544,20 @@ namespace MBBSEmu.CPU
                     }
 
                     //TODO -- Perform actual call
-
                     break;
+                }
+                case OpKind.NearBranch16:
+                {
+                    //We push CS:IP to the stack
+                    //Push the Current IP to the stack
+                    Registers.SP -= 2;
+                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort) Registers.IP));
+                    Registers.SP -= 2;
+                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort) Registers.CS));
+                    Registers.BP = Registers.SP;
+
+                    Registers.IP = (ushort) _currentInstruction.FarBranch16;
+                    return;
                 }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown CALL: {_currentInstruction.Op0Kind}");
