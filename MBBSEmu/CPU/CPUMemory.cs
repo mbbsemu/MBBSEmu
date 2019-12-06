@@ -36,8 +36,11 @@ namespace MBBSEmu.CPU
         public const int SEGMENT_BASE = 0x010000;
         public const int STACK_BASE = 0x8000;
 
+        public Dictionary<ushort, byte[]> _memorySegments;
+
         public CpuMemory()
         {
+            _memorySegments = new Dictionary<ushort, byte[]>();
             _moduleMemorySpace = new byte[0x800000];
             _segmentAddressTable = new Dictionary<int, int>();
             _decodedSegments = new Dictionary<int, InstructionList>();
@@ -45,8 +48,12 @@ namespace MBBSEmu.CPU
 
             _logger.Info("CPU Memory Space Initialized");
 
-            //Stack Segment
+            //Stack Segment first 65535 bytes
             _segmentAddressTable.Add(0xFF, 0x0);
+
+            
+            //Extra Segment last 65535 bytes
+            _segmentAddressTable.Add(0xFE, _moduleMemorySpace.Length - 0xFFFF);
         }
 
         public int AddSegment(Segment segment)

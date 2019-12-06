@@ -5,7 +5,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml;
+using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.CPU
 {
@@ -40,7 +40,7 @@ namespace MBBSEmu.CPU
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
-    //_logger.Debug($"{_currentInstruction.ToString()}");
+    _logger.Debug($"{_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -75,6 +75,7 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jmp:
                     Op_Jmp();
                     return;
+                case Mnemonic.Jb:
                 case Mnemonic.Jl:
                     Op_Jl();
                     return;
@@ -110,6 +111,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Shl:
                     Op_Shl();
                     break;
+                case Mnemonic.Or:
+                    Op_Or();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -125,12 +129,32 @@ namespace MBBSEmu.CPU
                     return Registers.GetValue(_currentInstruction.Op0Register);
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
-                case OpKind.Memory when (_currentInstruction.Op1Kind == OpKind.Immediate8 || _currentInstruction.Op1Kind == OpKind.Immediate8to16):
-                    return Memory.GetByte(Registers.DS, (int)_currentInstruction.MemoryDisplacement);
+                case OpKind.Memory when _currentInstruction.MemoryBase == Register.None:
+                    return Memory.GetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement);
+                case OpKind.Memory when _currentInstruction.MemoryBase == Register.BP:
+                {
+                    var baseOffset = ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1;
+                    return Memory.GetByte(Registers.DS, (ushort) (Registers.BP - (ushort) baseOffset));
+                }
                 case OpKind.Immediate8to16:
-                    return (ushort)_currentInstruction.Immediate8to16;
+                    return (ushort) _currentInstruction.Immediate8to16;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
+            }
+        }
+
+        private void Op_Or()
+        {
+            var value1 = GetOpValue(_currentInstruction.Op0Kind);
+            var value2 = GetOpValue(_currentInstruction.Op1Kind);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                        Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1 | value2));
+                        break;
+                }
             }
         }
 
@@ -191,15 +215,22 @@ namespace MBBSEmu.CPU
 
         private void Op_Inc()
         {
+            ushort newValue;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + 1));
-                    return;
+                {
+                    newValue = (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + 1);
+                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
+                    break;
+                }
+                    
                 default:
                     throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
             }
+
+            Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+
         }
 
         private void Op_Xor()
@@ -321,21 +352,43 @@ namespace MBBSEmu.CPU
 
         private void Op_Add()
         {
+            ushort oldValue = 0;
+            ushort newValue = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        Registers.GetValue(_currentInstruction.Op1Register));
+                {
+                    unchecked
+                    {
+                        oldValue = Registers.GetValue(_currentInstruction.Op0Register);
+                        newValue = (ushort) (oldValue +
+                                             Registers.GetValue(_currentInstruction.Op1Register));
+                    }
+
+                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
                     break;
+                }
 
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) + _currentInstruction.Immediate16));
+                {
+                    unchecked
+                    {
+                        oldValue = Registers.GetValue(_currentInstruction.Op0Register);
+                        newValue = (ushort) (oldValue +
+                                             _currentInstruction.Immediate16);
+                    }
+
+                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
                     break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
             }
+
+            Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            Registers.F = oldValue >> 15 != newValue >> 15 ? Registers.F.SetFlag((ushort) EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
         }
 
         private void Op_Imul()
@@ -413,15 +466,29 @@ namespace MBBSEmu.CPU
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
                 {
                     //Check for a possible relocation
-                    ushort destinationValue;
+                    ushort destinationValue = 0;
 
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
                         var relocationRecord = Memory._segments[Registers.CS].RelocationRecords
                             .FirstOrDefault(x => x.Offset == Registers.IP + 1);
+                        switch (relocationRecord?.TargetTypeValueTuple.Item1)
+                        {
+                            //External Property
+                            case EnumRecordsFlag.IMPORTORDINAL:
+                            {
+                                break;
+                            }
+                            //Internal Segment
+                            case EnumRecordsFlag.INTERNALREF:
+                                destinationValue = relocationRecord?.TargetTypeValueTuple.Item2 ?? 0;
+                                break;
+                            default:
+                                destinationValue = ushort.MaxValue;
+                                break;
 
-                        //If we found a relocation record, set the new value, otherwise, it must have been a literal max
-                        destinationValue = relocationRecord?.TargetTypeValueTuple.Item2 ?? ushort.MaxValue;
+                        }
+
                     }
                     else
                     {
