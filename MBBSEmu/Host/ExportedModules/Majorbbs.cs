@@ -9,7 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-
+using MBBSEmu.Logging;
 namespace MBBSEmu.Host
 {
     /// <summary>
@@ -267,7 +267,7 @@ namespace MBBSEmu.Host
             var inputBuffer = new MemoryStream();
 
             inputBuffer.Write(srcSegment == (ushort) EnumHostSegments.MemoryRegion
-                ? _cpu.Memory.GetArray((ushort) EnumHostSegments.MemoryRegion, srcOffset, limit)
+                ? Memory.GetArray((ushort) EnumHostSegments.MemoryRegion, srcOffset, limit)
                 : _cpu.Memory.GetArray(srcSegment, srcOffset, limit));
 
             //If the value read is less than the limit, it'll be padded with null characters

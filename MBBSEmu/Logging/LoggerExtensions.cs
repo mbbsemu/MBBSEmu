@@ -1,5 +1,7 @@
-﻿using NLog;
+﻿using MBBSEmu.CPU;
+using NLog;
 using System.Text;
+using SQLitePCL;
 
 namespace MBBSEmu.Logging
 {
@@ -48,6 +50,41 @@ namespace MBBSEmu.Logging
                 output.AppendLine($"{(arrayToLog.Length & ~0xF):X4} [{hexString.ToString().PadRight(48)} ] {literalString}");
                 hexString.Clear();
                 literalString.Clear();
+            }
+
+            l.Info($"\r\n{output}");
+        }
+
+        public static void InfoRegisters(this Logger l, CpuCore cpu)
+        {
+            var output = new StringBuilder();
+
+            output.Append($"AX={cpu.Registers.AX:X4}  ");
+            output.Append($"BX={cpu.Registers.BX:X4}  ");
+            output.Append($"CX={cpu.Registers.CX:X4}  ");
+            output.Append($"DX={cpu.Registers.CX:X4}  ");
+            output.Append($"DS={cpu.Registers.DS:X4}  ");
+            output.AppendLine($"ES={cpu.Registers.ES:X4}"); 
+            output.Append($"SS={cpu.Registers.SS:X4}  ");
+            output.Append($"IP={cpu.Registers.IP:X4}  ");
+            output.Append($"SP={cpu.Registers.SP:X4}  ");
+            output.AppendLine($"BP={cpu.Registers.BP:X4}");
+
+            l.Info($"\r\n{output}");
+        }
+
+        public static void InfoStack(this Logger l, CpuCore cpu)
+        {
+            var output = new StringBuilder();
+            for (ushort i = ushort.MaxValue - 2; i >= cpu.Registers.SP; i-=2)
+            {
+                output.Append(
+                    $"{i:X4} [ {cpu.Memory.GetWord(cpu.Registers.SS, i)} 0x{cpu.Memory.GetWord(cpu.Registers.SS, i):X4} ]");
+
+                if (i == cpu.Registers.SP)
+                    output.Append(" <-- SP ");
+
+                output.AppendLine(string.Empty);
             }
 
             l.Info($"\r\n{output}");

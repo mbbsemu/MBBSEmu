@@ -59,6 +59,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
     _logger.Debug($"{_currentInstruction.ToString()}");
+    _logger.InfoRegisters(this);
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -437,28 +438,29 @@ namespace MBBSEmu.CPU
         /// </summary>
         private void Op_Push()
         {
-            Registers.SP -= 2;
+            ushort pushValue;
             switch (_currentInstruction.Op0Kind)
             {
                 //PUSH r16
                 case OpKind.Register:
-                    Push(Registers.GetValue(_currentInstruction.Op0Register));
+                    pushValue = Registers.GetValue(_currentInstruction.Op0Register);
                     break;
                 //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:
                 case OpKind.Immediate8to16:
                 case OpKind.Immediate16:
-                    Push(_currentInstruction.Immediate16);
+                    pushValue = _currentInstruction.Immediate16;
                     break;
 
                 //PUSH r/m16
                 case OpKind.Memory when _currentInstruction.MemorySegment == Register.DS:
-                    Push(BitConverter.ToUInt16(Memory.GetArray(Registers.GetValue(Register.DS),
-                        (ushort) _currentInstruction.MemoryDisplacement, 2)));
+                    pushValue = BitConverter.ToUInt16(Memory.GetArray(Registers.GetValue(Register.DS),
+                        (ushort) _currentInstruction.MemoryDisplacement, 2));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown PUSH: {_currentInstruction.Op0Kind}");
             }
+            Push(pushValue);
         }
 
         /// <summary>
@@ -582,14 +584,14 @@ namespace MBBSEmu.CPU
                     //where, we set the BP to the current SP then 
 
                     //Set BP to the current stack pointer
-                    Registers.BP = Registers.SP;
+
 
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
                     Push(Registers.IP);
                     Push(Registers.CS);
 
-
+                    Registers.BP = Registers.SP;
 
                     //Check for a possible relocation
                     int destinationValue;
