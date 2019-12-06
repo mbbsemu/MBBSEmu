@@ -1,11 +1,11 @@
 ﻿using Iced.Intel;
+using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
+using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.CPU
 {
@@ -17,23 +17,41 @@ namespace MBBSEmu.CPU
         private readonly InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
         public readonly CpuRegisters Registers;
-        public readonly CpuMemory Memory;
+        public readonly IMemoryCore Memory;
 
         private Instruction _currentInstruction;
 
-        private Queue<ushort> _basePointerBeforeOffset;
+
+        private const ushort STACK_SEGMENT = 0xFF;
+        private const ushort EXTRA_SEGMENT = 0xFE;
+        private const ushort STACK_BASE = 0xFFFF;
 
         public CpuCore(InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
-            Registers = new CpuRegisters();
-            Memory = new CpuMemory();
+            //Setup Delegate Call   
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
-            Registers.SP = CpuMemory.STACK_BASE;
-            Registers.SS = 0xFF;
-            _basePointerBeforeOffset = new Queue<ushort>();
+
+            //Setup Registers
+            Registers = new CpuRegisters {SP = STACK_BASE, SS = STACK_SEGMENT, ES = EXTRA_SEGMENT};
+
+            //Setup Memory Space
+            Memory = new MemoryCore();
+            Memory.AddSegment(STACK_SEGMENT);
+            Memory.AddSegment(EXTRA_SEGMENT);
         }
 
-        
+        public ushort Pop()
+        {
+            var value = Memory.GetWord(Registers.SS, Registers.SP);
+            Registers.SP += 2;
+            return value;
+        }
+
+        public void Push(ushort value)
+        {
+            Registers.SP -= 2;
+            Memory.SetWord(Registers.SS, Registers.SP, value);
+        }
 
         public void Tick()
         {
@@ -130,7 +148,7 @@ namespace MBBSEmu.CPU
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
                 case OpKind.Memory when _currentInstruction.MemoryBase == Register.None:
-                    return Memory.GetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement);
+                    return Memory.GetByte(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement);
                 case OpKind.Memory when _currentInstruction.MemoryBase == Register.BP:
                 {
                     var baseOffset = ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1;
@@ -197,10 +215,8 @@ namespace MBBSEmu.CPU
         private void Op_Leave()
         {
             Registers.SP = Registers.BP;
-            Registers.SetValue(Register.CS, Memory.Pop(Registers.SP));
-            Registers.SP += 2;
-            Registers.SetValue(Register.EIP, Memory.Pop(Registers.SP));
-            Registers.SP += 2;
+            Registers.SetValue(Register.CS, Pop());
+            Registers.SetValue(Register.EIP, Pop());
         }
 
         private void Op_Stosw()
@@ -405,16 +421,15 @@ namespace MBBSEmu.CPU
 
         private void Op_Pop()
         {
+            var popValue = Pop();
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, Memory.Pop(Registers.SP));
+                    Registers.SetValue(_currentInstruction.Op0Register, popValue);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown POP: {_currentInstruction.Op0Kind}");
             }
-
-            Registers.SP += 2;
         }
 
         /// <summary>
@@ -427,21 +442,19 @@ namespace MBBSEmu.CPU
             {
                 //PUSH r16
                 case OpKind.Register:
-                    Memory.Push(Registers.SP,
-                        BitConverter.GetBytes((ushort) Registers.GetValue(_currentInstruction.Op0Register)));
+                    Push(Registers.GetValue(_currentInstruction.Op0Register));
                     break;
                 //PUSH imm8 - PUSH imm16
                 case OpKind.Immediate8:
                 case OpKind.Immediate8to16:
                 case OpKind.Immediate16:
-                    Memory.Push(Registers.SP, BitConverter.GetBytes(_currentInstruction.Immediate16));
+                    Push(_currentInstruction.Immediate16);
                     break;
 
                 //PUSH r/m16
                 case OpKind.Memory when _currentInstruction.MemorySegment == Register.DS:
-                    Memory.Push(Registers.SP,
-                        Memory.GetArray(Registers.GetValue(Register.DS),
-                            (ushort) _currentInstruction.MemoryDisplacement, 2));
+                    Push(BitConverter.ToUInt16(Memory.GetArray(Registers.GetValue(Register.DS),
+                        (ushort) _currentInstruction.MemoryDisplacement, 2)));
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown PUSH: {_currentInstruction.Op0Kind}");
@@ -470,7 +483,7 @@ namespace MBBSEmu.CPU
 
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
-                        var relocationRecord = Memory._segments[Registers.CS].RelocationRecords
+                        var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
                             .FirstOrDefault(x => x.Offset == Registers.IP + 1);
                         switch (relocationRecord?.TargetTypeValueTuple.Item1)
                         {
@@ -510,7 +523,7 @@ namespace MBBSEmu.CPU
                 //MOV AX,moffs16*
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Memory:
                 {
-                    Registers.SetValue(_currentInstruction.Op0Register, Memory.GetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement));
+                    Registers.SetValue(_currentInstruction.Op0Register, Memory.GetWord(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement));
                     return;
                 }
 
@@ -521,7 +534,7 @@ namespace MBBSEmu.CPU
                  */
                 case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate16:
                 {
-                    Memory.SetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement, _currentInstruction.Immediate16);
+                    Memory.SetWord(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement, _currentInstruction.Immediate16);
                     break;
                 } 
                 
@@ -532,16 +545,16 @@ namespace MBBSEmu.CPU
                     {
                         //MOV moffs16*,AX
                         case MemorySize.UInt16:
-                            Memory.SetWord(Registers.DS, (int) _currentInstruction.MemoryDisplacement,
+                            Memory.SetWord(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement,
                                 (ushort) Registers.GetValue(_currentInstruction.Op1Register));
                             break;
                         //MOV moffs8*,AL
                         case MemorySize.UInt8:
-                            Memory.SetByte(Registers.DS, (int) _currentInstruction.MemoryDisplacement,
+                            Memory.SetByte(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement,
                                 (byte) Registers.GetValue(_currentInstruction.Op1Register));
                             break;
                         default:
-                            throw new ArgumentOutOfRangeException("Unsupported Memory type for MOV operation");
+                            throw new ArgumentOutOfRangeException($"Unsupported Memory type for MOV operation: {_currentInstruction.MemorySize}");
                     }
 
                     break;
@@ -550,7 +563,7 @@ namespace MBBSEmu.CPU
                 //MOV moffs16*,imm8
                 case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
                 {
-                    Memory.SetByte(Registers.DS, (int)_currentInstruction.MemoryDisplacement, _currentInstruction.Immediate8);
+                    Memory.SetByte(Registers.DS, (ushort)_currentInstruction.MemoryDisplacement, _currentInstruction.Immediate8);
                     return;
                 }
                 default:
@@ -569,23 +582,21 @@ namespace MBBSEmu.CPU
                     //where, we set the BP to the current SP then 
 
                     //Set BP to the current stack pointer
-                    
+                    Registers.BP = Registers.SP;
 
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
-                    Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort)Registers.IP));
-                    Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort)Registers.CS));
-                    Registers.BP = Registers.SP;
+                    Push(Registers.IP);
+                    Push(Registers.CS);
 
 
-                        //Check for a possible relocation
-                        int destinationValue;
+
+                    //Check for a possible relocation
+                    int destinationValue;
 
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
-                        var relocationRecord = Memory._segments[Registers.CS].RelocationRecords
+                        var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
                             .FirstOrDefault(x => x.Offset == Registers.IP + 1);
 
                         if (relocationRecord == null)
@@ -597,10 +608,8 @@ namespace MBBSEmu.CPU
                             _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
 
-                            Registers.SetValue(Register.CS, Memory.Pop(Registers.SP));
-                            Registers.SP += 2;
-                            Registers.SetValue(Register.EIP, Memory.Pop(Registers.SP));
-                            Registers.SP += 2;
+                            Registers.SetValue(Register.CS, Pop());
+                            Registers.SetValue(Register.EIP, Pop());
                             Registers.IP += (ushort) _currentInstruction.ByteLength;
                             return;
                         }
@@ -617,13 +626,11 @@ namespace MBBSEmu.CPU
                 {
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
-                    Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort) Registers.IP));
-                    Registers.SP -= 2;
-                    Memory.Push(Registers.SP, BitConverter.GetBytes((ushort) Registers.CS));
+                    Push(Registers.IP);
+                    Push(Registers.CS);
                     Registers.BP = Registers.SP;
 
-                    Registers.IP = (ushort) _currentInstruction.FarBranch16;
+                    Registers.IP = _currentInstruction.FarBranch16;
                     return;
                 }
                 default:

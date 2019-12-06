@@ -59,8 +59,8 @@ namespace MBBSEmu.Host
 
             foreach (var seg in _module.File.SegmentTable)
             {
-                var segmentOffset = _cpu.Memory.AddSegment(seg);
-                _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded at {segmentOffset}!");
+                _cpu.Memory.AddSegment(seg);
+                _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
             }
 
             //Verify that the imported functions are all supported by MbbsEmu
@@ -109,7 +109,6 @@ namespace MBBSEmu.Host
         {
             _isRunning = false;
         }
-
 
         public bool VerifyImportedFunctions()
         {

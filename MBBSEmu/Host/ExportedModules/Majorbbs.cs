@@ -2,9 +2,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.Host.ExportedModules;
-using MBBSEmu.Logging;
 using MBBSEmu.Module;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -23,7 +21,6 @@ namespace MBBSEmu.Host
     /// </summary>
     public class Majorbbs : ExportedModuleBase
     {
-
         private readonly PointerDictionary<McvFile> _mcvFiles;
         private McvFile _currentMcvFile;
         private McvFile _previousMcvFile;
@@ -35,6 +32,7 @@ namespace MBBSEmu.Host
         private int userStructOffset;
 
         private readonly MemoryStream outputBuffer;
+
 
         /// <summary>
         ///     Imported Functions from the REGISTER_MODULE method are saved here.
@@ -106,8 +104,8 @@ namespace MBBSEmu.Host
             output.Write(BitConverter.GetBytes((short)0)); //polrou:offset
             output.Write(BitConverter.GetBytes('0')); //lcstat
 
-            userStructOffset = _mbbsHostMemory.AllocateHostMemory((ushort) output.Length);
-            _mbbsHostMemory.SetHostArray(userStructOffset, output.ToArray());
+            Memory.AddSegment((ushort)EnumHostSegments.User);
+            Memory.SetArray((ushort)EnumHostSegments.User, 0, output.ToArray());
         }
 
         /// <summary>
@@ -131,8 +129,6 @@ namespace MBBSEmu.Host
         public int time()
         {
             //For now, ignore the input pointer for time_t
-            var input1 = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var input2 = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
 
             var outputArray = new byte[4];
             var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
@@ -148,8 +144,6 @@ namespace MBBSEmu.Host
             return 0;
         }
 
-
-
         /// <summary>
         ///     Allocate a new memory block and zeros it out
         /// 
@@ -160,13 +154,13 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "ALCZER", Ordinal = 68, ExportedModuleType = EnumExportedModuleType.Method)]
         public int alczer()
         {
-            var size = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var size = GetParameter(0);
 
             //Get the current pointer
-            var pointer = _mbbsHostMemory.AllocateHostMemory(size);
+            var pointer = AllocateHostMemory(size);
 
             _cpu.Registers.AX = pointer;
-            _cpu.Registers.DX = 0xFFFF;
+            _cpu.Registers.DX = (ushort)EnumHostSegments.MemoryRegion;
 
 #if DEBUG
             _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
@@ -185,12 +179,12 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "GMDNAM", Ordinal = 331, ExportedModuleType = EnumExportedModuleType.Method)]
         public int gmdnam()
         {
-            var datSegmentOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var dataSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var size = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var datSegmentOffset = GetParameter(0);
+            var dataSegment = GetParameter(1);
+            var size = GetParameter(2);
 
             //Get the current pointer
-            var pointer = _mbbsHostMemory.AllocateHostMemory(size);
+            var pointer = AllocateHostMemory(size);
 
             //Get the Module Name from the Mdf
             var moduleName = _module.Mdf.ModuleName;
@@ -202,13 +196,13 @@ namespace MBBSEmu.Host
                 moduleName = moduleName.Substring(0, size);
             }
 
-            _mbbsHostMemory.SetHostArray(pointer, Encoding.ASCII.GetBytes(moduleName));
+            Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, pointer, Encoding.ASCII.GetBytes(moduleName));
 
             _cpu.Registers.AX = pointer;
-            _cpu.Registers.DX = 0xFFFF;
+            _cpu.Registers.DX = (ushort)EnumHostSegments.MemoryRegion;
 
 #if DEBUG
-            _logger.Info($"Retrieved module name \"{moduleName}\" and saved it at host memory offset {pointer:X4}");
+            _logger.Info($"Retrieved module name \"{moduleName}\" and saved it at host memory offset {(ushort)EnumHostSegments.MemoryRegion:X4}:{pointer:X4}");
 #endif
 
             return 0;
@@ -224,20 +218,20 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "STRCPY", Ordinal = 574, ExportedModuleType = EnumExportedModuleType.Method)]
         public int strcpy()
         {
-            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var srcOffset = GetParameter(2);
+            var srcSegment = GetParameter(3);
 
             var inputBuffer = new MemoryStream();
 
-            inputBuffer.Write(srcSegment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, srcOffset)
+            inputBuffer.Write(srcSegment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetString(srcSegment, srcOffset)
                 : _cpu.Memory.GetString(srcSegment, srcOffset));
 
-            if (destinationSegment == 0xFFFF)
+            if (destinationSegment == (ushort)EnumHostSegments.MemoryRegion)
             {
-                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+                Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, destinationOffset, inputBuffer.ToArray());
             }
             else
             {
@@ -264,30 +258,17 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "STZCPY", Ordinal = 589, ExportedModuleType = EnumExportedModuleType.Method)]
         public int stzcpy()
         {
-            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
-            var limit = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var srcOffset = GetParameter(2);
+            var srcSegment = GetParameter(3);
+            var limit = GetParameter(4);
 
             var inputBuffer = new MemoryStream();
-            var bytesCopied = 0;
 
-            if (srcSegment == 0xFFFF)
-            {
-                for (var i = 0; i < limit; i++)
-                {
-                    bytesCopied++;
-                    var inputByte = (byte)_mbbsHostMemory.GetHostByte(srcOffset + i);
-                    inputBuffer.WriteByte(inputByte);
-                    if (inputByte == 0)
-                        break;
-                }
-            }
-            else
-            {
-                inputBuffer.Write(_cpu.Memory.GetArray(srcSegment, srcOffset, limit));
-            }
+            inputBuffer.Write(srcSegment == (ushort) EnumHostSegments.MemoryRegion
+                ? _cpu.Memory.GetArray((ushort) EnumHostSegments.MemoryRegion, srcOffset, limit)
+                : _cpu.Memory.GetArray(srcSegment, srcOffset, limit));
 
             //If the value read is less than the limit, it'll be padded with null characters
             //per the MajorBBS Development Guide
@@ -295,9 +276,9 @@ namespace MBBSEmu.Host
                 inputBuffer.WriteByte(0x0);
 
 
-            if (destinationSegment == 0xFFFF)
+            if (destinationSegment == (ushort)EnumHostSegments.MemoryRegion)
             {
-                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+                Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, destinationOffset, inputBuffer.ToArray());
             }
             else
             {
@@ -305,7 +286,7 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"Copied {bytesCopied} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
 
             _cpu.Registers.AX = destinationOffset;
@@ -323,8 +304,8 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "REGISTER_MODULE", Ordinal = 492, ExportedModuleType = EnumExportedModuleType.Method)]
         public int register_module()
         {
-            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
 
             var moduleStruct = _cpu.Memory.GetArray(destinationSegment, destinationOffset, 61);
 
@@ -375,12 +356,12 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "OPNMSG", Ordinal = 456, ExportedModuleType = EnumExportedModuleType.Method)]
         public int opnmsg()
         {
-            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var sourceOffset = GetParameter(0);
+            var sourceSegment = GetParameter(1);
 
-            var msgFileName = sourceSegment <= 0xFF
+            var msgFileName = sourceSegment < 0xFF
                 ? Encoding.ASCII.GetString(_cpu.Memory.GetString(sourceSegment, sourceOffset))
-                : Encoding.ASCII.GetString(_mbbsHostMemory.GetString(sourceSegment, sourceOffset));
+                : Encoding.ASCII.GetString(Memory.GetString(sourceSegment, sourceOffset));
 
             msgFileName = msgFileName.TrimEnd('\0');
 
@@ -391,11 +372,11 @@ namespace MBBSEmu.Host
 
 #if DEBUG
             _logger.Info(
-                $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.MsgPointer:X4}:1");
+                $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.Msg:X4}:1");
 #endif
 
             _cpu.Registers.AX = (ushort) (_mcvFiles.Count - 1);
-            _cpu.Registers.DX = (int) EnumHostSegments.MsgPointer;
+            _cpu.Registers.DX = (ushort)EnumHostSegments.Msg;
 
             return 0;
         }
@@ -412,9 +393,9 @@ namespace MBBSEmu.Host
             if(_mcvFiles.Count == 0)
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
 
-            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var floor = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var ceiling = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var msgnum = GetParameter(0);
+            var floor = GetParameter(1);
+            var ceiling = GetParameter(2);
 
             var outputValue = _currentMcvFile.GetNumeric(msgnum);
 
@@ -439,7 +420,7 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "YNOPT", Ordinal = 650, ExportedModuleType = EnumExportedModuleType.Method)]
         public int ynopt()
         {
-            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var msgnum = GetParameter(0);
 
             var outputValue = _currentMcvFile.GetBool(msgnum);
 
@@ -462,13 +443,13 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "LNGOPT", Ordinal = 389, ExportedModuleType = EnumExportedModuleType.Method)]
         public int lngopt()
         {
-            var msgnum =  _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var msgnum = GetParameter(0);
 
-            var floorLow = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var floorHigh = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var floorLow = GetParameter(1);
+            var floorHigh = GetParameter(2);
 
-            var ceilingLow = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
-            var ceilingHigh = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
+            var ceilingLow = GetParameter(3);
+            var ceilingHigh = GetParameter(4);
 
             var floor = floorHigh << 16 | floorLow;
             var ceiling = ceilingHigh << 16 | ceilingLow;
@@ -499,19 +480,19 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "STGOPT", Ordinal = 566, ExportedModuleType = EnumExportedModuleType.Method)]
         public int stgopt()
         {
-            var msgnum = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var msgnum = GetParameter(0);
 
             var outputValue = _currentMcvFile.GetString(msgnum);
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputValue.Length);
-            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
+            var outputValueOffset = AllocateHostMemory((ushort) outputValue.Length);
+            Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue} saved to {(int)EnumHostSegments.MemoryRegion:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
-            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+            _cpu.Registers.DX = (ushort)EnumHostSegments.MemoryRegion;
 
             return 0;
         }
@@ -546,20 +527,22 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "L2AS", Ordinal = 377, ExportedModuleType = EnumExportedModuleType.Method)]
         public int l2as()
         {
-            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var lowByte = GetParameter(0);
+            var highByte = GetParameter(1);
 
             var outputValue = (highByte << 16 | lowByte) + "\0";
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputValue.Length);
-            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
+            var outputValueOffset = AllocateHostMemory((ushort) outputValue.Length);
+            Memory.SetArray((ushort) EnumHostSegments.MemoryRegion, outputValueOffset,
+                Encoding.ASCII.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info($"Received value: {outputValue}, string saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info(
+                $"Received value: {outputValue}, string saved to {(ushort) EnumHostSegments.MemoryRegion:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
-            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+            _cpu.Registers.DX = (ushort) EnumHostSegments.MemoryRegion;
 
             return 0;
         }
@@ -574,13 +557,13 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "ATOL", Ordinal = 77, ExportedModuleType = EnumExportedModuleType.Method)]
         public int atol()
         {
-            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var sourceOffset = GetParameter(0);
+            var sourceSegment = GetParameter(1);
 
             var inputBuffer = new MemoryStream();
 
-            inputBuffer.Write(sourceSegment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, sourceOffset)
+            inputBuffer.Write(sourceSegment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort)EnumHostSegments.MemoryRegion, sourceOffset)
                 : _cpu.Memory.GetString(sourceSegment, sourceOffset));
 
             var inputValue = Encoding.ASCII.GetString(inputBuffer.ToArray());
@@ -609,7 +592,6 @@ namespace MBBSEmu.Host
         {
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
-
             var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + (DateTime.Now.Year << 9);
 
 #if DEBUG
@@ -630,20 +612,20 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "F_SCOPY", Ordinal = 665, ExportedModuleType = EnumExportedModuleType.Method)]
         public int f_scopy()
         {
-            var srcOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var srcSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var destinationOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var destinationSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var srcOffset = GetParameter(0);
+            var srcSegment = GetParameter(1);
+            var destinationOffset = GetParameter(2);
+            var destinationSegment = GetParameter(3);
 
             var inputBuffer = new MemoryStream();
 
-            inputBuffer.Write(srcSegment == 0xFFFF
-                ? _mbbsHostMemory.GetArray(0, srcOffset, _cpu.Registers.CX)
+            inputBuffer.Write(srcSegment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetArray((ushort)EnumHostSegments.MemoryRegion,srcOffset, _cpu.Registers.CX)
                 : _cpu.Memory.GetArray(srcSegment, srcOffset, _cpu.Registers.CX));
 
-            if (destinationSegment == 0xFFFF)
+            if (destinationSegment == (ushort)EnumHostSegments.MemoryRegion)
             {
-                _mbbsHostMemory.SetHostArray(destinationOffset, inputBuffer.ToArray());
+                Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, destinationOffset, inputBuffer.ToArray());
             }
             else
             {
@@ -665,21 +647,21 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "SAMEAS", Ordinal = 520, ExportedModuleType = EnumExportedModuleType.Method)]
         public int sameas()
         {
-            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var string2Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var string2Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var string1Offset = GetParameter(0);
+            var string1Segment = GetParameter(1);
+            var string2Offset = GetParameter(2);
+            var string2Segment = GetParameter(3);
 
             var string1InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string1Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string1Offset)
+            string1InputBuffer.Write(string1Segment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort) EnumHostSegments.MemoryRegion, string1Offset)
                 : _cpu.Memory.GetString(string1Segment, string1Offset));
 
             var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray()).ToUpper();
 
             var string2InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string2Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string2Offset)
+            string1InputBuffer.Write(string2Segment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort) EnumHostSegments.MemoryRegion, string2Offset)
                 : _cpu.Memory.GetString(string2Segment, string2Offset));
 
             var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray()).ToUpper();
@@ -714,14 +696,14 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "UACOFF", Ordinal = 713, ExportedModuleType = EnumExportedModuleType.Method)]
         public int uacoff()
         {
-            var userNumber = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var userNumber = GetParameter(0);
 
-            if(userNumber != 1)
+            if (userNumber != 1)
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
 
             _cpu.Registers.AX = (ushort) userStructOffset;
-            _cpu.Registers.DX = (ushort) EnumHostSegments.MemoryPointer;
+            _cpu.Registers.DX = (ushort) EnumHostSegments.MemoryRegion;
             return 0;
         }
 
@@ -734,11 +716,11 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "PRF", Ordinal = 474, ExportedModuleType = EnumExportedModuleType.Method)]
         public int prf()
         {
-            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var sourceSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var sourceOffset = GetParameter(0);
+            var sourceSegment = GetParameter(1);
 
-            var output = sourceSegment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, sourceOffset)
+            var output = sourceSegment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort) EnumHostSegments.MemoryRegion, sourceOffset)
                 : _cpu.Memory.GetString(sourceSegment, sourceOffset);
 
             var outputString = Encoding.ASCII.GetString(output);
@@ -746,7 +728,7 @@ namespace MBBSEmu.Host
             //If the supplied string has any control characters for formatting, process them
             if (outputString.CountPrintf() > 0)
             {
-                var formatParameters = GetPrintfVariables(outputString, (ushort) (_cpu.Registers.BP + 8));
+                var formatParameters = GetPrintfParameters(outputString, 2);
                 outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
             }
 
@@ -785,9 +767,9 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "DEDCRD", Ordinal = 160, ExportedModuleType = EnumExportedModuleType.Method)]
         public int dedcrd()
         {
-            var sourceOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var lowByte = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var highByte = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var sourceOffset = GetParameter(0);
+            var lowByte = GetParameter(1);
+            var highByte = GetParameter(2);
 
             var creditsToDeduct = (highByte << 16 | lowByte);
 
@@ -806,7 +788,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "USRPTR", Ordinal = 629, ExportedModuleType = EnumExportedModuleType.Reference)]
-        public int usrptr() => (int) EnumHostSegments.UserPointer;
+        public int usrptr() => (int) EnumHostSegments.User;
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -817,7 +799,7 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "PRFMSG", Ordinal = 476, ExportedModuleType = EnumExportedModuleType.Method)]
         public int prfmsg()
         {
-            var messageNumber = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var messageNumber = GetParameter(0);
 
             if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputValue))
                 throw new Exception($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
@@ -839,21 +821,21 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "SHOCST", Ordinal = 550, ExportedModuleType = EnumExportedModuleType.Method)]
         public int shocst()
         {
-            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var string2Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var string2Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var string1Offset = GetParameter(0);
+            var string1Segment = GetParameter(1);
+            var string2Offset = GetParameter(2);
+            var string2Segment = GetParameter(3);
 
             var string1InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string1Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string1Offset)
+            string1InputBuffer.Write(string1Segment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort) EnumHostSegments.MemoryRegion, string1Offset)
                 : _cpu.Memory.GetString(string1Segment, string1Offset));
 
             var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
 
             var string2InputBuffer = new MemoryStream();
-            string2InputBuffer.Write(string2Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string2Offset)
+            string2InputBuffer.Write(string2Segment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort) EnumHostSegments.MemoryRegion, string2Offset)
                 : _cpu.Memory.GetString(string2Segment, string2Offset));
 
             var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
@@ -861,10 +843,9 @@ namespace MBBSEmu.Host
             //If the supplied string has any control characters for formatting, process them
             if (string2InputValue.CountPrintf() > 0)
             {
-                var formatParameters = GetPrintfVariables(string2InputValue, (ushort)(_cpu.Registers.BP + 12));
+                var formatParameters = GetPrintfParameters(string2InputValue, 4);
                 string2InputValue = string.Format(string2InputValue.FormatPrintf(), formatParameters.ToArray());
             }
-
 
             Console.WriteLine($"SUMMARY: {string1InputValue}");
             Console.WriteLine($"DETAIL: {string2InputValue}");
@@ -879,7 +860,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "CHANNEL", Ordinal = 97, ExportedModuleType = EnumExportedModuleType.Reference)]
-        public int channel() => (int) EnumHostSegments.ChannelArrayPointer;
+        public int channel() => (int) EnumHostSegments.ChannelArray;
 
         /// <summary>
         ///     Post credits to the specified Users Account
@@ -890,22 +871,22 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "ADDCRD", Ordinal = 59, ExportedModuleType = EnumExportedModuleType.Method)]
         public int addcrd()
         {
-            var real = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var string2Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
-            var string2Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 12);
+            var real = GetParameter(0);
+            var string1Offset = GetParameter(1);
+            var string1Segment = GetParameter(2);
+            var string2Offset = GetParameter(3);
+            var string2Segment = GetParameter(4);
 
             var string1InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string1Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string1Offset)
+            string1InputBuffer.Write(string1Segment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort)EnumHostSegments.MemoryRegion, string1Offset)
                 : _cpu.Memory.GetString(string1Segment, string1Offset));
 
             var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
 
             var string2InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(string2Segment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, string2Offset)
+            string1InputBuffer.Write(string2Segment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort)EnumHostSegments.MemoryRegion, string2Offset)
                 : _cpu.Memory.GetString(string2Segment, string2Offset));
 
             var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
@@ -925,17 +906,18 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "ITOA", Ordinal = 366, ExportedModuleType = EnumExportedModuleType.Method)]
         public int itoa()
         {
-            var baseValue = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var string1Offset = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var string1Segment = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
-            var integerValue = _cpu.Memory.Pop(_cpu.Registers.BP + 10);
+            var baseValue = GetParameter(0);
+            var string1Offset = GetParameter(1);
+            var string1Segment = GetParameter(2);
+            var integerValue = GetParameter(3);
 
             var output = Convert.ToString(integerValue, baseValue);
             output += "\0";
 
-            if (string1Segment == 0xFFFF)
+            if (string1Segment == (ushort) EnumHostSegments.MemoryRegion)
             {
-                _mbbsHostMemory.SetHostArray(string1Offset, Encoding.ASCII.GetBytes(output));
+                Memory.SetArray((ushort) EnumHostSegments.MemoryRegion, string1Offset,
+                    Encoding.ASCII.GetBytes(output));
             }
             else
             {
@@ -943,7 +925,8 @@ namespace MBBSEmu.Host
             }
 
 #if DEBUG
-            _logger.Info($"Convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
+            _logger.Info(
+                $"Convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Segment:X4}:{string1Offset:X4}");
 #endif
             return 0;
         }
@@ -958,7 +941,7 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "HASKEY", Ordinal = 334, ExportedModuleType = EnumExportedModuleType.Method)]
         public int haskey()
         {
-            var lockValue = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var lockValue = GetParameter(0);
 
 #if DEBUG
             _logger.Info($"Returning true for lock {lockValue}");
@@ -978,7 +961,7 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "HASMKEY", Ordinal = 335, ExportedModuleType = EnumExportedModuleType.Method)]
         public int hasmkey()
         {
-            var key = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var key = GetParameter(0);
 
 #if DEBUG
             _logger.Info($"Returning true for key {key}");
@@ -1025,7 +1008,7 @@ namespace MBBSEmu.Host
                 #define ddday(date)    ((date)    &0x001F)
              */
 
-            var packedDate = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var packedDate = GetParameter(0);
 
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
@@ -1033,15 +1016,15 @@ namespace MBBSEmu.Host
 
             var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
 
-            var outputValueOffset = _mbbsHostMemory.AllocateHostMemory((ushort) outputDate.Length);
-            _mbbsHostMemory.SetHostArray(outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
+            var outputValueOffset = AllocateHostMemory((ushort) outputDate.Length);
+            Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
 
 #if DEBUG
-            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {(int)EnumHostSegments.MemoryPointer:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {(ushort)EnumHostSegments.MemoryRegion:X4}:{outputValueOffset:X4}");
 #endif
 
             _cpu.Registers.AX = outputValueOffset;
-            _cpu.Registers.DX = (int)EnumHostSegments.MemoryPointer;
+            _cpu.Registers.DX = (ushort)EnumHostSegments.MemoryRegion;
             return 0;
         }
 
@@ -1068,9 +1051,6 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "CLSMSG", Ordinal = 119, ExportedModuleType = EnumExportedModuleType.Method)]
         public int clsmsg()
         {
-            var messagePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var messagePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-
             //We ignore this for now, and we'll just keep it open for the time being
 
             return 0;
@@ -1086,8 +1066,8 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "RTIHDLR", Ordinal = 515, ExportedModuleType = EnumExportedModuleType.Method)]
         public int rtihdlr()
         {
-            var routinePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var routinePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var routinePointerOffset = GetParameter(0);
+            var routinePointerSegment = GetParameter(1);
 #if DEBUG
             _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
 #endif
@@ -1103,9 +1083,9 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "RTKICK", Ordinal = 516, ExportedModuleType = EnumExportedModuleType.Method)]
         public int rtkick()
         {
-            var routinePointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var routinePointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var delaySeconds = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
+            var routinePointerOffset = GetParameter(0);
+            var routinePointerSegment = GetParameter(1);
+            var delaySeconds = GetParameter(2);
 
 #if DEBUG
             _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");
@@ -1122,11 +1102,11 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "SETMBK", Ordinal = 543, ExportedModuleType = EnumExportedModuleType.Method)]
         public int setmbk()
         {
-            var mcvFileOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var mcvFileSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var mcvFileOffset = GetParameter(0);
+            var mcvFileSegment = GetParameter(1);
 
-            if(mcvFileSegment != (int)EnumHostSegments.MsgPointer)
-                throw new ArgumentException($"Specified Segment for MCV File {mcvFileSegment} does not match host MCV Segment {(int)EnumHostSegments.MsgPointer}");
+            if(mcvFileSegment != (int)EnumHostSegments.Msg)
+                throw new ArgumentException($"Specified Segment for MCV File {mcvFileSegment} does not match host MCV Segment {(int)EnumHostSegments.Msg}");
 
             _previousMcvFile = _currentMcvFile;
             _currentMcvFile = _mcvFiles[mcvFileOffset];
@@ -1159,13 +1139,13 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "OPNBTV", Ordinal = 455, ExportedModuleType = EnumExportedModuleType.Method)]
         public int opnbtv()
         {
-            var btrieveFilenameOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var btrieveFilenameSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var recordLength = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var btrieveFilenameOffset = GetParameter(0);
+            var btrieveFilenameSegment = GetParameter(1);
+            var recordLength = GetParameter(2);
 
             var btrieveFilename = new MemoryStream();
-            btrieveFilename.Write(btrieveFilenameSegment == 0xFFFF
-                ? _mbbsHostMemory.GetString(0, btrieveFilenameOffset)
+            btrieveFilename.Write(btrieveFilenameSegment == (ushort)EnumHostSegments.MemoryRegion
+                ? Memory.GetString((ushort)EnumHostSegments.MemoryRegion, btrieveFilenameOffset)
                 : _cpu.Memory.GetString(btrieveFilenameSegment, btrieveFilenameOffset));
 
             var fileName = Encoding.ASCII.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
@@ -1175,10 +1155,10 @@ namespace MBBSEmu.Host
             var btrieveFilePointer = _btrieveFiles.Allocate(btrieveFile);
 
 #if DEBUG
-            _logger.Info($"Opened file {fileName} and allocated it to {(int)EnumHostSegments.BtrieveFilePointer:X4}:{btrieveFilePointer:X4}");
+            _logger.Info($"Opened file {fileName} and allocated it to {(ushort)EnumHostSegments.BtrieveFile:X4}:{btrieveFilePointer:X4}");
 #endif
             _cpu.Registers.AX = (ushort) btrieveFilePointer;
-            _cpu.Registers.DX = (ushort) EnumHostSegments.BtrieveFilePointer;
+            _cpu.Registers.DX = (ushort) EnumHostSegments.BtrieveFile;
 
             return 0;
         }
@@ -1192,11 +1172,11 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "SETBTV", Ordinal = 534, ExportedModuleType = EnumExportedModuleType.Method)]
         public int setbtv()
         {
-            var btrieveFileOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var btrieveFileSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var btrieveFileOffset = GetParameter(0);
+            var btrieveFileSegment = GetParameter(1);
 
-            if(btrieveFileSegment != (int)EnumHostSegments.BtrieveFilePointer)
-                throw new InvalidDataException($"Invalid Btrieve File Segment provided. Actual: {btrieveFileSegment:X4} Expecting: {(int)EnumHostSegments.BtrieveFilePointer}");
+            if(btrieveFileSegment != (int)EnumHostSegments.BtrieveFile)
+                throw new InvalidDataException($"Invalid Btrieve File Segment provided. Actual: {btrieveFileSegment:X4} Expecting: {(int)EnumHostSegments.BtrieveFile}");
 
             if(_currentBtrieveFile != null)
                 _previousBtrieveFile = _currentBtrieveFile;
@@ -1223,11 +1203,11 @@ namespace MBBSEmu.Host
             if(_currentBtrieveFile == null)
                 throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
 
-            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
-            var stpopt = _cpu.Memory.Pop(_cpu.Registers.BP + 8);
+            var btrieveRecordPointerOffset = GetParameter(0);
+            var btrieveRecordPointerSegment = GetParameter(1);
+            var stpopt = GetParameter(2);
 
-            ushort resultCode;
+            ushort resultCode = 0;
             switch (stpopt)
             {
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
@@ -1244,9 +1224,9 @@ namespace MBBSEmu.Host
             if (resultCode > 0)
             {
                 //See if the segment lives on the host or in the module
-                if (btrieveRecordPointerSegment >= 0xFF00)
+                if (btrieveRecordPointerSegment == (ushort)EnumHostSegments.MemoryRegion)
                 {
-                    _mbbsHostMemory.SetHostArray(btrieveRecordPointerOffset, _currentBtrieveFile.GetRecord());
+                    Memory.SetArray((ushort)EnumHostSegments.MemoryRegion, btrieveRecordPointerOffset, _currentBtrieveFile.GetRecord());
                 }
                 else
                 {
@@ -1297,19 +1277,22 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "UPDBTV", Ordinal = 621, ExportedModuleType = EnumExportedModuleType.Method)]
         public int updbtv()
         {
-            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var btrieveRecordPointerOffset = GetParameter(0);
+            var btrieveRecordPointerSegment = GetParameter(1);
 
             //See if the segment lives on the host or in the module
             var btrieveRecord = new MemoryStream();
-            btrieveRecord.Write(btrieveRecordPointerSegment == 0xFFFF
-                ? _mbbsHostMemory.GetArray(0, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength)
-                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength));
+            btrieveRecord.Write(btrieveRecordPointerSegment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetArray((ushort) EnumHostSegments.MemoryRegion, btrieveRecordPointerOffset,
+                    _currentBtrieveFile.RecordLength)
+                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset,
+                    _currentBtrieveFile.RecordLength));
 
             _currentBtrieveFile.Update(btrieveRecord.ToArray());
 
 #if DEBUG
-            _logger.Info($"Updated current Btrieve record ({_currentBtrieveFile.CurrentRecordNumber}) with {btrieveRecord.Length} bytes");
+            _logger.Info(
+                $"Updated current Btrieve record ({_currentBtrieveFile.CurrentRecordNumber}) with {btrieveRecord.Length} bytes");
 #endif
 
             return 0;
@@ -1324,19 +1307,22 @@ namespace MBBSEmu.Host
         [ExportedModule(Name = "INSBTV", Ordinal = 351, ExportedModuleType = EnumExportedModuleType.Method)]
         public int insbtv()
         {
-            var btrieveRecordPointerOffset = _cpu.Memory.Pop(_cpu.Registers.BP + 4);
-            var btrieveRecordPointerSegment = _cpu.Memory.Pop(_cpu.Registers.BP + 6);
+            var btrieveRecordPointerOffset = GetParameter(0);
+            var btrieveRecordPointerSegment = GetParameter(1);
 
             //See if the segment lives on the host or in the module
             var btrieveRecord = new MemoryStream();
-            btrieveRecord.Write(btrieveRecordPointerSegment == 0xFFFF
-                ? _mbbsHostMemory.GetArray(0, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength)
-                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset, _currentBtrieveFile.RecordLength));
+            btrieveRecord.Write(btrieveRecordPointerSegment == (ushort) EnumHostSegments.MemoryRegion
+                ? Memory.GetArray((ushort) EnumHostSegments.MemoryRegion, btrieveRecordPointerOffset,
+                    _currentBtrieveFile.RecordLength)
+                : _cpu.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset,
+                    _currentBtrieveFile.RecordLength));
 
             _currentBtrieveFile.Insert(btrieveRecord.ToArray());
 
 #if DEBUG
-            _logger.Info($"Inserted Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {btrieveRecord.Length} bytes");
+            _logger.Info(
+                $"Inserted Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {btrieveRecord.Length} bytes");
 #endif
 
             return 0;

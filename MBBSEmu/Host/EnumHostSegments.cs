@@ -7,13 +7,33 @@
     /// </summary>
     public enum EnumHostSegments : ushort
     {
-        MemoryPointer = 0xFFFF,
-        FilePointer = 0xFFFE,
-        BtrPointer = 0xFFFD,
-        MsgPointer = 0xFFFC,
-        UserPointer = 0xFFFB,
-        ChannelArrayPointer = 0xFFFA,
-        BtrieveFilePointer = 0xFFF9,
-        BtrieveRecordPointer = 0xFFF8
+        /// <summary>
+        ///     Segment used by ALLOCZ() and other methods to allocate blocks of memory
+        /// </summary>
+        MemoryRegion = 0xFFFF,
+
+        /// <summary>
+        ///     Denotes Segment for holding Msg File Pointers
+        ///
+        ///     This is used to identify if a 16:16 pointer is a valid Msg pointer or not
+        /// </summary>
+        Msg = 0xFFFE,
+
+        /// <summary>
+        ///     Segment that holds the user struct
+        /// </summary>
+        User = 0xFFFD,
+
+        /// <summary>
+        ///     Segment that holds the channel array
+        /// </summary>
+        ChannelArray = 0xFFFC,
+
+        /// <summary>
+        ///     Denotes Segment for holding Btrieve File Pointers
+        ///
+        ///     This is used to verify a 16:16 pointer is a valid Btrieve pointer or not
+        /// </summary>
+        BtrieveFile = 0xFFFB,
     }
 }
