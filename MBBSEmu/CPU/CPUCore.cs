@@ -605,16 +605,11 @@ namespace MBBSEmu.CPU
                 case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
                 {
                     //We push CS:IP to the stack
-                    //Push the Current IP to the stack
                     Push(Registers.IP);
                     Push(Registers.CS);
 
-                    //Set BP to the current stack pointer
-                    Registers.BP = Registers.SP;
-
                     //Check for a possible relocation
                     int destinationValue;
-
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
                         var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
@@ -626,9 +621,16 @@ namespace MBBSEmu.CPU
                         }
                         else
                         {
+                            //Simulate an ENTER
+                            //Set BP to the current stack pointer
+                            var priorToCallBp = Registers.BP;
+                            Registers.BP = Registers.SP;
+
                             _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
-
+                            
+                            //Simulate a LEAVE & retf
+                            Registers.BP = priorToCallBp;
                             Registers.SetValue(Register.CS, Pop());
                             Registers.SetValue(Register.EIP, Pop());
                             Registers.IP += (ushort) _currentInstruction.ByteLength;
@@ -649,8 +651,6 @@ namespace MBBSEmu.CPU
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
                     Push(Registers.IP);
-                    Push(Registers.CS);
-                    Registers.BP = Registers.SP;
                     Registers.IP = _currentInstruction.FarBranch16;
                     return;
                 }

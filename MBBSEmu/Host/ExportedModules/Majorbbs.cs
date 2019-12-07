@@ -847,8 +847,11 @@ namespace MBBSEmu.Host
                 string2InputValue = string.Format(string2InputValue.FormatPrintf(), formatParameters.ToArray());
             }
 
-            Console.WriteLine($"SUMMARY: {string1InputValue}");
-            Console.WriteLine($"DETAIL: {string2InputValue}");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.BackgroundColor = ConsoleColor.Blue;
+            Console.WriteLine($"AUDIT SUMMARY: {string1InputValue}");
+            Console.WriteLine($"AUDIT DETAIL: {string2InputValue}");
+            Console.ResetColor();
 
             return 0;
         }
