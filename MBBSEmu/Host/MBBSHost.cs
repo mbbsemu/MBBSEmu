@@ -20,11 +20,31 @@ namespace MBBSEmu.Host
     /// </summary>
     public class MbbsHost
     {
-        private delegate int ExportedFunctionDelegate();
-        private readonly Dictionary<string,Dictionary<int, ExportedFunctionDelegate>> _exportedFunctionDelegates;
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+
+        /// <summary>
+        ///     Delegate used to invoke functions Exported from MAJORBBS or GALGSBL
+        /// </summary>
+        /// <returns></returns>
+        private delegate ushort ExportedFunctionDelegate();
+        
+        /// <summary>
+        ///     Delegate used to access memory values EXPORTED (mostly arrays & structs)
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        private delegate byte ExportedMemoryValueDelegate(ushort segment, ushort offset);
+
+        private readonly Dictionary<string,Dictionary<int, ExportedFunctionDelegate>> _exportedFunctionDelegates;
+        private readonly Dictionary<string, ExportedMemoryValueDelegate> _exportedMemoryValueDelegates;
+        
+        
         private readonly MbbsModule _module;
-        private readonly Majorbbs _hostFunctions;
+
+        private readonly Majorbbs _majorbbsHostFunctions;
+        private readonly Galsbl _galsblHostFunctions;
+
         private readonly CpuCore _cpu;
         private readonly Thread _hostThread;
         private bool _isRunning;
@@ -35,27 +55,46 @@ namespace MBBSEmu.Host
             _hostThread = new Thread(Run);
             _logger.Info("Constructing MbbsEmu Host...");
             _logger.Info("Initalizing x86_16 CPU Emulator...");
-            _cpu = new CpuCore(InvokeHostedFunction);
-            _hostFunctions = new Majorbbs(_cpu, _module);
+            _cpu = new CpuCore(InvokeHostedFunction, GetHostMemoryValue);
 
+            _majorbbsHostFunctions = new Majorbbs(_cpu, _module);
+            _galsblHostFunctions = new Galsbl(_cpu, _module);
             //Setup Function Delegates
             _exportedFunctionDelegates = new Dictionary<string, Dictionary<int, ExportedFunctionDelegate>>();
 
-            var functionBindings = _hostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            //Get Exported Functions for MAJORBBS.H
+            _logger.Info("Setting up MAJORBBS.H exported functions...");
+            var mbbsfunctionBindings = _majorbbsHostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(m => m.GetCustomAttributes(typeof(ExportedModuleAttribute), false).Length > 0).Select(y => new
                 {
-                    binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _hostFunctions,
+                    binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _majorbbsHostFunctions,
                         y.Name),
                     definitions = y.GetCustomAttributes(typeof(ExportedModuleAttribute))
                 });
-
             _exportedFunctionDelegates["MAJORBBS"] = new Dictionary<int, ExportedFunctionDelegate>();
-
-            foreach (var f in functionBindings)
+            foreach (var f in mbbsfunctionBindings)
             {
                 var ordinal = ((ExportedModuleAttribute) f.definitions.First()).Ordinal;
                 _exportedFunctionDelegates["MAJORBBS"][ordinal] = f.binding;
             }
+            _logger.Info($"{_exportedFunctionDelegates["MAJORBBS"].Count} exports setup");
+
+            //Get Exported for GALGSBL.H
+            _logger.Info("Setting up GALGSBL.H exported functions...");
+            var galgsblFunctionBindings = _galsblHostFunctions.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(m => m.GetCustomAttributes(typeof(ExportedModuleAttribute), false).Length > 0).Select(y => new
+                {
+                    binding = (ExportedFunctionDelegate)Delegate.CreateDelegate(typeof(ExportedFunctionDelegate), _galsblHostFunctions,
+                        y.Name),
+                    definitions = y.GetCustomAttributes(typeof(ExportedModuleAttribute))
+                });
+            _exportedFunctionDelegates["GALGSBL"] = new Dictionary<int, ExportedFunctionDelegate>();
+            foreach (var f in galgsblFunctionBindings)
+            {
+                var ordinal = ((ExportedModuleAttribute)f.definitions.First()).Ordinal;
+                _exportedFunctionDelegates["GALGSBL"][ordinal] = f.binding;
+            }
+            _logger.Info($"{_exportedFunctionDelegates["GALGSBL"].Count} exports setup");
 
             foreach (var seg in _module.File.SegmentTable)
             {
@@ -136,7 +175,7 @@ namespace MBBSEmu.Host
         ///     Invoked from the Executing x86 Code when an imported function from the MajorBBS/Worldgroup
         ///     host process is to be called.
         /// </summary>
-        private int InvokeHostedFunction(int importedNameTableOrdinal, int functionOrdinal)
+        private ushort InvokeHostedFunction(ushort importedNameTableOrdinal, ushort functionOrdinal)
         {
             var importedModuleName = _module.File.ImportedNameTable.First(x => x.Ordinal == importedNameTableOrdinal).Name;
 
@@ -148,6 +187,20 @@ namespace MBBSEmu.Host
 
             //Execute it
             return function();
+        }
+
+        private ushort GetHostMemoryValue(ushort segment, ushort offset)
+        {
+            //MAJORBBS Segment
+            if ((segment | 0xF000) == segment)
+                return _majorbbsHostFunctions.Memory.GetByte(segment, offset);
+
+            //GALGSBL Segment
+            if ((segment | 0xE000) == segment)
+                return _galsblHostFunctions.Memory.GetByte(segment, offset);
+
+
+            throw new Exception($"Unknown Exported Segment: {segment:X4}");
         }
     }
 }

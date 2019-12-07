@@ -35,5 +35,10 @@
         ///     This is used to verify a 16:16 pointer is a valid Btrieve pointer or not
         /// </summary>
         BtrieveFile = 0xFFFB,
+
+        /// <summary>
+        ///     Segment that holds the registration number for this instance of MajorBBS  
+        /// </summary>
+        Bturno = 0xEFFF
     }
 }

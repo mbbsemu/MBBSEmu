@@ -16,7 +16,7 @@ namespace MBBSEmu.Host.ExportedModules
         {
             for (var i = 0; i < int.MaxValue; i++)
             {
-                if (!this.ContainsKey(i))
+                if (!ContainsKey(i))
                     return i;
             }
 

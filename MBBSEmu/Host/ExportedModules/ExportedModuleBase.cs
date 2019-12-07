@@ -17,7 +17,7 @@ namespace MBBSEmu.Host.ExportedModules
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
-        protected readonly IMemoryCore Memory;
+        public readonly IMemoryCore Memory;
         protected readonly CpuCore _cpu;
         protected readonly MbbsModule _module;
 

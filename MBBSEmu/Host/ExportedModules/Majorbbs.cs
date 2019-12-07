@@ -9,7 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Logging;
+
 namespace MBBSEmu.Host
 {
     /// <summary>
@@ -116,7 +116,7 @@ namespace MBBSEmu.Host
         ///     Signature: void srand (unsigned int seed);
         /// </summary>
         [ExportedModule(Name = "SRAND", Ordinal = 561, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int srand() => 0;
+        public ushort srand() => 0;
 
         /// <summary>
         ///     Get the current calendar time as a value of type time_t
@@ -126,7 +126,7 @@ namespace MBBSEmu.Host
         ///     Return: Value is 32-Bit TIME_T (AX:DX)
         /// </summary>
         [ExportedModule(Name = "TIME", Ordinal = 599, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int time()
+        public ushort time()
         {
             //For now, ignore the input pointer for time_t
 
@@ -152,7 +152,7 @@ namespace MBBSEmu.Host
         ///             DX = Data Segment
         /// </summary>
         [ExportedModule(Name = "ALCZER", Ordinal = 68, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int alczer()
+        public ushort alczer()
         {
             var size = GetParameter(0);
 
@@ -177,7 +177,7 @@ namespace MBBSEmu.Host
         ///             DX = Data Segment
         /// </summary>
         [ExportedModule(Name = "GMDNAM", Ordinal = 331, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int gmdnam()
+        public ushort gmdnam()
         {
             var datSegmentOffset = GetParameter(0);
             var dataSegment = GetParameter(1);
@@ -216,7 +216,7 @@ namespace MBBSEmu.Host
         ///             DX = Data Segment
         /// </summary>
         [ExportedModule(Name = "STRCPY", Ordinal = 574, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int strcpy()
+        public ushort strcpy()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -256,7 +256,7 @@ namespace MBBSEmu.Host
         ///             DX = Data Segment
         /// </summary>
         [ExportedModule(Name = "STZCPY", Ordinal = 589, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int stzcpy()
+        public ushort stzcpy()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -302,7 +302,7 @@ namespace MBBSEmu.Host
         ///     Return: AX = Value of usrptr->state whenever user is 'in' this module
         /// </summary>
         [ExportedModule(Name = "REGISTER_MODULE", Ordinal = 492, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int register_module()
+        public ushort register_module()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -354,7 +354,7 @@ namespace MBBSEmu.Host
         ///             DX = Host Segment
         /// </summary>
         [ExportedModule(Name = "OPNMSG", Ordinal = 456, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int opnmsg()
+        public ushort opnmsg()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -388,7 +388,7 @@ namespace MBBSEmu.Host
         ///     Return: AX = Value retrieved
         /// </summary>
         [ExportedModule(Name = "NUMOPT", Ordinal = 441, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int numopt()
+        public ushort numopt()
         {
             if(_mcvFiles.Count == 0)
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
@@ -418,7 +418,7 @@ namespace MBBSEmu.Host
         ///     Return: AX = 1/Yes, 0/No
         /// </summary>
         [ExportedModule(Name = "YNOPT", Ordinal = 650, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int ynopt()
+        public ushort ynopt()
         {
             var msgnum = GetParameter(0);
 
@@ -441,7 +441,7 @@ namespace MBBSEmu.Host
         ///             DX = Least Significant 16-Bits
         /// </summary>
         [ExportedModule(Name = "LNGOPT", Ordinal = 389, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int lngopt()
+        public ushort lngopt()
         {
             var msgnum = GetParameter(0);
 
@@ -478,7 +478,7 @@ namespace MBBSEmu.Host
         ///             DX = Host Segment     
         /// </summary>
         [ExportedModule(Name = "STGOPT", Ordinal = 566, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int stgopt()
+        public ushort stgopt()
         {
             var msgnum = GetParameter(0);
 
@@ -507,7 +507,7 @@ namespace MBBSEmu.Host
         ///             DX = Host Segment 
         /// </summary>
         [ExportedModule(Name = "GETASC", Ordinal = 316, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int getasc()
+        public ushort getasc()
         {
 #if DEBUG
             _logger.Info($"Called, redirecting to stgopt()");
@@ -525,7 +525,7 @@ namespace MBBSEmu.Host
         ///             DX = Host Segment 
         /// </summary>
         [ExportedModule(Name = "L2AS", Ordinal = 377, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int l2as()
+        public ushort l2as()
         {
             var lowByte = GetParameter(0);
             var highByte = GetParameter(1);
@@ -555,7 +555,7 @@ namespace MBBSEmu.Host
         ///             DX = Host Segment  
         /// </summary>
         [ExportedModule(Name = "ATOL", Ordinal = 77, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int atol()
+        public ushort atol()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -588,7 +588,7 @@ namespace MBBSEmu.Host
         ///     Return: AX = Packed Date
         /// </summary>
         [ExportedModule(Name = "TODAY", Ordinal = 601, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int today()
+        public ushort today()
         {
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
@@ -610,7 +610,7 @@ namespace MBBSEmu.Host
         ///     Return: None
         /// </summary>
         [ExportedModule(Name = "F_SCOPY", Ordinal = 665, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int f_scopy()
+        public ushort f_scopy()
         {
             var srcOffset = GetParameter(0);
             var srcSegment = GetParameter(1);
@@ -645,7 +645,7 @@ namespace MBBSEmu.Host
         ///     Returns: AX = 1 if match
         /// </summary>
         [ExportedModule(Name = "SAMEAS", Ordinal = 520, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int sameas()
+        public ushort sameas()
         {
             var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
@@ -683,7 +683,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "USERNUM", Ordinal = 628, ExportedModuleType = EnumExportedModuleType.Value)]
-        public int usernum() => 0;
+        public ushort usernum() => 0;
 
         /// <summary>
         ///     Gets the online user account info
@@ -694,7 +694,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "UACOFF", Ordinal = 713, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int uacoff()
+        public ushort uacoff()
         {
             var userNumber = GetParameter(0);
 
@@ -714,7 +714,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "PRF", Ordinal = 474, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int prf()
+        public ushort prf()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -748,7 +748,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "OUTPRF", Ordinal = 463, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int outprf()
+        public ushort outprf()
         {
             //TODO -- this will need to write to a destination output delegate
             Console.WriteLine(Encoding.ASCII.GetString(outputBuffer.ToArray()));
@@ -765,7 +765,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "DEDCRD", Ordinal = 160, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int dedcrd()
+        public ushort dedcrd()
         {
             var sourceOffset = GetParameter(0);
             var lowByte = GetParameter(1);
@@ -788,7 +788,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "USRPTR", Ordinal = 629, ExportedModuleType = EnumExportedModuleType.Reference)]
-        public int usrptr() => (int) EnumHostSegments.User;
+        public ushort usrptr() => (int) EnumHostSegments.User;
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -797,7 +797,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "PRFMSG", Ordinal = 476, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int prfmsg()
+        public ushort prfmsg()
         {
             var messageNumber = GetParameter(0);
 
@@ -819,7 +819,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "SHOCST", Ordinal = 550, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int shocst()
+        public ushort shocst()
         {
             var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
@@ -860,7 +860,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "CHANNEL", Ordinal = 97, ExportedModuleType = EnumExportedModuleType.Reference)]
-        public int channel() => (int) EnumHostSegments.ChannelArray;
+        public ushort channel() => (int) EnumHostSegments.ChannelArray;
 
         /// <summary>
         ///     Post credits to the specified Users Account
@@ -869,7 +869,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "ADDCRD", Ordinal = 59, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int addcrd()
+        public ushort addcrd()
         {
             var real = GetParameter(0);
             var string1Offset = GetParameter(1);
@@ -904,7 +904,7 @@ namespace MBBSEmu.Host
         ///     Signature: char *itoa(int value, char * str, int base)
         /// </summary>
         [ExportedModule(Name = "ITOA", Ordinal = 366, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int itoa()
+        public ushort itoa()
         {
             var baseValue = GetParameter(0);
             var string1Offset = GetParameter(1);
@@ -939,7 +939,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "HASKEY", Ordinal = 334, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int haskey()
+        public ushort haskey()
         {
             var lockValue = GetParameter(0);
 
@@ -959,7 +959,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "HASMKEY", Ordinal = 335, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int hasmkey()
+        public ushort hasmkey()
         {
             var key = GetParameter(0);
 
@@ -979,7 +979,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "RAND", Ordinal = 486, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int rand()
+        public ushort rand()
         {
             var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(0, short.MaxValue);
 
@@ -1000,7 +1000,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "NCDATE", Ordinal = 428, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int ncdate()
+        public ushort ncdate()
         {
             /* From DOSFACE.H:
                 #define ddyear(date) ((((date)>>9)&0x007F)+1980)
@@ -1037,7 +1037,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "DFSTHN", Ordinal = 167, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int dfsthn()
+        public ushort dfsthn()
         {
             return 0;
         }
@@ -1049,7 +1049,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "CLSMSG", Ordinal = 119, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int clsmsg()
+        public ushort clsmsg()
         {
             //We ignore this for now, and we'll just keep it open for the time being
 
@@ -1064,7 +1064,7 @@ namespace MBBSEmu.Host
         ///     Signature: void rtihdlr(void (*rouptr)(void))
         /// </summary>
         [ExportedModule(Name = "RTIHDLR", Ordinal = 515, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int rtihdlr()
+        public ushort rtihdlr()
         {
             var routinePointerOffset = GetParameter(0);
             var routinePointerSegment = GetParameter(1);
@@ -1081,7 +1081,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "RTKICK", Ordinal = 516, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int rtkick()
+        public ushort rtkick()
         {
             var routinePointerOffset = GetParameter(0);
             var routinePointerSegment = GetParameter(1);
@@ -1100,7 +1100,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "SETMBK", Ordinal = 543, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int setmbk()
+        public ushort setmbk()
         {
             var mcvFileOffset = GetParameter(0);
             var mcvFileSegment = GetParameter(1);
@@ -1121,7 +1121,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "RSTMBK", Ordinal = 510, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int rstmbk()
+        public ushort rstmbk()
         {
             _currentMcvFile = _previousMcvFile;
 
@@ -1137,7 +1137,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "OPNBTV", Ordinal = 455, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int opnbtv()
+        public ushort opnbtv()
         {
             var btrieveFilenameOffset = GetParameter(0);
             var btrieveFilenameSegment = GetParameter(1);
@@ -1170,7 +1170,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "SETBTV", Ordinal = 534, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int setbtv()
+        public ushort setbtv()
         {
             var btrieveFileOffset = GetParameter(0);
             var btrieveFileSegment = GetParameter(1);
@@ -1198,7 +1198,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "STPBTV", Ordinal = 569, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int stpbtv()
+        public ushort stpbtv()
         {
             if(_currentBtrieveFile == null)
                 throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
@@ -1250,7 +1250,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "RSTBTV", Ordinal = 505, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int rstbtv()
+        public ushort rstbtv()
         {
             if (_previousBtrieveFile == null)
             {
@@ -1275,7 +1275,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "UPDBTV", Ordinal = 621, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int updbtv()
+        public ushort updbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
             var btrieveRecordPointerSegment = GetParameter(1);
@@ -1305,7 +1305,7 @@ namespace MBBSEmu.Host
         /// </summary>
         /// <returns></returns>
         [ExportedModule(Name = "INSBTV", Ordinal = 351, ExportedModuleType = EnumExportedModuleType.Method)]
-        public int insbtv()
+        public ushort insbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
             var btrieveRecordPointerSegment = GetParameter(1);
