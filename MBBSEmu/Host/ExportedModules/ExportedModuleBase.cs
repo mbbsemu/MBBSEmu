@@ -83,11 +83,11 @@ namespace MBBSEmu.Host.ExportedModules
                         }
                     case 's':
                         {
-                            var parameterOffset = GetParameter((ushort)(startingParameterOrdinal + i));
-                            var parameterSegment = GetParameter((ushort)(startingParameterOrdinal + i++));
+                            var parameterOffset = GetParameter((ushort)(startingParameterOrdinal + i++));
+                            var parameterSegment = GetParameter((ushort)(startingParameterOrdinal + i));
 
-                            var parameter = parameterSegment == 0xFFFF
-                                ? Memory.GetString(0, parameterOffset)
+                            var parameter = parameterSegment == (ushort)EnumHostSegments.MemoryRegion
+                                ? Memory.GetString((ushort)EnumHostSegments.MemoryRegion, parameterOffset)
                                 : _cpu.Memory.GetString(parameterSegment, parameterOffset);
 
                             formatParameters.Add(Encoding.ASCII.GetString(parameter));

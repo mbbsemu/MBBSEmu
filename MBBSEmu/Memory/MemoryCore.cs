@@ -133,7 +133,7 @@ namespace MBBSEmu.Memory
 
         public void SetArray(ushort segment, ushort offset, byte[] array)
         {
-            Array.Copy(array, 0, _memorySegments[segment], offset + offset, array.Length);
+            Array.Copy(array, 0, _memorySegments[segment], offset, array.Length);
         }
     }
 }

@@ -58,8 +58,8 @@ namespace MBBSEmu.CPU
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
-    _logger.Debug($"{_currentInstruction.ToString()}");
-    _logger.InfoRegisters(this);
+            _logger.InfoRegisters(this);
+            _logger.Debug($"{_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -138,6 +138,11 @@ namespace MBBSEmu.CPU
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
+#if DEBUG
+            _logger.InfoRegisters(this);
+            _logger.InfoStack(this);
+            _logger.Info("--------------------------------------------------------------");
+#endif
         }
 
         private ushort GetOpValue(OpKind opKind)

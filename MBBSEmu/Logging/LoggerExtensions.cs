@@ -1,4 +1,5 @@
-﻿using MBBSEmu.CPU;
+﻿using System.IO;
+using MBBSEmu.CPU;
 using NLog;
 using System.Text;
 using SQLitePCL;
@@ -70,7 +71,10 @@ namespace MBBSEmu.Logging
             output.Append($"SP={cpu.Registers.SP:X4}  ");
             output.AppendLine($"BP={cpu.Registers.BP:X4}");
 
-            l.Info($"\r\n{output}");
+            foreach (var line in output.ToString().Split("\r\n"))
+            {
+                l.Info(line);
+            }
         }
 
         public static void InfoStack(this Logger l, CpuCore cpu)
@@ -79,7 +83,7 @@ namespace MBBSEmu.Logging
             for (ushort i = ushort.MaxValue - 2; i >= cpu.Registers.SP; i-=2)
             {
                 output.Append(
-                    $"{i:X4} [ {cpu.Memory.GetWord(cpu.Registers.SS, i)} 0x{cpu.Memory.GetWord(cpu.Registers.SS, i):X4} ]");
+                    $"{i:X4} [ {cpu.Memory.GetWord(cpu.Registers.SS, i):D5} 0x{cpu.Memory.GetWord(cpu.Registers.SS, i):X4} ]");
 
                 if (i == cpu.Registers.SP)
                     output.Append(" <-- SP ");
@@ -87,7 +91,10 @@ namespace MBBSEmu.Logging
                 output.AppendLine(string.Empty);
             }
 
-            l.Info($"\r\n{output}");
+            foreach (var line in output.ToString().Split("\r\n"))
+            {
+                l.Info(line);
+            }
         }
     }
 }
