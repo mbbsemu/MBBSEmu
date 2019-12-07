@@ -63,9 +63,11 @@ namespace MBBSEmu.Logging
             output.Append($"AX={cpu.Registers.AX:X4}  ");
             output.Append($"BX={cpu.Registers.BX:X4}  ");
             output.Append($"CX={cpu.Registers.CX:X4}  ");
-            output.Append($"DX={cpu.Registers.CX:X4}  ");
+            output.Append($"DX={cpu.Registers.DX:X4}  ");
             output.Append($"DS={cpu.Registers.DS:X4}  ");
-            output.AppendLine($"ES={cpu.Registers.ES:X4}"); 
+            output.AppendLine($"ES={cpu.Registers.ES:X4}");
+            output.Append($"SI={cpu.Registers.SI:X4}  ");
+            output.Append($"DI={cpu.Registers.DI:X4}  ");
             output.Append($"SS={cpu.Registers.SS:X4}  ");
             output.Append($"IP={cpu.Registers.IP:X4}  ");
             output.Append($"SP={cpu.Registers.SP:X4}  ");

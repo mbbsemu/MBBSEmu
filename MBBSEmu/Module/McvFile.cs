@@ -25,10 +25,14 @@ namespace MBBSEmu.Module
                 path += @"\";
             FileName = fileName;
 
+#if DEBUG
             _logger.Info($"Loading MCV File: {fileName}");
+#endif
             FileContent = File.ReadAllBytes($"{path}{fileName}");
 
+#if DEBUG
             _logger.Info($"Parsing MCV File: {fileName}");
+#endif
             Parse();
         }
 
@@ -66,7 +70,9 @@ namespace MBBSEmu.Module
                 Messages.Add(i, message);
             }
 
+#if DEBUG
             _logger.Info($"Successfully parsed and loaded {numberOfMessages} messages from {FileName}");
+#endif
         }
 
         public bool GetBool(int ordinal) => Messages[ordinal].ToUpper().EndsWith("YES\0");

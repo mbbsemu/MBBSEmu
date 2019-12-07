@@ -31,23 +31,28 @@ namespace MBBSEmu.Btrieve
             FileName = fileName;
 
             _btrieveFileContent = File.ReadAllBytes($"{path}{FileName}");
+#if DEBUG
             _logger.Info($"Opened {fileName} and read {_btrieveFileContent.Length} bytes");
-
             _logger.Info("Parsing Header...");
+#endif
             RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
-            _logger.Info($"Record Length: {RecordLength}");
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
+#if DEBUG
+            _logger.Info($"Record Length: {RecordLength}");
             _logger.Info($"Record Count: {RecordCount}");
-
-            _btrieveRecords = new List<byte[]>(RecordCount);
             _logger.Info("Loading Records...");
+#endif 
+            _btrieveRecords = new List<byte[]>(RecordCount);
+
             if (RecordCount > 0)
             {
                 LoadRecords();
             }
             else
             {
+#if DEBUG
                 _logger.Info($"No records to load");
+#endif
             }
 
         }
@@ -62,7 +67,9 @@ namespace MBBSEmu.Btrieve
                 _btrieveRecords.Add(recordArray);
             }
 
+#if DEBUG
             _logger.Info($"Loaded {CurrentRecordNumber} records. Resetting cursor to 0");
+#endif
             CurrentRecordNumber = 0;
         }
 

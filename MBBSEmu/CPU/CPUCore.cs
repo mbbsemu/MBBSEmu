@@ -6,6 +6,7 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Linq;
+using NLog.LayoutRenderers;
 
 namespace MBBSEmu.CPU
 {
@@ -37,7 +38,7 @@ namespace MBBSEmu.CPU
             _getExternalMemoryValueDelegate = getExternalMemoryValueDelegate;
 
             //Setup Registers
-            Registers = new CpuRegisters {SP = STACK_BASE, SS = STACK_SEGMENT, ES = EXTRA_SEGMENT};
+            Registers = new CpuRegisters {BP = STACK_BASE, SP = STACK_BASE, SS = STACK_SEGMENT, ES = EXTRA_SEGMENT};
 
             //Setup Memory Space
             Memory = new MemoryCore();
@@ -138,74 +139,157 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Or:
                     Op_Or();
                     break;
+                case Mnemonic.Retf:
+                case Mnemonic.Ret:
+                    Op_retf();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            //_logger.InfoRegisters(this);
+            _logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
         }
 
-        private ushort GetOpValue(OpKind opKind)
+        /// <summary>
+        ///     Returns the VALUE of Operand 0
+        ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <param name="operandType"></param>
+        /// <returns></returns>
+        private ushort GetOperandValue(OpKind opKind, EnumOperandType operandType)
         {
             switch (opKind)
             {
                 case OpKind.Register:
-                    return Registers.GetValue(_currentInstruction.Op0Register);
+                    return Registers.GetValue(operandType == EnumOperandType.Destination
+                        ? _currentInstruction.Op0Register
+                        : _currentInstruction.Op1Register);
+
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
-                case OpKind.Immediate16:
-                    return _currentInstruction.Immediate16;
-                case OpKind.Memory when _currentInstruction.MemoryBase == Register.None:
-                    return Memory.GetByte(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement);
-                case OpKind.Memory when _currentInstruction.MemoryBase == Register.BP:
-                {
-                    var baseOffset = ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1;
-                    return Memory.GetByte(Registers.DS, (ushort) (Registers.BP - (ushort) baseOffset));
-                }
-                case OpKind.Memory when _currentInstruction.MemorySegment == Register.ES:
-                {
-                    //External Segment, invoke delegate to read byte
-                    if (Registers.ES > 0xFF)
-                    {
-                        return _getExternalMemoryValueDelegate(Registers.ES, Registers.GetValue(_currentInstruction.MemoryBase));
-                    }
 
-                    return 0;
+                case OpKind.Immediate16:
+                {
+
+                    //If it's FO SHO not a relocation record, just return the value
+                    if (_currentInstruction.Immediate16 != ushort.MaxValue) return _currentInstruction.Immediate16;
+
+                    //Check for Relocation Records
+                    var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
+                        .FirstOrDefault(x => x.Offset == Registers.IP + 1);
+
+                    //Actual ushort.MaxValue? Weird ¯\_(ツ)_/¯
+                    if (relocationRecord == null)
+                        return ushort.MaxValue;
+
+                    switch (relocationRecord?.TargetTypeValueTuple.Item1)
+                    {
+                        //External Property
+                        case EnumRecordsFlag.IMPORTORDINAL:
+                            return _invokeExternalFunctionDelegate(
+                                relocationRecord.TargetTypeValueTuple.Item2,
+                                relocationRecord.TargetTypeValueTuple.Item3);
+                        //Internal Segment
+                        case EnumRecordsFlag.INTERNALREF:
+                            return relocationRecord.TargetTypeValueTuple.Item2;
+                        default:
+                            throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value");
+                    }
                 }
+
                 case OpKind.Immediate8to16:
-                    return (ushort) _currentInstruction.Immediate8to16;
+                    return (ushort)_currentInstruction.Immediate8to16;
+
+                case OpKind.Memory:
+                {
+                    var offset = GetOperandOffset(opKind);
+
+                    //Anything in the ES segment is MOST LIKELY an external segment, so check that
+                    if (_currentInstruction.MemorySegment == Register.ES && Registers.GetValue(Register.ES) > 0xFF)
+                        return _getExternalMemoryValueDelegate(Registers.ES, offset);
+
+                    return _currentInstruction.MemorySize == MemorySize.UInt16
+                        ? Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
+                        : Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                }
+                
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
             }
         }
 
+        /// <summary>
+        ///     Returns the OFFSET of Operand 0
+        ///
+        ///     Only use this for instructions where Operand 0 is an OFFSET within a memory Segment
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        private ushort GetOperandOffset(OpKind opKind)
+        {
+            switch (opKind)
+            {
+                case OpKind.Memory:
+                {
+                    switch (_currentInstruction.MemoryBase)
+                    {
+                        case Register.DS when _currentInstruction.MemoryIndex == Register.None:
+                        case Register.None when _currentInstruction.MemoryIndex == Register.None:
+                            return (ushort) _currentInstruction.MemoryDisplacement;
+                        case Register.BP when _currentInstruction.MemoryIndex == Register.None:
+                            return (ushort) (Registers.BP -
+                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1);
+                        case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
+                            return (ushort) (Registers.BP -
+                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1 +
+                                             Registers.SI);
+                        case Register.BX when _currentInstruction.MemoryIndex == Register.None:
+                            return Registers.BX;
+                        case Register.SI when _currentInstruction.MemoryIndex == Register.None:
+                            return Registers.SI;
+                            case Register.DI when _currentInstruction.MemoryIndex == Register.None:
+                                return (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
+                        default:
+                            throw new Exception("Unknown GetOperandOffset MemoryBase");
+                    }
+                }
+                default:
+                    throw new Exception($"Unknown OpKind for GetOperandOffset: {opKind}");
+            }
+        }
+
         private void Op_Or()
         {
-            var value1 = GetOpValue(_currentInstruction.Op0Kind);
-            var value2 = GetOpValue(_currentInstruction.Op1Kind);
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                {
-                        Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1 | value2));
-                        break;
-                }
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (destination | source));
+                    return;
+                default:
+                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
         }
 
         private void Op_Shl()
         {
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) << 1));
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) << source));
                     return;
+                default:
+                    throw new Exception($"Unsupported OpKind for SHL: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -218,8 +302,10 @@ namespace MBBSEmu.CPU
                     var baseOffset = (ushort)(Registers.BP -
                                               (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1);
                     Registers.SetValue(_currentInstruction.Op0Register,  baseOffset);
-                    break;
+                    return;
                 }
+                default:
+                    throw new Exception($"Unsupported MemoryBase for LEA: {_currentInstruction.MemoryBase}");
             }
         }
 
@@ -241,13 +327,17 @@ namespace MBBSEmu.CPU
         {
             Registers.SP = Registers.BP;
             Registers.BP = Pop();
-            Registers.SetValue(Register.CS, Pop());
-            Registers.SetValue(Register.EIP, Pop());
+        }
+
+        public void Op_retf()
+        {
+            Registers.CS = Pop();
+            Registers.IP = Pop();
         }
 
         private void Op_Stosw()
         {
-            while (Registers.CX != 0)
+            while (Registers.CX > 0)
             {
                 Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
                 Registers.DI += 2;
@@ -266,19 +356,17 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, newValue);
                     break;
                 }
-                    
                 default:
                     throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
             }
 
             Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-
         }
 
         private void Op_Xor()
         {
-            var value1 = GetOpValue(_currentInstruction.Op0Kind);
-            var value2 = GetOpValue(_currentInstruction.Op1Kind);
+            var value1 = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var value2 = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             switch (_currentInstruction.Op0Kind)
             {
@@ -371,8 +459,8 @@ namespace MBBSEmu.CPU
 
         private void Op_Cmp()
         {
-            var destination = GetOpValue(_currentInstruction.Op0Kind);
-            var source = GetOpValue(_currentInstruction.Op1Kind);
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             //Set Appropriate Flags
             if (destination == source)
@@ -394,8 +482,8 @@ namespace MBBSEmu.CPU
 
         private void Op_Add()
         {
-            ushort oldValue = 0;
-            ushort newValue = 0;
+            ushort oldValue;
+            ushort newValue;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
@@ -435,12 +523,12 @@ namespace MBBSEmu.CPU
 
         private void Op_Imul()
         {
-            var value1 = GetOpValue(_currentInstruction.Op1Kind);
-            var value2 = GetOpValue(_currentInstruction.Op2Kind);
+            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op2Kind, EnumOperandType.Source);
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1*value2));
+                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (destination * source));
                     return;
             }
         }
@@ -463,44 +551,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         private void Op_Push()
         {
-            ushort pushValue;
-            switch (_currentInstruction.Op0Kind)
-            {
-                //PUSH r16
-                case OpKind.Register:
-                    pushValue = Registers.GetValue(_currentInstruction.Op0Register);
-                    break;
-                //PUSH imm8 - PUSH imm16
-                case OpKind.Immediate8:
-                case OpKind.Immediate8to16:
-                case OpKind.Immediate16:
-                    pushValue = _currentInstruction.Immediate16;
-                    break;
-
-                //PUSH r/m16
-                case OpKind.Memory when _currentInstruction.MemorySegment == Register.DS:
-                    pushValue = BitConverter.ToUInt16(Memory.GetArray(Registers.GetValue(Register.DS),
-                        (ushort) _currentInstruction.MemoryDisplacement, 2));
-                    break;
-
-                //PUSH [bp-xx]
-                case OpKind.Memory when _currentInstruction.MemoryBase == Register.BP &&
-                                        _currentInstruction.MemorySegment == Register.SS:
-                {
-                    var offset = Registers.BP - (ushort.MaxValue - _currentInstruction.MemoryDisplacement);
-                    pushValue = Memory.GetWord(Registers.SS, (ushort) offset);
-                    break;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown PUSH: {_currentInstruction.Op0Kind}");
-            }
-
-            var newPushValue = GetOpValue(_currentInstruction.Op0Kind);
-
-            if(pushValue != newPushValue)
-                Console.Write(".");
-
-            Push(pushValue);
+            Push(GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination));
         }
 
         /// <summary>
@@ -511,129 +562,36 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 //MOV r8*,imm8
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register, _currentInstruction.Immediate8);
-                    return;
-                }
-
                 //MOV r16,imm16
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
-                {
-                    //Check for a possible relocation
-                    ushort destinationValue = 0;
-
-                    if (_currentInstruction.Immediate16 == ushort.MaxValue)
-                    {
-                        var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
-                            .FirstOrDefault(x => x.Offset == Registers.IP + 1);
-
-                        switch (relocationRecord?.TargetTypeValueTuple.Item1)
-                        {
-                            //External Property
-                            case EnumRecordsFlag.IMPORTORDINAL:
-                            {
-                                destinationValue = _invokeExternalFunctionDelegate(
-                                    relocationRecord.TargetTypeValueTuple.Item2,
-                                    relocationRecord.TargetTypeValueTuple.Item3);
-                                break;
-                            }
-                            //Internal Segment
-                            case EnumRecordsFlag.INTERNALREF:
-                                destinationValue = relocationRecord?.TargetTypeValueTuple.Item2 ?? 0;
-                                break;
-                            default:
-                                destinationValue = ushort.MaxValue;
-                                break;
-
-                        }
-
-                    }
-                    else
-                    {
-                        destinationValue = _currentInstruction.Immediate16;
-                    }
-
-                    Registers.SetValue(_currentInstruction.Op0Register, destinationValue);
-                    return;
-                }
-
                 //MOV r16, r16
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        Registers.GetValue(_currentInstruction.Op1Register));
-                    return;
-                }
-
                 //MOV AX,moffs16*
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Memory:
+                case OpKind.Register:
                 {
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        Memory.GetWord(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement));
+                    Registers.SetValue(_currentInstruction.Op0Register, GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source));
                     return;
                 }
-
-                //MOV r/m16,imm16
-                /*
-                 * The instruction in the question only uses a single constant offset so no effective address with registers.
-                 * As such, it's DS unless overridden by a prefix.
-                 */
-                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate16:
+                case OpKind.Memory:
                 {
-                    Memory.SetWord(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement,
-                        _currentInstruction.Immediate16);
-                    break;
-                }
-
-
-                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Register:
-                {
-                    ushort offset;
-                    var segment = Registers.GetValue(_currentInstruction.MemorySegment);
-
-                    //Get the Proper Memory Offset based on the specified MemoryBase
-                    switch (_currentInstruction.MemoryBase)
-                    {
-                        case Register.DS:
-                        case Register.None:
-                            offset = (ushort) _currentInstruction.MemoryDisplacement;
-                            break;
-                        case Register.BP:
-                            offset = (ushort) (Registers.BP -
-                                               (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1);
-                            break;
-                        case Register.BX:
-                            offset = Registers.BX;
-                            break;
-                        default:
-                            throw new Exception("Unknown MOV MemoryBase");
-                    }
-
                     switch (_currentInstruction.MemorySize)
                     {
+                        //MOV r/m16,imm16
                         //MOV moffs16*,AX
                         case MemorySize.UInt16:
-                            Memory.SetWord(segment, offset,
-                                (ushort) Registers.GetValue(_currentInstruction.Op1Register));
+                            Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                                GetOperandOffset(_currentInstruction.Op0Kind),
+                                GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source));
                             return;
                         //MOV moffs8*,AL
+                        //MOV moffs16*,imm8
                         case MemorySize.UInt8:
-                            Memory.SetByte(segment, offset,
-                                (byte) Registers.GetValue(_currentInstruction.Op1Register));
+                            Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                                GetOperandOffset(_currentInstruction.Op0Kind),
+                                (byte) GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source));
                             return;
                         default:
                             throw new ArgumentOutOfRangeException(
                                 $"Unsupported Memory type for MOV operation: {_currentInstruction.MemorySize}");
                     }
-                }
-
-                //MOV moffs16*,imm8
-                case OpKind.Memory when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                {
-                    Memory.SetByte(Registers.DS, (ushort) _currentInstruction.MemoryDisplacement,
-                        _currentInstruction.Immediate8);
-                    return;
                 }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown MOV: {_currentInstruction.Op0Kind}");
@@ -646,18 +604,12 @@ namespace MBBSEmu.CPU
             {
                 case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
                 {
-
-                    //We Handle this like a standard CALL function
-                    //where, we set the BP to the current SP then 
-
-                    //Set BP to the current stack pointer
-
-
                     //We push CS:IP to the stack
                     //Push the Current IP to the stack
                     Push(Registers.IP);
                     Push(Registers.CS);
 
+                    //Set BP to the current stack pointer
                     Registers.BP = Registers.SP;
 
                     //Check for a possible relocation
@@ -691,6 +643,7 @@ namespace MBBSEmu.CPU
                     //TODO -- Perform actual call
                     break;
                 }
+
                 case OpKind.NearBranch16:
                 {
                     //We push CS:IP to the stack
@@ -698,7 +651,6 @@ namespace MBBSEmu.CPU
                     Push(Registers.IP);
                     Push(Registers.CS);
                     Registers.BP = Registers.SP;
-
                     Registers.IP = _currentInstruction.FarBranch16;
                     return;
                 }
