@@ -31,6 +31,8 @@ namespace MBBSEmu.CPU
         private const ushort EXTRA_SEGMENT = 0xFE;
         private const ushort STACK_BASE = 0xFFFF;
 
+        public bool IsRunning = false;
+
         public CpuCore(InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, GetExternalMemoryValueDelegate getExternalMemoryValueDelegate)
         {
             //Setup Delegate Call   
@@ -44,28 +46,41 @@ namespace MBBSEmu.CPU
             Memory = new MemoryCore();
             Memory.AddSegment(STACK_SEGMENT);
             Memory.AddSegment(EXTRA_SEGMENT);
+
+            IsRunning = true;
+
+            Push(ushort.MaxValue);
+            Push(ushort.MaxValue);
         }
 
         public ushort Pop()
         {
-            var value = Memory.GetWord(Registers.SS, Registers.SP);
+            var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
             Registers.SP += 2;
             return value;
         }
 
         public void Push(ushort value)
         {
+            Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
             Registers.SP -= 2;
-            Memory.SetWord(Registers.SS, Registers.SP, value);
         }
 
         public void Tick()
         {
+
+            //Check for segment end
+            if (Registers.CS == ushort.MaxValue && Registers.IP == ushort.MaxValue) 
+            {
+                IsRunning = false;
+                return;
+            }
+
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
             //logger.InfoRegisters(this);
-            _logger.Debug($"{_currentInstruction.ToString()}");
+            //_logger.Debug($"{_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -140,16 +155,18 @@ namespace MBBSEmu.CPU
                     Op_Or();
                     break;
                 case Mnemonic.Retf:
-                case Mnemonic.Ret:
                     Op_retf();
-                    break;
+                    return;
+                case Mnemonic.Ret:
+                    Op_ret();
+                    return;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -331,7 +348,13 @@ namespace MBBSEmu.CPU
 
         public void Op_retf()
         {
+            Registers.IP = Pop();
             Registers.CS = Pop();
+
+        }
+
+        public void Op_ret()
+        {
             Registers.IP = Pop();
         }
 
@@ -649,8 +672,8 @@ namespace MBBSEmu.CPU
                 case OpKind.NearBranch16:
                 {
                     //We push CS:IP to the stack
-                    //Push the Current IP to the stack
-                    Push(Registers.IP);
+                    //Push the IP of the **NEXT** instruction to the stack
+                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
                     Registers.IP = _currentInstruction.FarBranch16;
                     return;
                 }

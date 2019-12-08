@@ -129,8 +129,6 @@ namespace MBBSEmu.Host
             _logger.Info(
                 $"Located Entry Table Record, _INIT_ function located in Segment {initEntryPoint.SegmentNumber}");
 
-            
-
             _cpu.Registers.CS = initEntryPoint.SegmentNumber;
             _cpu.Registers.IP = 0;
             _logger.Info($"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
@@ -140,8 +138,10 @@ namespace MBBSEmu.Host
         private void Run()
         {
             _isRunning = true;
-            while(_isRunning)
+            while(_isRunning && _cpu.IsRunning)
                 _cpu.Tick();
+
+            Console.WriteLine("Module Initialization Complete!");
         }
 
         public void Stop()

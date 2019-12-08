@@ -2,6 +2,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.Host.ExportedModules;
+using MBBSEmu.Logging;
 using MBBSEmu.Module;
 using System;
 using System.Collections.Generic;

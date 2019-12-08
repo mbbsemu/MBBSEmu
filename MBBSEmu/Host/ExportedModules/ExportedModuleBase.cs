@@ -58,7 +58,8 @@ namespace MBBSEmu.Host.ExportedModules
         /// <returns></returns>
         protected ushort GetParameter(ushort parameterOrdinal)
         {
-            return _cpu.Memory.GetWord(_cpu.Registers.SS, (ushort)(_cpu.Registers.BP + 4 + (2 * parameterOrdinal)));
+            var parameterOffset = (ushort) (_cpu.Registers.BP + 5 + (2 * parameterOrdinal));
+            return _cpu.Memory.GetWord(_cpu.Registers.SS, parameterOffset);
         }
 
         /// <summary>
