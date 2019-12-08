@@ -1,6 +1,7 @@
-﻿using MBBSEmu.Host;
-using MBBSEmu.Module;
+﻿using MBBSEmu.Module;
 using System;
+using MBBSEmu.HostProcess;
+
 namespace MBBSEmu
 {
     class Program
@@ -47,7 +48,7 @@ namespace MBBSEmu
             var module = new MbbsModule(sInputModule, sInputPath);
 
             var host = new MbbsHost(module);
-            host.Start();
+            host.Init();
             Console.ReadKey();
 
         }

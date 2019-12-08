@@ -17,5 +17,9 @@ namespace MBBSEmu.Memory
         void SetByte(ushort segment, ushort offset, byte value);
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(ushort segment, ushort offset, byte[] array);
+
+        ushort AllocateHostMemory(ushort size);
+        ushort AllocateRoutineMemorySegment();
+        void FreeRoutineMemorySegment(ushort segment);
     }
 }

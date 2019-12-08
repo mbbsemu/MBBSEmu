@@ -27,6 +27,8 @@ namespace MBBSEmu.Memory
         public readonly Dictionary<ushort, byte[]> _memorySegments;
         public readonly Dictionary<ushort, Segment> _segments;
 
+        private ushort _hostMemoryOffset = 0x0;
+
         public MemoryCore()
         {
             _decodedSegments = new Dictionary<ushort, InstructionList>();
@@ -134,6 +136,49 @@ namespace MBBSEmu.Memory
         public void SetArray(ushort segment, ushort offset, byte[] array)
         {
             Array.Copy(array, 0, _memorySegments[segment], offset, array.Length);
+        }
+
+        public ushort AllocateHostMemory(ushort size)
+        {
+            var offset = _hostMemoryOffset;
+            _hostMemoryOffset += size;
+
+#if DEBUG
+            _logger.Debug($"Allocated {size} bytes of memory in Host Memory Segment");
+#endif
+            return offset;
+        }
+
+        /// <summary>
+        ///     Allocates a new segment at the first available segment in the 0xA000-0xAFFF address space
+        /// </summary>
+        /// <returns></returns>
+        public ushort AllocateRoutineMemorySegment()
+        {
+            for (ushort i = 0x1000; i < 0x9FFF; i++)
+            {
+                if (_memorySegments.ContainsKey(i)) continue;
+
+                _memorySegments[i] = new byte[0x10000];
+                return i;
+            }
+
+            throw new OutOfMemoryException("Unable to Allocate Routine Memory - No available slots");
+        }
+
+        /// <summary>
+        ///     Releases specified segment from Routine Memory segment space
+        /// </summary>
+        /// <param name="segment"></param>
+        public void FreeRoutineMemorySegment(ushort segment)
+        {
+            if(segment < 0x1000 || segment > 0x9FFF)
+                throw new Exception($"Attempt to free Routine Memory Segment outside of Routine Memory Segment Space: {segment:X4}");
+
+            if (!_memorySegments.ContainsKey(segment))
+                throw new Exception($"Attempt to free unknown Routine Memory Segment: {segment:X4}");
+
+            _memorySegments.Remove(segment);
         }
     }
 }

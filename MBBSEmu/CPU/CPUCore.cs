@@ -16,53 +16,56 @@ namespace MBBSEmu.CPU
 
         public delegate ushort InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
-        public delegate ushort GetExternalMemoryValueDelegate(ushort segment, ushort offset);
-
         private readonly InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
-        private readonly GetExternalMemoryValueDelegate _getExternalMemoryValueDelegate;
 
         public readonly CpuRegisters Registers;
-        public readonly IMemoryCore Memory;
+        private readonly IMemoryCore _memory;
 
         private Instruction _currentInstruction;
 
 
-        private const ushort STACK_SEGMENT = 0xFF;
-        private const ushort EXTRA_SEGMENT = 0xFE;
+        private readonly ushort STACK_SEGMENT;
+        private readonly ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
 
-        public bool IsRunning = false;
+        public bool IsRunning;
 
-        public CpuCore(InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, GetExternalMemoryValueDelegate getExternalMemoryValueDelegate)
+        public CpuCore(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
+            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
             //Setup Delegate Call   
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
-            _getExternalMemoryValueDelegate = getExternalMemoryValueDelegate;
-
-            //Setup Registers
-            Registers = new CpuRegisters {BP = STACK_BASE, SP = STACK_BASE, SS = STACK_SEGMENT, ES = EXTRA_SEGMENT};
 
             //Setup Memory Space
-            Memory = new MemoryCore();
-            Memory.AddSegment(STACK_SEGMENT);
-            Memory.AddSegment(EXTRA_SEGMENT);
+            _memory = memoryCore;
+            STACK_SEGMENT = _memory.AllocateRoutineMemorySegment();
+            EXTRA_SEGMENT = _memory.AllocateRoutineMemorySegment();
+
+            //Setup Registers
+            Registers = cpuRegisters;
+            Registers.BP = STACK_BASE;
+            Registers.SP = STACK_BASE;
+            Registers.SS = STACK_SEGMENT;
+            Registers.ES = EXTRA_SEGMENT;
 
             IsRunning = true;
 
+            //These two values are the final values popped off on the routine's last RETF
+            //Seeing a ushort.max for CS and IP tells the routine it's now done
             Push(ushort.MaxValue);
             Push(ushort.MaxValue);
         }
 
         public ushort Pop()
         {
-            var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
+            var value = _memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
             Registers.SP += 2;
             return value;
         }
 
         public void Push(ushort value)
         {
-            Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
+            _memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
             Registers.SP -= 2;
         }
 
@@ -76,11 +79,11 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
+            _currentInstruction = _memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
             //logger.InfoRegisters(this);
-            //_logger.Debug($"{_currentInstruction.ToString()}");
+            _logger.Debug($"{_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -198,7 +201,7 @@ namespace MBBSEmu.CPU
                     if (_currentInstruction.Immediate16 != ushort.MaxValue) return _currentInstruction.Immediate16;
 
                     //Check for Relocation Records
-                    var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
+                    var relocationRecord = _memory.GetSegment(Registers.CS).RelocationRecords
                         .FirstOrDefault(x => x.Offset == Registers.IP + 1);
 
                     //Actual ushort.MaxValue? Weird ¯\_(ツ)_/¯
@@ -227,13 +230,9 @@ namespace MBBSEmu.CPU
                 {
                     var offset = GetOperandOffset(opKind);
 
-                    //Anything in the ES segment is MOST LIKELY an external segment, so check that
-                    if (_currentInstruction.MemorySegment == Register.ES && Registers.GetValue(Register.ES) > 0xFF)
-                        return _getExternalMemoryValueDelegate(Registers.ES, offset);
-
                     return _currentInstruction.MemorySize == MemorySize.UInt16
-                        ? Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
-                        : Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                        ? _memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
+                        : _memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                 }
                 
                 default:
@@ -362,7 +361,7 @@ namespace MBBSEmu.CPU
         {
             while (Registers.CX > 0)
             {
-                Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
+                _memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
                 Registers.DI += 2;
                 Registers.CX -= 2;
             }
@@ -600,14 +599,14 @@ namespace MBBSEmu.CPU
                         //MOV r/m16,imm16
                         //MOV moffs16*,AX
                         case MemorySize.UInt16:
-                            Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            _memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
                                 GetOperandOffset(_currentInstruction.Op0Kind),
                                 GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source));
                             return;
                         //MOV moffs8*,AL
                         //MOV moffs16*,imm8
                         case MemorySize.UInt8:
-                            Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                            _memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
                                 GetOperandOffset(_currentInstruction.Op0Kind),
                                 (byte) GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source));
                             return;
@@ -635,7 +634,7 @@ namespace MBBSEmu.CPU
                     int destinationValue;
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
-                        var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
+                        var relocationRecord = _memory.GetSegment(Registers.CS).RelocationRecords
                             .FirstOrDefault(x => x.Offset == Registers.IP + 1);
 
                         if (relocationRecord == null)

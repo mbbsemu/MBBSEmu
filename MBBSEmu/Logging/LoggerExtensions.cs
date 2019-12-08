@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.CPU;
 using NLog;
 using System.Text;
+using MBBSEmu.Memory;
 
 namespace MBBSEmu.Logging
 {
@@ -77,7 +78,7 @@ namespace MBBSEmu.Logging
             }
         }
 
-        public static void InfoStack(this Logger l, CpuCore cpu)
+        public static void InfoStack(this Logger l, CpuCore cpu, MemoryCore memory)
         {
             var output = new StringBuilder();
             l.Info("------------------------------------------");
@@ -98,7 +99,7 @@ namespace MBBSEmu.Logging
                     output.Append("        ");
 
                 output.Append(
-                    $"{i:X4} [ {cpu.Memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):D5} 0x{cpu.Memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):X4} ] {i-1:X4}");
+                    $"{i:X4} [ {memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):D5} 0x{memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):X4} ] {i-1:X4}");
 
                 l.Info(output);
                 output.Clear();

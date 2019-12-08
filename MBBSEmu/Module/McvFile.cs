@@ -1,9 +1,9 @@
-﻿using System;
+﻿using MBBSEmu.Logging;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using MBBSEmu.Logging;
-using NLog;
 
 namespace MBBSEmu.Module
 {
