@@ -1,23 +1,23 @@
-﻿using System;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Attributes;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using MBBSEmu.HostProcess.Attributes;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
     /// <summary>
     ///     Base Class for Exported MajorBBS Routines
     /// </summary>
-    public abstract class ExportedModuleBase
+    public abstract class ExportedModuleBase : IDisposable
     {
         public delegate ushort ExportedFunctionDelegate();
 
@@ -139,6 +139,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
             }
             return formatParameters;
+        }
+
+        public void Dispose()
+        {
+#if DEBUG
+            _logger.Info($"Freeing Routine Memory: {RoutineMemorySegment:X4}");
+#endif
+
+            Memory.FreeRoutineMemorySegment(RoutineMemorySegment);
         }
     }
 }

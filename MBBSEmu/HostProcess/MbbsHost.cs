@@ -73,8 +73,8 @@ namespace MBBSEmu.HostProcess
             var _cpuRegisters = new CpuRegisters()
                 {CS = _module.EntryPoints["_INIT_"].Segment, IP = _module.EntryPoints["_INIT_"].Offset};
 
-            var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
-            var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
+            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
+            using var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
 
             var _cpu = new CpuCore(_memory, _cpuRegisters, (delegate(ushort ordinal, ushort functionOrdinal)
             {

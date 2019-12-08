@@ -22,22 +22,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase
     {
+        private static readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
+        private static McvFile _currentMcvFile;
+        private static McvFile _previousMcvFile;
 
-        private readonly PointerDictionary<McvFile> _mcvFiles;
-        private McvFile _currentMcvFile;
-        private McvFile _previousMcvFile;
-
-        private readonly PointerDictionary<BtrieveFile> _btrieveFiles;
-        private BtrieveFile _currentBtrieveFile;
-        private BtrieveFile _previousBtrieveFile;
+        private static readonly PointerDictionary<BtrieveFile> _btrieveFiles = new PointerDictionary<BtrieveFile>();
+        private static BtrieveFile _currentBtrieveFile;
+        private static BtrieveFile _previousBtrieveFile;
 
         private readonly MemoryStream outputBuffer;
 
         public Majorbbs(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module) : base(memoryCore, cpuRegisters, module)
         {
-            _mcvFiles = new PointerDictionary<McvFile>();
             outputBuffer = new MemoryStream();
-            _btrieveFiles = new PointerDictionary<BtrieveFile>();
 
             //Setup the user struct for *usrptr which holds the current user
             AllocateUser();
