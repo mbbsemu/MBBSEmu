@@ -141,7 +141,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return formatParameters;
         }
 
-        public void Dispose()
+        protected virtual void Dispose(bool managedAndNative)
         {
 #if DEBUG
             _logger.Info($"Freeing Routine Memory: {RoutineMemorySegment:X4}");
@@ -149,5 +149,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Memory.FreeRoutineMemorySegment(RoutineMemorySegment);
         }
+
+        public void Dispose() => Dispose(true);
     }
 }
