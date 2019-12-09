@@ -150,6 +150,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Memory.FreeRoutineMemorySegment(RoutineMemorySegment);
         }
 
-        public void Dispose() => Dispose(true);
+        public void Dispose()
+        {
+            Dispose(true);
+        }
     }
 }

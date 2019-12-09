@@ -47,5 +47,25 @@ namespace MBBSEmu.Extensions
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ClearFlag(this ushort b, ushort bitMask) => (ushort)(b & ~bitMask);
+
+        /// <summary>
+        ///     Gets the Parity for the specified ushort
+        /// </summary>
+        /// <param name="b"></param>
+        /// <returns>1 == Even, 0 == Odd</returns>
+        public static byte Parity(this ushort b)
+        {
+            var setBits = 0;
+            for (var i = 0; i <= 15; i++)
+            {
+                if (b.IsBitSet(i))
+                    setBits++;
+            }
+
+            if (setBits == 0)
+                return 0;
+
+            return setBits % 2 == 0 ? (byte) 1 : (byte) 0;
+        }
     }
 }

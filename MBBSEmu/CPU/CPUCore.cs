@@ -82,33 +82,19 @@ namespace MBBSEmu.CPU
             _currentInstruction = _memory.GetInstruction(Registers.CS, Registers.IP);
 
 #if DEBUG
-            //logger.InfoRegisters(this);
-            _logger.Debug($"{_currentInstruction.ToString()}");
+            //_logger.InfoRegisters(this);
+            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
             {
-                case Mnemonic.Add:
-                    Op_Add();
-                    break;
-                case Mnemonic.Imul:
-                    Op_Imul();
-                    break;
-                case Mnemonic.Push:
-                    Op_Push();
-                    break;
-                case Mnemonic.Pop:
-                    Op_Pop();
-                    break;
-                case Mnemonic.Mov:
-                    Op_Mov();
-                    break;
-                case Mnemonic.Call:
-                    Op_Call();
+                //Instructions that will set the IP -- we just return
+                case Mnemonic.Retf:
+                    Op_retf();
                     return;
-                case Mnemonic.Cmp:
-                    Op_Cmp();
-                    break;
+                case Mnemonic.Ret:
+                    Op_ret();
+                    return;
                 case Mnemonic.Je:
                     Op_Je();
                     return;
@@ -131,6 +117,32 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jbe:
                     Op_Jbe();
                     return;
+                case Mnemonic.Call:
+                    Op_Call();
+                    return;
+
+                //Instructions that do not set IP -- we'll just increment
+                case Mnemonic.Add:
+                    Op_Add();
+                    break;
+                case Mnemonic.And:
+                    Op_And();
+                    break;
+                case Mnemonic.Imul:
+                    Op_Imul();
+                    break;
+                case Mnemonic.Push:
+                    Op_Push();
+                    break;
+                case Mnemonic.Pop:
+                    Op_Pop();
+                    break;
+                case Mnemonic.Mov:
+                    Op_Mov();
+                    break;
+                case Mnemonic.Cmp:
+                    Op_Cmp();
+                    break;
                 case Mnemonic.Xor:
                     Op_Xor();
                     break;
@@ -157,12 +169,10 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Or:
                     Op_Or();
                     break;
-                case Mnemonic.Retf:
-                    Op_retf();
-                    return;
-                case Mnemonic.Ret:
-                    Op_ret();
-                    return;
+                case Mnemonic.Les:
+                    Op_Les();
+                    break;
+
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -284,30 +294,76 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort) (destination | source);
 
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (destination | source));
-                    return;
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
                 default:
                     throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
+
+            //Clear Flags
+            Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+
+            //Set Conditional Flags
+            Registers.F = result == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            Registers.F = result.Parity() == 1 ?  Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
         }
 
         private void Op_Shl()
         {
+            var destination = Registers.GetValue(_currentInstruction.Op0Register);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            ushort finalResult;
+            switch (_currentInstruction.Op0Register.GetSize())
+            {
+                case 1: //8-Bit
+                    Registers.F = destination.IsBitSet(7) ? Registers.F.SetFlag((ushort)EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                    var byteResult = (byte)(destination << source);
+                    Registers.F = byteResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                    Registers.F = byteResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                    Registers.F = byteResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                    Registers.F = byteResult.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+                    finalResult = byteResult;
+                    break;
+                case 2: //16-bit
+                    Registers.F = destination.IsBitSet(15) ? Registers.F.SetFlag((ushort)EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                    var ushortResult = (ushort)(destination << source);
+                    Registers.F = ushortResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                    Registers.F = ushortResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                    Registers.F = ushortResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                    Registers.F = ushortResult.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+                    finalResult = ushortResult;
+                    break;
+                default:
+                    throw new Exception($"Unsupported Op0Register Size for SHL: {_currentInstruction.Op0Register.GetSize()}");
+            }
 
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)(Registers.GetValue(_currentInstruction.Op0Register) << source));
-                    return;
+                    Registers.SetValue(_currentInstruction.Op0Register, finalResult);
+                    break;
                 default:
                     throw new Exception($"Unsupported OpKind for SHL: {_currentInstruction.Op0Kind}");
             }
         }
+
+        private void Op_Les()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op1Kind);
+            var segment = Registers.GetValue(_currentInstruction.MemorySegment);
+
+            Registers.SetValue(_currentInstruction.Op0Register, offset);
+            Registers.ES = segment;
+        }
+
 
         private void Op_Lea()
         {
@@ -385,19 +441,54 @@ namespace MBBSEmu.CPU
             Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
 
-        private void Op_Xor()
+        private void Op_And()
         {
-            var value1 = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var value2 = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort)(source & destination);
 
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (value1 ^ value2));
-                    return;
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Uknown XOR: {_currentInstruction.Op0Kind}");
             }
+
+            //Clear Flags
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+
+            //Set Conditional Flags
+            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            Registers.F = result.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+        }
+
+        private void Op_Xor()
+        {
+            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort) (source ^ destination);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown XOR: {_currentInstruction.Op0Kind}");
+            }
+
+            //Clear Flags
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+
+            //Set Conditional Flags
+            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            Registers.F = result.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
         }
 
         private void Op_Jbe()

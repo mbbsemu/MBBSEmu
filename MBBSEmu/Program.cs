@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Module;
 using System;
 using MBBSEmu.HostProcess;
+using MBBSEmu.UI;
 
 namespace MBBSEmu
 {
@@ -49,8 +50,9 @@ namespace MBBSEmu
 
             var host = new MbbsHost(module);
             host.Init();
-            Console.ReadKey();
-
+            host.Run("sttrou");
+            //var textUI = new TextGUI();
+            //textUI.Run();
         }
     }
 }

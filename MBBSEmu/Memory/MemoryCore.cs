@@ -78,7 +78,7 @@ namespace MBBSEmu.Memory
 
         public Segment GetSegment(ushort segmentNumber) => _segments[segmentNumber];
 
-        public bool HasSegment(ushort segmentNumber) => _segments.ContainsKey(segmentNumber);
+        public bool HasSegment(ushort segmentNumber) => _memorySegments.ContainsKey(segmentNumber);
 
         public Instruction GetInstruction(ushort segment, int instructionPointer)
         {

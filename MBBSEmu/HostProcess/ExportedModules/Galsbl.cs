@@ -15,7 +15,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
     {
         public Galsbl(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module) : base(memoryCore, cpuRegisters, module)
         {
-            Memory.AddSegment((ushort) EnumHostSegments.Bturno);
+            if(!Memory.HasSegment((ushort)EnumHostSegments.Bturno))
+                Memory.AddSegment((ushort) EnumHostSegments.Bturno);
         }
 
         /// <summary>

@@ -97,6 +97,38 @@ namespace MBBSEmu.HostProcess
                 _cpu.Tick();
         }
 
+        public void Run(string routineName)
+        {
+            if(!_module.EntryPoints.ContainsKey(routineName))
+                throw new Exception($"Attempted to execute unknown Routine name: {routineName}");
+
+            _logger.Info($"Running {routineName}...");
+
+            var _cpuRegisters = new CpuRegisters()
+                { CS = _module.EntryPoints[routineName].Segment, IP = _module.EntryPoints[routineName].Offset };
+
+            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
+            using var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
+
+            var _cpu = new CpuCore(_memory, _cpuRegisters, delegate (ushort ordinal, ushort functionOrdinal)
+            {
+                var importedModuleName =
+                    _module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
+
+                switch (importedModuleName)
+                {
+                    case "MAJORBBS":
+                        return majorbbsHostFunctions.ExportedFunctions[functionOrdinal]();
+                    case "GALGSBL":
+                        return galsblHostFunctions.ExportedFunctions[functionOrdinal]();
+                    default:
+                        throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
+                }
+            });
+            while (_cpu.IsRunning)
+                _cpu.Tick();
+        }
+
         /*
         public bool VerifyImportedFunctions()
         {

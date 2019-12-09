@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using SQLitePCL;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -37,7 +38,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             outputBuffer = new MemoryStream();
 
             //Setup the user struct for *usrptr which holds the current user
-            AllocateUser();
+            if(!Memory.HasSegment((ushort)EnumHostSegments.User))
+                AllocateUser();
         }
 
 
@@ -1049,6 +1051,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             _previousMcvFile = _currentMcvFile;
             _currentMcvFile = _mcvFiles[mcvFileOffset];
+
+#if DEBUG
+            _logger.Info($"Set current MCV File: {_mcvFiles[mcvFileOffset].FileName}");
+#endif
 
             return 0;
         }

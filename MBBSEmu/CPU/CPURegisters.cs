@@ -321,5 +321,40 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);
             }
         }
+
+        public byte GetSize(Register register)
+        {
+            switch (register)
+            {
+                
+                case Register.AL:
+                case Register.AH:
+                case Register.BL:
+                case Register.BH:
+                case Register.CL:
+                case Register.CH:
+                case Register.DL:
+                case Register.DH:
+                    return 8;
+
+                case Register.AX:
+                case Register.BX:
+                case Register.CX:
+                case Register.DX:
+                case Register.SP:
+                case Register.BP:
+                case Register.SI:
+                case Register.DI:
+                case Register.ES:
+                case Register.CS:
+                case Register.SS:
+                case Register.DS:
+                case Register.EIP:
+                    return 16;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
+            }
+        }
     }
 }
