@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using Iced.Intel;
+using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using NLog;
 
@@ -355,6 +358,21 @@ namespace MBBSEmu.CPU
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);
             }
+        }
+
+        public void SetFlag(EnumFlags flag)
+        {
+            F = F.SetFlag((ushort) flag);
+        }
+
+        public void ClearFlag(EnumFlags flag)
+        {
+            F = F.ClearFlag((ushort) flag);
+        }
+
+        public bool IsFlagSet(EnumFlags flag)
+        {
+            return F.IsFlagSet((ushort) flag);
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.CPU;
 
 namespace MBBSEmu.Extensions
 {
@@ -52,11 +53,38 @@ namespace MBBSEmu.Extensions
         public static byte RemoveFlag(this byte b, byte bitMask) => (byte)(b & ~bitMask);
 
         /// <summary>
+        ///     Returns if the specified flag is set in the byte
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFlagSet(this byte b, EnumFlags flag) => (b & (ushort)flag) != 0;
+
+        /// <summary>
+        ///     Sets the specified bitmask to for the specified bits
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte SetFlag(this byte b, EnumFlags flag) => (byte)(b | (ushort)flag);
+
+        /// <summary>
+        ///     Sets the specified bitmask to 0 for the specified bits
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static byte RemoveFlag(this byte b, EnumFlags flag) => (byte)(b & ~(ushort)flag);
+
+        /// <summary>
         ///     Gets the Parity for the specified byte
         /// </summary>
         /// <param name="b"></param>
         /// <returns>1 == Even, 0 == Odd</returns>
-        public static byte Parity(this byte b)
+        public static bool Parity(this byte b)
         {
             var setBits = 0;
             for (var i = 0; i <= 7; i++)
@@ -65,10 +93,7 @@ namespace MBBSEmu.Extensions
                     setBits++;
             }
 
-            if (setBits == 0)
-                return 0;
-
-            return setBits % 2 == 0 ? (byte)1 : (byte)0;
+            return setBits != 0 && setBits % 2 == 0;
         }
     }
 }

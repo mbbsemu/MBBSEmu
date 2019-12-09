@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using MBBSEmu.CPU;
 
 namespace MBBSEmu.Extensions
 {
@@ -31,6 +32,15 @@ namespace MBBSEmu.Extensions
         public static bool IsFlagSet(this ushort b, ushort bitMask) => (b & bitMask) != 0;
 
         /// <summary>
+        ///     Returns if the specified flag is set in the byte
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsFlagSet(this ushort b, EnumFlags flag) => (b & (ushort)flag) != 0;
+
+        /// <summary>
         ///     Sets the specified bitmask to for the specified bits
         /// </summary>
         /// <param name="b"></param>
@@ -38,6 +48,15 @@ namespace MBBSEmu.Extensions
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort SetFlag(this ushort b, ushort bitMask) => (ushort)(b | bitMask);
+
+        /// <summary>
+        ///     Sets the specified bitmask to for the specified bits
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ushort SetFlag(this ushort b, EnumFlags flag) => (ushort)(b | (ushort)flag);
 
         /// <summary>
         ///     Sets the specified bitmask to 0 for the specified bits
@@ -49,23 +68,32 @@ namespace MBBSEmu.Extensions
         public static ushort ClearFlag(this ushort b, ushort bitMask) => (ushort)(b & ~bitMask);
 
         /// <summary>
-        ///     Gets the Parity for the specified ushort
+        ///     Sets the specified bitmask to 0 for the specified bits
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ushort ClearFlag(this ushort b, EnumFlags flag) => (ushort)(b & ~(ushort)flag);
+
+        /// <summary>
+        ///     Gets the Parity for the specified byte
+        ///
+        ///     On x86, even if the value is 16-bits, parity is only calculated on the least significant
+        ///     8 bits.
         /// </summary>
         /// <param name="b"></param>
         /// <returns>1 == Even, 0 == Odd</returns>
-        public static byte Parity(this ushort b)
+        public static bool Parity(this ushort b)
         {
             var setBits = 0;
-            for (var i = 0; i <= 15; i++)
+            for (var i = 0; i <= 7; i++)
             {
                 if (b.IsBitSet(i))
                     setBits++;
             }
 
-            if (setBits == 0)
-                return 0;
-
-            return setBits % 2 == 0 ? (byte) 1 : (byte) 0;
+            return setBits != 0 && setBits % 2 == 0;
         }
     }
 }

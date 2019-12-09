@@ -105,6 +105,8 @@ namespace MBBSEmu.CPU
                     Op_Jmp();
                     return;
                 case Mnemonic.Jb:
+                    Op_Jb();
+                    return;
                 case Mnemonic.Jl:
                     Op_Jl();
                     return;
@@ -179,7 +181,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            //_logger.InfoRegisters(this);
+            _logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -311,7 +313,7 @@ namespace MBBSEmu.CPU
 
             //Set Conditional Flags
             Registers.F = result == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() == 1 ?  Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.Parity() ?  Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
             Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
         }
 
@@ -324,21 +326,21 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Register.GetSize())
             {
                 case 1: //8-Bit
-                    Registers.F = destination.IsBitSet(7) ? Registers.F.SetFlag((ushort)EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                    Registers.F = destination.IsBitSet(7) ? Registers.F.SetFlag(EnumFlags.CF) : Registers.F.ClearFlag(EnumFlags.CF);
                     var byteResult = (byte)(destination << source);
-                    Registers.F = byteResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                    Registers.F = !byteResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
                     Registers.F = byteResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
                     Registers.F = byteResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                    Registers.F = byteResult.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+                    Registers.F = byteResult.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
                     finalResult = byteResult;
                     break;
                 case 2: //16-bit
                     Registers.F = destination.IsBitSet(15) ? Registers.F.SetFlag((ushort)EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
                     var ushortResult = (ushort)(destination << source);
-                    Registers.F = ushortResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                    Registers.F = !ushortResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
                     Registers.F = ushortResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
                     Registers.F = ushortResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                    Registers.F = ushortResult.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+                    Registers.F = ushortResult.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
                     finalResult = ushortResult;
                     break;
                 default:
@@ -462,7 +464,7 @@ namespace MBBSEmu.CPU
 
             //Set Conditional Flags
             Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
             Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
         }
 
@@ -487,7 +489,7 @@ namespace MBBSEmu.CPU
 
             //Set Conditional Flags
             Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() == 1 ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
+            Registers.F = result.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
             Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
         }
 
@@ -510,8 +512,9 @@ namespace MBBSEmu.CPU
 
         public void Op_Jle()
         {
-            if ((!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
-                || (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
+            //ZF == 1 OR SF <> OF
+            if ((Registers.IsFlagSet(EnumFlags.SF) != Registers.IsFlagSet(EnumFlags.OF))
+                || Registers.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -523,8 +526,8 @@ namespace MBBSEmu.CPU
 
         private void Op_Jge()
         {
-            if ((!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF))
-                 || (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && !Registers.F.IsFlagSet((ushort)EnumFlags.CF)))
+            // SF == OF
+            if (Registers.IsFlagSet(EnumFlags.SF) == Registers.IsFlagSet(EnumFlags.OF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -536,7 +539,8 @@ namespace MBBSEmu.CPU
 
         private void Op_Jne()
         {
-            if (!Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            //ZF == 0
+            if (!Registers.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -548,7 +552,8 @@ namespace MBBSEmu.CPU
 
         private void Op_Je()
         {
-            if (Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            // ZF == 1
+            if (Registers.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -560,7 +565,21 @@ namespace MBBSEmu.CPU
 
         private void Op_Jl()
         {
-            if (!Registers.F.IsFlagSet((ushort) EnumFlags.ZF) && Registers.F.IsFlagSet((ushort) EnumFlags.CF))
+            //SF <> OF
+            if (Registers.IsFlagSet(EnumFlags.SF) != Registers.IsFlagSet(EnumFlags.OF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
+        }
+
+        private void Op_Jb()
+        {
+            //CF == 1
+            if (Registers.IsFlagSet(EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -572,24 +591,148 @@ namespace MBBSEmu.CPU
 
         private void Op_Cmp()
         {
-            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
-            //Set Appropriate Flags
-            if (destination == source)
+            //Get Comparison Size
+            int comparisonSize;
+            switch (_currentInstruction.Op0Kind)
             {
-                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                case OpKind.Register:
+                    comparisonSize = _currentInstruction.Op0Register.GetSize();
+                    break;
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt8:
+                    comparisonSize = 1;
+                    break;
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt16:
+                    comparisonSize = 2;
+                    break;
+                default:
+                    throw new Exception("Unknown Size for CMP operation");
             }
-            else if (destination < source)
+
+            //8-Bit CMP
+            if (comparisonSize == 1)
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                var destination = (byte)GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+                var source = (byte)GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+                unchecked
+                {
+                    var result = (byte) (destination - (sbyte) source);
+
+                    _logger.Info($"CMP: {destination}-{(sbyte)source} == {result}");
+                    
+                    //ZF
+                    if (result == 0)
+                    {
+                        Registers.SetFlag(EnumFlags.ZF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.ZF);
+                    }
+
+                    //CF
+                    if (source > destination)
+                    {
+                        Registers.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.CF);
+                    }
+
+                    //OF
+                    if (result.IsNegative() != destination.IsNegative())
+                    {
+                        Registers.SetFlag(EnumFlags.OF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.OF);
+                    }
+
+                    //SF
+                    if (result.IsNegative())
+                    {
+                        Registers.SetFlag(EnumFlags.SF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.SF);
+                    }
+
+                    //PF
+                    if (result.Parity())
+                    {
+                        Registers.SetFlag(EnumFlags.PF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.PF);
+                    }
+                }
             }
-            else if (destination > source)
+
+            //16-bit
+            if (comparisonSize == 2)
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+                var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+                
+                unchecked
+                {
+                    var result = (ushort)(destination - (short)source);
+                    _logger.Info($"CMP: {destination}-{(short)source} == {result}");
+                    //ZF
+                    if (result == 0)
+                    {
+                        Registers.SetFlag(EnumFlags.ZF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.ZF);
+                    }
+
+                    //CF
+                    if (source > destination)
+                    {
+                        Registers.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.CF);
+                    }
+
+                    //OF
+                    if (result.IsNegative() != destination.IsNegative())
+                    {
+                        Registers.SetFlag(EnumFlags.OF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.OF);
+                    }
+
+                    //SF
+                    if (result.IsNegative())
+                    {
+                        Registers.SetFlag(EnumFlags.SF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.SF);
+                    }
+
+                    //PF
+                    if (result.Parity())
+                    {
+                        Registers.SetFlag(EnumFlags.PF);
+                    }
+                    else
+                    {
+                        Registers.ClearFlag(EnumFlags.PF);
+                    }
+                }
             }
         }
 
@@ -633,6 +776,8 @@ namespace MBBSEmu.CPU
             Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
             Registers.F = oldValue >> 15 != newValue >> 15 ? Registers.F.SetFlag((ushort) EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
         }
+
+
 
         private void Op_Imul()
         {
