@@ -111,5 +111,34 @@ namespace MBBSEmu.Logging
                 output.Clear();
             }
         }
+
+        public static void InfoMemoryString(this Logger l, IMemoryCore memory, ushort segment, ushort offset)
+        {
+            /*
+             *            01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+             * _SEG:_OFF [ T  E  S  T        T  E  S  T     T  E  S  T]
+             *
+             */
+
+
+            var sbOutput = new StringBuilder();
+            sbOutput.Append("           ");
+            //Print Header
+            for (int i = 0; i < 0xF; i++)
+            {
+                sbOutput.Append($" {(byte)offset + i:X1}");
+            }
+            l.Info(sbOutput);
+            sbOutput.Clear();
+
+            sbOutput.Append($"{segment:X4}:{offset:X4} [");
+            for (int i = 0; i < 0xF; i++)
+            {
+                sbOutput.Append($"  {(char)memory.GetByte(segment, (ushort) (offset+i))}");
+            }
+
+            sbOutput.Append("]");
+            l.Info(sbOutput);
+        }
     }
 }

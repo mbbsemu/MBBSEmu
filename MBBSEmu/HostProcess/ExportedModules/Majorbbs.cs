@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Logging;
 using SQLitePCL;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -596,6 +597,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+            
 #endif
             return 0;
         }
