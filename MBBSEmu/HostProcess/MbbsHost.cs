@@ -78,17 +78,27 @@ namespace MBBSEmu.HostProcess
 
             var _cpu = new CpuCore(_memory, _cpuRegisters, (delegate(ushort ordinal, ushort functionOrdinal)
             {
-                var importedModuleName =
-                    _module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
-
-                switch (importedModuleName)
+                try
                 {
-                    case "MAJORBBS":
-                        return majorbbsHostFunctions.ExportedFunctions[functionOrdinal]();
-                    case "GALGSBL":
-                        return galsblHostFunctions.ExportedFunctions[functionOrdinal]();
-                    default:
-                        throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
+
+
+                    var importedModuleName =
+                        _module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
+
+                    switch (importedModuleName)
+                    {
+                        case "MAJORBBS":
+                            return majorbbsHostFunctions.ExportedFunctions[functionOrdinal]();
+                        case "GALGSBL":
+                            return galsblHostFunctions.ExportedFunctions[functionOrdinal]();
+                        default:
+                            throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.Fatal(e);
+                    throw;
                 }
             }));
 
