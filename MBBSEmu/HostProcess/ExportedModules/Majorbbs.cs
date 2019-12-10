@@ -540,7 +540,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputValue = Encoding.ASCII.GetString(inputBuffer.ToArray());
 
             if (!int.TryParse(inputValue, out var outputValue))
-                throw new InvalidCastException($"atol(): Unable to cast string value located at {sourceSegment:X4}:{sourceOffset:X4} to long");
+            {
+                /*
+                 * Unsuccessful parsing returns a 0 value
+                 * More info: http://www.cplusplus.com/reference/cstdlib/atol/
+                 */
+#if DEBUG
+                _logger.Warn($"atol(): Unable to cast string value located at {sourceSegment:X4}:{sourceOffset:X4} to long");
+#endif
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return 0;
+            }
+                
 
 #if DEBUG
             _logger.Info($"Cast {inputValue} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
