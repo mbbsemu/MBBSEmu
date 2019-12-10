@@ -278,7 +278,7 @@ namespace MBBSEmu.CPU
                                              (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1) +
                                              Registers.SI);
                         case Register.BX when _currentInstruction.MemoryIndex == Register.None:
-                            return Registers.BX;
+                            return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement);
                         case Register.SI when _currentInstruction.MemoryIndex == Register.None:
                             return Registers.SI;
                             case Register.DI when _currentInstruction.MemoryIndex == Register.None:
