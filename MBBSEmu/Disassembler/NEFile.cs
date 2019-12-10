@@ -33,7 +33,7 @@ namespace MBBSEmu.Disassembler
         {
             FileContent = File.ReadAllBytes(file);
             var f = new FileInfo(file);
-            Path = f.DirectoryName + "\\";
+            Path = f.DirectoryName + System.IO.Path.DirectorySeparatorChar;
             FileName = f.Name;
             Load();
         }

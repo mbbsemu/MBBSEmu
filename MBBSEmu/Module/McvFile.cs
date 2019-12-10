@@ -21,8 +21,8 @@ namespace MBBSEmu.Module
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
-            if (!path.EndsWith(@"\"))
-                path += @"\";
+            if (!path.EndsWith(Path.DirectorySeparatorChar))
+                path += Path.DirectorySeparatorChar;
             FileName = fileName;
 
 #if DEBUG

@@ -39,13 +39,15 @@ namespace MBBSEmu.Module
         public MbbsModule(string module, string path = "")
         {
             ModuleIdentifier = module;
-            ModulePath = path;
 
             //Sanitize Path
             if (string.IsNullOrEmpty(ModulePath))
                 path = Directory.GetCurrentDirectory();
-            if (!path.EndsWith(@"\"))
-                path += @"\";
+
+            if (!path.EndsWith(Path.DirectorySeparatorChar))
+                path += Path.DirectorySeparatorChar;
+
+            ModulePath = path;
 
             if (!System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
                 throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");

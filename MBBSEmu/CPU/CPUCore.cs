@@ -713,8 +713,8 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte) (destination - (sbyte) source);
 
-                _logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
-
+                //_logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
+                
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.CF, destination: destination, source: source);
                 Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
@@ -731,7 +731,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort) (destination - (short) source);
-                _logger.Info($"CMP: {destination}-{(short) source} == {result}");
+                //_logger.Info($"CMP: {destination}-{(short) source} == {result}");
 
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.CF, destination: destination, source: source);

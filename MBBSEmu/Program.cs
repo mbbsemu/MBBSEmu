@@ -50,7 +50,7 @@ namespace MBBSEmu
 
             var host = new MbbsHost(module);
             host.Init();
-            host.Run("sttrou");
+            //host.Run("sttrou");
             //var textUI = new TextGUI();
             //textUI.Run();
         }
