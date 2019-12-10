@@ -29,7 +29,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "_BTURNO", Ordinal = 72)]
         public ushort bturno()
         {
-            const string registrationNumber = "12345678\0";
+            const string registrationNumber = "97771457\0";
             Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.ASCII.GetBytes(registrationNumber));
 
             return (ushort) EnumHostSegments.Bturno;

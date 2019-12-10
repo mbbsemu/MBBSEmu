@@ -272,10 +272,10 @@ namespace MBBSEmu.CPU
                             return (ushort) _currentInstruction.MemoryDisplacement;
                         case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                             return (ushort) (Registers.BP -
-                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1);
+                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
                         case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
                             return (ushort) (Registers.BP -
-                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1 +
+                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1) +
                                              Registers.SI);
                         case Register.BX when _currentInstruction.MemoryIndex == Register.None:
                             return Registers.BX;
@@ -298,50 +298,76 @@ namespace MBBSEmu.CPU
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var result = (ushort) (destination | source);
 
+            var operationSize = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
                     Registers.SetValue(_currentInstruction.Op0Register, result);
+                    operationSize = _currentInstruction.Op0Register.GetSize();
                     break;
                 default:
                     throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F.ClearFlag(EnumFlags.CF);
+            Registers.F.ClearFlag(EnumFlags.OF);
 
             //Set Conditional Flags
-            Registers.F = result == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() ?  Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
-            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unsupported OR operation size: {operationSize}");
+            }
         }
 
         private void Op_Shl()
         {
             var destination = Registers.GetValue(_currentInstruction.Op0Register);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort) (destination << source);
 
-            ushort finalResult;
             switch (_currentInstruction.Op0Register.GetSize())
             {
                 case 1: //8-Bit
-                    Registers.F = destination.IsBitSet(7) ? Registers.F.SetFlag(EnumFlags.CF) : Registers.F.ClearFlag(EnumFlags.CF);
-                    var byteResult = (byte)(destination << source);
-                    Registers.F = !byteResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
-                    Registers.F = byteResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                    Registers.F = byteResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                    Registers.F = byteResult.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
-                    finalResult = byteResult;
+
+                    //Only Set CF if the count (destination) if less than the source
+                    if (destination < 8)
+                    {
+                        if(((byte)source).IsBitSet(destination - 1))
+                            Registers.F.SetFlag(EnumFlags.CF);
+                    }
+
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
                     break;
                 case 2: //16-bit
-                    Registers.F = destination.IsBitSet(15) ? Registers.F.SetFlag((ushort)EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                    var ushortResult = (ushort)(destination << source);
-                    Registers.F = !ushortResult.IsNegative() && Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
-                    Registers.F = ushortResult.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                    Registers.F = ushortResult == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                    Registers.F = ushortResult.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
-                    finalResult = ushortResult;
+
+                    //Only Set CF if the count (destination) if less than the source
+                    if (destination < 16)
+                    {
+                        if (source.IsBitSet(destination - 1))
+                            Registers.F.SetFlag(EnumFlags.CF);
+                    }
+
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
                     break;
                 default:
                     throw new Exception($"Unsupported Op0Register Size for SHL: {_currentInstruction.Op0Register.GetSize()}");
@@ -350,7 +376,7 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, finalResult);
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
                     break;
                 default:
                     throw new Exception($"Unsupported OpKind for SHL: {_currentInstruction.Op0Kind}");
@@ -374,7 +400,7 @@ namespace MBBSEmu.CPU
                 case Register.BP:
                 {
                     var baseOffset = (ushort)(Registers.BP -
-                                              (ushort.MaxValue - _currentInstruction.MemoryDisplacement) + 1);
+                                              (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
                     Registers.SetValue(_currentInstruction.Op0Register,  baseOffset);
                     return;
                 }
@@ -427,75 +453,133 @@ namespace MBBSEmu.CPU
 
         private void Op_Inc()
         {
-            ushort newValue;
+            ushort result;
+            ushort destination;
+            var operationSize = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
                 {
-                    newValue = (ushort) (Registers.GetValue(_currentInstruction.Op0Register) + 1);
-                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
+                    operationSize = _currentInstruction.Op0Register.GetSize();
+                    destination = Registers.GetValue(_currentInstruction.Op0Register);
+                    result = (ushort) (destination + 1);
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
                     break;
                 }
                 default:
                     throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
             }
 
-            Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort) EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    break;
+                }
+            }
         }
 
         private void Op_And()
         {
-            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-            var result = (ushort)(source & destination);
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort)(destination & source);
 
+            var operationSize = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
                     Registers.SetValue(_currentInstruction.Op0Register, result);
+                    operationSize = _currentInstruction.Op0Register.GetSize();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown XOR: {_currentInstruction.Op0Kind}");
+                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F.ClearFlag(EnumFlags.CF);
+            Registers.F.ClearFlag(EnumFlags.OF);
 
             //Set Conditional Flags
-            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
-            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unsupported OR operation size: {operationSize}");
+            }
         }
 
         private void Op_Xor()
         {
-            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-            var result = (ushort) (source ^ destination);
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort)(destination ^ source);
 
+            var operationSize = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
                     Registers.SetValue(_currentInstruction.Op0Register, result);
+                    operationSize = _currentInstruction.Op0Register.GetSize();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown XOR: {_currentInstruction.Op0Kind}");
+                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F.ClearFlag(EnumFlags.CF);
+            Registers.F.ClearFlag(EnumFlags.OF);
 
             //Set Conditional Flags
-            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = result.Parity() ? Registers.F.SetFlag((ushort)EnumFlags.PF) : Registers.F.ClearFlag((ushort)EnumFlags.PF);
-            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unsupported OR operation size: {operationSize}");
+            }
         }
 
         private void Op_Jbe()
         {
-            if (Registers.F.IsFlagSet((ushort) EnumFlags.ZF) || Registers.F.IsFlagSet((ushort) EnumFlags.ZF))
+            if (Registers.F.IsFlagSet(EnumFlags.ZF) || Registers.F.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -513,8 +597,8 @@ namespace MBBSEmu.CPU
         public void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
-            if ((Registers.IsFlagSet(EnumFlags.SF) != Registers.IsFlagSet(EnumFlags.OF))
-                || Registers.IsFlagSet(EnumFlags.ZF))
+            if ((Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF))
+                || Registers.F.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -527,7 +611,7 @@ namespace MBBSEmu.CPU
         private void Op_Jge()
         {
             // SF == OF
-            if (Registers.IsFlagSet(EnumFlags.SF) == Registers.IsFlagSet(EnumFlags.OF))
+            if (Registers.F.IsFlagSet(EnumFlags.SF) == Registers.F.IsFlagSet(EnumFlags.OF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -540,7 +624,7 @@ namespace MBBSEmu.CPU
         private void Op_Jne()
         {
             //ZF == 0
-            if (!Registers.IsFlagSet(EnumFlags.ZF))
+            if (!Registers.F.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -553,7 +637,7 @@ namespace MBBSEmu.CPU
         private void Op_Je()
         {
             // ZF == 1
-            if (Registers.IsFlagSet(EnumFlags.ZF))
+            if (Registers.F.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -566,7 +650,7 @@ namespace MBBSEmu.CPU
         private void Op_Jl()
         {
             //SF <> OF
-            if (Registers.IsFlagSet(EnumFlags.SF) != Registers.IsFlagSet(EnumFlags.OF))
+            if (Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -579,7 +663,7 @@ namespace MBBSEmu.CPU
         private void Op_Jb()
         {
             //CF == 1
-            if (Registers.IsFlagSet(EnumFlags.CF))
+            if (Registers.F.IsFlagSet(EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -609,175 +693,95 @@ namespace MBBSEmu.CPU
                     throw new Exception("Unknown Size for CMP operation");
             }
 
-            //8-Bit CMP
-            if (comparisonSize == 1)
+            switch (comparisonSize)
             {
-                var destination = (byte)GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-                var source = (byte)GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
-                unchecked
-                {
-                    var result = (byte) (destination - (sbyte) source);
-
-                    _logger.Info($"CMP: {destination}-{(sbyte)source} == {result}");
-                    
-                    //ZF
-                    if (result == 0)
-                    {
-                        Registers.SetFlag(EnumFlags.ZF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.ZF);
-                    }
-
-                    //CF
-                    if (source > destination)
-                    {
-                        Registers.SetFlag(EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.CF);
-                    }
-
-                    //OF
-                    if (result.IsNegative() != destination.IsNegative())
-                    {
-                        Registers.SetFlag(EnumFlags.OF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.OF);
-                    }
-
-                    //SF
-                    if (result.IsNegative())
-                    {
-                        Registers.SetFlag(EnumFlags.SF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.SF);
-                    }
-
-                    //PF
-                    if (result.Parity())
-                    {
-                        Registers.SetFlag(EnumFlags.PF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.PF);
-                    }
-                }
+                case 1:
+                    Op_Cmp_8();
+                    return;
+                case 2:
+                    Op_Cmp_16();
+                    return;
             }
+        }
 
-            //16-bit
-            if (comparisonSize == 2)
+        private void Op_Cmp_8()
+        {
+            var destination = (byte) GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = (byte) GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            unchecked
             {
-                var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-                var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-                
-                unchecked
-                {
-                    var result = (ushort)(destination - (short)source);
-                    _logger.Info($"CMP: {destination}-{(short)source} == {result}");
-                    //ZF
-                    if (result == 0)
-                    {
-                        Registers.SetFlag(EnumFlags.ZF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.ZF);
-                    }
+                var result = (byte) (destination - (sbyte) source);
 
-                    //CF
-                    if (source > destination)
-                    {
-                        Registers.SetFlag(EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.CF);
-                    }
+                _logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
 
-                    //OF
-                    if (result.IsNegative() != destination.IsNegative())
-                    {
-                        Registers.SetFlag(EnumFlags.OF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.OF);
-                    }
+                Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.CF, destination: destination, source: source);
+                Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+            }
+        }
 
-                    //SF
-                    if (result.IsNegative())
-                    {
-                        Registers.SetFlag(EnumFlags.SF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.SF);
-                    }
+        private void Op_Cmp_16()
+        {
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
-                    //PF
-                    if (result.Parity())
-                    {
-                        Registers.SetFlag(EnumFlags.PF);
-                    }
-                    else
-                    {
-                        Registers.ClearFlag(EnumFlags.PF);
-                    }
-                }
+            unchecked
+            {
+                var result = (ushort) (destination - (short) source);
+                _logger.Info($"CMP: {destination}-{(short) source} == {result}");
+
+                Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.CF, destination: destination, source: source);
+                Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
             }
         }
 
         private void Op_Add()
         {
-            ushort oldValue;
-            ushort newValue;
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = (ushort)(destination + source);
+            var operationSize = 0;
+
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Register:
+                case OpKind.Register:
                 {
-                    unchecked
-                    {
-                        oldValue = Registers.GetValue(_currentInstruction.Op0Register);
-                        newValue = (ushort) (oldValue +
-                                             Registers.GetValue(_currentInstruction.Op1Register));
-                    }
-
-                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
-                    break;
-                }
-
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8:
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate8to16:
-                case OpKind.Register when _currentInstruction.Op1Kind == OpKind.Immediate16:
-                {
-                    unchecked
-                    {
-                        oldValue = Registers.GetValue(_currentInstruction.Op0Register);
-                        newValue = (ushort) (oldValue +
-                                             _currentInstruction.Immediate16);
-                    }
-
-                    Registers.SetValue(_currentInstruction.Op0Register, newValue);
+                    operationSize = _currentInstruction.Op0Register.GetSize();
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
                     break;
                 }
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown ADD: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Uknown ADD: {_currentInstruction.Op0Kind}");
             }
 
-            Registers.F = newValue == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            Registers.F = oldValue >> 15 != newValue >> 15 ? Registers.F.SetFlag((ushort) EnumFlags.CF) : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unknown ADD operation size: {operationSize}");
+            }
         }
-
-
 
         private void Op_Imul()
         {

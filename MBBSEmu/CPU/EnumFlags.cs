@@ -1,10 +1,13 @@
-﻿namespace MBBSEmu.CPU
+﻿using System;
+
+namespace MBBSEmu.CPU
 {
     /// <summary>
     ///     Enumerator to represent the Intel x86 FLAGS Register
     ///
     ///     More Info: https://en.wikipedia.org/wiki/FLAGS_register
     /// </summary>
+    [Flags]
     public enum EnumFlags : ushort
     {
         /// <summary>

@@ -1,16 +1,19 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Iced.Intel;
-using MBBSEmu.Extensions;
+﻿using Iced.Intel;
 using MBBSEmu.Logging;
 using NLog;
+using System;
 
 namespace MBBSEmu.CPU
 {
     public class CpuRegisters
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+
+        /// <summary>
+        ///     Flags
+        /// </summary>
+        public CpuFlags F { get; set; }
+
         /*
          * General Registers
          */
@@ -178,11 +181,6 @@ namespace MBBSEmu.CPU
         public ushort CS { get; set; }
 
         /// <summary>
-        ///     Flags
-        /// </summary>
-        public ushort F { get; set; }
-
-        /// <summary>
         ///     Instruction Pointer
         /// </summary>
         public ushort IP { get; set; }
@@ -194,6 +192,7 @@ namespace MBBSEmu.CPU
 
         public CpuRegisters()
         {
+            F = new CpuFlags();
             _logger.Info("X86_16 Registers Initialized!");
         }
 
@@ -273,16 +272,16 @@ namespace MBBSEmu.CPU
                     DL = (byte) value;
                     break;
                 case Register.BL:
-                    BL = (byte)value;
+                    BL = (byte) value;
                     break;
                 case Register.CH:
-                    CH = (byte)value;
+                    CH = (byte) value;
                     break;
                 case Register.DH:
-                    DH = (byte)value;
+                    DH = (byte) value;
                     break;
                 case Register.BH:
-                    BH = (byte)value;
+                    BH = (byte) value;
                     break;
                 case Register.CX:
                     CX = value;
@@ -360,19 +359,6 @@ namespace MBBSEmu.CPU
             }
         }
 
-        public void SetFlag(EnumFlags flag)
-        {
-            F = F.SetFlag((ushort) flag);
-        }
 
-        public void ClearFlag(EnumFlags flag)
-        {
-            F = F.ClearFlag((ushort) flag);
-        }
-
-        public bool IsFlagSet(EnumFlags flag)
-        {
-            return F.IsFlagSet((ushort) flag);
-        }
     }
 }
