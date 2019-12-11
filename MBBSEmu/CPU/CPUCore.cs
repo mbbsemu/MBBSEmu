@@ -127,6 +127,18 @@ namespace MBBSEmu.CPU
                     return;
 
                 //Instructions that do not set IP -- we'll just increment
+                case Mnemonic.Clc:
+                    Op_Clc();
+                    break;
+                case Mnemonic.Neg:
+                    Op_Neg();
+                    break;
+                case Mnemonic.Sbb:
+                    Op_Sbb();
+                    break;
+                case Mnemonic.In:
+                    Op_In();
+                    break;
                 case Mnemonic.Add:
                     Op_Add();
                     break;
@@ -180,14 +192,16 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Les:
                     Op_Les();
                     break;
-
+                case Mnemonic.Lds:
+                    Op_Lds();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -285,18 +299,148 @@ namespace MBBSEmu.CPU
                                              Registers.SI);
                         case Register.BX when _currentInstruction.MemoryIndex == Register.None:
                             return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement);
+                        case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
+                            return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
                         case Register.SI when _currentInstruction.MemoryIndex == Register.None:
                             return Registers.SI;
-                            case Register.DI when _currentInstruction.MemoryIndex == Register.None:
-                                return (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
+                        case Register.DI when _currentInstruction.MemoryIndex == Register.None:
+                            return (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
                         default:
                             throw new Exception("Unknown GetOperandOffset MemoryBase");
                     }
                 }
+                case OpKind.NearBranch16:
+                    return _currentInstruction.NearBranch16;
                 default:
                     throw new Exception($"Unknown OpKind for GetOperandOffset: {opKind}");
             }
         }
+
+        private void Op_In()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    //Always Input the character "1"
+                    Registers.SetValue(_currentInstruction.Op0Register, 0x31);
+                    break;
+                }
+            }
+        }
+
+        private void Op_Neg()
+        {
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = (ushort)(0 - destination);
+
+            var operationSize = 0;
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    operationSize = _currentInstruction.Op0Register.GetSize();
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
+                }
+                case OpKind.Memory:
+                {
+
+                    if (_currentInstruction.MemorySize == MemorySize.UInt8)
+                    {
+                        operationSize = 1;
+                        _memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), (byte) result);
+                    }
+                    else
+                    {
+                        operationSize = 2;
+                        _memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), result);
+                    }
+
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown ADD: {_currentInstruction.Op0Kind}");
+            }
+
+            //Handle CF
+            if (result == 0)
+            {
+                Registers.F.ClearFlag(EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F.SetFlag(EnumFlags.CF);
+            }
+
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unknown ADD operation size: {operationSize}");
+            }
+        }
+
+        private void Op_Sbb()
+        {
+            var source = (ushort)(GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source) + (Registers.F.Flags.IsFlagSet(EnumFlags.CF) ? 1 : 0));
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = (ushort)(destination - source);
+            var operationSize = 0;
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    operationSize = _currentInstruction.Op0Register.GetSize();
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown ADD: {_currentInstruction.Op0Kind}");
+            }
+
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.CF, result, destination, source);
+                    Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.CF, result, destination, source);
+                    Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    break;
+                }
+                default:
+                    throw new Exception($"Unknown ADD operation size: {operationSize}");
+            }
+        }
+
+        private void Op_Clc() => Registers.F.ClearFlag(EnumFlags.CF);
 
         private void Op_Or()
         {
@@ -396,6 +540,15 @@ namespace MBBSEmu.CPU
 
             Registers.SetValue(_currentInstruction.Op0Register, offset);
             Registers.ES = segment;
+        }
+
+        private void Op_Lds()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op1Kind);
+            var segment = Registers.GetValue(_currentInstruction.MemorySegment);
+
+            Registers.SetValue(_currentInstruction.Op0Register, offset);
+            Registers.DS = segment;
         }
 
 
@@ -637,7 +790,21 @@ namespace MBBSEmu.CPU
 
         private void Op_Jmp()
         {
-            Registers.IP = _currentInstruction.Immediate16;
+            //TODO -- Need to check to see if this breaks larger modules
+            //These are usually jumps into linked code which isn't required for the emulator
+            //bypassing for now. Might break on larger modules
+            if (_currentInstruction.FlowControl == FlowControl.IndirectBranch)
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                return;
+            }
+
+            //Near Jumps
+            Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
+
+            if (_currentInstruction.IsJmpFar || _currentInstruction.IsJmpFarIndirect)
+                Registers.CS = Registers.GetValue(_currentInstruction.MemorySegment);
+
         }
 
         public void Op_Jle()

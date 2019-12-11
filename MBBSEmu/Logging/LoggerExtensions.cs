@@ -84,28 +84,28 @@ namespace MBBSEmu.Logging
             }
         }
 
-        public static void InfoStack(this Logger l, CpuCore cpu, MemoryCore memory)
+        public static void InfoStack(this Logger l, CpuRegisters registers, IMemoryCore memory)
         {
             var output = new StringBuilder();
             l.Info("------------------------------------------");
-            l.Info($"SP: {cpu.Registers.SP:X4}  BP: {cpu.Registers.BP:X4}");
+            l.Info($"SP: {registers.SP:X4}  BP: {registers.BP:X4}");
             l.Info("------------------------------------------");
-            for (var i = ushort.MaxValue; i >= cpu.Registers.SP; i-=2)
+            for (var i = ushort.MaxValue; i >= registers.SP; i-=2)
             {
-                if (i == cpu.Registers.SP && i == cpu.Registers.BP)
+                if (i == registers.SP && i == registers.BP)
                     output.Append("BP/SP-->");
 
-                if (i != cpu.Registers.SP && i == cpu.Registers.BP)
+                if (i != registers.SP && i == registers.BP)
                     output.Append("   BP-->");
 
-                if (i == cpu.Registers.SP && i != cpu.Registers.BP)
+                if (i == registers.SP && i != registers.BP)
                     output.Append("   SP-->");
 
-                if (i != cpu.Registers.SP && i != cpu.Registers.BP)
+                if (i != registers.SP && i != registers.BP)
                     output.Append("        ");
 
                 output.Append(
-                    $"{i:X4} [ {memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):D5} 0x{memory.GetWord(cpu.Registers.SS, (ushort) (i-1)):X4} ] {i-1:X4}");
+                    $"{i:X4} [ {memory.GetWord(registers.SS, (ushort) (i-1)):D5} 0x{memory.GetWord(registers.SS, (ushort) (i-1)):X4} ] {i-1:X4}");
 
                 l.Info(output);
                 output.Clear();

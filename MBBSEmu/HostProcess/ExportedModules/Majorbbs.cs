@@ -713,13 +713,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var messageNumber = GetParameter(0);
 
-            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputValue))
+            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputString))
                 throw new Exception($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
 
-            outputBuffer.Write(Encoding.ASCII.GetBytes(outputValue));
+
+            if (outputString.CountPrintf() > 0)
+            {
+                var formatParameters = GetPrintfParameters(outputString, 2);
+                outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
+            }
+
+            outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
 
 #if DEBUG
-            _logger.Info($"Added {outputValue.Length} bytes to the buffer from message number {messageNumber}");
+            _logger.Info($"Added {outputString.Length} bytes to the buffer from message number {messageNumber}");
 #endif
             return 0;
         }
@@ -811,10 +818,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "ITOA", Ordinal = 366)]
         public ushort itoa()
         {
-            var baseValue = GetParameter(0);
+            var integerValue = GetParameter(0);
             var string1Offset = GetParameter(1);
             var string1Segment = GetParameter(2);
-            var integerValue = GetParameter(3);
+            var baseValue = GetParameter(3);
 
             var output = Convert.ToString(integerValue, baseValue);
             output += "\0";

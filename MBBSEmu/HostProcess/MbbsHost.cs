@@ -117,7 +117,7 @@ namespace MBBSEmu.HostProcess
             _logger.Info($"Running {routineName}...");
 
             var _cpuRegisters = new CpuRegisters()
-                { CS = _module.EntryPoints[routineName].Segment, IP = _module.EntryPoints[routineName].Offset };
+                { CS = _module.EntryPoints[routineName].Segment, IP = _module.EntryPoints[routineName].Offset, DS = ushort.MaxValue, SI = ushort.MaxValue };
 
             using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
             using var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
