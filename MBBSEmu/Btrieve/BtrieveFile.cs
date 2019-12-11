@@ -99,6 +99,9 @@ namespace MBBSEmu.Btrieve
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
             _btrieveRecords[recordNumber] = recordData;
+
+            if (RecordCount == 0)
+                RecordCount++;
         }
 
         public void Insert(byte[] recordData) => Insert(CurrentRecordNumber, recordData);

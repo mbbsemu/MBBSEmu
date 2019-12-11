@@ -106,6 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         protected List<object> GetPrintfParameters(string stringToFormat, ushort startingParameterOrdinal)
         {
             var formatParameters = new List<object>();
+            var currentParameter = startingParameterOrdinal;
             for (var i = 0; i < stringToFormat.CountPrintf(); i++)
             {
                 //Gets the control character for the ordinal provided
@@ -113,23 +114,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     case 'c':
                         {
-                            var charParameter = GetParameter((ushort) (startingParameterOrdinal + i));
+                            var charParameter = GetParameter(currentParameter++);
                             formatParameters.Add((char)charParameter);
                             break;
                         }
                     case 's':
                         {
 
-                            var parameterOffset = GetParameter((ushort)(startingParameterOrdinal + i++));
-                            var parameterSegment = GetParameter((ushort)(startingParameterOrdinal + i));
+                            var parameterOffset = GetParameter(currentParameter++);
+                            var parameterSegment = GetParameter(currentParameter++);
                             var parameter = Memory.GetString(parameterSegment, parameterOffset);
                             formatParameters.Add(Encoding.ASCII.GetString(parameter));
                             break;
                         }
                     case 'd':
                         {
-                            var lowWord = GetParameter((ushort)(startingParameterOrdinal + i));
-                            var highWord = GetParameter((ushort)(startingParameterOrdinal + i++));
+                            var lowWord = GetParameter(currentParameter++);
+                            var highWord = GetParameter(currentParameter++);
                             var parameter = highWord << 16 | lowWord;
                             formatParameters.Add(parameter);
                             break;
@@ -144,7 +145,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         protected virtual void Dispose(bool managedAndNative)
         {
 #if DEBUG
-            _logger.Info($"Freeing Routine Memory: {RoutineMemorySegment:X4}");
+            _logger.Info($"Freeing Routine Memory: {RoutineMemorySegment:X4} ({_routineMemoryOffset} bytes freed)");
 #endif
 
             Memory.FreeRoutineMemorySegment(RoutineMemorySegment);

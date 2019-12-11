@@ -940,7 +940,7 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte) (destination - (sbyte) source);
 
-                _logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
+                //_logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
                 
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.CF, destination: destination, source: source);

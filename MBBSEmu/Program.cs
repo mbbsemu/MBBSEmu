@@ -46,6 +46,7 @@ namespace MBBSEmu
                 return;
             }
 
+
             var module = new MbbsModule(sInputModule, sInputPath);
 
             var host = new MbbsHost(module);

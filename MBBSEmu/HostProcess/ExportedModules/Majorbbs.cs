@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using MBBSEmu.Logging;
-using SQLitePCL;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -95,7 +94,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var pointer = Memory.AllocateHostMemory(size);
 
             Registers.AX = pointer;
-            Registers.DX = RoutineMemorySegment;
+            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment;
 
 #if DEBUG
             _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
@@ -444,10 +443,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "L2AS", Ordinal = 377)]
         public ushort l2as()
         {
-            var lowByte = GetParameter(0);
-            var highByte = GetParameter(1);
+            var highByte = GetParameter(0);
+            var lowByte = GetParameter(1);
 
-            var outputValue = (highByte << 16 | lowByte) + "\0";
+            var outputValue = $"{highByte << 16 | lowByte}\0";
 
             var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
             Memory.SetArray(RoutineMemorySegment, outputValueOffset,
@@ -719,7 +718,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (outputString.CountPrintf() > 0)
             {
-                var formatParameters = GetPrintfParameters(outputString, 2);
+                var formatParameters = GetPrintfParameters(outputString, 1);
                 outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
             }
 
@@ -1112,6 +1111,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var btrieveRecordPointerOffset = GetParameter(0);
             var btrieveRecordPointerSegment = GetParameter(1);
+
             var stpopt = GetParameter(2);
 
             ushort resultCode = 0;
