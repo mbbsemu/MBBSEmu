@@ -41,7 +41,7 @@ namespace MBBSEmu.Module
             ModuleIdentifier = module;
 
             //Sanitize Path
-            if (string.IsNullOrEmpty(ModulePath))
+            if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
             if (!path.EndsWith(Path.DirectorySeparatorChar))

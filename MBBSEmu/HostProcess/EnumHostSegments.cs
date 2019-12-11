@@ -38,6 +38,17 @@
         BtrieveFile = 0xFFFB,
 
         /// <summary>
+        ///     Segment for int usernum
+        /// </summary>
+        UserNum = 0xFFFA,
+
+        /// <summary>
+        ///     Segment for int status (raw status from btusts)
+        /// </summary>
+        Status = 0xFFF9,
+
+
+        /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>
         Bturno = 0xEFFF

@@ -5,7 +5,9 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using NLog;
 using System;
+using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.HostProcess
 {
@@ -31,7 +33,9 @@ namespace MBBSEmu.HostProcess
             //Setup new memory core and init with host memory segment
             _memory = new MemoryCore();
             _memory.AddSegment((ushort)EnumHostSegments.HostMemorySegment);
-
+            _memory.AddSegment((ushort)EnumHostSegments.Status);
+            AllocateUser(_memory);
+            AllocateUserNum(_memory);
 
             foreach (var seg in _module.File.SegmentTable)
             {
@@ -80,8 +84,6 @@ namespace MBBSEmu.HostProcess
             {
                 try
                 {
-
-
                     var importedModuleName =
                         _module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
@@ -137,6 +139,69 @@ namespace MBBSEmu.HostProcess
             });
             while (_cpu.IsRunning)
                 _cpu.Tick();
+        }
+
+        /// <summary>
+        ///     Allocates the user struct for the current user and stores it
+        ///     so it can be referenced.
+        /// </summary>
+        private void AllocateUser(IMemoryCore memory)
+        {
+            /* From MAJORBBS.H:
+             *   struct user {                 // volatile per-user info maintained        
+                     int class;               //  [0,1]  class (offline, or flavor of online)  
+                     int *keys;               //  [2,3,4,5]  dynamically alloc'd array of key bits 
+                     int state;               //  [6,7]  state (module number in effect)       
+                     int substt;              //  [8,9]  substate (for convenience of module)  
+                     int lofstt;              //  state which has final lofrou() routine
+                     int usetmr;              //  usage timer (for nonlive timeouts etc)
+                     int minut4;              //  total minutes of use, times 4         
+                     int countr;              //  general purpose counter               
+                     int pfnacc;              //  profanity accumulator                 
+                     unsigned long flags;     //  runtime flags                         
+                     unsigned baud;           //  baud rate currently in effect         
+                     int crdrat;              //  credit-consumption rate               
+                     int nazapc;              //  no-activity auto-logoff counter       
+                     int linlim;              //  "logged in" module loop limit         
+                     struct clstab *cltptr;   //  ??  pointer to guys current class in table
+                     void (*polrou)();        //  ??  pointer to current poll routine       
+                     char lcstat;             //  ??  LAN chan state (IPX.H) 0=nonlan/nonhdw
+                 };        
+             */
+            var output = new MemoryStream();
+            output.Write(BitConverter.GetBytes((short)6)); //class (ACTUSR)
+            output.Write(BitConverter.GetBytes((short)0)); //keys:segment
+            output.Write(BitConverter.GetBytes((short)0)); //keys:offset
+            output.Write(BitConverter.GetBytes((short)1)); //state (register_module always returns 1)
+            output.Write(BitConverter.GetBytes((short)0)); //substt (always starts at 0)
+            output.Write(BitConverter.GetBytes((short)0)); //lofstt
+            output.Write(BitConverter.GetBytes((short)0)); //usetmr
+            output.Write(BitConverter.GetBytes((short)0)); //minut4
+            output.Write(BitConverter.GetBytes((short)0)); //countr
+            output.Write(BitConverter.GetBytes((short)0)); //pfnacc
+            output.Write(BitConverter.GetBytes((int)0)); //flags
+            output.Write(BitConverter.GetBytes((ushort)0)); //baud
+            output.Write(BitConverter.GetBytes((short)0)); //crdrat
+            output.Write(BitConverter.GetBytes((short)0)); //nazapc
+            output.Write(BitConverter.GetBytes((short)0)); //linlim
+            output.Write(BitConverter.GetBytes((short)0)); //clsptr:segment
+            output.Write(BitConverter.GetBytes((short)0)); //clsptr:offset
+            output.Write(BitConverter.GetBytes((short)0)); //polrou:segment
+            output.Write(BitConverter.GetBytes((short)0)); //polrou:offset
+            output.Write(BitConverter.GetBytes('0')); //lcstat
+
+            memory.AddSegment((ushort)EnumHostSegments.User);
+            memory.SetArray((ushort)EnumHostSegments.User, 0, output.ToArray());
+        }
+
+        /// <summary>
+        ///     Creates and Allocates the usernum global variable
+        /// </summary>
+        /// <param name="memory"></param>
+        private void AllocateUserNum(IMemoryCore memory)
+        {
+            memory.AddSegment((ushort)EnumHostSegments.UserNum);
+            memory.SetArray((ushort)EnumHostSegments.UserNum, 0, BitConverter.GetBytes((ushort)1));
         }
 
         /*

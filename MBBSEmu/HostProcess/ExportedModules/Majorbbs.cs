@@ -32,72 +32,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private static BtrieveFile _currentBtrieveFile;
         private static BtrieveFile _previousBtrieveFile;
 
+        /// <summary>
+        ///     Buffer of Data that is stored to be sent to the user
+        /// </summary>
         private readonly MemoryStream outputBuffer;
 
         public Majorbbs(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module) : base(memoryCore, cpuRegisters, module)
         {
             outputBuffer = new MemoryStream();
 
-            //Setup the user struct for *usrptr which holds the current user
-            if(!Memory.HasSegment((ushort)EnumHostSegments.User))
-                AllocateUser();
-        }
-
-
-
-        /// <summary>
-        ///     Allocates the user struct for the current user and stores it
-        ///     so it can be referenced.
-        ///
-        ///     TODO -- This is static for the time being, probably need to update this
-        /// </summary>
-        private void AllocateUser()
-        {
-            /* From MAJORBBS.H:
-             *   struct user {                 // volatile per-user info maintained        
-                     int class;               //    class (offline, or flavor of online)  
-                     int *keys;               //    dynamically alloc'd array of key bits 
-                     int state;               //    state (module number in effect)       
-                     int substt;              //    substate (for convenience of module)  
-                     int lofstt;              //    state which has final lofrou() routine
-                     int usetmr;              //    usage timer (for nonlive timeouts etc)
-                     int minut4;              //    total minutes of use, times 4         
-                     int countr;              //    general purpose counter               
-                     int pfnacc;              //    profanity accumulator                 
-                     unsigned long flags;     //    runtime flags                         
-                     unsigned baud;           //    baud rate currently in effect         
-                     int crdrat;              //    credit-consumption rate               
-                     int nazapc;              //    no-activity auto-logoff counter       
-                     int linlim;              //    "logged in" module loop limit         
-                     struct clstab *cltptr;   //    pointer to guys current class in table
-                     void (*polrou)();        //    pointer to current poll routine       
-                     char lcstat;             //    LAN chan state (IPX.H) 0=nonlan/nonhdw
-                 };        
-             */
-            var output = new MemoryStream();
-            output.Write(BitConverter.GetBytes((short)0)); //class
-            output.Write(BitConverter.GetBytes((short)0)); //keys:segment
-            output.Write(BitConverter.GetBytes((short)0)); //keys:offset
-            output.Write(BitConverter.GetBytes((short)0)); //state
-            output.Write(BitConverter.GetBytes((short)0)); //substt
-            output.Write(BitConverter.GetBytes((short)0)); //lofstt
-            output.Write(BitConverter.GetBytes((short)0)); //usetmr
-            output.Write(BitConverter.GetBytes((short)0)); //minut4
-            output.Write(BitConverter.GetBytes((short)0)); //countr
-            output.Write(BitConverter.GetBytes((short)0)); //pfnacc
-            output.Write(BitConverter.GetBytes((int)0)); //flags
-            output.Write(BitConverter.GetBytes((ushort)0)); //baud
-            output.Write(BitConverter.GetBytes((short)0)); //crdrat
-            output.Write(BitConverter.GetBytes((short)0)); //nazapc
-            output.Write(BitConverter.GetBytes((short)0)); //linlim
-            output.Write(BitConverter.GetBytes((short)0)); //clsptr:segment
-            output.Write(BitConverter.GetBytes((short)0)); //clsptr:offset
-            output.Write(BitConverter.GetBytes((short)0)); //polrou:segment
-            output.Write(BitConverter.GetBytes((short)0)); //polrou:offset
-            output.Write(BitConverter.GetBytes('0')); //lcstat
-
-            Memory.AddSegment((ushort)EnumHostSegments.User);
-            Memory.SetArray((ushort)EnumHostSegments.User, 0, output.ToArray());
         }
 
         /// <summary>
@@ -654,7 +597,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "USERNUM", Ordinal = 628)]
-        public ushort usernum() => 0;
+        public ushort usernum() => (ushort)EnumHostSegments.UserNum;
 
         /// <summary>
         ///     Gets the online user account info
@@ -1270,5 +1213,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             return 0;
         }
+
+        /// <summary>
+        ///     Raw status from btusts, where appropriate
+        ///     
+        ///     Signature: int status
+        ///     Returns: AX == Segment holding the Users Status
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "STATUS", Ordinal = 565)]
+        public ushort status() => (ushort) EnumHostSegments.Status;
     }
 }

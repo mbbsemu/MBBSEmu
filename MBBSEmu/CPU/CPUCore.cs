@@ -110,6 +110,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jl:
                     Op_Jl();
                     return;
+                case Mnemonic.Jg:
+                    Op_Jg();
+                    return;
                 case Mnemonic.Jge:
                     Op_Jge();
                     return;
@@ -150,6 +153,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Inc:
                     Op_Inc();
+                    break;
+                case Mnemonic.Dec:
+                    Op_Dec();
                     break;
                 case Mnemonic.Stosw:
                     Op_Stosw();
@@ -491,6 +497,46 @@ namespace MBBSEmu.CPU
             }
         }
 
+        private void Op_Dec()
+        {
+            ushort result;
+            ushort destination;
+            var operationSize = 0;
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    operationSize = _currentInstruction.Op0Register.GetSize();
+                    destination = Registers.GetValue(_currentInstruction.Op0Register);
+                    result = (ushort)(destination - 1);
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
+            }
+
+            switch (operationSize)
+            {
+                case 1:
+                {
+                    Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                    break;
+                }
+                case 2:
+                {
+                    Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
+                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                    break;
+                }
+            }
+        }
+
         private void Op_And()
         {
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -579,7 +625,7 @@ namespace MBBSEmu.CPU
 
         private void Op_Jbe()
         {
-            if (Registers.F.IsFlagSet(EnumFlags.ZF) || Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (Registers.F.IsFlagSet(EnumFlags.ZF) || Registers.F.IsFlagSet(EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -631,6 +677,20 @@ namespace MBBSEmu.CPU
             else
             {
                 Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
+        }
+
+        private void Op_Jg()
+        {
+            //ZF == 0 & SF == OF
+            if (!Registers.F.IsFlagSet(EnumFlags.ZF) &&
+                (Registers.F.IsFlagSet(EnumFlags.SF) == Registers.F.IsFlagSet(EnumFlags.OF)))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort) _currentInstruction.ByteLength;
             }
         }
 
@@ -713,7 +773,7 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte) (destination - (sbyte) source);
 
-                //_logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
+                _logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
                 
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.CF, destination: destination, source: source);
