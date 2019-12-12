@@ -1,7 +1,7 @@
 ﻿using MBBSEmu.Module;
 using System;
 using MBBSEmu.HostProcess;
-using MBBSEmu.UI;
+using MBBSEmu.Telnet;
 
 namespace MBBSEmu
 {
@@ -50,9 +50,12 @@ namespace MBBSEmu
             var module = new MbbsModule(sInputModule, sInputPath);
 
             var host = new MbbsHost(module);
-            host.Init();
-            host.Run("sttrou");
-            host.Run("stsrou");
+            var server = new TelnetServer(host);
+            server.Start();
+            Console.ReadKey();
+            //host.Init();
+            //host.Run("sttrou");
+            //host.Run("stsrou");
             //var textUI = new TextGUI();
             //textUI.Run();
         }

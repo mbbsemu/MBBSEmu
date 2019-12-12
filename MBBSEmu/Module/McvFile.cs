@@ -65,7 +65,7 @@ namespace MBBSEmu.Module
 
                 var messageLocationOffset = BitConverter.ToInt32(fileSpan.Slice(messageLocationsOffsets + offsetModifier, 4));
 
-                var message = Encoding.ASCII.GetString(fileSpan.Slice(messageLocationOffset, messageLength));
+                var message = Encoding.Default.GetString(fileSpan.Slice(messageLocationOffset, messageLength));
 
                 Messages.Add(i, message);
             }

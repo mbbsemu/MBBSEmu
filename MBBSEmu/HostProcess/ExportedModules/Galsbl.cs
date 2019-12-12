@@ -31,7 +31,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ushort bturno()
         {
             const string registrationNumber = "97771457\0";
-            Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.ASCII.GetBytes(registrationNumber));
+            Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.Default.GetBytes(registrationNumber));
 
             return (ushort) EnumHostSegments.Bturno;
         }

@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
+using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
+using MBBSEmu.Module;
 using NLog;
 
 namespace MBBSEmu.Telnet
@@ -15,16 +18,20 @@ namespace MBBSEmu.Telnet
         private readonly IPEndPoint _ipEndPoint;
         private readonly Socket _listenerSocket;
         private readonly List<TelnetSession> _telnetSessions;
-
         private bool _isRunning;
-        public TelnetServer()
+        private MbbsHost _host;
+        private Thread _listenerThread;
+
+        public TelnetServer(MbbsHost host)
         {
+            _host = host;
+            _host.Init();
 
             //Setup Listener
-            _ipEndPoint = new IPEndPoint(IPAddress.Any, 21);
+            _ipEndPoint = new IPEndPoint(IPAddress.Any, 23);
             _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _listenerSocket.Bind(_ipEndPoint);
-
+            _listenerThread = new Thread(Listen);
             _telnetSessions = new List<TelnetSession>();
         }
 
@@ -32,6 +39,7 @@ namespace MBBSEmu.Telnet
         {
             _listenerSocket.Listen(10);
             _isRunning = true;
+            _listenerThread.Start();
         }
 
         public void Listen()
@@ -39,7 +47,8 @@ namespace MBBSEmu.Telnet
             while (_isRunning)
             {
                 var client = _listenerSocket.Accept();
-                var session = new TelnetSession(client);
+                _logger.Info($"Acceping incoming connection from {client.RemoteEndPoint}");
+                var session = new TelnetSession(client, _host);
                 _telnetSessions.Add(session);
             }
         }

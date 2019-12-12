@@ -19,6 +19,8 @@ namespace MBBSEmu.HostProcess
     /// </summary>
     public class MbbsHost
     {
+        public delegate void SentToUserDelegate(ReadOnlySpan<byte> data);
+
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         private readonly MbbsModule _module;
@@ -77,7 +79,7 @@ namespace MBBSEmu.HostProcess
             var _cpuRegisters = new CpuRegisters()
                 {CS = _module.EntryPoints["_INIT_"].Segment, IP = _module.EntryPoints["_INIT_"].Offset};
 
-            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
+            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module, null);
             using var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
 
             var _cpu = new CpuCore(_memory, _cpuRegisters, (delegate(ushort ordinal, ushort functionOrdinal)
@@ -109,7 +111,7 @@ namespace MBBSEmu.HostProcess
                 _cpu.Tick();
         }
 
-        public void Run(string routineName)
+        public void Run(string routineName, SentToUserDelegate sendToUserDelegate)
         {
             if(!_module.EntryPoints.ContainsKey(routineName))
                 throw new Exception($"Attempted to execute unknown Routine name: {routineName}");
@@ -119,7 +121,7 @@ namespace MBBSEmu.HostProcess
             var _cpuRegisters = new CpuRegisters()
                 { CS = _module.EntryPoints[routineName].Segment, IP = _module.EntryPoints[routineName].Offset, DS = ushort.MaxValue, SI = ushort.MaxValue };
 
-            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module);
+            using var majorbbsHostFunctions = new Majorbbs(_memory, _cpuRegisters, _module, data => sendToUserDelegate(data));
             using var galsblHostFunctions = new Galsbl(_memory, _cpuRegisters, _module);
 
             var _cpu = new CpuCore(_memory, _cpuRegisters, delegate (ushort ordinal, ushort functionOrdinal)

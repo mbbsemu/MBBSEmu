@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MBBSEmu.HostProcess;
+using MBBSEmu.Logging;
+using NLog;
+using System;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using MBBSEmu.Logging;
-using NLog;
 
 namespace MBBSEmu.Telnet
 {
@@ -16,9 +16,11 @@ namespace MBBSEmu.Telnet
         private Socket _telnetConnection;
         private Thread _sessionThread;
         private bool _isTyping;
+        private MbbsHost _host;
 
-        public TelnetSession(Socket telnetConnection)
+        public TelnetSession(Socket telnetConnection, MbbsHost host)
         {
+            _host = host;
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
             _telnetConnection.ReceiveBufferSize = 128;
@@ -36,8 +38,11 @@ namespace MBBSEmu.Telnet
                 byte[] terminalResponse = new byte[3];
                 var bytesReceived = _telnetConnection.Receive(terminalResponse, 0, 3, SocketFlags.None);
 
-                if (!Login())
-                    return;
+                //Kick off Entry
+                _host.Run("sttrou", Send);
+                _host.Run("stsrou", Send);
+                while (true)
+                    Thread.Sleep(1);
             }
             catch (Exception e)
             {
@@ -74,9 +79,9 @@ namespace MBBSEmu.Telnet
         ///     Send a Byte Array to the client
         /// </summary>
         /// <param name="dataToSend"></param>
-        private void Send(byte[] dataToSend)
+        private void Send(ReadOnlySpan<byte> dataToSend)
         {
-            var bytesSent = _telnetConnection.Send(dataToSend, 0, dataToSend.Length, SocketFlags.None, out var socketState);
+            var bytesSent = _telnetConnection.Send(dataToSend, SocketFlags.None, out var socketState);
             ValidateSocketState(socketState);
         }
 
@@ -149,7 +154,7 @@ namespace MBBSEmu.Telnet
                     }
 
                     //If the input passes our regex, add it to the buffer, otherwise, don't allow it
-                    if (inputFilter.Match(Encoding.ASCII.GetString(receiveBuffer)).Success)
+                    if (inputFilter.Match(Encoding.Default.GetString(receiveBuffer)).Success)
                     {
                         commandBuffer.Append((char) receiveBuffer[0]);
                     }

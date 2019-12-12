@@ -124,7 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var parameterOffset = GetParameter(currentParameter++);
                             var parameterSegment = GetParameter(currentParameter++);
                             var parameter = Memory.GetString(parameterSegment, parameterOffset);
-                            formatParameters.Add(Encoding.ASCII.GetString(parameter));
+                            formatParameters.Add(Encoding.Default.GetString(parameter));
                             break;
                         }
                     case 'd':

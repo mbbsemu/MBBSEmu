@@ -45,7 +45,7 @@ namespace MBBSEmu.Module
             var msMessages = new MemoryStream();
             var msMessageLengths = new MemoryStream();
             var msMessageOffsets = new MemoryStream();
-            foreach (var s in File.ReadAllLines($"{_modulePath}{FileName}"))
+            foreach (var s in File.ReadAllLines($"{_modulePath}{FileName}", Encoding.Default))
             {
                 if (string.IsNullOrEmpty(s) || (!s.Contains('{') && !bMsgRecordMultiline))
                     continue;
@@ -87,13 +87,13 @@ namespace MBBSEmu.Module
                 //Language doesn't technically count as a messages entry
                 if (s.StartsWith("LANGUAGE"))
                 {
-                    msMessages.Write(Encoding.ASCII.GetBytes(sbCurrentValue.ToString()));
+                    msMessages.Write(Encoding.Default.GetBytes(sbCurrentValue.ToString()));
                     sbCurrentValue.Clear();
                     continue;
                 }
 
                 msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
-                msMessages.Write(Encoding.ASCII.GetBytes(sbCurrentValue.ToString()));
+                msMessages.Write(Encoding.Default.GetBytes(sbCurrentValue.ToString()));
                 msMessageLengths.Write(BitConverter.GetBytes(sbCurrentValue.Length));
                 messageCount++;
                 sbCurrentValue.Clear();

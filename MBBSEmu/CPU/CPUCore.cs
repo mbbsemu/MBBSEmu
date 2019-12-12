@@ -83,7 +83,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)

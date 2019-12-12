@@ -119,7 +119,7 @@ namespace MBBSEmu.Disassembler
 
                 i++;
                 residentName.Name =
-                    Encoding.ASCII.GetString(data.Slice(WindowsHeader.ResidentNameTableOffset + i, residentNameLength)
+                    Encoding.Default.GetString(data.Slice(WindowsHeader.ResidentNameTableOffset + i, residentNameLength)
                         .ToArray());
                 i += residentNameLength;
                 residentName.IndexIntoEntryTable = BitConverter.ToUInt16(FileContent, WindowsHeader.ResidentNameTableOffset + i);
@@ -138,7 +138,7 @@ namespace MBBSEmu.Disassembler
                 var module = new ModuleReference();
                 var importedName = new ImportedName() { Offset = nameOffset, FileOffset = fileOffset };
 
-                var name = Encoding.ASCII.GetString(data.Slice(fileOffset + 1, data[fileOffset]).ToArray());
+                var name = Encoding.Default.GetString(data.Slice(fileOffset + 1, data[fileOffset]).ToArray());
 
                 module.Name = name;
                 importedName.Name = name;
@@ -204,7 +204,7 @@ namespace MBBSEmu.Disassembler
             {
                 var nameLength = data[i];
                 i++;
-                var name = Encoding.ASCII.GetString(data.Slice(i, nameLength).ToArray());
+                var name = Encoding.Default.GetString(data.Slice(i, nameLength).ToArray());
                 i += nameLength;
                 var indexIntoEntryTable = BitConverter.ToUInt16(FileContent, i);
                 NonResidentNameTable.Add(new NonResidentName() { Name = name, IndexIntoEntryTable = indexIntoEntryTable });

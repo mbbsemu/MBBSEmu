@@ -2,6 +2,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Attributes;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using System;
@@ -9,7 +10,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Logging;
+
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -23,6 +24,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase
     {
+        public delegate void SentToUserDelegate(ReadOnlySpan<byte> data);
+
+        private readonly SentToUserDelegate _sendToUser;
+
         private static readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
         private static McvFile _currentMcvFile;
         private static McvFile _previousMcvFile;
@@ -36,10 +41,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly MemoryStream outputBuffer;
 
-        public Majorbbs(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module) : base(memoryCore, cpuRegisters, module)
+        public Majorbbs(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module, SentToUserDelegate sendToUserDelegate) : base(memoryCore, cpuRegisters, module)
         {
+            _sendToUser = sendToUserDelegate;
             outputBuffer = new MemoryStream();
-
         }
 
         /// <summary>
@@ -130,7 +135,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 moduleName = moduleName.Substring(0, size);
             }
 
-            Memory.SetArray(RoutineMemorySegment, pointer, Encoding.ASCII.GetBytes(moduleName));
+            Memory.SetArray(RoutineMemorySegment, pointer, Encoding.Default.GetBytes(moduleName));
 
             Registers.AX = pointer;
             Registers.DX = RoutineMemorySegment;
@@ -225,7 +230,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.File.SegmentTable.First(x => x.Ordinal == destinationSegment).RelocationRecords;
 
             //Description for Main Menu
-            var moduleDescription = Encoding.ASCII.GetString(moduleStruct, 0, 25).Trim();
+            var moduleDescription = Encoding.Default.GetString(moduleStruct, 0, 25).Trim();
 #if DEBUG
             _logger.Info($"Module Description set to {moduleDescription}");
 #endif
@@ -278,7 +283,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
 
-            var msgFileName = Encoding.ASCII.GetString(Memory.GetString(sourceSegment, sourceOffset));
+            var msgFileName = Encoding.Default.GetString(Memory.GetString(sourceSegment, sourceOffset));
 
             msgFileName = msgFileName.TrimEnd('\0');
 
@@ -402,7 +407,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = _currentMcvFile.GetString(msgnum);
 
             var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.ASCII.GetBytes(outputValue));
+            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
             _logger.Info($"Retrieved option {msgnum} value: {outputValue} saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
@@ -450,7 +455,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
             Memory.SetArray(RoutineMemorySegment, outputValueOffset,
-                Encoding.ASCII.GetBytes(outputValue));
+                Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
             _logger.Info(
@@ -479,7 +484,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             inputBuffer.Write(Memory.GetString(sourceSegment, sourceOffset));
 
-            var inputValue = Encoding.ASCII.GetString(inputBuffer.ToArray());
+            var inputValue = Encoding.Default.GetString(inputBuffer.ToArray());
 
             if (!int.TryParse(inputValue, out var outputValue))
             {
@@ -572,11 +577,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string1Segment, string1Offset));
-            var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray()).ToUpper();
+            var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray()).ToUpper();
 
             var string2InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string2Segment, string2Offset));
-            var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray()).ToUpper();
+            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
 
             var resultValue = string1InputValue == string2InputValue;
 #if DEBUG
@@ -634,7 +639,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var output = Memory.GetString(sourceSegment, sourceOffset);
 
-            var outputString = Encoding.ASCII.GetString(output);
+            var outputString = Encoding.Default.GetString(output);
 
             //If the supplied string has any control characters for formatting, process them
             if (outputString.CountPrintf() > 0)
@@ -643,7 +648,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
             }
 
-            outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
+            outputBuffer.Write(Encoding.Default.GetBytes(outputString));
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -662,7 +667,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ushort outprf()
         {
             //TODO -- this will need to write to a destination output delegate
-            Console.WriteLine(Encoding.ASCII.GetString(outputBuffer.ToArray()));
+            _sendToUser(new ReadOnlySpan<byte>(outputBuffer.ToArray()));
             outputBuffer.Flush();
 
             return 0;
@@ -722,7 +727,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
             }
 
-            outputBuffer.Write(Encoding.ASCII.GetBytes(outputString));
+            outputBuffer.Write(Encoding.Default.GetBytes(outputString));
 
 #if DEBUG
             _logger.Info($"Added {outputString.Length} bytes to the buffer from message number {messageNumber}");
@@ -747,12 +752,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string1Segment, string1Offset));
 
-            var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
+            var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
 
             var string2InputBuffer = new MemoryStream();
             string2InputBuffer.Write(Memory.GetString(string2Segment, string2Offset));
 
-            var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
+            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray());
 
             //If the supplied string has any control characters for formatting, process them
             if (string2InputValue.CountPrintf() > 0)
@@ -796,11 +801,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string1Segment, string1Offset));
-            var string1InputValue = Encoding.ASCII.GetString(string1InputBuffer.ToArray());
+            var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
 
             var string2InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string2Segment, string2Offset));
-            var string2InputValue = Encoding.ASCII.GetString(string2InputBuffer.ToArray());
+            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray());
 
 #if DEBUG
             _logger.Info($"Added {string1InputValue} credits to user account {string2InputValue} (unlimited -- this function is ignored)");
@@ -825,7 +830,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var output = Convert.ToString(integerValue, baseValue);
             output += "\0";
 
-            Memory.SetArray(string1Segment, string1Offset, Encoding.ASCII.GetBytes(output));
+            Memory.SetArray(string1Segment, string1Offset, Encoding.Default.GetBytes(output));
 
 #if DEBUG
             _logger.Info(
@@ -921,7 +926,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
 
             var outputValueOffset = AllocateRoutineMemory((ushort) outputDate.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.ASCII.GetBytes(outputDate));
+            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.Default.GetBytes(outputDate));
 
 #if DEBUG
             _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
@@ -1054,7 +1059,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = new MemoryStream();
             btrieveFilename.Write(Memory.GetString(btrieveFilenameSegment, btrieveFilenameOffset));
 
-            var fileName = Encoding.ASCII.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
+            var fileName = Encoding.Default.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
 
             var btrieveFile = new BtrieveFile(fileName, Module.ModulePath);
 
