@@ -142,6 +142,69 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return formatParameters;
         }
 
+        private static readonly List<char> _controlCharacters = new List<char> { 'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%' };
+
+        private bool IsControlCharacter(byte c)
+        {
+            for (int i = 0; i < _controlCharacters.Count; i++)
+            {
+                if (_controlCharacters[i] == c)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        ///     Printf Parsing and Encoding
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        public MemoryStream FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
+        {
+            Span<byte> spanToParse = stringToParse;
+            var msOutput = new MemoryStream(stringToParse.Length);
+            var currentParameter = startingParameterOrdinal;
+            for (var i = 0; i < spanToParse.Length; i++)
+            {
+                //Found a Control Character
+                if (spanToParse[i] == '%' && IsControlCharacter(spanToParse[i + 1]))
+                {
+                    switch ((char)spanToParse[i + 1])
+                    {
+                        case 'c':
+                        {
+                            var charParameter = GetParameter(currentParameter++);
+                            msOutput.WriteByte((byte)charParameter);
+                            break;
+                        }
+                        case 's':
+                        {
+
+                            var parameterOffset = GetParameter(currentParameter++);
+                            var parameterSegment = GetParameter(currentParameter++);
+                            var parameter = Memory.GetString(parameterSegment, parameterOffset);
+                            msOutput.Write(parameter);
+                            break;
+                        }
+                        case 'd':
+                        {
+                            var lowWord = GetParameter(currentParameter++);
+                            var highWord = GetParameter(currentParameter++);
+                            var parameter = highWord << 16 | lowWord;
+                            msOutput.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                            break;
+                        }
+                        default:
+                            throw new InvalidDataException($"Unhandled Printf Control Character: {(char)spanToParse[i + 1]}");
+                    }
+                    i += 2;
+                }
+                msOutput.WriteByte(spanToParse[i]);
+            }
+            return msOutput;
+        }
+
         protected virtual void Dispose(bool managedAndNative)
         {
 #if DEBUG

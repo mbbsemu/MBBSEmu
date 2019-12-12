@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-
+using MBBSEmu.Extensions;
 namespace MBBSEmu.Module
 {
     public class McvFile
@@ -12,11 +12,11 @@ namespace MBBSEmu.Module
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         public readonly string FileName;
         public readonly byte[] FileContent;
-        public readonly Dictionary<int, string> Messages;
+        public readonly Dictionary<int, byte[]> Messages;
 
         public McvFile(string fileName, string path = "")
         {
-            Messages = new Dictionary<int, string>();
+            Messages = new Dictionary<int, byte[]>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -65,9 +65,9 @@ namespace MBBSEmu.Module
 
                 var messageLocationOffset = BitConverter.ToInt32(fileSpan.Slice(messageLocationsOffsets + offsetModifier, 4));
 
-                var message = Encoding.Default.GetString(fileSpan.Slice(messageLocationOffset, messageLength));
+                var message = fileSpan.Slice(messageLocationOffset, messageLength);
 
-                Messages.Add(i, message);
+                Messages.Add(i, message.ToArray());
             }
 
 #if DEBUG
@@ -75,22 +75,43 @@ namespace MBBSEmu.Module
 #endif
         }
 
-        public bool GetBool(int ordinal) => Messages[ordinal].ToUpper().EndsWith("YES\0");
+        /// <summary>
+        ///     Gets the YES/NO value and returns it as a BOOL
+        ///
+        ///     Values are always "(space)YES" or "(space)NO", so we check that first non-space character
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
+        public bool GetBool(int ordinal) => GetMessageValue(ordinal)[1] == 'Y';
 
         public short GetNumeric(int ordinal)
         {
-            var splitString = Messages[ordinal].Split(':');
-            return short.Parse(splitString[1]);
+            return short.Parse(GetMessageValue(ordinal).ToCharSpan());
         }
 
         public int GetLong(int ordinal)
         {
-            var splitString = Messages[ordinal].Split(':');
-            return int.Parse(splitString[1]);
+            return int.Parse(GetMessageValue(ordinal).ToCharSpan());
         }
 
-        public string GetAscii(int ordinal) => Messages[ordinal];
+        public ReadOnlySpan<byte> GetAscii(int ordinal) => Messages[ordinal];
 
-        public string GetString(int ordinal) => Messages[ordinal];
+        public ReadOnlySpan<byte> GetString(int ordinal) => Messages[ordinal];
+
+        /// <summary>
+        ///     This is faster than doing a .Split
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> GetMessageValue(int ordinal)
+        {
+            Span<byte> message = Messages[ordinal];
+            for (var i = 0; i < message.Length; i++)
+            {
+                if (message[i] == 0x3A)
+                    return message.Slice(i + 1);
+            }
+            throw new Exception($"Unable to find Message Value for Ordinal {ordinal}");
+        }
     }
 }

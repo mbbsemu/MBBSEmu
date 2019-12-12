@@ -325,7 +325,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum}  value: {outputValue}");
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.AX = (ushort) outputValue;
@@ -407,10 +407,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = _currentMcvFile.GetString(msgnum);
 
             var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.Default.GetBytes(outputValue));
+            Memory.SetArray(RoutineMemorySegment, outputValueOffset, outputValue);
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue} saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
 #endif
             Registers.AX = outputValueOffset;
             Registers.DX = RoutineMemorySegment;
@@ -717,20 +717,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var messageNumber = GetParameter(0);
 
-            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputString))
+            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputMessage))
                 throw new Exception($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
+            
+            var formattedMessage = FormatPrintf(outputMessage, 1);
 
-
-            if (outputString.CountPrintf() > 0)
-            {
-                var formatParameters = GetPrintfParameters(outputString, 1);
-                outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
-            }
-
-            outputBuffer.Write(Encoding.Default.GetBytes(outputString));
+                outputBuffer.Write(formattedMessage.ToArray());
 
 #if DEBUG
-            _logger.Info($"Added {outputString.Length} bytes to the buffer from message number {messageNumber}");
+            _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
 #endif
             return 0;
         }

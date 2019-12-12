@@ -3,6 +3,8 @@ using NLog;
 using System;
 using System.IO;
 using System.Text;
+using MBBSEmu.Extensions;
+using NLog.LayoutRenderers;
 
 namespace MBBSEmu.Module
 {
@@ -39,64 +41,81 @@ namespace MBBSEmu.Module
         private void BuildMCV()
         {
             var msOutput = new MemoryStream();
-            var sbCurrentValue = new StringBuilder();
-            var bMsgRecordMultiline = false;
-            var messageCount = 0;
             var msMessages = new MemoryStream();
             var msMessageLengths = new MemoryStream();
             var msMessageOffsets = new MemoryStream();
-            foreach (var s in File.ReadAllLines($"{_modulePath}{FileName}", Encoding.Default))
+            var msCurrentValue = new MemoryStream();
+            var messageCount = 0;
+
+            using var fileToRead = File.OpenRead($"{_modulePath}{_moduleName}.MSG");
+            var ringBuffer = new byte[1];
+
+            var bInVariable = false;
+            var bIgnoreNext = false;
+            var bIsLanguage = true;
+            var checkForLanguage = false;
+            for (var i = 0; i < fileToRead.Length; i++)
             {
-                if (string.IsNullOrEmpty(s) || (!s.Contains('{') && !bMsgRecordMultiline))
-                    continue;
+                Span<byte> buffer = ringBuffer;
+                fileToRead.Read(buffer);
 
-                //One Line Record
-                if (s.Contains('}') && !bMsgRecordMultiline)
+                //','
+                if (checkForLanguage && buffer[0] == 0x2C)
                 {
-                    var startIndex = s.IndexOf('{') + 1;
-                    var endIndex = s.IndexOf('}');
-                    var length = endIndex - startIndex;
-                    sbCurrentValue.Append(s.Substring(startIndex, length));
-                }
-
-                //First line of a new multi-line record
-                if (!s.Contains('}') && !bMsgRecordMultiline)
-                {
-                    bMsgRecordMultiline = true;
-                    sbCurrentValue.Append(s.Substring(s.IndexOf('{') + 1));
+                    bIgnoreNext = true;
                     continue;
                 }
 
-                //Middle of a Multi-Line Record
-                if (bMsgRecordMultiline && !s.Contains('}'))
+                //We're no longer looking for a comma after the previous value
+                checkForLanguage = false;
+
+                //{
+                if (buffer[0] == 0x7B && !bIgnoreNext)
                 {
-                    sbCurrentValue.Append(s);
+                    bInVariable = true;
                     continue;
                 }
 
-                //End of a Multi-Line Record
-                if (bMsgRecordMultiline && s.Contains('}'))
+                //}
+                if (buffer[0] == 0x7D)
                 {
-                    sbCurrentValue.Append(s.Substring(0, s.IndexOf('}')));
-                    bMsgRecordMultiline = false;
-                }
+                    //Check to see if the next character is a comma, denoting another language option
+                    checkForLanguage = true;
 
-                //Add Null Character than append it to the output values
-                sbCurrentValue.Append("\0");
+                    //This is set if we're ignoring a value, usually a language
+                    if (bIgnoreNext)
+                    {
+                        bIgnoreNext = false;
+                        continue;
+                    }
 
-                //Language doesn't technically count as a messages entry
-                if (s.StartsWith("LANGUAGE"))
-                {
-                    msMessages.Write(Encoding.Default.GetBytes(sbCurrentValue.ToString()));
-                    sbCurrentValue.Clear();
+                    if (bInVariable)
+                        bInVariable = false;
+
+                    //Always null terminate
+                    msCurrentValue.WriteByte(0x0);
+
+                    //Language is written first, and not written to the offsets/lengths array
+                    if (bIsLanguage)
+                    {
+                        bIsLanguage = false;
+                        msMessages.Write(msCurrentValue.ToArray());
+                        msCurrentValue.Position = 0;
+                        msCurrentValue.SetLength(0);
+                        continue;
+                    }
+
+                    msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
+                    msMessages.Write(msCurrentValue.ToArray());
+                    msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
+                    messageCount++;
+                    msCurrentValue.Position = 0;
+                    msCurrentValue.SetLength(0);
                     continue;
                 }
 
-                msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
-                msMessages.Write(Encoding.Default.GetBytes(sbCurrentValue.ToString()));
-                msMessageLengths.Write(BitConverter.GetBytes(sbCurrentValue.Length));
-                messageCount++;
-                sbCurrentValue.Clear();
+                if(bInVariable)
+                    msCurrentValue.Write(buffer);
             }
 
             //Build Final MCV File

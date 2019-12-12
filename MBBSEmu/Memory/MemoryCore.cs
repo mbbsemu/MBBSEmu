@@ -95,10 +95,12 @@ namespace MBBSEmu.Memory
             return BitConverter.ToUInt16(_memorySegments[segment], offset);
         }
 
-        public byte[] GetArray(ushort segment, ushort offset, ushort count)
+        public byte[] GetArray(ushort segment, ushort offset, ushort count) => GetSpan(segment, offset, count).ToArray();
+
+        public ReadOnlySpan<byte> GetSpan(ushort segment, ushort offset, ushort count)
         {
             Span<byte> segmentSpan = _memorySegments[segment];
-            return segmentSpan.Slice(offset, count).ToArray();
+            return segmentSpan.Slice(offset, count);
         }
 
 
@@ -130,12 +132,17 @@ namespace MBBSEmu.Memory
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
-            Array.Copy(BitConverter.GetBytes(value), 0, _memorySegments[segment], offset, 2);
+            SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 
         public void SetArray(ushort segment, ushort offset, byte[] array)
         {
             Array.Copy(array, 0, _memorySegments[segment], offset, array.Length);
+        }
+
+        public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
+        {
+            SetArray(segment, offset, array.ToArray());
         }
 
         public ushort AllocateHostMemory(ushort size)
