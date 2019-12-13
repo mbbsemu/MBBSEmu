@@ -75,6 +75,8 @@ namespace MBBSEmu.HostProcess
         {
             session.Channel = GetAvailableChannel();
             _channelDictionary[session.Channel] = session;
+
+            _logger.Info($"Added Session {session.SessionId} to Channel {session.Channel}");
         }
 
         /// <summary>

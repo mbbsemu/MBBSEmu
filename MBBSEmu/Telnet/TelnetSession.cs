@@ -18,7 +18,7 @@ namespace MBBSEmu.Telnet
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
 
-        public TelnetSession(Socket telnetConnection, MbbsHost host)
+        public TelnetSession(Socket telnetConnection, MbbsHost host) : base(telnetConnection.RemoteEndPoint.ToString())
         {
             _host = host;
             _telnetConnection = telnetConnection;
@@ -63,7 +63,7 @@ namespace MBBSEmu.Telnet
                     var bytesSent = _telnetConnection.Send(sendBuffer, SocketFlags.None, out var socketState);
                     ValidateSocketState(socketState);
                 }
-                Thread.Sleep(250);
+                Thread.Sleep(100);
             }
         }
 

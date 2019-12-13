@@ -9,7 +9,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Unique ID for this Session
         /// </summary>
-        public readonly Guid SessionId;
+        public readonly string SessionId;
         
         /// <summary>
         ///     Module this session is currently in
@@ -29,9 +29,9 @@ namespace MBBSEmu.Session
         public Queue<byte[]> DataFromClient;
         public Queue<byte[]> DataToClient;
 
-        public UserSession()
+        public UserSession(string sessionId)
         {
-            SessionId = Guid.NewGuid();
+            SessionId = sessionId;
             DataFromClient = new Queue<byte[]>();
             DataToClient = new Queue<byte[]>();
             UsrPrt = new User();
