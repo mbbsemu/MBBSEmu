@@ -193,7 +193,6 @@ namespace MBBSEmu.CPU
         public CpuRegisters()
         {
             F = new CpuFlags();
-            _logger.Info("X86_16 Registers Initialized!");
         }
 
         /// <summary>

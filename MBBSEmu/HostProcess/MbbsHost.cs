@@ -30,12 +30,9 @@ namespace MBBSEmu.HostProcess
         public MbbsHost()
         {
             _logger.Info("Constructing MbbsEmu Host...");
-            _logger.Info("Initalizing x86_16 CPU Emulator...");
-
             _channelDictionary = new Dictionary<ushort, UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
-
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -45,6 +42,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
+            _logger.Info($"Adding Module {module.ModuleIdentifier}...");
             //Verify that the imported functions are all supported by MbbsEmu
 
             //if (!VerifyImportedFunctions())
@@ -65,6 +63,8 @@ namespace MBBSEmu.HostProcess
 
             //Add it to the Module Dictionary
             _modules[module.ModuleIdentifier] = module;
+
+            _logger.Info($"Module {module.ModuleIdentifier} added!");
         }
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="moduleName"></param>
         /// <param name="routineName"></param>
-        /// <param name="sendToUserDelegate"></param>
+        /// <param name="userSession"></param>
         public void Run(string moduleName, string routineName, UserSession userSession = null)
         {
             var module = _modules[moduleName];
@@ -154,7 +154,7 @@ namespace MBBSEmu.HostProcess
                 module.Memory.SetArray((ushort)EnumHostSegments.UserNum, 0, BitConverter.GetBytes(userSession.Channel));
             }
 
-            _logger.Info($"Running {routineName}...");
+            _logger.Info($"Channel {userSession.Channel}: Running {routineName}");
 
             var cpuRegisters = new CpuRegisters()
                 { CS = module.EntryPoints[routineName].Segment, IP = module.EntryPoints[routineName].Offset, DS = ushort.MaxValue, SI = ushort.MaxValue };
@@ -171,15 +171,12 @@ namespace MBBSEmu.HostProcess
                 var importedModuleName =
                     module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
-                switch (importedModuleName)
+                return importedModuleName switch
                 {
-                    case "MAJORBBS":
-                        return majorbbsHostFunctions.ExportedFunctions[functionOrdinal]();
-                    case "GALGSBL":
-                        return galsblHostFunctions.ExportedFunctions[functionOrdinal]();
-                    default:
-                        throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
-                }
+                    "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
+                    "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),
+                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}")
+                };
             });
 
             //Run the thing
