@@ -26,8 +26,12 @@ namespace MBBSEmu.Session
         /// </summary>
         public ushort Channel;
 
+        public string ModuleIdentifier;
+
         public Queue<byte[]> DataFromClient;
         public Queue<byte[]> DataToClient;
+
+        public EnumSessionState SessionState;
 
         public UserSession(string sessionId)
         {

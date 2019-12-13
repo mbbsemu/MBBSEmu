@@ -691,7 +691,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userChannel = GetParameter(0);
             //TODO -- this will need to write to a destination output delegate
             _sendToChannel(userChannel, new ReadOnlySpan<byte>(outputBuffer.ToArray()));
-            outputBuffer.Flush();
+            outputBuffer.Position = 0;
+            outputBuffer.SetLength(0);
 
             return 0;
         }

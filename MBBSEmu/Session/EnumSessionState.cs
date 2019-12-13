@@ -2,6 +2,8 @@
 {
     public enum EnumSessionState
     {
+        Negotiating,
+
         /// <summary>
         ///     Initial State for all Sessions
         /// </summary>

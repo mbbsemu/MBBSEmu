@@ -99,7 +99,6 @@ namespace MBBSEmu.Memory
             return segmentSpan.Slice(offset, count);
         }
 
-
         /// <summary>
         ///     Reads an array of bytes from the specified segment:offset, stopping
         ///     at the first null character denoting the end of the string.
@@ -107,19 +106,18 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
-        public byte[] GetString(ushort segment, ushort offset)
+        public ReadOnlySpan<byte> GetString(ushort segment, ushort offset)
         {
             Span<byte> segmentSpan = _memorySegments[segment];
             ushort byteCount = 0;
-            for (ushort i = 0; i < ushort.MaxValue; i++)
+            for (var i = 0; i < ushort.MaxValue; i++)
             {
-                byteCount = i;
-
-                if (segmentSpan[offset + i] == 0)
+                byteCount++;
+                if (segmentSpan[offset + i] == 0x0)
                     break;
             }
 
-            return segmentSpan.Slice(offset, byteCount + 1).ToArray();
+            return segmentSpan.Slice(offset, byteCount);
         }
 
         public void SetByte(ushort segment, ushort offset, byte value)

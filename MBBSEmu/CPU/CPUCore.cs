@@ -240,19 +240,16 @@ namespace MBBSEmu.CPU
                     if (relocationRecord == null)
                         return ushort.MaxValue;
 
-                    switch (relocationRecord?.TargetTypeValueTuple.Item1)
+                    return relocationRecord.TargetTypeValueTuple.Item1 switch
                     {
                         //External Property
-                        case EnumRecordsFlag.IMPORTORDINAL:
-                            return _invokeExternalFunctionDelegate(
-                                relocationRecord.TargetTypeValueTuple.Item2,
-                                relocationRecord.TargetTypeValueTuple.Item3);
+                        EnumRecordsFlag.IMPORTORDINAL => _invokeExternalFunctionDelegate(
+                            relocationRecord.TargetTypeValueTuple.Item2, relocationRecord.TargetTypeValueTuple.Item3),
+
                         //Internal Segment
-                        case EnumRecordsFlag.INTERNALREF:
-                            return relocationRecord.TargetTypeValueTuple.Item2;
-                        default:
-                            throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value");
-                    }
+                        EnumRecordsFlag.INTERNALREF => relocationRecord.TargetTypeValueTuple.Item2,
+                        _ => throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value")
+                    };
                 }
 
                 case OpKind.Immediate8to16:

@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.Telnet
 {
@@ -24,12 +25,17 @@ namespace MBBSEmu.Telnet
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
             _telnetConnection.ReceiveBufferSize = 128;
-            
+            SessionState = EnumSessionState.Negotiating;
+
             //Start Listeners & Senders
             _sendThread = new Thread(SendWorker);
             _sendThread.Start();
             _receiveThread = new Thread(ReceiveWorker);
             _receiveThread.Start();
+
+
+            //Disable Local Echo
+            DataToClient.Enqueue(new byte[] { 0xFF, 0xFB, 0x01 });
 
             //Add this Session to the Host
             _host.AddSession(this);
@@ -39,15 +45,11 @@ namespace MBBSEmu.Telnet
 
         private void Enter()
         {
-            //Disable Local Telnet Echo on Client
-            DataToClient.Enqueue(new byte[] {0xFF, 0xFB, 0x01});
-            //Client will respond with 3 byte IAC
-            byte[] terminalResponse = new byte[3];
-            var bytesReceived = _telnetConnection.Receive(terminalResponse, 0, 3, SocketFlags.None);
-
+            ModuleIdentifier = "GWWARROW";
+            SessionState = EnumSessionState.EnteringModule;
             //Kick off Entry
-            _host.Run("GWWARROW", "sttrou", this);
-            _host.Run("GWWARROW", "stsrou", this);
+            //_host.Run("GWWARROW", "sttrou", this);
+            //_host.Run("GWWARROW", "stsrou", this);
         }
 
         /// <summary>
@@ -70,26 +72,46 @@ namespace MBBSEmu.Telnet
         private void ReceiveWorker()
         {
             using var msReceiveBuffer = new MemoryStream();
-            var characterBuffer = new byte[1];
+            var characterBuffer = new byte[256];
             while (_telnetConnection.Connected)
             {
-                Span<byte> characterSpan = characterBuffer;
-                
-                var bytesReceived = _telnetConnection.Receive(characterSpan, SocketFlags.None, out var errorCode);
-                ValidateSocketState(errorCode);
-                
-                msReceiveBuffer.Write(characterSpan);
+                Span<byte> characterBufferSpan = characterBuffer;
+                var bytesReceived = _telnetConnection.Receive(characterBufferSpan, SocketFlags.Partial, out var socketState);
+                ValidateSocketState(socketState);
 
-                //Only Send when characters are LF, for now
-                if (characterSpan[0] == 0xA)
+                //IAC Responses
+                if (characterBufferSpan[0] == 0xFF)
                 {
-                    DataFromClient.Enqueue(msReceiveBuffer.ToArray());
-                    msReceiveBuffer.Position = 0;
-                    msReceiveBuffer.SetLength(0);
-                    continue;
+                    ParseIAC(characterBufferSpan.Slice(0, bytesReceived));
+                }
+                else
+                {
+                    DataFromClient.Enqueue(characterBufferSpan.Slice(0, bytesReceived).ToArray());
                 }
                 
-                Thread.Sleep(100);
+                Thread.Sleep(1);
+            }
+        }
+
+        /// <summary>
+        ///     Parses IAC Commands Received by 
+        /// </summary>
+        /// <param name="iacResponse"></param>
+        private void ParseIAC(ReadOnlySpan<byte> iacResponse)
+        {
+            for (var i = 0; i < iacResponse.Length; i+= 3)
+            {
+                if (iacResponse[i] == 0)
+                    return;
+
+                if(iacResponse[i] != 0xFF)
+                    throw new Exception("Invalid IAC?");
+
+                var iacVerb = (EnumIacVerbs) iacResponse[i + 1];
+                var iacOption = (EnumIacOptions) iacResponse[i + 2];
+
+                _logger.Info($"Channel {Channel}: IAC {iacVerb} {iacOption}");
+
             }
         }
 

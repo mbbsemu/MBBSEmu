@@ -17,7 +17,7 @@ namespace MBBSEmu.Memory
         ushort GetWord(ushort segment, ushort offset);
         byte[] GetArray(ushort segment, ushort offset, ushort count);
         ReadOnlySpan<byte> GetSpan(ushort segment, ushort offset, ushort count);
-        byte[] GetString(ushort segment, ushort offset);
+        ReadOnlySpan<byte> GetString(ushort segment, ushort offset);
         void SetByte(ushort segment, ushort offset, byte value);
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(ushort segment, ushort offset, byte[] array);

@@ -1,13 +1,13 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Logging;
-using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace MBBSEmu.HostProcess
 {
@@ -26,6 +26,8 @@ namespace MBBSEmu.HostProcess
         private readonly Dictionary<ushort, UserSession> _channelDictionary;
         private readonly Dictionary<string, MbbsModule> _modules;
         private readonly Dictionary<string, object> _exportedFunctions;
+        private readonly Thread _workerThread;
+        private bool _isRunning;
 
         public MbbsHost()
         {
@@ -33,7 +35,40 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = new Dictionary<ushort, UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
+            _isRunning = true;
+            _workerThread = new Thread(WorkerThread);
+            _workerThread.Start();
             _logger.Info("Constructed MbbsEmu Host!");
+        }
+
+
+        /// <summary>
+        ///     The main MajorBBS/WG worker loop that processes events in serial order
+        /// </summary>
+        private void WorkerThread()
+        {
+            while (_isRunning)
+            {
+                //Enter anyone into a module who needs to enter
+                foreach (var s in _channelDictionary.Where(x => x.Value.SessionState == EnumSessionState.EnteringModule))
+                {
+                    Run(s.Value.ModuleIdentifier, "sttrou", s.Value);
+                    Run(s.Value.ModuleIdentifier, "stsrou", s.Value);
+                    s.Value.SessionState = EnumSessionState.InModule;
+                }
+
+                //Process Input
+                foreach (var s in _channelDictionary.Where(x => x.Value.SessionState == EnumSessionState.InModule).Select(y=> y.Value))
+                {
+                    if (s.DataFromClient.Count > 0)
+                    {
+                        Run(s.ModuleIdentifier, "sttrou", s);
+                        Run(s.ModuleIdentifier, "stsrou", s);
+                    }
+                }
+
+                Thread.Sleep(250);
+            }
         }
 
         /// <summary>

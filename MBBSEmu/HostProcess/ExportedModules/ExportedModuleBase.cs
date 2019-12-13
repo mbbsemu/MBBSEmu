@@ -64,7 +64,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void SetupExportedFunctionDelegates()
         {
             _logger.Info($"Setting up {this.GetType().Name.ToUpper()} exported functions...");
-            var functionBindings = this.GetType()
+            var functionBindings = GetType()
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(m => m.GetCustomAttributes(typeof(ExportedFunctionAttribute), false).Length > 0).Select(y => new
                 {
@@ -80,7 +80,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ExportedFunctions[ordinal] = f.binding;
             }
 
-            _logger.Info($"Setup {ExportedFunctions.Count} functions from {this.GetType().Name.ToUpper()}");
+            _logger.Info($"Setup {ExportedFunctions.Count} functions from {GetType().Name.ToUpper()}");
         }
 
 
@@ -97,11 +97,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected static readonly char[] _controlCharacters = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
 
-        private protected bool IsControlCharacter(byte c)
+        private protected bool IsControlCharacter(ReadOnlySpan<byte> c)
         {
-            for (int i = 0; i < _controlCharacters.Length; i++)
+            for (var i = 0; i < _controlCharacters.Length; i++)
             {
-                if (_controlCharacters[i] == c)
+                if (_controlCharacters[i] == c[0])
                     return true;
             }
             return false;
@@ -111,18 +111,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Printf Parsing and Encoding
         /// </summary>
         /// <param name="s"></param>
+        /// <param name="stringToParse"></param>
+        /// <param name="startingParameterOrdinal"></param>
         /// <returns></returns>
-        private protected ReadOnlySpan<byte> FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
+        private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal)
         {
-            Span<byte> spanToParse = stringToParse;
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
-            for (var i = 0; i < spanToParse.Length; i++)
+            for (var i = 0; i < stringToParse.Length; i++)
             {
                 //Found a Control Character
-                if (spanToParse[i] == '%' && IsControlCharacter(spanToParse[i + 1]))
+                if (stringToParse[i] == '%' && IsControlCharacter(stringToParse.Slice(i + 1,1)))
                 {
-                    switch ((char) spanToParse[i + 1])
+                    switch ((char)stringToParse[i + 1])
                     {
                         case 'c':
                         {
@@ -149,16 +150,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         default:
                             throw new InvalidDataException(
-                                $"Unhandled Printf Control Character: {(char) spanToParse[i + 1]}");
+                                $"Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
                     }
-
-                    i += 2;
+                    i++;
                     continue;
                 }
-
-                msOutput.WriteByte(spanToParse[i]);
+                msOutput.WriteByte(stringToParse[i]);
             }
-
             return msOutput.ToArray();
         }
     }
