@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Disassembler;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.Memory;
 
 namespace MBBSEmu.Module
 {
@@ -36,6 +37,8 @@ namespace MBBSEmu.Module
         /// </summary>
         public Dictionary<string, EntryPoint> EntryPoints;
 
+        public readonly IMemoryCore Memory;
+
         public MbbsModule(string module, string path = "")
         {
             ModuleIdentifier = module;
@@ -56,6 +59,8 @@ namespace MBBSEmu.Module
             File = new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL");
             Msg = new MsgFile(ModulePath, ModuleIdentifier);
             EntryPoints = new Dictionary<string, EntryPoint>(9);
+
+            Memory = new MemoryCore();
         }
     }
 }

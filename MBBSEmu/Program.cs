@@ -49,7 +49,9 @@ namespace MBBSEmu
 
             var module = new MbbsModule(sInputModule, sInputPath);
 
-            var host = new MbbsHost(module);
+            var host = new MbbsHost();
+            host.AddModule(module);
+            host.Init("GWWARROW");
             var server = new TelnetServer(host);
             server.Start();
             Console.ReadKey();

@@ -38,8 +38,8 @@ namespace MBBSEmu.CPU
 
             //Setup Memory Space
             _memory = memoryCore;
-            STACK_SEGMENT = _memory.AllocateRoutineMemorySegment();
-            EXTRA_SEGMENT = _memory.AllocateRoutineMemorySegment();
+            STACK_SEGMENT = ushort.MaxValue;
+            EXTRA_SEGMENT = ushort.MaxValue;
 
             //Setup Registers
             Registers = cpuRegisters;

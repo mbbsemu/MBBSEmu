@@ -41,7 +41,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly MemoryStream outputBuffer;
 
-        public Majorbbs(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module, SentToUserDelegate sendToUserDelegate) : base(memoryCore, cpuRegisters, module)
+        public Majorbbs(CpuRegisters cpuRegisters, MbbsModule module, SentToUserDelegate sendToUserDelegate) : base(cpuRegisters, module)
         {
             _sendToUser = sendToUserDelegate;
             outputBuffer = new MemoryStream();
@@ -122,27 +122,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dataSegment = GetParameter(1);
             var size = GetParameter(2);
 
-            //Get the current pointer
-            var pointer = Memory.AllocateRoutineMemorySegment();
-
-            //Get the Module Name from the Mdf
-            var moduleName = Module.Mdf.ModuleName;
-
-            //Sanity Check -- 
-            if (moduleName.Length > size)
+            if (!HostMemoryVariables.TryGetValue("GMDNAM", out var variablePointer))
             {
-                _logger.Warn($"Module Name \"{moduleName}\" greater than specified size {size}, truncating");
-                moduleName = moduleName.Substring(0, size);
+
+                //Get the current pointer
+                var offset = Memory.AllocateHostMemory(size);
+
+                variablePointer = new IntPtr16(HostMemorySegment, offset);
+
+                //Get the Module Name from the Mdf
+                var moduleName = Module.Mdf.ModuleName;
+
+                //Sanity Check -- 
+                if (moduleName.Length > size)
+                {
+                    _logger.Warn($"Module Name \"{moduleName}\" greater than specified size {size}, truncating");
+                    moduleName = moduleName.Substring(0, size);
+                }
+
+                //Set Dictionary Lookup
+                HostMemoryVariables["GMDNAM"] = variablePointer;
+
+                //Set Memory
+                Memory.SetArray(HostMemorySegment, offset, Encoding.Default.GetBytes(moduleName));
+#if DEBUG
+                _logger.Info($"Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {Registers.DX:X4}:{Registers.AX:X4}");
+#endif
             }
 
-            Memory.SetArray(RoutineMemorySegment, pointer, Encoding.Default.GetBytes(moduleName));
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
 
-            Registers.AX = pointer;
-            Registers.DX = RoutineMemorySegment;
-
-#if DEBUG
-            _logger.Info($"Retrieved module name \"{moduleName}\" and saved it at host memory offset {Registers.DX:X4}:{Registers.AX:X4}");
-#endif
             return 0;
         }
 
@@ -194,7 +204,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputBuffer = new MemoryStream();
 
-            inputBuffer.Write(Memory.GetArray(srcSegment, srcOffset, limit));
+            inputBuffer.Write(Memory.GetSpan(srcSegment, srcOffset, limit));
 
             //If the value read is less than the limit, it'll be padded with null characters
             //per the MajorBBS Development Guide
@@ -404,16 +414,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            var outputValue = _currentMcvFile.GetString(msgnum);
+            if(!HostMemoryVariables.TryGetValue($"STGOPT_{msgnum}", out var variablePointer))
+            {
+                var outputValue = _currentMcvFile.GetString(msgnum);
+                var offset = Memory.AllocateHostMemory((ushort)outputValue.Length);
 
-            var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset, outputValue);
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+
+                //Save Variable Pointer
+                HostMemoryVariables[$"STGOPT_{msgnum}"] = variablePointer;
+
+                //Set Value in Memory
+                Memory.SetArray(variablePointer.Segment, variablePointer.Offset, outputValue);
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
+                _logger.Info(
+                    $"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            Registers.AX = outputValueOffset;
-            Registers.DX = RoutineMemorySegment;
+            }
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
 
             return 0;
         }
@@ -453,16 +473,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputValue = $"{highByte << 16 | lowByte}\0";
 
-            var outputValueOffset = AllocateRoutineMemory((ushort) outputValue.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset,
-                Encoding.Default.GetBytes(outputValue));
+            if (!HostMemoryVariables.TryGetValue($"L2AS", out var variablePointer))
+            {
+                var offset = Memory.AllocateHostMemory((ushort) outputValue.Length);
+
+                variablePointer = new IntPtr16((ushort) EnumHostSegments.HostMemorySegment, offset);
+
+                //Set Variable Pointer
+                HostMemoryVariables["L2AS"] = variablePointer;
+
+                Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Info(
-                $"Received value: {outputValue}, string saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
+                _logger.Info(
+                    $"Received value: {outputValue}, string saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            Registers.AX = outputValueOffset;
-            Registers.DX = RoutineMemorySegment;
+            }
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
 
             return 0;
         }
@@ -620,7 +649,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
             Registers.AX = (ushort) EnumHostSegments.User;
-            Registers.DX = RoutineMemorySegment;
+            Registers.DX = 0;
 
             return 0;
         }
@@ -639,16 +668,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var output = Memory.GetString(sourceSegment, sourceOffset);
 
-            var outputString = Encoding.Default.GetString(output);
-
             //If the supplied string has any control characters for formatting, process them
-            if (outputString.CountPrintf() > 0)
-            {
-                var formatParameters = GetPrintfParameters(outputString, 2);
-                outputString = string.Format(outputString.FormatPrintf(), formatParameters.ToArray());
-            }
+            var formattedMessage = FormatPrintf(output, 2);
 
-            outputBuffer.Write(Encoding.Default.GetBytes(outputString));
+            outputBuffer.Write(formattedMessage.ToArray());
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -746,20 +769,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Memory.GetString(string1Segment, string1Offset));
-
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
-
+            
             var string2InputBuffer = new MemoryStream();
             string2InputBuffer.Write(Memory.GetString(string2Segment, string2Offset));
 
-            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray());
-
             //If the supplied string has any control characters for formatting, process them
-            if (string2InputValue.CountPrintf() > 0)
-            {
-                var formatParameters = GetPrintfParameters(string2InputValue, 4);
-                string2InputValue = string.Format(string2InputValue.FormatPrintf(), formatParameters.ToArray());
-            }
+            var string2InputValue = FormatPrintf(string2InputBuffer.ToArray(), 4);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.BackgroundColor = ConsoleColor.Blue;
@@ -914,21 +930,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var packedDate = GetParameter(0);
 
+            //Pack the Date
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-
             var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
 
-            var outputValueOffset = AllocateRoutineMemory((ushort) outputDate.Length);
-            Memory.SetArray(RoutineMemorySegment, outputValueOffset, Encoding.Default.GetBytes(outputDate));
+            if (!HostMemoryVariables.TryGetValue("NCDATE", out var variablePointer))
+            {
+                var offset = base.Memory.AllocateHostMemory((ushort)outputDate.Length);
+
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                HostMemoryVariables["NCDATE"] = variablePointer;
+            }
+            
+            Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputDate));
 
 #if DEBUG
-            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {RoutineMemorySegment:X4}:{outputValueOffset:X4}");
+            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            Registers.AX = outputValueOffset;
-            Registers.DX = RoutineMemorySegment;
-            
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
             return 0;
         }
 
@@ -1225,7 +1247,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Raw status from btusts, where appropriate
         ///     
         ///     Signature: int status
-        ///     Returns: AX == Segment holding the Users Status
+        ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "STATUS", Ordinal = 565)]

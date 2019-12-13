@@ -40,11 +40,11 @@ namespace MBBSEmu.Module
         /// </summary>
         private void BuildMCV()
         {
-            var msOutput = new MemoryStream();
-            var msMessages = new MemoryStream();
-            var msMessageLengths = new MemoryStream();
-            var msMessageOffsets = new MemoryStream();
-            var msCurrentValue = new MemoryStream();
+            using var msOutput = new MemoryStream();
+            using var msMessages = new MemoryStream();
+            using var msMessageLengths = new MemoryStream();
+            using var msMessageOffsets = new MemoryStream();
+            using var msCurrentValue = new MemoryStream();
             var messageCount = 0;
 
             using var fileToRead = File.OpenRead($"{_modulePath}{_moduleName}.MSG");

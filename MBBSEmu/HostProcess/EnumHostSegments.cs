@@ -47,7 +47,6 @@
         /// </summary>
         Status = 0xFFF9,
 
-
         /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>

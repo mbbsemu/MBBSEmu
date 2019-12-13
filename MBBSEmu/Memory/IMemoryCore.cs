@@ -1,12 +1,14 @@
 ﻿using System;
 using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.HostProcess;
 
 namespace MBBSEmu.Memory
 {
     public interface IMemoryCore
     {
         void AddSegment(ushort segmentNumber);
+        void AddSegment(EnumHostSegments segment);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
         bool HasSegment(ushort segmentNumber);
@@ -20,9 +22,6 @@ namespace MBBSEmu.Memory
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(ushort segment, ushort offset, byte[] array);
         void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array);
-
         ushort AllocateHostMemory(ushort size);
-        ushort AllocateRoutineMemorySegment();
-        void FreeRoutineMemorySegment(ushort segment);
     }
 }

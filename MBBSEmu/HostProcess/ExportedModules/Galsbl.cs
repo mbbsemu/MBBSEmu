@@ -14,7 +14,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "GALGSBL")]
     public class Galsbl : ExportedModuleBase
     {
-        public Galsbl(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module) : base(memoryCore, cpuRegisters, module)
+        public Galsbl(CpuRegisters cpuRegisters, MbbsModule module) : base(cpuRegisters, module)
         {
             if(!Memory.HasSegment((ushort)EnumHostSegments.Bturno))
                 Memory.AddSegment((ushort) EnumHostSegments.Bturno);

@@ -17,34 +17,48 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// <summary>
     ///     Base Class for Exported MajorBBS Routines
     /// </summary>
-    public abstract class ExportedModuleBase : IDisposable
+    public abstract class ExportedModuleBase
     {
         public delegate ushort ExportedFunctionDelegate();
 
+        /// <summary>
+        ///     Dictionary of Exported Functions
+        ///
+        ///     Key Represents the Function Ordinal in the associated .H file
+        /// </summary>
         public Dictionary<ushort, ExportedFunctionDelegate> ExportedFunctions;
 
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        /// <summary>
+        ///     Internal Variables are stored inside the system (module name, etc.)
+        ///
+        ///     We want to write these only once to the HostMemorySegment, so we use this
+        ///     dictionary to track the variable by a given name (key) and the pointer to the segment
+        ///     it lives in.
+        /// </summary>
+        private protected Dictionary<string, IntPtr16> HostMemoryVariables;
 
-        protected readonly IMemoryCore Memory;
-        protected readonly CpuRegisters Registers;
-        protected readonly MbbsModule Module;
+        private protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
-        private ushort _routineMemoryOffset = 0x0;
-        protected ushort RoutineMemorySegment;
+        private protected readonly IMemoryCore Memory;
+        private protected readonly CpuRegisters Registers;
+        private protected readonly MbbsModule Module;
 
-        protected ExportedModuleBase(IMemoryCore memoryCore, CpuRegisters cpuRegisters, MbbsModule module)
+        /// <summary>
+        ///     Convenience Variable, prevents having to repeatedly cast the Enum to ushort
+        /// </summary>
+        private protected readonly ushort HostMemorySegment = (ushort) EnumHostSegments.HostMemorySegment;
+
+        private protected ExportedModuleBase(CpuRegisters cpuRegisters, MbbsModule module)
         {
-            //Setup Host Memory
-            Memory = memoryCore;
-            RoutineMemorySegment = Memory.AllocateRoutineMemorySegment();
-
-            Registers = cpuRegisters;
-
+            Memory = module.Memory;
             Module = module;
+            Registers = cpuRegisters;
 
             //Setup Exported Functions
             ExportedFunctions = new Dictionary<ushort, ExportedFunctionDelegate>();
             SetupExportedFunctionDelegates();
+
+            HostMemoryVariables = new Dictionary<string, IntPtr16>();
         }
 
         private void SetupExportedFunctionDelegates()
@@ -69,89 +83,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Setup {ExportedFunctions.Count} functions from {this.GetType().Name.ToUpper()}");
         }
 
-        /// <summary>
-        ///     Tracks the pointer of the allocated memory in the Host Memory Pool
-        ///
-        ///     This will increment with each call by size
-        /// </summary>
-        /// <param name="size"></param>
-        /// <returns></returns>
-        protected ushort AllocateRoutineMemory(ushort size)
-        {
-            var offset = _routineMemoryOffset;
-#if DEBUG
-            _logger.Debug($"Allocated {size} bytes of memory in Routine Memory Segment at {RoutineMemorySegment:X4}:{_routineMemoryOffset}");
-#endif
-            _routineMemoryOffset += size;
-            return offset;
-        }
 
         /// <summary>
         ///     Gets the parameter by ordinal passed into the routine
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
-        protected ushort GetParameter(ushort parameterOrdinal)
+        private protected ushort GetParameter(ushort parameterOrdinal)
         {
             var parameterOffset = (ushort) (Registers.BP + 5 + (2 * parameterOrdinal));
             return Memory.GetWord(Registers.SS, parameterOffset);
         }
 
-        /// <summary>
-        ///     Gets the required parameters for the specified "printf" formatted string
-        /// </summary>
-        /// <param name="stringToFormat"></param>
-        /// <param name="startingParameterOrdinal"></param>
-        /// <returns></returns>
-        protected List<object> GetPrintfParameters(string stringToFormat, ushort startingParameterOrdinal)
+        private protected static readonly char[] _controlCharacters = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
+
+        private protected bool IsControlCharacter(byte c)
         {
-            var formatParameters = new List<object>();
-            var currentParameter = startingParameterOrdinal;
-            for (var i = 0; i < stringToFormat.CountPrintf(); i++)
-            {
-                //Gets the control character for the ordinal provided
-                switch (stringToFormat.GetPrintf(i))
-                {
-                    case 'c':
-                        {
-                            var charParameter = GetParameter(currentParameter++);
-                            formatParameters.Add((char)charParameter);
-                            break;
-                        }
-                    case 's':
-                        {
-
-                            var parameterOffset = GetParameter(currentParameter++);
-                            var parameterSegment = GetParameter(currentParameter++);
-                            var parameter = Memory.GetString(parameterSegment, parameterOffset);
-                            formatParameters.Add(Encoding.Default.GetString(parameter));
-                            break;
-                        }
-                    case 'd':
-                        {
-                            var lowWord = GetParameter(currentParameter++);
-                            var highWord = GetParameter(currentParameter++);
-                            var parameter = highWord << 16 | lowWord;
-                            formatParameters.Add(parameter);
-                            break;
-                        }
-                    default:
-                        throw new InvalidDataException($"Unhandled Printf Control Character: {stringToFormat.GetPrintf(i)}");
-                }
-            }
-            return formatParameters;
-        }
-
-        private static readonly List<char> _controlCharacters = new List<char> { 'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%' };
-
-        private bool IsControlCharacter(byte c)
-        {
-            for (int i = 0; i < _controlCharacters.Count; i++)
+            for (int i = 0; i < _controlCharacters.Length; i++)
             {
                 if (_controlCharacters[i] == c)
                     return true;
             }
-
             return false;
         }
 
@@ -160,7 +112,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
-        public MemoryStream FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
+        private protected MemoryStream FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
         {
             Span<byte> spanToParse = stringToParse;
             var msOutput = new MemoryStream(stringToParse.Length);
@@ -170,12 +122,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //Found a Control Character
                 if (spanToParse[i] == '%' && IsControlCharacter(spanToParse[i + 1]))
                 {
-                    switch ((char)spanToParse[i + 1])
+                    switch ((char) spanToParse[i + 1])
                     {
                         case 'c':
                         {
                             var charParameter = GetParameter(currentParameter++);
-                            msOutput.WriteByte((byte)charParameter);
+                            msOutput.WriteByte((byte) charParameter);
                             break;
                         }
                         case 's':
@@ -196,27 +148,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             break;
                         }
                         default:
-                            throw new InvalidDataException($"Unhandled Printf Control Character: {(char)spanToParse[i + 1]}");
+                            throw new InvalidDataException(
+                                $"Unhandled Printf Control Character: {(char) spanToParse[i + 1]}");
                     }
+
                     i += 2;
                 }
+
                 msOutput.WriteByte(spanToParse[i]);
             }
+
             return msOutput;
-        }
-
-        protected virtual void Dispose(bool managedAndNative)
-        {
-#if DEBUG
-            _logger.Info($"Freeing Routine Memory: {RoutineMemorySegment:X4} ({_routineMemoryOffset} bytes freed)");
-#endif
-
-            Memory.FreeRoutineMemorySegment(RoutineMemorySegment);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
         }
     }
 }

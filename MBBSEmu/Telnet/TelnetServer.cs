@@ -25,7 +25,7 @@ namespace MBBSEmu.Telnet
         public TelnetServer(MbbsHost host)
         {
             _host = host;
-            _host.Init();
+            
 
             //Setup Listener
             _ipEndPoint = new IPEndPoint(IPAddress.Any, 23);
