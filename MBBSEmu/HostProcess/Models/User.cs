@@ -52,6 +52,28 @@ namespace MBBSEmu.HostProcess.Models
             Keys = new IntPtr16(0,0);
             Clsptr = new IntPtr16(0,0);
             Polrou = new IntPtr16(0,0);
+
+            //Set Initial Values
+            var output = new MemoryStream();
+            output.Write(BitConverter.GetBytes((short)6)); //class (ACTUSR)
+            output.Write(new IntPtr16().ToSpan()); //keys:segment
+            output.Write(BitConverter.GetBytes((short)1)); //state (register_module always returns 1)
+            output.Write(BitConverter.GetBytes((short)0)); //substt (always starts at 0)
+            output.Write(BitConverter.GetBytes((short)0)); //lofstt
+            output.Write(BitConverter.GetBytes((short)0)); //usetmr
+            output.Write(BitConverter.GetBytes((short)0)); //minut4
+            output.Write(BitConverter.GetBytes((short)0)); //countr
+            output.Write(BitConverter.GetBytes((short)0)); //pfnacc
+            output.Write(BitConverter.GetBytes((int)0)); //flags
+            output.Write(BitConverter.GetBytes((ushort)0)); //baud
+            output.Write(BitConverter.GetBytes((short)0)); //crdrat
+            output.Write(BitConverter.GetBytes((short)0)); //nazapc
+            output.Write(BitConverter.GetBytes((short)0)); //linlim
+            output.Write(new IntPtr16().ToSpan()); //clsptr:segment
+            output.Write(new IntPtr16().ToSpan()); //polrou:segment
+            output.Write(BitConverter.GetBytes('0')); //lcstat
+
+            FromSpan(output.ToArray());
         }
 
         public void FromSpan(ReadOnlySpan<byte> userSpan)

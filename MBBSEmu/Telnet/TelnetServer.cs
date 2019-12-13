@@ -19,8 +19,8 @@ namespace MBBSEmu.Telnet
         private readonly Socket _listenerSocket;
         private readonly List<TelnetSession> _telnetSessions;
         private bool _isRunning;
-        private MbbsHost _host;
-        private Thread _listenerThread;
+        private readonly MbbsHost _host;
+        private readonly Thread _listenerThread;
 
         public TelnetServer(MbbsHost host)
         {

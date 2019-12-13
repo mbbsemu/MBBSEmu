@@ -16,7 +16,14 @@ namespace MBBSEmu.Session
         /// </summary>
         private int ModuleId { get; set; }
 
+        /// <summary>
+        ///     This Users UsrPtr* which is passed in from MajorBBS
+        /// </summary>
         public User UsrPrt;
+        
+        /// <summary>
+        ///     This Users Number/Channel Number (used to identify target for output)
+        /// </summary>
         public ushort Channel;
 
         public Queue<byte[]> DataFromClient;
@@ -27,6 +34,7 @@ namespace MBBSEmu.Session
             SessionId = Guid.NewGuid();
             DataFromClient = new Queue<byte[]>();
             DataToClient = new Queue<byte[]>();
+            UsrPrt = new User();
         }
 
         public void SendToClient(ReadOnlySpan<byte> dataToSend)

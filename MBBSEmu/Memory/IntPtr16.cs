@@ -10,6 +10,12 @@ namespace MBBSEmu.Memory
         public ushort Segment { get; set; }
         public ushort Offset { get; set; }
 
+        public IntPtr16()
+        {
+            Segment = 0;
+            Offset = 0;
+        }
+
         public IntPtr16(ushort segment, ushort offset)
         {
             Segment = segment;
@@ -28,7 +34,7 @@ namespace MBBSEmu.Memory
         {
             var output = new byte[4];
             Array.Copy(BitConverter.GetBytes(Segment), 0, output, 0, 2);
-            Array.Copy(BitConverter.GetBytes(Offset), 2, output, 0, 2);
+            Array.Copy(BitConverter.GetBytes(Offset), 0, output, 2, 2);
             return output;
         }
     }

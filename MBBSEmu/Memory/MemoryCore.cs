@@ -118,7 +118,8 @@ namespace MBBSEmu.Memory
                 if (segmentSpan[offset + i] == 0)
                     break;
             }
-            return segmentSpan.Slice(offset, byteCount).ToArray();
+
+            return segmentSpan.Slice(offset, byteCount + 1).ToArray();
         }
 
         public void SetByte(ushort segment, ushort offset, byte value)

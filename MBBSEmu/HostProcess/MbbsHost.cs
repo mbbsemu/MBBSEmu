@@ -23,7 +23,7 @@ namespace MBBSEmu.HostProcess
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
-        private readonly List<UserSession> _sessions;
+        private readonly Dictionary<ushort, UserSession> _channelDictionary;
         private readonly Dictionary<string, MbbsModule> _modules;
         private readonly Dictionary<string, object> _exportedFunctions;
 
@@ -32,7 +32,7 @@ namespace MBBSEmu.HostProcess
             _logger.Info("Constructing MbbsEmu Host...");
             _logger.Info("Initalizing x86_16 CPU Emulator...");
 
-            _sessions = new List<UserSession>();
+            _channelDictionary = new Dictionary<ushort, UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
 
@@ -67,10 +67,23 @@ namespace MBBSEmu.HostProcess
             _modules[module.ModuleIdentifier] = module;
         }
 
+        /// <summary>
+        ///     Assigns a Channel # to a session and adds it to the Channel Dictionary
+        /// </summary>
+        /// <param name="session"></param>
         public void AddSession(UserSession session)
         {
-            _sessions.Add(session);
+            session.Channel = GetAvailableChannel();
+            _channelDictionary[session.Channel] = session;
         }
+
+        /// <summary>
+        ///     Removes a Channel # from the Channel Dictionary
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        public bool RemoveSession(ushort channel) => _channelDictionary.Remove(channel);
+        
 
         /// <summary>
         ///     Starts a new instance of the MbbsHost running the specified MbbsModule
@@ -96,34 +109,23 @@ namespace MBBSEmu.HostProcess
                 {CS = module.EntryPoints["_INIT_"].Segment, IP = module.EntryPoints["_INIT_"].Offset};
 
             //Setup Host Functions for this Module
-            var majorbbsHostFunctions = new Majorbbs(_cpuRegisters, module, null);
+            var majorbbsHostFunctions = new Majorbbs(_cpuRegisters, module, SendToChannel);
             _exportedFunctions[$"{module.ModuleIdentifier}-MAJORBBS"] = majorbbsHostFunctions;
             var galsblHostFunctions = new Galsbl(_cpuRegisters, module);
             _exportedFunctions[$"{module.ModuleIdentifier}-GALGSBL"] = galsblHostFunctions;
 
-            var _cpu = new CpuCore(module.Memory, _cpuRegisters, (delegate(ushort ordinal, ushort functionOrdinal)
+            var _cpu = new CpuCore(module.Memory, _cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
             {
-                try
-                {
-                    var importedModuleName =
-                        module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
+                var importedModuleName =
+                    module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
-                    switch (importedModuleName)
-                    {
-                        case "MAJORBBS":
-                            return majorbbsHostFunctions.ExportedFunctions[functionOrdinal]();
-                        case "GALGSBL":
-                            return galsblHostFunctions.ExportedFunctions[functionOrdinal]();
-                        default:
-                            throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
-                    }
-                }
-                catch (Exception e)
+                return importedModuleName switch
                 {
-                    _logger.Fatal(e);
-                    throw;
-                }
-            }));
+                    "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
+                    "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),
+                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}")
+                };
+            });
 
 
             while (_cpu.IsRunning)
@@ -152,13 +154,17 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Running {routineName}...");
 
-            var _cpuRegisters = new CpuRegisters()
+            var cpuRegisters = new CpuRegisters()
                 { CS = module.EntryPoints[routineName].Segment, IP = module.EntryPoints[routineName].Offset, DS = ushort.MaxValue, SI = ushort.MaxValue };
 
             var majorbbsHostFunctions = (Majorbbs)_exportedFunctions[$"{module.ModuleIdentifier}-MAJORBBS"];
             var galsblHostFunctions = (Galsbl)_exportedFunctions[$"{module.ModuleIdentifier}-GALGSBL"];
 
-            var _cpu = new CpuCore(module.Memory, _cpuRegisters, delegate (ushort ordinal, ushort functionOrdinal)
+            //Set Registers for the current CPU
+            majorbbsHostFunctions.Registers = cpuRegisters;
+            galsblHostFunctions.Registers = cpuRegisters;
+
+            var _cpu = new CpuCore(module.Memory, cpuRegisters, delegate (ushort ordinal, ushort functionOrdinal)
             {
                 var importedModuleName =
                     module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
@@ -173,14 +179,33 @@ namespace MBBSEmu.HostProcess
                         throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}");
                 }
             });
+
+            //Run the thing
             while (_cpu.IsRunning)
                 _cpu.Tick();
+
+            //Extract the User Information as it might have updated
+            userSession?.UsrPrt.FromSpan(module.Memory.GetSpan((ushort)EnumHostSegments.User, 0, 41));
         }
 
         private void SendToChannel(ushort channel, ReadOnlySpan<byte> dataToSend)
         {
-            var userToSend = _sessions.First(x => x.Channel == channel);
-            userToSend.SendToClient(dataToSend);
+            _channelDictionary[channel].SendToClient(dataToSend);
+        }
+
+        /// <summary>
+        ///     Searches the Channels Dictionary for the first Available Channel
+        /// </summary>
+        /// <returns></returns>
+        private ushort GetAvailableChannel()
+        {
+            for (ushort i = 0; i < ushort.MaxValue; i++)
+            {
+                if (!_channelDictionary.ContainsKey(i))
+                    return i;
+            }
+
+            throw new Exception("Unable to locate Available channel");
         }
 
         /*

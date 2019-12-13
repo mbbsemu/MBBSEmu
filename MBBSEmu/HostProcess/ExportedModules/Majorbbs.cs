@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.Models;
 
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -24,9 +25,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase
     {
-        public delegate void SentToUserDelegate(ReadOnlySpan<byte> data);
+        public delegate void SendToChannelDelegate(ushort channel, ReadOnlySpan<byte> data);
 
-        private readonly SentToUserDelegate _sendToUser;
+        private readonly SendToChannelDelegate _sendToChannel;
 
         private static readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
         private static McvFile _currentMcvFile;
@@ -41,9 +42,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly MemoryStream outputBuffer;
 
-        public Majorbbs(CpuRegisters cpuRegisters, MbbsModule module, SentToUserDelegate sendToUserDelegate) : base(cpuRegisters, module)
+        public Majorbbs(CpuRegisters cpuRegisters, MbbsModule module, SendToChannelDelegate sendToChannelDelegate) : base(cpuRegisters, module)
         {
-            _sendToUser = sendToUserDelegate;
+            _sendToChannel = sendToChannelDelegate;
             outputBuffer = new MemoryStream();
         }
 
@@ -299,14 +300,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             _currentMcvFile = new McvFile(msgFileName, Module.ModulePath);
 
-            if (_mcvFiles.Count == 0 || _mcvFiles.Values.All(x => x.FileName != msgFileName))
-                _mcvFiles.Add(_mcvFiles.Count, _currentMcvFile);
+            var offset = _mcvFiles.Allocate(_currentMcvFile);
 
 #if DEBUG
             _logger.Info(
-                $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.Msg:X4}:1");
+                $"Opened MSG file: {msgFileName}, assigned to {(int) EnumHostSegments.Msg:X4}:{offset:X4}");
 #endif
-            Registers.AX = (ushort)(_mcvFiles.Count - 1);
+            Registers.AX = (ushort)offset;
             Registers.DX = (ushort)EnumHostSegments.Msg;
 
             return 0;
@@ -585,7 +585,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
-            
 #endif
             return 0;
         }
@@ -671,7 +670,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            outputBuffer.Write(formattedMessage.ToArray());
+            outputBuffer.Write(formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -689,8 +688,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "OUTPRF", Ordinal = 463)]
         public ushort outprf()
         {
+            var userChannel = GetParameter(0);
             //TODO -- this will need to write to a destination output delegate
-            _sendToUser(new ReadOnlySpan<byte>(outputBuffer.ToArray()));
+            _sendToChannel(userChannel, new ReadOnlySpan<byte>(outputBuffer.ToArray()));
             outputBuffer.Flush();
 
             return 0;
@@ -745,7 +745,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
-                outputBuffer.Write(formattedMessage.ToArray());
+                outputBuffer.Write(formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
@@ -780,7 +780,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.BackgroundColor = ConsoleColor.Blue;
             Console.WriteLine($"AUDIT SUMMARY: {string1InputValue}");
-            Console.WriteLine($"AUDIT DETAIL: {string2InputValue}");
+            Console.WriteLine($"AUDIT DETAIL: {Encoding.ASCII.GetString(string2InputValue)}");
             Console.ResetColor();
 
             return 0;

@@ -39,9 +39,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
-        private protected readonly IMemoryCore Memory;
-        private protected readonly CpuRegisters Registers;
-        private protected readonly MbbsModule Module;
+        public IMemoryCore Memory;
+        public CpuRegisters Registers;
+        public MbbsModule Module;
 
         /// <summary>
         ///     Convenience Variable, prevents having to repeatedly cast the Enum to ushort
@@ -112,10 +112,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="s"></param>
         /// <returns></returns>
-        private protected MemoryStream FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
+        private protected ReadOnlySpan<byte> FormatPrintf(byte[] stringToParse, ushort startingParameterOrdinal)
         {
             Span<byte> spanToParse = stringToParse;
-            var msOutput = new MemoryStream(stringToParse.Length);
+            using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
             for (var i = 0; i < spanToParse.Length; i++)
             {
@@ -153,12 +153,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
 
                     i += 2;
+                    continue;
                 }
 
                 msOutput.WriteByte(spanToParse[i]);
             }
 
-            return msOutput;
+            return msOutput.ToArray();
         }
     }
 }
