@@ -28,6 +28,8 @@ namespace MBBSEmu.Session
 
         public string ModuleIdentifier;
 
+        public bool StatusChange;
+
         public Queue<byte[]> DataFromClient;
         public Queue<byte[]> DataToClient;
 

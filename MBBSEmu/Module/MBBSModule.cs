@@ -1,6 +1,8 @@
-﻿using MBBSEmu.Disassembler;
+﻿using System;
+using MBBSEmu.Disassembler;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.Module
@@ -59,8 +61,15 @@ namespace MBBSEmu.Module
             File = new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL");
             Msg = new MsgFile(ModulePath, ModuleIdentifier);
             EntryPoints = new Dictionary<string, EntryPoint>(9);
-
             Memory = new MemoryCore();
+
+            //Setup _INIT_ Entrypoint
+            var initResidentName = File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT_"));
+            if (initResidentName == null)
+                throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
+
+            var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+            EntryPoints["_INIT_"] = new EntryPoint(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
         }
     }
 }

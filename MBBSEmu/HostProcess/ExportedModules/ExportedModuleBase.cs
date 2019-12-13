@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -42,17 +43,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public IMemoryCore Memory;
         public CpuRegisters Registers;
         public MbbsModule Module;
+        public UserSession Session;
 
         /// <summary>
         ///     Convenience Variable, prevents having to repeatedly cast the Enum to ushort
         /// </summary>
         private protected readonly ushort HostMemorySegment = (ushort) EnumHostSegments.HostMemorySegment;
 
-        private protected ExportedModuleBase(CpuRegisters cpuRegisters, MbbsModule module)
+        private protected ExportedModuleBase(MbbsModule module)
         {
             Memory = module.Memory;
             Module = module;
-            Registers = cpuRegisters;
 
             //Setup Exported Functions
             ExportedFunctions = new Dictionary<ushort, ExportedFunctionDelegate>();

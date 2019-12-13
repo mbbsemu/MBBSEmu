@@ -27,6 +27,7 @@ namespace MBBSEmu.HostProcess
         private readonly Dictionary<string, MbbsModule> _modules;
         private readonly Dictionary<string, object> _exportedFunctions;
         private readonly Thread _workerThread;
+        private readonly CpuCore CPU;
         private bool _isRunning;
 
         public MbbsHost()
@@ -35,6 +36,8 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = new Dictionary<ushort, UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
+
+            CPU = new CpuCore();
             _isRunning = true;
             _workerThread = new Thread(WorkerThread);
             _workerThread.Start();
@@ -49,25 +52,29 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                //Enter anyone into a module who needs to enter
-                foreach (var s in _channelDictionary.Where(x => x.Value.SessionState == EnumSessionState.EnteringModule))
-                {
-                    Run(s.Value.ModuleIdentifier, "sttrou", s.Value);
-                    Run(s.Value.ModuleIdentifier, "stsrou", s.Value);
-                    s.Value.SessionState = EnumSessionState.InModule;
-                }
-
                 //Process Input
-                foreach (var s in _channelDictionary.Where(x => x.Value.SessionState == EnumSessionState.InModule).Select(y=> y.Value))
+                foreach (var s in _channelDictionary.Where(x =>
+                    x.Value.SessionState == EnumSessionState.InModule ||
+                    x.Value.SessionState == EnumSessionState.EnteringModule).Select(y => y.Value))
                 {
-                    if (s.DataFromClient.Count > 0)
+                    if (s.DataFromClient.Count > 0 || s.SessionState == EnumSessionState.EnteringModule)
                     {
                         Run(s.ModuleIdentifier, "sttrou", s);
-                        Run(s.ModuleIdentifier, "stsrou", s);
+                        s.SessionState = EnumSessionState.InModule;
                     }
                 }
 
-                Thread.Sleep(250);
+                //Process any status changes
+                foreach (var s in _channelDictionary.Where(x => x.Value.SessionState == EnumSessionState.InModule).Select(y => y.Value))
+                {
+                    if (s.StatusChange)
+                    {
+                        Run(s.ModuleIdentifier, "stsrou", s);
+                        s.StatusChange = false;
+                    }
+                }
+
+                Thread.Sleep(100);
             }
         }
 
@@ -99,6 +106,9 @@ namespace MBBSEmu.HostProcess
             //Add it to the Module Dictionary
             _modules[module.ModuleIdentifier] = module;
 
+            //Run INIT
+            Run(module.ModuleIdentifier, "_INIT_", null);
+
             _logger.Info($"Module {module.ModuleIdentifier} added!");
         }
 
@@ -125,49 +135,49 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Starts a new instance of the MbbsHost running the specified MbbsModule
         /// </summary>
-        public void Init(string moduleName)
-        {
-            var module = _modules[moduleName];
+        //public void Init(string moduleName)
+        //{
+        //    var module = _modules[moduleName];
 
-            var initResidentName = module.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT_"));
+        //    var initResidentName = module.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT_"));
 
-            if (initResidentName == null)
-                throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
+        //    if (initResidentName == null)
+        //        throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
 
-            var initEntryPoint = module.File.EntryTable
-                .First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+        //    var initEntryPoint = module.File.EntryTable
+        //        .First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
 
-            module.EntryPoints["_INIT_"] = new EntryPoint(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+        //    module.EntryPoints["_INIT_"] = new EntryPoint(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
 
-            _logger.Info(
-                $"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
+        //    _logger.Info(
+        //        $"Starting MbbsEmu Host at {initResidentName.Name} (Seg {initEntryPoint.SegmentNumber}:{initEntryPoint.Offset:X4}h)...");
 
-            var _cpuRegisters = new CpuRegisters()
-                {CS = module.EntryPoints["_INIT_"].Segment, IP = module.EntryPoints["_INIT_"].Offset};
+        //    var _cpuRegisters = new CpuRegisters()
+        //        {CS = module.EntryPoints["_INIT_"].Segment, IP = module.EntryPoints["_INIT_"].Offset};
 
-            //Setup Host Functions for this Module
-            var majorbbsHostFunctions = new Majorbbs(_cpuRegisters, module, SendToChannel);
-            _exportedFunctions[$"{module.ModuleIdentifier}-MAJORBBS"] = majorbbsHostFunctions;
-            var galsblHostFunctions = new Galsbl(_cpuRegisters, module);
-            _exportedFunctions[$"{module.ModuleIdentifier}-GALGSBL"] = galsblHostFunctions;
+        //    //Setup Host Functions for this Module
+        //    var majorbbsHostFunctions = new Majorbbs(_cpuRegisters, module, SendToChannel);
+        //    _exportedFunctions[$"{module.ModuleIdentifier}-MAJORBBS"] = majorbbsHostFunctions;
+        //    var galsblHostFunctions = new Galsbl(_cpuRegisters, module);
+        //    _exportedFunctions[$"{module.ModuleIdentifier}-GALGSBL"] = galsblHostFunctions;
 
-            var _cpu = new CpuCore(module.Memory, _cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
-            {
-                var importedModuleName =
-                    module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
+        //    CPU.Reset(module.Memory, _cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
+        //    {
+        //        var importedModuleName =
+        //            module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
-                return importedModuleName switch
-                {
-                    "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
-                    "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),
-                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}")
-                };
-            });
+        //        return importedModuleName switch
+        //        {
+        //            "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
+        //            "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),
+        //            _ => throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}")
+        //        };
+        //    });
 
 
-            while (_cpu.IsRunning)
-                _cpu.Tick();
-        }
+        //    while (CPU.IsRunning)
+        //        CPU.Tick();
+        //}
 
         /// <summary>
         ///     Runs the specified routine in the specified module
@@ -179,29 +189,34 @@ namespace MBBSEmu.HostProcess
         {
             var module = _modules[moduleName];
 
-            if(!module.EntryPoints.ContainsKey(routineName))
+            if (!module.EntryPoints.ContainsKey(routineName))
                 throw new Exception($"Attempted to execute unknown Routine name: {routineName}");
 
             //Setup Memory for User Objects in the Module Memory if Required
             if (userSession != null)
             {
-                module.Memory.SetArray((ushort)EnumHostSegments.User, 0, userSession.UsrPrt.ToSpan());
-                module.Memory.SetArray((ushort)EnumHostSegments.UserNum, 0, BitConverter.GetBytes(userSession.Channel));
+                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, userSession.UsrPrt.ToSpan());
+                module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
+                    BitConverter.GetBytes(userSession.Channel));
+
+                _logger.Info($"Channel {userSession.Channel}: Running {routineName}");
             }
 
-            _logger.Info($"Channel {userSession.Channel}: Running {routineName}");
+            var cpuRegisters = new CpuRegisters
+            {
+                CS = module.EntryPoints[routineName].Segment, 
+                IP = module.EntryPoints[routineName].Offset
+            };
 
-            var cpuRegisters = new CpuRegisters()
-                { CS = module.EntryPoints[routineName].Segment, IP = module.EntryPoints[routineName].Offset, DS = ushort.MaxValue, SI = ushort.MaxValue };
-
-            var majorbbsHostFunctions = (Majorbbs)_exportedFunctions[$"{module.ModuleIdentifier}-MAJORBBS"];
-            var galsblHostFunctions = (Galsbl)_exportedFunctions[$"{module.ModuleIdentifier}-GALGSBL"];
-
-            //Set Registers for the current CPU
+            var majorbbsHostFunctions = GetFunctions<Majorbbs>(module);
             majorbbsHostFunctions.Registers = cpuRegisters;
-            galsblHostFunctions.Registers = cpuRegisters;
+            majorbbsHostFunctions.Session = userSession;
 
-            var _cpu = new CpuCore(module.Memory, cpuRegisters, delegate (ushort ordinal, ushort functionOrdinal)
+            var galsblHostFunctions = GetFunctions<Galsbl>(module);
+            galsblHostFunctions.Registers = cpuRegisters;
+            galsblHostFunctions.Session = userSession;
+
+            CPU.Reset(module.Memory, cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
             {
                 var importedModuleName =
                     module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
@@ -215,17 +230,32 @@ namespace MBBSEmu.HostProcess
             });
 
             //Run the thing
-            while (_cpu.IsRunning)
-                _cpu.Tick();
+            while (CPU.IsRunning)
+                CPU.Tick();
 
             //Extract the User Information as it might have updated
-            userSession?.UsrPrt.FromSpan(module.Memory.GetSpan((ushort)EnumHostSegments.User, 0, 41));
+            userSession?.UsrPrt.FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.User, 0, 41));
         }
 
-        private void SendToChannel(ushort channel, ReadOnlySpan<byte> dataToSend)
+        private T GetFunctions<T>(MbbsModule module)
         {
-            _channelDictionary[channel].SendToClient(dataToSend);
+            var requestedType = typeof(T);
+            var key = $"{module.ModuleIdentifier}-{(requestedType == typeof(Majorbbs) ? "MAJORBBS" : "GALGSBL")}";
+
+            if (!_exportedFunctions.TryGetValue(key, out var _functions))
+            {
+                if (requestedType == typeof(Majorbbs))
+                    _exportedFunctions[key] = new Majorbbs(module, SendToChannel);
+
+                if(requestedType == typeof(Galsbl))
+                    _exportedFunctions[key] = new Galsbl(module);
+
+                _functions = _exportedFunctions[key];
+            }
+
+            return (T) _functions;
         }
+
 
         /// <summary>
         ///     Searches the Channels Dictionary for the first Available Channel
@@ -240,6 +270,11 @@ namespace MBBSEmu.HostProcess
             }
 
             throw new Exception("Unable to locate Available channel");
+        }
+
+        private void SendToChannel(ushort channel, ReadOnlySpan<byte> dataToSend)
+        {
+            _channelDictionary[channel].SendToClient(dataToSend);
         }
 
         /*

@@ -16,21 +16,28 @@ namespace MBBSEmu.CPU
 
         public delegate ushort InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
-        private readonly InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
+        private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
-        public readonly CpuRegisters Registers;
-        private readonly IMemoryCore _memory;
+        public CpuRegisters Registers;
+        private IMemoryCore _memory;
 
         private Instruction _currentInstruction;
 
-
-        private readonly ushort STACK_SEGMENT;
-        private readonly ushort EXTRA_SEGMENT;
+        private ushort STACK_SEGMENT;
+        private ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
 
         public bool IsRunning;
 
-        public CpuCore(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
+        public CpuCore() { }
+
+        /// <summary>
+        ///     Resets the CPU back to a starting state
+        /// </summary>
+        /// <param name="memoryCore"></param>
+        /// <param name="cpuRegisters"></param>
+        /// <param name="invokeExternalFunctionDelegate"></param>
+        public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
             //Setup Delegate Call   

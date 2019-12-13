@@ -1,9 +1,6 @@
-﻿using System;
-using System.Text;
-using MBBSEmu.CPU;
-using MBBSEmu.HostProcess.Attributes;
-using MBBSEmu.Memory;
+﻿using MBBSEmu.HostProcess.Attributes;
 using MBBSEmu.Module;
+using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -14,7 +11,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "GALGSBL")]
     public class Galsbl : ExportedModuleBase
     {
-        public Galsbl(CpuRegisters cpuRegisters, MbbsModule module) : base(cpuRegisters, module)
+        public Galsbl(MbbsModule module) : base(module)
         {
             if(!Memory.HasSegment((ushort)EnumHostSegments.Bturno))
                 Memory.AddSegment((ushort) EnumHostSegments.Bturno);
@@ -85,6 +82,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Memory.SetWord((ushort)EnumHostSegments.Status, 0, status);
 
             Registers.AX = 0;
+
+            //Notify the Session that a Status Change has occured
+            Session.StatusChange = true;
 
             return 0;
         }

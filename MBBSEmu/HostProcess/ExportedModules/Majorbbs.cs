@@ -1,8 +1,5 @@
 ﻿using MBBSEmu.Btrieve;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Attributes;
-using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using System;
@@ -10,7 +7,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.Models;
 
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -42,7 +38,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly MemoryStream outputBuffer;
 
-        public Majorbbs(CpuRegisters cpuRegisters, MbbsModule module, SendToChannelDelegate sendToChannelDelegate) : base(cpuRegisters, module)
+        public Majorbbs(MbbsModule module, SendToChannelDelegate sendToChannelDelegate) : base(module)
         {
             _sendToChannel = sendToChannelDelegate;
             outputBuffer = new MemoryStream();
