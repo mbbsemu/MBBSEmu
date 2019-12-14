@@ -47,7 +47,6 @@ namespace MBBSEmu.Telnet
         {
             ModuleIdentifier = "GWWARROW";
             SessionState = EnumSessionState.EnteringModule;
-            StatusChange = true;
             //Kick off Entry
             //_host.Run("GWWARROW", "sttrou", this);
             //_host.Run("GWWARROW", "stsrou", this);

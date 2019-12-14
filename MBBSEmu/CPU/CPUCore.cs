@@ -6,7 +6,6 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Linq;
-using NLog.LayoutRenderers;
 
 namespace MBBSEmu.CPU
 {
@@ -330,6 +329,8 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, 0x31);
                     break;
                 }
+                default:
+                    throw new Exception($"Unknown OpKing for IN: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -405,7 +406,7 @@ namespace MBBSEmu.CPU
             var source = (ushort)(GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source) + (Registers.F.Flags.IsFlagSet(EnumFlags.CF) ? 1 : 0));
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var result = (ushort)(destination - source);
-            var operationSize = 0;
+            int operationSize;
 
             switch (_currentInstruction.Op0Kind)
             {
@@ -977,7 +978,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var result = (ushort)(destination + source);
-            var operationSize = 0;
+            int operationSize;
 
             switch (_currentInstruction.Op0Kind)
             {

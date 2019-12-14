@@ -2,7 +2,9 @@
 using MBBSEmu.HostProcess.Attributes;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Session;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -21,10 +23,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase
     {
-        public delegate void SendToChannelDelegate(ushort channel, ReadOnlySpan<byte> data);
-
-        private readonly SendToChannelDelegate _sendToChannel;
-
         private static readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
         private static McvFile _currentMcvFile;
         private static McvFile _previousMcvFile;
@@ -38,9 +36,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly MemoryStream outputBuffer;
 
-        public Majorbbs(MbbsModule module, SendToChannelDelegate sendToChannelDelegate) : base(module)
+        public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
-            _sendToChannel = sendToChannelDelegate;
             outputBuffer = new MemoryStream();
         }
 
@@ -621,7 +618,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Property with the User Number (Channel) of the user currently being serviced
         ///
         ///     Signature: int usrnum
-        ///     Retrurns: int == User Number (Channel), always 1
+        ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "USERNUM", Ordinal = 628)]
@@ -685,8 +682,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ushort outprf()
         {
             var userChannel = GetParameter(0);
-            //TODO -- this will need to write to a destination output delegate
-            _sendToChannel(userChannel, new ReadOnlySpan<byte>(outputBuffer.ToArray()));
+
+            ChannelDictionary[userChannel].SendToClient(new ReadOnlySpan<byte>(outputBuffer.ToArray()));
             outputBuffer.Position = 0;
             outputBuffer.SetLength(0);
 

@@ -38,28 +38,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private protected Dictionary<string, IntPtr16> HostMemoryVariables;
 
+        private protected PointerDictionary<UserSession> ChannelDictionary;
+
         private protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         public IMemoryCore Memory;
         public CpuRegisters Registers;
         public MbbsModule Module;
-        public UserSession Session;
 
         /// <summary>
         ///     Convenience Variable, prevents having to repeatedly cast the Enum to ushort
         /// </summary>
         private protected readonly ushort HostMemorySegment = (ushort) EnumHostSegments.HostMemorySegment;
 
-        private protected ExportedModuleBase(MbbsModule module)
+        private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
-            Memory = module.Memory;
             Module = module;
+            Memory = module.Memory;
+            ChannelDictionary = channelDictionary;
 
             //Setup Exported Functions
             ExportedFunctions = new Dictionary<ushort, ExportedFunctionDelegate>();
             SetupExportedFunctionDelegates();
 
             HostMemoryVariables = new Dictionary<string, IntPtr16>();
+        }
+
+        /// <summary>
+        ///     Sets the value in UserNum segment to the desired channelNumber
+        ///
+        ///     Used by the USERNUM() method to get the channel of the current user
+        /// </summary>
+        /// <param name="channelNumber"></param>
+        public void SetCurrentChannel(ushort channelNumber)
+        {
+            Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
         }
 
         private void SetupExportedFunctionDelegates()

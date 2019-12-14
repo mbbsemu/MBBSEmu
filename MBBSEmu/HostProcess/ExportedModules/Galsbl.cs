@@ -1,5 +1,8 @@
-﻿using MBBSEmu.HostProcess.Attributes;
+﻿using System;
+using MBBSEmu.HostProcess.Attributes;
+using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Session;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -11,7 +14,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "GALGSBL")]
     public class Galsbl : ExportedModuleBase
     {
-        public Galsbl(MbbsModule module) : base(module)
+        public Galsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
             if(!Memory.HasSegment((ushort)EnumHostSegments.Bturno))
                 Memory.AddSegment((ushort) EnumHostSegments.Bturno);
@@ -76,15 +79,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "_BTUINJ", Ordinal = 21)]
         public ushort butinj()
         {
-            //TODO -- Figure out what to do with these status codes
             var channel = GetParameter(0);
             var status = GetParameter(1);
-            Memory.SetWord((ushort)EnumHostSegments.Status, 0, status);
+
+            var currentStatus = Memory.GetWord((ushort) EnumHostSegments.Status, 0);
+            var newStatus = status;
+
+            //240 == cycle mediated?
+
+            //Status Change
+            if (currentStatus != newStatus)
+            {
+                //Set the Memory Value
+                Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
+
+                //Notify the Session that a Status Change has occured
+                ChannelDictionary[channel].StatusChange = true;
+            }
 
             Registers.AX = 0;
-
-            //Notify the Session that a Status Change has occured
-            Session.StatusChange = true;
 
             return 0;
         }
@@ -119,6 +132,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //TODO -- Handle this?
 
             Registers.AX = 0;
+            return 0;
+        }
+
+        /// <summary>
+        ///     Input from a channel - reading in whatever bytes are available, up to a limit
+        ///
+        ///     Signature: int btuica(int chan,char *rdbptr,int max)
+        ///     Result: AX == Number of input characters retrieved
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "_BTUICA", Ordinal = 87)]
+        public ushort btuica()
+        {
+            var channelNumber = GetParameter(0);
+            var destinationOffset = GetParameter(1);
+            var destinationSegment = GetParameter(2);
+            var max = GetParameter(3);
+
+            //Nothing to Input?
+            if (ChannelDictionary[channelNumber].DataFromClient.Count == 0)
+            {
+                Registers.AX = 0;
+                return 0;
+            }
+
+            ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var inputFromChannel);
+
+            ReadOnlySpan<byte> inputFromChannelSpan = inputFromChannel;
+            Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
+
+            Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
             return 0;
         }
     }

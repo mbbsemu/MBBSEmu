@@ -4,7 +4,9 @@ namespace MBBSEmu.Memory
 {
     /// <summary>
     ///     A PointerDictionary is essentially a Dictionary with some helper methods to automatically
-    ///     allocate new entries in the Base dictionary by the lowest available "pointer"
+    ///     allocate new entries in the Base dictionary by the lowest available "pointer".
+    ///
+    ///     This means we always have a consistent, solid block of dictionary values
     /// </summary>
     /// <typeparam name="TValue"></typeparam>
     public class PointerDictionary<TValue> : Dictionary<int, TValue>
