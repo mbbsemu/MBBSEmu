@@ -23,7 +23,7 @@
         /// <summary>
         ///     Segment that holds the user struct
         /// </summary>
-        User = 0xFFFD,
+        UserPtr = 0xFFFD,
 
         /// <summary>
         ///     Segment that holds the channel array

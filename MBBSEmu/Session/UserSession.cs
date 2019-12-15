@@ -28,6 +28,7 @@ namespace MBBSEmu.Session
 
         public string ModuleIdentifier;
 
+        public ushort Status;
         public bool StatusChange;
 
         public Queue<byte[]> DataFromClient;
@@ -41,6 +42,7 @@ namespace MBBSEmu.Session
             DataFromClient = new Queue<byte[]>();
             DataToClient = new Queue<byte[]>();
             UsrPrt = new User();
+            Status = 0;
         }
 
         public void SendToClient(ReadOnlySpan<byte> dataToSend)

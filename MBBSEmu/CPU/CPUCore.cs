@@ -800,7 +800,11 @@ namespace MBBSEmu.CPU
             //bypassing for now. Might break on larger modules
             if (_currentInstruction.FlowControl == FlowControl.IndirectBranch)
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                //Get the destination offset
+                var offsetToDestinationValue = GetOperandOffset(_currentInstruction.Op0Kind);
+                var destinationOffset = _memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offsetToDestinationValue);
+
+                Registers.IP = destinationOffset;
                 return;
             }
 

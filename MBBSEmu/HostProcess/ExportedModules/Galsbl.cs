@@ -86,16 +86,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newStatus = status;
 
             //240 == cycle mediated?
+            _logger.Info($"Setting New Status Code: {newStatus}, replacing old status: {currentStatus}");
 
             //Status Change
-            if (currentStatus != newStatus)
-            {
-                //Set the Memory Value
+            //Set the Memory Value
                 Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
 
                 //Notify the Session that a Status Change has occured
                 ChannelDictionary[channel].StatusChange = true;
-            }
+
 
             Registers.AX = 0;
 

@@ -640,7 +640,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (userNumber != 1)
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
-            Registers.AX = (ushort) EnumHostSegments.User;
+            Registers.AX = (ushort) EnumHostSegments.UserPtr;
             Registers.DX = 0;
 
             return 0;
@@ -721,7 +721,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "USRPTR", Ordinal = 629)]
-        public ushort usrptr() => (ushort)EnumHostSegments.User;
+        public ushort usrptr() => (ushort)EnumHostSegments.UserPtr;
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file

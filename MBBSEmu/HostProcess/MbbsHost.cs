@@ -58,6 +58,7 @@ namespace MBBSEmu.HostProcess
                     //Channel is entering module, run both
                     if (s.SessionState == EnumSessionState.EnteringModule)
                     {
+                        s.StatusChange = false;
                         Run(s.ModuleIdentifier, "sttrou", s.Channel);
                         Run(s.ModuleIdentifier, "stsrou", s.Channel);
                         s.SessionState = EnumSessionState.InModule;
@@ -68,17 +69,17 @@ namespace MBBSEmu.HostProcess
                     if (s.SessionState != EnumSessionState.InModule)
                         continue;
 
-                    //Is there Text to send to the module
-                    if (s.DataFromClient.Count > 0)
-                    {
-                        Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                    }
-
                     //Did the text change cause a status update
                     if (s.StatusChange)
                     {
                         s.StatusChange = false;
                         Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                    }
+
+                    //Is there Text to send to the module
+                    if (s.DataFromClient.Count > 0)
+                    {
+                        Run(s.ModuleIdentifier, "sttrou", s.Channel);
                     }
                 }
 
@@ -108,7 +109,7 @@ namespace MBBSEmu.HostProcess
             //Setup new memory core and init with host memory segment
             module.Memory.AddSegment(EnumHostSegments.HostMemorySegment);
             module.Memory.AddSegment(EnumHostSegments.Status);
-            module.Memory.AddSegment(EnumHostSegments.User);
+            module.Memory.AddSegment(EnumHostSegments.UserPtr);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
 
             //Add CODE/DATA Segments from the actual DLL
@@ -143,13 +144,13 @@ namespace MBBSEmu.HostProcess
         /// <param name="channel"></param>
         /// <returns></returns>
         public bool RemoveSession(ushort channel) => _channelDictionary.Remove(channel);
-        
+
         /// <summary>
         ///     Runs the specified routine in the specified module
         /// </summary>
         /// <param name="moduleName"></param>
         /// <param name="routineName"></param>
-        /// <param name="userSession"></param>
+        /// <param name="channelNumber"></param>
         public void Run(string moduleName, string routineName, ushort channelNumber)
         {
             var module = _modules[moduleName];
@@ -160,11 +161,14 @@ namespace MBBSEmu.HostProcess
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
             {
-                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, _channelDictionary[channelNumber].UsrPrt.ToSpan());
+                module.Memory.SetArray((ushort) EnumHostSegments.UserPtr, 0, _channelDictionary[channelNumber].UsrPrt.ToSpan());
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
+                module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
 
                 _logger.Info($"Channel {channelNumber}: Running {routineName}");
+
+                _channelDictionary[channelNumber].StatusChange = false;
             }
 
             var cpuRegisters = new CpuRegisters
@@ -199,8 +203,19 @@ namespace MBBSEmu.HostProcess
                 _cpu.Tick();
 
             //Extract the User Information as it might have updated
-            if(channelNumber != ushort.MaxValue)
-                _channelDictionary[channelNumber].UsrPrt.FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.User, 0, 41));
+            if (channelNumber != ushort.MaxValue)
+            {
+                _channelDictionary[channelNumber].UsrPrt
+                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.UserPtr, 0, 41));
+
+                //If the status wasn't set internally, then set it to the default 5
+                _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange
+                    ? (ushort) 5
+                    : module.Memory.GetWord((ushort) EnumHostSegments.Status, 0);
+
+                _logger.Info($"Status:{_channelDictionary[channelNumber].Status} State:{_channelDictionary[channelNumber].UsrPrt.State} Substate:{_channelDictionary[channelNumber].UsrPrt.Substt}");
+            }
+            
         }
 
         private T GetFunctions<T>(MbbsModule module)
