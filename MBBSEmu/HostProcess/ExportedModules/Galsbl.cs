@@ -82,19 +82,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var status = GetParameter(1);
 
-            var currentStatus = Memory.GetWord((ushort) EnumHostSegments.Status, 0);
-            var newStatus = status;
-
-            //240 == cycle mediated?
-            _logger.Info($"Setting New Status Code: {newStatus}, replacing old status: {currentStatus}");
-
             //Status Change
             //Set the Memory Value
-                Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
+            Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
 
-                //Notify the Session that a Status Change has occured
-                ChannelDictionary[channel].StatusChange = true;
-
+            //Notify the Session that a Status Change has occured
+            ChannelDictionary[channel].StatusChange = true;
 
             Registers.AX = 0;
 
@@ -162,6 +155,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
 
             Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
+            return 0;
+        }
+
+        /// <summary>
+        ///     Clears the input buffer
+        ///
+        ///     Since our input buffer is a queue, we'll just clear it
+        /// 
+        ///     Signature: int btucli(int chan)
+        ///     Result: 
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "_BTUCLI", Ordinal = 6)]
+        public ushort btucli()
+        {
+            var channelNumber = GetParameter(0);
+
+            ChannelDictionary[channelNumber].DataFromClient.Clear();
+
+            Registers.AX = 0;
+
             return 0;
         }
     }

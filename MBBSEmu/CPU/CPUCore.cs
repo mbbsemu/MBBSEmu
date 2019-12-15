@@ -6,6 +6,7 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
 {
@@ -165,6 +166,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Cmp:
                     Op_Cmp();
+                    break;
+                case Mnemonic.Sub:
+                    Op_Sub();
                     break;
                 case Mnemonic.Xor:
                     Op_Xor();
@@ -909,71 +913,94 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Identical to SUB, just doesn't save result of subtraction
+        /// </summary>
         private void Op_Cmp()
         {
-
-            //Get Comparison Size
-            int comparisonSize;
-            switch (_currentInstruction.Op0Kind)
+            //Get Comparison Operation Size
+            var comparisonSize = _currentInstruction.Op0Kind switch
             {
-                case OpKind.Register:
-                    comparisonSize = _currentInstruction.Op0Register.GetSize();
-                    break;
-                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt8:
-                    comparisonSize = 1;
-                    break;
-                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt16:
-                    comparisonSize = 2;
-                    break;
-                default:
-                    throw new Exception("Unknown Size for CMP operation");
-            }
+                OpKind.Register => _currentInstruction.Op0Register.GetSize(),
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt8 => 1,
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt16 => 2,
+                _ => throw new Exception("Unknown Size for CMP operation")
+            };
+
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             switch (comparisonSize)
             {
                 case 1:
-                    Op_Cmp_8();
+                    Op_Sub_8((byte) destination, (byte) source);
                     return;
                 case 2:
-                    Op_Cmp_16();
+                    Op_Sub_16(destination, source);
                     return;
             }
         }
 
-        private void Op_Cmp_8()
+        private void Op_Sub()
         {
-            var destination = (byte) GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var source = (byte) GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            //Get Comparison Operation Size
+            var operationSize = _currentInstruction.Op0Kind switch
+            {
+                OpKind.Register => _currentInstruction.Op0Register.GetSize(),
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt8 => 1,
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt16 => 2,
+                _ => throw new Exception($"Unknown Size for SUB: {_currentInstruction.Op0Kind}")
+            };
 
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = operationSize switch
+            {
+                1 => Op_Sub_8((byte) destination, (byte) source),
+                2 => Op_Sub_16(destination, source),
+                _ => throw new Exception($"Unknown Size for SUB: {operationSize}")
+            };
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Destination for SUB: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte Op_Sub_8(byte destination, byte source)
+        {
             unchecked
             {
                 var result = (byte) (destination - (sbyte) source);
-
-                //_logger.Info($"CMP: {destination}-{(sbyte) source} == {result}");
-                
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.CF, destination: destination, source: source);
                 Registers.F.Evaluate<byte>(EnumFlags.OF, result, destination);
                 Registers.F.Evaluate<byte>(EnumFlags.SF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                return result;
             }
         }
 
-        private void Op_Cmp_16()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Sub_16(ushort destination, ushort source)
         {
-            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
             unchecked
             {
                 var result = (ushort) (destination - (short) source);
-                //_logger.Info($"CMP: {destination}-{(short) source} == {result}");
-
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.CF, destination: destination, source: source);
                 Registers.F.Evaluate<ushort>(EnumFlags.OF, result, destination);
                 Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                return result;
             }
         }
 
@@ -1018,6 +1045,8 @@ namespace MBBSEmu.CPU
                     throw new Exception($"Unknown ADD operation size: {operationSize}");
             }
         }
+
+
 
         private void Op_Imul()
         {

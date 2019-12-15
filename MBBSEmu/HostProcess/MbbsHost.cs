@@ -90,7 +90,7 @@ namespace MBBSEmu.HostProcess
                         _channelDictionary.Remove(i);
                 }
 
-                Thread.Sleep(100);
+                Thread.Sleep(50);
             }
         }
 
@@ -166,7 +166,7 @@ namespace MBBSEmu.HostProcess
                     BitConverter.GetBytes(channelNumber));
                 module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
 
-                _logger.Info($"Channel {channelNumber}: Running {routineName}");
+               //_logger.Info($"Channel {channelNumber}: Running {routineName}");
 
                 _channelDictionary[channelNumber].StatusChange = false;
             }
@@ -212,8 +212,6 @@ namespace MBBSEmu.HostProcess
                 _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange
                     ? (ushort) 5
                     : module.Memory.GetWord((ushort) EnumHostSegments.Status, 0);
-
-                _logger.Info($"Status:{_channelDictionary[channelNumber].Status} State:{_channelDictionary[channelNumber].UsrPrt.State} Substate:{_channelDictionary[channelNumber].UsrPrt.Substt}");
             }
             
         }
