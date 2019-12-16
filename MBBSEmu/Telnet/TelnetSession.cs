@@ -1,27 +1,27 @@
-﻿using MBBSEmu.HostProcess;
-using MBBSEmu.Logging;
+﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.HostProcess;
+using MBBSEmu.Session;
 using NLog;
 using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
-using MBBSEmu.Session;
 
 namespace MBBSEmu.Telnet
 {
-    public class TelnetSession : Session.UserSession
+    public class TelnetSession : UserSession
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        private readonly ILogger _logger;
+        private readonly IMbbsHost _host;
 
         private readonly Socket _telnetConnection;
-        private readonly MbbsHost _host;
-
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
 
-        public TelnetSession(Socket telnetConnection, MbbsHost host) : base(telnetConnection.RemoteEndPoint.ToString())
+        public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
-            _host = host;
+            _host = ServiceResolver.GetService<IMbbsHost>();
+            _logger = ServiceResolver.GetService<ILogger>();
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
             _telnetConnection.ReceiveBufferSize = 128;
@@ -32,7 +32,6 @@ namespace MBBSEmu.Telnet
             _sendThread.Start();
             _receiveThread = new Thread(ReceiveWorker);
             _receiveThread.Start();
-
 
             //Disable Local Echo
             DataToClient.Enqueue(new byte[] { 0xFF, 0xFB, 0x01 });
@@ -47,9 +46,6 @@ namespace MBBSEmu.Telnet
         {
             ModuleIdentifier = "GWWARROW";
             SessionState = EnumSessionState.EnteringModule;
-            //Kick off Entry
-            //_host.Run("GWWARROW", "sttrou", this);
-            //_host.Run("GWWARROW", "stsrou", this);
         }
 
         /// <summary>

@@ -137,14 +137,14 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Clc:
                     Op_Clc();
                     break;
+                case Mnemonic.Cwd:
+                    Op_Cwd();
+                    break;
                 case Mnemonic.Neg:
                     Op_Neg();
                     break;
                 case Mnemonic.Sbb:
                     Op_Sbb();
-                    break;
-                case Mnemonic.In:
-                    Op_In();
                     break;
                 case Mnemonic.Add:
                     Op_Add();
@@ -338,20 +338,11 @@ namespace MBBSEmu.CPU
             return operationSize;
         }
 
-        private void Op_In()
+        private void Op_Cwd()
         {
-            switch (_currentInstruction.Op0Kind)
-            {
-                case OpKind.Register:
-                {
-                    //Always Input the character "1"
-                    Registers.SetValue(_currentInstruction.Op0Register, 0x31);
-                    break;
-                }
-                default:
-                    throw new Exception($"Unknown OpKing for IN: {_currentInstruction.Op0Kind}");
-            }
+            Registers.DX = Registers.AX.IsBitSet(15) ? (ushort) 0xFFFF : (ushort) 0x0000;
         }
+        
 
         private void Op_Neg()
         {

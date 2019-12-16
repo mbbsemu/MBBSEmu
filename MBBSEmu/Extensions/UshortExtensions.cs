@@ -50,15 +50,6 @@ namespace MBBSEmu.Extensions
         public static ushort SetFlag(this ushort b, ushort bitMask) => (ushort)(b | bitMask);
 
         /// <summary>
-        ///     Sets the specified bitmask to for the specified bits
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort SetFlag(this ushort b, EnumFlags flag) => (ushort)(b | (ushort)flag);
-
-        /// <summary>
         ///     Sets the specified bitmask to 0 for the specified bits
         /// </summary>
         /// <param name="b"></param>

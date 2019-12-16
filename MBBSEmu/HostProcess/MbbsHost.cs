@@ -18,30 +18,46 @@ namespace MBBSEmu.HostProcess
     ///
     ///     We'll perform the imported functions here
     /// </summary>
-    public class MbbsHost
+    public class MbbsHost : IMbbsHost
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        private readonly ILogger _logger;
 
         private readonly PointerDictionary<UserSession> _channelDictionary;
         private readonly Dictionary<string, MbbsModule> _modules;
         private readonly Dictionary<string, object> _exportedFunctions;
         private readonly CpuCore _cpu;
-        private readonly bool _isRunning;
+        private bool _isRunning;
 
-        public MbbsHost()
+        public MbbsHost(ILogger logger)
         {
+            _logger = logger;
             _logger.Info("Constructing MbbsEmu Host...");
             _channelDictionary = new PointerDictionary<UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
 
             _cpu = new CpuCore();
-            _isRunning = true;
-            var workerThread = new Thread(WorkerThread);
-            workerThread.Start();
+            
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
+        /// <summary>
+        ///     Starts the MbbsHost Worker Thread
+        /// </summary>
+        public void Start()
+        {
+            _isRunning = true;
+            var workerThread = new Thread(WorkerThread);
+            workerThread.Start();
+        }
+
+        /// <summary>
+        ///     Stops the MbbsHost worker thread
+        /// </summary>
+        public void Stop()
+        {
+            _isRunning = false;
+        }
 
         /// <summary>
         ///     The main MajorBBS/WG worker loop that processes events in serial order
@@ -151,7 +167,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="moduleName"></param>
         /// <param name="routineName"></param>
         /// <param name="channelNumber"></param>
-        public void Run(string moduleName, string routineName, ushort channelNumber)
+        private void Run(string moduleName, string routineName, ushort channelNumber)
         {
             var module = _modules[moduleName];
 
@@ -198,8 +214,8 @@ namespace MBBSEmu.HostProcess
                 };
             });
 
-            //Run the thing
-            while (_cpu.IsRunning)
+            //Run as long as the CPU still has code to execute and the host is still running
+            while (_cpu.IsRunning && _isRunning)
                 _cpu.Tick();
 
             //Extract the User Information as it might have updated
@@ -215,7 +231,6 @@ namespace MBBSEmu.HostProcess
             }
             
         }
-
         private T GetFunctions<T>(MbbsModule module)
         {
             var requestedType = typeof(T);

@@ -1,7 +1,9 @@
-﻿using MBBSEmu.Module;
-using System;
-using MBBSEmu.HostProcess;
+﻿using MBBSEmu.HostProcess;
+using MBBSEmu.Module;
 using MBBSEmu.Telnet;
+using System;
+using MBBSEmu.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MBBSEmu
 {
@@ -46,13 +48,12 @@ namespace MBBSEmu
                 return;
             }
 
+            var host = ServiceResolver.GetService<IMbbsHost>();
 
             var module = new MbbsModule(sInputModule, sInputPath);
-
-            var host = new MbbsHost();
             host.AddModule(module);
-            //host.Init(module.ModuleIdentifier);
-            var server = new TelnetServer(host);
+            
+            var server = ServiceResolver.GetService<ITelnetServer>();
             server.Start();
             Console.ReadKey();
             //host.Init();

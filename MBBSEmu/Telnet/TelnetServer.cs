@@ -1,55 +1,52 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MBBSEmu.HostProcess;
+using NLog;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using MBBSEmu.HostProcess;
-using MBBSEmu.Logging;
-using MBBSEmu.Module;
-using NLog;
 
 namespace MBBSEmu.Telnet
 {
-    public class TelnetServer
+    public class TelnetServer : ITelnetServer
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        private readonly ILogger _logger;
+        private readonly IMbbsHost _host;
 
-        private readonly IPEndPoint _ipEndPoint;
-        private readonly Socket _listenerSocket;
-        private readonly List<TelnetSession> _telnetSessions;
+        private Socket _listenerSocket;
         private bool _isRunning;
-        private readonly MbbsHost _host;
-        private readonly Thread _listenerThread;
+        private Thread _listenerThread;
 
-        public TelnetServer(MbbsHost host)
+        public TelnetServer(IMbbsHost host, ILogger logger)
         {
             _host = host;
-            
-
-            //Setup Listener
-            _ipEndPoint = new IPEndPoint(IPAddress.Any, 23);
-            _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _listenerSocket.Bind(_ipEndPoint);
-            _listenerThread = new Thread(Listen);
-            _telnetSessions = new List<TelnetSession>();
+            _logger = logger;
         }
 
         public void Start()
         {
+            //Setup Listener
+            var ipEndPoint = new IPEndPoint(IPAddress.Any, 23);
+            _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _listenerSocket.Bind(ipEndPoint);
+            _listenerThread = new Thread(ListenerThread);
+
             _listenerSocket.Listen(10);
             _isRunning = true;
             _listenerThread.Start();
         }
 
-        public void Listen()
+        public void Stop()
+        {
+            _isRunning = false;
+            _listenerSocket.Dispose();
+        }
+
+        private void ListenerThread()
         {
             while (_isRunning)
             {
                 var client = _listenerSocket.Accept();
                 _logger.Info($"Acceping incoming connection from {client.RemoteEndPoint}...");
                 var session = new TelnetSession(client, _host);
-                _telnetSessions.Add(session);
             }
         }
     }
