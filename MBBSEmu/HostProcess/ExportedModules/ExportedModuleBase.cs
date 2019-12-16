@@ -109,17 +109,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return Memory.GetWord(Registers.SS, parameterOffset);
         }
 
-        private protected static readonly char[] _controlCharacters = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
+        private static readonly char[] _printfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
+        private static readonly char[] _printfFlags = {'-', '+', ' ', '#', '0'};
+        private static readonly char[] _printfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+        private static readonly char[] _printfPrecision = {'.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private static readonly char[] _printfLength = {'h', 'l', 'j', 'z', 't', 'L'};
 
-        private protected bool IsControlCharacter(ReadOnlySpan<byte> c)
+        private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
-            for (var i = 0; i < _controlCharacters.Length; i++)
+            for (var i = 0; i < spanToSearch.Length; i++)
             {
-                if (_controlCharacters[i] == c[0])
+                if (spanToSearch[i] == character[0])
                     return true;
             }
             return false;
         }
+
+        private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == _printfPrecision[0];
 
         /// <summary>
         ///     Printf Parsing and Encoding
@@ -135,14 +141,95 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < stringToParse.Length; i++)
             {
                 //Found a Control Character
-                if (stringToParse[i] == '%' && IsControlCharacter(stringToParse.Slice(i + 1,1)))
+                if (stringToParse[i] == '%' && stringToParse[i + 1] != '%')
                 {
-                    switch ((char)stringToParse[i + 1])
+                    using var msFormattedValue = new MemoryStream();
+                    i++;
+
+                    //Process Flags
+                    var stringFlags = EnumPrintfFlags.None;
+                    while (InSpan(_printfFlags, stringToParse.Slice(i, 1)))
+                    {
+                        switch ((char) stringToParse[i])
+                        {
+                            case '-':
+                                stringFlags |= EnumPrintfFlags.LeftJustify;
+                                break;
+                            case '+':
+                                stringFlags |= EnumPrintfFlags.Signed;
+                                break;
+                            case ' ':
+                                stringFlags |= EnumPrintfFlags.Space;
+                                break;
+                            case '#':
+                                stringFlags |= EnumPrintfFlags.DecimalOrHex;
+                                break;
+                            case '0':
+                                stringFlags |= EnumPrintfFlags.LeftPadZero;
+                                break;
+                        }
+                        i++;
+                    }
+
+                    //Process Width
+                    var stringWidth = 0;
+                    var stringWidthValue = string.Empty;
+                    while (InSpan(_printfWidth, stringToParse.Slice(i, 1)))
+                    {
+                        switch ((char) stringToParse[i])
+                        {
+                            case '*':
+                                stringWidth = -1;
+                                break;
+                            default:
+                                stringWidthValue += (char) stringToParse[i];
+                                break;
+
+                        }
+                        i++;
+                    }
+                    if (!string.IsNullOrEmpty(stringWidthValue))
+                        stringWidth = int.Parse(stringWidthValue);
+
+                    //Process Precision
+                    var stringPrecision = 0;
+                    var stringPrecisionValue = string.Empty;
+                    while (InSpan(_printfPrecision, stringToParse.Slice(i, 1)))
+                    {
+                        switch ((char)stringToParse[i])
+                        {
+                            case '.':
+                                break;
+                            case '*':
+                                stringPrecision = -1;
+                                break;
+                            default:
+                                stringPrecisionValue += (char)stringToParse[i];
+                                break;
+
+                        }
+                        i++;
+                    }
+                    if (!string.IsNullOrEmpty(stringPrecisionValue))
+                        stringPrecision = int.Parse(stringPrecisionValue);
+
+                    //Process Length
+                    //TODO -- We'll process it but ignore it for now
+                    while (InSpan(_printfLength, stringToParse.Slice(i, 1)))
+                    {
+                        i++;
+                    }
+
+                    //Finally i should be at the specifier 
+                    if (!InSpan(_printfSpecifiers, stringToParse.Slice(i, 1)))
+                        throw new Exception("Invalid printf format");
+
+                    switch ((char) stringToParse[i])
                     {
                         case 'c':
                         {
                             var charParameter = GetParameter(currentParameter++);
-                            msOutput.WriteByte((byte) charParameter);
+                            msFormattedValue.WriteByte((byte) charParameter);
                             break;
                         }
                         case 's':
@@ -151,7 +238,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var parameterOffset = GetParameter(currentParameter++);
                             var parameterSegment = GetParameter(currentParameter++);
                             var parameter = Memory.GetString(parameterSegment, parameterOffset);
-                            msOutput.Write(parameter);
+                            msFormattedValue.Write(parameter);
                             break;
                         }
                         case 'd':
@@ -159,16 +246,47 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var lowWord = GetParameter(currentParameter++);
                             var highWord = GetParameter(currentParameter++);
                             var parameter = highWord << 16 | lowWord;
-                            msOutput.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
                             break;
                         }
                         default:
                             throw new InvalidDataException(
-                                $"Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
+                                $"Unhandled Printf Control Character: {(char) stringToParse[i + 1]}");
                     }
-                    i++;
+
+                    //Process Padding
+                    if (stringWidth > 0 && stringWidth != msFormattedValue.Length)
+                    {
+                        //Need to pad
+                        if (msFormattedValue.Length < stringWidth)
+                        {
+                            if (stringFlags.HasFlag(EnumPrintfFlags.LeftJustify))
+                            {
+                                //Pad at the end
+                                while(msFormattedValue.Length < stringWidth)
+                                    msFormattedValue.WriteByte((byte)' ');
+                            }
+                            else
+                            {
+                                //Pad beginning
+                                var valueCache = msFormattedValue.ToArray();
+                                msFormattedValue.Position = 0;
+                                msFormattedValue.SetLength(0);
+                                while(msFormattedValue.Length < stringWidth - valueCache.Length)
+                                    msFormattedValue.WriteByte((byte)' ');
+
+                                msFormattedValue.Write(valueCache);
+                            }
+                        }
+
+                        //Need to truncate -- EZPZ
+                        if (msFormattedValue.Length > stringWidth)
+                            msFormattedValue.SetLength(stringWidth);
+                    }
+                    msOutput.Write(msFormattedValue.ToArray());
                     continue;
                 }
+
                 msOutput.WriteByte(stringToParse[i]);
             }
             return msOutput.ToArray();
