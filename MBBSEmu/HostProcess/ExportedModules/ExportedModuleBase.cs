@@ -243,9 +243,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         case 'd':
                         {
-                            var lowWord = GetParameter(currentParameter++);
-                            var highWord = GetParameter(currentParameter++);
-                            var parameter = highWord << 16 | lowWord;
+                            var parameter = GetParameter(currentParameter++);
                             msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
                             break;
                         }

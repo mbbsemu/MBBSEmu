@@ -1257,5 +1257,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         [ExportedFunction(Name = "RDECRD", Ordinal = 488)]
         public ushort rdedcrd() => Registers.AX = 1;
+
+        /// <summary>
+        ///     sprintf-like string formatter utility
+        ///
+        ///     Main differentiation is that spr() supports long integer and floating point conversions
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "SPR", Ordinal = 559)]
+        public ushort spr()
+        {
+            var sourceOffset = GetParameter(0);
+            var sourceSegment = GetParameter(1);
+
+            var output = Memory.GetString(sourceSegment, sourceOffset);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 2);
+
+            if (!HostMemoryVariables.TryGetValue("SPR", out var variablePointer))
+            {
+                var offset = base.Memory.AllocateHostMemory((ushort)formattedMessage.Length);
+
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                HostMemoryVariables["SPR"] = variablePointer;
+            }
+
+            Memory.SetArray(variablePointer.Segment, variablePointer.Offset, formattedMessage);
+
+
+#if DEBUG
+            _logger.Info($"Added {output.Length} bytes to the buffer");
+#endif
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
+
+            return 0;
+        }
     }
 }

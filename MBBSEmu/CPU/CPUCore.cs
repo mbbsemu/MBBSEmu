@@ -90,7 +90,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -214,7 +214,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -301,8 +301,20 @@ namespace MBBSEmu.CPU
                         case Register.None when _currentInstruction.MemoryIndex == Register.None:
                             return (ushort) _currentInstruction.MemoryDisplacement;
                         case Register.BP when _currentInstruction.MemoryIndex == Register.None:
-                            return (ushort) (Registers.BP -
-                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                        {
+                            //This is a hack, I'm just assuming there wont be > 32k passed in values or local variables
+                            //this might break if it's a crazy module. ¯\_(ツ)_/¯
+                            if (_currentInstruction.MemoryDisplacement > short.MaxValue)
+                            {
+                                return (ushort) (Registers.BP -
+                                                 (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                            }
+                            else
+                            {
+                                return (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                            }
+                        }
+
                         case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
                             return (ushort) (Registers.BP -
                                              (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1) +
