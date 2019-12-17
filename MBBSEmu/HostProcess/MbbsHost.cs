@@ -206,6 +206,10 @@ namespace MBBSEmu.HostProcess
                 var importedModuleName =
                     module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
+#if DEBUG
+                _logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
+#endif
+
                 return importedModuleName switch
                 {
                     "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),

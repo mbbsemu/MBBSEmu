@@ -49,12 +49,15 @@ namespace MBBSEmu
             }
 
             var host = ServiceResolver.GetService<IMbbsHost>();
+            host.Start();
 
             var module = new MbbsModule(sInputModule, sInputPath);
             host.AddModule(module);
             
             var server = ServiceResolver.GetService<ITelnetServer>();
+            
             server.Start();
+
             Console.ReadKey();
             //host.Init();
             //host.Run("sttrou");

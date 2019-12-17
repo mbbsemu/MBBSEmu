@@ -46,7 +46,7 @@ namespace MBBSEmu.Telnet
             {
                 var client = _listenerSocket.Accept();
                 _logger.Info($"Acceping incoming connection from {client.RemoteEndPoint}...");
-                var session = new TelnetSession(client, _host);
+                var session = new TelnetSession(client);
             }
         }
     }

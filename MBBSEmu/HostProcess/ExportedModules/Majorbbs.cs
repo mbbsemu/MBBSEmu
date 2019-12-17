@@ -4,7 +4,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -23,13 +22,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
     [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase
     {
-        private static readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
-        private static McvFile _currentMcvFile;
-        private static McvFile _previousMcvFile;
+        private readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
+        private McvFile _currentMcvFile;
+        private McvFile _previousMcvFile;
 
-        private static readonly PointerDictionary<BtrieveFile> _btrieveFiles = new PointerDictionary<BtrieveFile>();
-        private static BtrieveFile _currentBtrieveFile;
-        private static BtrieveFile _previousBtrieveFile;
+        private readonly PointerDictionary<BtrieveFile> _btrieveFiles = new PointerDictionary<BtrieveFile>();
+        private BtrieveFile _currentBtrieveFile;
+        private BtrieveFile _previousBtrieveFile;
 
         /// <summary>
         ///     Buffer of Data that is stored to be sent to the user
@@ -709,6 +708,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Deducted {creditsToDeduct} from the current users account (unlimited)");
 #endif
+
+            Registers.AX = 1;
             return 0;
         }
 
@@ -1246,5 +1247,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         [ExportedFunction(Name = "STATUS", Ordinal = 565)]
         public ushort status() => (ushort) EnumHostSegments.Status;
+
+        /// <summary>
+        ///     Deduct real credits from online acct
+        ///
+        ///     Signature: int enuf=rdedcrd(long amount, int asmuch)
+        ///     Returns: Always 1, meaning enough credits
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "RDECRD", Ordinal = 488)]
+        public ushort rdedcrd() => Registers.AX = 1;
     }
 }
