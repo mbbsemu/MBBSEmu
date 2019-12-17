@@ -8,7 +8,7 @@ namespace MBBSEmu.DependencyInjection
 {
     public static class ServiceResolver
     {
-        private static readonly ServiceProvider Resolver;
+        private static ServiceProvider _provider;
 
         static ServiceResolver()
         {
@@ -17,9 +17,11 @@ namespace MBBSEmu.DependencyInjection
             serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
 
-            Resolver = serviceCollection.BuildServiceProvider();
+            _provider = serviceCollection.BuildServiceProvider();
         }
 
-        public static T GetService<T>() => Resolver.GetService<T>();
+        public static void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;
+
+        public static T GetService<T>() => _provider.GetService<T>();
     }
 }
