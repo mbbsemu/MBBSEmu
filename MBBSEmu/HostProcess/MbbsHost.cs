@@ -210,7 +210,7 @@ namespace MBBSEmu.HostProcess
                 //_logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
 #endif
 
-                return importedModuleName switch
+                 return importedModuleName switch
                 {
                     "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
                     "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),

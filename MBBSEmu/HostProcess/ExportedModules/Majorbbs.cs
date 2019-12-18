@@ -1324,8 +1324,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Long Division (Borland C++ Implicit Function)
         ///
-        ///     Input: Two long values on stack
-        ///     Output: DX:AX = arg1 / arg2
+        ///     Input: Two long values on stack (arg1/arg2)
+        ///     Output: DX:AX = quotient
+        ///             DI:SI = remainder
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "F_LDIV", Ordinal = 654)]
@@ -1335,14 +1336,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var arg1 = (GetParameter(1) << 16) | GetParameter(0);
             var arg2 = (GetParameter(3) << 16) | GetParameter(2);
 
-            var result = arg1 / arg2;
+            var quotient = Math.DivRem(arg1, arg2, out var remainder);
 
 #if DEBUG
-            _logger.Info($"Performed Long Multiplication {arg1}/{arg2}={result}");
+            _logger.Info($"Performed Long Multiplication {arg1}/{arg2}={quotient} (Remainder: {remainder})");
 #endif
 
-            Registers.DX = (ushort)(result >> 16);
-            Registers.AX = (ushort)(result & 0xFFFF);
+            Registers.DX = (ushort)(quotient >> 16);
+            Registers.AX = (ushort)(quotient & 0xFFFF);
+
+            Registers.DI = (ushort)(remainder >> 16);
+            Registers.SI = (ushort)(remainder & 0xFFFF);
 
             //Increment the SP manually as this happens within the function, not explicitly in the compiler
             Registers.SP += 12;
