@@ -207,7 +207,7 @@ namespace MBBSEmu.HostProcess
                     module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
 
 #if DEBUG
-                _logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
+                //_logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
 #endif
 
                 return importedModuleName switch

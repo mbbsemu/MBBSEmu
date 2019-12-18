@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
 
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -388,7 +389,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
-            Registers.AX = (ushort)(outputValue & 0xFFFF0000);
+            Registers.AX = (ushort)(outputValue >> 16);
             Registers.DX = (ushort)(outputValue & 0xFFFF);
 
             return 0;
@@ -896,12 +897,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "RAND", Ordinal = 486)]
         public ushort rand()
         {
-            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(0, short.MaxValue);
+            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(1, short.MaxValue);
 
 #if DEBUG
             _logger.Info($"Generated random number {randomValue} and saved it to AX");
 #endif
-            Registers.AX = 1;
+            Registers.AX = (ushort)randomValue;
 
             return 0;
         }
@@ -1293,6 +1294,62 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
 
+            return 0;
+        }
+
+        /// <summary>
+        ///     Long Multiplication (Borland C++ Implicit Function)
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "F_LXMUL", Ordinal = 659)]
+        public ushort f_lxmul()
+        {
+
+            var value1 = (Registers.DX << 16) | Registers.AX;
+            var value2 = (Registers.CX << 16) | Registers.BX;
+
+            var result = value1 * value2;
+
+#if DEBUG
+            _logger.Info($"Performed Long Multiplication {value1}*{value2}={result}");
+#endif
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Long Division (Borland C++ Implicit Function)
+        ///
+        ///     Input: Two long values on stack
+        ///     Output: DX:AX = arg1 / arg2
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "F_LDIV", Ordinal = 654)]
+        public ushort f_ldiv()
+        {
+
+            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            var arg2 = (GetParameter(3) << 16) | GetParameter(2);
+
+            var result = arg1 / arg2;
+
+#if DEBUG
+            _logger.Info($"Performed Long Multiplication {arg1}/{arg2}={result}");
+#endif
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            //Increment the SP manually as this happens within the function, not explicitly in the compiler
+            Registers.SP += 12;
+            base.Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), Registers.IP);
+            Registers.SP -= 2;
+            base.Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), Registers.CS);
+            Registers.SP -= 2;
             return 0;
         }
     }

@@ -1085,10 +1085,15 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Destination);
             var source = GetOperandValue(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            ushort result;
+            unchecked
+            {
+                result = (ushort) (destination * source);
+            }
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort) (destination * source));
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
                     return;
             }
         }
