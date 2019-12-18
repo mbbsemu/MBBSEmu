@@ -4,6 +4,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System.Text;
+using NLog.LayoutRenderers;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -153,7 +154,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ReadOnlySpan<byte> inputFromChannelSpan = inputFromChannel;
             Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
-
             Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
             return 0;
         }
@@ -173,6 +173,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channelNumber = GetParameter(0);
 
             ChannelDictionary[channelNumber].DataFromClient.Clear();
+
+            Registers.AX = 0;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Sets Input Character Interceptor
+        ///
+        ///     Signature: int err=btuchi(int chan, char (*rouadr)())
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "_BTUCHI", Ordinal = 4)]
+        public ushort btuchi()
+        {
+
+            var channel = GetParameter(0);
+            var routineSegment = GetParameter(1);
+            var routineOffset = GetParameter(2);
+
+            if (routineOffset != 0 && routineSegment != 0)
+                throw new Exception("BTUCHI only handles NULL for the time being");
 
             Registers.AX = 0;
 
