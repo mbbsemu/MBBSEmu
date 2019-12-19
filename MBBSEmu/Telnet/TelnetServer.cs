@@ -24,7 +24,7 @@ namespace MBBSEmu.Telnet
         public void Start()
         {
             //Setup Listener
-            var ipEndPoint = new IPEndPoint(IPAddress.Any, 23);
+            var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 23);
             _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _listenerSocket.Bind(ipEndPoint);
             _listenerThread = new Thread(ListenerThread);

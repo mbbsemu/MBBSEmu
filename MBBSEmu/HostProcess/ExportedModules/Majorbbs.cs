@@ -1027,7 +1027,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var mcvFileOffset = GetParameter(0);
             var mcvFileSegment = GetParameter(1);
 
-            if(mcvFileSegment != (int)EnumHostSegments.Msg)
+            if(mcvFileSegment != (ushort)EnumHostSegments.Msg)
                 throw new ArgumentException($"Specified Segment for MCV File {mcvFileSegment} does not match host MCV Segment {(int)EnumHostSegments.Msg}");
 
             _previousMcvFile = _currentMcvFile;

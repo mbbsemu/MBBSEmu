@@ -5,6 +5,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -20,6 +21,8 @@ namespace MBBSEmu.Telnet
         private readonly Thread _receiveThread;
 
         private bool _sentServerIac;
+
+        private int _iacPhase = 0;
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
@@ -101,6 +104,8 @@ namespace MBBSEmu.Telnet
         /// <param name="iacResponse"></param>
         private void ParseIAC(ReadOnlySpan<byte> iacResponse)
         {
+            var _iacResponses = new List<IacResponse>();
+
             for (var i = 0; i < iacResponse.Length; i+= 3)
             {
                 if (iacResponse[i] == 0)
@@ -114,81 +119,120 @@ namespace MBBSEmu.Telnet
 
                 _logger.Info($"Channel {Channel}: IAC {iacVerb} {iacOption}");
 
-                var responseVerb = EnumIacVerbs.None;
-                var responseOption = EnumIacOptions.None;
-
                 switch (iacOption)
                 {
                     case EnumIacOptions.BinaryTransmission:
                     {
-                        responseOption = EnumIacOptions.BinaryTransmission;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.WILL => EnumIacVerbs.DO,
-                            EnumIacVerbs.DO => EnumIacVerbs.WILL,
-                            _ => EnumIacVerbs.None
-                        };
-
+                            case EnumIacVerbs.DO:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
                         break;
                     }
                     case EnumIacOptions.Echo:
                     {
-                        responseOption = EnumIacOptions.Echo;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.DO => EnumIacVerbs.WONT,
-                            _ => EnumIacVerbs.None
-                        };
+                            case EnumIacVerbs.DO:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                        }
+
                         break;
                     }
                     case EnumIacOptions.NegotiateAboutWindowSize:
                     {
-                        responseOption = EnumIacOptions.NegotiateAboutWindowSize;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
-                            _ => EnumIacVerbs.None
-                        };
-
+                            case EnumIacVerbs.WILL:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT,
+                                    EnumIacOptions.NegotiateAboutWindowSize));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
                         break;
                     }
                     case EnumIacOptions.TerminalSpeed:
                     {
-                        responseOption = EnumIacOptions.TerminalSpeed;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
-                            _ => EnumIacVerbs.None
-                        };
-
+                            case EnumIacVerbs.WILL:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalSpeed));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
                         break;
                     }
                     case EnumIacOptions.TerminalType:
                     {
-                        responseOption = EnumIacOptions.TerminalType;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
-                            _ => EnumIacVerbs.None
-                        };
-
+                            case EnumIacVerbs.WILL:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalType));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
                         break;
                     }
-                    case EnumIacOptions.NewEnvironmentOption:
+                    case EnumIacOptions.EnvironmentOption:
                     {
-                        responseOption = EnumIacOptions.NewEnvironmentOption;
-                        responseVerb = iacVerb switch
+                        switch (iacVerb)
                         {
-                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
-                            _ => EnumIacVerbs.None
-                        };
+                            case EnumIacVerbs.WILL:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.EnvironmentOption));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
+                        break;
+                    }
+                    case EnumIacOptions.SuppressGoAhead:
+                    {
+                        switch (iacVerb)
+                        {
+                            case EnumIacVerbs.WILL:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.SuppressGoAhead));
+                                break;
+                            case EnumIacVerbs.DO:
+                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.SuppressGoAhead));
+                                break;
+                            default:
+                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                break;
+                        }
                         break;
                     }
                 }
-
-                if(responseOption != EnumIacOptions.None && responseVerb != EnumIacVerbs.None)
-                    DataFromClient.Enqueue(new byte[] { 0xFF, (byte)responseVerb, (byte)responseOption });
             }
+
+            if(_iacPhase == 0 && _iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
+            {
+                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+            }
+
+            _iacPhase++;
+
+            using var msIacToSend = new MemoryStream();
+            foreach(var resp in _iacResponses)
+                msIacToSend.Write(resp.ToArray());
+
+            DataToClient.Enqueue(msIacToSend.ToArray());
         }
 
         /// <summary>
