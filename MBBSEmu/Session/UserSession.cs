@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.HostProcess.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace MBBSEmu.Session
 {
@@ -36,6 +37,8 @@ namespace MBBSEmu.Session
 
         public EnumSessionState SessionState;
 
+        public MemoryStream EchoBuffer;
+
         public UserSession(string sessionId)
         {
             SessionId = sessionId;
@@ -43,6 +46,7 @@ namespace MBBSEmu.Session
             DataToClient = new Queue<byte[]>();
             UsrPrt = new User();
             Status = 0;
+            EchoBuffer = new MemoryStream(256);
         }
 
         public void SendToClient(ReadOnlySpan<byte> dataToSend)

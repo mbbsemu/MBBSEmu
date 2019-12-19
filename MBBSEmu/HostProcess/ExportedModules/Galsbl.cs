@@ -200,5 +200,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             return 0;
         }
+
+        /// <summary>
+        ///     Echo buffer space available for bytes
+        ///
+        ///     Signature: int btueba(int chan)
+        ///     Returns: 0 == buffer is full
+        ///              1-254 == Buffer is between full and empty
+        ///              255 == Buffer is full
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "_BTUEBA", Ordinal = 83)]
+        public ushort btueba()
+        {
+            var channel = GetParameter(0);
+
+            //Always return there's a ton of space left
+            Registers.AX = (ushort) (255 - ChannelDictionary[channel].EchoBuffer.Position);
+            return 0;
+        }
     }
 }

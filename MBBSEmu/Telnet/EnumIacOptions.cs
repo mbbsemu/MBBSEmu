@@ -51,6 +51,7 @@
         TelnetStartTLS = 46,
         KETMIT = 47,
         SENDURL = 48,
-        FORWARDX = 49
+        FORWARDX = 49,
+        None = 0xFF
     }
 }

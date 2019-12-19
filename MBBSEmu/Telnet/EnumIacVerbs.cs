@@ -9,6 +9,7 @@ namespace MBBSEmu.Telnet
         WILL = 251,
         DO = 252,
         WONT = 253,
-        DONT = 254
+        DONT = 254,
+        None = 0xFF
     }
 }

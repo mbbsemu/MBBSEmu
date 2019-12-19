@@ -3,6 +3,7 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Session;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
@@ -18,6 +19,8 @@ namespace MBBSEmu.Telnet
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
 
+        private bool _sentServerIac;
+
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
             _host = ServiceResolver.GetService<IMbbsHost>();
@@ -25,6 +28,7 @@ namespace MBBSEmu.Telnet
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
             _telnetConnection.ReceiveBufferSize = 128;
+            
             SessionState = EnumSessionState.Negotiating;
 
             //Start Listeners & Senders
@@ -32,9 +36,6 @@ namespace MBBSEmu.Telnet
             _sendThread.Start();
             _receiveThread = new Thread(ReceiveWorker);
             _receiveThread.Start();
-
-            //Disable Local Echo
-            DataToClient.Enqueue(new byte[] { 0xFF, 0xFB, 0x01 });
 
             //Add this Session to the Host
             _host.AddSession(this);
@@ -79,6 +80,11 @@ namespace MBBSEmu.Telnet
                 if (characterBufferSpan[0] == 0xFF)
                 {
                     ParseIAC(characterBufferSpan.Slice(0, bytesReceived));
+                    if (!_sentServerIac)
+                    {
+                        _sentServerIac = true;
+                        DataFromClient.Enqueue(new byte[] { 0xFF, (byte)EnumIacVerbs.DO, (byte)EnumIacOptions.BinaryTransmission });
+                    }
                 }
                 else
                 {
@@ -108,6 +114,80 @@ namespace MBBSEmu.Telnet
 
                 _logger.Info($"Channel {Channel}: IAC {iacVerb} {iacOption}");
 
+                var responseVerb = EnumIacVerbs.None;
+                var responseOption = EnumIacOptions.None;
+
+                switch (iacOption)
+                {
+                    case EnumIacOptions.BinaryTransmission:
+                    {
+                        responseOption = EnumIacOptions.BinaryTransmission;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.WILL => EnumIacVerbs.DO,
+                            EnumIacVerbs.DO => EnumIacVerbs.WILL,
+                            _ => EnumIacVerbs.None
+                        };
+
+                        break;
+                    }
+                    case EnumIacOptions.Echo:
+                    {
+                        responseOption = EnumIacOptions.Echo;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.DO => EnumIacVerbs.WONT,
+                            _ => EnumIacVerbs.None
+                        };
+                        break;
+                    }
+                    case EnumIacOptions.NegotiateAboutWindowSize:
+                    {
+                        responseOption = EnumIacOptions.NegotiateAboutWindowSize;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
+                            _ => EnumIacVerbs.None
+                        };
+
+                        break;
+                    }
+                    case EnumIacOptions.TerminalSpeed:
+                    {
+                        responseOption = EnumIacOptions.TerminalSpeed;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
+                            _ => EnumIacVerbs.None
+                        };
+
+                        break;
+                    }
+                    case EnumIacOptions.TerminalType:
+                    {
+                        responseOption = EnumIacOptions.TerminalType;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
+                            _ => EnumIacVerbs.None
+                        };
+
+                        break;
+                    }
+                    case EnumIacOptions.NewEnvironmentOption:
+                    {
+                        responseOption = EnumIacOptions.NewEnvironmentOption;
+                        responseVerb = iacVerb switch
+                        {
+                            EnumIacVerbs.WILL => EnumIacVerbs.WONT,
+                            _ => EnumIacVerbs.None
+                        };
+                        break;
+                    }
+                }
+
+                if(responseOption != EnumIacOptions.None && responseVerb != EnumIacVerbs.None)
+                    DataFromClient.Enqueue(new byte[] { 0xFF, (byte)responseVerb, (byte)responseOption });
             }
         }
 

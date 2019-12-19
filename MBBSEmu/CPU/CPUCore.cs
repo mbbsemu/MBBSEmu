@@ -129,6 +129,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jbe:
                     Op_Jbe();
                     return;
+                case Mnemonic.Jae:
+                    Op_Jae();
+                    return;
                 case Mnemonic.Call:
                     Op_Call();
                     return;
@@ -682,43 +685,49 @@ namespace MBBSEmu.CPU
 
         private void Op_Dec()
         {
-            ushort result;
-            ushort destination;
-            var operationSize = 0;
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = _currentInstruction.MemorySize == MemorySize.UInt8 ? Op_Dec_8((byte)destination) : Op_Dec_16(destination);
+
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                {
-                    operationSize = _currentInstruction.Op0Register.GetSize();
-                    destination = Registers.GetValue(_currentInstruction.Op0Register);
-                    result = (ushort)(destination - 1);
                     Registers.SetValue(_currentInstruction.Op0Register, result);
                     break;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException($"Uknown INC: {_currentInstruction.Op0Kind}");
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt8:
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), (byte)result);
+                    break;
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.UInt16:
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), result);
+                    break;
             }
 
-            switch (operationSize)
+        }
+
+        private byte Op_Dec_8(byte destination)
+        {
+            unchecked
             {
-                case 1:
-                {
-                    Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Subtraction, result, destination);
-                    Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
-                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
-                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
-                    break;
-                }
-                case 2:
-                {
-                    Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
-                    Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
-                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
-                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
-                    break;
-                }
+                var result = (byte)(destination - 1);
+                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Subtraction, result, destination, 1);
+                Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                return result;
+            }
+        }
+
+        private ushort Op_Dec_16(ushort destination)
+        {
+            unchecked
+            {
+                var result = (ushort)(destination - 1);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, 1);
+                Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                return result;
             }
         }
 
@@ -806,6 +815,18 @@ namespace MBBSEmu.CPU
                 }
                 default:
                     throw new Exception($"Unsupported OR operation size: {operationSize}");
+            }
+        }
+
+        private void Op_Jae()
+        {
+            if (!Registers.F.IsFlagSet(EnumFlags.CF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
             }
         }
 
