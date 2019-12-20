@@ -34,11 +34,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Buffer of Data that is stored to be sent to the user
         /// </summary>
-        private readonly MemoryStream outputBuffer;
+        private readonly MemoryStream _outputBuffer;
 
         public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
-            outputBuffer = new MemoryStream();
+            _outputBuffer = new MemoryStream();
         }
 
         /// <summary>
@@ -116,6 +116,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dataSegment = GetParameter(1);
             var size = GetParameter(2);
 
+            //Only needs to be set once
             if (!HostMemoryVariables.TryGetValue("GMDNAM", out var variablePointer))
             {
 
@@ -137,10 +138,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //Set Dictionary Lookup
                 HostMemoryVariables["GMDNAM"] = variablePointer;
 
+
                 //Set Memory
-                Memory.SetArray(HostMemorySegment, offset, Encoding.Default.GetBytes(moduleName));
+                Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
+                    Encoding.Default.GetBytes(Module.Mdf.ModuleName));
 #if DEBUG
-                _logger.Info($"Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {Registers.DX:X4}:{Registers.AX:X4}");
+                _logger.Info(
+                    $"Retrieved Module Name \"{Module.Mdf.ModuleName}\" and saved it at host memory offset {Registers.DX:X4}:{Registers.AX:X4}");
 #endif
             }
 
@@ -468,20 +472,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!HostMemoryVariables.TryGetValue($"L2AS", out var variablePointer))
             {
-                var offset = Memory.AllocateHostMemory((ushort) outputValue.Length);
+                //Pre-allocate space for the maximum number of characters for a ulong
+                var offset = Memory.AllocateHostMemory((ushort)uint.MaxValue.ToString().Length);
 
                 variablePointer = new IntPtr16((ushort) EnumHostSegments.HostMemorySegment, offset);
 
                 //Set Variable Pointer
                 HostMemoryVariables["L2AS"] = variablePointer;
+            }
 
-                Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputValue));
+            Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
-                _logger.Info(
-                    $"Received value: {outputValue}, string saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+            _logger.Info(
+                $"Received value: {outputValue}, string saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            }
 
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
@@ -663,7 +668,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            outputBuffer.Write(formattedMessage);
+            _outputBuffer.Write(formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -683,9 +688,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
 
-            ChannelDictionary[userChannel].SendToClient(new ReadOnlySpan<byte>(outputBuffer.ToArray()));
-            outputBuffer.Position = 0;
-            outputBuffer.SetLength(0);
+            ChannelDictionary[userChannel].SendToClient(new ReadOnlySpan<byte>(_outputBuffer.ToArray()));
+            _outputBuffer.Position = 0;
+            _outputBuffer.SetLength(0);
 
             return 0;
         }
@@ -741,7 +746,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
-                outputBuffer.Write(formattedMessage);
+                _outputBuffer.Write(formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
@@ -834,7 +839,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Segment = GetParameter(2);
             var baseValue = GetParameter(3);
 
-            var output = Convert.ToString(integerValue, baseValue);
+            var output = Convert.ToString((short)integerValue, baseValue);
             output += "\0";
 
             Memory.SetArray(string1Segment, string1Offset, Encoding.Default.GetBytes(output));
@@ -934,7 +939,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!HostMemoryVariables.TryGetValue("NCDATE", out var variablePointer))
             {
-                var offset = base.Memory.AllocateHostMemory((ushort)outputDate.Length);
+                var offset = Memory.AllocateHostMemory((ushort)outputDate.Length);
 
                 variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
                 HostMemoryVariables["NCDATE"] = variablePointer;
@@ -1273,19 +1278,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var output = Memory.GetString(sourceSegment, sourceOffset);
 
+
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
+            if (formattedMessage.Length > 0x400)
+                throw new OutOfMemoryException($"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
+
             if (!HostMemoryVariables.TryGetValue("SPR", out var variablePointer))
             {
-                var offset = base.Memory.AllocateHostMemory((ushort)formattedMessage.Length);
+                //allocate 1k for the SPR buffer
+                var offset = Memory.AllocateHostMemory(0x400);
 
                 variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
                 HostMemoryVariables["SPR"] = variablePointer;
             }
 
             Memory.SetArray(variablePointer.Segment, variablePointer.Offset, formattedMessage);
-
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
