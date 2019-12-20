@@ -90,7 +90,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -327,7 +327,7 @@ namespace MBBSEmu.CPU
                         case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
                             return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
                         case Register.SI when _currentInstruction.MemoryIndex == Register.None:
-                            return Registers.SI;
+                            return (ushort) (Registers.SI + _currentInstruction.MemoryDisplacement);
                         case Register.DI when _currentInstruction.MemoryIndex == Register.None:
                             return (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
                         default:

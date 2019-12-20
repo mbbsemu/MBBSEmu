@@ -127,6 +127,9 @@ namespace MBBSEmu.Memory
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
+            if(segment == 0xFFFD && offset == 0x8)
+                _logger.Info($"Updated substt: {value}");
+
             SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 

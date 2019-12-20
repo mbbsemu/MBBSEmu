@@ -32,7 +32,7 @@ namespace MBBSEmu.HostProcess
         {
             _logger = logger;
             _logger.Info("Constructing MbbsEmu Host...");
-            _channelDictionary = new PointerDictionary<UserSession>();
+            _channelDictionary = new PointerDictionary<UserSession>(minimumValue: 1);
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, object>();
 
@@ -100,10 +100,13 @@ namespace MBBSEmu.HostProcess
                 }
 
                 //Cleanup Logged Off
-                for (ushort i = 0; i < _channelDictionary.Count; i++)
+                for (ushort i = 1; i < _channelDictionary.Count; i++)
                 {
-                    if (_channelDictionary[i].SessionState == EnumSessionState.LoggedOff)
-                        _channelDictionary.Remove(i);
+                    if (_channelDictionary.ContainsKey(i))
+                    {
+                        if (_channelDictionary[i].SessionState == EnumSessionState.LoggedOff)
+                            _channelDictionary.Remove(i);
+                    }
                 }
 
                 Thread.Sleep(50);

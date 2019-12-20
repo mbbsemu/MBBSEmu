@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Memory
 {
@@ -11,8 +12,13 @@ namespace MBBSEmu.Memory
     /// <typeparam name="TValue"></typeparam>
     public class PointerDictionary<TValue> : Dictionary<int, TValue>
     {
-        public PointerDictionary() : base()
+        private readonly int _minimumValue;
+        private readonly int _maximumValue;
+
+        public PointerDictionary(int minimumValue = 0, int maximumValue = int.MaxValue) : base()
         {
+            _minimumValue = minimumValue;
+            _maximumValue = maximumValue;
         }
 
         public PointerDictionary(int capacity) : base(capacity)
@@ -37,13 +43,13 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         private int GetPointer()
         {
-            for (var i = 0; i < int.MaxValue; i++)
+            for (var i = _minimumValue; i < _maximumValue; i++)
             {
                 if (!ContainsKey(i))
                     return i;
             }
 
-            return -1;
+            throw new Exception("Pointer Dictionary is Full");
         }
     }
 }
