@@ -507,11 +507,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
 
-            var inputBuffer = new MemoryStream();
-
+            using var inputBuffer = new MemoryStream();
             inputBuffer.Write(Memory.GetString(sourceSegment, sourceOffset));
 
-            var inputValue = Encoding.Default.GetString(inputBuffer.ToArray());
+            var inputValue = Encoding.Default.GetString(inputBuffer.ToArray()).Trim('\0');
 
             if (!int.TryParse(inputValue, out var outputValue))
             {
@@ -526,7 +525,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.DX = 0;
                 return 0;
             }
-                
 
 #if DEBUG
             _logger.Info($"Cast {inputValue} ({sourceSegment:X4}:{sourceOffset:X4}) to long");

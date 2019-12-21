@@ -91,12 +91,14 @@ namespace MBBSEmu.HostProcess
                     {
                         s.StatusChange = false;
                         Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                        continue;
                     }
 
                     //Is there Text to send to the module
                     if (s.DataFromClient.Count > 0)
                     {
                         Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                        continue;
                     }
                 }
 
