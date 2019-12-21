@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
+using Microsoft.VisualBasic;
 
 namespace MBBSEmu.Telnet
 {
@@ -20,7 +21,8 @@ namespace MBBSEmu.Telnet
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
 
-        private int _iacPhase = 0;
+        private int _iacPhase;
+        private bool _iacComplete;
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
@@ -53,7 +55,6 @@ namespace MBBSEmu.Telnet
         /// <summary>
         ///     Send a Byte Array to the client
         /// </summary>
-        /// <param name="dataToSend"></param>
         private void SendWorker()
         {
             while (_telnetConnection.Connected)
@@ -86,7 +87,6 @@ namespace MBBSEmu.Telnet
                 {
                     DataFromClient.Enqueue(characterBufferSpan.Slice(0, bytesReceived).ToArray());
                 }
-                
                 Thread.Sleep(1);
             }
         }
@@ -225,6 +225,12 @@ namespace MBBSEmu.Telnet
             foreach(var resp in _iacResponses)
                 msIacToSend.Write(resp.ToArray());
 
+            if (msIacToSend.Length == 0)
+            {
+                _iacComplete = true;
+                return;
+            }
+            
             DataToClient.Enqueue(msIacToSend.ToArray());
         }
 

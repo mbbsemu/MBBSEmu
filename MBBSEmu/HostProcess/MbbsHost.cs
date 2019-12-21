@@ -1,15 +1,14 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.Logging;
+using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using MBBSEmu.HostProcess.Models;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess
 {
@@ -28,7 +27,8 @@ namespace MBBSEmu.HostProcess
         private readonly Dictionary<string, object> _exportedFunctions;
         private readonly CpuCore _cpu;
         private bool _isRunning;
-
+        private readonly Stopwatch realTimeStopwatch;
+        private bool _isAddingModule;
         public MbbsHost(ILogger logger)
         {
             _logger = logger;
@@ -38,7 +38,7 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, object>();
 
             _cpu = new CpuCore();
-            
+            realTimeStopwatch = Stopwatch.StartNew();
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -67,9 +67,41 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                //Process Input
-                //TODO -- Converting this to a FOR probably wont juice things too much,
-                //TODO -- but probably want to look into it just to be sure
+
+                //We don't want to run these while a module is still being kicked off
+                if (!_isAddingModule)
+                {
+                    foreach (var m in _modules.Values)
+                    {
+                        if (m.RtkickRoutines.Count == 0) continue;
+
+                        foreach (var r in m.RtkickRoutines)
+                        {
+                            if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
+                            {
+                                Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
+                            }
+                        }
+                    }
+
+                    //Run rtihdlr routines
+                    if (realTimeStopwatch.ElapsedMilliseconds > 55)
+                    {
+                        foreach (var m in _modules.Values)
+                        {
+                            if (m.RtihdlrRoutines.Count == 0) continue;
+
+                            foreach (var r in m.RtihdlrRoutines)
+                            {
+                                Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
+                            }
+                        }
+
+                        realTimeStopwatch.Restart();
+                    }
+                }
+
+                //Process Channels
                 foreach (var s in _channelDictionary.Values)
                 {
                     //Channel is entering module, run both
@@ -122,6 +154,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
+            _isAddingModule = true;
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
             //Verify that the imported functions are all supported by MbbsEmu
 
@@ -149,6 +182,7 @@ namespace MBBSEmu.HostProcess
             Run(module.ModuleIdentifier, "_INIT_", ushort.MaxValue);
 
             _logger.Info($"Module {module.ModuleIdentifier} added!");
+            _isAddingModule = false;
         }
 
         /// <summary>

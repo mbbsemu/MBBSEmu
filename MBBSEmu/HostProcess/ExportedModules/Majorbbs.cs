@@ -263,7 +263,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 //Setup the Entry Points in the Module
-                Module.EntryPoints[moduleRoutines[i]] = new EntryPoint(BitConverter.ToUInt16(routineEntryPoint, 2), BitConverter.ToUInt16(routineEntryPoint, 0));
+                Module.EntryPoints[moduleRoutines[i]] = new IntPtr16(BitConverter.ToUInt16(routineEntryPoint, 2), BitConverter.ToUInt16(routineEntryPoint, 0));
 
 #if DEBUG
                 _logger.Info(
@@ -996,6 +996,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var routinePointerOffset = GetParameter(0);
             var routinePointerSegment = GetParameter(1);
+
+            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
+            var routineNumber = Module.RtihdlrRoutines.Allocate(routine);
+            Module.EntryPoints.Add($"RTIHDLR-{routineNumber}", routine);
 #if DEBUG
             _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
 #endif
@@ -1011,9 +1015,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [ExportedFunction(Name = "RTKICK", Ordinal = 516)]
         public ushort rtkick()
         {
-            var routinePointerOffset = GetParameter(0);
-            var routinePointerSegment = GetParameter(1);
-            var delaySeconds = GetParameter(2);
+            var delaySeconds = GetParameter(0);
+            var routinePointerOffset = GetParameter(1);
+            var routinePointerSegment = GetParameter(2);
+
+            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset, delaySeconds);
+            var routineNumber = Module.RtkickRoutines.Allocate(routine);
+
+            Module.EntryPoints.Add($"RTKICK-{routineNumber}", routine);
 
 #if DEBUG
             _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4} to execute every {delaySeconds} seconds");

@@ -37,7 +37,11 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
-        public Dictionary<string, EntryPoint> EntryPoints;
+        public Dictionary<string, IntPtr16> EntryPoints;
+
+        public PointerDictionary<RealTimeRoutine> RtkickRoutines;
+
+        public PointerDictionary<RealTimeRoutine> RtihdlrRoutines;
 
         public readonly IMemoryCore Memory;
 
@@ -63,8 +67,10 @@ namespace MBBSEmu.Module
             if(Mdf.MSGFiles.Count > 0)
                 Msg = new MsgFile(ModulePath, ModuleIdentifier);
 
+            EntryPoints = new Dictionary<string, IntPtr16>();
+            RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
+            RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
 
-            EntryPoints = new Dictionary<string, EntryPoint>(9);
             Memory = new MemoryCore();
 
             //Setup _INIT_ Entrypoint
@@ -73,7 +79,7 @@ namespace MBBSEmu.Module
                 throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
 
             var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-            EntryPoints["_INIT_"] = new EntryPoint(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+            EntryPoints["_INIT_"] = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
         }
     }
 }
