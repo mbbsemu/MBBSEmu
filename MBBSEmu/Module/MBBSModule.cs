@@ -59,7 +59,11 @@ namespace MBBSEmu.Module
 
             Mdf = new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF");
             File = new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL");
-            Msg = new MsgFile(ModulePath, ModuleIdentifier);
+            
+            if(Mdf.MSGFiles.Count > 0)
+                Msg = new MsgFile(ModulePath, ModuleIdentifier);
+
+
             EntryPoints = new Dictionary<string, EntryPoint>(9);
             Memory = new MemoryCore();
 

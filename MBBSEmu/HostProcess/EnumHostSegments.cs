@@ -48,6 +48,11 @@
         Status = 0xFFF9,
 
         /// <summary>
+        ///     UsrAcc Struct for Retrieved User Information
+        /// </summary>
+        UsrAcc = 0xFFF8,
+
+        /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>
         Bturno = 0xEFFF

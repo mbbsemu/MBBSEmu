@@ -238,7 +238,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.File.SegmentTable.First(x => x.Ordinal == destinationSegment).RelocationRecords;
 
             //Description for Main Menu
-            var moduleDescription = Encoding.Default.GetString(moduleStruct, 0, 25).Trim();
+            var moduleDescription = Encoding.Default.GetString(moduleStruct, 0, 25);
 #if DEBUG
             _logger.Info($"Module Description set to {moduleDescription}");
 #endif
@@ -549,7 +549,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         { 
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
-            var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + (DateTime.Now.Year << 9);
+            var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + ((DateTime.Now.Year - 1980) << 9);
 
 #if DEBUG
             _logger.Info($"Returned packed date: {packedDate}");
@@ -645,8 +645,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (userNumber != 1)
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
-            Registers.AX = (ushort) EnumHostSegments.UserPtr;
-            Registers.DX = 0;
+            Memory.SetArray((ushort)EnumHostSegments.UsrAcc, 0, Encoding.Default.GetBytes("wndrbr3d\0"));
+
+            Registers.AX = 0;
+            Registers.DX = (ushort)EnumHostSegments.UsrAcc;
 
             return 0;
         }
@@ -741,12 +743,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var messageNumber = GetParameter(0);
 
-            if(!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputMessage))
-                throw new Exception($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
-            
+            if (!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputMessage))
+                throw new Exception(
+                    $"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
+
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
-                _outputBuffer.Write(formattedMessage);
+            _outputBuffer.Write(formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");

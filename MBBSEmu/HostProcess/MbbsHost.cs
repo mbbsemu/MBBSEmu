@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using MBBSEmu.HostProcess.Models;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess
@@ -86,7 +87,7 @@ namespace MBBSEmu.HostProcess
                         continue;
 
                     //Did the text change cause a status update
-                    if (s.StatusChange)
+                    if (s.StatusChange || s.Status == 240)
                     {
                         s.StatusChange = false;
                         Run(s.ModuleIdentifier, "stsrou", s.Channel);
@@ -109,7 +110,7 @@ namespace MBBSEmu.HostProcess
                     }
                 }
 
-                Thread.Sleep(50);
+                Thread.Sleep(1);
             }
         }
 
@@ -130,6 +131,7 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.Status);
             module.Memory.AddSegment(EnumHostSegments.UserPtr);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
+            module.Memory.AddSegment(EnumHostSegments.UsrAcc);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)

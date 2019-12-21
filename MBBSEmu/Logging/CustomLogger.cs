@@ -54,9 +54,9 @@ namespace MBBSEmu.Logging
                 Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
                 DeleteOldFileOnStartup = true
             };
-            //config.AddTarget(fileLogger);
+            config.AddTarget(fileLogger);
             config.AddRuleForAllLevels(consoleLogger);
-            //config.AddRuleForAllLevels(fileLogger);
+            config.AddRuleForAllLevels(fileLogger);
             LogManager.Configuration = config;
         }
     }

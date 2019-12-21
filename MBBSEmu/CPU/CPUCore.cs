@@ -80,17 +80,18 @@ namespace MBBSEmu.CPU
         {
 
             //Check for segment end
-            if (Registers.CS == ushort.MaxValue && Registers.IP == ushort.MaxValue) 
+            if ((Registers.CS == ushort.MaxValue || Registers.CS == 0) && Registers.IP == ushort.MaxValue) 
             {
                 IsRunning = false;
                 return;
             }
 
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
+            Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -312,16 +313,22 @@ namespace MBBSEmu.CPU
                                 return (ushort) (Registers.BP -
                                                  (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
                             }
-                            else
-                            {
-                                return (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
-                            }
+
+                            return (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
                         }
 
                         case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
-                            return (ushort) (Registers.BP -
-                                             (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1) +
-                                             Registers.SI);
+                        {
+                            if (_currentInstruction.MemoryDisplacement > short.MaxValue)
+                            {
+                                return (ushort) ((Registers.BP + Registers.SI) -
+                                                 (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                            }
+
+                            return (ushort) ((Registers.BP + Registers.SI) +
+                                             _currentInstruction.MemoryDisplacement + 1);
+                        }
+
                         case Register.BX when _currentInstruction.MemoryIndex == Register.None:
                             return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement);
                         case Register.BX when _currentInstruction.MemoryIndex == Register.SI:

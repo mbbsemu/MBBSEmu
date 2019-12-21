@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -38,7 +39,7 @@ namespace MBBSEmu.Module
                         DLLFiles = keyValuePair[1].Split(',').ToList();
                         break;
                     case "MSGs":
-                        MSGFiles = keyValuePair[1].Split(',').ToList();
+                        MSGFiles = keyValuePair[1].Split(',').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                 }
             }

@@ -20,8 +20,6 @@ namespace MBBSEmu.Telnet
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
 
-        private bool _sentServerIac;
-
         private int _iacPhase = 0;
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
@@ -83,11 +81,6 @@ namespace MBBSEmu.Telnet
                 if (characterBufferSpan[0] == 0xFF)
                 {
                     ParseIAC(characterBufferSpan.Slice(0, bytesReceived));
-                    if (!_sentServerIac)
-                    {
-                        _sentServerIac = true;
-                        DataFromClient.Enqueue(new byte[] { 0xFF, (byte)EnumIacVerbs.DO, (byte)EnumIacOptions.BinaryTransmission });
-                    }
                 }
                 else
                 {

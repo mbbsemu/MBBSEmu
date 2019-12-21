@@ -78,7 +78,13 @@ namespace MBBSEmu.Memory
 
         public Instruction GetInstruction(ushort segment, int instructionPointer)
         {
+            if (_decodedSegments[segment].Count(x => x.IP16 == instructionPointer) == 0)
+            {
+                return _decodedSegments[segment].First(x => x.IP16 == instructionPointer + 1);
+            }
+
             return _decodedSegments[segment].First(x => x.IP16 == instructionPointer);
+            
         }
 
         public byte GetByte(ushort segment, ushort offset)
@@ -109,15 +115,14 @@ namespace MBBSEmu.Memory
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset)
         {
             Span<byte> segmentSpan = _memorySegments[segment];
-            ushort byteCount = 0;
+
             for (var i = 0; i < ushort.MaxValue; i++)
             {
-                byteCount++;
                 if (segmentSpan[offset + i] == 0x0)
-                    break;
+                    return segmentSpan.Slice(offset, i + 1);
             }
 
-            return segmentSpan.Slice(offset, byteCount);
+            throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
         }
 
         public void SetByte(ushort segment, ushort offset, byte value)
@@ -127,9 +132,6 @@ namespace MBBSEmu.Memory
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
-            if(segment == 0xFFFD && offset == 0x8)
-                _logger.Info($"Updated substt: {value}");
-
             SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 
