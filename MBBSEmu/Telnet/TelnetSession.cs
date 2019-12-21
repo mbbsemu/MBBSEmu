@@ -118,7 +118,7 @@ namespace MBBSEmu.Telnet
                     {
                         switch (iacVerb)
                         {
-                            case EnumIacVerbs.DO:
+                            case EnumIacVerbs.WILL:
                                 _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
                                 break;
                             default:
