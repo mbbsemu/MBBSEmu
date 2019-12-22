@@ -150,7 +150,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <returns></returns>
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset)
-        {
+        { 
             Span<byte> segmentSpan = _memorySegments[segment];
 
             for (var i = 0; i < ushort.MaxValue; i++)

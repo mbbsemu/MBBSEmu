@@ -56,7 +56,7 @@ namespace MBBSEmu.Disassembler.Artifacts
 
         public byte[] Data { get; set; }
         
-        public List<RelocationRecord> RelocationRecords { get; set; }
+        public Dictionary<ushort, RelocationRecord> RelocationRecords { get; set; }
 
         public Segment() {}
         

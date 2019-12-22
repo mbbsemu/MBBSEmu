@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
-using Microsoft.VisualBasic;
 
 namespace MBBSEmu.Telnet
 {

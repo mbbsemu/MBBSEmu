@@ -311,14 +311,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < 9; i++)
             {
-                var currentOffset = 25 + (i * 4);
+                var currentOffset = (ushort) (25 + (i * 4));
                 var routineEntryPoint = new byte[4];
                 Array.Copy(moduleStruct, currentOffset, routineEntryPoint, 0, 4);
 
                 //If there's a Relocation record for this routine, apply it
-                if (relocationRecords.Any(y => y.Offset == currentOffset))
+                if(relocationRecords.TryGetValue(currentOffset, out var routineRelocationRecord))
                 {
-                    var routineRelocationRecord = relocationRecords.First(x => x.Offset == currentOffset);
                     Array.Copy(BitConverter.GetBytes(routineRelocationRecord.TargetTypeValueTuple.Item4), 0,
                         routineEntryPoint, 0, 2);
                     Array.Copy(BitConverter.GetBytes(routineRelocationRecord.TargetTypeValueTuple.Item2), 0,

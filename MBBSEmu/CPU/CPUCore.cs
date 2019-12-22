@@ -5,7 +5,6 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -250,11 +249,8 @@ namespace MBBSEmu.CPU
                     if (_currentInstruction.Immediate16 != ushort.MaxValue) return _currentInstruction.Immediate16;
 
                     //Check for Relocation Records
-                    var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
-                        .FirstOrDefault(x => x.Offset == Registers.IP + 1);
-
-                    //Actual ushort.MaxValue? Weird ¯\_(ツ)_/¯
-                    if (relocationRecord == null)
+                    if (!Memory.GetSegment(Registers.CS).RelocationRecords
+                        .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
                         return ushort.MaxValue;
 
                     return relocationRecord.TargetTypeValueTuple.Item1 switch
@@ -1217,14 +1213,13 @@ namespace MBBSEmu.CPU
                     int destinationValue;
                     if (_currentInstruction.Immediate16 == ushort.MaxValue)
                     {
-                        var relocationRecord = Memory.GetSegment(Registers.CS).RelocationRecords
-                            .FirstOrDefault(x => x.Offset == Registers.IP + 1);
-
-                        if (relocationRecord == null)
+                        if (!Memory.GetSegment(Registers.CS).RelocationRecords
+                            .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
                         {
                             destinationValue = ushort.MaxValue;
                         }
                         else
+
                         {
                             //Simulate an ENTER
                             //Set BP to the current stack pointer
@@ -1233,7 +1228,7 @@ namespace MBBSEmu.CPU
 
                             _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
-                            
+
                             //Simulate a LEAVE & retf
                             Registers.BP = priorToCallBp;
                             Registers.SetValue(Register.CS, Pop());

@@ -91,10 +91,13 @@ namespace MBBSEmu.Disassembler
                     var relocationInfoCursor = (int)segment.Offset + segment.Length;
                     var relocationRecordEntries = BitConverter.ToUInt16(FileContent, relocationInfoCursor);
                     relocationInfoCursor += 2;
-                    var records = new List<RelocationRecord>();
+                    var records = new Dictionary<ushort, RelocationRecord>();
                     for (var j = 0; j < relocationRecordEntries; j++)
                     {
-                        records.Add(new RelocationRecord { Data = data.Slice(relocationInfoCursor + j * 8, 8).ToArray() });
+                        var relocationRecord = new RelocationRecord
+                            {Data = data.Slice(relocationInfoCursor + j * 8, 8).ToArray()};
+
+                        records.Add(relocationRecord.Offset, relocationRecord);
                     }
                     segment.RelocationRecords = records;
                 }
