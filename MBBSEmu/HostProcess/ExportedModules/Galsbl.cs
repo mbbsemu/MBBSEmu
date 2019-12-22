@@ -219,5 +219,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = (ushort) (255 - ChannelDictionary[channel].EchoBuffer.Position);
             return 0;
         }
+
+        [ExportedFunction(Name = "_BTUIBA", Ordinal = 19)]
+        public ushort btuiba()
+        {
+            var channelNumber = GetParameter(0);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ushort.MaxValue - 1;
+                return 0;
+            }
+
+
+            if (channel.DataFromClient.Count > 0)
+            {
+                Registers.AX = (ushort)channel.DataFromClient.Peek().Length;
+            }
+
+            Registers.AX = 0;
+            return 0;
+        }
+
+        [ExportedFunction(Name = "_CHIOUS", Ordinal = 19)]
+        public ushort chious()
+        {
+
+        }
     }
 }

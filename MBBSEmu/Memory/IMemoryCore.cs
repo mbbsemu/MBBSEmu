@@ -12,7 +12,7 @@ namespace MBBSEmu.Memory
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
         bool HasSegment(ushort segmentNumber);
-        Instruction GetInstruction(ushort segment, int instructionPointer);
+        Instruction GetInstruction(ushort segment, ushort instructionPointer);
         byte GetByte(ushort segment, ushort offset);
         ushort GetWord(ushort segment, ushort offset);
         byte[] GetArray(ushort segment, ushort offset, ushort count);

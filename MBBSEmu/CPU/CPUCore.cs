@@ -989,8 +989,8 @@ namespace MBBSEmu.CPU
             //Get Comparison Operation Size
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
-            var result = GetCurrentOperationSize() == 1
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
                 ? Op_Sub_8((byte) destination, (byte) source)
                 : Op_Sub_16(destination, source);
 
@@ -999,6 +999,18 @@ namespace MBBSEmu.CPU
                 case OpKind.Register:
                 {
                     Registers.SetValue(_currentInstruction.Op0Register, result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 1:
+                {
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte)result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 2:
+                {
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
                     return;
                 }
                 default:

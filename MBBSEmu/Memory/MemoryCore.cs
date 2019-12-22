@@ -20,6 +20,7 @@ namespace MBBSEmu.Memory
         public readonly Dictionary<ushort, InstructionList> _decodedSegments;
         public readonly Dictionary<ushort, byte[]> _memorySegments;
         public readonly Dictionary<ushort, Segment> _segments;
+        public readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private ushort _hostMemoryOffset = 0x0;
 
@@ -28,6 +29,7 @@ namespace MBBSEmu.Memory
             _decodedSegments = new Dictionary<ushort, InstructionList>();
             _memorySegments = new Dictionary<ushort, byte[]>();
             _segments = new Dictionary<ushort, Segment>();
+            _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
         }
 
         /// <summary>
@@ -66,6 +68,12 @@ namespace MBBSEmu.Memory
                     decoder.Decode(out instructionList.AllocUninitializedElement());
                 }
 
+                _decompiledSegments.Add(segment.Ordinal, new Dictionary<ushort, Instruction>());
+                foreach (var i in instructionList)
+                {
+                    _decompiledSegments[segment.Ordinal].Add(i.IP16, i);
+                }
+
                 _decodedSegments[segment.Ordinal] = instructionList;
             }
 
@@ -76,15 +84,47 @@ namespace MBBSEmu.Memory
 
         public bool HasSegment(ushort segmentNumber) => _memorySegments.ContainsKey(segmentNumber);
 
-        public Instruction GetInstruction(ushort segment, int instructionPointer)
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
-            if (_decodedSegments[segment].Count(x => x.IP16 == instructionPointer) == 0)
+            if(!_decompiledSegments[segment].TryGetValue(instructionPointer, out var outputInstruction))
             {
-                return _decodedSegments[segment].First(x => x.IP16 == instructionPointer + 1);
+#if DEBUG
+                _logger.Warn($"Unable to locate Instruction at {segment:X4}:{instructionPointer:X4}");
+#endif
+                Span<byte> segmentData = _segments[segment].Data;
+                switch (segmentData[instructionPointer])
+                {
+                    //Look for an ENTER opcode that might have been decoded improperly due to data in the code segment
+                    case 0xC8:
+                    {
+                        var patchedInstruction = Instruction.Create(Code.Enterq_imm16_imm8);
+                        patchedInstruction.ByteLength = 4;
+                        patchedInstruction.IP16 = instructionPointer;
+                        patchedInstruction.Op0Kind = OpKind.Immediate16;
+                        patchedInstruction.Immediate16 = BitConverter.ToUInt16(segmentData.Slice(instructionPointer + 1, 2)); ;
+                        return patchedInstruction;
+                    }
+                    case 0x56:
+                    {
+                        var patchedInstruction = Instruction.Create(Code.Push_r16);
+                        patchedInstruction.ByteLength = 1;
+                        patchedInstruction.IP16 = instructionPointer;
+                        patchedInstruction.Op0Kind = OpKind.Register;
+                        patchedInstruction.Op0Register = Register.SI;
+                        return patchedInstruction;
+                    }
+                    case 0x57:
+                    {
+                        var patchedInstruction = Instruction.Create(Code.Push_r16);
+                        patchedInstruction.ByteLength = 1;
+                        patchedInstruction.IP16 = instructionPointer;
+                        patchedInstruction.Op0Kind = OpKind.Register;
+                        patchedInstruction.Op0Register = Register.DI;
+                        return patchedInstruction;
+                    }
+                }
             }
-
-            return _decodedSegments[segment].First(x => x.IP16 == instructionPointer);
-            
+            return outputInstruction;
         }
 
         public byte GetByte(ushort segment, ushort offset)
