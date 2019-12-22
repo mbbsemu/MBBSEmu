@@ -67,40 +67,6 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-
-                //We don't want to run these while a module is still being kicked off
-                if (!_isAddingModule)
-                {
-                    foreach (var m in _modules.Values)
-                    {
-                        if (m.RtkickRoutines.Count == 0) continue;
-
-                        foreach (var r in m.RtkickRoutines)
-                        {
-                            if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
-                            {
-                                Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
-                            }
-                        }
-                    }
-
-                    //Run rtihdlr routines
-                    if (realTimeStopwatch.ElapsedMilliseconds > 55)
-                    {
-                        foreach (var m in _modules.Values)
-                        {
-                            if (m.RtihdlrRoutines.Count == 0) continue;
-
-                            foreach (var r in m.RtihdlrRoutines)
-                            {
-                                Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
-                            }
-                        }
-
-                        realTimeStopwatch.Restart();
-                    }
-                }
-
                 //Process Channels
                 foreach (var s in _channelDictionary.Values)
                 {
@@ -131,6 +97,38 @@ namespace MBBSEmu.HostProcess
                     {
                         Run(s.ModuleIdentifier, "sttrou", s.Channel);
                         continue;
+                    }
+                }
+
+                //We don't want to run these while a module is still being kicked off
+                if (!_isAddingModule)
+                {
+                    foreach (var m in _modules.Values)
+                    {
+                        if (m.RtkickRoutines.Count == 0) continue;
+
+                        foreach (var r in m.RtkickRoutines)
+                        {
+                            if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
+                            {
+                                Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
+                            }
+                        }
+                    }
+
+                    //Run rtihdlr routines
+                    if (realTimeStopwatch.ElapsedMilliseconds > 55)
+                    {
+                        foreach (var m in _modules.Values)
+                        {
+                            if (m.RtihdlrRoutines.Count == 0) continue;
+
+                            foreach (var r in m.RtihdlrRoutines)
+                            {
+                                Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
+                            }
+                        }
+                        realTimeStopwatch.Restart();
                     }
                 }
 

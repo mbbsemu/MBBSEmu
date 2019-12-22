@@ -215,8 +215,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            //Always return there's a ton of space left
-            Registers.AX = (ushort) (255 - ChannelDictionary[channel].EchoBuffer.Position);
+            //Always return that the echo buffer is empty, as 
+            //we send data immediately to the client when it's 
+            //written to the echo buffer (see chious())
+            Registers.AX = 255;
             return 0;
         }
 
@@ -241,10 +243,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return 0;
         }
 
-        [ExportedFunction(Name = "_CHIOUS", Ordinal = 19)]
+        /// <summary>
+        ///     String Output (via Echo Buffer)
+        /// </summary>
+        /// <returns></returns>
+        [ExportedFunction(Name = "_CHIOUS", Ordinal = 63)]
         public ushort chious()
         {
+            
+            var channel = GetParameter(0);
+            var stringOffset = GetParameter(1);
+            var stringSegment = GetParameter(2);
 
+            ChannelDictionary[channel].DataToClient.Enqueue(Memory.GetString(stringSegment, stringOffset).ToArray());
+            //ChannelDictionary[channel].EchoBuffer.Write(Memory.GetString(stringSegment, stringOffset));
+
+            return 0;
         }
     }
 }
