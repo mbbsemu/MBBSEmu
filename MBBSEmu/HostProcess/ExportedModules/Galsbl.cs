@@ -4,7 +4,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System.Text;
-using NLog.LayoutRenderers;
+using MBBSEmu.CPU;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -13,12 +13,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Global Software Breakout Library (GALGSBL.H). 
     /// </summary>
     [ExportedModule(Name = "GALGSBL")]
-    public class Galsbl : ExportedModuleBase
+    public class Galsbl : ExportedModuleBase, IExportedModule
     {
+
         public Galsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
-            if(!Memory.HasSegment((ushort)EnumHostSegments.Bturno))
-                Memory.AddSegment((ushort) EnumHostSegments.Bturno);
+            if(!Module.Memory.HasSegment((ushort)EnumHostSegments.Bturno))
+                Module.Memory.AddSegment((ushort) EnumHostSegments.Bturno);
+        }
+
+        public ushort Invoke(ushort ordinal)
+        {
+            return ordinal switch
+            {
+                72 => bturno(),
+                36 => btuoba(),
+                49 => btutrg(),
+                21 => btuinj(),
+                60 => btuxnf(),
+                39 => btupbc(),
+                87 => btuica(),
+                6 => btucli(),
+                4 => btuchi(),
+                63 => chious(),
+                83 => btueba(),
+                19 => btuiba(),
+                _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
+            };
+        }
+
+        public void SetState(CpuRegisters registers, ushort channelNumber)
+        {
+            Registers = registers;
+            Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
         }
 
         /// <summary>
@@ -32,7 +59,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ushort bturno()
         {
             const string registrationNumber = "97771457\0";
-            Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.Default.GetBytes(registrationNumber));
+            Module.Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.Default.GetBytes(registrationNumber));
 
             return (ushort) EnumHostSegments.Bturno;
         }
@@ -78,14 +105,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         [ExportedFunction(Name = "_BTUINJ", Ordinal = 21)]
-        public ushort butinj()
+        public ushort btuinj()
         {
             var channel = GetParameter(0);
             var status = GetParameter(1);
 
             //Status Change
             //Set the Memory Value
-            Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
+            Module.Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
 
             //Notify the Session that a Status Change has occured
             ChannelDictionary[channel].StatusChange = true;
@@ -153,7 +180,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var inputFromChannel);
 
             ReadOnlySpan<byte> inputFromChannelSpan = inputFromChannel;
-            Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
+            Module.Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
             Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
             return 0;
         }
@@ -255,10 +282,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].DataToClient.Enqueue(Memory.GetString(stringSegment, stringOffset).ToArray());
-            //ChannelDictionary[channel].EchoBuffer.Write(Memory.GetString(stringSegment, stringOffset));
+            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
 
             return 0;
         }
+
+
     }
 }

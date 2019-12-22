@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -20,15 +21,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public abstract class ExportedModuleBase
     {
-        public delegate ushort ExportedFunctionDelegate();
-
-        /// <summary>
-        ///     Dictionary of Exported Functions
-        ///
-        ///     Key Represents the Function Ordinal in the associated .H file
-        /// </summary>
-        public Dictionary<ushort, ExportedFunctionDelegate> ExportedFunctions;
-
         /// <summary>
         ///     Internal Variables are stored inside the system (module name, etc.)
         ///
@@ -40,9 +32,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected PointerDictionary<UserSession> ChannelDictionary;
 
-        private protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        private protected readonly ILogger _logger;
 
-        public IMemoryCore Memory;
         public CpuRegisters Registers;
         public MbbsModule Module;
 
@@ -53,14 +44,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
+            _logger = ServiceResolver.GetService<ILogger>();
             Module = module;
-            Memory = module.Memory;
             ChannelDictionary = channelDictionary;
-
-            //Setup Exported Functions
-            ExportedFunctions = new Dictionary<ushort, ExportedFunctionDelegate>();
-            SetupExportedFunctionDelegates();
-
             HostMemoryVariables = new Dictionary<string, IntPtr16>();
         }
 
@@ -72,31 +58,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="channelNumber"></param>
         public void SetCurrentChannel(ushort channelNumber)
         {
-            Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
+            Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
         }
-
-        private void SetupExportedFunctionDelegates()
-        {
-            _logger.Info($"Setting up {this.GetType().Name.ToUpper()} exported functions...");
-            var functionBindings = GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.GetCustomAttributes(typeof(ExportedFunctionAttribute), false).Length > 0).Select(y => new
-                {
-                    binding = (ExportedFunctionDelegate) Delegate.CreateDelegate(typeof(ExportedFunctionDelegate),
-                        this,
-                        y.Name),
-                    definitions = y.GetCustomAttributes(typeof(ExportedFunctionAttribute))
-                });
-
-            foreach (var f in functionBindings)
-            {
-                var ordinal = ((ExportedFunctionAttribute) f.definitions.First()).Ordinal;
-                ExportedFunctions[ordinal] = f.binding;
-            }
-
-            _logger.Info($"Setup {ExportedFunctions.Count} functions from {GetType().Name.ToUpper()}");
-        }
-
 
         /// <summary>
         ///     Gets the parameter by ordinal passed into the routine
@@ -106,7 +69,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected ushort GetParameter(ushort parameterOrdinal)
         {
             var parameterOffset = (ushort) (Registers.BP + 5 + (2 * parameterOrdinal));
-            return Memory.GetWord(Registers.SS, parameterOffset);
+            return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
 
         private static readonly char[] _printfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
@@ -237,7 +200,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                             var parameterOffset = GetParameter(currentParameter++);
                             var parameterSegment = GetParameter(currentParameter++);
-                            var parameter = Memory.GetString(parameterSegment, parameterOffset);
+                            var parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
                             msFormattedValue.Write(parameter);
                             break;
                         }

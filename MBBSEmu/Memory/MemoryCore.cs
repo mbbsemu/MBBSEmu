@@ -88,9 +88,6 @@ namespace MBBSEmu.Memory
         {
             if(!_decompiledSegments[segment].TryGetValue(instructionPointer, out var outputInstruction))
             {
-#if DEBUG
-                _logger.Warn($"Unable to locate Instruction at {segment:X4}:{instructionPointer:X4}");
-#endif
                 Span<byte> segmentData = _segments[segment].Data;
                 switch (segmentData[instructionPointer])
                 {

@@ -24,7 +24,7 @@ namespace MBBSEmu.HostProcess
 
         private readonly PointerDictionary<UserSession> _channelDictionary;
         private readonly Dictionary<string, MbbsModule> _modules;
-        private readonly Dictionary<string, object> _exportedFunctions;
+        private readonly Dictionary<string, IExportedModule> _exportedFunctions;
         private readonly CpuCore _cpu;
         private bool _isRunning;
         private readonly Stopwatch realTimeStopwatch;
@@ -35,7 +35,7 @@ namespace MBBSEmu.HostProcess
             _logger.Info("Constructing MbbsEmu Host...");
             _channelDictionary = new PointerDictionary<UserSession>(minimumValue: 1);
             _modules = new Dictionary<string, MbbsModule>();
-            _exportedFunctions = new Dictionary<string, object>();
+            _exportedFunctions = new Dictionary<string, IExportedModule>();
 
             _cpu = new CpuCore();
             realTimeStopwatch = Stopwatch.StartNew();
@@ -232,28 +232,22 @@ namespace MBBSEmu.HostProcess
                 IP = module.EntryPoints[routineName].Offset
             };
 
-            var majorbbsHostFunctions = GetFunctions<Majorbbs>(module);
-            majorbbsHostFunctions.Registers = cpuRegisters;
-            majorbbsHostFunctions.SetCurrentChannel(channelNumber);
+            var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
+            majorbbsHostFunctions.SetState(cpuRegisters, channelNumber);
 
-            var galsblHostFunctions = GetFunctions<Galsbl>(module);
-            galsblHostFunctions.Registers = cpuRegisters;
-            galsblHostFunctions.SetCurrentChannel(channelNumber);
+            var galsblHostFunctions = GetFunctions(module, "GALGSBL");
+            galsblHostFunctions.SetState(cpuRegisters, channelNumber);
 
             _cpu.Reset(module.Memory, cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
             {
-                var importedModuleName =
-                    module.File.ImportedNameTable.First(x => x.Ordinal == ordinal).Name;
-
 #if DEBUG
                 //_logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
 #endif
-
-                 return importedModuleName switch
+                return module.File.ImportedNameTable[ordinal].Name switch
                 {
-                    "MAJORBBS" => majorbbsHostFunctions.ExportedFunctions[functionOrdinal](),
-                    "GALGSBL" => galsblHostFunctions.ExportedFunctions[functionOrdinal](),
-                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {importedModuleName}")
+                    "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal),
+                    "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal),
+                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[ordinal].Name}")
                 };
             });
 
@@ -274,23 +268,23 @@ namespace MBBSEmu.HostProcess
             }
             
         }
-        private T GetFunctions<T>(MbbsModule module)
+        private IExportedModule GetFunctions(MbbsModule module, string exportedModule)
         {
-            var requestedType = typeof(T);
-            var key = $"{module.ModuleIdentifier}-{(requestedType == typeof(Majorbbs) ? "MAJORBBS" : "GALGSBL")}";
+            var key = $"{module.ModuleIdentifier}-{exportedModule}";
 
-            if (!_exportedFunctions.TryGetValue(key, out var _functions))
+            if (!_exportedFunctions.TryGetValue(key, out var functions))
             {
-                if (requestedType == typeof(Majorbbs))
-                    _exportedFunctions[key] = new Majorbbs(module, _channelDictionary);
+                _exportedFunctions[key] = exportedModule switch
+                {
+                    "MAJORBBS" => new Majorbbs(module, _channelDictionary),
+                    "GALGSBL" => new Galsbl(module, _channelDictionary),
+                    _ => _exportedFunctions[key]
+                };
 
-                if(requestedType == typeof(Galsbl))
-                    _exportedFunctions[key] = new Galsbl(module, _channelDictionary);
-
-                _functions = _exportedFunctions[key];
+                functions = _exportedFunctions[key];
             }
 
-            return (T) _functions;
+            return functions;
         }
 
         /*

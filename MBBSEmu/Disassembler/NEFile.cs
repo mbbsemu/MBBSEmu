@@ -25,7 +25,7 @@ namespace MBBSEmu.Disassembler
         //public List<ResourceRecord> ResourceTable;
         public List<ResidentName> ResidentNameTable;
         public List<ModuleReference> ModuleReferenceTable;
-        public List<ImportedName> ImportedNameTable;
+        public Dictionary<ushort, ImportedName> ImportedNameTable;
         public List<Entry> EntryTable;
         public List<NonResidentName> NonResidentNameTable;
 
@@ -128,7 +128,7 @@ namespace MBBSEmu.Disassembler
 
             //Load Module & Imported Name Reference Tables
             ModuleReferenceTable = new List<ModuleReference>(WindowsHeader.ModuleReferenceTableEntries);
-            ImportedNameTable = new List<ImportedName>();
+            ImportedNameTable = new Dictionary<ushort, ImportedName>();
             for (var i = 0; i < WindowsHeader.ModuleReferenceTableEntries; i++)
             {
                 var nameOffset =
@@ -145,7 +145,7 @@ namespace MBBSEmu.Disassembler
                 importedName.Ordinal = (ushort)(i + 1); //Ordinal Index in Resource Tables start with 1
 
                 ModuleReferenceTable.Add(module);
-                ImportedNameTable.Add(importedName);
+                ImportedNameTable.Add(importedName.Ordinal, importedName);
             }
 
             //Load Entry Table
