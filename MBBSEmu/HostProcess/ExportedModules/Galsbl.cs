@@ -1,5 +1,4 @@
 ﻿using System;
-using MBBSEmu.HostProcess.Attributes;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -12,7 +11,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions &amp; properties that are part of the Galacticomm
     ///     Global Software Breakout Library (GALGSBL.H). 
     /// </summary>
-    [ExportedModule(Name = "GALGSBL")]
     public class Galsbl : ExportedModuleBase, IExportedModule
     {
 
@@ -55,7 +53,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: DX == Segment containing bturno
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTURNO", Ordinal = 72)]
         public ushort bturno()
         {
             const string registrationNumber = "97771457\0";
@@ -72,7 +69,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == bytes available
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUOBA", Ordinal = 36)]
         public ushort btuoba()
         {
             Registers.AX = ushort.MaxValue;
@@ -87,7 +83,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUTRG", Ordinal = 49)]
         public ushort btutrg()
         {
             //TODO -- Set callback for how characters should be processed
@@ -104,7 +99,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUINJ", Ordinal = 21)]
         public ushort btuinj()
         {
             var channel = GetParameter(0);
@@ -129,7 +123,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUXNF", Ordinal = 60)]
         public ushort btuxnf()
         {
             //Ignore this, we won't deal with XON/XOFF
@@ -146,7 +139,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUPBC", Ordinal = 39)]
         public ushort btupbc()
         {
             //TODO -- Handle this?
@@ -162,7 +154,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == Number of input characters retrieved
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUICA", Ordinal = 87)]
         public ushort btuica()
         {
             var channelNumber = GetParameter(0);
@@ -194,7 +185,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: 
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUCLI", Ordinal = 6)]
         public ushort btucli()
         {
             var channelNumber = GetParameter(0);
@@ -212,7 +202,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int err=btuchi(int chan, char (*rouadr)())
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUCHI", Ordinal = 4)]
         public ushort btuchi()
         {
 
@@ -237,7 +226,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///              255 == Buffer is full
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_BTUEBA", Ordinal = 83)]
         public ushort btueba()
         {
             var channel = GetParameter(0);
@@ -249,7 +237,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return 0;
         }
 
-        [ExportedFunction(Name = "_BTUIBA", Ordinal = 19)]
         public ushort btuiba()
         {
             var channelNumber = GetParameter(0);
@@ -274,7 +261,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     String Output (via Echo Buffer)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "_CHIOUS", Ordinal = 63)]
         public ushort chious()
         {
             

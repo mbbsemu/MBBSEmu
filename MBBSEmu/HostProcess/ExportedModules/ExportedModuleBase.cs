@@ -1,18 +1,13 @@
 ﻿using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess.Attributes;
-using MBBSEmu.Logging;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Session;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text;
-using MBBSEmu.DependencyInjection;
-using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {

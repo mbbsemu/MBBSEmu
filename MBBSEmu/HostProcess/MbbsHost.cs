@@ -7,7 +7,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -141,8 +140,6 @@ namespace MBBSEmu.HostProcess
                             _channelDictionary.Remove(i);
                     }
                 }
-
-                Thread.Sleep(1);
             }
         }
 

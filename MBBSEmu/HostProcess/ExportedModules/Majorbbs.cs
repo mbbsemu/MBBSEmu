@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
-using MBBSEmu.HostProcess.Attributes;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -19,7 +18,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     While a majority of these functions are specific to MajorBBS/WG, some are just proxies for
     ///     Borland C++ macros and are noted as such.
     /// </summary>
-    [ExportedModule(Name = "MAJORBBS")]
     public class Majorbbs : ExportedModuleBase, IExportedModule
     {
         private readonly PointerDictionary<McvFile> _mcvFiles = new PointerDictionary<McvFile>();
@@ -120,7 +118,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void srand (unsigned int seed);
         /// </summary>
-        [ExportedFunction(Name = "SRAND", Ordinal = 561)]
         public ushort srand() => 0;
 
         /// <summary>
@@ -130,7 +127,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: time_t time (time_t* timer);
         ///     Return: Value is 32-Bit TIME_T (AX:DX)
         /// </summary>
-        [ExportedFunction(Name = "TIME", Ordinal = 599)]
         public ushort time()
         {
             //For now, ignore the input pointer for time_t
@@ -156,7 +152,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
         /// </summary>
-        [ExportedFunction(Name = "ALCZER", Ordinal = 68)]
         public ushort alczer()
         {
             var size = GetParameter(0);
@@ -181,7 +176,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedFunction(Name = "GMDNAM", Ordinal = 331)]
         public ushort gmdnam()
         {
             var datSegmentOffset = GetParameter(0);
@@ -233,7 +227,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedFunction(Name = "STRCPY", Ordinal = 574)]
         public ushort strcpy()
         {
             var destinationOffset = GetParameter(0);
@@ -263,7 +256,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        [ExportedFunction(Name = "STZCPY", Ordinal = 589)]
         public ushort stzcpy()
         {
             var destinationOffset = GetParameter(0);
@@ -298,7 +290,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int register_module(struct module *mod)
         ///     Return: AX = Value of usrptr->state whenever user is 'in' this module
         /// </summary>
-        [ExportedFunction(Name = "REGISTER_MODULE", Ordinal = 492)]
         public ushort register_module()
         {
             var destinationOffset = GetParameter(0);
@@ -357,7 +348,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment
         /// </summary>
-        [ExportedFunction(Name = "OPNMSG", Ordinal = 456)]
         public ushort opnmsg()
         {
             var sourceOffset = GetParameter(0);
@@ -387,7 +377,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int numopt(int msgnum,int floor,int ceiling)
         ///     Return: AX = Value retrieved
         /// </summary>
-        [ExportedFunction(Name = "NUMOPT", Ordinal = 441)]
         public ushort numopt()
         {
             if(_mcvFiles.Count == 0)
@@ -418,7 +407,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int ynopt(int msgnum)
         ///     Return: AX = 1/Yes, 0/No
         /// </summary>
-        [ExportedFunction(Name = "YNOPT", Ordinal = 650)]
         public ushort ynopt()
         {
             var msgnum = GetParameter(0);
@@ -441,7 +429,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Most Significant 16-Bits
         ///             DX = Least Significant 16-Bits
         /// </summary>
-        [ExportedFunction(Name = "LNGOPT", Ordinal = 389)]
         public ushort lngopt()
         {
             var msgnum = GetParameter(0);
@@ -478,7 +465,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment     
         /// </summary>
-        [ExportedFunction(Name = "STGOPT", Ordinal = 566)]
         public ushort stgopt()
         {
             var msgnum = GetParameter(0);
@@ -516,7 +502,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        [ExportedFunction(Name = "GETASC", Ordinal = 316)]
         public ushort getasc()
         {
 #if DEBUG
@@ -534,7 +519,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        [ExportedFunction(Name = "L2AS", Ordinal = 377)]
         public ushort l2as()
         {
             var highByte = GetParameter(0);
@@ -573,7 +557,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment  
         /// </summary>
-        [ExportedFunction(Name = "ATOL", Ordinal = 77)]
         public ushort atol()
         {
             var sourceOffset = GetParameter(0);
@@ -614,7 +597,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int date=today()
         ///     Return: AX = Packed Date
         /// </summary>
-        [ExportedFunction(Name = "TODAY", Ordinal = 601)]
         public ushort today()
         { 
             //From DOSFACE.H:
@@ -637,7 +619,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: None -- Compiler Generated
         ///     Return: None
         /// </summary>
-        [ExportedFunction(Name = "F_SCOPY", Ordinal = 665)]
         public ushort f_scopy()
         {
             var srcOffset = GetParameter(0);
@@ -663,7 +644,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int match=sameas(char *stgl, char* stg2)
         ///     Returns: AX = 1 if match
         /// </summary>
-        [ExportedFunction(Name = "SAMEAS", Ordinal = 520)]
         public ushort sameas()
         {
             var string1Offset = GetParameter(0);
@@ -696,7 +676,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "USERNUM", Ordinal = 628)]
         public ushort usernum() => (ushort)EnumHostSegments.UserNum;
 
         /// <summary>
@@ -707,7 +686,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Segment  
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "UACOFF", Ordinal = 713)]
         public ushort uacoff()
         {
             var userNumber = GetParameter(0);
@@ -729,7 +707,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void prf(string)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "PRF", Ordinal = 474)]
         public ushort prf()
         {
             var sourceOffset = GetParameter(0);
@@ -755,7 +732,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void outprf (unum)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "OUTPRF", Ordinal = 463)]
         public ushort outprf()
         {
             var userChannel = GetParameter(0);
@@ -774,7 +750,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == Had enough, 0 == Not enough
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "DEDCRD", Ordinal = 160)]
         public ushort dedcrd()
         {
             var sourceOffset = GetParameter(0);
@@ -799,7 +774,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: int = Segment on host for User Pointer
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "USRPTR", Ordinal = 629)]
         public ushort usrptr() => (ushort)EnumHostSegments.UserPtr;
 
         /// <summary>
@@ -808,7 +782,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void prfmsg(msgnum,p1,p2, ..• ,pn);
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "PRFMSG", Ordinal = 476)]
         public ushort prfmsg()
         {
             var messageNumber = GetParameter(0);
@@ -833,7 +806,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void shocst(char *summary, char *detail, p1, p1,...,pn);
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "SHOCST", Ordinal = 550)]
         public ushort shocst()
         {
             var string1Offset = GetParameter(0);
@@ -866,7 +838,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int *channel
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "CHANNEL", Ordinal = 97)]
         public ushort channel() => (ushort) EnumHostSegments.ChannelArray;
 
         /// <summary>
@@ -875,7 +846,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     signature: int addcrd(char *keyuid,char *tckstg,int real)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "ADDCRD", Ordinal = 59)]
         public ushort addcrd()
         {
             var real = GetParameter(0);
@@ -904,7 +874,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *itoa(int value, char * str, int base)
         /// </summary>
-        [ExportedFunction(Name = "ITOA", Ordinal = 366)]
         public ushort itoa()
         {
             var integerValue = GetParameter(0);
@@ -931,14 +900,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == True
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "HASKEY", Ordinal = 334)]
         public ushort haskey()
         {
             var lockValue = GetParameter(0);
-
-#if DEBUG
-            _logger.Info($"Returning true for lock {lockValue}");
-#endif
             Registers.AX = 1;
             
             return 0;
@@ -951,15 +915,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == True
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "HASMKEY", Ordinal = 335)]
         public ushort hasmkey()
         {
             var key = GetParameter(0);
-
-#if DEBUG
-            _logger.Info($"Returning true for key {key}");
-#endif
-
             Registers.AX = 1;
 
             return 0;
@@ -972,7 +930,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 16-bit Random Number
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "RAND", Ordinal = 486)]
         public ushort rand()
         {
             var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(1, short.MaxValue);
@@ -993,7 +950,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Segment  
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "NCDATE", Ordinal = 428)]
         public ushort ncdate()
         {
             /* From DOSFACE.H:
@@ -1036,7 +992,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void dfsthn()
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "DFSTHN", Ordinal = 167)]
         public ushort dfsthn()
         {
             return 0;
@@ -1048,7 +1003,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void clsmsg(FILE *mbkprt)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "CLSMSG", Ordinal = 119)]
         public ushort clsmsg()
         {
             //We ignore this for now, and we'll just keep it open for the time being
@@ -1063,7 +1017,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Signature: void rtihdlr(void (*rouptr)(void))
         /// </summary>
-        [ExportedFunction(Name = "RTIHDLR", Ordinal = 515)]
         public ushort rtihdlr()
         {
             var routinePointerOffset = GetParameter(0);
@@ -1084,7 +1037,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rtkick(int time, void *rouptr())
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "RTKICK", Ordinal = 516)]
         public ushort rtkick()
         {
             var delaySeconds = GetParameter(0);
@@ -1108,7 +1060,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: FILE *setmbk(mbkptr)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "SETMBK", Ordinal = 543)]
         public ushort setmbk()
         {
             var mcvFileOffset = GetParameter(0);
@@ -1121,7 +1072,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _currentMcvFile = _mcvFiles[mcvFileOffset];
 
 #if DEBUG
-            _logger.Info($"Set current MCV File: {_mcvFiles[mcvFileOffset].FileName}");
+            //_logger.Info($"Set current MCV File: {_mcvFiles[mcvFileOffset].FileName}");
 #endif
 
             return 0;
@@ -1133,7 +1084,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rstmbk()
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "RSTMBK", Ordinal = 510)]
         public ushort rstmbk()
         {
             _currentMcvFile = _previousMcvFile;
@@ -1149,7 +1099,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Btrieve Segment  
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "OPNBTV", Ordinal = 455)]
         public ushort opnbtv()
         {
             var btrieveFilenameOffset = GetParameter(0);
@@ -1180,7 +1129,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void setbtv(BTVFILE *bbprt)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "SETBTV", Ordinal = 534)]
         public ushort setbtv()
         {
             var btrieveFileOffset = GetParameter(0);
@@ -1208,7 +1156,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == Record Found, 0 == Database Empty
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "STPBTV", Ordinal = 569)]
         public ushort stpbtv()
         {
             if(_currentBtrieveFile == null)
@@ -1253,7 +1200,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rstbtv (void)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "RSTBTV", Ordinal = 505)]
         public ushort rstbtv()
         {
             if (_previousBtrieveFile == null)
@@ -1278,7 +1224,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void updbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "UPDBTV", Ordinal = 621)]
         public ushort updbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
@@ -1305,7 +1250,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void insbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "INSBTV", Ordinal = 351)]
         public ushort insbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
@@ -1333,7 +1277,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "STATUS", Ordinal = 565)]
         public ushort status() => (ushort) EnumHostSegments.Status;
 
         /// <summary>
@@ -1343,7 +1286,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Always 1, meaning enough credits
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "RDECRD", Ordinal = 488)]
         public ushort rdedcrd() => Registers.AX = 1;
 
         /// <summary>
@@ -1352,7 +1294,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Main differentiation is that spr() supports long integer and floating point conversions
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "SPR", Ordinal = 559)]
         public ushort spr()
         {
             var sourceOffset = GetParameter(0);
@@ -1393,7 +1334,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "F_LXMUL", Ordinal = 659)]
         public ushort f_lxmul()
         {
 
@@ -1420,7 +1360,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DI:SI = remainder
         /// </summary>
         /// <returns></returns>
-        [ExportedFunction(Name = "F_LDIV", Ordinal = 654)]
         public ushort f_ldiv()
         {
 
