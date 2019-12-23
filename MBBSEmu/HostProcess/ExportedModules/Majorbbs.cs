@@ -451,8 +451,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
 #endif
 
-            Registers.AX = (ushort)(outputValue >> 16);
-            Registers.DX = (ushort)(outputValue & 0xFFFF);
+            Registers.DX = (ushort)(outputValue >> 16);
+            Registers.AX = (ushort)(outputValue & 0xFFFF);
 
             return 0;
         }
@@ -520,8 +520,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public ushort l2as()
         {
-            var highByte = GetParameter(0);
-            var lowByte = GetParameter(1);
+            var lowByte = GetParameter(0);
+            var highByte = GetParameter(1);
 
             var outputValue = $"{highByte << 16 | lowByte}\0";
 
@@ -584,7 +584,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Cast {inputValue} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
 #endif
 
-            Registers.AX = (ushort)(outputValue & 0xFFFF0000);
+            Registers.AX = (ushort)(outputValue >> 16);
             Registers.DX = (ushort)(outputValue & 0xFFFF);
 
             return 0;

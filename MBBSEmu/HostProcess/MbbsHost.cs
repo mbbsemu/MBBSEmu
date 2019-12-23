@@ -28,6 +28,7 @@ namespace MBBSEmu.HostProcess
         private bool _isRunning;
         private readonly Stopwatch realTimeStopwatch;
         private bool _isAddingModule;
+        private bool _isAddingSession;
         public MbbsHost(ILogger logger)
         {
             _logger = logger;
@@ -66,36 +67,39 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                //Process Channels
-                foreach (var s in _channelDictionary.Values)
+                if (!_isAddingSession)
                 {
-                    //Channel is entering module, run both
-                    if (s.SessionState == EnumSessionState.EnteringModule)
+                    //Process Channels
+                    foreach (var s in _channelDictionary.Values)
                     {
-                        s.StatusChange = false;
-                        Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                        Run(s.ModuleIdentifier, "stsrou", s.Channel);
-                        s.SessionState = EnumSessionState.InModule;
-                        continue;
-                    }
+                        //Channel is entering module, run both
+                        if (s.SessionState == EnumSessionState.EnteringModule)
+                        {
+                            s.StatusChange = false;
+                            Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                            Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                            s.SessionState = EnumSessionState.InModule;
+                            continue;
+                        }
 
-                    //Following Events are only processed if they're IN a module
-                    if (s.SessionState != EnumSessionState.InModule)
-                        continue;
+                        //Following Events are only processed if they're IN a module
+                        if (s.SessionState != EnumSessionState.InModule)
+                            continue;
 
-                    //Did the text change cause a status update
-                    if (s.StatusChange || s.Status == 240)
-                    {
-                        s.StatusChange = false;
-                        Run(s.ModuleIdentifier, "stsrou", s.Channel);
-                        continue;
-                    }
+                        //Did the text change cause a status update
+                        if (s.StatusChange || s.Status == 240)
+                        {
+                            s.StatusChange = false;
+                            Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                            continue;
+                        }
 
-                    //Is there Text to send to the module
-                    if (s.DataFromClient.Count > 0)
-                    {
-                        Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                        continue;
+                        //Is there Text to send to the module
+                        if (s.DataFromClient.Count > 0)
+                        {
+                            Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                            continue;
+                        }
                     }
                 }
 
@@ -186,8 +190,10 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         public void AddSession(UserSession session)
         {
+            _isAddingSession = true;
             session.Channel = (ushort)_channelDictionary.Allocate(session);
             _logger.Info($"Added Session {session.SessionId} to Channel {session.Channel}");
+            _isAddingSession = false;
         }
 
         /// <summary>

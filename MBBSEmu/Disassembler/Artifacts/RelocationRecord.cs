@@ -32,10 +32,7 @@ namespace MBBSEmu.Disassembler.Artifacts
                     case EnumRecordsFlag.IMPORTNAME:
                         return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.IMPORTNAME,
                             BitConverter.ToUInt16(Data, 4), BitConverter.ToUInt16(Data, 6), 0);
-                    default:
-                        break;
                 }
-
                 return null;
             }
         }

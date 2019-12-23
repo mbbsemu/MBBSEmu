@@ -6,12 +6,13 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Runtime.CompilerServices;
+using MBBSEmu.DependencyInjection;
 
 namespace MBBSEmu.CPU
 {
     public class CpuCore
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected static readonly ILogger _logger;
 
         public delegate ushort InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
@@ -27,6 +28,11 @@ namespace MBBSEmu.CPU
         private const ushort STACK_BASE = 0xFFFF;
 
         public bool IsRunning;
+
+        static CpuCore()
+        {
+            _logger = ServiceResolver.GetService<ILogger>();
+        }
 
         public CpuCore() { }
 
@@ -1108,8 +1114,8 @@ namespace MBBSEmu.CPU
                 var result = (ushort) (source + destination);
                 if (addCarry && Registers.F.IsFlagSet(EnumFlags.CF))
                     result++;
-                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Addition, result, destination);
-                Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Addition, result, destination, source);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination);
+                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.PF, result);

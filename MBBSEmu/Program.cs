@@ -1,9 +1,8 @@
-﻿using MBBSEmu.HostProcess;
+﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Telnet;
 using System;
-using MBBSEmu.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MBBSEmu
 {
