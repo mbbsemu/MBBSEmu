@@ -1,8 +1,10 @@
 ﻿using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Telnet;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
+using System.IO;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -12,7 +14,12 @@ namespace MBBSEmu.DependencyInjection
 
         static ServiceResolver()
         {
+            //Build Configuration 
+            var configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).Build();
+
             var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
             serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
