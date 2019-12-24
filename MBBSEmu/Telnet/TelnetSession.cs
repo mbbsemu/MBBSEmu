@@ -63,7 +63,7 @@ namespace MBBSEmu.Telnet
                     var bytesSent = _telnetConnection.Send(sendBuffer, SocketFlags.None, out var socketState);
                     ValidateSocketState(socketState);
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(1);
             }
         }
 

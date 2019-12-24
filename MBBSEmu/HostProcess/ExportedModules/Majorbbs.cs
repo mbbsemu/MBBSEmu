@@ -235,10 +235,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var srcOffset = GetParameter(2);
             var srcSegment = GetParameter(3);
 
-            using var inputBuffer = new MemoryStream();
-            inputBuffer.Write(Module.Memory.GetString(srcSegment, srcOffset));
-
-            Module.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer.ToArray());
+            var inputBuffer = Module.Memory.GetString(srcSegment, srcOffset);
+            Module.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer);
 
 #if DEBUG
             _logger.Info($"Copied {inputBuffer.Length} bytes from {srcSegment:X4}:{srcOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
@@ -266,7 +264,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var limit = GetParameter(4);
 
             using var inputBuffer = new MemoryStream();
-
             inputBuffer.Write(Module.Memory.GetSpan(srcSegment, srcOffset, limit));
 
             //If the value read is less than the limit, it'll be padded with null characters

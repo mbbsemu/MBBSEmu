@@ -71,7 +71,6 @@ namespace MBBSEmu.CPU
         public ushort Pop()
         {
             var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
-            _logger.Info($"Popped {value:X4} from {Registers.SP + 1:X4}");
             Registers.SP += 2;
             return value;
         }
@@ -79,7 +78,6 @@ namespace MBBSEmu.CPU
         public void Push(ushort value)
         {
             Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
-            _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
             Registers.SP -= 2;
         }
 
@@ -98,13 +96,9 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
-#if DEBUG
-           // if(Registers.IP == 0x22F4)
-             //   System.Diagnostics.Debugger.Break();
-#endif
             switch (_currentInstruction.Mnemonic)
             {
                 //Instructions that will set the IP -- we just return
@@ -410,8 +404,6 @@ namespace MBBSEmu.CPU
                 default:
                     throw new ArgumentOutOfRangeException($"Uknown NEG: {_currentInstruction.Op0Kind}");
             }
-
-
 
             switch (operationSize)
             {
