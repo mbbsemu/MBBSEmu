@@ -164,7 +164,6 @@ namespace MBBSEmu.Memory
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
-
             SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 

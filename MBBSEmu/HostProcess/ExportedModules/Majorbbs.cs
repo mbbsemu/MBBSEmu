@@ -235,7 +235,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var srcOffset = GetParameter(2);
             var srcSegment = GetParameter(3);
 
-            var inputBuffer = new MemoryStream();
+            using var inputBuffer = new MemoryStream();
             inputBuffer.Write(Module.Memory.GetString(srcSegment, srcOffset));
 
             Module.Memory.SetArray(destinationSegment, destinationOffset, inputBuffer.ToArray());
@@ -265,7 +265,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var srcSegment = GetParameter(3);
             var limit = GetParameter(4);
 
-            var inputBuffer = new MemoryStream();
+            using var inputBuffer = new MemoryStream();
 
             inputBuffer.Write(Module.Memory.GetSpan(srcSegment, srcOffset, limit));
 
@@ -626,7 +626,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationOffset = GetParameter(2);
             var destinationSegment = GetParameter(3);
 
-            var inputBuffer = new MemoryStream();
+            using var inputBuffer = new MemoryStream();
 
             inputBuffer.Write(Module.Memory.GetArray(srcSegment, srcOffset, Registers.CX));
 
@@ -651,11 +651,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2Offset = GetParameter(2);
             var string2Segment = GetParameter(3);
 
-            var string1InputBuffer = new MemoryStream();
+            using var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray()).ToUpper();
 
-            var string2InputBuffer = new MemoryStream();
+            using var string2InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
             var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
 
@@ -813,11 +813,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2Offset = GetParameter(2);
             var string2Segment = GetParameter(3);
 
-            var string1InputBuffer = new MemoryStream();
+            using var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
-            
-            var string2InputBuffer = new MemoryStream();
+
+            using var string2InputBuffer = new MemoryStream();
             string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
 
             //If the supplied string has any control characters for formatting, process them
@@ -854,11 +854,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2Offset = GetParameter(3);
             var string2Segment = GetParameter(4);
 
-            var string1InputBuffer = new MemoryStream();
+            using var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
 
-            var string2InputBuffer = new MemoryStream();
+            using var string2InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
             var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray());
 
@@ -1105,7 +1105,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilenameSegment = GetParameter(1);
             var recordLength = GetParameter(2);
 
-            var btrieveFilename = new MemoryStream();
+            using var btrieveFilename = new MemoryStream();
             btrieveFilename.Write(Module.Memory.GetString(btrieveFilenameSegment, btrieveFilenameOffset));
 
             var fileName = Encoding.Default.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
@@ -1230,7 +1230,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointerSegment = GetParameter(1);
 
             //See if the segment lives on the host or in the module
-            var btrieveRecord = new MemoryStream();
+            using var btrieveRecord = new MemoryStream();
             btrieveRecord.Write(Module.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset,
                     _currentBtrieveFile.RecordLength));
 
@@ -1256,7 +1256,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointerSegment = GetParameter(1);
 
             //See if the segment lives on the host or in the module
-            var btrieveRecord = new MemoryStream();
+            using var btrieveRecord = new MemoryStream();
             btrieveRecord.Write(Module.Memory.GetArray(btrieveRecordPointerSegment, btrieveRecordPointerOffset,
                     _currentBtrieveFile.RecordLength));
 
