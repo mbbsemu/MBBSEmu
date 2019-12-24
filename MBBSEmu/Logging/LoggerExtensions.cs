@@ -1,7 +1,7 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Memory;
 using NLog;
 using System.Text;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu.Logging
 {
@@ -12,7 +12,7 @@ namespace MBBSEmu.Logging
         /// </summary>
         /// <param name="l"></param>
         /// <param name="arrayToLog"></param>
-        public static void InfoHex(this Logger l, byte[] arrayToLog)
+        public static void InfoHex(this ILogger l, byte[] arrayToLog)
         {
             var output = new StringBuilder();
 
@@ -55,7 +55,7 @@ namespace MBBSEmu.Logging
             l.Info($"\r\n{output}");
         }
 
-        public static void InfoRegisters(this Logger l, CpuCore cpu)
+        public static void InfoRegisters(this ILogger l, CpuCore cpu)
         {
             var output = new StringBuilder();
 
@@ -84,7 +84,7 @@ namespace MBBSEmu.Logging
             }
         }
 
-        public static void InfoStack(this Logger l, CpuRegisters registers, IMemoryCore memory)
+        public static void InfoStack(this ILogger l, CpuRegisters registers, IMemoryCore memory)
         {
             var output = new StringBuilder();
             l.Info("------------------------------------------");
@@ -112,7 +112,7 @@ namespace MBBSEmu.Logging
             }
         }
 
-        public static void InfoMemoryString(this Logger l, IMemoryCore memory, ushort segment, ushort offset)
+        public static void InfoMemoryString(this ILogger l, IMemoryCore memory, ushort segment, ushort offset)
         {
             /*
              *            01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
@@ -124,7 +124,7 @@ namespace MBBSEmu.Logging
             var sbOutput = new StringBuilder();
             sbOutput.Append("           ");
             //Print Header
-            for (int i = 0; i < 0xF; i++)
+            for (var i = 0; i < 0xF; i++)
             {
                 sbOutput.Append($" {(byte)offset + i:X1}");
             }
@@ -132,7 +132,7 @@ namespace MBBSEmu.Logging
             sbOutput.Clear();
 
             sbOutput.Append($"{segment:X4}:{offset:X4} [");
-            for (int i = 0; i < 0xF; i++)
+            for (var i = 0; i < 0xF; i++)
             {
                 sbOutput.Append($"  {(char)memory.GetByte(segment, (ushort) (offset+i))}");
             }

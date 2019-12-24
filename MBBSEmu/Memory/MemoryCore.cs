@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using NLog;
+using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Memory
 {
@@ -17,16 +16,14 @@ namespace MBBSEmu.Memory
     public class MemoryCore : IMemoryCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        public readonly Dictionary<ushort, InstructionList> _decodedSegments;
-        public readonly Dictionary<ushort, byte[]> _memorySegments;
-        public readonly Dictionary<ushort, Segment> _segments;
-        public readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
+        private readonly Dictionary<ushort, byte[]> _memorySegments;
+        private readonly Dictionary<ushort, Segment> _segments;
+        private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private ushort _hostMemoryOffset = 0x0;
 
         public MemoryCore()
         {
-            _decodedSegments = new Dictionary<ushort, InstructionList>();
             _memorySegments = new Dictionary<ushort, byte[]>();
             _segments = new Dictionary<ushort, Segment>();
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
@@ -73,8 +70,6 @@ namespace MBBSEmu.Memory
                 {
                     _decompiledSegments[segment.Ordinal].Add(i.IP16, i);
                 }
-
-                _decodedSegments[segment.Ordinal] = instructionList;
             }
 
             _segments[segment.Ordinal] = segment;
@@ -169,6 +164,7 @@ namespace MBBSEmu.Memory
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
+
             SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 

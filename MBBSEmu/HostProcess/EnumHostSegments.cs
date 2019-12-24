@@ -55,6 +55,11 @@
         /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>
-        Bturno = 0xEFFF
+        Bturno = 0xEFFF,
+
+        /// <summary>
+        ///     Stack Segment
+        /// </summary>
+        StackSegment = 0x0
     }
 }

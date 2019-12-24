@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -1368,7 +1369,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var quotient = Math.DivRem(arg1, arg2, out var remainder);
 
 #if DEBUG
-            _logger.Info($"Performed Long Multiplication {arg1}/{arg2}={quotient} (Remainder: {remainder})");
+            _logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
 #endif
 
             Registers.DX = (ushort)(quotient >> 16);

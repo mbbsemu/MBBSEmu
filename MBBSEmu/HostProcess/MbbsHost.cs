@@ -100,6 +100,9 @@ namespace MBBSEmu.HostProcess
                             Run(s.ModuleIdentifier, "sttrou", s.Channel);
                             continue;
                         }
+
+                        if (_isAddingSession)
+                            break;
                     }
                 }
 
@@ -166,6 +169,7 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.UserPtr);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
+            module.Memory.AddSegment(EnumHostSegments.StackSegment);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)
