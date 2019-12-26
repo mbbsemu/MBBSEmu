@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
 using System.Data.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Database.Session
 {
@@ -9,9 +10,11 @@ namespace MBBSEmu.Database.Session
 
         public DbConnection GetConnection() => GetConnection(_connectionString);
 
-        public SessionBuilder(string connectionString)
+        public SessionBuilder(IConfigurationRoot appConfig)
         {
-            _connectionString = connectionString;
+            var dbFile = appConfig["Database.File"];
+
+            _connectionString = $"Data Source={dbFile};";
         }
 
         /// <summary>

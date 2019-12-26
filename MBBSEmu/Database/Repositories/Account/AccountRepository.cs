@@ -1,0 +1,75 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using MBBSEmu.Database.Repositories.Account.Queries;
+using MBBSEmu.Database.Session;
+
+namespace MBBSEmu.Database.Repositories.Account
+{
+    public class AccountRepository : RepositoryBase, IAccountRepository
+    {
+        public AccountRepository(ISessionBuilder sessionBuilder) : base(sessionBuilder)
+        {
+        }
+
+        public bool CreateTable()
+        {
+            var result = Query(EnumQueries.CreateAccountsTable, null);
+            return true;
+        }
+
+        public bool TableExists()
+        {
+            var result = Query(EnumQueries.AccountsTableExists, null);
+            return result.Any();
+        }
+
+        public bool DropTable()
+        {
+            var result = Query(EnumQueries.DropAccountsTable, null);
+            return result.Any();
+        }
+
+        public bool InsertAccount(string userName, string plaintextPassword, string email)
+        {
+            var passwordSaltBytes = GenerateSalt();
+            var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(plaintextPassword), passwordSaltBytes);
+
+            var passwordSalt = System.Convert.ToBase64String(passwordSaltBytes);
+            var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
+            var result = Query(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email });
+            return result.Any();
+        }
+
+
+        /// <summary>
+        ///     Generates a cryptographically strong random sequence of bytes
+        ///
+        ///     Ideally used for a cryptographic salt
+        /// </summary>
+        /// <param name="saltLength"></param>
+        /// <returns></returns>
+        private byte[] GenerateSalt(int saltLength = 32)
+        {
+            using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
+            var randomBytes = new byte[saltLength];
+            rngCryptoServiceProvider.GetBytes(randomBytes);
+            return randomBytes;
+        }
+
+        /// <summary>
+        ///     Hashes an input byte array with the specified salt
+        /// </summary>
+        /// <param name="valueToHash"></param>
+        /// <param name="salt"></param>
+        /// <returns></returns>
+        public byte[] CreateSHA512(byte[] valueToHash, byte[] salt)
+        {
+            var passwordWithSaltBytes = new List<byte>(valueToHash.Length + salt.Length);
+            passwordWithSaltBytes.AddRange(valueToHash);
+            passwordWithSaltBytes.AddRange(salt);
+            return SHA512.Create().ComputeHash(passwordWithSaltBytes.ToArray());
+        }
+    }
+}

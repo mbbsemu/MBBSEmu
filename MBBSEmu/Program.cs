@@ -3,6 +3,7 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Telnet;
 using System;
+using MBBSEmu.Database.Repositories.Account;
 
 namespace MBBSEmu
 {
@@ -14,7 +15,7 @@ namespace MBBSEmu
             var sInputPath = string.Empty;
             for (var i = 0; i < args.Length; i++)
             {
-                
+
 
                 switch (args[i].ToUpper())
                 {
@@ -47,14 +48,22 @@ namespace MBBSEmu
                 return;
             }
 
+            var repo = ServiceResolver.GetService<IAccountRepository>();
+            if (repo.TableExists())
+                repo.DropTable();
+
+            repo.CreateTable();
+
+            repo.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
+
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
 
             var module = new MbbsModule(sInputModule, sInputPath);
             host.AddModule(module);
-            
+
             var server = ServiceResolver.GetService<ITelnetServer>();
-            
+
             server.Start();
 
             Console.ReadKey();

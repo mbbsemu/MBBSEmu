@@ -1,4 +1,6 @@
-﻿using MBBSEmu.HostProcess;
+﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Session;
+using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +25,8 @@ namespace MBBSEmu.DependencyInjection
             serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
-
+            serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
+            serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
             _provider = serviceCollection.BuildServiceProvider();
         }
 
