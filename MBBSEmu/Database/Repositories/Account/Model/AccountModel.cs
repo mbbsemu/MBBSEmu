@@ -4,7 +4,7 @@ namespace MBBSEmu.Database.Repositories.Account.Model
 {
     public class AccountModel
     {
-        public ushort userId { get; set; }
+        public ushort accountId { get; set; }
         public string userName { get; set; }
         public string passwordHash { get; set; }
         public string passwordSalt { get; set; }

@@ -3,7 +3,6 @@
 	passwordHash,
 	passwordSalt,
 	email,
-	userKey,
 	createDate,
 	updateDate)
 VALUES (
@@ -11,7 +10,8 @@ VALUES (
 	@passwordHash,
 	@passwordSalt,
 	@email,
-	'DEMO',
 	datetime('now'),
 	datetime('now')
 );
+
+SELECT last_row_id();

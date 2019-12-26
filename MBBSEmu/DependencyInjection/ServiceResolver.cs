@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
@@ -21,12 +22,18 @@ namespace MBBSEmu.DependencyInjection
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).Build();
 
             var serviceCollection = new ServiceCollection();
+
+            //Host Objects
             serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
             serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
             serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
+            
+            //Database Repositories
             serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
+            serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
+
             _provider = serviceCollection.BuildServiceProvider();
         }
 
