@@ -3,11 +3,15 @@
 	passwordHash,
 	passwordSalt,
 	email,
-	createDate)
+	userKey,
+	createDate,
+	updateDate)
 VALUES (
 	@userName,
 	@passwordHash,
 	@passwordSalt,
 	@email,
+	'DEMO',
+	datetime('now'),
 	datetime('now')
 );

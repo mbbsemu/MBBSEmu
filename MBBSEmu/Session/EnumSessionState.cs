@@ -10,9 +10,19 @@
         Unauthenticated,
 
         /// <summary>
+        ///     Displaying the Username Prompt for Input
+        /// </summary>
+        DisplayingLoginUsername,
+
+        /// <summary>
         ///     User is being prompted for their Username
         /// </summary>
         AuthenticatingUsername,
+
+        /// <summary>
+        ///     Displaying the Password Prompt for Input
+        /// </summary>
+        DisplayingLoginPassword,
 
         /// <summary>
         ///     User is being prompted for their Password
@@ -28,11 +38,13 @@
         ///     User is currently seeing Login Routines from Modules
         /// </summary>
         LoginRoutines,
-
+        
         /// <summary>
         ///     User is at the Main Menu
         /// </summary>
-        MainMenu,
+        MainMenuDisplay,
+
+        MainMenuInput,
 
         /// <summary>
         ///     User is Signing up, prompted for Username

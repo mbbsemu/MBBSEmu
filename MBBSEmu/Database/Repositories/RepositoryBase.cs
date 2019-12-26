@@ -27,16 +27,11 @@ namespace MBBSEmu.Database.Repositories
             return connection.Query<T>(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
         }
 
-        /// <summary>
-        ///     Synchronous implementation of QueryAsync
-        /// </summary>
-        /// <param name="enumQuery"></param>
-        /// <param name="parameters"></param>
-        /// <returns></returns>
         public IEnumerable<dynamic> Query(object enumQuery, object parameters)
         {
             using var connection = _sessionBuilder.GetConnection();
-            return connection.Query(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
+            var sql = _resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}");
+            return connection.Query(sql, parameters);
         }
 
         public IEnumerable<dynamic> Exec(string storedProcName, object parameters)

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using MBBSEmu.Database.Repositories.Account.Model;
 using MBBSEmu.Database.Repositories.Account.Queries;
 using MBBSEmu.Database.Session;
 
@@ -40,6 +41,24 @@ namespace MBBSEmu.Database.Repositories.Account
             var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
             var result = Query(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email });
             return result.Any();
+        }
+
+        public AccountModel GetAccountByUsername(string userName)
+        {
+            return Query<AccountModel>(EnumQueries.GetAccountByUsername, new { userName }).FirstOrDefault();
+        }
+
+        public AccountModel GetAccountByUsernameAndPassword(string userName, string password)
+        {
+            var account = GetAccountByUsername(userName);
+            if (account == null)
+                return null;
+
+            var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(password),
+                System.Convert.FromBase64String(account.passwordSalt));
+            var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
+
+            return account.passwordHash == passwordHash ? account : null;
         }
 
 

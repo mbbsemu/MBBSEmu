@@ -10,6 +10,7 @@
     <None Remove="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <None Remove="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
     <None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
+    <None Remove="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
     <None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
   </ItemGroup>
 
@@ -17,6 +18,7 @@
     <EmbeddedResource Include="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
+    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\InsertAccount.sql" />
   </ItemGroup>
 

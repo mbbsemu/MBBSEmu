@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace MBBSEmu.Resources
 {
@@ -10,5 +11,7 @@ namespace MBBSEmu.Resources
         /// <param name="key"></param>
         /// <returns></returns>
         string GetString(string key);
+
+        ReadOnlySpan<byte> GetResource(string key);
     }
 }

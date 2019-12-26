@@ -893,13 +893,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Does the user have the specified key
         /// 
-        ///     Signature: int haskey(lock)
+        ///     Signature: int haskey(char *lock)
         ///     Returns: AX = 1 == True
         /// </summary>
         /// <returns></returns>
         public ushort haskey()
         {
-            var lockValue = GetParameter(0);
+            var lockNameOffset = GetParameter(0);
+            var lockNameSegment = GetParameter(1);
+            var lockNameBytes = Module.Memory.GetString(lockNameSegment, lockNameOffset);
+            var lockName = Encoding.ASCII.GetString(lockNameBytes.Slice(0, lockNameBytes.Length - 1));
+
             Registers.AX = 1;
             
             return 0;

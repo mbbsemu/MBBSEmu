@@ -19,6 +19,10 @@ namespace MBBSEmu.Database.Repositories.Account.Queries
 
         [SqlQuery("DropAccountsTable.sql")]
         [Description("Drops the Account Table")]
-        DropAccountsTable
+        DropAccountsTable,
+
+        [SqlQuery("GetAccountByUsername.sql")]
+        [Description("Gets Account by the specified Username")]
+        GetAccountByUsername
     }
 }
