@@ -49,17 +49,24 @@
         /// <summary>
         ///     User is Signing up, prompted for Username
         /// </summary>
-        SignupUsername,
+        SignupUsernameDisplay,
+
+        SignupUsernameInput,
 
         /// <summary>
         ///     User is Signing up, prompted for Password
         /// </summary>
-        SignupPassword,
+        SignupPasswordDisplay,
+
+        SignupPasswordInput,
+
+        SignupEmailDisplay,
+        SignupEmailInput,
 
         /// <summary>
         ///     User is Signing up, prompted for Password Confirmation
         /// </summary>
-        SignupConfirmPassword,
+        SignupPasswordConfirm,
 
         /// <summary>
         ///     User is Entering Module (initial routines running)

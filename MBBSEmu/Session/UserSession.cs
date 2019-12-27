@@ -73,6 +73,8 @@ namespace MBBSEmu.Session
 
         public string Password;
 
+        public string email;
+
         protected UserSession(string sessionId)
         {
             SessionId = sessionId;

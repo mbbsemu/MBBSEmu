@@ -28,17 +28,16 @@ namespace MBBSEmu.DependencyInjection
             serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
             serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
 
-            //Host Objects
-            serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
-            serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
-            serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
-            serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
-
-
             //Database Repositories
             serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
             serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
             serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
+
+            //MajorBBS Host Objects
+            serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
+            serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
+            serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
 
             _provider = serviceCollection.BuildServiceProvider();
         }

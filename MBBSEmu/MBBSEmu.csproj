@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <None Remove="Assets\login.ans" />
+    <None Remove="Assets\signup.ans" />
     <None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
     <None Remove="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
     <None Remove="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
@@ -20,6 +21,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\login.ans" />
+    <EmbeddedResource Include="Assets\signup.ans" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
