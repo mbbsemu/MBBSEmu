@@ -3,20 +3,67 @@ using MBBSEmu.Extensions;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.Models;
 
 namespace MBBSEmu.HostProcess
 {
     public class MbbsRoutines : IMbbsRoutines
     {
         private readonly IResourceManager _resourceManager;
+        private readonly IConfigurationRoot _configurationRoot;
         
-        public MbbsRoutines(IResourceManager resourceManager)
+        public MbbsRoutines(IResourceManager resourceManager, IConfigurationRoot configurationRoot)
         {
             _resourceManager = resourceManager;
+            _configurationRoot = configurationRoot;
+        }
+
+        /// <summary>
+        ///     Invokes Method based on the Session State
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="modules"></param>
+        public void ProcessSessionState(UserSession session, Dictionary<string, MbbsModule> modules)
+        {
+            switch (session.SessionState)
+            {
+                case EnumSessionState.Unauthenticated:
+                    DisplayWelcomeScreen(session);
+                    return;
+                case EnumSessionState.DisplayingLoginUsername:
+                    DisplayLoginUsername(session);
+                    return;
+                case EnumSessionState.AuthenticatingUsername:
+                    AuthenticatingUsername(session);
+                    return;
+                case EnumSessionState.DisplayingLoginPassword:
+                    DisplayLoginPassword(session);
+                    return;
+                case EnumSessionState.AuthenticatingPassword:
+                    AuthenticatingPassword(session);
+                    return;
+                case EnumSessionState.MainMenuDisplay:
+                    MainMenuDisplay(session, modules);
+                    return;
+                case EnumSessionState.MainMenuInput:
+                    MainMenuInput(session, modules);
+                    return;
+                case EnumSessionState.ConfirmLogoffDisplay:
+                    ConfirmLogoffDisplay(session);
+                    return;
+                case EnumSessionState.ConfirmLogoffInput:
+                    ConfirmLogoffInput(session);
+                    return;
+                case EnumSessionState.LoggingOff:
+                    LoggingOff(session);
+                    return;
+                default:
+                    return;
+            }
         }
 
         /// <summary>
@@ -28,8 +75,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="dataToEcho"></param>
         private void EchoToClient(UserSession session, byte[] dataToEcho)
         {
-            //Handle Backspace
-            if (dataToEcho.Length == 1 && dataToEcho[0] == 0x8)
+            //Handle Backspace or Delete
+            if (dataToEcho.Length == 1 && (dataToEcho[0] == 0x8 || dataToEcho[0] == 0x7F))
             {
                 session.DataToClient.Enqueue(new byte[] { 0x08, 0x20, 0x08 });
                 return;
@@ -39,14 +86,38 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     Applies Backspace from the Client to the Input Buffer
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="inputFromUser"></param>
+        /// <returns></returns>
+        private bool HandleBackspace(UserSession session, ReadOnlySpan<byte> inputFromUser)
+        {
+            if (inputFromUser[0] != 0x8 && inputFromUser[0] != 0x7F)
+                return false;
+
+            //If its backspace and the buffer is already empty, do nothing
+            if (session.InputBuffer.Length <= 0)
+                return true;
+
+            //Because position starts at 0, it's an easy -1 on length
+            session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
+            return true;
+        }
+
+        /// <summary>
         ///     Shows the Login Screen to a new User Session
         /// </summary>
         /// <param name="session"></param>
-        public void ShowLogin(UserSession session)
+        public void DisplayWelcomeScreen(UserSession session)
         {
             session.DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             session.DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x48 });
+
+
+
             session.DataToClient.Enqueue(_resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
+            session.DataToClient.Enqueue(Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.DisplayingLoginUsername;
         }
 
@@ -62,6 +133,9 @@ namespace MBBSEmu.HostProcess
             if (session.DataFromClient.TryDequeue(out var inputBytes))
             {
                 EchoToClient(session, inputBytes);
+
+                if (HandleBackspace(session, inputBytes))
+                    return;
 
                 //CR
                 if (inputBytes[0] == 0xD)
@@ -109,8 +183,14 @@ namespace MBBSEmu.HostProcess
                     return;
                 }
 
+                if (HandleBackspace(session, inputBytes))
+                {
+                    EchoToClient(session, inputBytes);
+                    return;
+                }
+
                 //Mask Passwords
-                EchoToClient(session, new byte[] {0x2A});
+                EchoToClient(session, new byte[] { 0x2A });
 
                 session.InputBuffer.Write(inputBytes);
             }

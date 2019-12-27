@@ -77,36 +77,6 @@ namespace MBBSEmu.HostProcess
                     {
                         switch (s.SessionState)
                         {
-                            case EnumSessionState.Unauthenticated:
-                                _mbbsRoutines.ShowLogin(s);
-                                continue;
-                            case EnumSessionState.DisplayingLoginUsername:
-                                _mbbsRoutines.DisplayLoginUsername(s);
-                                continue;
-                            case EnumSessionState.AuthenticatingUsername:
-                                _mbbsRoutines.AuthenticatingUsername(s);
-                                continue;
-                            case EnumSessionState.DisplayingLoginPassword:
-                                _mbbsRoutines.DisplayLoginPassword(s);
-                                continue;
-                            case EnumSessionState.AuthenticatingPassword:
-                                _mbbsRoutines.AuthenticatingPassword(s);
-                                continue;
-                            case EnumSessionState.MainMenuDisplay:
-                                _mbbsRoutines.MainMenuDisplay(s, _modules);
-                                continue;
-                            case EnumSessionState.MainMenuInput:
-                                _mbbsRoutines.MainMenuInput(s, _modules);
-                                continue;
-                            case EnumSessionState.ConfirmLogoffDisplay:
-                                _mbbsRoutines.ConfirmLogoffDisplay(s);
-                                continue;
-                            case EnumSessionState.ConfirmLogoffInput:
-                                _mbbsRoutines.ConfirmLogoffInput(s);
-                                continue;
-                            case EnumSessionState.LoggingOff:
-                                _mbbsRoutines.LoggingOff(s);
-                                continue;
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
@@ -134,8 +104,12 @@ namespace MBBSEmu.HostProcess
 
                                 break;
                             }
+
+                            //Check for any other session states, we handle these here as they are
+                            //lower priority than handling "in-module" states
                             default:
-                                continue;
+                                _mbbsRoutines.ProcessSessionState(s, _modules);
+                                break;
                         }
                     }
 
