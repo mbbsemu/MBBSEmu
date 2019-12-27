@@ -57,7 +57,7 @@ namespace MBBSEmu.HostProcess.Formatters
                 {"|!BLACK|", "\x1B[40m"},
                 {"|RED|", "\x1B[31m"},
                 {"|!RED|", "\x1B[41m"},
-                {"|GREEN", "\x1B[32m"},
+                {"|GREEN|", "\x1B[32m"},
                 {"|!GREEN|", "\x1B[42m"},
                 {"|YELLOW|", "\x1B[33m"},
                 {"|!YELLOW|", "\x1B[43m"},

@@ -45,6 +45,11 @@ namespace MBBSEmu.Module
 
         public readonly IMemoryCore Memory;
 
+        /// <summary>
+        ///     Description of the Module as Defined by REGISTER_MODULE
+        /// </summary>
+        public string ModuleDescription;
+
         public MbbsModule(string module, string path = "")
         {
             ModuleIdentifier = module;

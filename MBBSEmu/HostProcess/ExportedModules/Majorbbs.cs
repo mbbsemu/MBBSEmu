@@ -300,6 +300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Description for Main Menu
             var moduleDescription = Encoding.Default.GetString(moduleStruct, 0, 25);
+            Module.ModuleDescription = moduleDescription;
 #if DEBUG
             _logger.Info($"Module Description set to {moduleDescription}");
 #endif

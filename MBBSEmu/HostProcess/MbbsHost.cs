@@ -26,7 +26,7 @@ namespace MBBSEmu.HostProcess
         private readonly Dictionary<string, IExportedModule> _exportedFunctions;
         private readonly CpuCore _cpu;
         private bool _isRunning;
-        private readonly Stopwatch realTimeStopwatch;
+        private readonly Stopwatch _realTimeStopwatch;
         private bool _isAddingModule;
         private bool _isAddingSession;
         private readonly IMbbsRoutines _mbbsRoutines;
@@ -38,9 +38,8 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = new PointerDictionary<UserSession>(minimumValue: 1);
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
-
             _cpu = new CpuCore();
-            realTimeStopwatch = Stopwatch.StartNew();
+            _realTimeStopwatch = Stopwatch.StartNew();
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -91,6 +90,12 @@ namespace MBBSEmu.HostProcess
                             case EnumSessionState.AuthenticatingPassword:
                                 _mbbsRoutines.AuthenticatingPassword(s);
                                 continue;
+                            case EnumSessionState.MainMenuDisplay:
+                                _mbbsRoutines.MainMenuDisplay(s, _modules);
+                                continue;
+                            case EnumSessionState.MainMenuInput:
+                                _mbbsRoutines.MainMenuInput(s, _modules);
+                                continue;
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
@@ -138,7 +143,7 @@ namespace MBBSEmu.HostProcess
                     }
 
                     //Run rtihdlr routines
-                    if (realTimeStopwatch.ElapsedMilliseconds > 55)
+                    if (_realTimeStopwatch.ElapsedMilliseconds > 55)
                     {
                         foreach (var m in _modules.Values)
                         {
@@ -150,7 +155,7 @@ namespace MBBSEmu.HostProcess
                             }
                         }
 
-                        realTimeStopwatch.Restart();
+                        _realTimeStopwatch.Restart();
                     }
                 }
 

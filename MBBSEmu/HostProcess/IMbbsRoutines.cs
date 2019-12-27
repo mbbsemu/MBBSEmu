@@ -1,4 +1,6 @@
-﻿using MBBSEmu.Session;
+﻿using System.Collections.Generic;
+using MBBSEmu.Module;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess
 {
@@ -14,5 +16,7 @@ namespace MBBSEmu.HostProcess
         void AuthenticatingUsername(UserSession session);
         void DisplayLoginPassword(UserSession session);
         void AuthenticatingPassword(UserSession session);
+        void MainMenuDisplay(UserSession session, Dictionary<string, MbbsModule> modules);
+        void MainMenuInput(UserSession session, Dictionary<string, MbbsModule> modules);
     }
 }
