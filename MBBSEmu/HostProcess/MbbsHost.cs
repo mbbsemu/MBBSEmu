@@ -293,6 +293,12 @@ namespace MBBSEmu.HostProcess
                 _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange
                     ? (ushort) 5
                     : module.Memory.GetWord((ushort) EnumHostSegments.Status, 0);
+
+                if (routineName == "sttrou" && cpuRegisters.AX == 0)
+                {
+                    _channelDictionary[channelNumber].SessionState = EnumSessionState.MainMenuDisplay;
+                    _channelDictionary[channelNumber].ModuleIdentifier = string.Empty;
+                }
             }
             
         }

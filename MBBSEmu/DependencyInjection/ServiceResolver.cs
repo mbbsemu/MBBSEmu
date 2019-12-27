@@ -2,7 +2,6 @@
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
-using MBBSEmu.HostProcess.Formatters;
 using MBBSEmu.Logging;
 using MBBSEmu.Resources;
 using MBBSEmu.Telnet;
@@ -28,7 +27,6 @@ namespace MBBSEmu.DependencyInjection
             //Base Configuration Items
             serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
             serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
-            serviceCollection.AddSingleton<IANSIFormatter, ANSIFormatter>();
 
             //Host Objects
             serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));

@@ -5,21 +5,19 @@ using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using System.Text;
 using MBBSEmu.Database.Repositories.Account;
-using MBBSEmu.HostProcess.Formatters;
 using MBBSEmu.HostProcess.Models;
 using MBBSEmu.Module;
+using MBBSEmu.Extensions;
 
 namespace MBBSEmu.HostProcess
 {
     public class MbbsRoutines : IMbbsRoutines
     {
         private readonly IResourceManager _resourceManager;
-        private readonly IANSIFormatter _ansiFormatter;
-
-        public MbbsRoutines(IResourceManager resourceManager, IANSIFormatter ansiFormatter)
+        
+        public MbbsRoutines(IResourceManager resourceManager)
         {
             _resourceManager = resourceManager;
-            _ansiFormatter = ansiFormatter;
         }
 
         /// <summary>
@@ -55,10 +53,8 @@ namespace MBBSEmu.HostProcess
 
         public void DisplayLoginUsername(UserSession session)
         {
-            var loginInstructionText =_ansiFormatter.Encode("\r\n|YELLOW|Enter Username or enter \"|B|NEW|!B|\" to create a new Account\r\n");
-            session.DataToClient.Enqueue(Encoding.ASCII.GetBytes(loginInstructionText));
-            var usernameText = _ansiFormatter.Encode("|B||WHITE|Username:|!B| ");
-            session.DataToClient.Enqueue(Encoding.ASCII.GetBytes(usernameText));
+            session.DataToClient.Enqueue("\r\n|YELLOW|Enter Username or enter \"|B|NEW|!B|\" to create a new Account\r\n".EncodeToANSIArray());
+            session.DataToClient.Enqueue("|B||WHITE|Username:|!B| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.AuthenticatingUsername;
         }
 
@@ -86,8 +82,7 @@ namespace MBBSEmu.HostProcess
 
         public void DisplayLoginPassword(UserSession session)
         {
-            var passwordText = _ansiFormatter.Encode("\r\n|B||WHITE|Password:|!B| ");
-            session.DataToClient.Enqueue(Encoding.ASCII.GetBytes(passwordText));
+            session.DataToClient.Enqueue("\r\n|B||WHITE|Password:|!B| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.AuthenticatingPassword;
         }
 
@@ -113,8 +108,7 @@ namespace MBBSEmu.HostProcess
 
                     if (account == null)
                     {
-                        var passwordText = _ansiFormatter.Encode("\r\n\r\n|B||RED|Invalid Credentials|RESET|\r\n");
-                        EchoToClient(session, Encoding.ASCII.GetBytes(passwordText));
+                        EchoToClient(session, "\r\n\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
                         session.SessionState = EnumSessionState.DisplayingLoginUsername;
                         return;
                     }
@@ -132,20 +126,16 @@ namespace MBBSEmu.HostProcess
 
         public void MainMenuDisplay(UserSession session, Dictionary<string, MbbsModule> modules)
         {
-            var menuHeader = _ansiFormatter.Encode("\r\n\r\n|GREEN|Please select one of the following:|RESET|\r\n\r\n");
-            EchoToClient(session, Encoding.ASCII.GetBytes(menuHeader));
+            EchoToClient(session, "\r\n\r\n|GREEN|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
             var currentMenuItem = 0;
             foreach (var m in modules)
             {
-                var menuItem =
-                    _ansiFormatter.Encode(
-                        $"   |CYAN|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n");
-                EchoToClient(session, Encoding.ASCII.GetBytes(menuItem));
+                EchoToClient(session, $"   |CYAN|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
             }
 
-            EchoToClient(session, Encoding.ASCII.GetBytes(_ansiFormatter.Encode("\r\n|GREEN|Main Menu|RESET|\r\n")));
-            EchoToClient(session, Encoding.ASCII.GetBytes(_ansiFormatter.Encode("|CYAN|Make your selection (X to exit):|RESET| ")));
+            EchoToClient(session, "\r\n|GREEN|Main Menu|RESET|\r\n".EncodeToANSIArray());
+            EchoToClient(session, "|CYAN|Make your selection (X to exit):|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.MainMenuInput;
         }
 
@@ -164,13 +154,26 @@ namespace MBBSEmu.HostProcess
 
                 if (inputBytes[0] == 0xD)
                 {
-                    int.TryParse(Encoding.ASCII.GetString(session.InputBuffer.ToArray()), out var selectedMenuItem);
+                    if (!int.TryParse(Encoding.ASCII.GetString(session.InputBuffer.ToArray()),
+                        out var selectedMenuItem))
+                    {
+                        session.SessionState = EnumSessionState.MainMenuDisplay;
+
+                        //Clear the Input Buffer
+                        session.InputBuffer.Position = 0;
+                        session.InputBuffer.SetLength(0);
+                        return;
+                    }
 
                     var selectedModule = modules.ElementAt(selectedMenuItem);
                     session.ModuleIdentifier = selectedModule.Value.ModuleIdentifier;
                     session.SessionState = EnumSessionState.EnteringModule;
                     session.DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
                     session.DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x48 });
+
+                    //Clear the Input Buffer
+                    session.InputBuffer.Position = 0;
+                    session.InputBuffer.SetLength(0);
                 }
 
                 session.InputBuffer.Write(inputBytes);
