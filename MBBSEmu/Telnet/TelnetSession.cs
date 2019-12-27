@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Session;
 using NLog;
@@ -41,22 +42,15 @@ namespace MBBSEmu.Telnet
 
             //Add this Session to the Host
             _host.AddSession(this);
-
-            //Enter();
         }
 
-        private void Enter()
-        {
-            //ModuleIdentifier = "GWWARROW";
-            //SessionState = EnumSessionState.EnteringModule;
-        }
 
         /// <summary>
         ///     Send a Byte Array to the client
         /// </summary>
         private void SendWorker()
         {
-            while (_telnetConnection.Connected)
+            while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
             {
                 if (DataToClient.TryDequeue(out var sendBuffer))
                 {
@@ -65,17 +59,24 @@ namespace MBBSEmu.Telnet
                 }
                 Thread.Sleep(5);
             }
+
+            //Cleanup if the connection was dropped
+            SessionState = EnumSessionState.LoggedOff;
         }
 
         private void ReceiveWorker()
         {
             using var msReceiveBuffer = new MemoryStream();
             var characterBuffer = new byte[256];
-            while (_telnetConnection.Connected)
+            while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
             {
+
                 Span<byte> characterBufferSpan = characterBuffer;
                 var bytesReceived = _telnetConnection.Receive(characterBufferSpan, SocketFlags.Partial, out var socketState);
                 ValidateSocketState(socketState);
+
+                if(bytesReceived == 0)
+                    continue;
 
                 //IAC Responses
                 if (characterBufferSpan[0] == 0xFF)
@@ -90,6 +91,9 @@ namespace MBBSEmu.Telnet
                 }
                 Thread.Sleep(1);
             }
+
+            //Cleanup if the connection was dropped
+            SessionState = EnumSessionState.LoggedOff;
         }
 
         /// <summary>

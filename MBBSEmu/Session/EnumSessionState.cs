@@ -76,6 +76,10 @@
         /// </summary>
         ExitingModule,
 
+        ConfirmLogoffDisplay,
+
+        ConfirmLogoffInput,
+
         /// <summary>
         ///     User is in the process of Logging Off
         /// </summary>

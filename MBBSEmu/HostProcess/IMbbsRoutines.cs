@@ -18,5 +18,8 @@ namespace MBBSEmu.HostProcess
         void AuthenticatingPassword(UserSession session);
         void MainMenuDisplay(UserSession session, Dictionary<string, MbbsModule> modules);
         void MainMenuInput(UserSession session, Dictionary<string, MbbsModule> modules);
+        void ConfirmLogoffDisplay(UserSession session);
+        void ConfirmLogoffInput(UserSession session);
+        void LoggingOff(UserSession session);
     }
 }

@@ -3,10 +3,12 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Extensions;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -35,7 +37,7 @@ namespace MBBSEmu.HostProcess
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
             _logger.Info("Constructing MbbsEmu Host...");
-            _channelDictionary = new PointerDictionary<UserSession>(minimumValue: 1);
+            _channelDictionary = new PointerDictionary<UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _cpu = new CpuCore();
@@ -95,6 +97,15 @@ namespace MBBSEmu.HostProcess
                                 continue;
                             case EnumSessionState.MainMenuInput:
                                 _mbbsRoutines.MainMenuInput(s, _modules);
+                                continue;
+                            case EnumSessionState.ConfirmLogoffDisplay:
+                                _mbbsRoutines.ConfirmLogoffDisplay(s);
+                                continue;
+                            case EnumSessionState.ConfirmLogoffInput:
+                                _mbbsRoutines.ConfirmLogoffInput(s);
+                                continue;
+                            case EnumSessionState.LoggingOff:
+                                _mbbsRoutines.LoggingOff(s);
                                 continue;
                             case EnumSessionState.EnteringModule:
                             {
@@ -160,12 +171,15 @@ namespace MBBSEmu.HostProcess
                 }
 
                 //Cleanup Logged Off
-                for (ushort i = 1; i < _channelDictionary.Count; i++)
+                for (ushort i = 0; i < _channelDictionary.Count; i++)
                 {
                     if (_channelDictionary.ContainsKey(i))
                     {
                         if (_channelDictionary[i].SessionState == EnumSessionState.LoggedOff)
+                        {
+                            _logger.Info($"Removing LoggedOff Channel: {i}");
                             _channelDictionary.Remove(i);
+                        }
                     }
                 }
             }
@@ -298,6 +312,12 @@ namespace MBBSEmu.HostProcess
                 {
                     _channelDictionary[channelNumber].SessionState = EnumSessionState.MainMenuDisplay;
                     _channelDictionary[channelNumber].ModuleIdentifier = string.Empty;
+
+                    //Clear the Input Buffer
+                    _channelDictionary[channelNumber].InputBuffer.SetLength(0);
+
+                    //Clear any data waiting to be processed from the client
+                    _channelDictionary[channelNumber].DataFromClient.Clear();
                 }
             }
             

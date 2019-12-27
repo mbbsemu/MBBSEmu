@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.HostProcess.Models;
+using MBBSEmu.Extensions;
 using System.Collections.Generic;
 using System.IO;
 
