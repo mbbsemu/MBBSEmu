@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.Extensions
 {
@@ -53,33 +49,6 @@ namespace MBBSEmu.Extensions
         public static byte RemoveFlag(this byte b, byte bitMask) => (byte)(b & ~bitMask);
 
         /// <summary>
-        ///     Returns if the specified flag is set in the byte
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFlagSet(this byte b, EnumFlags flag) => (b & (ushort)flag) != 0;
-
-        /// <summary>
-        ///     Sets the specified bitmask to for the specified bits
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte SetFlag(this byte b, EnumFlags flag) => (byte)(b | (ushort)flag);
-
-        /// <summary>
-        ///     Sets the specified bitmask to 0 for the specified bits
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static byte RemoveFlag(this byte b, EnumFlags flag) => (byte)(b & ~(ushort)flag);
-
-        /// <summary>
         ///     Gets the Parity for the specified byte
         /// </summary>
         /// <param name="b"></param>
@@ -92,7 +61,6 @@ namespace MBBSEmu.Extensions
                 if (b.IsBitSet(i))
                     setBits++;
             }
-
             return setBits != 0 && setBits % 2 == 0;
         }
     }

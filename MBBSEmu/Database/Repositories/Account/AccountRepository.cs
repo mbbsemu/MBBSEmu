@@ -1,16 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using MBBSEmu.Database.Repositories.Account.Model;
+using MBBSEmu.Database.Repositories.Account.Queries;
+using MBBSEmu.Database.Session;
+using MBBSEmu.Resources;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using MBBSEmu.Database.Repositories.Account.Model;
-using MBBSEmu.Database.Repositories.Account.Queries;
-using MBBSEmu.Database.Session;
 
 namespace MBBSEmu.Database.Repositories.Account
 {
     public class AccountRepository : RepositoryBase, IAccountRepository
     {
-        public AccountRepository(ISessionBuilder sessionBuilder) : base(sessionBuilder)
+        public AccountRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager) : base(sessionBuilder, resourceManager)
         {
         }
 

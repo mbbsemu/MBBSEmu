@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using MBBSEmu.CPU;
 
 namespace MBBSEmu.Extensions
 {
@@ -32,15 +31,6 @@ namespace MBBSEmu.Extensions
         public static bool IsFlagSet(this ushort b, ushort bitMask) => (b & bitMask) != 0;
 
         /// <summary>
-        ///     Returns if the specified flag is set in the byte
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFlagSet(this ushort b, EnumFlags flag) => (b & (ushort)flag) != 0;
-
-        /// <summary>
         ///     Sets the specified bitmask to for the specified bits
         /// </summary>
         /// <param name="b"></param>
@@ -57,15 +47,6 @@ namespace MBBSEmu.Extensions
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ClearFlag(this ushort b, ushort bitMask) => (ushort)(b & ~bitMask);
-
-        /// <summary>
-        ///     Sets the specified bitmask to 0 for the specified bits
-        /// </summary>
-        /// <param name="b"></param>
-        /// <param name="bitMask"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort ClearFlag(this ushort b, EnumFlags flag) => (ushort)(b & ~(ushort)flag);
 
         /// <summary>
         ///     Gets the Parity for the specified byte

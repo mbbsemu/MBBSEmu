@@ -2,7 +2,9 @@
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.Formatters;
 using MBBSEmu.Logging;
+using MBBSEmu.Resources;
 using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,14 +25,20 @@ namespace MBBSEmu.DependencyInjection
 
             var serviceCollection = new ServiceCollection();
 
-            //Host Objects
+            //Base Configuration Items
             serviceCollection.AddSingleton<IConfigurationRoot>(configuration);
+            serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            serviceCollection.AddSingleton<IANSIFormatter, ANSIFormatter>();
+
+            //Host Objects
             serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
             serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
-            serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
-            
+
+
             //Database Repositories
+            serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
             serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
             serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 

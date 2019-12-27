@@ -431,7 +431,7 @@ namespace MBBSEmu.CPU
 
         private void Op_Sbb()
         {
-            var source = (ushort)(GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source) + (Registers.F.Flags.IsFlagSet(EnumFlags.CF) ? 1 : 0));
+            var source = (ushort)(GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source) + (Registers.F.Flags.IsFlagSet((ushort)EnumFlags.CF) ? 1 : 0));
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var result = (ushort)(destination - source);
             int operationSize;
@@ -707,7 +707,6 @@ namespace MBBSEmu.CPU
                     Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), result);
                     break;
             }
-
         }
 
         private byte Op_Dec_8(byte destination)
@@ -851,9 +850,6 @@ namespace MBBSEmu.CPU
 
         private void Op_Jmp()
         {
-            //TODO -- Need to check to see if this breaks larger modules
-            //These are usually jumps into linked code which isn't required for the emulator
-            //bypassing for now. Might break on larger modules
             if (_currentInstruction.FlowControl == FlowControl.IndirectBranch)
             {
                 //Get the destination offset

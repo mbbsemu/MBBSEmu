@@ -29,9 +29,11 @@ namespace MBBSEmu.HostProcess
         private readonly Stopwatch realTimeStopwatch;
         private bool _isAddingModule;
         private bool _isAddingSession;
-        public MbbsHost(ILogger logger)
+        private readonly IMbbsRoutines _mbbsRoutines;
+        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines)
         {
             _logger = logger;
+            _mbbsRoutines = mbbsRoutines;
             _logger.Info("Constructing MbbsEmu Host...");
             _channelDictionary = new PointerDictionary<UserSession>(minimumValue: 1);
             _modules = new Dictionary<string, MbbsModule>();
@@ -67,48 +69,61 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                if (!_isAddingSession)
+                if (!_isAddingSession && !_isAddingModule)
                 {
                     //Process Channels
                     foreach (var s in _channelDictionary.Values)
                     {
-                        //Channel is entering module, run both
-                        if (s.SessionState == EnumSessionState.EnteringModule)
+                        switch (s.SessionState)
                         {
-                            s.StatusChange = false;
-                            Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                            Run(s.ModuleIdentifier, "stsrou", s.Channel);
-                            s.SessionState = EnumSessionState.InModule;
-                            continue;
+                            case EnumSessionState.Unauthenticated:
+                                _mbbsRoutines.ShowLogin(s);
+                                continue;
+                            case EnumSessionState.DisplayingLoginUsername:
+                                _mbbsRoutines.DisplayLoginUsername(s);
+                                continue;
+                            case EnumSessionState.AuthenticatingUsername:
+                                _mbbsRoutines.AuthenticatingUsername(s);
+                                continue;
+                            case EnumSessionState.DisplayingLoginPassword:
+                                _mbbsRoutines.DisplayLoginPassword(s);
+                                continue;
+                            case EnumSessionState.AuthenticatingPassword:
+                                _mbbsRoutines.AuthenticatingPassword(s);
+                                continue;
+                            case EnumSessionState.EnteringModule:
+                            {
+                                s.StatusChange = false;
+                                Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                                Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                                s.SessionState = EnumSessionState.InModule;
+                                continue;
+                            }
+                            case EnumSessionState.InModule:
+                            {
+                                //Did the text change cause a status update
+                                if (s.StatusChange || s.Status == 240)
+                                {
+                                    s.StatusChange = false;
+                                    Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                                    continue;
+                                }
+
+                                //Is there Text to send to the module
+                                if (s.DataFromClient.Count > 0)
+                                {
+                                    Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                                    continue;
+                                }
+
+                                break;
+                            }
+                            default:
+                                continue;
                         }
-
-                        //Following Events are only processed if they're IN a module
-                        if (s.SessionState != EnumSessionState.InModule)
-                            continue;
-
-                        //Did the text change cause a status update
-                        if (s.StatusChange || s.Status == 240)
-                        {
-                            s.StatusChange = false;
-                            Run(s.ModuleIdentifier, "stsrou", s.Channel);
-                            continue;
-                        }
-
-                        //Is there Text to send to the module
-                        if (s.DataFromClient.Count > 0)
-                        {
-                            Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                            continue;
-                        }
-
-                        if (_isAddingSession)
-                            break;
                     }
-                }
 
-                //We don't want to run these while a module is still being kicked off
-                if (!_isAddingModule)
-                {
+                    //We don't want to run these while a module is still being kicked off
                     foreach (var m in _modules.Values)
                     {
                         if (m.RtkickRoutines.Count == 0) continue;
@@ -134,6 +149,7 @@ namespace MBBSEmu.HostProcess
                                 Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
                             }
                         }
+
                         realTimeStopwatch.Restart();
                     }
                 }

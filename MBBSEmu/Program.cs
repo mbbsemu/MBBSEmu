@@ -48,18 +48,6 @@ namespace MBBSEmu
                 return;
             }
 
-            var repo = ServiceResolver.GetService<IAccountRepository>();
-            if (repo.TableExists())
-                repo.DropTable();
-
-            repo.CreateTable();
-
-            repo.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
-
-            var account = repo.GetAccountByUsername("sysop");
-            var authAccount = repo.GetAccountByUsernameAndPassword("sysop", "sysop");
-            var authAccountBad = repo.GetAccountByUsernameAndPassword("sysop", "derp");
-
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
 

@@ -1,21 +1,22 @@
 ﻿using MBBSEmu.HostProcess.Models;
-using System;
 using System.Collections.Generic;
 using System.IO;
 
 namespace MBBSEmu.Session
 {
-    public class UserSession
+
+    /// <summary>
+    ///     Base Class for a User Session
+    ///
+    ///     This holds the basics for any given user session, and different source
+    ///     (web, telnet, console, etc.) can implement this base.
+    /// </summary>
+    public abstract class UserSession
     {
         /// <summary>
         ///     Unique ID for this Session
         /// </summary>
         public readonly string SessionId;
-        
-        /// <summary>
-        ///     Module this session is currently in
-        /// </summary>
-        private int ModuleId { get; set; }
 
         /// <summary>
         ///     This Users UsrPtr* which is passed in from MajorBBS
@@ -27,19 +28,49 @@ namespace MBBSEmu.Session
         /// </summary>
         public ushort Channel;
 
+        /// <summary>
+        ///     Module Identifier of the current Module the user is in
+        /// </summary>
         public string ModuleIdentifier;
 
+        /// <summary>
+        ///     MajorBBS User Status
+        /// </summary>
         public ushort Status;
+
+        /// <summary>
+        ///     Status State has been changes
+        /// </summary>
         public bool StatusChange;
 
+        /// <summary>
+        ///     Input Queue of Data from the Client
+        /// </summary>
         public Queue<byte[]> DataFromClient;
+
+        /// <summary>
+        ///     Output Queue of Data to the Client
+        /// </summary>
         public Queue<byte[]> DataToClient;
 
+        /// <summary>
+        ///     Current State of this Users Session
+        /// </summary>
         public EnumSessionState SessionState;
 
+        /// <summary>
+        ///     GSBL Echo Buffer
+        ///
+        ///     Used to send data "promptly" to the user, bypassing MajorBBS and
+        ///     sending the data straight through GSBL
+        /// </summary>
         public MemoryStream EchoBuffer;
 
-        public UserSession(string sessionId)
+        public MemoryStream InputBuffer;
+
+        public string Username;
+
+        protected UserSession(string sessionId)
         {
             SessionId = sessionId;
             DataFromClient = new Queue<byte[]>();
@@ -47,18 +78,7 @@ namespace MBBSEmu.Session
             UsrPrt = new User();
             Status = 0;
             EchoBuffer = new MemoryStream(256);
-        }
-
-        public void SendToClient(ReadOnlySpan<byte> dataToSend)
-        {
-            DataToClient.Enqueue(dataToSend.ToArray());
-        }
-
-        public byte[] ReceiveFromClient()
-        {
-            var isData = DataFromClient.TryDequeue(out var result);
-
-            return isData ? result : null;
+            InputBuffer = new MemoryStream(256);
         }
     }
 }

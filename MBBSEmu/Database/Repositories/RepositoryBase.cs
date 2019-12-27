@@ -4,7 +4,6 @@ using MBBSEmu.Database.Session;
 using MBBSEmu.Resources;
 using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
 
 namespace MBBSEmu.Database.Repositories
 {
@@ -13,12 +12,13 @@ namespace MBBSEmu.Database.Repositories
     /// </summary>
     public abstract class RepositoryBase : IRepositoryBase
     {
-        private readonly IResourceManager _resourceManager = new ResourceManager(Assembly.GetExecutingAssembly());
+        private readonly IResourceManager _resourceManager;
         private readonly ISessionBuilder _sessionBuilder;
 
-        protected RepositoryBase(ISessionBuilder sessionBuilder)
+        protected RepositoryBase(ISessionBuilder sessionBuilder, IResourceManager resourceManager)
         {
             _sessionBuilder = sessionBuilder;
+            _resourceManager = resourceManager;
         }
 
         public IEnumerable<T> Query<T>(object enumQuery, object parameters)

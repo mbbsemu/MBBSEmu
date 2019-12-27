@@ -7,7 +7,8 @@ namespace MBBSEmu.Memory
     ///     A PointerDictionary is essentially a Dictionary with some helper methods to automatically
     ///     allocate new entries in the Base dictionary by the lowest available "pointer".
     ///
-    ///     This means we always have a consistent, solid block of dictionary values
+    ///     This means we always have a consistent, mostly solid block of dictionary values as
+    ///     key values that are removed are reused.
     /// </summary>
     /// <typeparam name="TValue"></typeparam>
     public class PointerDictionary<TValue> : Dictionary<int, TValue>
@@ -48,7 +49,6 @@ namespace MBBSEmu.Memory
                 if (!ContainsKey(i))
                     return i;
             }
-
             throw new Exception("Pointer Dictionary is Full");
         }
     }

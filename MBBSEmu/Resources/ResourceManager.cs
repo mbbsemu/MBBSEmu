@@ -12,10 +12,10 @@ namespace MBBSEmu.Resources
         private readonly Dictionary<string, byte[]> _resourceCache;
         private static readonly byte[] utf8bom = {0xEF, 0xBB, 0xBF};
 
-        public ResourceManager(Assembly assembly)
+        public ResourceManager()
         {
             _resourceCache = new Dictionary<string, byte[]>();
-            _assembly = assembly;
+            _assembly = Assembly.GetExecutingAssembly();
         }
 
         public ReadOnlySpan<byte> GetResource(string key)

@@ -42,13 +42,13 @@ namespace MBBSEmu.Telnet
             //Add this Session to the Host
             _host.AddSession(this);
 
-            Enter();
+            //Enter();
         }
 
         private void Enter()
         {
-            ModuleIdentifier = "GWWARROW";
-            SessionState = EnumSessionState.EnteringModule;
+            //ModuleIdentifier = "GWWARROW";
+            //SessionState = EnumSessionState.EnteringModule;
         }
 
         /// <summary>
@@ -81,6 +81,8 @@ namespace MBBSEmu.Telnet
                 if (characterBufferSpan[0] == 0xFF)
                 {
                     ParseIAC(characterBufferSpan.Slice(0, bytesReceived));
+                    if (_iacComplete)
+                        SessionState = EnumSessionState.Unauthenticated;
                 }
                 else
                 {
@@ -119,6 +121,7 @@ namespace MBBSEmu.Telnet
                         {
                             case EnumIacVerbs.WILL:
                                 _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+                                _iacComplete = true;
                                 break;
                             default:
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");

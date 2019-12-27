@@ -3,12 +3,13 @@ using MBBSEmu.Database.Repositories.AccountKey.Queries;
 using MBBSEmu.Database.Session;
 using System.Collections.Generic;
 using System.Linq;
+using MBBSEmu.Resources;
 
 namespace MBBSEmu.Database.Repositories.AccountKey
 {
     public class AccountKeyRepository : RepositoryBase, IAccountKeyRepository
     {
-        public AccountKeyRepository(ISessionBuilder sessionBuilder) : base(sessionBuilder)
+        public AccountKeyRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager) : base(sessionBuilder, resourceManager)
         {
         }
 

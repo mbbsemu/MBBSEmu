@@ -733,7 +733,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
 
-            ChannelDictionary[userChannel].SendToClient(new ReadOnlySpan<byte>(_outputBuffer.ToArray()));
+            ChannelDictionary[userChannel].DataToClient.Enqueue(_outputBuffer.ToArray());
             _outputBuffer.Position = 0;
             _outputBuffer.SetLength(0);
 
