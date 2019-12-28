@@ -10,4 +10,4 @@ VALUES (
 	datetime('now')
 );
 
-SELECT last_row_id();
+SELECT last_insert_rowid();

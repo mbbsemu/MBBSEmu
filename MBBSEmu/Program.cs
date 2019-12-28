@@ -1,24 +1,52 @@
-﻿using MBBSEmu.DependencyInjection;
+﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Telnet;
+using NLog;
 using System;
-using MBBSEmu.Database.Repositories.Account;
 
 namespace MBBSEmu
 {
     class Program
     {
+        private static ILogger _logger = ServiceResolver.GetService<ILogger>();
+
         static void Main(string[] args)
         {
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
+
             for (var i = 0; i < args.Length; i++)
             {
 
 
                 switch (args[i].ToUpper())
                 {
+                    case "-DBRESET":
+                    {
+                        _logger.Info("Resetting Database...");
+                        var acct = ServiceResolver.GetService<IAccountRepository>();
+                        if (acct.TableExists())
+                            acct.DropTable();
+
+                        acct.CreateTable();
+                        var sysopUserId = acct.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
+                        
+                        var keys = ServiceResolver.GetService<IAccountKeyRepository>();
+
+                        if(keys.TableExists())
+                            keys.DropTable();
+                        
+                        keys.CreateTable();
+                        keys.InsertAccountKey(sysopUserId, "DEMO");
+                        keys.InsertAccountKey(sysopUserId, "NORMAL");
+                        keys.InsertAccountKey(sysopUserId, "SUPER");
+                        keys.InsertAccountKey(sysopUserId, "SYSOP");
+                        _logger.Info("Database Reset!");
+                        break;
+                    }
                     case "-M":
                         sInputModule = args[i + 1];
                         i++;

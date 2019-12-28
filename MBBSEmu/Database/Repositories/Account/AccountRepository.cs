@@ -33,15 +33,15 @@ namespace MBBSEmu.Database.Repositories.Account
             return result.Any();
         }
 
-        public bool InsertAccount(string userName, string plaintextPassword, string email)
+        public int InsertAccount(string userName, string plaintextPassword, string email)
         {
             var passwordSaltBytes = GenerateSalt();
             var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(plaintextPassword), passwordSaltBytes);
-
             var passwordSalt = System.Convert.ToBase64String(passwordSaltBytes);
             var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
-            var result = Query(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email });
-            return result.Any();
+
+            var result = Query<int>(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email });
+            return result.First();
         }
 
         public AccountModel GetAccountByUsername(string userName)

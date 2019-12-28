@@ -7,7 +7,7 @@ namespace MBBSEmu.Database.Repositories.Account
         bool CreateTable();
         bool TableExists();
         bool DropTable();
-        bool InsertAccount(string username, string plaintextPassword, string email);
+        int InsertAccount(string userName, string plaintextPassword, string email);
         AccountModel GetAccountByUsername(string userName);
         AccountModel GetAccountByUsernameAndPassword(string userName, string password);
     }

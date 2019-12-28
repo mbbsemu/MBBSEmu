@@ -12,6 +12,8 @@
     <None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
     <None Remove="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
     <None Remove="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
+    <None Remove="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
+    <None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
     <None Remove="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <None Remove="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
     <None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
@@ -25,6 +27,8 @@
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
+    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
+    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
