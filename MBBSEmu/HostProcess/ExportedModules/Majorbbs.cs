@@ -689,9 +689,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            if (userNumber != 1)
-                throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
-
             Module.Memory.SetArray((ushort)EnumHostSegments.UsrAcc, 0, ChannelDictionary[userNumber].UsrAcc.ToSpan());
 
             Registers.AX = 0;
