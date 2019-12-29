@@ -655,12 +655,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray()).ToUpper();
 
             using var string2InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
+            string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
             var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
 
             var resultValue = string1InputValue == string2InputValue;
 #if DEBUG
-            _logger.Info($"Returned {resultValue} comparing {string1InputValue} to {string2InputValue}");
+            _logger.Info($"Returned {resultValue} comparing {string1InputValue} ({string1Segment:X4}:{string1Offset:X4}) to {string2InputValue} ({string2Segment:X4}:{string2Offset:X4})");
 #endif
 
             Registers.AX = (ushort)(resultValue ? 1 : 0);
