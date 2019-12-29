@@ -964,7 +964,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{month:D2}/{day:D2}/{year:D2}\0";
+            var outputDate = $"{month:D2}/{day:D2}/{year%100}\0";
 
             if (!HostMemoryVariables.TryGetValue("NCDATE", out var variablePointer))
             {

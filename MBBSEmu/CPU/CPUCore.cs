@@ -5,6 +5,7 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MBBSEmu.DependencyInjection;
 
@@ -97,6 +98,9 @@ namespace MBBSEmu.CPU
 #if DEBUG
             //_logger.InfoRegisters(this);
             //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+
+            //if(Registers.IP == 0x1A3C)
+               // System.Diagnostics.Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)

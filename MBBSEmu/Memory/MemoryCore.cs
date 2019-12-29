@@ -20,7 +20,7 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Segment> _segments;
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
-        private ushort _hostMemoryOffset = 0x0;
+        private ushort _hostMemoryOffset;
 
         public MemoryCore()
         {

@@ -67,11 +67,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
 
-        private static readonly char[] _printfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
-        private static readonly char[] _printfFlags = {'-', '+', ' ', '#', '0'};
-        private static readonly char[] _printfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
-        private static readonly char[] _printfPrecision = {'.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
-        private static readonly char[] _printfLength = {'h', 'l', 'j', 'z', 't', 'L'};
+        private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
+        private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
+        private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+        private static readonly char[] PrintfPrecision = {'.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private static readonly char[] PrintfLength = {'h', 'l', 'j', 'z', 't', 'L'};
 
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
@@ -83,7 +83,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return false;
         }
 
-        private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == _printfPrecision[0];
+        private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == PrintfPrecision[0];
 
         /// <summary>
         ///     Printf Parsing and Encoding
@@ -106,7 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     //Process Flags
                     var stringFlags = EnumPrintfFlags.None;
-                    while (InSpan(_printfFlags, stringToParse.Slice(i, 1)))
+                    while (InSpan(PrintfFlags, stringToParse.Slice(i, 1)))
                     {
                         switch ((char) stringToParse[i])
                         {
@@ -132,7 +132,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Process Width
                     var stringWidth = 0;
                     var stringWidthValue = string.Empty;
-                    while (InSpan(_printfWidth, stringToParse.Slice(i, 1)))
+                    while (InSpan(PrintfWidth, stringToParse.Slice(i, 1)))
                     {
                         switch ((char) stringToParse[i])
                         {
@@ -152,7 +152,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Process Precision
                     var stringPrecision = 0;
                     var stringPrecisionValue = string.Empty;
-                    while (InSpan(_printfPrecision, stringToParse.Slice(i, 1)))
+                    while (InSpan(PrintfPrecision, stringToParse.Slice(i, 1)))
                     {
                         switch ((char)stringToParse[i])
                         {
@@ -173,13 +173,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     //Process Length
                     //TODO -- We'll process it but ignore it for now
-                    while (InSpan(_printfLength, stringToParse.Slice(i, 1)))
+                    while (InSpan(PrintfLength, stringToParse.Slice(i, 1)))
                     {
                         i++;
                     }
 
                     //Finally i should be at the specifier 
-                    if (!InSpan(_printfSpecifiers, stringToParse.Slice(i, 1)))
+                    if (!InSpan(PrintfSpecifiers, stringToParse.Slice(i, 1)))
                         throw new Exception("Invalid printf format");
 
                     switch ((char) stringToParse[i])
