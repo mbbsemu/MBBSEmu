@@ -60,6 +60,9 @@
 
         SignupPasswordInput,
 
+        SignupPasswordConfirmDisplay,
+        SignupPasswordConfirmInput,
+
         SignupEmailDisplay,
         SignupEmailInput,
 

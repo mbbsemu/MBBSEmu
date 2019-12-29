@@ -1,6 +1,6 @@
 ﻿using MBBSEmu.HostProcess.Models;
-using MBBSEmu.Extensions;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace MBBSEmu.Session
@@ -23,6 +23,11 @@ namespace MBBSEmu.Session
         ///     This Users UsrPtr* which is passed in from MajorBBS
         /// </summary>
         public User UsrPrt;
+
+        /// <summary>
+        ///     This Users UsrAcc* which is pass in from MajorBBS
+        /// </summary>
+        public UserAccount UsrAcc;
         
         /// <summary>
         ///     This Users Number/Channel Number (used to identify target for output)
@@ -69,11 +74,17 @@ namespace MBBSEmu.Session
 
         public MemoryStream InputBuffer;
 
-        public string Username;
+        public string Username
+        {
+            get => UsrAcc.GetUserId();
+            set => UsrAcc.SetUserId(value);
+        }
 
         public string Password;
 
         public string email;
+
+        public Stopwatch SessionTimer;
 
         protected UserSession(string sessionId)
         {
@@ -81,9 +92,11 @@ namespace MBBSEmu.Session
             DataFromClient = new Queue<byte[]>();
             DataToClient = new Queue<byte[]>();
             UsrPrt = new User();
+            UsrAcc = new UserAccount();
             Status = 0;
             EchoBuffer = new MemoryStream(256);
             InputBuffer = new MemoryStream(256);
+            SessionTimer = new Stopwatch();
         }
     }
 }

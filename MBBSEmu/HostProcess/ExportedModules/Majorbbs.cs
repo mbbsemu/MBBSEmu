@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.Models;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -691,7 +692,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (userNumber != 1)
                 throw new Exception($"Should only ever receive a User Number of 1, value passed in: {userNumber}");
 
-            Module.Memory.SetArray((ushort)EnumHostSegments.UsrAcc, 0, Encoding.Default.GetBytes("wndrbr3d\0"));
+            Module.Memory.SetArray((ushort)EnumHostSegments.UsrAcc, 0, ChannelDictionary[userNumber].UsrAcc.ToSpan());
 
             Registers.AX = 0;
             Registers.DX = (ushort)EnumHostSegments.UsrAcc;

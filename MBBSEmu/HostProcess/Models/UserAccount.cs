@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.Models
 {
-
-
-    public class UsrAcc
+    public class UserAccount
     {
-
         /// <summary>
         ///     user-id size (including trailing zero)
         /// </summary>
@@ -34,16 +30,6 @@ namespace MBBSEmu.HostProcess.Models
         ///     key (and class) name size (ditto)
         /// </summary>
         public const int KEYSIZ = 16;
-
-        /// <summary>
-        ///     maximum size for uid cross ref strings
-        /// </summary>
-        public const int XRFSIZ = 16;
-
-        /// <summary>
-        ///     size for class exit messages
-        /// </summary>
-        public const int XMSGSZ = 640;
 
         /// <summary>
         ///     number of ints for "access" info
@@ -222,7 +208,7 @@ namespace MBBSEmu.HostProcess.Models
 
         private byte[] _usrAccStructBytes;
 
-        public UsrAcc()
+        public UserAccount()
         {
             _usrAccStructBytes = new byte[338];
             userid = new byte[UIDSIZ];
@@ -273,6 +259,23 @@ namespace MBBSEmu.HostProcess.Models
             msOutput.Write(usrnam);
             _usrAccStructBytes = msOutput.ToArray();
             return _usrAccStructBytes;
+        }
+
+        /// <summary>
+        ///     Takes the specified String Username and saves it to the userid field in the UsrAcc 'struct'
+        /// </summary>
+        /// <param name="username"></param>
+        public void SetUserId(string username)
+        {
+            var newUserId = new byte[UIDSIZ];
+            Array.Copy(Encoding.ASCII.GetBytes(username + "\0"), 0, newUserId, 0, username.Length);
+            userid = newUserId;
+        }
+
+        public string GetUserId()
+        {
+            Span<byte> useridSpan = userid;
+            return Encoding.ASCII.GetString(useridSpan.Slice(0, Array.IndexOf(userid, (byte)0x0)));
         }
     }
 }
