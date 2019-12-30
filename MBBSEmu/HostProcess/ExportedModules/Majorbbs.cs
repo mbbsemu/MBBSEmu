@@ -9,7 +9,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.Models;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -577,6 +576,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
                 Registers.AX = 0;
                 Registers.DX = 0;
+                Registers.F.SetFlag(EnumFlags.CF);
                 return 0;
             }
 
@@ -584,9 +584,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Cast {inputValue} ({sourceSegment:X4}:{sourceOffset:X4}) to long");
 #endif
 
-            Registers.AX = (ushort)(outputValue >> 16);
-            Registers.DX = (ushort)(outputValue & 0xFFFF);
-
+            Registers.DX = (ushort)(outputValue >> 16);
+            Registers.AX = (ushort)(outputValue & 0xFFFF);
+            Registers.F.ClearFlag(EnumFlags.CF);
             return 0;
         }
 
@@ -845,10 +845,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ushort addcrd()
         {
             var real = GetParameter(0);
-            var string1Offset = GetParameter(1);
-            var string1Segment = GetParameter(2);
-            var string2Offset = GetParameter(3);
-            var string2Segment = GetParameter(4);
+            var string1Segment = GetParameter(1);
+            var string1Offset = GetParameter(2);
+            var string2Segment = GetParameter(3);
+            var string2Offset = GetParameter(4);
 
             using var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));

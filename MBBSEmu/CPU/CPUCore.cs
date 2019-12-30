@@ -7,6 +7,7 @@ using NLog;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using MBBSEmu.DependencyInjection;
 
 namespace MBBSEmu.CPU
@@ -99,8 +100,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0x1A3C)
-               // System.Diagnostics.Debugger.Break();
+            //if(Registers.IP == 0x1661)
+                //Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -221,13 +222,16 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Lds:
                     Op_Lds();
                     break;
+                case Mnemonic.Int:
+                    Op_Int();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-           //_logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -367,6 +371,27 @@ namespace MBBSEmu.CPU
                 _ => -1
             };
             return operationSize;
+        }
+
+        private void Op_Int()
+        {
+            switch (_currentInstruction.Immediate8)
+            {
+                case 0x21:
+                    Op_Int_21h();
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown INT: {_currentInstruction.Immediate8:X2}");
+            }
+        }
+
+        private void Op_Int_21h()
+        {
+            switch (Registers.AH)
+            {
+                default:
+                    throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: {Registers.AH:X2}");
+            }
         }
 
         private void Op_Cwd()
@@ -1225,6 +1250,14 @@ namespace MBBSEmu.CPU
                         else
 
                         {
+                            //Relocation Record pointing to an internal Int16:Int16 address
+                            if (relocationRecord.Flag == EnumRecordsFlag.INTERNALREF)
+                            {
+                                Registers.CS = relocationRecord.TargetTypeValueTuple.Item2;
+                                Registers.IP = relocationRecord.TargetTypeValueTuple.Item3;
+                                return;
+                            }
+
                             //Simulate an ENTER
                             //Set BP to the current stack pointer
                             var priorToCallBp = Registers.BP;

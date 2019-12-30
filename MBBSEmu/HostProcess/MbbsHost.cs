@@ -179,6 +179,7 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.UserNum);
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
+            module.Memory.AddSegment(EnumHostSegments.ChannelArray);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)
@@ -236,6 +237,7 @@ namespace MBBSEmu.HostProcess
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
                 module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
+                module.Memory.SetArray((ushort)EnumHostSegments.ChannelArray, 0, GetChannelArray());
 
                //_logger.Info($"Channel {channelNumber}: Running {routineName}");
 
@@ -296,6 +298,7 @@ namespace MBBSEmu.HostProcess
             }
             
         }
+
         private IExportedModule GetFunctions(MbbsModule module, string exportedModule)
         {
             var key = $"{module.ModuleIdentifier}-{exportedModule}";
@@ -313,6 +316,23 @@ namespace MBBSEmu.HostProcess
             }
 
             return functions;
+        }
+
+        /// <summary>
+        ///     Builds the int channel[] array that links user numbers to channels.
+        /// </summary>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> GetChannelArray()
+        {
+            var arrayOutput = new byte[1024];
+
+            ushort channelsWritten = 0;
+            foreach (var k in _channelDictionary.Keys)
+            {
+                Array.Copy(BitConverter.GetBytes((ushort)k), k + (2*channelsWritten++), arrayOutput, 0, 2);
+            }
+
+            return arrayOutput;
         }
 
         /*
