@@ -3,12 +3,11 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
-using MBBSEmu.Extensions;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
+using System.Linq;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -32,6 +31,9 @@ namespace MBBSEmu.HostProcess
         private bool _isAddingModule;
         private bool _isAddingSession;
         private readonly IMbbsRoutines _mbbsRoutines;
+
+        private readonly Queue<UserSession> _incomingSessions;
+
         public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines)
         {
             _logger = logger;
@@ -42,6 +44,7 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _cpu = new CpuCore();
             _realTimeStopwatch = Stopwatch.StartNew();
+            _incomingSessions = new Queue<UserSession>();
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -70,7 +73,27 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                if (!_isAddingSession && !_isAddingModule)
+                //Add any incoming new sessions
+                while (_incomingSessions.TryDequeue(out var incomingSession))
+                {
+                    incomingSession.Channel = (ushort)_channelDictionary.Allocate(incomingSession);
+                    _logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
+                }
+
+                //Any Disconnects
+                for (ushort i = 0; i < _channelDictionary.Count; i++)
+                {
+                    if (_channelDictionary.ContainsKey(i))
+                    {
+                        if (_channelDictionary[i].SessionState == EnumSessionState.LoggedOff)
+                        {
+                            _logger.Info($"Removing LoggedOff Channel: {i}");
+                            _channelDictionary.Remove(i);
+                        }
+                    }
+                }
+
+                if (!_isAddingModule)
                 {
                     //Process Channels
                     foreach (var s in _channelDictionary.Values)
@@ -80,11 +103,11 @@ namespace MBBSEmu.HostProcess
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
-                                Run(s.ModuleIdentifier, "sttrou", s.Channel);
-                                Run(s.ModuleIdentifier, "stsrou", s.Channel);
                                 s.SessionState = EnumSessionState.InModule;
+                                Run(s.ModuleIdentifier, "sttrou", s.Channel);
                                 continue;
                             }
+
                             case EnumSessionState.InModule:
                             {
                                 //Did the text change cause a status update
@@ -143,19 +166,6 @@ namespace MBBSEmu.HostProcess
                         _realTimeStopwatch.Restart();
                     }
                 }
-
-                //Cleanup Logged Off
-                for (ushort i = 0; i < _channelDictionary.Count; i++)
-                {
-                    if (_channelDictionary.ContainsKey(i))
-                    {
-                        if (_channelDictionary[i].SessionState == EnumSessionState.LoggedOff)
-                        {
-                            _logger.Info($"Removing LoggedOff Channel: {i}");
-                            _channelDictionary.Remove(i);
-                        }
-                    }
-                }
             }
         }
 
@@ -204,10 +214,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         public void AddSession(UserSession session)
         {
-            _isAddingSession = true;
-            session.Channel = (ushort)_channelDictionary.Allocate(session);
-            _logger.Info($"Added Session {session.SessionId} to Channel {session.Channel}");
-            _isAddingSession = false;
+            _incomingSessions.Enqueue(session);
+            _logger.Info($"Session {session.SessionId} added to incoming queue");
         }
 
         /// <summary>
@@ -329,7 +337,7 @@ namespace MBBSEmu.HostProcess
             ushort channelsWritten = 0;
             foreach (var k in _channelDictionary.Keys)
             {
-                Array.Copy(BitConverter.GetBytes((ushort)k), k + (2*channelsWritten++), arrayOutput, 0, 2);
+                Array.Copy(BitConverter.GetBytes((ushort)k), 0, arrayOutput, k + (2 * channelsWritten++), 2);
             }
 
             return arrayOutput;

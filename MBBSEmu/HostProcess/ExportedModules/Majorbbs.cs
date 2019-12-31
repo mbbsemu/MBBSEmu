@@ -659,6 +659,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
 
             var resultValue = string1InputValue == string2InputValue;
+
 #if DEBUG
             _logger.Info($"Returned {resultValue} comparing {string1InputValue} ({string1Segment:X4}:{string1Offset:X4}) to {string2InputValue} ({string2Segment:X4}:{string2Offset:X4})");
 #endif

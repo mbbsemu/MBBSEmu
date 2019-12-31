@@ -287,6 +287,7 @@ namespace MBBSEmu.HostProcess
 
                     //Clear the Input Buffer
                     session.InputBuffer.SetLength(0);
+                    return;
                 }
 
                 EchoToClient(session, inputBytes);
