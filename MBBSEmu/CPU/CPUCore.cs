@@ -211,6 +211,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Shl:
                     Op_Shl();
                     break;
+                case Mnemonic.Shr:
+                    Op_Shr();
+                    break;
+                case Mnemonic.Rcr:
+                    Op_Rcr();
+                    break;
                 case Mnemonic.Or:
                     Op_Or();
                     break;
@@ -545,6 +551,168 @@ namespace MBBSEmu.CPU
             }
         }
 
+        private void Op_Rcr()
+        {
+            //Get Comparison Operation Size
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
+                ? Op_Rcr_8(destination, source)
+                : Op_Rcr_16(destination, source);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 1:
+                {
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte)result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 2:
+                {
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Destination for SUB: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        private byte Op_Rcr_8(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (byte)destination;
+                for (var i = 0; i < source; i++)
+                {
+                    //Determine the CF Value after rotation+carry
+                    var newCFValue = result.IsBitSet(0);
+
+                    //Perform Rotation
+                    result = (byte)(result >> 1);
+
+                    //If CF was set, rotate that value in
+                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                        result.SetFlag(1 << 7);
+
+                    //Set new CF Value
+                    if (newCFValue)
+                    {
+                        Registers.F.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.F.ClearFlag(EnumFlags.CF);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        private ushort Op_Rcr_16(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = destination;
+                for (var i = 0; i < source; i++)
+                {
+                    //Determine the CF Value after rotation+carry
+                    var newCFValue = result.IsBitSet(0);
+
+                    //Perform Rotation
+                    result = (ushort)(result >> 1);
+
+                    //If CF was set, rotate that value in
+                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                        result.SetFlag(1 << 15);
+
+                    //Set new CF Value
+                    if (newCFValue)
+                    {
+                        Registers.F.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.F.ClearFlag(EnumFlags.CF);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        private void Op_Shr()
+        {
+            //Get Comparison Operation Size
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
+                ? Op_Shr_8(destination, source)
+                : Op_Shr_16(destination, source);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register, result);
+                        return;
+                    }
+                case OpKind.Memory when operationSize == 1:
+                    {
+                        Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte)result);
+                        return;
+                    }
+                case OpKind.Memory when operationSize == 2:
+                    {
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
+                        return;
+                    }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Destination for SUB: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte Op_Shr_8(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (byte)(destination >> (sbyte)source);
+                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Shr_16(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (ushort)(destination >> source);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                return result;
+            }
+        }
+
         private void Op_Shl()
         {
             //Get Comparison Operation Size
@@ -600,8 +768,8 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination << source);
-                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination);
+                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.PF, result);

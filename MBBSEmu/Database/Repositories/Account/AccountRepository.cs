@@ -62,6 +62,11 @@ namespace MBBSEmu.Database.Repositories.Account
             return account.passwordHash == passwordHash ? account : null;
         }
 
+        public AccountModel GetAccountByEmail(string email)
+        {
+            return Query<AccountModel>(EnumQueries.GetAccountByUsername, new { email }).FirstOrDefault();
+        }
+
 
         /// <summary>
         ///     Generates a cryptographically strong random sequence of bytes

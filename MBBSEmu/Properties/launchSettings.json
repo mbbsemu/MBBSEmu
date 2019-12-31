@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-m GWWARROW -p c:\\dos\\install\\ -dbreset"
+      "commandLineArgs": "-m SFABLX -p c:\\dos\\modules\\blox\\ -dbreset"
     }
   }
 }

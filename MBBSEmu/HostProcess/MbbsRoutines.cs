@@ -500,6 +500,16 @@ namespace MBBSEmu.HostProcess
                         session.InputBuffer.SetLength(0);
                         return;
                     }
+
+                    if (_accountRepository.GetAccountByEmail(inputValue) != null)
+                    {
+                        EchoToClient(session, "\r\n|RED|B|This email address is already in use on another account. Please".EncodeToANSIArray());
+                        EchoToClient(session, "\r\n|RED|B|login using that account or choose another email address.\r\n|RESET|".EncodeToANSIArray());
+                        session.SessionState = EnumSessionState.SignupEmailDisplay;
+                        session.InputBuffer.SetLength(0);
+                        return;
+                    }
+
                     session.email = inputValue;
 
                     //Create the user in the database
