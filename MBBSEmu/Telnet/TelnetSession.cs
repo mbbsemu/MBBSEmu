@@ -57,6 +57,13 @@ namespace MBBSEmu.Telnet
                     var bytesSent = _telnetConnection.Send(sendBuffer, SocketFlags.None, out var socketState);
                     ValidateSocketState(socketState);
                 }
+
+                if (SessionState == EnumSessionState.LoggingOffProcessing)
+                {
+                    SessionState = EnumSessionState.LoggedOff;
+                    return;
+                }
+
                 Thread.Sleep(5);
             }
 

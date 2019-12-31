@@ -844,22 +844,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public ushort addcrd()
         {
-            var real = GetParameter(0);
+            var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
-            var string1Offset = GetParameter(2);
+            var string2Offset = GetParameter(2);
             var string2Segment = GetParameter(3);
-            var string2Offset = GetParameter(4);
+            var real = GetParameter(4);
 
             using var string1InputBuffer = new MemoryStream();
             string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
             var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray());
 
             using var string2InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
+            string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
             var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray());
 
 #if DEBUG
-            _logger.Info($"Added {string1InputValue} credits to user account {string2InputValue} (unlimited -- this function is ignored)");
+            _logger.Info($"Added {string2InputValue} credits to user account {string1InputValue} (unlimited -- this function is ignored)");
 #endif
 
             return 0;

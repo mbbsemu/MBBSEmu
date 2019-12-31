@@ -12,22 +12,22 @@
         /// <summary>
         ///     Displaying the Username Prompt for Input
         /// </summary>
-        DisplayingLoginUsername,
+        LoginUsernameDisplay,
 
         /// <summary>
         ///     User is being prompted for their Username
         /// </summary>
-        AuthenticatingUsername,
+        LoginUsernameInput,
 
         /// <summary>
         ///     Displaying the Password Prompt for Input
         /// </summary>
-        DisplayingLoginPassword,
+        LoginPasswordDisplay,
 
         /// <summary>
         ///     User is being prompted for their Password
         /// </summary>
-        AuthenticatingPassword,
+        LoginPasswordInput,
 
         /// <summary>
         ///     User is Logging in / being Authenticated
@@ -93,7 +93,9 @@
         /// <summary>
         ///     User is in the process of Logging Off
         /// </summary>
-        LoggingOff,
+        LoggingOffDisplay,
+
+        LoggingOffProcessing,
 
         /// <summary>
         ///     User is logged off, dispose of Session

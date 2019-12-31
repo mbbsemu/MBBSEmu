@@ -1,14 +1,12 @@
 ﻿using Iced.Intel;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using MBBSEmu.DependencyInjection;
 
 namespace MBBSEmu.CPU
 {

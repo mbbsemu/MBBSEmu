@@ -38,16 +38,16 @@ namespace MBBSEmu.HostProcess
                 case EnumSessionState.Unauthenticated:
                     WelcomeScreenDisplay(session);
                     return;
-                case EnumSessionState.DisplayingLoginUsername:
+                case EnumSessionState.LoginUsernameDisplay:
                     LoginUsernameDisplay(session);
                     return;
-                case EnumSessionState.AuthenticatingUsername:
+                case EnumSessionState.LoginUsernameInput:
                     LoginUsernameInput(session);
                     return;
-                case EnumSessionState.DisplayingLoginPassword:
+                case EnumSessionState.LoginPasswordDisplay:
                     LoginPasswordDisplay(session);
                     return;
-                case EnumSessionState.AuthenticatingPassword:
+                case EnumSessionState.LoginPasswordInput:
                     LoginPasswordInput(session);
                     return;
                 case EnumSessionState.SignupPasswordConfirmDisplay:
@@ -86,7 +86,7 @@ namespace MBBSEmu.HostProcess
                 case EnumSessionState.SignupEmailInput:
                     SignupEmailInput(session);
                     return;
-                case EnumSessionState.LoggingOff:
+                case EnumSessionState.LoggingOffDisplay:
                     LoggingOffDisplay(session);
                     return;
                 default:
@@ -143,14 +143,14 @@ namespace MBBSEmu.HostProcess
             session.DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x48 });
             session.DataToClient.Enqueue(_resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
             session.DataToClient.Enqueue(Encoding.ASCII.GetBytes("\r\n "));
-            session.SessionState = EnumSessionState.DisplayingLoginUsername;
+            session.SessionState = EnumSessionState.LoginUsernameDisplay;
         }
 
         private void LoginUsernameDisplay(UserSession session)
         {
             session.DataToClient.Enqueue("\r\n|YELLOW|Enter Username or enter \"|B|NEW|!B|\" to create a new Account\r\n".EncodeToANSIArray());
             session.DataToClient.Enqueue("|B||WHITE|Username:|!B| ".EncodeToANSIArray());
-            session.SessionState = EnumSessionState.AuthenticatingUsername;
+            session.SessionState = EnumSessionState.LoginUsernameInput;
         }
 
         private void LoginUsernameInput(UserSession session)
@@ -179,7 +179,7 @@ namespace MBBSEmu.HostProcess
 
                     session.Username = inputValue;
                     session.InputBuffer.SetLength(0);
-                    session.SessionState = EnumSessionState.DisplayingLoginPassword;
+                    session.SessionState = EnumSessionState.LoginPasswordDisplay;
                     return;
                 }
 
@@ -190,7 +190,7 @@ namespace MBBSEmu.HostProcess
         private void LoginPasswordDisplay(UserSession session)
         {
             session.DataToClient.Enqueue("\r\n|B||WHITE|Password:|!B| ".EncodeToANSIArray());
-            session.SessionState = EnumSessionState.AuthenticatingPassword;
+            session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 
         private void LoginPasswordInput(UserSession session)
@@ -206,7 +206,7 @@ namespace MBBSEmu.HostProcess
                     //Get The Password
                     session.Password = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
                     session.InputBuffer.SetLength(0);
-                    session.SessionState = EnumSessionState.DisplayingLoginPassword;
+                    session.SessionState = EnumSessionState.LoginPasswordDisplay;
 
                     //See if the Account exists
                     var accountRepo = DependencyInjection.ServiceResolver.GetService<IAccountRepository>();
@@ -215,7 +215,7 @@ namespace MBBSEmu.HostProcess
                     if (account == null)
                     {
                         EchoToClient(session, "\r\n\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
-                        session.SessionState = EnumSessionState.DisplayingLoginUsername;
+                        session.SessionState = EnumSessionState.LoginUsernameDisplay;
                         return;
                     }
 
@@ -316,7 +316,7 @@ namespace MBBSEmu.HostProcess
                     switch (inputValue)
                     {
                         case "Y":
-                            session.SessionState = EnumSessionState.LoggingOff;
+                            session.SessionState = EnumSessionState.LoggingOffDisplay;
                             break;
                         case "N":
                             session.SessionState = EnumSessionState.MainMenuDisplay;
@@ -345,8 +345,8 @@ namespace MBBSEmu.HostProcess
 
         private void LoggingOffDisplay(UserSession session)
         {
-            EchoToClient(session, "\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day... ".EncodeToANSIArray());
-            session.SessionState = EnumSessionState.LoggedOff;
+            EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
+            session.SessionState = EnumSessionState.LoggingOffProcessing;
         }
 
         private void SignupUsernameDisplay(UserSession session)
