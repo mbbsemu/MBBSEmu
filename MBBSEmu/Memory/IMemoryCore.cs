@@ -1,7 +1,7 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess;
+using System;
 
 namespace MBBSEmu.Memory
 {

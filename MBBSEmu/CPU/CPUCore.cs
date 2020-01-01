@@ -72,6 +72,9 @@ namespace MBBSEmu.CPU
         public ushort Pop()
         {
             var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
+#if DEBUG
+            _logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
+#endif
             Registers.SP += 2;
             return value;
         }
@@ -79,6 +82,10 @@ namespace MBBSEmu.CPU
         public void Push(ushort value)
         {
             Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
+
+#if DEBUG
+            _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+#endif
             Registers.SP -= 2;
         }
 
@@ -239,7 +246,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            //_logger.InfoRegisters(this);
+            _logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -1514,7 +1521,8 @@ namespace MBBSEmu.CPU
                                 _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
 
-                            //Simulate a LEAVE & retf
+                                //Simulate a LEAVE & retf
+                            Registers.SP = Registers.BP;
                             Registers.SetValue(Register.BP, Pop());
                             Registers.SetValue(Register.EIP, Pop());
                             Registers.SetValue(Register.CS, Pop());
