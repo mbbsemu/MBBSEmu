@@ -115,6 +115,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 643 => vsprintf(),
                 1189 => scnmdf(),
                 435 => now(),
+                657 => f_lumod(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -1520,6 +1521,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             Registers.AX = (ushort)packedTime;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Modulo, non-significant (Borland C++ Implicit Function)
+        ///
+        ///     Signature: DX:AX = arg1 % arg2
+        /// </summary>
+        /// <returns></returns>
+        public ushort f_lumod()
+        {
+            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            var arg2 = (GetParameter(3) << 16) | GetParameter(2);
+
+            var result = arg1 % arg2;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
 
             return 0;
         }

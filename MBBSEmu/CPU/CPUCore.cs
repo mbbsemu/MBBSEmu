@@ -1392,7 +1392,7 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var quotient = Math.DivRem(destination, source, out var remainder);
+                var quotient = Math.DivRem(source, destination, out var remainder);
                 Registers.AL = (byte) quotient;
                 Registers.AH = (byte) remainder;
                 return 0;
@@ -1404,7 +1404,7 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var quotient = Math.DivRem(destination, source, out var remainder);
+                var quotient = Math.DivRem(source, destination, out var remainder);
                 Registers.AX = (ushort)quotient;
                 Registers.DX = (ushort)remainder;
                 return 0;
