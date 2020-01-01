@@ -9,6 +9,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -108,6 +110,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 559 => spr(),
                 659 => f_lxmul(),
                 654 => f_ldiv(),
+                113 => clrprf(),
+                65 => alcmem(),
+                643 => vsprintf(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -169,6 +174,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             return 0;
         }
+
+        /// <summary>
+        ///     Allocates Memory
+        ///
+        ///     Functionally, for our purposes, the same as alczer
+        /// </summary>
+        /// <returns></returns>
+        public ushort alcmem() => alczer();
 
         /// <summary>
         ///     Get's a module's name from the specified .MDF file
@@ -718,6 +731,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
+#endif
+
+            return 0;
+        }
+
+
+        /// <summary>
+        ///     Resets prf buffer
+        /// </summary>
+        /// <returns></returns>
+        public ushort clrprf()
+        {
+            _outputBuffer.SetLength(0);
+
+#if DEBUG
+            _logger.Info("Reset Output Buffer");
 #endif
 
             return 0;
@@ -1385,6 +1414,81 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SP -= 2;
             Module.Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), Registers.CS);
             Registers.SP -= 2;
+            return 0;
+        }
+
+        /// <summary>
+        ///     Writes formatted data from variable argument list to string
+        ///
+        ///     similar to prf, but the destination is a char*, but the output buffer
+        /// </summary>
+        /// <returns></returns>
+        public ushort vsprintf()
+        {
+            var targetOffset = GetParameter(0);
+            var targetSegment = GetParameter(1);
+            var formatOffset = GetParameter(2);
+            var formatSegment = GetParameter(3);
+            var vaListOffset = GetParameter(4);
+            var vaListSegment = GetParameter(5);
+
+            var valueAtPointer = Module.Memory.GetString(vaListSegment, vaListOffset);
+
+            var valueString = Encoding.Default.GetString(valueAtPointer);
+            //var vaList = new va_list(Module.Memory.GetArray(vaListSegment, vaListOffset, 12));
+
+            var output = Module.Memory.GetString(formatSegment, formatOffset);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 4);
+
+            Module.Memory.SetArray(targetSegment, targetOffset, formattedMessage);
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Scans the specified MDF file for a line prefix that matches the specified string
+        /// 
+        ///     Signature: char *scnmdf(char *mdfnam,char *linpfx);
+        ///     Returns: AX = Offset of String
+        ///              DX = Segment of String
+        /// </summary>
+        /// <returns></returns>
+        public ushort scnmdf()
+        {
+            var mdfnameOffset = GetParameter(0);
+            var mdfnameSegment = GetParameter(1);
+            var lineprefixOffset = GetParameter(2);
+            var lineprefixSegment = GetParameter(3);
+
+            var mdfNameBytes = Module.Memory.GetString(mdfnameSegment, mdfnameOffset);
+            var mdfName = Encoding.ASCII.GetString(mdfNameBytes);
+
+            var lineprefixBytes = Module.Memory.GetString(lineprefixSegment, lineprefixOffset);
+            var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
+
+            foreach (var line in File.ReadAllLines($"{Module.ModulePath}{mdfName}"))
+            {
+                if (line.StartsWith(lineprefix))
+                {
+                    var result = Encoding.ASCII.GetBytes(line.Split(':')[1] + "\0");
+
+                    if (result.Length > 256)
+                        throw new OverflowException("SCNMDF result is > 256 bytes");
+
+                    if (!HostMemoryVariables.TryGetValue($"SCNMDF", out var variablePointer))
+                    {
+                        var offset = Module.Memory.AllocateHostMemory(256);
+                        variablePointer = new IntPtr16((ushort) EnumHostSegments.HostMemorySegment, offset);
+                    }
+
+                    Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, result);
+                    Registers.AX = variablePointer.Segment;
+                    Registers.DX = variablePointer.Offset;
+                }
+            }
+
             return 0;
         }
     }

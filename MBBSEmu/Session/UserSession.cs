@@ -1,7 +1,7 @@
-﻿using MBBSEmu.HostProcess.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.Session
 {

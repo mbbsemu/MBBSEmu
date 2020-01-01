@@ -6,6 +6,7 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -96,9 +97,9 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0x1661)
+            //if(Registers.IP == 0x2D)
                 //Debugger.Break();
 #endif
 
@@ -521,6 +522,23 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, result);
                     operationSize = _currentInstruction.Op0Register.GetSize();
                     break;
+                case OpKind.Memory:
+                {
+
+                    if (_currentInstruction.MemorySize == MemorySize.UInt8)
+                    {
+                        operationSize = 1;
+                        Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), (byte)result);
+                    }
+                    else
+                    {
+                        operationSize = 2;
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), result);
+                    }
+
+                    break;
+                }
+
                 default:
                     throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
@@ -1421,9 +1439,9 @@ namespace MBBSEmu.CPU
             {
                 case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
                 {
-                    //We push CS:IP to the stack
-                    Push(Registers.IP);
-                    Push(Registers.CS);
+                        //We push CS:IP to the stack
+                        Push(Registers.CS);
+                        Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
 
                     //Check for a possible relocation
                     int destinationValue;
@@ -1437,27 +1455,27 @@ namespace MBBSEmu.CPU
                         else
 
                         {
+                            //Simulate an ENTER
+                            //Set BP to the current stack pointer
+                            var priorToCallBp = Registers.BP;
+                            Push(Registers.BP);
+                            Registers.BP = Registers.SP;
+
                             //Relocation Record pointing to an internal Int16:Int16 address
                             if (relocationRecord.Flag == EnumRecordsFlag.INTERNALREF)
                             {
                                 Registers.CS = relocationRecord.TargetTypeValueTuple.Item2;
-                                Registers.IP = relocationRecord.TargetTypeValueTuple.Item3;
+                                Registers.IP = relocationRecord.TargetTypeValueTuple.Item4;
                                 return;
                             }
-
-                            //Simulate an ENTER
-                            //Set BP to the current stack pointer
-                            var priorToCallBp = Registers.BP;
-                            Registers.BP = Registers.SP;
 
                             _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
 
                             //Simulate a LEAVE & retf
-                            Registers.BP = priorToCallBp;
-                            Registers.SetValue(Register.CS, Pop());
+                            Registers.SetValue(Register.BP, Pop());
                             Registers.SetValue(Register.EIP, Pop());
-                            Registers.IP += (ushort) _currentInstruction.ByteLength;
+                            Registers.SetValue(Register.CS, Pop());
                             return;
                         }
                     }
