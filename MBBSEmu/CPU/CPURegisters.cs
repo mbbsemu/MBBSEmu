@@ -358,6 +358,9 @@ namespace MBBSEmu.CPU
             }
         }
 
-
+        public int GetLong(Register highBytes, Register lowBytes)
+        {
+            return (GetValue(highBytes) << 16) | GetValue(lowBytes);
+        }
     }
 }

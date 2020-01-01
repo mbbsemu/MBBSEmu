@@ -171,6 +171,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Imul:
                     Op_Imul();
                     break;
+                case Mnemonic.Idiv:
+                    Op_Idiv();
+                    break;
                 case Mnemonic.Push:
                     Op_Push();
                     break;
@@ -1368,6 +1371,46 @@ namespace MBBSEmu.CPU
             }
         }
 
+        private void Op_Idiv()
+        {
+            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            switch (GetCurrentOperationSize())
+            {
+                case 1:
+                    
+                    Op_Idiv_8(Registers.AX, (byte) source);
+                    return;
+                case 2:
+                    Op_Idiv_16(Registers.GetLong(Register.DX, Register.AX), source);
+                    return;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Idiv_8(ushort source, ushort destination)
+        {
+            unchecked
+            {
+                var quotient = Math.DivRem(destination, source, out var remainder);
+                Registers.AL = (byte) quotient;
+                Registers.AH = (byte) remainder;
+                return 0;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Idiv_16(int source, ushort destination)
+        {
+            unchecked
+            {
+                var quotient = Math.DivRem(destination, source, out var remainder);
+                Registers.AX = (ushort)quotient;
+                Registers.DX = (ushort)remainder;
+                return 0;
+            }
+        }
+
         private void Op_Pop()
         {
             var popValue = Pop();
@@ -1455,12 +1498,6 @@ namespace MBBSEmu.CPU
                         else
 
                         {
-                            //Simulate an ENTER
-                            //Set BP to the current stack pointer
-                            var priorToCallBp = Registers.BP;
-                            Push(Registers.BP);
-                            Registers.BP = Registers.SP;
-
                             //Relocation Record pointing to an internal Int16:Int16 address
                             if (relocationRecord.Flag == EnumRecordsFlag.INTERNALREF)
                             {
@@ -1469,7 +1506,12 @@ namespace MBBSEmu.CPU
                                 return;
                             }
 
-                            _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
+                            //Simulate an ENTER
+                            //Set BP to the current stack pointer
+                            Push(Registers.BP);
+                            Registers.BP = Registers.SP;
+
+                                _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
                                 relocationRecord.TargetTypeValueTuple.Item3);
 
                             //Simulate a LEAVE & retf

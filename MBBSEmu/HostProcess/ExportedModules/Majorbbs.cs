@@ -113,6 +113,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 113 => clrprf(),
                 65 => alcmem(),
                 643 => vsprintf(),
+                1189 => scnmdf(),
+                435 => now(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -1468,6 +1470,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var lineprefixBytes = Module.Memory.GetString(lineprefixSegment, lineprefixOffset);
             var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
 
+            //Setup Host Memory Variables Pointer
+            if (!HostMemoryVariables.TryGetValue($"SCNMDF", out var variablePointer))
+            {
+                var offset = Module.Memory.AllocateHostMemory(256);
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+            }
+
+            var recordFound = false;
             foreach (var line in File.ReadAllLines($"{Module.ModulePath}{mdfName}"))
             {
                 if (line.StartsWith(lineprefix))
@@ -1477,17 +1487,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (result.Length > 256)
                         throw new OverflowException("SCNMDF result is > 256 bytes");
 
-                    if (!HostMemoryVariables.TryGetValue($"SCNMDF", out var variablePointer))
-                    {
-                        var offset = Module.Memory.AllocateHostMemory(256);
-                        variablePointer = new IntPtr16((ushort) EnumHostSegments.HostMemorySegment, offset);
-                    }
-
                     Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, result);
-                    Registers.AX = variablePointer.Segment;
-                    Registers.DX = variablePointer.Offset;
+                    recordFound = true;
+                    break;
                 }
             }
+
+            //Write Null String to address if nothing was found
+            if(!recordFound)
+                Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
+
+            Registers.AX = variablePointer.Segment;
+            Registers.DX = variablePointer.Offset;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Returns the time of day it is bitwise HHHHHMMMMMMSSSSS coding
+        ///
+        ///     Signature: int time=now()
+        /// </summary>
+        /// <returns></returns>
+        public ushort now()
+        {
+            //From DOSFACE.H:
+            //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
+            var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+
+#if DEBUG
+            _logger.Info($"Returned packed time: {packedTime}");
+#endif
+
+            Registers.AX = (ushort)packedTime;
 
             return 0;
         }
