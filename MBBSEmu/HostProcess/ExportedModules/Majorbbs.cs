@@ -1430,19 +1430,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var targetSegment = GetParameter(1);
             var formatOffset = GetParameter(2);
             var formatSegment = GetParameter(3);
-            var vaListOffset = GetParameter(4);
-            var vaListSegment = GetParameter(5);
 
-            var valueAtPointer = Module.Memory.GetString(vaListSegment, vaListOffset);
-
-            var valueString = Encoding.Default.GetString(valueAtPointer);
-            //var vaList = new va_list(Module.Memory.GetArray(vaListSegment, vaListOffset, 12));
-
-            var output = Module.Memory.GetString(formatSegment, formatOffset);
-
+            var formatString = Module.Memory.GetString(formatSegment, formatOffset);
+            
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(output, 4);
+            var formattedMessage = FormatPrintf(formatString, 4, true);
 
+            
             Module.Memory.SetArray(targetSegment, targetOffset, formattedMessage);
 
             return 0;

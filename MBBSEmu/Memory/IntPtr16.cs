@@ -16,6 +16,11 @@ namespace MBBSEmu.Memory
             Offset = 0;
         }
 
+        public IntPtr16(ReadOnlySpan<byte> intPtr16Span)
+        {
+            FromSpan(intPtr16Span);
+        }
+
         public IntPtr16(ushort segment, ushort offset)
         {
             Segment = segment;
@@ -24,8 +29,8 @@ namespace MBBSEmu.Memory
 
         public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
         {
-            Segment = BitConverter.ToUInt16(intPtr16Span.Slice(0, 2));
-            Offset = BitConverter.ToUInt16(intPtr16Span.Slice(2, 2));
+            Offset = BitConverter.ToUInt16(intPtr16Span.Slice(0, 2));
+            Segment = BitConverter.ToUInt16(intPtr16Span.Slice(2, 2));
         }
 
         public int ToInt() => BitConverter.ToInt32(ToSpan());

@@ -76,6 +76,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == PrintfPrecision[0];
 
+
+        /// <summary>
+        ///     Returns the number of specifiers contained within the specified string
+        /// </summary>
+        /// <param name="stringToParse"></param>
+        /// <returns></returns>
+        private protected int CountPrintfSpecifiers(ReadOnlySpan<byte> stringToParse)
+        {
+            var result = 0;
+            for (var i = 0; i < stringToParse.Length; i++)
+            {
+                if (stringToParse[i++] == '%' && stringToParse[i] != '%')
+                    result++;
+            }
+
+            return result;
+        }
+
         /// <summary>
         ///     Printf Parsing and Encoding
         /// </summary>
@@ -83,7 +101,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="stringToParse"></param>
         /// <param name="startingParameterOrdinal"></param>
         /// <returns></returns>
-        private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal)
+        private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf = false)
         {
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
@@ -183,10 +201,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         case 's':
                         {
+                            ReadOnlySpan<byte> parameter;
+                            if (!isVsPrintf)
+                            {
+                                var parameterOffset = GetParameter(currentParameter++);
+                                var parameterSegment = GetParameter(currentParameter++);
+                                parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                            }
+                            else
+                            {
+                                var parameterOffset = GetParameter(currentParameter++);
+                                var parameterSegment = GetParameter(currentParameter++);
+                                var address = Module.Memory.GetArray(parameterSegment, parameterOffset, 4);
+                                var stringPointer = new IntPtr16(address);
+                                parameter = Module.Memory.GetString(stringPointer.Segment, stringPointer.Offset);
+                            }
 
-                            var parameterOffset = GetParameter(currentParameter++);
-                            var parameterSegment = GetParameter(currentParameter++);
-                            var parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                            if (parameter[^1] == 0x0)
+                                parameter = parameter.Slice(0, parameter.Length - 1);
+
                             msFormattedValue.Write(parameter);
                             break;
                         }
