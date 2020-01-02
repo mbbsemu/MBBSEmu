@@ -94,9 +94,14 @@ namespace MBBSEmu.Module
             return int.Parse(GetMessageValue(ordinal).ToCharSpan());
         }
 
-        public ReadOnlySpan<byte> GetAscii(int ordinal) => Messages[ordinal];
+        public ReadOnlySpan<byte> GetString(int ordinal)
+        {
+            if (!Messages.TryGetValue(ordinal, out var result))
+                result = new byte[] {0x0};
 
-        public ReadOnlySpan<byte> GetString(int ordinal) => Messages[ordinal];
+            return result;
+        }
+
 
         /// <summary>
         ///     This is faster than doing a .Split

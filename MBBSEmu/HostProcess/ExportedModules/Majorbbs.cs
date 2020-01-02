@@ -114,6 +114,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 1189 => scnmdf(),
                 435 => now(),
                 657 => f_lumod(),
+                544 => setmem(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -814,8 +815,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var messageNumber = GetParameter(0);
 
             if (!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputMessage))
-                throw new Exception(
-                    $"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
+            {
+                _logger.Warn($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
+                _outputBuffer.WriteByte(0x0);
+                return 0;
+            }
 
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
@@ -1409,12 +1413,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DI = (ushort)(remainder >> 16);
             Registers.SI = (ushort)(remainder & 0xFFFF);
 
-            //Increment the SP manually as this happens within the function, not explicitly in the compiler
-            Registers.SP += 12;
-            Module.Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), Registers.IP);
+            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            //Set stack back to entry state, minus parameters
+            Registers.SP += 14;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
             Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), Registers.CS);
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
             Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Registers.SP -= 2;
+            Registers.BP = Registers.SP;
             return 0;
         }
 
@@ -1547,6 +1557,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SP -= 2;
             Registers.BP = Registers.SP;
             return 0;
+        }
+
+        /// <summary>
+        ///     Set a block of memory to a value
+        ///
+        ///     Signature: void setmem(char *destination, unsigned nbytes, char value)
+        /// </summary>
+        /// <returns></returns>
+        private ushort setmem()
+        {
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var numberOfBytesToWrite = GetParameter(2);
+            var byteToWrite = GetParameter(3);
+
+            for (var i = 0; i < numberOfBytesToWrite; i++)
+            {
+                Module.Memory.SetByte(destinationSegment, (ushort) (destinationOffset +i), (byte)byteToWrite);
+            }
+
+#if DEBUG
+            _logger.Info($"Set {numberOfBytesToWrite} bytes to {byteToWrite:X2} startint at {destinationSegment:X4}:{destinationOffset:X4}");
+#endif
+            return 0;
+        }
+
+        /// <summary>
+        ///     Output buffer of prf() and prfmsg()
+        ///
+        ///     Signature: char *prfbuf
+        /// </summary>
+        private ushort prfbuf()
+        {
+            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
+            return (ushort) EnumHostSegments.Prfbuf;
         }
     }
 }

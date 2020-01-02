@@ -53,6 +53,11 @@
         UsrAcc = 0xFFF8,
 
         /// <summary>
+        ///     Output Buffer Segment
+        /// </summary>
+        Prfbuf = 0xFFF7,
+
+        /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>
         Bturno = 0xEFFF,

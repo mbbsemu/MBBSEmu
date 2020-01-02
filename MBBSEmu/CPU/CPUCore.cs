@@ -810,8 +810,10 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op1Kind);
             var segment = Registers.GetValue(_currentInstruction.MemorySegment);
 
-            Registers.SetValue(_currentInstruction.Op0Register, offset);
-            Registers.ES = segment;
+            var dataPointer = new IntPtr16(Memory.GetArray(segment, offset, 4));
+
+            Registers.SetValue(_currentInstruction.Op0Register, dataPointer.Offset);
+            Registers.ES = dataPointer.Segment;
         }
 
         private void Op_Lds()
