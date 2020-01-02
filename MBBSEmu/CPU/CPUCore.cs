@@ -1436,7 +1436,10 @@ namespace MBBSEmu.CPU
         /// </summary>
         private void Op_Push()
         {
-            Push(GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination));
+            if (Registers.IP == 0xE22)
+            { }
+
+        Push(GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination));
         }
 
         /// <summary>

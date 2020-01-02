@@ -115,6 +115,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 435 => now(),
                 657 => f_lumod(),
                 544 => setmem(),
+                475 => prfbuf(),
+                582 => strncpy(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -730,6 +732,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var formattedMessage = FormatPrintf(output, 2);
 
             _outputBuffer.Write(formattedMessage);
+            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -824,6 +827,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
             _outputBuffer.Write(formattedMessage);
+            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
@@ -1586,12 +1590,49 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Output buffer of prf() and prfmsg()
         ///
+        ///     Because it's a pointer, the segment only contains Int16:Int16 pointer to the actual prfbuf segment
+        ///
         ///     Signature: char *prfbuf
         /// </summary>
         private ushort prfbuf()
         {
             Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
-            return (ushort) EnumHostSegments.Prfbuf;
+            return (ushort) EnumHostSegments.PrfbufPointer;
+        }
+
+        /// <summary>
+        ///     Copies characters from a string
+        ///
+        ///     Signature: char *strncpy(char *destination, const char *source, size_t num)
+        /// </summary>
+        /// <returns></returns>
+        private ushort strncpy()
+        {
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var sourceOffset = GetParameter(2);
+            var sourceSegment = GetParameter(3);
+            var numberOfBytesToCopy = GetParameter(4);
+
+            var sourceString = Module.Memory.GetString(sourceSegment, sourceOffset);
+
+            for (var i = 0; i < numberOfBytesToCopy; i++)
+            {
+                if (sourceString[i] == 0x0)
+                {
+                    //Write remaining nulls
+                    for (var j = i; j < numberOfBytesToCopy; j++)
+                        Module.Memory.SetByte(destinationSegment, (ushort) (destinationOffset + j), 0x0);
+
+                    break;
+                }
+                Module.Memory.SetByte(destinationSegment, (ushort) (destinationOffset + i), sourceString[i]);
+            }
+
+#if DEBUG
+            _logger.Info($"Copied {numberOfBytesToCopy} from {sourceSegment:X4}:{sourceOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+#endif
+            return 0;
         }
     }
 }

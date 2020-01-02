@@ -38,8 +38,8 @@ namespace MBBSEmu.Memory
         public ReadOnlySpan<byte> ToSpan()
         {
             var output = new byte[4];
-            Array.Copy(BitConverter.GetBytes(Segment), 0, output, 0, 2);
-            Array.Copy(BitConverter.GetBytes(Offset), 0, output, 2, 2);
+            Array.Copy(BitConverter.GetBytes(Offset), 0, output, 0, 2);
+            Array.Copy(BitConverter.GetBytes(Segment), 0, output, 2, 2);
             return output;
         }
     }

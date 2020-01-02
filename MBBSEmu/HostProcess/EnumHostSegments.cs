@@ -58,6 +58,11 @@
         Prfbuf = 0xFFF7,
 
         /// <summary>
+        ///     Output Buffer Pointer
+        /// </summary>
+        PrfbufPointer = 0xFFF6,
+
+        /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  
         /// </summary>
         Bturno = 0xEFFF,
