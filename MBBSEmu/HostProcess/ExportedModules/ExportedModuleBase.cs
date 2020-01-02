@@ -7,6 +7,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -46,24 +47,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Sets the value in UserNum segment to the desired channelNumber
-        ///
-        ///     Used by the USERNUM() method to get the channel of the current user
-        /// </summary>
-        /// <param name="channelNumber"></param>
-        public void SetCurrentChannel(ushort channelNumber)
-        {
-            Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
-        }
-
-        /// <summary>
         ///     Gets the parameter by ordinal passed into the routine
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected ushort GetParameter(ushort parameterOrdinal)
         {
-            var parameterOffset = (ushort) (Registers.BP + 5 + (2 * parameterOrdinal));
+            var parameterOffset = (ushort) (Registers.BP + 7 + (2 * parameterOrdinal));
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
 
