@@ -826,17 +826,15 @@ namespace MBBSEmu.CPU
 
         private void Op_Lea()
         {
-            switch (_currentInstruction.MemoryBase)
+            var sourceOffset = GetOperandOffset(_currentInstruction.Op1Kind);
+
+            switch (_currentInstruction.Op0Kind)
             {
-                case Register.BP:
-                {
-                    var baseOffset = (ushort)(Registers.BP -
-                                              (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
-                    Registers.SetValue(_currentInstruction.Op0Register,  baseOffset);
-                    return;
-                }
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, sourceOffset);
+                    break;
                 default:
-                    throw new Exception($"Unsupported MemoryBase for LEA: {_currentInstruction.MemoryBase}");
+                    throw new ArgumentOutOfRangeException($"Unsupported Destination for LEA: {_currentInstruction.Op0Kind}");
             }
         }
 
