@@ -7,7 +7,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -29,7 +28,6 @@ namespace MBBSEmu.HostProcess
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
         private bool _isAddingModule;
-        private bool _isAddingSession;
         private readonly IMbbsRoutines _mbbsRoutines;
 
         private readonly Queue<UserSession> _incomingSessions;

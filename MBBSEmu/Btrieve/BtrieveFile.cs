@@ -20,7 +20,7 @@ namespace MBBSEmu.Btrieve
         private byte[] _btrieveFileContent;
         private readonly List<byte[]> _btrieveRecords;
 
-        public BtrieveFile(string fileName, string path)
+        public BtrieveFile(string fileName, string path, ushort recordLength)
         {
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -30,12 +30,23 @@ namespace MBBSEmu.Btrieve
 
             FileName = fileName;
 
+            //MajorBBS/WG will create a blank btrieve file if attempting to open one that doesn't exist
+            if (!File.Exists($"{path}{FileName}"))
+            {
+                _logger.Warn("Unable to locate existing btrieve file, simulating creation of a new one");
+                _btrieveRecords = new List<byte[]>();
+                RecordLength = recordLength;
+                RecordCount = 0;
+                return;
+            }
+
             _btrieveFileContent = File.ReadAllBytes($"{path}{FileName}");
 #if DEBUG
             _logger.Info($"Opened {fileName} and read {_btrieveFileContent.Length} bytes");
             _logger.Info("Parsing Header...");
 #endif
-            RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
+            RecordLength = recordLength;
+            //RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
 #if DEBUG
             _logger.Info($"Record Length: {RecordLength}");

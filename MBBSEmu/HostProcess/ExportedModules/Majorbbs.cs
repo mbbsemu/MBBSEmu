@@ -5,6 +5,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -28,6 +29,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private readonly PointerDictionary<BtrieveFile> _btrieveFiles = new PointerDictionary<BtrieveFile>();
         private BtrieveFile _currentBtrieveFile;
         private BtrieveFile _previousBtrieveFile;
+
+        private readonly Dictionary<byte[], IntPtr16> _textVariables = new Dictionary<byte[], IntPtr16>();
 
         /// <summary>
         ///     Buffer of Data that is stored to be sent to the user
@@ -117,6 +120,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 544 => setmem(),
                 475 => prfbuf(),
                 582 => strncpy(),
+                494 => register_textvar(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -398,7 +402,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
 
             var msgnum = GetParameter(0);
-            var floor = GetParameter(1);
+            var floor = (short)GetParameter(1);
             var ceiling = GetParameter(2);
 
             var outputValue = _currentMcvFile.GetNumeric(msgnum);
@@ -768,7 +772,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userChannel = GetParameter(0);
 
             ChannelDictionary[userChannel].DataToClient.Enqueue(_outputBuffer.ToArray());
-            _outputBuffer.Position = 0;
             _outputBuffer.SetLength(0);
 
             return 0;
@@ -1149,7 +1152,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var fileName = Encoding.Default.GetString(btrieveFilename.ToArray()).TrimEnd('\0');
 
-            var btrieveFile = new BtrieveFile(fileName, Module.ModulePath);
+            var btrieveFile = new BtrieveFile(fileName, Module.ModulePath, recordLength);
 
             var btrieveFilePointer = _btrieveFiles.Allocate(btrieveFile);
 
@@ -1631,6 +1634,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"Copied {numberOfBytesToCopy} from {sourceSegment:X4}:{sourceOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
+#endif
+            return 0;
+        }
+
+        private ushort register_textvar()
+        {
+            var textOffset = GetParameter(0);
+            var textSegment = GetParameter(1);
+            var destinationOffset = GetParameter(2);
+            var destinationSegment = GetParameter(3);
+
+            var functionPointer = new IntPtr16(destinationSegment, destinationOffset);
+            var textBytes = Module.Memory.GetString(textSegment, textOffset);
+
+            _textVariables.Add(textBytes.ToArray(), functionPointer);
+
+#if DEBUG
+            _logger.Info($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
             return 0;
         }

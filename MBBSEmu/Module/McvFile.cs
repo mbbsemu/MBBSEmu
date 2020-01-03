@@ -1,10 +1,9 @@
-﻿using MBBSEmu.Logging;
+﻿using MBBSEmu.Extensions;
+using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using MBBSEmu.Extensions;
 namespace MBBSEmu.Module
 {
     public class McvFile
@@ -111,10 +110,10 @@ namespace MBBSEmu.Module
         private ReadOnlySpan<byte> GetMessageValue(int ordinal)
         {
             Span<byte> message = Messages[ordinal];
-            for (var i = 0; i < message.Length; i++)
+            for (var i = 1; i <= message.Length; i++)
             {
-                if (message[i] == 0x3A)
-                    return message.Slice(i + 1);
+                if (message[^i] == 0x3A || message[^i] == 0x20)
+                    return message.Slice(message.Length - i, i);
             }
             throw new Exception($"Unable to find Message Value for Ordinal {ordinal}");
         }

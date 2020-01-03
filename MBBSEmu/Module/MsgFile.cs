@@ -52,7 +52,6 @@ namespace MBBSEmu.Module
 
             var bInVariable = false;
             var bIgnoreNext = false;
-            var bIsLanguage = true;
             var checkForLanguage = false;
             for (var i = 0; i < fileToRead.Length; i++)
             {
@@ -96,20 +95,17 @@ namespace MBBSEmu.Module
                     msCurrentValue.WriteByte(0x0);
 
                     //Language is written first, and not written to the offsets/lengths array
-                    if (bIsLanguage)
+                    //So -- if we parsed it first, write it. If it wasn't in the MSG file, write it
+                    //out to the MCV. We always put language first.
+                    if (msMessages.Length == 0 && Encoding.ASCII.GetString(msCurrentValue.ToArray()) != "English/ANSI")
                     {
-                        bIsLanguage = false;
-                        msMessages.Write(msCurrentValue.ToArray());
-                        msCurrentValue.Position = 0;
-                        msCurrentValue.SetLength(0);
-                        continue;
+                        msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
                     }
 
                     msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                     msMessages.Write(msCurrentValue.ToArray());
                     msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
                     messageCount++;
-                    msCurrentValue.Position = 0;
                     msCurrentValue.SetLength(0);
                     continue;
                 }

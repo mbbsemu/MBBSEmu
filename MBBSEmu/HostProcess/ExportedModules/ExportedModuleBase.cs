@@ -250,7 +250,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             {
                                 //Pad beginning
                                 var valueCache = msFormattedValue.ToArray();
-                                msFormattedValue.Position = 0;
                                 msFormattedValue.SetLength(0);
                                 while(msFormattedValue.Length < stringWidth - valueCache.Length)
                                     msFormattedValue.WriteByte((byte)' ');
