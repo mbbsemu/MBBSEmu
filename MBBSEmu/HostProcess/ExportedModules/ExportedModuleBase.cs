@@ -102,6 +102,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
+
+            var vsPrintfBase = new IntPtr16();
+            if (isVsPrintf)
+            {
+                vsPrintfBase.Offset = GetParameter(currentParameter++);
+                vsPrintfBase.Segment = GetParameter(currentParameter++);
+            }
+
             for (var i = 0; i < stringToParse.Length; i++)
             {
                 //Found a Control Character
@@ -207,11 +215,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                             else
                             {
-                                var parameterOffset = GetParameter(currentParameter++);
-                                var parameterSegment = GetParameter(currentParameter++);
-                                var address = Module.Memory.GetArray(parameterSegment, parameterOffset, 4);
+
+                                var address = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4);
                                 var stringPointer = new IntPtr16(address);
                                 parameter = Module.Memory.GetString(stringPointer.Segment, stringPointer.Offset);
+                                vsPrintfBase.Offset += 4;
                             }
 
                             if (parameter[^1] == 0x0)
@@ -229,10 +237,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                             else
                             {
-                                var parameterOffset = GetParameter(currentParameter++);
-                                var parameterSegment = GetParameter(currentParameter++);
-                                var parameterString = ((short)Module.Memory.GetWord(parameterSegment, parameterOffset)).ToString();
+                                var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
                                 msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                vsPrintfBase.Offset += 2;
                             }
 
                             break;
