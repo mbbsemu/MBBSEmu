@@ -106,8 +106,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0x2D)
-                //Debugger.Break();
+            if(Registers.IP == 0x114A)
+                Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -276,14 +276,12 @@ namespace MBBSEmu.CPU
 
                 case OpKind.Immediate16:
                 {
-
-                    //If it's FO SHO not a relocation record, just return the value
-                    if (_currentInstruction.Immediate16 != ushort.MaxValue) return _currentInstruction.Immediate16;
-
                     //Check for Relocation Records
                     if (!Memory.GetSegment(Registers.CS).RelocationRecords
                         .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
-                        return ushort.MaxValue;
+                    {
+                        return _currentInstruction.Immediate16;
+                    }
 
                     return relocationRecord.TargetTypeValueTuple.Item1 switch
                     {

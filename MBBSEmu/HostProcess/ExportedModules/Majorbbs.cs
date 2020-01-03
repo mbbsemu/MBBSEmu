@@ -340,7 +340,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Array.Copy(moduleStruct, currentOffset, routineEntryPoint, 0, 4);
 
                 //If there's a Relocation record for this routine, apply it
-                if(relocationRecords.TryGetValue(currentOffset, out var routineRelocationRecord))
+                if(relocationRecords.TryGetValue((ushort) (currentOffset + destinationOffset), out var routineRelocationRecord))
                 {
                     Array.Copy(BitConverter.GetBytes(routineRelocationRecord.TargetTypeValueTuple.Item4), 0,
                         routineEntryPoint, 0, 2);
