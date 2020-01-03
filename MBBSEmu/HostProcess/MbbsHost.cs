@@ -191,6 +191,8 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.PrfbufPointer);
             module.Memory.SetArray((ushort)EnumHostSegments.PrfbufPointer, 0, new IntPtr16((ushort)EnumHostSegments.Prfbuf, 0).ToSpan());
             module.Memory.AddSegment(EnumHostSegments.Prfbuf);
+            module.Memory.AddSegment((ushort)EnumHostSegments.Nterms);
+            module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0xFF);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)

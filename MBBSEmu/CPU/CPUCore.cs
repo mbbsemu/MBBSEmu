@@ -222,6 +222,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Shl:
                     Op_Shl();
                     break;
+                case Mnemonic.Sar:
+                    Op_Sar();
+                    break;
                 case Mnemonic.Shr:
                     Op_Shr();
                     break;
@@ -676,6 +679,70 @@ namespace MBBSEmu.CPU
                 return result;
             }
         }
+
+        private void Op_Sar()
+        {
+            //Get Comparison Operation Size
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
+                ? Op_Sar_8(destination, source)
+                : Op_Sar_16(destination, source);
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Destination for SUB: {_currentInstruction.Op0Kind}");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Sar_8(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (byte)(destination >> (sbyte)source);
+
+                //Maintain Sign Bit
+                if (((byte)destination).IsNegative())
+                    result.SetFlag(1 << 7);
+
+                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Sar_16(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (ushort)(destination >> source);
+                
+                //Maintain Sign Bit
+                if (destination.IsNegative())
+                    result.SetFlag(1 << 15);
+
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+                Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+                return result;
+            }
+        }
+
+
 
         private void Op_Shr()
         {

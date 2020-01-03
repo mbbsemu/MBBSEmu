@@ -61,6 +61,11 @@
         ///     Output Buffer Pointer
         /// </summary>
         PrfbufPointer = 0xFFF6,
+        
+        /// <summary>
+        ///     Number of Channels Defined
+        /// </summary>
+        Nterms = 0xFFF5,
 
         /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  

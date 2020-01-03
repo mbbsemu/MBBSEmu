@@ -33,7 +33,7 @@ namespace MBBSEmu.Btrieve
             //MajorBBS/WG will create a blank btrieve file if attempting to open one that doesn't exist
             if (!File.Exists($"{path}{FileName}"))
             {
-                _logger.Warn("Unable to locate existing btrieve file, simulating creation of a new one");
+                _logger.Warn($"Unable to locate existing btrieve file {FileName}, simulating creation of a new one");
                 _btrieveRecords = new List<byte[]>();
                 RecordLength = recordLength;
                 RecordCount = 0;
@@ -123,6 +123,37 @@ namespace MBBSEmu.Btrieve
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
             _btrieveRecords.Insert(recordNumber, recordData);
+        }
+
+        /// <summary>
+        ///     Searches records for a record using the key
+        /// </summary>
+        /// <param name="key"></param>
+        public bool GetRecordByKey(ReadOnlySpan<byte> key)
+        {
+            var recordFound = false;
+            for (ushort i = 0; i < _btrieveRecords.Count; i++)
+            {
+                var currentRecord = _btrieveRecords[i];
+                var isMatch = true;
+                for (var j = 0; j < key.Length; j++)
+                {
+                    if (currentRecord[j] != key[j])
+                    {
+                        isMatch = false;
+                        break;
+                    }
+                }
+
+                if (!isMatch)
+                    continue;
+
+                CurrentRecordNumber = i;
+                recordFound = true;
+                break;
+            }
+
+            return recordFound;
         }
     }
 }

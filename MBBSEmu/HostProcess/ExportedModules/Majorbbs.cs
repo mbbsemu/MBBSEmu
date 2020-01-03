@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -121,6 +122,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 475 => prfbuf(),
                 582 => strncpy(),
                 494 => register_textvar(),
+                997 => obtbtvl(),
+                158 => dclvda(),
+                437 => nterms(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -1156,6 +1160,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var btrieveFilePointer = _btrieveFiles.Allocate(btrieveFile);
 
+            //Set it as current by default
+            _currentBtrieveFile = _btrieveFiles[btrieveFilePointer];
+
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {(ushort)EnumHostSegments.BtrieveFile:X4}:{btrieveFilePointer:X4}");
 #endif
@@ -1655,5 +1662,63 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             return 0;
         }
+
+        /// <summary>
+        ///     As best I can tell, this routine performs a GetEqual based on the key specified
+        ///
+        ///     Signature: int obtbtvl (void *recptr, void *key, int keynum, int obtopt, int loktyp)
+        ///     Returns: AX == 0 record not found, 1 record found
+        /// </summary>
+        /// <returns></returns>
+        private ushort obtbtvl()
+        {
+            var recordPointerOffset = GetParameter(0);
+            var recordPointerSegment = GetParameter(1);
+            var keyOffset = GetParameter(2);
+            var keySegment = GetParameter(3);
+            var keyNum = GetParameter(4);
+            var obtopt = GetParameter(5);
+            var lockType = GetParameter(6);
+
+            ushort result = 0;
+            switch (obtopt)
+            {
+                //GetEqual
+                case 5:
+                    result = (ushort) (_currentBtrieveFile.GetRecordByKey(Module.Memory.GetString(keySegment, keyOffset)) ? 1 : 0);
+                    break;
+            }
+
+            Registers.AX = result;
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Declare size of the Volatile Data Area (Maximum size the module will require)
+        ///     Because this is just another memory block, we use the host memory
+        /// 
+        ///     Signature: char *alczer(unsigned nbytes);
+        ///     Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        /// </summary>
+        public ushort dclvda()
+        {
+            var size = GetParameter(0);
+
+            //Get the current pointer
+            var pointer = Module.Memory.AllocateHostMemory(size);
+
+            Registers.AX = pointer;
+            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment;
+
+#if DEBUG
+            _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
+#endif
+
+            return 0;
+        }
+
+        public ushort nterms() => (ushort) EnumHostSegments.Nterms;
     }
 }
