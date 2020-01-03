@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -58,6 +59,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
 
+        /// <summary>
+        ///     Calculates which Segment & Offset the specified channel's memory is in the
+        ///     Volatile Memory segments
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        private protected IntPtr16 CalculateVolatileMemoryPointer(byte channel)
+        {
+            var segment = (ushort)((ushort)EnumHostSegments.VolatileDataSegment + (channel % 8));
+            var offset = (ushort)((channel / 8) * 0x800);
+
+            return new IntPtr16(segment, offset);
+        }
+
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
         private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
@@ -75,24 +90,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == PrintfPrecision[0];
-
-
-        /// <summary>
-        ///     Returns the number of specifiers contained within the specified string
-        /// </summary>
-        /// <param name="stringToParse"></param>
-        /// <returns></returns>
-        private protected int CountPrintfSpecifiers(ReadOnlySpan<byte> stringToParse)
-        {
-            var result = 0;
-            for (var i = 0; i < stringToParse.Length; i++)
-            {
-                if (stringToParse[i++] == '%' && stringToParse[i] != '%')
-                    result++;
-            }
-
-            return result;
-        }
 
         /// <summary>
         ///     Printf Parsing and Encoding
@@ -225,8 +222,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         case 'd':
                         {
-                            var parameter = GetParameter(currentParameter++);
-                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                            if (!isVsPrintf)
+                            {
+                                var parameter = GetParameter(currentParameter++);
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                            }
+                            else
+                            {
+                                var parameterOffset = GetParameter(currentParameter++);
+                                var parameterSegment = GetParameter(currentParameter++);
+                                var parameterString = ((short)Module.Memory.GetWord(parameterSegment, parameterOffset)).ToString();
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                            }
+
                             break;
                         }
                         default:

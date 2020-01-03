@@ -73,6 +73,12 @@
         Bturno = 0xEFFF,
 
         /// <summary>
+        ///     Volatile Data Segment
+        ///     Valid Range is 0xA01 - 0xAFF
+        /// </summary>
+        VolatileDataSegment = 0x0A00,
+
+        /// <summary>
         ///     Stack Segment
         /// </summary>
         StackSegment = 0x0

@@ -10,7 +10,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -125,6 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 997 => obtbtvl(),
                 158 => dclvda(),
                 437 => nterms(),
+                636 => vdaoff(),
                 _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
             };
         }
@@ -178,8 +178,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var pointer = Module.Memory.AllocateHostMemory(size);
 
             Registers.AX = pointer;
-            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment;
-
+            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment; ;
+                
 #if DEBUG
             _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
 #endif
@@ -861,8 +861,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             using var string2InputBuffer = new MemoryStream();
             string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
-
-            //If the supplied string has any control characters for formatting, process them
             var string2InputValue = FormatPrintf(string2InputBuffer.ToArray(), 4);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -1463,6 +1461,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             
             Module.Memory.SetArray(targetSegment, targetOffset, formattedMessage);
 
+            Registers.AX = (ushort) formattedMessage.Length;
+
             return 0;
         }
 
@@ -1514,8 +1514,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if(!recordFound)
                 Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
 
-            Registers.AX = variablePointer.Segment;
             Registers.DX = variablePointer.Offset;
+            Registers.AX = variablePointer.Segment;
 
             return 0;
         }
@@ -1698,27 +1698,45 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Declare size of the Volatile Data Area (Maximum size the module will require)
         ///     Because this is just another memory block, we use the host memory
         /// 
-        ///     Signature: char *alczer(unsigned nbytes);
-        ///     Return: AX = Offset in Segment (host)
-        ///             DX = Data Segment
+        ///     Signature: void *dclvda(unsigned nbytes);
         /// </summary>
         public ushort dclvda()
         {
             var size = GetParameter(0);
 
-            //Get the current pointer
-            var pointer = Module.Memory.AllocateHostMemory(size);
-
-            Registers.AX = pointer;
-            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment;
+            if (size > 0x800)
+                throw new OutOfMemoryException("Volatile Memory declaration > 2k");
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
+            _logger.Info($"Volatile Memory Size requested of {size} bytes (2048 bytes currently allocated per channel)");
 #endif
 
             return 0;
         }
 
         public ushort nterms() => (ushort) EnumHostSegments.Nterms;
+
+        /// <summary>
+        ///     Compute volatile data pointer for the specified User Number
+        ///
+        ///     Because UserNumber and Channels in MBBSEmu are the same, we can just use the usernum AS channel
+        ///
+        ///     Signature: char *vdaoff(int unum)
+        ///
+        ///     Returns: AX == Segment of Volatile Data
+        ///              DX == Offset of Volatile Data
+        /// </summary>
+        /// <returns></returns>
+        private ushort vdaoff()
+        {
+            var channel = GetParameter(0);
+
+            var volatilePointer = CalculateVolatileMemoryPointer((byte) channel);
+
+            Registers.AX = volatilePointer.Offset;
+            Registers.DX = volatilePointer.Segment;
+
+            return 0;
+        }
     }
 }

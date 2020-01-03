@@ -192,7 +192,18 @@ namespace MBBSEmu.HostProcess
             module.Memory.SetArray((ushort)EnumHostSegments.PrfbufPointer, 0, new IntPtr16((ushort)EnumHostSegments.Prfbuf, 0).ToSpan());
             module.Memory.AddSegment(EnumHostSegments.Prfbuf);
             module.Memory.AddSegment((ushort)EnumHostSegments.Nterms);
-            module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0xFF);
+            module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);
+
+            //Add Volatile Memory Segments
+            //0x800 bytes per channel, 0x1F channels per segment, 0x8 segments total
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 1);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 2);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 3);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 4);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 5);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 6);
+            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 7);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)
