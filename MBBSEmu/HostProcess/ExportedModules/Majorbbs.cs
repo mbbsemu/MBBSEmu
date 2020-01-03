@@ -136,7 +136,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void srand (unsigned int seed);
         /// </summary>
-        public ushort srand() => 0;
+        private ushort srand() => 0;
 
         /// <summary>
         ///     Get the current calendar time as a value of type time_t
@@ -145,7 +145,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: time_t time (time_t* timer);
         ///     Return: Value is 32-Bit TIME_T (AX:DX)
         /// </summary>
-        public ushort time()
+        private ushort time()
         {
             //For now, ignore the input pointer for time_t
 
@@ -170,7 +170,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
         /// </summary>
-        public ushort alczer()
+        private ushort alczer()
         {
             var size = GetParameter(0);
 
@@ -193,7 +193,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Functionally, for our purposes, the same as alczer
         /// </summary>
         /// <returns></returns>
-        public ushort alcmem() => alczer();
+        private ushort alcmem() => alczer();
 
         /// <summary>
         ///     Get's a module's name from the specified .MDF file
@@ -202,7 +202,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        public ushort gmdnam()
+        private ushort gmdnam()
         {
             var datSegmentOffset = GetParameter(0);
             var dataSegment = GetParameter(1);
@@ -253,7 +253,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        public ushort strcpy()
+        private ushort strcpy()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -280,7 +280,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
         /// </summary>
-        public ushort stzcpy()
+        private ushort stzcpy()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -313,7 +313,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int register_module(struct module *mod)
         ///     Return: AX = Value of usrptr->state whenever user is 'in' this module
         /// </summary>
-        public ushort register_module()
+        private ushort register_module()
         {
             var destinationOffset = GetParameter(0);
             var destinationSegment = GetParameter(1);
@@ -371,7 +371,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment
         /// </summary>
-        public ushort opnmsg()
+        private ushort opnmsg()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -400,7 +400,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int numopt(int msgnum,int floor,int ceiling)
         ///     Return: AX = Value retrieved
         /// </summary>
-        public ushort numopt()
+        private ushort numopt()
         {
             if(_mcvFiles.Count == 0)
                 throw new Exception("Attempted to read configuration value from MSG file prior to calling opnmsg()");
@@ -430,7 +430,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int ynopt(int msgnum)
         ///     Return: AX = 1/Yes, 0/No
         /// </summary>
-        public ushort ynopt()
+        private ushort ynopt()
         {
             var msgnum = GetParameter(0);
 
@@ -452,7 +452,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Most Significant 16-Bits
         ///             DX = Least Significant 16-Bits
         /// </summary>
-        public ushort lngopt()
+        private ushort lngopt()
         {
             var msgnum = GetParameter(0);
 
@@ -488,7 +488,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment     
         /// </summary>
-        public ushort stgopt()
+        private ushort stgopt()
         {
             var msgnum = GetParameter(0);
 
@@ -525,7 +525,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        public ushort getasc()
+        private ushort getasc()
         {
 #if DEBUG
             _logger.Info($"Called, redirecting to stgopt()");
@@ -542,7 +542,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment 
         /// </summary>
-        public ushort l2as()
+        private ushort l2as()
         {
             var lowByte = GetParameter(0);
             var highByte = GetParameter(1);
@@ -580,7 +580,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment  
         /// </summary>
-        public ushort atol()
+        private ushort atol()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -621,7 +621,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int date=today()
         ///     Return: AX = Packed Date
         /// </summary>
-        public ushort today()
+        private ushort today()
         { 
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
@@ -643,7 +643,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: None -- Compiler Generated
         ///     Return: None
         /// </summary>
-        public ushort f_scopy()
+        private ushort f_scopy()
         {
             var srcOffset = GetParameter(0);
             var srcSegment = GetParameter(1);
@@ -668,7 +668,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int match=sameas(char *stgl, char* stg2)
         ///     Returns: AX = 1 if match
         /// </summary>
-        public ushort sameas()
+        private ushort sameas()
         {
             var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
@@ -701,7 +701,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        public ushort usernum() => (ushort)EnumHostSegments.UserNum;
+        private ushort usernum() => (ushort)EnumHostSegments.UserNum;
 
         /// <summary>
         ///     Gets the online user account info
@@ -711,7 +711,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Segment  
         /// </summary>
         /// <returns></returns>
-        public ushort uacoff()
+        private ushort uacoff()
         {
             var userNumber = GetParameter(0);
 
@@ -729,7 +729,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void prf(string)
         /// </summary>
         /// <returns></returns>
-        public ushort prf()
+        private ushort prf()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -754,7 +754,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Resets prf buffer
         /// </summary>
         /// <returns></returns>
-        public ushort clrprf()
+        private ushort clrprf()
         {
             _outputBuffer.SetLength(0);
 
@@ -771,7 +771,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void outprf (unum)
         /// </summary>
         /// <returns></returns>
-        public ushort outprf()
+        private ushort outprf()
         {
             var userChannel = GetParameter(0);
 
@@ -788,7 +788,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == Had enough, 0 == Not enough
         /// </summary>
         /// <returns></returns>
-        public ushort dedcrd()
+        private ushort dedcrd()
         {
             var sourceOffset = GetParameter(0);
             var lowByte = GetParameter(1);
@@ -812,7 +812,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: int = Segment on host for User Pointer
         /// </summary>
         /// <returns></returns>
-        public ushort usrptr() => (ushort)EnumHostSegments.UserPtr;
+        private ushort usrptr() => (ushort)EnumHostSegments.UserPtr;
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -820,7 +820,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void prfmsg(msgnum,p1,p2, ..• ,pn);
         /// </summary>
         /// <returns></returns>
-        public ushort prfmsg()
+        private ushort prfmsg()
         {
             var messageNumber = GetParameter(0);
 
@@ -848,7 +848,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void shocst(char *summary, char *detail, p1, p1,...,pn);
         /// </summary>
         /// <returns></returns>
-        public ushort shocst()
+        private ushort shocst()
         {
             var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
@@ -878,7 +878,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int *channel
         /// </summary>
         /// <returns></returns>
-        public ushort channel() => (ushort) EnumHostSegments.ChannelArray;
+        private ushort channel() => (ushort) EnumHostSegments.ChannelArray;
 
         /// <summary>
         ///     Post credits to the specified Users Account
@@ -886,7 +886,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     signature: int addcrd(char *keyuid,char *tckstg,int real)
         /// </summary>
         /// <returns></returns>
-        public ushort addcrd()
+        private ushort addcrd()
         {
             var string1Offset = GetParameter(0);
             var string1Segment = GetParameter(1);
@@ -914,7 +914,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *itoa(int value, char * str, int base)
         /// </summary>
-        public ushort itoa()
+        private ushort itoa()
         {
             var integerValue = GetParameter(0);
             var string1Offset = GetParameter(1);
@@ -940,7 +940,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == True
         /// </summary>
         /// <returns></returns>
-        public ushort haskey()
+        private ushort haskey()
         {
             var lockNameOffset = GetParameter(0);
             var lockNameSegment = GetParameter(1);
@@ -959,7 +959,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == True
         /// </summary>
         /// <returns></returns>
-        public ushort hasmkey()
+        private ushort hasmkey()
         {
             var key = GetParameter(0);
             Registers.AX = 1;
@@ -974,7 +974,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 16-bit Random Number
         /// </summary>
         /// <returns></returns>
-        public ushort rand()
+        private ushort rand()
         {
             var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(1, short.MaxValue);
 
@@ -994,7 +994,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Segment  
         /// </summary>
         /// <returns></returns>
-        public ushort ncdate()
+        private ushort ncdate()
         {
             /* From DOSFACE.H:
                 #define ddyear(date) ((((date)>>9)&0x007F)+1980)
@@ -1036,7 +1036,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void dfsthn()
         /// </summary>
         /// <returns></returns>
-        public ushort dfsthn()
+        private ushort dfsthn()
         {
             return 0;
         }
@@ -1047,7 +1047,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void clsmsg(FILE *mbkprt)
         /// </summary>
         /// <returns></returns>
-        public ushort clsmsg()
+        private ushort clsmsg()
         {
             //We ignore this for now, and we'll just keep it open for the time being
 
@@ -1061,7 +1061,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Signature: void rtihdlr(void (*rouptr)(void))
         /// </summary>
-        public ushort rtihdlr()
+        private ushort rtihdlr()
         {
             var routinePointerOffset = GetParameter(0);
             var routinePointerSegment = GetParameter(1);
@@ -1081,7 +1081,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rtkick(int time, void *rouptr())
         /// </summary>
         /// <returns></returns>
-        public ushort rtkick()
+        private ushort rtkick()
         {
             var delaySeconds = GetParameter(0);
             var routinePointerOffset = GetParameter(1);
@@ -1104,7 +1104,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: FILE *setmbk(mbkptr)
         /// </summary>
         /// <returns></returns>
-        public ushort setmbk()
+        private ushort setmbk()
         {
             var mcvFileOffset = GetParameter(0);
             var mcvFileSegment = GetParameter(1);
@@ -1128,7 +1128,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rstmbk()
         /// </summary>
         /// <returns></returns>
-        public ushort rstmbk()
+        private ushort rstmbk()
         {
             _currentMcvFile = _previousMcvFile;
 
@@ -1143,7 +1143,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DX = Host Btrieve Segment  
         /// </summary>
         /// <returns></returns>
-        public ushort opnbtv()
+        private ushort opnbtv()
         {
             var btrieveFilenameOffset = GetParameter(0);
             var btrieveFilenameSegment = GetParameter(1);
@@ -1176,7 +1176,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void setbtv(BTVFILE *bbprt)
         /// </summary>
         /// <returns></returns>
-        public ushort setbtv()
+        private ushort setbtv()
         {
             var btrieveFileOffset = GetParameter(0);
             var btrieveFileSegment = GetParameter(1);
@@ -1203,7 +1203,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX = 1 == Record Found, 0 == Database Empty
         /// </summary>
         /// <returns></returns>
-        public ushort stpbtv()
+        private ushort stpbtv()
         {
             if(_currentBtrieveFile == null)
                 throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
@@ -1247,7 +1247,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void rstbtv (void)
         /// </summary>
         /// <returns></returns>
-        public ushort rstbtv()
+        private ushort rstbtv()
         {
             if (_previousBtrieveFile == null)
             {
@@ -1271,7 +1271,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void updbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
-        public ushort updbtv()
+        private ushort updbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
             var btrieveRecordPointerSegment = GetParameter(1);
@@ -1297,7 +1297,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void insbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
-        public ushort insbtv()
+        private ushort insbtv()
         {
             var btrieveRecordPointerOffset = GetParameter(0);
             var btrieveRecordPointerSegment = GetParameter(1);
@@ -1324,7 +1324,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
-        public ushort status() => (ushort) EnumHostSegments.Status;
+        private ushort status() => (ushort) EnumHostSegments.Status;
 
         /// <summary>
         ///     Deduct real credits from online acct
@@ -1333,7 +1333,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Always 1, meaning enough credits
         /// </summary>
         /// <returns></returns>
-        public ushort rdedcrd() => Registers.AX = 1;
+        private ushort rdedcrd() => Registers.AX = 1;
 
         /// <summary>
         ///     sprintf-like string formatter utility
@@ -1341,7 +1341,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Main differentiation is that spr() supports long integer and floating point conversions
         /// </summary>
         /// <returns></returns>
-        public ushort spr()
+        private ushort spr()
         {
             var sourceOffset = GetParameter(0);
             var sourceSegment = GetParameter(1);
@@ -1381,7 +1381,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         /// </summary>
         /// <returns></returns>
-        public ushort f_lxmul()
+        private ushort f_lxmul()
         {
 
             var value1 = (Registers.DX << 16) | Registers.AX;
@@ -1407,7 +1407,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///             DI:SI = remainder
         /// </summary>
         /// <returns></returns>
-        public ushort f_ldiv()
+        private ushort f_ldiv()
         {
 
             var arg1 = (GetParameter(1) << 16) | GetParameter(0);
@@ -1446,7 +1446,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     similar to prf, but the destination is a char*, but the output buffer
         /// </summary>
         /// <returns></returns>
-        public ushort vsprintf()
+        private ushort vsprintf()
         {
             var targetOffset = GetParameter(0);
             var targetSegment = GetParameter(1);
@@ -1474,7 +1474,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///              DX = Segment of String
         /// </summary>
         /// <returns></returns>
-        public ushort scnmdf()
+        private ushort scnmdf()
         {
             var mdfnameOffset = GetParameter(0);
             var mdfnameSegment = GetParameter(1);
@@ -1526,7 +1526,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int time=now()
         /// </summary>
         /// <returns></returns>
-        public ushort now()
+        private ushort now()
         {
             //From DOSFACE.H:
             //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
@@ -1547,7 +1547,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: DX:AX = arg1 % arg2
         /// </summary>
         /// <returns></returns>
-        public ushort f_lumod()
+        private ushort f_lumod()
         {
             var arg1 = (GetParameter(1) << 16) | GetParameter(0);
             var arg2 = (GetParameter(3) << 16) | GetParameter(2);
@@ -1700,7 +1700,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Signature: void *dclvda(unsigned nbytes);
         /// </summary>
-        public ushort dclvda()
+        private ushort dclvda()
         {
             var size = GetParameter(0);
 
@@ -1714,7 +1714,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return 0;
         }
 
-        public ushort nterms() => (ushort) EnumHostSegments.Nterms;
+        private ushort nterms() => (ushort) EnumHostSegments.Nterms;
 
         /// <summary>
         ///     Compute volatile data pointer for the specified User Number
