@@ -15,7 +15,7 @@ namespace MBBSEmu.CPU
     {
         protected static readonly ILogger _logger;
 
-        public delegate ushort InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
+        public delegate ReadOnlySpan<byte> InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            if(Registers.IP == 0x114A)
+            if(Registers.IP == 0x0DCC)
                 Debugger.Break();
 #endif
 
@@ -279,24 +279,36 @@ namespace MBBSEmu.CPU
                     //Check for Relocation Records
                     if (!Memory.GetSegment(Registers.CS).RelocationRecords
                         .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
-                    {
                         return _currentInstruction.Immediate16;
-                    }
 
-                    return relocationRecord.TargetTypeValueTuple.Item1 switch
+                    switch (relocationRecord.TargetTypeValueTuple.Item1)
                     {
-                        //External Property
-                        EnumRecordsFlag.IMPORTORDINAL => _invokeExternalFunctionDelegate(
-                            relocationRecord.TargetTypeValueTuple.Item2, relocationRecord.TargetTypeValueTuple.Item3),
+                        case EnumRecordsFlag.IMPORTORDINAL:
+                        {
+                            var relocationResult = _invokeExternalFunctionDelegate(
+                                relocationRecord.TargetTypeValueTuple.Item2,
+                                relocationRecord.TargetTypeValueTuple.Item3);
 
-                        //Internal Segment
-                        EnumRecordsFlag.INTERNALREF => relocationRecord.TargetTypeValueTuple.Item2,
-                        _ => throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value")
-                    };
+                            var relocationPointer = new IntPtr16(relocationResult);
+
+                            return relocationRecord.SourceType switch
+                            {
+                                //Offset
+                                2 => relocationPointer.Segment,
+                                5 => relocationPointer.Offset,
+                                _ => throw new ArgumentOutOfRangeException(
+                                    $"Unhandled MOV Relocation Source Type: {relocationRecord.SourceType}")
+                            };
+                        }
+                        case EnumRecordsFlag.INTERNALREF:
+                            return relocationRecord.TargetTypeValueTuple.Item2;
+                        default:
+                            throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value");
+                    }
                 }
 
                 case OpKind.Immediate8to16:
-                    return (ushort)_currentInstruction.Immediate8to16;
+                    return (ushort) _currentInstruction.Immediate8to16;
 
                 case OpKind.Memory:
                 {
@@ -306,7 +318,7 @@ namespace MBBSEmu.CPU
                         ? Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
                         : Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                 }
-                
+
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
             }
@@ -1501,10 +1513,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         private void Op_Push()
         {
-            if (Registers.IP == 0xE22)
-            { }
-
-        Push(GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination));
+            Push(GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination));
         }
 
         /// <summary>

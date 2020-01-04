@@ -1,9 +1,9 @@
-﻿using System;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System;
 using System.Text;
-using MBBSEmu.CPU;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -20,24 +20,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.AddSegment((ushort) EnumHostSegments.Bturno);
         }
 
-        public ushort Invoke(ushort ordinal)
+        public ReadOnlySpan<byte> Invoke(ushort ordinal)
         {
-            return ordinal switch
+            switch (ordinal)
             {
-                72 => bturno(),
-                36 => btuoba(),
-                49 => btutrg(),
-                21 => btuinj(),
-                60 => btuxnf(),
-                39 => btupbc(),
-                87 => btuica(),
-                6 => btucli(),
-                4 => btuchi(),
-                63 => chious(),
-                83 => btueba(),
-                19 => btuiba(),
-                _ => throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}")
-            };
+                case 72:
+                    return bturno();
+                case 36:
+                    btuoba();
+                    break;
+                case 49:
+                    btutrg();
+                    break;
+                case 21:
+                    btuinj();
+                    break;
+                case 60:
+                    btuxnf();
+                    break;
+                case 39:
+                    btupbc();
+                    break;
+                case 87:
+                    btuica();
+                    break;
+                case 6:
+                    btucli();
+                    break;
+                case 4:
+                    btuchi();
+                    break;
+                case 63:
+                    chious();
+                    break;
+                case 83:
+                    btueba();
+                    break;
+                case 19:
+                    btuiba();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
+            }
+
+            return null;
         }
 
         public void SetState(CpuRegisters registers, ushort channelNumber)
@@ -53,12 +79,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: DX == Segment containing bturno
         /// </summary>
         /// <returns></returns>
-        public ushort bturno()
+        public ReadOnlySpan<byte> bturno()
         {
             const string registrationNumber = "97771457\0";
             Module.Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.Default.GetBytes(registrationNumber));
 
-            return (ushort) EnumHostSegments.Bturno;
+            return new IntPtr16((ushort) EnumHostSegments.Bturno, 0).ToSpan();
         }
 
         /// <summary>
@@ -69,11 +95,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == bytes available
         /// </summary>
         /// <returns></returns>
-        public ushort btuoba()
+        public void btuoba()
         {
             Registers.AX = ushort.MaxValue;
-
-            return 0;
         }
 
         /// <summary>
@@ -83,13 +107,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        public ushort btutrg()
+        public void btutrg()
         {
             //TODO -- Set callback for how characters should be processed
-
             Registers.AX = 0;
-
-            return 0;
         }
 
         /// <summary>
@@ -99,7 +120,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        public ushort btuinj()
+        public void btuinj()
         {
             var channel = GetParameter(0);
             var status = GetParameter(1);
@@ -112,8 +133,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[channel].StatusChange = true;
 
             Registers.AX = 0;
-
-            return 0;
         }
 
         /// <summary>
@@ -123,11 +142,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        public ushort btuxnf()
+        public void btuxnf()
         {
             //Ignore this, we won't deal with XON/XOFF
             Registers.AX = 0;
-            return 0;
         }
 
         /// <summary>
@@ -139,12 +157,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
-        public ushort btupbc()
+        public void btupbc()
         {
             //TODO -- Handle this?
-
             Registers.AX = 0;
-            return 0;
         }
 
         /// <summary>
@@ -154,7 +170,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: AX == Number of input characters retrieved
         /// </summary>
         /// <returns></returns>
-        public ushort btuica()
+        public void btuica()
         {
             var channelNumber = GetParameter(0);
             var destinationOffset = GetParameter(1);
@@ -165,7 +181,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (ChannelDictionary[channelNumber].DataFromClient.Count == 0)
             {
                 Registers.AX = 0;
-                return 0;
+                return;
             }
 
             ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var inputFromChannel);
@@ -173,7 +189,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ReadOnlySpan<byte> inputFromChannelSpan = inputFromChannel;
             Module.Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
             Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
-            return 0;
         }
 
         /// <summary>
@@ -185,15 +200,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: 
         /// </summary>
         /// <returns></returns>
-        public ushort btucli()
+        public void btucli()
         {
             var channelNumber = GetParameter(0);
 
             ChannelDictionary[channelNumber].DataFromClient.Clear();
 
             Registers.AX = 0;
-
-            return 0;
         }
 
         /// <summary>
@@ -202,7 +215,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int err=btuchi(int chan, char (*rouadr)())
         /// </summary>
         /// <returns></returns>
-        public ushort btuchi()
+        public void btuchi()
         {
 
             var channel = GetParameter(0);
@@ -213,8 +226,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new Exception("BTUCHI only handles NULL for the time being");
 
             Registers.AX = 0;
-
-            return 0;
         }
 
         /// <summary>
@@ -226,7 +237,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///              255 == Buffer is full
         /// </summary>
         /// <returns></returns>
-        public ushort btueba()
+        public void btueba()
         {
             var channel = GetParameter(0);
 
@@ -234,19 +245,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //we send data immediately to the client when it's 
             //written to the echo buffer (see chious())
             Registers.AX = 255;
-            return 0;
         }
 
-        public ushort btuiba()
+        public void btuiba()
         {
             var channelNumber = GetParameter(0);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
                 Registers.AX = ushort.MaxValue - 1;
-                return 0;
+                return;
             }
-
 
             if (channel.DataFromClient.Count > 0)
             {
@@ -254,25 +263,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Registers.AX = 0;
-            return 0;
         }
 
         /// <summary>
         ///     String Output (via Echo Buffer)
         /// </summary>
         /// <returns></returns>
-        public ushort chious()
+        public void chious()
         {
-            
             var channel = GetParameter(0);
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
             ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
-
-            return 0;
         }
-
-
     }
 }
