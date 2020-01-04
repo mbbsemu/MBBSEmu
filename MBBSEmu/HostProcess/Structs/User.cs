@@ -61,10 +61,10 @@ namespace MBBSEmu.HostProcess.Structs
             output.Write(BitConverter.GetBytes((short)0)); //substt (always starts at 0)
             output.Write(BitConverter.GetBytes((short)0)); //lofstt
             output.Write(BitConverter.GetBytes((short)0)); //usetmr
-            output.Write(BitConverter.GetBytes((short)0xA00)); //minut4
+            output.Write(BitConverter.GetBytes((short)0x0A00)); //minut4
             output.Write(BitConverter.GetBytes((short)0)); //countr
             output.Write(BitConverter.GetBytes((short)0)); //pfnacc
-            output.Write(BitConverter.GetBytes((int)0)); //flags
+            output.Write(BitConverter.GetBytes((int)0x0000000)); //flags
             output.Write(BitConverter.GetBytes((ushort)0)); //baud
             output.Write(BitConverter.GetBytes((short)0)); //crdrat
             output.Write(BitConverter.GetBytes((short)0)); //nazapc
