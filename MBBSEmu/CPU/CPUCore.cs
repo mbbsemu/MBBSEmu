@@ -1019,7 +1019,9 @@ namespace MBBSEmu.CPU
         private void Op_Dec()
         {
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var result = _currentInstruction.MemorySize == MemorySize.UInt8 ? Op_Dec_8((byte)destination) : Op_Dec_16(destination);
+            var result = _currentInstruction.MemorySize == MemorySize.UInt8
+                ? Op_Dec_8((byte) destination)
+                : Op_Dec_16(destination);
 
             switch (_currentInstruction.Op0Kind)
             {
@@ -1113,43 +1115,45 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
-            var result = (ushort)(destination ^ source);
 
-            var operationSize = 0;
-            switch (_currentInstruction.Op0Kind)
-            {
-                case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, result);
-                    operationSize = _currentInstruction.Op0Register.GetSize();
-                    break;
-                default:
-                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
-            }
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
+                ? Op_Xor_8(destination, source)
+                : Op_Xor_16(destination, source);
 
             //Clear Flags
             Registers.F.ClearFlag(EnumFlags.CF);
             Registers.F.ClearFlag(EnumFlags.OF);
 
-            //Set Conditional Flags
-            switch (operationSize)
+
+            switch (_currentInstruction.Op0Kind)
             {
-                case 1:
-                {
-                    Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
-                    Registers.F.Evaluate<byte>(EnumFlags.PF, result);
-                    Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+                case OpKind.Register:
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
                     break;
-                }
-                case 2:
-                {
-                    Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
-                    Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
-                    Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
-                    break;
-                }
                 default:
-                    throw new Exception($"Unsupported OR operation size: {operationSize}");
+                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte Op_Xor_8(ushort destination, ushort source)
+        {
+            var result = (byte)(destination ^ source);
+            Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+            Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+            Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort Op_Xor_16(ushort destination, ushort source)
+        {
+            var result = (ushort)(destination ^ source);
+            Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+            Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+            Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+            return result;
         }
 
         private void Op_Jae()

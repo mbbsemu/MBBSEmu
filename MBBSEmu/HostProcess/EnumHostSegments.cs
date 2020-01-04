@@ -20,10 +20,6 @@
         /// </summary>
         Msg = 0xFFFE,
 
-        /// <summary>
-        ///     Segment that holds the user struct
-        /// </summary>
-        UserPtr = 0xFFFD,
 
         /// <summary>
         ///     Segment that holds the channel array
@@ -66,6 +62,16 @@
         ///     Number of Channels Defined
         /// </summary>
         Nterms = 0xFFF5,
+
+        /// <summary>
+        ///     Segment that holds the user struct
+        /// </summary>
+        UserPtr = 0xFFF4,
+
+        /// <summary>
+        /// 
+        /// </summary>
+        User = 0xFFF3,
 
         /// <summary>
         ///     Segment that holds the registration number for this instance of MajorBBS  

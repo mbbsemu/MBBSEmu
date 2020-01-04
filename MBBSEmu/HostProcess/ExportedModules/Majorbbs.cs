@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
-using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -9,7 +8,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -33,6 +31,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Dictionary<byte[], IntPtr16> _textVariables = new Dictionary<byte[], IntPtr16>();
 
+        private ushort _channelNumber;
+
         /// <summary>
         ///     Buffer of Data that is stored to be sent to the user
         /// </summary>
@@ -51,6 +51,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
             Registers = registers;
+            _channelNumber = channelNumber;
             Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
         }
 
@@ -117,7 +118,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     sameas();
                     break;
                 case 628:
-                    return usernum();
+                    return usernum;
                 case 713:
                     uacoff();
                     break;
@@ -131,7 +132,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     dedcrd();
                     break;
                 case 629:
-                    return usrptr();
+                    return usrptr;
                 case 476:
                     prfmsg();
                     break;
@@ -139,7 +140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     shocst();
                     break;
                 case 97:
-                    return channel();
+                    return channel;
                 case 59:
                     addcrd();
                     break;
@@ -195,7 +196,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     insbtv();
                     break;
                 case 565:
-                    return status();
+                    return status;
                 case 488:
                     rdedcrd();
                     break;
@@ -244,12 +245,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     dclvda();
                     break;
                 case 437:
-                    return nterms();
+                    return nterms;
                 case 636:
                     vdaoff();
                     break;
                 case 625:
-                    return user();
+                    return user;
+                case 637:
+                    return vdaptr;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -797,7 +800,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usernum() => new IntPtr16((ushort)EnumHostSegments.UserNum, 0).ToSpan();
+        private ReadOnlySpan<byte> usernum => new IntPtr16((ushort)EnumHostSegments.UserNum, 0).ToSpan();
 
         /// <summary>
         ///     Gets the online user account info
@@ -899,7 +902,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: int = Segment on host for User Pointer
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr() => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan(); 
+        private ReadOnlySpan<byte> usrptr => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan(); 
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -962,7 +965,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int *channel
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> channel() => new IntPtr16((ushort) EnumHostSegments.ChannelArray, 0).ToSpan();
+        private ReadOnlySpan<byte> channel => new IntPtr16((ushort) EnumHostSegments.ChannelArray, 0).ToSpan();
 
         /// <summary>
         ///     Post credits to the specified Users Account
@@ -1380,7 +1383,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> status() => new IntPtr16((ushort)EnumHostSegments.Status, 0).ToSpan();
+        private ReadOnlySpan<byte> status => new IntPtr16((ushort)EnumHostSegments.Status, 0).ToSpan();
 
         /// <summary>
         ///     Deduct real credits from online acct
@@ -1754,7 +1757,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
         }
 
-        private ReadOnlySpan<byte> nterms() => new IntPtr16((ushort)EnumHostSegments.Nterms, 0).ToSpan();
+        private ReadOnlySpan<byte> nterms => new IntPtr16((ushort)EnumHostSegments.Nterms, 0).ToSpan();
 
         /// <summary>
         ///     Compute volatile data pointer for the specified User Number
@@ -1783,6 +1786,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> user() => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan();
+        private ReadOnlySpan<byte> user => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan();
+
+        /// <summary>
+        ///     Points to the Volatile Data Area for the current channel
+        ///
+        ///     Signature: char *vdaptr
+        /// </summary>
+        private ReadOnlySpan<byte> vdaptr => CalculateVolatileMemoryPointer((byte)_channelNumber).ToSpan();
     }
 }

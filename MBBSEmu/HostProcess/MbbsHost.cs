@@ -185,6 +185,8 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.HostMemorySegment);
             module.Memory.AddSegment(EnumHostSegments.Status);
             module.Memory.AddSegment(EnumHostSegments.UserPtr);
+            module.Memory.SetArray((ushort)EnumHostSegments.UserPtr, 0, new IntPtr16((ushort)EnumHostSegments.User, 0).ToSpan());
+            module.Memory.AddSegment(EnumHostSegments.User);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
@@ -256,7 +258,7 @@ namespace MBBSEmu.HostProcess
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
             {
-                module.Memory.SetArray((ushort) EnumHostSegments.UserPtr, 0, _channelDictionary[channelNumber].UsrPrt.ToSpan());
+                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, _channelDictionary[channelNumber].UsrPrt.ToSpan());
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
                 module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);

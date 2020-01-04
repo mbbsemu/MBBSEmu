@@ -62,6 +62,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 59:
                     btuxmt();
                     break;
+                case 7:
+                    btuclo();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -294,6 +297,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
 
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Clear data output buffer
+        ///
+        ///     Signature: int btuclo(int chan)
+        ///     Returns: AX == 0, all is well
+        /// </summary>
+        private void btuclo()
+        {
             Registers.AX = 0;
         }
     }
