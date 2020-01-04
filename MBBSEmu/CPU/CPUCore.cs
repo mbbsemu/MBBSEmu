@@ -106,8 +106,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            if(Registers.IP == 0x0DCC)
-                Debugger.Break();
+            //if(Registers.IP == 0x0DCC)
+                //Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -243,13 +243,16 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Int:
                     Op_Int();
                     break;
+                case Mnemonic.Test:
+                    Op_Test();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -291,7 +294,7 @@ namespace MBBSEmu.CPU
 
                             var relocationPointer = new IntPtr16(relocationResult);
 
-                            return relocationRecord.SourceType switch
+                            var result = relocationRecord.SourceType switch
                             {
                                 //Offset
                                 2 => relocationPointer.Segment,
@@ -299,6 +302,11 @@ namespace MBBSEmu.CPU
                                 _ => throw new ArgumentOutOfRangeException(
                                     $"Unhandled MOV Relocation Source Type: {relocationRecord.SourceType}")
                             };
+
+                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                                result += _currentInstruction.Immediate16;
+
+                            return result;
                         }
                         case EnumRecordsFlag.INTERNALREF:
                             return relocationRecord.TargetTypeValueTuple.Item2;
@@ -1279,6 +1287,40 @@ namespace MBBSEmu.CPU
             {
                 Registers.IP += (ushort)_currentInstruction.ByteLength;
             }
+        }
+
+        private void Op_Test()
+        {
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //Clear Overflow & Carry
+            Registers.F.Flags.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F.Flags.ClearFlag((ushort)EnumFlags.CF);
+
+            var result = GetCurrentOperationSize() == 1
+                ? Op_Sub_8((byte)destination, (byte)source)
+                : Op_Sub_16(destination, source);
+        }
+
+        private ushort Op_Test_8(byte destination, byte source)
+        {
+            var result = (byte) (source & destination);
+            Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
+            Registers.F.Evaluate<byte>(EnumFlags.SF, result);
+            Registers.F.Evaluate<byte>(EnumFlags.PF, result);
+
+            return result;
+        }
+
+        private ushort Op_Test_16(ushort destination, ushort source)
+        {
+            var result = (ushort)(source & destination);
+            Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
+            Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
+            Registers.F.Evaluate<ushort>(EnumFlags.PF, result);
+
+            return result;
         }
 
         /// <summary>

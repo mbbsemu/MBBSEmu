@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -247,6 +248,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 636:
                     vdaoff();
                     break;
+                case 625:
+                    return user();
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -1773,5 +1776,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = volatilePointer.Offset;
             Registers.DX = volatilePointer.Segment;
         }
+
+        /// <summary>
+        ///     Contains information about the current user account (class, state, baud, etc.)
+        ///
+        ///     Signature: struct user;
+        /// </summary>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> user() => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan();
     }
 }

@@ -59,6 +59,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 19:
                     btuiba();
                     break;
+                case 59:
+                    btuxmt();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -276,6 +279,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringSegment = GetParameter(2);
 
             ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+        }
+
+        /// <summary>
+        ///     Transmit to channel (ASCIIZ string)
+        ///
+        ///     Signature: int btuxmt(int chan,char *datstg)
+        /// </summary>
+        public void btuxmt()
+        {
+            var channel = GetParameter(0);
+            var stringOffset = GetParameter(1);
+            var stringSegment = GetParameter(2);
+
+            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+
+            Registers.AX = 0;
         }
     }
 }

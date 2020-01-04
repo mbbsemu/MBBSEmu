@@ -143,7 +143,8 @@ namespace MBBSEmu.HostProcess
                         {
                             if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
                             {
-                                Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
+                                //Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
+                                r.Value.Elapsed.Restart();
                             }
                         }
                     }
@@ -157,7 +158,7 @@ namespace MBBSEmu.HostProcess
 
                             foreach (var r in m.RtihdlrRoutines)
                             {
-                                Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
+                                //Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
                             }
                         }
 
