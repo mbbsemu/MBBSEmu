@@ -189,13 +189,13 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
             module.Memory.AddSegment(EnumHostSegments.ChannelArray);
-            module.Memory.AddSegment(EnumHostSegments.Prfbuf);
-            module.Memory.AddSegment((ushort)EnumHostSegments.Nterms);
+            module.Memory.AddSegment((ushort)EnumHostSegments.Prfbuf, 0x400); //1k output buffer
+            module.Memory.AddSegment(EnumHostSegments.Nterms);
             module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);
 
             //Add Volatile Memory Segments
             //0x800 bytes per channel, 0x1F channels per segment, 0x8 segments total
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment);
+            module.Memory.AddSegment(EnumHostSegments.VolatileDataSegment);
             module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 1);
             module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 2);
             module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 3);

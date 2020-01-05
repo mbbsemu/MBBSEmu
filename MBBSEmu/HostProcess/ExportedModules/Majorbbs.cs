@@ -38,14 +38,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private int _inputCurrentCommand;
         private int _inputLength;
 
-        /// <summary>
-        ///     Buffer of Data that is stored to be sent to the user
-        /// </summary>
-        private readonly MemoryStream _outputBuffer;
+        private int _outputBufferPosition;
+        
 
         public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
-            _outputBuffer = new MemoryStream();
+            _outputBufferPosition = 0;
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _inputCurrentCommand = 0;
@@ -96,8 +94,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     throw new OutOfMemoryException($"User Input exceeds allocated 256 bytes ({msUserInput.Length} requested)");
 
                 _inputLength = (int) msUserInput.Length;
-
-                
 
                 //Reset back the beginning, scanning and replacing spaces with null
                 msUserInput.Position = 0;
@@ -295,7 +291,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     setmem();
                     break;
                 case 475:
-                    return prfbuf();
+                    return prfbuf;
                 case 582:
                     strncpy();
                     break;
@@ -916,8 +912,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            _outputBuffer.Write(formattedMessage);
-            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
+            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, (ushort) _outputBufferPosition, formattedMessage);
+            _outputBufferPosition += formattedMessage.Length;
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
@@ -931,7 +927,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void clrprf()
         {
-            _outputBuffer.SetLength(0);
+            _outputBufferPosition = 0;
 
 #if DEBUG
             _logger.Info("Reset Output Buffer");
@@ -948,8 +944,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
 
-            ChannelDictionary[userChannel].DataToClient.Enqueue(_outputBuffer.ToArray());
-            _outputBuffer.SetLength(0);
+            ChannelDictionary[userChannel].DataToClient.Enqueue(Module.Memory.GetArray((ushort)EnumHostSegments.Prfbuf, 0, (ushort) _outputBufferPosition));
+            _outputBufferPosition = 0;
         }
 
         /// <summary>
@@ -1006,14 +1002,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!_currentMcvFile.Messages.TryGetValue(messageNumber, out var outputMessage))
             {
                 _logger.Warn($"prfmsg() unable to locate message number {messageNumber} in current MCV file {_currentMcvFile.FileName}");
-                _outputBuffer.WriteByte(0x0);
                 return;
             }
 
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
-            _outputBuffer.Write(formattedMessage);
-            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
+            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, (ushort) _outputBufferPosition, formattedMessage);
+            _outputBufferPosition += formattedMessage.Length;
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
@@ -1742,13 +1737,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *prfbuf
         /// </summary>
-        private ReadOnlySpan<byte> prfbuf()
+        private ReadOnlySpan<byte> prfbuf
         {
-            Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
-            var pointerSegment = Module.Memory.GetPointerSegment();
-            Module.Memory.SetWord(pointerSegment, 0, (ushort)(ushort)EnumHostSegments.Prfbuf);
-            Module.Memory.SetWord(pointerSegment, 2, 0);
-            return new IntPtr16(pointerSegment, 0).ToSpan();
+            get
+            {
+                var pointerSegment = Module.Memory.GetPointerSegment();
+                Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort) EnumHostSegments.Prfbuf, 0).ToSpan());
+                return new IntPtr16(pointerSegment, 0).ToSpan();
+            }
         }
 
         /// <summary>
@@ -1992,16 +1988,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                //Write Latest Buffer
-                Module.Memory.SetArray((ushort) EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
-                var pointerSegment = Module.Memory.GetPointerSegment();
+                var pointer = GetHostMemoryVariablePointer("PRFPTR", 4);
+                Module.Memory.SetArray(pointer.Segment, pointer.Offset, new IntPtr16((ushort)EnumHostSegments.Prfbuf, (ushort) _outputBufferPosition).ToSpan());
 
-                //Set the Pointer
-                Module.Memory.SetArray(pointerSegment, 0,
-                    new IntPtr16((ushort) EnumHostSegments.Prfbuf, (ushort) _outputBuffer.Position).ToSpan());
-
-                //Return it
-                return new IntPtr16(pointerSegment, 0).ToSpan();
+                
+                return new IntPtr16(pointer.Segment, pointer.Offset).ToSpan();
             }
         }
     }
