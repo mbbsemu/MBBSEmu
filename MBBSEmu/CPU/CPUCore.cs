@@ -526,7 +526,7 @@ namespace MBBSEmu.CPU
                     break;
                 }
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown ADD: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Uknown SBB: {_currentInstruction.Op0Kind}");
             }
 
             switch (operationSize)
