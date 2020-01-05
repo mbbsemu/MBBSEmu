@@ -33,6 +33,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private ushort _channelNumber;
 
+        private readonly List<IntPtr16> _margvPointers;
+        private readonly List<IntPtr16> _margnPointers;
+        private int _inputCurrentCommand;
+        private int _inputLength;
+
         /// <summary>
         ///     Buffer of Data that is stored to be sent to the user
         /// </summary>
@@ -41,6 +46,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
             _outputBuffer = new MemoryStream();
+            _margvPointers = new List<IntPtr16>();
+            _margnPointers = new List<IntPtr16>();
+            _inputCurrentCommand = 0;
+            _inputLength = 0;
         }
 
         /// <summary>
@@ -53,6 +62,61 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers = registers;
             _channelNumber = channelNumber;
             Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
+
+            //Bail if it's max value, not processing any input or status
+            if (channelNumber == ushort.MaxValue)
+                return;
+
+            //Write Blank Input
+            var inputMemory = GetHostMemoryVariablePointer("INPUT", 0xFF);
+            Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
+
+            //Processing Channel Input
+            if (ChannelDictionary[channelNumber].Status == 3)
+            {
+                //Clear Everything
+                _margvPointers.Clear();
+                _margnPointers.Clear();
+                _inputCurrentCommand = 0;
+                _inputLength = 0;
+
+                Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
+
+                using var msUserInput = new MemoryStream();
+                //Deque all input available
+                while (ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var userInput))
+                    msUserInput.Write(userInput);
+
+                //No input to parse WITH a status of 3?
+                if (msUserInput.Length == 0)
+                    return;
+
+                //Protect from overflow
+                if (msUserInput.Length > 0xFF)
+                    throw new OutOfMemoryException($"User Input exceeds allocated 256 bytes ({msUserInput.Length} requested)");
+
+                _inputLength = (int) msUserInput.Length;
+
+                
+
+                //Reset back the beginning, scanning and replacing spaces with null
+                msUserInput.Position = 0;
+                for (ushort i = 0; i < msUserInput.Length; i++)
+                {
+                    //Keep looking for a space
+                    if (msUserInput.ReadByte() != 0x32) continue;
+
+                    //Overwrite the space with null
+                    msUserInput.WriteByte(0x0);
+                    _margnPointers.Add(new IntPtr16(inputMemory.Segment, (ushort) (inputMemory.Offset + i)));
+
+                    //If the next character wouldn't be the end of the input, mark it as the beginning of the next word
+                    if (i + 1 < msUserInput.Length)
+                        _margvPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + i + 1)));
+                }
+
+                Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, msUserInput.ToArray());
+            }
         }
 
         /// <summary>
@@ -253,9 +317,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return user;
                 case 637:
                     return vdaptr;
+                case 87:
+                    bgncnc();
+                    break;
+                case 401:
+                    return margc;
+                case 442:
+                    return nxtcmd;
+                case 522:
+                    sameto();
+                    break;
+                case 122:
+                    cncchr();
+                    break;
+                case 477:
+                    return prfptr;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
+
             return null;
         }
 
@@ -902,7 +982,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: int = Segment on host for User Pointer
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan(); 
+        private ReadOnlySpan<byte> usrptr
+        {
+            get
+            {
+                var pointerSegment = Module.Memory.GetPointerSegment();
+                Module.Memory.SetWord(pointerSegment, 0, (ushort)EnumHostSegments.User);
+                Module.Memory.SetWord(pointerSegment, 2, 0);
+                return new IntPtr16(pointerSegment, 0).ToSpan();
+            }
+        }
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -1656,7 +1745,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> prfbuf()
         {
             Module.Memory.SetArray((ushort)EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
-            return new IntPtr16((ushort)EnumHostSegments.PrfbufPointer, 0).ToSpan();
+            var pointerSegment = Module.Memory.GetPointerSegment();
+            Module.Memory.SetWord(pointerSegment, 0, (ushort)(ushort)EnumHostSegments.Prfbuf);
+            Module.Memory.SetWord(pointerSegment, 2, 0);
+            return new IntPtr16(pointerSegment, 0).ToSpan();
         }
 
         /// <summary>
@@ -1794,5 +1886,123 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: char *vdaptr
         /// </summary>
         private ReadOnlySpan<byte> vdaptr => CalculateVolatileMemoryPointer((byte)_channelNumber).ToSpan();
+
+        /// <summary>
+        ///     After calling bgncnc(), the command is unparsed (has spaces again, not separate words),
+        ///     and prepared for interpretation using the command concatenation utilities
+        ///
+        ///     Signature: void bgncnc()
+        /// </summary>
+        private void bgncnc()
+        {
+            //TODO -- Dunno what I should do with this
+        }
+
+        /// <summary>
+        ///     Number of Words in the users input line
+        ///
+        ///     Signature: int margc
+        /// </summary>
+        private ReadOnlySpan<byte> margc
+        {
+            get
+            {
+                var pointerSegment = Module.Memory.GetPointerSegment();
+                var variablePointer = GetHostMemoryVariablePointer("MARGC", 2);
+                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) _margvPointers.Count);
+                Module.Memory.SetArray(pointerSegment, 0, variablePointer.ToSpan());
+                return new IntPtr16(pointerSegment, 0).ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     Returns the pointer to the next parsed input command from the user
+        ///     If this is the first time it's called, it returns the first command
+        /// </summary>
+        private ReadOnlySpan<byte> nxtcmd
+        {
+            get
+            {
+                var variablePointer = GetHostMemoryVariablePointer("INPUT");
+                var pointerSegment = Module.Memory.GetPointerSegment();
+                if (_margvPointers.Count == 0 || _inputCurrentCommand > _margvPointers.Count)
+                {
+#if DEBUG
+                    _logger.Info(
+                        $"No Input, returning pointer to 1st (null) byte in Input Memory ({variablePointer.Segment:X4}:{variablePointer.Offset})");
+#endif
+                    Module.Memory.SetArray(pointerSegment, 0, new IntPtr16(variablePointer.Segment, variablePointer.Offset).ToSpan());
+                }
+                else
+                {
+#if DEBUG
+                    _logger.Info(
+                        $"Returning Next Command ({_inputCurrentCommand} ({_margvPointers[_inputCurrentCommand++].Segment:X4}:{_margvPointers[_inputCurrentCommand++].Offset})");
+#endif
+                    Module.Memory.SetArray(pointerSegment, 0, _margvPointers[_inputCurrentCommand++].ToSpan());
+                }
+                return new IntPtr16(pointerSegment, 0).ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     Case-ignoring substring match
+        ///
+        ///     Signature: int match=sameto(char *shorts, char *longs)
+        ///     Returns: AX == 1, match
+        /// </summary>
+        private void sameto()
+        {
+            var string1Offset = GetParameter(0);
+            var string1Segment = GetParameter(1);
+            var string2Offset = GetParameter(2);
+            var string2Segment = GetParameter(3);
+
+            using var string1InputBuffer = new MemoryStream();
+            string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
+            var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray()).ToUpper();
+
+            using var string2InputBuffer = new MemoryStream();
+            string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
+            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
+
+            var resultValue = string1InputValue.Equals(string2InputValue, StringComparison.InvariantCultureIgnoreCase);
+
+#if DEBUG
+            _logger.Info($"Returned {resultValue} comparing {string1InputValue} ({string1Segment:X4}:{string1Offset:X4}) to {string2InputValue} ({string2Segment:X4}:{string2Offset:X4})");
+#endif
+
+            Registers.AX = (ushort)(resultValue ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Expect a Character from the user (character from the current command)
+        /// </summary>
+        private void cncchr()
+        {
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Pointer to the current position in prfbuf
+        ///
+        ///     Signature: char *prfptr;
+        /// </summary>
+        private ReadOnlySpan<byte> prfptr
+        {
+            get
+            {
+                //Write Latest Buffer
+                Module.Memory.SetArray((ushort) EnumHostSegments.Prfbuf, 0, _outputBuffer.ToArray());
+                var pointerSegment = Module.Memory.GetPointerSegment();
+
+                //Set the Pointer
+                Module.Memory.SetArray(pointerSegment, 0,
+                    new IntPtr16((ushort) EnumHostSegments.Prfbuf, (ushort) _outputBuffer.Position).ToSpan());
+
+                //Return it
+                return new IntPtr16(pointerSegment, 0).ToSpan();
+            }
+        }
     }
 }

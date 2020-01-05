@@ -7,7 +7,8 @@ namespace MBBSEmu.Memory
 {
     public interface IMemoryCore
     {
-        void AddSegment(ushort segmentNumber);
+        ushort GetPointerSegment();
+        void AddSegment(ushort segmentNumber, int size = 0x10000);
         void AddSegment(EnumHostSegments segment);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);

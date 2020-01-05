@@ -21,24 +21,44 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private ushort _hostMemoryOffset;
+        private ushort _currentPointerSegment;
 
         public MemoryCore()
         {
             _memorySegments = new Dictionary<ushort, byte[]>();
             _segments = new Dictionary<ushort, Segment>();
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
+
+            //Setup Pointer Segments - 64 for now, can easily be more
+            //These are used to hold the "pointer" for property return types
+            for (var i = 0; i < 64; i++)
+            {
+                AddSegment((ushort) (0x0F00 + i), 4);
+            }
+        }
+
+        /// <summary>
+        ///     Returns a 4 byte Segment used to hold a IntPtr16 value
+        /// </summary>
+        /// <returns></returns>
+        public ushort GetPointerSegment()
+        {
+            if (_currentPointerSegment > 0x0F40)
+                _currentPointerSegment = 0x0F00;
+
+            return _currentPointerSegment++;
         }
 
         /// <summary>
         ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number
         /// </summary>
         /// <param name="segmentNumber"></param>
-        public void AddSegment(ushort segmentNumber)
+        public void AddSegment(ushort segmentNumber, int size = 0x10000)
         {
             if(_memorySegments.ContainsKey(segmentNumber))
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
-            _memorySegments[segmentNumber] = new byte[0x10000];
+            _memorySegments[segmentNumber] = new byte[size];
         }
 
         public void AddSegment(EnumHostSegments segment) => AddSegment((ushort) segment);

@@ -152,6 +152,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Call:
                     Op_Call();
                     return;
+                case Mnemonic.Loop:
+                    Op_Loop();
+                    return;
 
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Clc:
@@ -252,7 +255,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            //_logger.InfoRegisters(this);
+            _logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -407,6 +410,19 @@ namespace MBBSEmu.CPU
                 _ => -1
             };
             return operationSize;
+        }
+
+        private void Op_Loop()
+        {
+            if (Registers.CX == 0)
+            {
+                //Continue with the next instruction
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                return;
+            }
+
+            Registers.CX--;
+            Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
         }
 
         private void Op_Int()
@@ -1303,8 +1319,8 @@ namespace MBBSEmu.CPU
             Registers.F.Flags.ClearFlag((ushort)EnumFlags.CF);
 
             var result = GetCurrentOperationSize() == 1
-                ? Op_Sub_8((byte)destination, (byte)source)
-                : Op_Sub_16(destination, source);
+                ? Op_Test_8((byte)destination, (byte)source)
+                : Op_Test_16(destination, source);
         }
 
         private ushort Op_Test_8(byte destination, byte source)

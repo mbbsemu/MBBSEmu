@@ -20,7 +20,6 @@
         /// </summary>
         Msg = 0xFFFE,
 
-
         /// <summary>
         ///     Segment that holds the channel array
         /// </summary>
@@ -53,11 +52,6 @@
         /// </summary>
         Prfbuf = 0xFFF7,
 
-        /// <summary>
-        ///     Output Buffer Pointer
-        /// </summary>
-        PrfbufPointer = 0xFFF6,
-        
         /// <summary>
         ///     Number of Channels Defined
         /// </summary>

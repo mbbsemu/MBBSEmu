@@ -73,6 +73,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return new IntPtr16(segment, offset);
         }
 
+        private protected IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0x400)
+        {
+            if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
+            {
+                //allocate 1k for the SPR buffer
+                var offset = Module.Memory.AllocateHostMemory(size);
+
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                HostMemoryVariables[variableName] = variablePointer;
+
+            }
+            return variablePointer;
+        }
+
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
         private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};

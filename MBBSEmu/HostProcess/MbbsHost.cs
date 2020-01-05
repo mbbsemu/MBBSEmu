@@ -117,7 +117,7 @@ namespace MBBSEmu.HostProcess
                                 }
 
                                 //Is there Text to send to the module
-                                if (s.DataFromClient.Count > 0)
+                                if (s.Status == 3)
                                 {
                                     Run(s.ModuleIdentifier, "sttrou", s.Channel);
                                     continue;
@@ -184,15 +184,11 @@ namespace MBBSEmu.HostProcess
             //Setup new memory core and init with host memory segment
             module.Memory.AddSegment(EnumHostSegments.HostMemorySegment);
             module.Memory.AddSegment(EnumHostSegments.Status);
-            module.Memory.AddSegment(EnumHostSegments.UserPtr);
-            module.Memory.SetArray((ushort)EnumHostSegments.UserPtr, 0, new IntPtr16((ushort)EnumHostSegments.User, 0).ToSpan());
             module.Memory.AddSegment(EnumHostSegments.User);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
             module.Memory.AddSegment(EnumHostSegments.ChannelArray);
-            module.Memory.AddSegment(EnumHostSegments.PrfbufPointer);
-            module.Memory.SetArray((ushort)EnumHostSegments.PrfbufPointer, 0, new IntPtr16((ushort)EnumHostSegments.Prfbuf, 0).ToSpan());
             module.Memory.AddSegment(EnumHostSegments.Prfbuf);
             module.Memory.AddSegment((ushort)EnumHostSegments.Nterms);
             module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);

@@ -65,6 +65,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 7:
                     btuclo();
                     break;
+                case 30:
+                    btumil();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -307,6 +310,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: AX == 0, all is well
         /// </summary>
         private void btuclo()
+        {
+            Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     Sets maximum input line length, sets word wrap on/off
+        ///
+        ///     Basically limits the maximum number of bytes a user can input
+        ///     any bytes input past this limit should be ignored, but will generate
+        ///     a status of 251
+        ///
+        ///     Signature: int err=btumil(int chan, int maxinl)
+        /// </summary>
+        private void btumil()
         {
             Registers.AX = 0;
         }

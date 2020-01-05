@@ -95,6 +95,11 @@ namespace MBBSEmu.Telnet
                 else
                 {
                     DataFromClient.Enqueue(characterBufferSpan.Slice(0, bytesReceived).ToArray());
+
+                    if (characterBufferSpan[0] == 0xA)
+                    {
+                        Status = 3;
+                    }
                 }
                 Thread.Sleep(1);
             }
