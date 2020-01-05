@@ -21,7 +21,7 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private ushort _hostMemoryOffset;
-        private ushort _currentPointerSegment;
+        private ushort _currentPointerSegment = 0xF00;
 
         public MemoryCore()
         {
@@ -33,7 +33,7 @@ namespace MBBSEmu.Memory
             //These are used to hold the "pointer" for property return types
             for (var i = 0; i < 64; i++)
             {
-                AddSegment((ushort) (0x0F00 + i), 4);
+                AddSegment((ushort) (_currentPointerSegment + i), 4);
             }
         }
 
@@ -43,7 +43,7 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         public ushort GetPointerSegment()
         {
-            if (_currentPointerSegment > 0x0F40)
+            if (_currentPointerSegment == 0x0F40)
                 _currentPointerSegment = 0x0F00;
 
             return _currentPointerSegment++;

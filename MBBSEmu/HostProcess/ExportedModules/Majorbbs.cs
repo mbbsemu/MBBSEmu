@@ -983,8 +983,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 var pointerSegment = Module.Memory.GetPointerSegment();
-                Module.Memory.SetWord(pointerSegment, 0, (ushort)EnumHostSegments.User);
-                Module.Memory.SetWord(pointerSegment, 2, 0);
+                Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort)EnumHostSegments.User, 0).ToSpan());
                 return new IntPtr16(pointerSegment, 0).ToSpan();
             }
         }

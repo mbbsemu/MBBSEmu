@@ -22,7 +22,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     This Users UsrPtr* which is passed in from MajorBBS
         /// </summary>
-        public User UsrPrt;
+        public User UsrPtr;
 
         /// <summary>
         ///     This Users UsrAcc* which is pass in from MajorBBS
@@ -91,7 +91,7 @@ namespace MBBSEmu.Session
             SessionId = sessionId;
             DataFromClient = new Queue<byte[]>();
             DataToClient = new Queue<byte[]>();
-            UsrPrt = new User();
+            UsrPtr = new User();
             UsrAcc = new UserAccount();
             Status = 0;
             EchoBuffer = new MemoryStream(256);

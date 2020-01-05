@@ -101,7 +101,6 @@ namespace MBBSEmu.Module
             return result;
         }
 
-
         /// <summary>
         ///     This is faster than doing a .Split
         /// </summary>

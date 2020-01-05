@@ -189,7 +189,7 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
             module.Memory.AddSegment(EnumHostSegments.ChannelArray);
-            module.Memory.AddSegment((ushort)EnumHostSegments.Prfbuf, 0x400); //1k output buffer
+            module.Memory.AddSegment((ushort)EnumHostSegments.Prfbuf);
             module.Memory.AddSegment(EnumHostSegments.Nterms);
             module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);
 
@@ -254,7 +254,7 @@ namespace MBBSEmu.HostProcess
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
             {
-                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, _channelDictionary[channelNumber].UsrPrt.ToSpan());
+                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, _channelDictionary[channelNumber].UsrPtr.ToSpan());
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
                 module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
@@ -297,8 +297,8 @@ namespace MBBSEmu.HostProcess
             //Extract the User Information as it might have updated
             if (channelNumber != ushort.MaxValue)
             {
-                _channelDictionary[channelNumber].UsrPrt
-                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.UserPtr, 0, 41));
+                _channelDictionary[channelNumber].UsrPtr
+                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.User, 0, 41));
 
                 //If the status wasn't set internally, then set it to the default 5
                 _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange

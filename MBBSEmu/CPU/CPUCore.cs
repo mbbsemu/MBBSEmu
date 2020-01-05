@@ -255,7 +255,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -912,6 +912,10 @@ namespace MBBSEmu.CPU
             var segment = Registers.GetValue(_currentInstruction.MemorySegment);
 
             var dataPointer = new IntPtr16(Memory.GetArray(segment, offset, 4));
+
+#if DEBUG
+            _logger.Info($"LES Loaded {dataPointer.Segment:X4}:{dataPointer.Offset:X4}");
+#endif
 
             Registers.SetValue(_currentInstruction.Op0Register, dataPointer.Offset);
             Registers.ES = dataPointer.Segment;
