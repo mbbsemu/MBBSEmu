@@ -343,6 +343,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 229:
                     f_read();
                     break;
+                case 312:
+                    f_write();
+                    break;
+                case 617:
+                    unlink();
+                    break;
+                case 578:
+                    strlen();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -2045,7 +2054,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 //Create a new file for W or A
-                File.Create($"{Module.ModulePath}{filenameInputValue}");
+                File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
 #if DEBUG
                 _logger.Info($"Creating new file {filenameInputValue}");
 #endif
@@ -2058,17 +2067,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                     _logger.Info($"Overwritting file {filenameInputValue}");
 #endif
-                    using var newFile = File.Create($"{Module.ModulePath}{filenameInputValue}");
-                    newFile.Close();
+                    File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
                 }
             }
 
-            //Read All the Data
-            var fileData = File.ReadAllBytes($"{Module.ModulePath}{filenameInputValue}");
-
+#if DEBUG
+            _logger.Info($"Opening File: {filenameInputValue}");
+#endif
             //Setup the Memory Segment
-            var filePointerOffset = FilePointerDictionary.Allocate(new MemoryStream(fileData));
-
+            var filePointerOffset =
+                FilePointerDictionary.Allocate(File.Open($"{Module.ModulePath}{filenameInputValue}",
+                    FileMode.OpenOrCreate));
 
             Registers.AX = (ushort) filePointerOffset;
             Registers.DX = (ushort) EnumHostSegments.FilePointerSegmentBase;
@@ -2184,6 +2193,65 @@ namespace MBBSEmu.HostProcess.ExportedModules
             
 
             Registers.AX = elementsRead;
+        }
+
+        /// <summary>
+        ///     Writes an array of count elements, each one with a size of size bytes, from the block of memory
+        ///     pointed by ptr to the current position in the stream.
+        /// </summary>
+        private void f_write()
+        {
+            var sourcePointerOffset = GetParameter(0);
+            var sourcePointerSegment = GetParameter(1);
+            var size = GetParameter(2);
+            var count = GetParameter(3);
+            var fileStreamPointerOffset = GetParameter(4);
+            var fileStreamPointerSegment = GetParameter(5);
+
+            if (!FilePointerDictionary.TryGetValue(fileStreamPointerOffset, out var fileStream))
+                throw new FileNotFoundException($"File Pointer {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4} not found in the File Pointer Dictionary");
+
+            ushort elementsWritten = 0;
+            for (var i = 0; i < count; i++)
+            {
+                fileStream.Write(Module.Memory.GetArray(sourcePointerSegment, (ushort) (sourcePointerOffset + (i * size)), size));
+                elementsWritten++;
+            }
+
+            Registers.AX = elementsWritten;
+        }
+
+        /// <summary>
+        ///     Deleted the specified file
+        /// </summary>
+        private void unlink()
+        {
+            var filenameOffset = GetParameter(0);
+            var filenameSegment = GetParameter(1);
+
+            using var filenameInputBuffer = new MemoryStream();
+            filenameInputBuffer.Write(Module.Memory.GetString(filenameSegment, filenameOffset, true));
+            var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
+
+#if DEBUG
+            _logger.Info($"Deleting File: {Module.ModulePath}{filenameInputValue}");
+#endif
+
+            if(File.Exists($"{Module.ModulePath}{filenameInputValue}"))
+                File.Delete($"{Module.ModulePath}{filenameInputValue}");
+
+            Registers.AX = 0;
+        }
+
+        private void strlen()
+        {
+            var stringOffset = GetParameter(0);
+            var stringSegment = GetParameter(1);
+
+            using var filenameInputBuffer = new MemoryStream();
+            filenameInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
+
+            Registers.AX = (ushort) filenameInputBuffer.Length;
         }
     }
 }

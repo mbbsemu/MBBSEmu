@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.Memory;
 
 namespace MBBSEmu.Session
 {
@@ -73,6 +74,8 @@ namespace MBBSEmu.Session
         public MemoryStream EchoBuffer;
 
         public MemoryStream InputBuffer;
+
+        public IntPtr16 CharacterInterceptor;
 
         public string Username
         {

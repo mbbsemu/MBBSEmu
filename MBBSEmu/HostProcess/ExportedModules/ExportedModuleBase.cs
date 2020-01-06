@@ -33,7 +33,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Pointers to files opened using FOPEN
         /// </summary>
-        private protected readonly PointerDictionary<MemoryStream> FilePointerDictionary;
+        private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
 
         private protected readonly ILogger _logger;
 
@@ -49,7 +49,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module = module;
             ChannelDictionary = channelDictionary;
             HostMemoryVariables = new Dictionary<string, IntPtr16>();
-            FilePointerDictionary = new PointerDictionary<MemoryStream>();
+            FilePointerDictionary = new PointerDictionary<FileStream>();
         }
 
         /// <summary>
@@ -135,9 +135,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
             {
                 //allocate 1k for the SPR buffer
-                HostMemoryVariables[variableName] = AllocateHostMemory(size);
-
+                variablePointer = AllocateHostMemory(size);
+                HostMemoryVariables[variableName] = variablePointer;
             }
+
             return variablePointer;
         }
 

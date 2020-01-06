@@ -68,6 +68,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 30:
                     btumil();
                     break;
+                case 3:
+                    btuche();
+                    break;
+                case 5:
+                    btuclc();
+                    break;
+                case 8:
+                    btucls();
+                    break;
+                case 52:
+                    btutru();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -231,8 +243,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routineSegment = GetParameter(1);
             var routineOffset = GetParameter(2);
 
-            if (routineOffset != 0 && routineSegment != 0)
-                throw new Exception("BTUCHI only handles NULL for the time being");
+            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routineSegment, routineOffset);
+
+#if DEBUG
+            _logger.Info($"Assigned Character Interceptor Routine {routineSegment:X4}:{routineOffset:X4} to Channel {channel}");
+#endif
 
             Registers.AX = 0;
         }
@@ -326,6 +341,57 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btumil()
         {
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Enables calling of btuchi() when echo buffer becomes empty
+        ///
+        ///     Signature: int err=btuche(int chan, int onoff)
+        /// </summary>
+        private void btuche()
+        {
+            //TODO -- Ignoring this for now, need to better understand the effect
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Clears Command Input Buffer
+        ///
+        ///     Signature: int btuclc(int chan)
+        /// </summary>
+        private void btuclc()
+        {
+            var channel = GetParameter(0);
+            ChannelDictionary[channel].DataFromClient.Clear();
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Clear status input buffer
+        ///
+        ///     Signature: int btucls(int chan)
+        /// </summary>
+        private void btucls()
+        {
+            var channel = GetParameter(0);
+
+            //TODO -- not sure the functionality here, need to research
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Sets output-abort character
+        ///
+        ///     Signature: int btutru(int chan,char trunch)
+        /// </summary>
+        private void btutru()
+        {
+
+            //TODO -- not sure the functionality here, need to research
+
             Registers.AX = 0;
         }
     }

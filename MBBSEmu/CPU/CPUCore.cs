@@ -146,6 +146,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jbe:
                     Op_Jbe();
                     return;
+                case Mnemonic.Ja:
+                    Op_Ja();
+                    return;
                 case Mnemonic.Jae:
                     Op_Jae();
                     return;
@@ -1175,6 +1178,19 @@ namespace MBBSEmu.CPU
             Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
             return result;
         }
+
+        private void Op_Ja()
+        {
+            if (!Registers.F.IsFlagSet(EnumFlags.CF) && !Registers.F.IsFlagSet(EnumFlags.ZF))
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.ByteLength;
+            }
+        }
+
 
         private void Op_Jae()
         {
