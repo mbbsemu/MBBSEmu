@@ -79,12 +79,6 @@ namespace MBBSEmu.Memory
             _memorySegments[segmentNumber] = new byte[size];
         }
 
-        public void RemoveSegment(ushort segmentNumber)
-        {
-            if(!_memorySegments.Remove(segmentNumber))
-                throw new Exception($"Unable to remove Segment {segmentNumber}");
-        }
-
         public void AddSegment(EnumHostSegments segment) => AddSegment((ushort) segment);
 
         public void AddSegment(Segment segment)

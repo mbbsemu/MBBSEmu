@@ -28,6 +28,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected Dictionary<string, IntPtr16> HostMemoryVariables;
 
         private protected PointerDictionary<UserSession> ChannelDictionary;
+        
+        /// <summary>
+        ///     Pointers to files opened using FOPEN
+        /// </summary>
+        private protected readonly PointerDictionary<MemoryStream> FilePointerDictionary;
 
         private protected readonly ILogger _logger;
 
@@ -45,6 +50,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module = module;
             ChannelDictionary = channelDictionary;
             HostMemoryVariables = new Dictionary<string, IntPtr16>();
+            FilePointerDictionary = new PointerDictionary<MemoryStream>();
         }
 
         /// <summary>
@@ -85,6 +91,44 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             }
             return variablePointer;
+        }
+
+        /// <summary>
+        ///     Parses File Access characters passed into FOPEN
+        /// </summary>
+        /// <param name="flags"></param>
+        /// <returns></returns>
+        private protected EnumFileAccessFlags ParseFileAccessFlags(ReadOnlySpan<byte> flags)
+        {
+            var result = EnumFileAccessFlags.Text;
+
+            foreach (var f in flags)
+            {
+                switch ((char)f)
+                {
+                    case 'r':
+                        result |= EnumFileAccessFlags.Read;
+                        break;
+                    case 'w':
+                        result |= EnumFileAccessFlags.Write;
+                        break;
+                    case 'a':
+                        result |= EnumFileAccessFlags.Append;
+                        break;
+                    case '+':
+                        result |= EnumFileAccessFlags.Update;
+                        break;
+                    case 'b':
+                    {
+                        result &= ~EnumFileAccessFlags.Text;
+                        result |= EnumFileAccessFlags.Binary;
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException($"Unknown File Access Flag: {(char) f}");
+                }
+            }
+            return result;
         }
 
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};

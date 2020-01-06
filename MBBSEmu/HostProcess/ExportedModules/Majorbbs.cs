@@ -2035,27 +2035,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             using var modeInputBuffer = new MemoryStream();
             modeInputBuffer.Write(Module.Memory.GetString(modeSegment, modeOffset, true));
-            var modeInputValue = Encoding.Default.GetString(modeInputBuffer.ToArray()).ToUpper();
+
+            var fileAccessMode = ParseFileAccessFlags(modeInputBuffer.ToArray());
+
 
             if (!File.Exists($"{Module.ModulePath}{filenameInputValue}"))
             {
+                if (fileAccessMode.HasFlag(EnumFileAccessFlags.Read))
+                {
 #if DEBUG
-                _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
+                    _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
 #endif
-                Registers.AX = 0;
-                Registers.DX = 0;
-                return;
+                    Registers.AX = 0;
+                    Registers.DX = 0;
+                    return;
+                }
+
+                //Create a new file for W or A
+                File.Create($"{Module.ModulePath}{filenameInputValue}");
+#if DEBUG
+                _logger.Info($"Creating new file {filenameInputValue}");
+#endif
+            }
+            else
+            {
+                //Overwrite existing file for W
+                if (fileAccessMode.HasFlag(EnumFileAccessFlags.Write))
+                {
+#if DEBUG
+                    _logger.Info($"Overwritting file {filenameInputValue}");
+#endif
+                    using var newFile = File.Create($"{Module.ModulePath}{filenameInputValue}");
+                    newFile.Close();
+                }
             }
 
+            //Read All the Data
+            var fileData = File.ReadAllBytes($"{Module.ModulePath}{filenameInputValue}");
+
             //Setup the Memory Segment
-            var filePointerSegment =
-                Module.Memory.GetFileSegment((int) new FileInfo($"{Module.ModulePath}{filenameInputValue}").Length);
+            var filePointerOffset = FilePointerDictionary.Allocate(new MemoryStream(fileData));
 
-            //Dump the whole thing to memory
-            Module.Memory.SetArray(filePointerSegment, 0, File.ReadAllBytes($"{Module.ModulePath}{filenameInputValue}"));
 
-            Registers.AX = 0;
-            Registers.DX = filePointerSegment;
+            Registers.AX = (ushort) filePointerOffset;
+            Registers.DX = (ushort) EnumHostSegments.FilePointerSegment;
         }
 
         /// <summary>
@@ -2068,11 +2091,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileOffset = GetParameter(0);
             var fileSegment = GetParameter(1);
 
-            Module.Memory.RemoveSegment(fileSegment);
+
+            if (fileSegment == 0 && fileOffset == 0)
+            {
+#if DEBUG
+                _logger.Warn($"Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
+                Registers.AX = 0;
+                return;
+#endif
+            }
+
+            if(fileSegment != (ushort)EnumHostSegments.FilePointerSegment)
+                throw new Exception($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileSegment:X4}:{fileOffset:X4}");
+
+            //Clean Up File Stream Pointer
+            FilePointerDictionary[fileOffset].Dispose();
+            FilePointerDictionary.Remove(fileOffset);
 
 #if DEBUG
             _logger.Info($"Closed File {fileSegment:X4}:{fileOffset:X4}");
 #endif
+            Registers.AX = 0;
         }
 
         /// <summary>

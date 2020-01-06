@@ -79,6 +79,11 @@
         ///     Valid Range is 0xA01 - 0xAFF
         /// </summary>
         VolatileDataSegment = 0x0A00,
+        
+        /// <summary>
+        ///     Segment used for File Stream Pointers opened with FOPEN
+        /// </summary>
+        FilePointerSegment = 0x0100,
 
         /// <summary>
         ///     Stack Segment

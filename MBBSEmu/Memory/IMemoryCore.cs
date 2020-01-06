@@ -10,7 +10,6 @@ namespace MBBSEmu.Memory
         ushort GetPointerSegment();
         ushort GetFileSegment(int fileSize);
         void AddSegment(ushort segmentNumber, int size = 0x10000);
-        void RemoveSegment(ushort segmentNumber);
         void AddSegment(EnumHostSegments segment);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
