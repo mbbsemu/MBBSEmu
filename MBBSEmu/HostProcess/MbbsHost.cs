@@ -182,7 +182,6 @@ namespace MBBSEmu.HostProcess
             //    throw new Exception("Module is currently unsupported by MbbEmu! :(");
 
             //Setup new memory core and init with host memory segment
-            module.Memory.AddSegment(EnumHostSegments.HostMemorySegment);
             module.Memory.AddSegment(EnumHostSegments.Status);
             module.Memory.AddSegment(EnumHostSegments.User);
             module.Memory.AddSegment(EnumHostSegments.UserPtr);
@@ -193,17 +192,6 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment((ushort)EnumHostSegments.Prfbuf);
             module.Memory.AddSegment(EnumHostSegments.Nterms);
             module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);
-
-            //Add Volatile Memory Segments
-            //0x800 bytes per channel, 0x1F channels per segment, 0x8 segments total
-            module.Memory.AddSegment(EnumHostSegments.VolatileDataSegment);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 1);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 2);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 3);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 4);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 5);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 6);
-            module.Memory.AddSegment((ushort)EnumHostSegments.VolatileDataSegment + 7);
 
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)

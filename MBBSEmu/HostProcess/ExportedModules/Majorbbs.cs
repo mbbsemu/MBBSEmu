@@ -9,7 +9,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -392,13 +391,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var size = GetParameter(0);
 
             //Get the current pointer
-            var pointer = Module.Memory.AllocateHostMemory(size);
+            var hostSegment = AllocateHostMemory(size);
 
-            Registers.AX = pointer;
-            Registers.DX = (ushort)EnumHostSegments.HostMemorySegment; ;
-                
+            Registers.AX = hostSegment.Offset;
+            Registers.DX = hostSegment.Segment;
+
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {pointer:X4}");
+            _logger.Info($"Allocated {size} bytes starting at {hostSegment.Segment:X4}:{hostSegment.Offset:X4}");
 #endif
         }
 
@@ -428,9 +427,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
 
                 //Get the current pointer
-                var offset = Module.Memory.AllocateHostMemory(size);
-
-                variablePointer = new IntPtr16(HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory(size);
 
                 //Get the Module Name from the Mdf
                 var moduleName = Module.Mdf.ModuleName;
@@ -695,9 +692,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if(!HostMemoryVariables.TryGetValue($"STGOPT_{msgnum}", out var variablePointer))
             {
                 var outputValue = _currentMcvFile.GetString(msgnum);
-                var offset = Module.Memory.AllocateHostMemory((ushort)outputValue.Length);
 
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory((ushort)outputValue.Length);
 
                 //Save Variable Pointer
                 HostMemoryVariables[$"STGOPT_{msgnum}"] = variablePointer;
@@ -748,9 +744,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!HostMemoryVariables.TryGetValue($"L2AS", out var variablePointer))
             {
                 //Pre-allocate space for the maximum number of characters for a ulong
-                var offset = Module.Memory.AllocateHostMemory((ushort)uint.MaxValue.ToString().Length);
-
-                variablePointer = new IntPtr16((ushort) EnumHostSegments.HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory((ushort)outputValue.Length);
 
                 //Set Variable Pointer
                 HostMemoryVariables["L2AS"] = variablePointer;
@@ -995,7 +989,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointerSegment = Module.Memory.GetPointerSegment();
+                var pointerSegment = GetPointerSegment();
                 Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan());
                 return new IntPtr16(pointerSegment, 0).ToSpan();
             }
@@ -1186,9 +1180,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!HostMemoryVariables.TryGetValue("NCDATE", out var variablePointer))
             {
-                var offset = Module.Memory.AllocateHostMemory((ushort)outputDate.Length);
-
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory((ushort)outputDate.Length);
                 HostMemoryVariables["NCDATE"] = variablePointer;
             }
 
@@ -1516,9 +1508,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!HostMemoryVariables.TryGetValue("SPR", out var variablePointer))
             {
                 //allocate 1k for the SPR buffer
-                var offset = Module.Memory.AllocateHostMemory(0x400);
-
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory(0x400);
                 HostMemoryVariables["SPR"] = variablePointer;
             }
 
@@ -1641,8 +1631,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Setup Host Memory Variables Pointer
             if (!HostMemoryVariables.TryGetValue($"SCNMDF", out var variablePointer))
             {
-                var offset = Module.Memory.AllocateHostMemory(256);
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                variablePointer = AllocateHostMemory(256);
+                HostMemoryVariables.Add("SCNMDF", variablePointer);
             }
 
             var recordFound = false;
@@ -1753,7 +1743,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointerSegment = Module.Memory.GetPointerSegment();
+                var pointerSegment = GetPointerSegment();
                 Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort) EnumHostSegments.Prfbuf, 0).ToSpan());
                 return new IntPtr16(pointerSegment, 0).ToSpan();
             }
@@ -1874,7 +1864,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            var volatilePointer = CalculateVolatileMemoryPointer((byte) channel);
+            var volatilePointer = GetVolatileMemoryPointer((byte) channel);
 
             Registers.AX = volatilePointer.Offset;
             Registers.DX = volatilePointer.Segment;
@@ -1890,7 +1880,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var returnPointer = Module.Memory.GetPointerSegment();
+                var returnPointer = GetPointerSegment();
                 Module.Memory.SetArray(returnPointer, 0, new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan());
                 return new IntPtr16(returnPointer, 0).ToSpan();
             }
@@ -1901,7 +1891,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *vdaptr
         /// </summary>
-        private ReadOnlySpan<byte> vdaptr => CalculateVolatileMemoryPointer((byte)_channelNumber).ToSpan();
+        private ReadOnlySpan<byte> vdaptr => GetVolatileMemoryPointer((byte)_channelNumber).ToSpan();
 
         /// <summary>
         ///     After calling bgncnc(), the command is unparsed (has spaces again, not separate words),
@@ -1923,7 +1913,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointerSegment = Module.Memory.GetPointerSegment();
+                var pointerSegment = GetPointerSegment();
                 var variablePointer = GetHostMemoryVariablePointer("MARGC", 2);
                 Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) _margvPointers.Count);
                 Module.Memory.SetArray(pointerSegment, 0, variablePointer.ToSpan());
@@ -1940,7 +1930,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 var variablePointer = GetHostMemoryVariablePointer("INPUT");
-                var pointerSegment = Module.Memory.GetPointerSegment();
+                var pointerSegment = GetPointerSegment();
                 if (_margvPointers.Count == 0 || _inputCurrentCommand > _margvPointers.Count)
                 {
 #if DEBUG
@@ -2078,7 +2068,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
             Registers.AX = (ushort) filePointerOffset;
-            Registers.DX = (ushort) EnumHostSegments.FilePointerSegment;
+            Registers.DX = (ushort) EnumHostSegments.FilePointerSegmentBase;
         }
 
         /// <summary>
@@ -2101,7 +2091,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             }
 
-            if(fileSegment != (ushort)EnumHostSegments.FilePointerSegment)
+            if(fileSegment != (ushort)EnumHostSegments.FilePointerSegmentBase)
                 throw new Exception($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileSegment:X4}:{fileOffset:X4}");
 
             //Clean Up File Stream Pointer
@@ -2156,6 +2146,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileName = Module.Memory.GetString(filespecSegment, filespecOffset, true);
             var fileNameString = Encoding.ASCII.GetString(fileName);
             Registers.AX = (ushort)(File.Exists($"{Module.ModulePath}{fileNameString}") ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Reads an array of count elements, each one with a size of size bytes, from the stream and stores
+        ///     them in the block of memory specified by ptr.
+        ///
+        ///     Signature: size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
+        /// </summary>
+        private void f_read()
+        {
+
         }
     }
 }

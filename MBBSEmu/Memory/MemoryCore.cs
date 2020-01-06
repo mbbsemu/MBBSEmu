@@ -20,51 +20,11 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Segment> _segments;
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
-        private ushort _hostMemoryOffset;
-
-        private ushort _currentPointerSegment = 0xF00;
-        private ushort _currentFilePointerSegment = 0x100;
-
         public MemoryCore()
         {
             _memorySegments = new Dictionary<ushort, byte[]>();
             _segments = new Dictionary<ushort, Segment>();
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
-
-            //Setup Pointer Segments - 64 for now, can easily be more
-            //These are used to hold the "pointer" for property return types
-            for (var i = 0; i < 64; i++)
-            {
-                AddSegment((ushort) (_currentPointerSegment + i), 4);
-            }
-
-            //File Segments -- we'll buffer files opened using FOPEN to memory
-            //So we declare these segments as 1 byte, then expand them to fit the file being loaded
-            for (var i = 0; i < 255; i++)
-            {
-                AddSegment((ushort)(_currentFilePointerSegment + i), 1);
-            }
-        }
-
-        /// <summary>
-        ///     Returns a 4 byte Segment used to hold a IntPtr16 value
-        /// </summary>
-        /// <returns></returns>
-        public ushort GetPointerSegment()
-        {
-            if (_currentPointerSegment == 0x0F40)
-                _currentPointerSegment = 0x0F00;
-
-            return _currentPointerSegment++;
-        }
-
-        public ushort GetFileSegment(int fileSize)
-        {
-            if (_currentPointerSegment == 0x0F40)
-                _currentPointerSegment = 0x0F00;
-
-            _memorySegments[_currentPointerSegment] = new byte[fileSize];
-            return _currentPointerSegment++;
         }
 
         /// <summary>
@@ -214,17 +174,6 @@ namespace MBBSEmu.Memory
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
             SetArray(segment, offset, array.ToArray());
-        }
-
-        public ushort AllocateHostMemory(ushort size)
-        {
-            var offset = _hostMemoryOffset;
-            _hostMemoryOffset += size;
-
-#if DEBUG
-            _logger.Debug($"Allocated {size} bytes of memory in Host Memory Segment");
-#endif
-            return offset;
         }
     }
 }

@@ -8,12 +8,6 @@
     public enum EnumHostSegments : ushort
     {
         /// <summary>
-        ///     Segment used by ALLOCZ() and other methods to allocate blocks of memory
-        ///     for later use
-        /// </summary>
-        HostMemorySegment = 0xFFFF,
-
-        /// <summary>
         ///     Denotes Segment for holding Msg File Pointers
         ///
         ///     This is used to identify if a 16:16 pointer is a valid Msg pointer or not
@@ -75,15 +69,28 @@
         Bturno = 0xEFFF,
 
         /// <summary>
-        ///     Volatile Data Segment
-        ///     Valid Range is 0xA01 - 0xAFF
+        ///     Segments which hold the 4 byte pointers to variables within MAJORBBS.H
+        ///     Valid Range: 0x400 -> 0x440
         /// </summary>
-        VolatileDataSegment = 0x0A00,
+        VariablePointerSegmentBase = 0x400,
+
+        /// <summary>
+        ///     Base Segment for Volatile Data
+        ///     Valid Range: 0xA01 -> 0xAFF
+        /// </summary>
+        VolatileDataSegmentBase = 0x0300,
         
         /// <summary>
-        ///     Segment used for File Stream Pointers opened with FOPEN
+        ///     Base Segment for Host Memory
+        ///     Valid Range: 0x200 -> 0x2FF
         /// </summary>
-        FilePointerSegment = 0x0100,
+        HostMemorySegmentBase = 0x200,
+
+        /// <summary>
+        ///     Base Segment for File Stream Pointers
+        ///     Valid Range: 0x100 -> 0x1FF
+        /// </summary>
+        FilePointerSegmentBase = 0x0100,
 
         /// <summary>
         ///     Stack Segment

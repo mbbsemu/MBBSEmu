@@ -28,7 +28,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected Dictionary<string, IntPtr16> HostMemoryVariables;
 
         private protected PointerDictionary<UserSession> ChannelDictionary;
-        
+
+
         /// <summary>
         ///     Pointers to files opened using FOPEN
         /// </summary>
@@ -39,10 +40,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public CpuRegisters Registers;
         public MbbsModule Module;
 
-        /// <summary>
-        ///     Convenience Variable, prevents having to repeatedly cast the Enum to ushort
-        /// </summary>
-        private protected readonly ushort HostMemorySegment = (ushort) EnumHostSegments.HostMemorySegment;
+        private readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
+        private readonly IntPtr16 VariablePointer = new IntPtr16((ushort)EnumHostSegments.VariablePointerSegmentBase, 0);
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
@@ -66,15 +65,67 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Allocates and Handles Host Memory
+        /// </summary>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        private protected IntPtr16 AllocateHostMemory(ushort size)
+        {
+            //Do we have enough room in the current segment?
+            //If not, declare a new segment and start there
+            if (size + HostMemoryPointer.Offset >= ushort.MaxValue)
+            {
+                HostMemoryPointer.Segment++;
+                HostMemoryPointer.Offset = 0;
+
+                if (HostMemoryPointer.Segment > 0x2FF)
+                    throw new OutOfMemoryException("Exhausted Host Memory Segment Space 0x200->0x2FF");
+
+                Module.Memory.AddSegment(HostMemoryPointer.Segment);
+            }
+
+            if(!Module.Memory.HasSegment(HostMemoryPointer.Segment))
+                Module.Memory.AddSegment(HostMemoryPointer.Segment);
+
+#if DEBUG
+            _logger.Debug($"Allocated {size} bytes of memory in Host Memory Segment {HostMemoryPointer.Segment:X4}:{HostMemoryPointer.Offset:X4}");
+#endif
+            var currentOffset = HostMemoryPointer.Offset;
+            HostMemoryPointer.Offset += size;
+            return new IntPtr16(HostMemoryPointer.Segment, currentOffset);
+        }
+
+        /// <summary>
+        ///     Returns a 4 byte Segment used to hold a IntPtr16 value
+        ///
+        ///     This is basically a ring buffer of a maximum of 64 segments,
+        ///     which SHOULD be enough.... 
+        /// </summary>
+        /// <returns></returns>
+        private protected ushort GetPointerSegment()
+        {
+            if (VariablePointer.Segment > 0x440)
+                VariablePointer.Segment = 0x400;
+
+            if(!Module.Memory.HasSegment(VariablePointer.Segment))
+                Module.Memory.AddSegment(VariablePointer.Segment, 4);
+
+            return VariablePointer.Segment++;
+        }
+
+        /// <summary>
         ///     Calculates which Segment & Offset the specified channel's memory is in the
         ///     Volatile Memory segments
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        private protected IntPtr16 CalculateVolatileMemoryPointer(byte channel)
+        private protected IntPtr16 GetVolatileMemoryPointer(byte channel)
         {
-            var segment = (ushort)((ushort)EnumHostSegments.VolatileDataSegment + (channel % 8));
+            var segment = (ushort)((ushort)EnumHostSegments.VolatileDataSegmentBase + (channel % 8));
             var offset = (ushort)((channel / 8) * 0x800);
+
+            if(!Module.Memory.HasSegment(segment))
+                Module.Memory.AddSegment(segment);
 
             return new IntPtr16(segment, offset);
         }
@@ -84,10 +135,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
             {
                 //allocate 1k for the SPR buffer
-                var offset = Module.Memory.AllocateHostMemory(size);
-
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
-                HostMemoryVariables[variableName] = variablePointer;
+                HostMemoryVariables[variableName] = AllocateHostMemory(size);
 
             }
             return variablePointer;
