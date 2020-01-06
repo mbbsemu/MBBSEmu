@@ -340,6 +340,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 694:
                     fnd1st();
                     break;
+                case 229:
+                    f_read();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -1866,8 +1869,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var volatilePointer = GetVolatileMemoryPointer((byte) channel);
 
-            Registers.AX = volatilePointer.Offset;
-            Registers.DX = volatilePointer.Segment;
+            Registers.DX = volatilePointer.Offset;
+            Registers.AX = volatilePointer.Segment;
         }
 
         /// <summary>
@@ -2156,7 +2159,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_read()
         {
+            var destinationPointerOffset = GetParameter(0);
+            var destinationPointerSegment = GetParameter(1);
+            var size = GetParameter(2);
+            var count = GetParameter(3);
+            var fileStreamPointerOffset = GetParameter(4);
+            var fileStreamPointerSegment = GetParameter(5);
 
+            if(!FilePointerDictionary.TryGetValue(fileStreamPointerOffset, out var fileStream))
+                throw new FileNotFoundException($"File Pointer {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4} not found in the File Pointer Dictionary");
+
+            ushort elementsRead = 0;
+            for (var i = 0; i < count; i++)
+            {
+                var dataRead = new byte[size];
+                var bytesRead = fileStream.Read(dataRead);
+
+                if (bytesRead != size)
+                    break;
+
+                Module.Memory.SetArray(destinationPointerSegment, (ushort) (destinationPointerOffset + (i * size)), dataRead);
+                elementsRead++;
+            }
+            
+
+            Registers.AX = elementsRead;
         }
     }
 }
