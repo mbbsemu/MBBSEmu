@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -27,18 +26,18 @@ namespace MBBSEmu.Module
                     continue;
 
                 var keyValuePair = line.Split(':');
-                switch (keyValuePair[0])
+                switch (keyValuePair[0].ToUpper())
                 {
-                    case "Module Name":
+                    case "MODULE NAME":
                         ModuleName = keyValuePair[1].Trim();
                         break;
-                    case "Developer":
+                    case "DEVELOPER":
                         Developer = keyValuePair[1];
                         break;
-                    case "DLLs":
+                    case "DLLS":
                         DLLFiles = keyValuePair[1].Split(',').ToList();
                         break;
-                    case "MSGs":
+                    case "MSGS":
                         MSGFiles = keyValuePair[1].Split(',').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                 }

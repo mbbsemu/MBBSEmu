@@ -58,12 +58,14 @@
         Nterms = 0xFFF5,
 
         /// <summary>
-        ///     Segment that holds the user struct
+        ///     Pointer for the Current User Struct in the User Array
+        ///
+        ///     Example: var user = User[UserPtr];
         /// </summary>
         UserPtr = 0xFFF4,
 
         /// <summary>
-        /// 
+        ///     Segment that contains the full array of User structs for each channel
         /// </summary>
         User = 0xFFF3,
 

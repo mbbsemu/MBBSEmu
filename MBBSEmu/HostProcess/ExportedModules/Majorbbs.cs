@@ -328,6 +328,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 477:
                     return prfptr;
+                case 225:
+                    f_open();
+                    break;
+                case 205:
+                    f_close();
+                    break;
+                case 560:
+                    sprintf();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -983,7 +992,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 var pointerSegment = Module.Memory.GetPointerSegment();
-                Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort)EnumHostSegments.User, 0).ToSpan());
+                Module.Memory.SetArray(pointerSegment, 0, new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan());
                 return new IntPtr16(pointerSegment, 0).ToSpan();
             }
         }
@@ -1873,7 +1882,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> user => new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan();
+        private ReadOnlySpan<byte> user
+        {
+            get
+            {
+                var returnPointer = Module.Memory.GetPointerSegment();
+                Module.Memory.SetArray(returnPointer, 0, new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan());
+                return new IntPtr16(returnPointer, 0).ToSpan();
+            }
+        }
 
         /// <summary>
         ///     Points to the Volatile Data Area for the current channel
@@ -1993,6 +2010,103 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 
                 return new IntPtr16(pointer.Segment, pointer.Offset).ToSpan();
             }
+        }
+
+        /// <summary>
+        ///     Opens a new file for reading/writing
+        ///
+        ///     Signature: file* fopen(const char* filename, USE)
+        /// </summary>
+        private void f_open()
+        {
+            var filenameOffset = GetParameter(0);
+            var filenameSegment = GetParameter(1);
+            var modeOffset = GetParameter(2);
+            var modeSegment = GetParameter(3);
+
+
+            using var filenameInputBuffer = new MemoryStream();
+            filenameInputBuffer.Write(Module.Memory.GetString(filenameSegment, filenameOffset, true));
+            var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
+
+            using var modeInputBuffer = new MemoryStream();
+            modeInputBuffer.Write(Module.Memory.GetString(modeSegment, modeOffset, true));
+            var modeInputValue = Encoding.Default.GetString(modeInputBuffer.ToArray()).ToUpper();
+
+            if (!File.Exists($"{Module.ModulePath}{filenameInputValue}"))
+            {
+#if DEBUG
+                _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
+#endif
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            //Setup the Memory Segment
+            var filePointerSegment =
+                Module.Memory.GetFileSegment((int) new FileInfo($"{Module.ModulePath}{filenameInputValue}").Length);
+
+            //Dump the whole thing to memory
+            Module.Memory.SetArray(filePointerSegment, 0, File.ReadAllBytes($"{Module.ModulePath}{filenameInputValue}"));
+
+            Registers.AX = 0;
+            Registers.DX = filePointerSegment;
+        }
+
+        /// <summary>
+        ///     Closes an Open File Pointer
+        ///
+        ///     Signature: int fclose(FILE* stream )
+        /// </summary>
+        private void f_close()
+        {
+            var fileOffset = GetParameter(0);
+            var fileSegment = GetParameter(1);
+
+            Module.Memory.RemoveSegment(fileSegment);
+
+#if DEBUG
+            _logger.Info($"Closed File {fileSegment:X4}:{fileOffset:X4}");
+#endif
+        }
+
+        /// <summary>
+        ///     sprintf() function in C++ to handle string formatting
+        ///
+        ///     Signature: int sprintf(char *str, const char *format, ... )
+        /// </summary>
+        private void sprintf()
+        {
+            var sourceOffset = GetParameter(0);
+            var sourceSegment = GetParameter(1);
+
+            var output = Module.Memory.GetString(sourceSegment, sourceOffset);
+
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 2);
+
+            if (formattedMessage.Length > 0x400)
+                throw new OutOfMemoryException($"SPRINTF write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
+
+            if (!HostMemoryVariables.TryGetValue("SPRINTF", out var variablePointer))
+            {
+                //allocate 1k for the SPR buffer
+                var offset = Module.Memory.AllocateHostMemory(0x400);
+
+                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
+                HostMemoryVariables["SPRINTF"] = variablePointer;
+            }
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, formattedMessage);
+
+#if DEBUG
+            _logger.Info($"Added {output.Length} bytes to the buffer");
+#endif
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
         }
     }
 }

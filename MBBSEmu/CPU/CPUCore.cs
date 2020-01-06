@@ -914,7 +914,7 @@ namespace MBBSEmu.CPU
             var dataPointer = new IntPtr16(Memory.GetArray(segment, offset, 4));
 
 #if DEBUG
-            _logger.Info($"LES Loaded {dataPointer.Segment:X4}:{dataPointer.Offset:X4}");
+            //_logger.Info($"LES Loaded {dataPointer.Segment:X4}:{dataPointer.Offset:X4}");
 #endif
 
             Registers.SetValue(_currentInstruction.Op0Register, dataPointer.Offset);

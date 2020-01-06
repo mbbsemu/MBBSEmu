@@ -21,7 +21,9 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private ushort _hostMemoryOffset;
+
         private ushort _currentPointerSegment = 0xF00;
+        private ushort _currentFilePointerSegment = 0x100;
 
         public MemoryCore()
         {
@@ -34,6 +36,13 @@ namespace MBBSEmu.Memory
             for (var i = 0; i < 64; i++)
             {
                 AddSegment((ushort) (_currentPointerSegment + i), 4);
+            }
+
+            //File Segments -- we'll buffer files opened using FOPEN to memory
+            //So we declare these segments as 1 byte, then expand them to fit the file being loaded
+            for (var i = 0; i < 255; i++)
+            {
+                AddSegment((ushort)(_currentFilePointerSegment + i), 1);
             }
         }
 
@@ -49,6 +58,15 @@ namespace MBBSEmu.Memory
             return _currentPointerSegment++;
         }
 
+        public ushort GetFileSegment(int fileSize)
+        {
+            if (_currentPointerSegment == 0x0F40)
+                _currentPointerSegment = 0x0F00;
+
+            _memorySegments[_currentPointerSegment] = new byte[fileSize];
+            return _currentPointerSegment++;
+        }
+
         /// <summary>
         ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number
         /// </summary>
@@ -59,6 +77,12 @@ namespace MBBSEmu.Memory
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
             _memorySegments[segmentNumber] = new byte[size];
+        }
+
+        public void RemoveSegment(ushort segmentNumber)
+        {
+            if(!_memorySegments.Remove(segmentNumber))
+                throw new Exception($"Unable to remove Segment {segmentNumber}");
         }
 
         public void AddSegment(EnumHostSegments segment) => AddSegment((ushort) segment);
@@ -163,15 +187,16 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="segment"></param>
         /// <param name="offset"></param>
+        /// <param name="stripNull"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> GetString(ushort segment, ushort offset)
+        public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         { 
             Span<byte> segmentSpan = _memorySegments[segment];
 
             for (var i = 0; i < ushort.MaxValue; i++)
             {
                 if (segmentSpan[offset + i] == 0x0)
-                    return segmentSpan.Slice(offset, i + 1);
+                    return segmentSpan.Slice(offset, i + (stripNull ? 0 : 1));
             }
 
             throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");

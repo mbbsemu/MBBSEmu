@@ -53,6 +53,7 @@ namespace MBBSEmu.Module
             var bInVariable = false;
             var bIgnoreNext = false;
             var checkForLanguage = false;
+            msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
             for (var i = 0; i < fileToRead.Length; i++)
             {
                 Span<byte> buffer = ringBuffer;
@@ -97,19 +98,13 @@ namespace MBBSEmu.Module
                     //Language is written first, and not written to the offsets/lengths array
                     //So -- if we parsed it first, write it. If it wasn't in the MSG file, write it
                     //out to the MCV. We always put language first.
-                    if (msMessages.Length == 0 || Encoding.ASCII.GetString(msCurrentValue.ToArray()) == "English/ANSI\0")
+                    if (Encoding.ASCII.GetString(msCurrentValue.ToArray()) == "English/ANSI\0" || Encoding.ASCII.GetString(msMessages.ToArray()) == "English/RIP\0")
                     {
                         msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
                         msCurrentValue.SetLength(0);
                         continue;
                     }
 
-                    //Skip RIP Definition
-                    if (Encoding.ASCII.GetString(msMessages.ToArray()) == "English/RIP\0")
-                    {
-                        msCurrentValue.SetLength(0);
-                        continue;
-                    }
 
                     msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                     msMessages.Write(msCurrentValue.ToArray());

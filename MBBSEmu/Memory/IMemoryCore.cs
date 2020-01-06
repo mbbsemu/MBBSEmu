@@ -8,7 +8,9 @@ namespace MBBSEmu.Memory
     public interface IMemoryCore
     {
         ushort GetPointerSegment();
+        ushort GetFileSegment(int fileSize);
         void AddSegment(ushort segmentNumber, int size = 0x10000);
+        void RemoveSegment(ushort segmentNumber);
         void AddSegment(EnumHostSegments segment);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
@@ -18,7 +20,7 @@ namespace MBBSEmu.Memory
         ushort GetWord(ushort segment, ushort offset);
         byte[] GetArray(ushort segment, ushort offset, ushort count);
         ReadOnlySpan<byte> GetSpan(ushort segment, ushort offset, ushort count);
-        ReadOnlySpan<byte> GetString(ushort segment, ushort offset);
+        ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false);
         void SetByte(ushort segment, ushort offset, byte value);
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(ushort segment, ushort offset, byte[] array);

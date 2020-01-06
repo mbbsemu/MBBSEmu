@@ -185,6 +185,7 @@ namespace MBBSEmu.HostProcess
             module.Memory.AddSegment(EnumHostSegments.HostMemorySegment);
             module.Memory.AddSegment(EnumHostSegments.Status);
             module.Memory.AddSegment(EnumHostSegments.User);
+            module.Memory.AddSegment(EnumHostSegments.UserPtr);
             module.Memory.AddSegment(EnumHostSegments.UserNum);
             module.Memory.AddSegment(EnumHostSegments.UsrAcc);
             module.Memory.AddSegment(EnumHostSegments.StackSegment);
@@ -254,7 +255,12 @@ namespace MBBSEmu.HostProcess
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
             {
-                module.Memory.SetArray((ushort) EnumHostSegments.User, 0, _channelDictionary[channelNumber].UsrPtr.ToSpan());
+                //Update the User Record and also the poitner to the current user
+                module.Memory.SetArray((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber), _channelDictionary[channelNumber].UsrPtr.ToSpan());
+                module.Memory.SetArray((ushort) EnumHostSegments.UserPtr, 0,
+                    new IntPtr16((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber)).ToSpan());
+
+                //Update the Current User #
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
                 module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
