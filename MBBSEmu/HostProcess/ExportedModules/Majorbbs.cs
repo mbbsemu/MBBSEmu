@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -336,6 +337,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 560:
                     sprintf();
+                    break;
+                case 694:
+                    fnd1st();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -2078,35 +2082,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sprintf()
         {
-            var sourceOffset = GetParameter(0);
-            var sourceSegment = GetParameter(1);
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var sourceOffset = GetParameter(2);
+            var sourceSegment = GetParameter(3);
+
 
             var output = Module.Memory.GetString(sourceSegment, sourceOffset);
 
-
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(output, 2);
+            var formattedMessage = FormatPrintf(output, 4);
 
-            if (formattedMessage.Length > 0x400)
-                throw new OutOfMemoryException($"SPRINTF write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
-
-            if (!HostMemoryVariables.TryGetValue("SPRINTF", out var variablePointer))
-            {
-                //allocate 1k for the SPR buffer
-                var offset = Module.Memory.AllocateHostMemory(0x400);
-
-                variablePointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegment, offset);
-                HostMemoryVariables["SPRINTF"] = variablePointer;
-            }
-
-            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, formattedMessage);
+            Module.Memory.SetArray(destinationSegment, destinationOffset, formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer");
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+        }
+
+        /// <summary>
+        ///     Looks for the specified filename (filespec) in the BBS directory, returns 1 if the file is there
+        /// 
+        ///     Signature: int yes=fndlst(struct fndblk &fb, filespec, char attr)
+        /// </summary>
+        private void fnd1st()
+        {
+            var findBlockPointerOffset = GetParameter(0);
+            var findBlockPointerSegment = GetParameter(1);
+            var filespecOffset = GetParameter(2);
+            var filespecSegment = GetParameter(3);
+            var attrChar = GetParameter(4);
+
+            var fileName = Module.Memory.GetString(filespecSegment, filespecOffset, true);
+            var fileNameString = Encoding.ASCII.GetString(fileName);
+            Registers.AX = (ushort)(File.Exists($"{Module.ModulePath}{fileNameString}") ? 1 : 0);
         }
     }
 }
