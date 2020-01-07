@@ -57,7 +57,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     btueba();
                     break;
                 case 19:
-                    btuiba();
+                    btuibw();
                     break;
                 case 59:
                     btuxmt();
@@ -199,17 +199,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var max = GetParameter(3);
 
             //Nothing to Input?
-            if (ChannelDictionary[channelNumber].DataFromClient.Count == 0)
+            if (ChannelDictionary[channelNumber].InputBuffer.Length == 0)
             {
                 Registers.AX = 0;
                 return;
             }
 
-            ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var inputFromChannel);
+            var bytesToRead = 0;
+            if (max > ChannelDictionary[channelNumber].InputBuffer.Length)
+                bytesToRead = (int) ChannelDictionary[channelNumber].InputBuffer.Length;
+            else
+                bytesToRead = max;
 
-            ReadOnlySpan<byte> inputFromChannelSpan = inputFromChannel;
-            Module.Memory.SetArray(destinationSegment, destinationOffset, inputFromChannelSpan.Slice(0, max));
-            Registers.AX = (ushort) (inputFromChannelSpan.Length < max ? inputFromChannelSpan.Length : max);
+            var bytesRead = new byte[bytesToRead];
+            ChannelDictionary[channelNumber].InputBuffer.Read(bytesRead, 0, bytesToRead);
+
+            Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
+            Registers.AX = (ushort) bytesToRead;
         }
 
         /// <summary>
@@ -225,7 +231,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channelNumber = GetParameter(0);
 
-            ChannelDictionary[channelNumber].DataFromClient.Clear();
+            ChannelDictionary[channelNumber].InputBuffer.SetLength(0);
 
             Registers.AX = 0;
         }
@@ -240,8 +246,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
 
             var channel = GetParameter(0);
-            var routineSegment = GetParameter(1);
-            var routineOffset = GetParameter(2);
+            var routineOffset = GetParameter(1);
+            var routineSegment = GetParameter(2);
 
             ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routineSegment, routineOffset);
 
@@ -271,7 +277,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 255;
         }
 
-        public void btuiba()
+        /// <summary>
+        ///     
+        /// </summary>
+        public void btuibw()
         {
             var channelNumber = GetParameter(0);
 
@@ -281,12 +290,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (channel.DataFromClient.Count > 0)
-            {
-                Registers.AX = (ushort)channel.DataFromClient.Peek().Length;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort) channel.InputBuffer.Length;
         }
 
         /// <summary>
@@ -299,7 +303,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            ChannelDictionary[channel].DataToClient.Write(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
         }
 
         /// <summary>
@@ -313,7 +317,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            ChannelDictionary[channel].DataToClient.Write(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
 
             Registers.AX = 0;
         }
@@ -363,7 +367,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void btuclc()
         {
             var channel = GetParameter(0);
-            ChannelDictionary[channel].DataFromClient.Clear();
+            ChannelDictionary[channel].InputCommand = new byte[] {0x0};
 
             Registers.AX = 0;
         }

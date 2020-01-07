@@ -20,6 +20,7 @@ namespace MBBSEmu.Telnet
         private readonly Socket _telnetConnection;
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
+        private readonly byte[] socketReceiveBuffer = new byte[256];
 
         private int _iacPhase;
         private bool _iacComplete;
@@ -52,9 +53,10 @@ namespace MBBSEmu.Telnet
         {
             while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
             {
-                if (DataToClient.TryDequeue(out var sendBuffer))
+                if (DataToClient.Length > 0)
                 {
-                    var bytesSent = _telnetConnection.Send(sendBuffer, SocketFlags.None, out var socketState);
+                    var bytesSent = _telnetConnection.Send(DataToClient.ToArray(), SocketFlags.None, out var socketState);
+                    DataToClient.SetLength(0);
                     ValidateSocketState(socketState);
                 }
 
@@ -73,35 +75,38 @@ namespace MBBSEmu.Telnet
 
         private void ReceiveWorker()
         {
-            using var msReceiveBuffer = new MemoryStream();
-            var characterBuffer = new byte[256];
             while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
             {
-
-                Span<byte> characterBufferSpan = characterBuffer;
-                var bytesReceived = _telnetConnection.Receive(characterBufferSpan, SocketFlags.Partial, out var socketState);
+                var bytesReceived = _telnetConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
 
                 if(bytesReceived == 0)
                     continue;
 
-                //IAC Responses
-                if (characterBufferSpan[0] == 0xFF)
+                //Enter Key
+                if (socketReceiveBuffer[0] == 0xD)
                 {
-                    ParseIAC(characterBufferSpan.Slice(0, bytesReceived));
+                    //Set Status == 3, which means there is a Command Ready
+                    Status = 3;
+                    continue;
+                }
+
+                InputBuffer.Write(socketReceiveBuffer, 0, bytesReceived);
+
+                //IAC Negotiation
+                if (socketReceiveBuffer[0] == 0xFF)
+                {
+                    ParseIAC(InputBuffer.ToArray());
+                    InputBuffer.SetLength(0);
+
                     if (_iacComplete)
                         SessionState = EnumSessionState.Unauthenticated;
-                }
-                else
-                {
-                    DataFromClient.Enqueue(characterBufferSpan.Slice(0, bytesReceived).ToArray());
 
-                    //Carriage Return
-                    if (characterBufferSpan[0] == 0xD)
-                    {
-                        Status = 3;
-                    }
+                    continue;
                 }
+
+                LastCharacterReceived = socketReceiveBuffer[0];
+                DataToProcess = true;
                 Thread.Sleep(1);
             }
 
@@ -117,12 +122,12 @@ namespace MBBSEmu.Telnet
         {
             var _iacResponses = new List<IacResponse>();
 
-            for (var i = 0; i < iacResponse.Length; i+= 3)
+            for (var i = 0; i < iacResponse.Length; i += 3)
             {
                 if (iacResponse[i] == 0)
-                    return;
+                    break;
 
-                if(iacResponse[i] != 0xFF)
+                if (iacResponse[i] != 0xFF)
                     throw new Exception("Invalid IAC?");
 
                 var iacVerb = (EnumIacVerbs) iacResponse[i + 1];
@@ -144,6 +149,7 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                     case EnumIacOptions.Echo:
@@ -156,7 +162,7 @@ namespace MBBSEmu.Telnet
                                 break;
                             default:
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
+                                break;
                         }
 
                         break;
@@ -173,6 +179,7 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                     case EnumIacOptions.TerminalSpeed:
@@ -186,6 +193,7 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                     case EnumIacOptions.TerminalType:
@@ -199,6 +207,7 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                     case EnumIacOptions.EnvironmentOption:
@@ -212,6 +221,7 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                     case EnumIacOptions.SuppressGoAhead:
@@ -228,12 +238,13 @@ namespace MBBSEmu.Telnet
                                 _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
                                 break;
                         }
+
                         break;
                     }
                 }
             }
 
-            if(_iacPhase == 0 && _iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
+            if (_iacPhase == 0 && _iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
             {
                 _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
             }
@@ -241,7 +252,7 @@ namespace MBBSEmu.Telnet
             _iacPhase++;
 
             using var msIacToSend = new MemoryStream();
-            foreach(var resp in _iacResponses)
+            foreach (var resp in _iacResponses)
                 msIacToSend.Write(resp.ToArray());
 
             if (msIacToSend.Length == 0)
@@ -249,8 +260,8 @@ namespace MBBSEmu.Telnet
                 _iacComplete = true;
                 return;
             }
-            
-            DataToClient.Enqueue(msIacToSend.ToArray());
+
+            DataToClient.Write(msIacToSend.ToArray());
         }
 
         /// <summary>

@@ -98,28 +98,68 @@ namespace MBBSEmu.HostProcess
                     {
                         switch (s.SessionState)
                         {
+
+
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
                                 s.SessionState = EnumSessionState.InModule;
-                                Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                                Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
                                 continue;
                             }
 
                             case EnumSessionState.InModule:
                             {
+                                //Process Character Interceptor in GSBL
+                                if (s.CharacterInterceptor != null && s.DataToProcess)
+                                {
+                                    s.DataToProcess = false;
+
+                                    //Create Parameters for BTUCHI Routine
+                                    var initialStackValues = new Queue<ushort>(2);
+                                    initialStackValues.Enqueue(s.LastCharacterReceived);
+                                    initialStackValues.Enqueue(s.Channel);
+
+                                    var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor, s.Channel,
+                                        initialStackValues);
+
+                                    //Result replaces the character in the buffer
+                                    s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+                                    s.InputBuffer.WriteByte((byte) result);
+                                    
+                                    //If the new character is a carriage return, 
+                                    if(result == 0xD)
+                                        s.Status = 3;
+                                }
+
                                 //Did the text change cause a status update
                                 if (s.StatusChange || s.Status == 240)
                                 {
                                     s.StatusChange = false;
-                                    Run(s.ModuleIdentifier, "stsrou", s.Channel);
+                                    Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["stsrou"],
+                                        s.Channel);
                                     continue;
                                 }
 
                                 //Is there Text to send to the module
                                 if (s.Status == 3)
                                 {
-                                    Run(s.ModuleIdentifier, "sttrou", s.Channel);
+                                    var result = Run(s.CurrentModule.ModuleIdentifier,
+                                        s.CurrentModule.EntryPoints["sttrou"], s.Channel);
+
+                                    //stt returned an exit code
+                                    if (result == 0)
+                                    {
+                                        s.SessionState = EnumSessionState.MainMenuDisplay;
+                                        s.CurrentModule = null;
+
+                                        //Clear the Input Buffer
+                                        s.InputBuffer.SetLength(0);
+
+                                        //Clear any data waiting to be processed from the client
+                                        s.InputBuffer.SetLength(0);
+                                    }
+
                                     continue;
                                 }
 
@@ -143,7 +183,7 @@ namespace MBBSEmu.HostProcess
                         {
                             if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
                             {
-                                Run(m.ModuleIdentifier, $"RTKICK-{r.Key}", ushort.MaxValue);
+                                Run(m.ModuleIdentifier, m.EntryPoints[$"RTKICK-{r.Key}"], ushort.MaxValue);
                                 r.Value.Elapsed.Restart();
                             }
                         }
@@ -158,7 +198,7 @@ namespace MBBSEmu.HostProcess
 
                             foreach (var r in m.RtihdlrRoutines)
                             {
-                                Run(m.ModuleIdentifier, $"RTIHDLR-{r.Key}", ushort.MaxValue);
+                                Run(m.ModuleIdentifier, m.EntryPoints[$"RTIHDLR-{r.Key}"], ushort.MaxValue);
                             }
                         }
 
@@ -204,7 +244,7 @@ namespace MBBSEmu.HostProcess
             _modules[module.ModuleIdentifier] = module;
 
             //Run INIT
-            Run(module.ModuleIdentifier, "_INIT_", ushort.MaxValue);
+            Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
             _logger.Info($"Module {module.ModuleIdentifier} added!");
             _isAddingModule = false;
@@ -231,14 +271,12 @@ namespace MBBSEmu.HostProcess
         ///     Runs the specified routine in the specified module
         /// </summary>
         /// <param name="moduleName"></param>
-        /// <param name="routineName"></param>
+        /// <param name="routine"></param>
         /// <param name="channelNumber"></param>
-        private void Run(string moduleName, string routineName, ushort channelNumber)
+        /// <param name="initialStackValues"></param>
+        private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, Queue<ushort> initialStackValues = null)
         {
             var module = _modules[moduleName];
-
-            if (!module.EntryPoints.ContainsKey(routineName))
-                throw new Exception($"Attempted to execute unknown Routine name: {routineName}");
 
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
@@ -261,21 +299,20 @@ namespace MBBSEmu.HostProcess
 
             var cpuRegisters = new CpuRegisters
             {
-                CS = module.EntryPoints[routineName].Segment, 
-                IP = module.EntryPoints[routineName].Offset
+                CS = routine.Segment, 
+                IP = routine.Offset
             };
 
+            //Set Host Process Imported Methods
             var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
             majorbbsHostFunctions.SetState(cpuRegisters, channelNumber);
 
             var galsblHostFunctions = GetFunctions(module, "GALGSBL");
             galsblHostFunctions.SetState(cpuRegisters, channelNumber);
 
+            //Set CPU to Startup State
             _cpu.Reset(module.Memory, cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
             {
-#if DEBUG
-                //_logger.Info($"Calling {importedModuleName}:{functionOrdinal}");
-#endif
                 return module.File.ImportedNameTable[ordinal].Name switch
                 {
                     "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal),
@@ -284,12 +321,26 @@ namespace MBBSEmu.HostProcess
                 };
             });
 
+            //Check for Parameters for BTUCHI
+            if (initialStackValues != null)
+            {
+                //Push Parameters
+                while(initialStackValues.TryDequeue(out var valueToPush))
+                    _cpu.Push(valueToPush);
+
+                //Set stack to simulate CALL FAR
+                cpuRegisters.BP = cpuRegisters.SP;
+                _cpu.Push(ushort.MaxValue); //CS
+                _cpu.Push(ushort.MaxValue); //IP
+                _cpu.Push(ushort.MaxValue); //BP
+            }
+
             //Run as long as the CPU still has code to execute and the host is still running
             while (_cpu.IsRunning && _isRunning)
                 _cpu.Tick();
 
             //Extract the User Information as it might have updated
-            if (channelNumber != ushort.MaxValue)
+            if (channelNumber != ushort.MaxValue && initialStackValues == null)
             {
                 _channelDictionary[channelNumber].UsrPtr
                     .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.User, 0, 41));
@@ -298,20 +349,9 @@ namespace MBBSEmu.HostProcess
                 _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange
                     ? (ushort) 5
                     : module.Memory.GetWord((ushort) EnumHostSegments.Status, 0);
-
-                if (routineName == "sttrou" && cpuRegisters.AX == 0)
-                {
-                    _channelDictionary[channelNumber].SessionState = EnumSessionState.MainMenuDisplay;
-                    _channelDictionary[channelNumber].ModuleIdentifier = string.Empty;
-
-                    //Clear the Input Buffer
-                    _channelDictionary[channelNumber].InputBuffer.SetLength(0);
-
-                    //Clear any data waiting to be processed from the client
-                    _channelDictionary[channelNumber].DataFromClient.Clear();
-                }
             }
-            
+
+            return cpuRegisters.AX;
         }
 
         private IExportedModule GetFunctions(MbbsModule module, string exportedModule)

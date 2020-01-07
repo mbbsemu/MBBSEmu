@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -36,7 +37,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
         private int _inputCurrentCommand;
-        private int _inputLength;
 
         private int _outputBufferPosition;
         
@@ -47,7 +47,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _inputCurrentCommand = 0;
-            _inputLength = 0;
         }
 
         /// <summary>
@@ -72,46 +71,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
             {
-                //Clear Everything
-                _margvPointers.Clear();
-                _margnPointers.Clear();
-                _inputCurrentCommand = 0;
-                _inputLength = 0;
+                ChannelDictionary[channelNumber].parsin();
+                Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
 
-                Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
-
-                using var msUserInput = new MemoryStream();
-                //Deque all input available
-                while (ChannelDictionary[channelNumber].DataFromClient.TryDequeue(out var userInput))
-                    msUserInput.Write(userInput);
-
-                //No input to parse WITH a status of 3?
-                if (msUserInput.Length == 0)
-                    return;
-
-                //Protect from overflow
-                if (msUserInput.Length > 0xFF)
-                    throw new OutOfMemoryException($"User Input exceeds allocated 256 bytes ({msUserInput.Length} requested)");
-
-                _inputLength = (int) msUserInput.Length;
-
-                //Reset back the beginning, scanning and replacing spaces with null
-                msUserInput.Position = 0;
-                for (ushort i = 0; i < msUserInput.Length; i++)
+                //Build Command Word Pointers
+                for (var i = 0; i < ChannelDictionary[channelNumber].mArgCount; i++)
                 {
-                    //Keep looking for a space
-                    if (msUserInput.ReadByte() != 0x32) continue;
-
-                    //Overwrite the space with null
-                    msUserInput.WriteByte(0x0);
-                    _margnPointers.Add(new IntPtr16(inputMemory.Segment, (ushort) (inputMemory.Offset + i)));
-
-                    //If the next character wouldn't be the end of the input, mark it as the beginning of the next word
-                    if (i + 1 < msUserInput.Length)
-                        _margvPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + i + 1)));
+                    _margnPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i])));
+                    _margvPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i])));
                 }
-
-                Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, msUserInput.ToArray());
             }
         }
 
@@ -351,6 +319,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 578:
                     strlen();
+                    break;
+                case 350:
+                    return input;
+                case 603:
+                    tolower();
+                    break;
+                case 604:
+                    toupper();
+                    break;
+                case 496:
+                    rename();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -963,7 +942,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
 
-            ChannelDictionary[userChannel].DataToClient.Enqueue(Module.Memory.GetArray((ushort)EnumHostSegments.Prfbuf, 0, (ushort) _outputBufferPosition));
+            ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetArray((ushort)EnumHostSegments.Prfbuf, 0, (ushort) _outputBufferPosition));
             _outputBufferPosition = 0;
         }
 
@@ -2243,6 +2222,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 0;
         }
 
+        /// <summary>
+        ///     Returns the length of the C string str
+        ///
+        ///     Signature: size_t strlen(const char* str)
+        /// </summary>
         private void strlen()
         {
             var stringOffset = GetParameter(0);
@@ -2252,6 +2236,66 @@ namespace MBBSEmu.HostProcess.ExportedModules
             filenameInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
 
             Registers.AX = (ushort) filenameInputBuffer.Length;
+        }
+
+        /// <summary>
+        ///     User Input
+        ///
+        ///     Signature: char input[]
+        /// </summary>
+        private ReadOnlySpan<byte> input => GetHostMemoryVariablePointer("INPUT", 0xFF).ToSpan();
+
+        /// <summary>
+        ///     Converts a lowercase letter to uppercase
+        ///
+        ///     Signature: int toupper (int c)
+        /// </summary>
+        private void toupper()
+        {
+            var character = GetParameter(0);
+
+            Registers.AX = (ushort) (character - 32);
+        }
+
+        /// <summary>
+        ///     Converts a uppercase letter to lowercase
+        ///
+        ///     Signature: int tolower (int c)
+        /// </summary>
+        private void tolower()
+        {
+            var character = GetParameter(0);
+
+            Registers.AX = (ushort)(character + 32);
+        }
+
+        /// <summary>
+        ///     Changes the name of the file or directory specified by old name to new name
+        ///
+        ///     Signature: int rename(const char *oldname, const char *newname )
+        /// </summary>
+        private void rename()
+        {
+            var oldFilenameOffset = GetParameter(0);
+            var oldFilenameSegment = GetParameter(1);
+
+            var newFilenameOffset = GetParameter(2);
+            var newFilenameSegment = GetParameter(3);
+
+            using var oldFilenameInputBuffer = new MemoryStream();
+            oldFilenameInputBuffer.Write(Module.Memory.GetString(oldFilenameSegment, oldFilenameOffset, true));
+            var oldFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer.ToArray()).ToUpper();
+
+            using var newFilenameInputBuffer = new MemoryStream();
+            newFilenameInputBuffer.Write(Module.Memory.GetString(newFilenameSegment, newFilenameOffset, true));
+            var newFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer.ToArray()).ToUpper();
+
+            if(!File.Exists($"{Module.ModulePath}{oldFilenameInputValue}"))
+                throw new FileNotFoundException($"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
+
+            File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}");
+
+            Registers.AX = 0;
         }
     }
 }

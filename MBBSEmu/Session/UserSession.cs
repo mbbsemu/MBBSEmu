@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
+using MBBSEmu.Module;
 
 namespace MBBSEmu.Session
 {
@@ -36,9 +38,9 @@ namespace MBBSEmu.Session
         public ushort Channel;
 
         /// <summary>
-        ///     Module Identifier of the current Module the user is in
+        ///     Current Module the user is in
         /// </summary>
-        public string ModuleIdentifier;
+        public MbbsModule CurrentModule;
 
         /// <summary>
         ///     MajorBBS User Status
@@ -49,16 +51,6 @@ namespace MBBSEmu.Session
         ///     Status State has been changes
         /// </summary>
         public bool StatusChange;
-
-        /// <summary>
-        ///     Input Queue of Data from the Client
-        /// </summary>
-        public Queue<byte[]> DataFromClient;
-
-        /// <summary>
-        ///     Output Queue of Data to the Client
-        /// </summary>
-        public Queue<byte[]> DataToClient;
 
         /// <summary>
         ///     Current State of this Users Session
@@ -73,9 +65,32 @@ namespace MBBSEmu.Session
         /// </summary>
         public MemoryStream EchoBuffer;
 
+        /// <summary>
+        ///     Buffer of Data Received from the Client, unparsed
+        /// </summary>
         public MemoryStream InputBuffer;
 
+        /// <summary>
+        ///     Parsed Command Input
+        /// </summary>
+        public byte[] InputCommand;
+
+        /// <summary>
+        ///     Last Character Received from the Client
+        /// </summary>
+        public byte LastCharacterReceived;
+
         public IntPtr16 CharacterInterceptor;
+
+        public int mArgCount;
+
+        public List<int> mArgv;
+
+        public List<int> mArgn;
+
+        public readonly MemoryStream DataToClient;
+
+        public bool DataToProcess;
 
         public string Username
         {
@@ -92,14 +107,65 @@ namespace MBBSEmu.Session
         protected UserSession(string sessionId)
         {
             SessionId = sessionId;
-            DataFromClient = new Queue<byte[]>();
-            DataToClient = new Queue<byte[]>();
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             Status = 0;
-            EchoBuffer = new MemoryStream(256);
-            InputBuffer = new MemoryStream(256);
             SessionTimer = new Stopwatch();
+            DataToClient = new MemoryStream();
+
+            EchoBuffer = new MemoryStream();
+            InputBuffer = new MemoryStream();
+
+            mArgn = new List<int>();
+            mArgv = new List<int>();
+        }
+
+        /// <summary>
+        ///     Routine Parses the data in the input buffer, builds the command input string
+        ///     and assembles all the mArgs
+        /// </summary>
+        public void parsin()
+        {
+            InputBuffer.Position = 0;
+            InputCommand = new byte[InputBuffer.Length];
+            mArgv.Clear();
+            mArgn.Clear();
+
+            mArgn.Add(0);
+            //Input Command has spaces replaced by null characters
+            for (ushort i = 0; i < InputBuffer.Length; i++)
+            {
+                var inputByte = InputBuffer.ReadByte();
+
+                //We only parse command character on space, otherwise just copy
+                if (inputByte != 0x32)
+                {
+                    InputCommand[i] = (byte)inputByte;
+                    continue;
+                }
+
+                //Replace the space with null
+                InputCommand[i] = 0x0;
+
+                mArgv.Add(i);
+
+                if (i + 1 < InputBuffer.Length)
+                    mArgn.Add(i + 1);
+            }
+            mArgv.Add((int) (InputBuffer.Length -1));
+            mArgCount = mArgn.Count;
+        }
+
+        /// <summary>
+        ///     Restores the Input Command back to it's unparsed date (null's to spaces)
+        /// </summary>
+        public void rstrin()
+        {
+            for (var i = 0; i < InputCommand.Length; i++)
+            {
+                if (InputCommand[i] == 0x0)
+                    InputCommand[i] = 0x32;
+            }
         }
     }
 }
