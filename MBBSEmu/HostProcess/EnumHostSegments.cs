@@ -69,6 +69,14 @@
         Bturno = 0xEFFF,
 
         /// <summary>
+        ///     Variables (non-pointer, such as bturno[], margs[], etc.) that are hosted in the Host Process
+        ///     require their own segment for access. We use this base as our starting point for up to 255
+        ///     host variables.
+        ///     Valid Range: 0x500->0x5FF
+        /// </summary>
+        VariableSegmentBase = 0x500,
+
+        /// <summary>
         ///     Segments which hold the 4 byte pointers to variables within MAJORBBS.H
         ///     Valid Range: 0x400 -> 0x440
         /// </summary>

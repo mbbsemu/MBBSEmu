@@ -26,6 +26,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     it lives in.
         /// </summary>
         private protected Dictionary<string, IntPtr16> HostMemoryVariables;
+        private protected Dictionary<string, IntPtr16> VariableSegments;
 
         private protected PointerDictionary<UserSession> ChannelDictionary;
 
@@ -42,6 +43,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
         private readonly IntPtr16 VariablePointer = new IntPtr16((ushort)EnumHostSegments.VariablePointerSegmentBase, 0);
+        private readonly IntPtr16 VariableSegment = new IntPtr16((ushort)EnumHostSegments.VariableSegmentBase, 0);
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
@@ -49,7 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module = module;
             ChannelDictionary = channelDictionary;
             HostMemoryVariables = new Dictionary<string, IntPtr16>();
-            FilePointerDictionary = new PointerDictionary<FileStream>();
+            FilePointerDictionary = new PointerDictionary<FileStream>(0xFF);
+            VariableSegments = new Dictionary<string, IntPtr16>(0xFF);
         }
 
         /// <summary>
@@ -104,7 +107,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ushort GetPointerSegment()
         {
-            if (VariablePointer.Segment > 0x440)
+            if (VariablePointer.Segment > (ushort)EnumHostSegments.VariablePointerSegmentBase + 0x40)
                 VariablePointer.Segment = 0x400;
 
             if(!Module.Memory.HasSegment(VariablePointer.Segment))
@@ -137,6 +140,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //allocate 1k for the SPR buffer
                 variablePointer = AllocateHostMemory(size);
                 HostMemoryVariables[variableName] = variablePointer;
+            }
+
+            return variablePointer;
+        }
+
+        private protected IntPtr16 GetVariableSegment(string variableName, ushort size = 0x400)
+        {
+            if (!VariableSegments.TryGetValue(variableName, out var variablePointer))
+            {
+                if (VariableSegment.Segment > (ushort)EnumHostSegments.VariableSegmentBase + 0xFF)
+                    throw new OutOfMemoryException("Exhausted Variable Segment Pool");
+
+                Module.Memory.AddSegment(VariableSegment.Segment, size);
+
+                variablePointer = new IntPtr16(VariableSegment.Segment, 0);
+
+                VariableSegments.Add(variableName, variablePointer);
+#if DEBUG
+                _logger.Info($"Allocated new Variable Segment {VariableSegment.Segment:X4}:0000 ({size} bytes) for variable {variableName}");
+#endif
+                VariableSegment.Segment++;
             }
 
             return variablePointer;

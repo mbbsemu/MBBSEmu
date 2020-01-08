@@ -73,20 +73,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 ChannelDictionary[channelNumber].parsin();
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
-
-                var margnPointer = GetHostMemoryVariablePointer("MARGN", 0x3FC);
-                var margvPointer = GetHostMemoryVariablePointer("MARGV", 0x3FC);
+                _logger.Info($"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory.Segment:X4}:{inputMemory.Offset}");
+                var margnPointer = GetVariableSegment("MARGN", 0x3FC);
+                var margvPointer = GetVariableSegment("MARGV", 0x3FC);
 
                 //Build Command Word Pointers
                 for (var i = 0; i < ChannelDictionary[channelNumber].mArgCount; i++)
                 {
-                    Module.Memory.SetArray(margnPointer.Segment, (ushort) (margnPointer.Offset + (i * 4)),
-                        new IntPtr16(inputMemory.Segment,
-                            (ushort) (inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i])).ToSpan());
+                    var currentMargnPointer = new IntPtr16(inputMemory.Segment,
+                        (ushort) (inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i]));
+                    var currentMargVPointer = new IntPtr16(inputMemory.Segment,
+                        (ushort) (inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i]));
 
-                    Module.Memory.SetArray(margvPointer.Segment, (ushort)(margvPointer.Offset + (i * 4)),
-                        new IntPtr16(inputMemory.Segment,
-                            (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i])).ToSpan());
+                    _logger.Info($"Command {i} {currentMargnPointer.Segment:X4}:{currentMargnPointer.Offset:X4}-{currentMargVPointer.Segment:X4}:{currentMargVPointer.Offset:X4}");
+
+                    Module.Memory.SetArray(margnPointer.Segment, (ushort) (margnPointer.Offset + (i * 4)),
+                        currentMargnPointer.ToSpan());
+
+                    Module.Memory.SetArray(margvPointer.Segment, (ushort) (margvPointer.Offset + (i * 4)),
+                        currentMargVPointer.ToSpan());
                 }
             }
         }
@@ -340,11 +345,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     rename();
                     break;
                 case 349:
-                    return implen;
+                    return inplen;
                 case 402:
                     return margn;
                 case 403:
                     return margv;
+                case 511:
+                    rstrin();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -957,7 +965,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userChannel = GetParameter(0);
 
             ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetArray((ushort)EnumHostSegments.Prfbuf, 0, (ushort) _outputBufferPosition));
-            ChannelDictionary[userChannel].DataToClient.WriteByte((byte) '\r');
             _outputBufferPosition = 0;
         }
 
@@ -1919,11 +1926,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointerSegment = GetPointerSegment();
-                var variablePointer = GetHostMemoryVariablePointer("MARGC", 2);
-                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) _margvPointers.Count);
-                Module.Memory.SetArray(pointerSegment, 0, variablePointer.ToSpan());
-                return new IntPtr16(pointerSegment, 0).ToSpan();
+                var variablePointer = GetVariableSegment("MARGC", 2);
+                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) ChannelDictionary[_channelNumber].mArgCount);
+                return variablePointer.ToSpan();
             }
         }
 
@@ -2325,38 +2330,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     The Length of the total Input Buffer received
         ///
-        ///     Signature: int implen
+        ///     Signature: int inplen
         /// </summary>
-        private ReadOnlySpan<byte> implen
+        private ReadOnlySpan<byte> inplen
         {
             get
             {
-                var variablePointer = GetHostMemoryVariablePointer("INPLEN", 2);
-                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) ChannelDictionary[_channelNumber].InputCommand.Length);
-                var pointer = GetPointerSegment();
-                Module.Memory.SetArray(pointer, 0, variablePointer.ToSpan());
-                return new IntPtr16(pointer, 0).ToSpan();
+                var variablePointer = GetVariableSegment("INPLEN", 2);
+                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset,
+                    (ushort) ChannelDictionary[_channelNumber].InputCommand.Length);
+                return variablePointer.ToSpan();
+
             }
         }
 
-        private ReadOnlySpan<byte> margv
-        {
-            get
-            {
-                var pointer = GetPointerSegment();
-                Module.Memory.SetArray(pointer, 0, GetHostMemoryVariablePointer("MARGV").ToSpan());
-                return new IntPtr16(pointer, 0).ToSpan();
-            }
-        }
+        private ReadOnlySpan<byte> margv => GetVariableSegment("MARGV").ToSpan();
 
-        private ReadOnlySpan<byte> margn
+        private ReadOnlySpan<byte> margn => GetVariableSegment("MARGN").ToSpan();
+
+        /// <summary>
+        ///     Restore parsed input line (undoes effects of parsin())
+        ///
+        ///     Signature: void rstrin()
+        /// </summary>
+        private void rstrin()
         {
-            get
-            {
-                var pointer = GetPointerSegment();
-                Module.Memory.SetArray(pointer, 0, GetHostMemoryVariablePointer("MARGN").ToSpan());
-                return new IntPtr16(pointer, 0).ToSpan();
-            }
+            ChannelDictionary[_channelNumber].rstrin();
+
+            var inputMemory = GetHostMemoryVariablePointer("INPUT");
+            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[_channelNumber].InputCommand);
         }
     }
 }

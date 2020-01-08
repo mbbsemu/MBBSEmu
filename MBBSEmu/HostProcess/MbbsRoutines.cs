@@ -251,7 +251,7 @@ namespace MBBSEmu.HostProcess
             }
 
             EchoToClient(session, "\r\n|GREEN|Main Menu|RESET|\r\n".EncodeToANSIArray());
-            EchoToClient(session, "|CYAN||B|Make your selection (X to exit):|RESET| ".EncodeToANSIArray());
+            EchoToClient(session, "|CYAN||B|Make your selection (X to exit): ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.MainMenuInput;
         }
 
