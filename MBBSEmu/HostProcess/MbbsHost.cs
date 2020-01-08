@@ -227,18 +227,6 @@ namespace MBBSEmu.HostProcess
             //if (!VerifyImportedFunctions())
             //    throw new Exception("Module is currently unsupported by MbbEmu! :(");
 
-            //Setup new memory core and init with host memory segment
-            module.Memory.AddSegment(EnumHostSegments.Status);
-            module.Memory.AddSegment(EnumHostSegments.User);
-            module.Memory.AddSegment(EnumHostSegments.UserPtr);
-            module.Memory.AddSegment(EnumHostSegments.UserNum);
-            module.Memory.AddSegment(EnumHostSegments.UsrAcc);
-            module.Memory.AddSegment(EnumHostSegments.StackSegment);
-            module.Memory.AddSegment(EnumHostSegments.ChannelArray);
-            module.Memory.AddSegment((ushort)EnumHostSegments.Prfbuf);
-            module.Memory.AddSegment(EnumHostSegments.Nterms);
-            module.Memory.SetByte((ushort)EnumHostSegments.Nterms, 0, 0x7F);
-
             //Add CODE/DATA Segments from the actual DLL
             foreach (var seg in module.File.SegmentTable)
             {
@@ -344,17 +332,9 @@ namespace MBBSEmu.HostProcess
             while (_cpu.IsRunning && _isRunning)
                 _cpu.Tick();
 
-            //Extract the User Information as it might have updated
+            //Update the session with any information from memory
             if (channelNumber != ushort.MaxValue && initialStackValues == null)
-            {
-                _channelDictionary[channelNumber].UsrPtr
-                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.UserPtr, 0, 41));
-
-                //If the status wasn't set internally, then set it to the default 5
-                _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange
-                    ? (ushort) 5
-                    : module.Memory.GetWord((ushort) EnumHostSegments.Status, 0);
-            }
+                majorbbsHostFunctions.UpdateSession(channelNumber);
 
             return cpuRegisters.AX;
         }

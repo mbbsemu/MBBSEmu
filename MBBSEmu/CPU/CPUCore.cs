@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            if(Registers.IP == 0x23D)
+            if(Registers.IP == 0x21F)
                 Debugger.Break();
 #endif
 
@@ -337,12 +337,13 @@ namespace MBBSEmu.CPU
 
                 case OpKind.Memory:
                 {
+                    //Relocation Record is applied to the offset of the value
+                    //Because of this, we return out
                     var offset = GetOperandOffset(opKind);
 
-                    result = _currentInstruction.MemorySize == MemorySize.UInt16
+                    return _currentInstruction.MemorySize == MemorySize.UInt16
                         ? Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
                         : Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
-                    break;
                 }
 
                 default:

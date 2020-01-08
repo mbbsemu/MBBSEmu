@@ -1,5 +1,5 @@
-﻿using System;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -7,5 +7,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     {
         ReadOnlySpan<byte> Invoke(ushort ordinal);
         void SetState(CpuRegisters registers, ushort channelNumber);
+        void UpdateSession(ushort channelNumber);
     }
 }

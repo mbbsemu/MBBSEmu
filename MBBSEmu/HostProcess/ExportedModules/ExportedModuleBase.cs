@@ -41,9 +41,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public CpuRegisters Registers;
         public MbbsModule Module;
 
-        private readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
-        private readonly IntPtr16 VariablePointer = new IntPtr16((ushort)EnumHostSegments.VariablePointerSegmentBase, 0);
-        private readonly IntPtr16 VariableSegment = new IntPtr16((ushort)EnumHostSegments.VariableSegmentBase, 0);
+        private static readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
+        private static readonly IntPtr16 VariablePointer = new IntPtr16((ushort)EnumHostSegments.VariablePointerSegmentBase, 0);
+        private static readonly IntPtr16 VariableSegment = new IntPtr16((ushort)EnumHostSegments.VariableSegmentBase, 0);
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
@@ -133,7 +133,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return new IntPtr16(segment, offset);
         }
 
-        private protected IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0x400)
+        public IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0x400)
         {
             if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
             {
@@ -145,26 +145,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return variablePointer;
         }
 
-        private protected IntPtr16 GetVariableSegment(string variableName, ushort size = 0x400)
-        {
-            if (!VariableSegments.TryGetValue(variableName, out var variablePointer))
-            {
-                if (VariableSegment.Segment > (ushort)EnumHostSegments.VariableSegmentBase + 0xFF)
-                    throw new OutOfMemoryException("Exhausted Variable Segment Pool");
+//        private protected IntPtr16 GetVariableSegment(string variableName, ushort size = 0x400)
+//        {
+//            if (!VariableSegments.TryGetValue(variableName, out var variablePointer))
+//            {
+//                if (VariableSegment.Segment > (ushort)EnumHostSegments.VariableSegmentBase + 0xFF)
+//                    throw new OutOfMemoryException("Exhausted Variable Segment Pool");
 
-                Module.Memory.AddSegment(VariableSegment.Segment, size);
+//                Module.Memory.AddSegment(VariableSegment.Segment, size);
 
-                variablePointer = new IntPtr16(VariableSegment.Segment, 0);
+//                variablePointer = new IntPtr16(VariableSegment.Segment, 0);
 
-                VariableSegments.Add(variableName, variablePointer);
-#if DEBUG
-                _logger.Info($"Allocated new Variable Segment {VariableSegment.Segment:X4}:0000 ({size} bytes) for variable {variableName}");
-#endif
-                VariableSegment.Segment++;
-            }
+//                VariableSegments.Add(variableName, variablePointer);
+//#if DEBUG
+//                _logger.Info($"Allocated new Variable Segment {VariableSegment.Segment:X4}:0000 ({size} bytes) for variable {variableName}");
+//#endif
+//                VariableSegment.Segment++;
+//            }
 
-            return variablePointer;
-        }
+//            return variablePointer;
+//        }
 
         /// <summary>
         ///     Parses File Access characters passed into FOPEN

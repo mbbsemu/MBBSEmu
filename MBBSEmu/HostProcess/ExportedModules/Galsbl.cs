@@ -19,6 +19,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if(!Module.Memory.HasSegment((ushort)EnumHostSegments.Bturno))
                 Module.Memory.AddSegment((ushort) EnumHostSegments.Bturno);
         }
+        public void UpdateSession(ushort channel)
+        {
+
+        }
 
         public ReadOnlySpan<byte> Invoke(ushort ordinal)
         {

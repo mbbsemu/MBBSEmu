@@ -126,23 +126,31 @@ namespace MBBSEmu.Memory
             return outputInstruction;
         }
 
+        public byte GetByte(IntPtr16 pointer) => GetByte(pointer.Segment, pointer.Offset);
+
         public byte GetByte(ushort segment, ushort offset)
         {
             return _memorySegments[segment][offset];
         }
+
+        public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         public ushort GetWord(ushort segment, ushort offset)
         {
             return BitConverter.ToUInt16(_memorySegments[segment], offset);
         }
 
-        public byte[] GetArray(ushort segment, ushort offset, ushort count) => GetSpan(segment, offset, count).ToArray();
+        public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
+            GetArray(pointer.Segment, pointer.Offset, count);
 
-        public ReadOnlySpan<byte> GetSpan(ushort segment, ushort offset, ushort count)
+        public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             Span<byte> segmentSpan = _memorySegments[segment];
             return segmentSpan.Slice(offset, count);
         }
+
+        public ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false) =>
+            GetString(pointer.Segment, pointer.Offset, stripNull);
 
         /// <summary>
         ///     Reads an array of bytes from the specified segment:offset, stopping
@@ -165,24 +173,30 @@ namespace MBBSEmu.Memory
             throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
         }
 
+        public void SetByte(IntPtr16 pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
+
         public void SetByte(ushort segment, ushort offset, byte value)
         {
             _memorySegments[segment][offset] = value;
         }
+
+        public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
             SetArray(segment, offset, BitConverter.GetBytes(value));
         }
 
-        public void SetArray(ushort segment, ushort offset, byte[] array)
+        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array)
         {
-            Array.Copy(array, 0, _memorySegments[segment], offset, array.Length);
+            throw new NotImplementedException();
         }
+
+        public void SetArray(IntPtr16 pointer, byte[] value) => SetArray(pointer.Segment, pointer.Offset, value);
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
-            SetArray(segment, offset, array.ToArray());
+            Array.Copy(array.ToArray(), 0, _memorySegments[segment], offset, array.Length);
         }
     }
 }
