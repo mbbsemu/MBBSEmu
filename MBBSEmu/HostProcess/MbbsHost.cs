@@ -274,21 +274,7 @@ namespace MBBSEmu.HostProcess
 
             //Setup Memory for User Objects in the Module Memory if Required
             if (channelNumber != ushort.MaxValue)
-            {
-                //Update the User Record and also the poitner to the current user
-                //module.Memory.SetArray((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber), );
-                module.Memory.SetArray((ushort) EnumHostSegments.UserPtr, 0,
-                    _channelDictionary[channelNumber].UsrPtr.ToSpan());
-                //Update the Current User #
-                module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
-                    BitConverter.GetBytes(channelNumber));
-                module.Memory.SetWord((ushort)EnumHostSegments.Status, 0, _channelDictionary[channelNumber].Status);
-                module.Memory.SetArray((ushort)EnumHostSegments.ChannelArray, 0, GetChannelArray());
-
-               //_logger.Info($"Channel {channelNumber}: Running {routineName}");
-
                 _channelDictionary[channelNumber].StatusChange = false;
-            }
 
             var cpuRegisters = new CpuRegisters
             {
@@ -356,23 +342,6 @@ namespace MBBSEmu.HostProcess
             }
 
             return functions;
-        }
-
-        /// <summary>
-        ///     Builds the int channel[] array that links user numbers to channels.
-        /// </summary>
-        /// <returns></returns>
-        private ReadOnlySpan<byte> GetChannelArray()
-        {
-            var arrayOutput = new byte[1024];
-
-            ushort channelsWritten = 0;
-            foreach (var k in _channelDictionary.Keys)
-            {
-                Array.Copy(BitConverter.GetBytes((ushort)k), 0, arrayOutput, k + (2 * channelsWritten++), 2);
-            }
-
-            return arrayOutput;
         }
 
         /*

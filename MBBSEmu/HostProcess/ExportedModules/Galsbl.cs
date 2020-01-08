@@ -94,7 +94,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
             Registers = registers;
-            Module.Memory.SetWord((ushort)EnumHostSegments.UserNum, 0, channelNumber);
+            Module.Memory.SetWord(GetHostMemoryVariablePointer("USERNUM"), channelNumber);
         }
 
         /// <summary>

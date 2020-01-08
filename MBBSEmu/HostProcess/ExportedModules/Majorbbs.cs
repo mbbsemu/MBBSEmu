@@ -72,6 +72,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             Registers = registers;
             _channelNumber = channelNumber;
+            
             Module.Memory.SetWord(GetHostMemoryVariablePointer("USERNUM"), channelNumber);
 
             //Bail if it's max value, not processing any input or status
@@ -1093,7 +1094,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int *channel
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> channel => new IntPtr16((ushort) EnumHostSegments.ChannelArray, 0).ToSpan();
+        private ReadOnlySpan<byte> channel
+        {
+            get
+            {
+                var pointer = GetHostMemoryVariablePointer("CHANNEL");
+
+                //Update the Channel Array with the latest channel/user info
+                var arrayOutput = new byte[0x1FE];
+                ushort channelsWritten = 0;
+                foreach (var k in ChannelDictionary.Keys)
+                {
+                    Array.Copy(BitConverter.GetBytes((ushort)k), 0, arrayOutput, k + (2 * channelsWritten++), 2);
+                }
+                Module.Memory.SetArray(pointer, arrayOutput);
+                return pointer.ToSpan();
+            }
+        }
 
         /// <summary>
         ///     Post credits to the specified Users Account
@@ -1509,7 +1526,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> status => new IntPtr16((ushort)EnumHostSegments.Status, 0).ToSpan();
+        private ReadOnlySpan<byte> status => GetHostMemoryVariablePointer("STATUS").ToSpan();
 
         /// <summary>
         ///     Deduct real credits from online acct
@@ -1909,9 +1926,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var returnPointer = GetPointerSegment();
-                Module.Memory.SetArray(returnPointer, 0, new IntPtr16((ushort)EnumHostSegments.UserPtr, 0).ToSpan());
-                return new IntPtr16(returnPointer, 0).ToSpan();
+                var pointer = GetHostMemoryVariablePointer("USER");
+                pointer.Offset += (ushort) (41 * _channelNumber);
+                return pointer.ToSpan();
             }
         }
 

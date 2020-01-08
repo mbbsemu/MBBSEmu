@@ -182,17 +182,10 @@ namespace MBBSEmu.Memory
 
         public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
-        public void SetWord(ushort segment, ushort offset, ushort value)
-        {
-            SetArray(segment, offset, BitConverter.GetBytes(value));
-        }
+        public void SetWord(ushort segment, ushort offset, ushort value) => SetArray(segment, offset, BitConverter.GetBytes(value));
+        
 
-        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void SetArray(IntPtr16 pointer, byte[] value) => SetArray(pointer.Segment, pointer.Offset, value);
+        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) => SetArray(pointer.Segment, pointer.Offset, array);
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {

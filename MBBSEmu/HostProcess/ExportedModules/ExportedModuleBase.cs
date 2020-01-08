@@ -25,8 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     dictionary to track the variable by a given name (key) and the pointer to the segment
         ///     it lives in.
         /// </summary>
-        private protected Dictionary<string, IntPtr16> HostMemoryVariables;
-        private protected Dictionary<string, IntPtr16> VariableSegments;
+        
 
         private protected PointerDictionary<UserSession> ChannelDictionary;
 
@@ -42,17 +41,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public MbbsModule Module;
 
         private static readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
-        private static readonly IntPtr16 VariablePointer = new IntPtr16((ushort)EnumHostSegments.VariablePointerSegmentBase, 0);
-        private static readonly IntPtr16 VariableSegment = new IntPtr16((ushort)EnumHostSegments.VariableSegmentBase, 0);
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
             _logger = ServiceResolver.GetService<ILogger>();
             Module = module;
             ChannelDictionary = channelDictionary;
-            HostMemoryVariables = new Dictionary<string, IntPtr16>();
             FilePointerDictionary = new PointerDictionary<FileStream>(0xFF);
-            VariableSegments = new Dictionary<string, IntPtr16>(0xFF);
         }
 
         /// <summary>
@@ -133,13 +128,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return new IntPtr16(segment, offset);
         }
 
-        public IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0x400)
+        public IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0)
         {
             if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
             {
-                //allocate 1k for the SPR buffer
+                if (size == 0)
+                    throw new ArgumentException($"Tried to allocate new variable {variableName} without size");
+
                 variablePointer = AllocateHostMemory(size);
                 HostMemoryVariables[variableName] = variablePointer;
+#if DEBUG
+                _logger.Info($"Allocated {size} bytes at {variablePointer.Segment:X4}:{variablePointer.Offset:X4} for {variableName}");
+#endif
             }
 
             return variablePointer;
