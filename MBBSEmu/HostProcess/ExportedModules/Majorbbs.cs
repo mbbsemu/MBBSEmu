@@ -74,11 +74,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ChannelDictionary[channelNumber].parsin();
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
 
+                var margnPointer = GetHostMemoryVariablePointer("MARGN", 0x3FC);
+                var margvPointer = GetHostMemoryVariablePointer("MARGV", 0x3FC);
+
                 //Build Command Word Pointers
                 for (var i = 0; i < ChannelDictionary[channelNumber].mArgCount; i++)
                 {
-                    _margnPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i])));
-                    _margvPointers.Add(new IntPtr16(inputMemory.Segment, (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i])));
+                    Module.Memory.SetArray(margnPointer.Segment, (ushort) (margnPointer.Offset + (i * 4)),
+                        new IntPtr16(inputMemory.Segment,
+                            (ushort) (inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i])).ToSpan());
+
+                    Module.Memory.SetArray(margvPointer.Segment, (ushort)(margvPointer.Offset + (i * 4)),
+                        new IntPtr16(inputMemory.Segment,
+                            (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i])).ToSpan());
                 }
             }
         }
@@ -331,6 +339,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 496:
                     rename();
                     break;
+                case 349:
+                    return implen;
+                case 402:
+                    return margn;
+                case 403:
+                    return margv;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -943,6 +957,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userChannel = GetParameter(0);
 
             ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetArray((ushort)EnumHostSegments.Prfbuf, 0, (ushort) _outputBufferPosition));
+            ChannelDictionary[userChannel].DataToClient.WriteByte((byte) '\r');
             _outputBufferPosition = 0;
         }
 
@@ -2169,7 +2184,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationPointerSegment, (ushort) (destinationPointerOffset + (i * size)), dataRead);
                 elementsRead++;
             }
-            
+
+
+#if DEBUG
+            _logger.Info($"Read {elementsRead} group(s) of {size} bytes from {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4}, written to {destinationPointerSegment:X4}:{destinationPointerOffset:X4}");
+#endif
 
             Registers.AX = elementsRead;
         }
@@ -2235,6 +2254,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             using var filenameInputBuffer = new MemoryStream();
             filenameInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
 
+#if DEBUG
+            _logger.Info($"Evaluated string length of {filenameInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}");
+#endif
+
             Registers.AX = (ushort) filenameInputBuffer.Length;
         }
 
@@ -2296,6 +2319,44 @@ namespace MBBSEmu.HostProcess.ExportedModules
             File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}");
 
             Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     The Length of the total Input Buffer received
+        ///
+        ///     Signature: int implen
+        /// </summary>
+        private ReadOnlySpan<byte> implen
+        {
+            get
+            {
+                var variablePointer = GetHostMemoryVariablePointer("INPLEN", 2);
+                Module.Memory.SetWord(variablePointer.Segment, variablePointer.Offset, (ushort) ChannelDictionary[_channelNumber].InputCommand.Length);
+                var pointer = GetPointerSegment();
+                Module.Memory.SetArray(pointer, 0, variablePointer.ToSpan());
+                return new IntPtr16(pointer, 0).ToSpan();
+            }
+        }
+
+        private ReadOnlySpan<byte> margv
+        {
+            get
+            {
+                var pointer = GetPointerSegment();
+                Module.Memory.SetArray(pointer, 0, GetHostMemoryVariablePointer("MARGV").ToSpan());
+                return new IntPtr16(pointer, 0).ToSpan();
+            }
+        }
+
+        private ReadOnlySpan<byte> margn
+        {
+            get
+            {
+                var pointer = GetPointerSegment();
+                Module.Memory.SetArray(pointer, 0, GetHostMemoryVariablePointer("MARGN").ToSpan());
+                return new IntPtr16(pointer, 0).ToSpan();
+            }
         }
     }
 }

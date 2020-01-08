@@ -282,10 +282,9 @@ namespace MBBSEmu.HostProcess
             if (channelNumber != ushort.MaxValue)
             {
                 //Update the User Record and also the poitner to the current user
-                module.Memory.SetArray((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber), _channelDictionary[channelNumber].UsrPtr.ToSpan());
+                //module.Memory.SetArray((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber), );
                 module.Memory.SetArray((ushort) EnumHostSegments.UserPtr, 0,
-                    new IntPtr16((ushort) EnumHostSegments.User, (ushort) (41 * channelNumber)).ToSpan());
-
+                    _channelDictionary[channelNumber].UsrPtr.ToSpan());
                 //Update the Current User #
                 module.Memory.SetArray((ushort) EnumHostSegments.UserNum, 0,
                     BitConverter.GetBytes(channelNumber));
@@ -332,7 +331,7 @@ namespace MBBSEmu.HostProcess
                 cpuRegisters.BP = cpuRegisters.SP;
                 _cpu.Push(ushort.MaxValue); //CS
                 _cpu.Push(ushort.MaxValue); //IP
-                _cpu.Push(ushort.MaxValue); //BP
+                //_cpu.Push(ushort.MaxValue); //BP
             }
 
             //Run as long as the CPU still has code to execute and the host is still running
@@ -343,7 +342,7 @@ namespace MBBSEmu.HostProcess
             if (channelNumber != ushort.MaxValue && initialStackValues == null)
             {
                 _channelDictionary[channelNumber].UsrPtr
-                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.User, 0, 41));
+                    .FromSpan(module.Memory.GetSpan((ushort) EnumHostSegments.UserPtr, 0, 41));
 
                 //If the status wasn't set internally, then set it to the default 5
                 _channelDictionary[channelNumber].Status = !_channelDictionary[channelNumber].StatusChange

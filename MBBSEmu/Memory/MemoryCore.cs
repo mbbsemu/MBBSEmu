@@ -94,6 +94,15 @@ namespace MBBSEmu.Memory
                         patchedInstruction.Immediate16 = BitConverter.ToUInt16(segmentData.Slice(instructionPointer + 1, 2)); ;
                         return patchedInstruction;
                     }
+                    case 0x55:
+                    {
+                        var patchedInstruction = Instruction.Create(Code.Push_r16);
+                        patchedInstruction.ByteLength = 1;
+                        patchedInstruction.IP16 = instructionPointer;
+                        patchedInstruction.Op0Kind = OpKind.Register;
+                        patchedInstruction.Op0Register = Register.BP;
+                        return patchedInstruction;
+                        }
                     case 0x56:
                     {
                         var patchedInstruction = Instruction.Create(Code.Push_r16);
