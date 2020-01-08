@@ -111,25 +111,31 @@ namespace MBBSEmu.HostProcess
                             case EnumSessionState.InModule:
                             {
                                 //Process Character Interceptor in GSBL
-                                if (s.CharacterInterceptor != null && s.DataToProcess)
+                                if (s.DataToProcess)
                                 {
                                     s.DataToProcess = false;
+                                    if (s.CharacterInterceptor != null)
+                                    {
+                                        //Create Parameters for BTUCHI Routine
+                                        var initialStackValues = new Queue<ushort>(2);
+                                        initialStackValues.Enqueue(s.LastCharacterReceived);
+                                        initialStackValues.Enqueue(s.Channel);
 
-                                    //Create Parameters for BTUCHI Routine
-                                    var initialStackValues = new Queue<ushort>(2);
-                                    initialStackValues.Enqueue(s.LastCharacterReceived);
-                                    initialStackValues.Enqueue(s.Channel);
+                                        var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor,
+                                            s.Channel,
+                                            initialStackValues);
 
-                                    var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor, s.Channel,
-                                        initialStackValues);
+                                        //Result replaces the character in the buffer
+                                        s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+                                        s.InputBuffer.WriteByte((byte) result);
+                                        s.LastCharacterReceived = (byte) result;
 
-                                    //Result replaces the character in the buffer
-                                    s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
-                                    s.InputBuffer.WriteByte((byte) result);
-                                    
-                                    //If the new character is a carriage return, 
-                                    if(result == 0xD)
-                                        s.Status = 3;
+                                        //If the new character is a carriage return, 
+                                        if (result == 0xD)
+                                            s.Status = 3;
+                                    }
+
+                                    s.DataToClient.WriteByte(s.LastCharacterReceived);
                                 }
 
                                 //Did the text change cause a status update

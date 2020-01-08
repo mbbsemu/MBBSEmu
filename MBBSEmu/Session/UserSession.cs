@@ -131,14 +131,14 @@ namespace MBBSEmu.Session
             mArgv.Clear();
             mArgn.Clear();
 
-            mArgn.Add(0);
+            mArgv.Add(0);
             //Input Command has spaces replaced by null characters
             for (ushort i = 0; i < InputBuffer.Length; i++)
             {
                 var inputByte = InputBuffer.ReadByte();
 
                 //We only parse command character on space, otherwise just copy
-                if (inputByte != 0x32)
+                if (inputByte != 0x20)
                 {
                     InputCommand[i] = (byte)inputByte;
                     continue;
@@ -147,12 +147,12 @@ namespace MBBSEmu.Session
                 //Replace the space with null
                 InputCommand[i] = 0x0;
 
-                mArgv.Add(i);
+                mArgn.Add(i);
 
                 if (i + 1 < InputBuffer.Length)
-                    mArgn.Add(i + 1);
+                    mArgv.Add(i + 1);
             }
-            mArgv.Add((int) (InputBuffer.Length -1));
+            mArgn.Add((int) (InputBuffer.Length -1));
             mArgCount = mArgn.Count;
         }
 
@@ -164,7 +164,7 @@ namespace MBBSEmu.Session
             for (var i = 0; i < InputCommand.Length; i++)
             {
                 if (InputCommand[i] == 0x0)
-                    InputCommand[i] = 0x32;
+                    InputCommand[i] = 0x20;
             }
         }
     }

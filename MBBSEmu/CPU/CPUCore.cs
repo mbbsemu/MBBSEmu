@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            if(Registers.IP == 0x2AF)
+            if(Registers.IP == 0x23D)
                 Debugger.Break();
 #endif
 
@@ -265,6 +265,47 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Checks to see if the current instruction has a relocation record applied
+        /// </summary>
+        /// <returns></returns>
+        private ushort ApplyRelocationRecord(ushort value)
+        {
+            if (!Memory.GetSegment(Registers.CS).RelocationRecords
+                .TryGetValue((ushort) (Registers.IP + (_currentInstruction.ByteLength - 2)), out var relocationRecord))
+                return value;
+
+            switch (relocationRecord.TargetTypeValueTuple.Item1)
+            {
+                case EnumRecordsFlag.IMPORTORDINAL:
+                {
+                    var relocationResult = _invokeExternalFunctionDelegate(
+                        relocationRecord.TargetTypeValueTuple.Item2,
+                        relocationRecord.TargetTypeValueTuple.Item3);
+
+                    var relocationPointer = new IntPtr16(relocationResult);
+
+                    var result = relocationRecord.SourceType switch
+                    {
+                        //Offset
+                        2 => relocationPointer.Segment,
+                        5 => relocationPointer.Offset,
+                        _ => throw new ArgumentOutOfRangeException(
+                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                    };
+
+                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                        result += value;
+
+                    return result;
+                }
+                case EnumRecordsFlag.INTERNALREF:
+                    return relocationRecord.TargetTypeValueTuple.Item2;
+                default:
+                    throw new Exception("Unsupported Records Flag for Relocation Value");
+            }
+        }
+
+        /// <summary>
         ///     Returns the VALUE of Operand 0
         ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
         /// </summary>
@@ -273,69 +314,42 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         private ushort GetOperandValue(OpKind opKind, EnumOperandType operandType)
         {
+            ushort result = 0;
             switch (opKind)
             {
                 case OpKind.Register:
-                    return Registers.GetValue(operandType == EnumOperandType.Destination
+                    result = Registers.GetValue(operandType == EnumOperandType.Destination
                         ? _currentInstruction.Op0Register
                         : _currentInstruction.Op1Register);
+                    break;
 
                 case OpKind.Immediate8:
-                    return _currentInstruction.Immediate8;
+                    result = _currentInstruction.Immediate8;
+                    break;
 
                 case OpKind.Immediate16:
-                {
-                    //Check for Relocation Records
-                    if (!Memory.GetSegment(Registers.CS).RelocationRecords
-                        .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
-                        return _currentInstruction.Immediate16;
-
-                    switch (relocationRecord.TargetTypeValueTuple.Item1)
-                    {
-                        case EnumRecordsFlag.IMPORTORDINAL:
-                        {
-                            var relocationResult = _invokeExternalFunctionDelegate(
-                                relocationRecord.TargetTypeValueTuple.Item2,
-                                relocationRecord.TargetTypeValueTuple.Item3);
-
-                            var relocationPointer = new IntPtr16(relocationResult);
-
-                            var result = relocationRecord.SourceType switch
-                            {
-                                //Offset
-                                2 => relocationPointer.Segment,
-                                5 => relocationPointer.Offset,
-                                _ => throw new ArgumentOutOfRangeException(
-                                    $"Unhandled MOV Relocation Source Type: {relocationRecord.SourceType}")
-                            };
-
-                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
-                                result += _currentInstruction.Immediate16;
-
-                            return result;
-                        }
-                        case EnumRecordsFlag.INTERNALREF:
-                            return relocationRecord.TargetTypeValueTuple.Item2;
-                        default:
-                            throw new Exception("Unsupported Records Flag for Immediate16 Relocation Value");
-                    }
-                }
+                    result = _currentInstruction.Immediate16;
+                    break;
 
                 case OpKind.Immediate8to16:
-                    return (ushort) _currentInstruction.Immediate8to16;
+                    result = (ushort) _currentInstruction.Immediate8to16;
+                    break;
 
                 case OpKind.Memory:
                 {
                     var offset = GetOperandOffset(opKind);
 
-                    return _currentInstruction.MemorySize == MemorySize.UInt16
+                    result = _currentInstruction.MemorySize == MemorySize.UInt16
                         ? Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset)
                         : Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                    break;
                 }
 
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
             }
+
+            return ApplyRelocationRecord(result);
         }
 
         /// <summary>
@@ -347,6 +361,7 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         private ushort GetOperandOffset(OpKind opKind)
         {
+            ushort result = 0;
             switch (opKind)
             {
                 case OpKind.Memory:
@@ -355,49 +370,62 @@ namespace MBBSEmu.CPU
                     {
                         case Register.DS when _currentInstruction.MemoryIndex == Register.None:
                         case Register.None when _currentInstruction.MemoryIndex == Register.None:
-                            return (ushort) _currentInstruction.MemoryDisplacement;
+                            result = (ushort) _currentInstruction.MemoryDisplacement;
+                            break;
                         case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                         {
                             //This is a hack, I'm just assuming there wont be > 32k passed in values or local variables
                             //this might break if it's a crazy module. ¯\_(ツ)_/¯
                             if (_currentInstruction.MemoryDisplacement > short.MaxValue)
                             {
-                                return (ushort) (Registers.BP -
-                                                 (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                                result = (ushort) (Registers.BP -
+                                                   (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                                break;
                             }
 
-                            return (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                            result = (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                            break;
                         }
 
                         case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
                         {
                             if (_currentInstruction.MemoryDisplacement > short.MaxValue)
                             {
-                                return (ushort) ((Registers.BP + Registers.SI) -
-                                                 (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                                result = (ushort) ((Registers.BP + Registers.SI) -
+                                                   (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
+                                break;
                             }
 
-                            return (ushort) ((Registers.BP + Registers.SI) +
-                                             _currentInstruction.MemoryDisplacement + 1);
+                            result = (ushort) ((Registers.BP + Registers.SI) +
+                                               _currentInstruction.MemoryDisplacement + 1);
+                            break;
                         }
 
                         case Register.BX when _currentInstruction.MemoryIndex == Register.None:
-                            return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement);
+                            result = (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement);
+                            break;
                         case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
-                            return (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
+                            result = (ushort) (Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
+                            break;
                         case Register.SI when _currentInstruction.MemoryIndex == Register.None:
-                            return (ushort) (Registers.SI + _currentInstruction.MemoryDisplacement);
+                            result = (ushort) (Registers.SI + _currentInstruction.MemoryDisplacement);
+                            break;
                         case Register.DI when _currentInstruction.MemoryIndex == Register.None:
-                            return (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
+                            result = (ushort) (Registers.DI + _currentInstruction.MemoryDisplacement);
+                            break;
                         default:
                             throw new Exception("Unknown GetOperandOffset MemoryBase");
                     }
                 }
+                    break;
                 case OpKind.NearBranch16:
-                    return _currentInstruction.NearBranch16;
+                    result = _currentInstruction.NearBranch16;
+                    break;
                 default:
                     throw new Exception($"Unknown OpKind for GetOperandOffset: {opKind}");
             }
+
+            return ApplyRelocationRecord(result);
         }
 
         /// <summary>

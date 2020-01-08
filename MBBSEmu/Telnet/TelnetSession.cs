@@ -88,6 +88,8 @@ namespace MBBSEmu.Telnet
                 {
                     //Set Status == 3, which means there is a Command Ready
                     Status = 3;
+                    DataToClient.WriteByte(0xD);
+                    DataToClient.WriteByte(0xA);
                     continue;
                 }
 
