@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.HostProcess
 {
@@ -227,7 +228,10 @@ namespace MBBSEmu.HostProcess
             //if (!VerifyImportedFunctions())
             //    throw new Exception("Module is currently unsupported by MbbEmu! :(");
 
-            //Add CODE/DATA Segments from the actual DLL
+            //Patch Relocation Information to Bytecode
+            PatchRelocation(module.ModuleIdentifier);
+
+            //Run Segments through AOT Decompiler & add them to Memory
             foreach (var seg in module.File.SegmentTable)
             {
                 module.Memory.AddSegment(seg);
@@ -335,6 +339,7 @@ namespace MBBSEmu.HostProcess
                 {
                     "MAJORBBS" => new Majorbbs(module, _channelDictionary),
                     "GALGSBL" => new Galsbl(module, _channelDictionary),
+                    "DOSCALLS" => new Doscalls(module, _channelDictionary),
                     _ => _exportedFunctions[key]
                 };
 
@@ -342,6 +347,110 @@ namespace MBBSEmu.HostProcess
             }
 
             return functions;
+        }
+
+        /// <summary>
+        ///     Patches all relocation information into the 
+        /// </summary>
+        /// <param name="moduleIdentifier"></param>
+        private void PatchRelocation(string moduleIdentifier)
+        {
+            var module = _modules[moduleIdentifier];
+
+            //Declare Host Functions
+            var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
+            var galsblHostFunctions = GetFunctions(module, "GALGSBL");
+            var doscallsHostFunctions = GetFunctions(module, "DOSCALLS");
+
+            foreach (var s in module.File.SegmentTable)
+            {
+                if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)
+                    continue;
+
+                foreach(var relocationRecord in s.RelocationRecords.Values)
+                {
+                    switch (relocationRecord.TargetTypeValueTuple.Item1)
+                    {
+                        case EnumRecordsFlag.IMPORTORDINAL:
+                        {
+                            var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                            var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
+
+                            var relocationResult = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                            {
+                                "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal, true),
+                                "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
+                                "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
+                                _ => throw new Exception(
+                                    $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+                            };
+
+                            var relocationPointer = new IntPtr16(relocationResult);
+
+                            //32-Bit Pointer
+                            if (relocationRecord.SourceType == 3)
+                            {
+#if DEBUG
+                                _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+#endif
+                                module.Memory.SetArray(s.Ordinal, relocationRecord.Offset, relocationPointer.ToSpan());
+                                    continue;
+                            }
+
+                            //16-Bit Values
+                            var result = relocationRecord.SourceType switch
+                            {
+                                //Offset
+                                2 => relocationPointer.Segment,
+                                5 => relocationPointer.Offset,
+                                _ => throw new ArgumentOutOfRangeException(
+                                    $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                            };
+
+                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                                result += module.Memory.GetWord(s.Ordinal, relocationRecord.Offset);
+
+#if DEBUG
+                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported value {result:X4}");
+#endif
+                                module.Memory.SetWord(s.Ordinal, relocationRecord.Offset, result);
+                            break;
+                        }
+                        case EnumRecordsFlag.INTERNALREF:
+                        {
+#if DEBUG
+                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
+#endif
+                                module.Memory.SetWord(s.Ordinal, relocationRecord.Offset,
+                                relocationRecord.TargetTypeValueTuple.Item2);
+                            break;
+                        }
+                        case EnumRecordsFlag.IMPORTNAME:
+                        {
+                            var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                            var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
+
+                            var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                            {
+                                "MAJORBBS" => 0xFFFF,
+                                "GALGSBL" => 0xFFFE,
+                                "PHAPI" => 0xFFFD,
+                                _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+
+                            };
+#if DEBUG
+                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {newSegment:X4}:{functionOrdinal:X4}");
+#endif
+                            module.Memory.SetWord(s.Ordinal, relocationRecord.Offset,
+                                relocationRecord.TargetTypeValueTuple.Item2);
+                                break;
+
+                        }
+                        default:
+                            throw new Exception("Unsupported Records Flag for Relocation Value");
+                    }
+                }
+            }
         }
 
         /*

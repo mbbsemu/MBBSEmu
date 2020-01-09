@@ -50,11 +50,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", 0x28D7); //41 bytes * 255 users
+            Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("USRACC", 0x155); //UserAccount struct
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
+            Module.Memory.AllocateVariable("MARGC", 0x2);
             Module.Memory.AllocateVariable("MARGN", 0x3FC);
             Module.Memory.AllocateVariable("MARGV", 0x3FC);
+            Module.Memory.AllocateVariable("INPLEN", 0x2);
             Module.Memory.AllocateVariable("USERNUM", 0x2);
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
@@ -69,21 +72,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             Registers = registers;
             _channelNumber = channelNumber;
-            
-            Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
 
             //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
                 return;
 
+            Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
+
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
             Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
-
+            
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
             {
                 ChannelDictionary[channelNumber].parsin();
+                Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
+                Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort) ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
                 _logger.Info($"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory.Segment:X4}:{inputMemory.Offset}");
                 var margnPointer = Module.Memory.GetVariable("MARGN");
@@ -118,14 +124,66 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[_channelNumber].Status = !ChannelDictionary[_channelNumber].StatusChange
                 ? (ushort)5
                 : Module.Memory.GetWord(base.Module.Memory.GetVariable("STATUS"));
+
+            var userPointer = Module.Memory.GetVariable("USER");
+            ChannelDictionary[_channelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment,
+                (ushort) (userPointer.Offset + (channel * 41)), 41));
         }
 
         /// <summary>
         ///     Invokes method by the specified ordinal
         /// </summary>
         /// <param name="ordinal"></param>
-        public ReadOnlySpan<byte> Invoke(ushort ordinal)
+        /// <param name="offsetsOnly"></param>
+        public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
         {
+            switch (ordinal)
+            {
+                case 628:
+                    return usernum;
+                case 629:
+                    return usrptr;
+                case 97:
+                    return channel;
+                case 565:
+                    return status;
+                case 475:
+                    return prfbuf;
+                case 437:
+                    return nterms;
+                case 625:
+                    return user;
+                case 637:
+                    return vdaptr;
+                case 401:
+                    return margc;
+                case 442:
+                    return nxtcmd;
+                case 477:
+                    return prfptr;
+                case 350:
+                    return input;
+                case 349:
+                    return inplen;
+                case 402:
+                    return margn;
+                case 403:
+                    return margv;
+                case 16:
+                    return _exitbuf;
+                case 17:
+                    return _exitfopen;
+                case 18:
+                    return _exitopen;
+            }
+
+            if (offsetsOnly)
+            {
+                var methodPointer = new IntPtr16(0xFFFF, ordinal);
+                _logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+                return methodPointer.ToSpan();
+            }
+
             switch (ordinal)
             {
                 case 561:
@@ -182,8 +240,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 520:
                     sameas();
                     break;
-                case 628:
-                    return usernum;
                 case 713:
                     uacoff();
                     break;
@@ -196,16 +252,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 160:
                     dedcrd();
                     break;
-                case 629:
-                    return usrptr;
                 case 476:
                     prfmsg();
                     break;
                 case 550:
                     shocst();
                     break;
-                case 97:
-                    return channel;
                 case 59:
                     addcrd();
                     break;
@@ -260,8 +312,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 351:
                     insbtv();
                     break;
-                case 565:
-                    return status;
                 case 488:
                     rdedcrd();
                     break;
@@ -295,8 +345,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 544:
                     setmem();
                     break;
-                case 475:
-                    return prfbuf;
                 case 582:
                     strncpy();
                     break;
@@ -309,30 +357,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 158:
                     dclvda();
                     break;
-                case 437:
-                    return nterms;
                 case 636:
                     vdaoff();
                     break;
-                case 625:
-                    return user;
-                case 637:
-                    return vdaptr;
                 case 87:
                     bgncnc();
                     break;
-                case 401:
-                    return margc;
-                case 442:
-                    return nxtcmd;
                 case 522:
                     sameto();
                     break;
                 case 122:
                     cncchr();
                     break;
-                case 477:
-                    return prfptr;
                 case 225:
                     f_open();
                     break;
@@ -357,8 +393,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 578:
                     strlen();
                     break;
-                case 350:
-                    return input;
                 case 603:
                     tolower();
                     break;
@@ -368,12 +402,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 496:
                     rename();
                     break;
-                case 349:
-                    return inplen;
-                case 402:
-                    return margn;
-                case 403:
-                    return margv;
                 case 511:
                     rstrin();
                     break;
@@ -1017,7 +1045,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 var pointer = Module.Memory.GetVariable("USER");
                 pointer.Offset += (ushort)(_channelNumber * 41);
-                return pointer.ToSpan();
+                Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
+                return Module.Memory.GetVariable("USRPTR").ToSpan();
             }
         }
 
@@ -2358,5 +2387,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputMemory = Module.Memory.GetVariable("INPUT");
             Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[_channelNumber].InputCommand);
         }
+
+        private ReadOnlySpan<byte> _exitbuf => new byte[] {0x0, 0x0, 0x0, 0x0};
+        private ReadOnlySpan<byte> _exitfopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+        private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
     }
 }

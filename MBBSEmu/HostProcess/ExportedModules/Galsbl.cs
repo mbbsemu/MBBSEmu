@@ -25,12 +25,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         }
 
-        public ReadOnlySpan<byte> Invoke(ushort ordinal)
+        public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
         {
             switch (ordinal)
             {
                 case 72:
                     return bturno();
+            }
+
+            if (offsetsOnly)
+            {
+                var methodPointer = new IntPtr16(0xFFFE, ordinal);
+                _logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+                return methodPointer.ToSpan();
+            }
+
+            switch (ordinal)
+            {
+                
                 case 36:
                     btuoba();
                     break;
