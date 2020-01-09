@@ -229,7 +229,7 @@ namespace MBBSEmu.HostProcess
             //    throw new Exception("Module is currently unsupported by MbbEmu! :(");
 
             //Patch Relocation Information to Bytecode
-            PatchRelocation(module.ModuleIdentifier);
+            PatchRelocation(module);
 
             //Run Segments through AOT Decompiler & add them to Memory
             foreach (var seg in module.File.SegmentTable)
@@ -296,10 +296,10 @@ namespace MBBSEmu.HostProcess
             //Set CPU to Startup State
             _cpu.Reset(module.Memory, cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
             {
-                return module.File.ImportedNameTable[ordinal].Name switch
+                return ordinal switch
                 {
-                    "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal),
-                    "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal),
+                    0xFFFF => majorbbsHostFunctions.Invoke(functionOrdinal),
+                    0xFFFE => galsblHostFunctions.Invoke(functionOrdinal),
                     _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[ordinal].Name}")
                 };
             });
@@ -353,10 +353,8 @@ namespace MBBSEmu.HostProcess
         ///     Patches all relocation information into the 
         /// </summary>
         /// <param name="moduleIdentifier"></param>
-        private void PatchRelocation(string moduleIdentifier)
+        private void PatchRelocation(MbbsModule module)
         {
-            var module = _modules[moduleIdentifier];
-
             //Declare Host Functions
             var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
             var galsblHostFunctions = GetFunctions(module, "GALGSBL");
@@ -393,8 +391,8 @@ namespace MBBSEmu.HostProcess
 #if DEBUG
                                 _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
-                                module.Memory.SetArray(s.Ordinal, relocationRecord.Offset, relocationPointer.ToSpan());
-                                    continue;
+                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                continue;
                             }
 
                             //16-Bit Values
@@ -408,12 +406,12 @@ namespace MBBSEmu.HostProcess
                             };
 
                             if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
-                                result += module.Memory.GetWord(s.Ordinal, relocationRecord.Offset);
+                                result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
 #if DEBUG
                             _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported value {result:X4}");
 #endif
-                                module.Memory.SetWord(s.Ordinal, relocationRecord.Offset, result);
+                            Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
                         case EnumRecordsFlag.INTERNALREF:
@@ -421,8 +419,7 @@ namespace MBBSEmu.HostProcess
 #if DEBUG
                             _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
 #endif
-                                module.Memory.SetWord(s.Ordinal, relocationRecord.Offset,
-                                relocationRecord.TargetTypeValueTuple.Item2);
+                            Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
                         case EnumRecordsFlag.IMPORTNAME:
@@ -432,18 +429,19 @@ namespace MBBSEmu.HostProcess
 
                             var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
                             {
-                                "MAJORBBS" => 0xFFFF,
-                                "GALGSBL" => 0xFFFE,
-                                "PHAPI" => 0xFFFD,
+                                "MAJORBBS" => (ushort) 0xFFFF,
+                                "GALGSBL" => (ushort) 0xFFFE,
+                                "PHAPI" => (ushort) 0xFFFD,
                                 _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
 
                             };
+
+                            var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
 #if DEBUG
-                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {newSegment:X4}:{functionOrdinal:X4}");
+                                _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
-                            module.Memory.SetWord(s.Ordinal, relocationRecord.Offset,
-                                relocationRecord.TargetTypeValueTuple.Item2);
-                                break;
+                            Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                            break;
 
                         }
                         default:

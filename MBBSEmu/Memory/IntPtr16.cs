@@ -35,6 +35,8 @@ namespace MBBSEmu.Memory
 
         public int ToInt() => BitConverter.ToInt32(ToSpan());
 
+        public byte[] ToArray() => ToSpan().ToArray();
+
         public ReadOnlySpan<byte> ToSpan()
         {
             var output = new byte[4];

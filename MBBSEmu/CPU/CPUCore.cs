@@ -265,47 +265,6 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Checks to see if the current instruction has a relocation record applied
-        /// </summary>
-        /// <returns></returns>
-        private ushort ApplyRelocationRecord(ushort value)
-        {
-            if (!Memory.GetSegment(Registers.CS).RelocationRecords
-                .TryGetValue((ushort) (Registers.IP + (_currentInstruction.ByteLength - 2)), out var relocationRecord))
-                return value;
-
-            switch (relocationRecord.TargetTypeValueTuple.Item1)
-            {
-                case EnumRecordsFlag.IMPORTORDINAL:
-                {
-                    var relocationResult = _invokeExternalFunctionDelegate(
-                        relocationRecord.TargetTypeValueTuple.Item2,
-                        relocationRecord.TargetTypeValueTuple.Item3);
-
-                    var relocationPointer = new IntPtr16(relocationResult);
-
-                    var result = relocationRecord.SourceType switch
-                    {
-                        //Offset
-                        2 => relocationPointer.Segment,
-                        5 => relocationPointer.Offset,
-                        _ => throw new ArgumentOutOfRangeException(
-                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                    };
-
-                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
-                        result += value;
-
-                    return result;
-                }
-                case EnumRecordsFlag.INTERNALREF:
-                    return relocationRecord.TargetTypeValueTuple.Item2;
-                default:
-                    throw new Exception("Unsupported Records Flag for Relocation Value");
-            }
-        }
-
-        /// <summary>
         ///     Returns the VALUE of Operand 0
         ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
         /// </summary>
@@ -314,7 +273,7 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         private ushort GetOperandValue(OpKind opKind, EnumOperandType operandType)
         {
-            ushort result = 0;
+            ushort result;
             switch (opKind)
             {
                 case OpKind.Register:
@@ -350,7 +309,7 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
             }
 
-            return ApplyRelocationRecord(result);
+            return result;
         }
 
         /// <summary>
@@ -426,7 +385,7 @@ namespace MBBSEmu.CPU
                     throw new Exception($"Unknown OpKind for GetOperandOffset: {opKind}");
             }
 
-            return ApplyRelocationRecord(result);
+            return result;
         }
 
         /// <summary>
@@ -1675,57 +1634,37 @@ namespace MBBSEmu.CPU
         {
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.FarBranch16 when _currentInstruction.Immediate16 == ushort.MaxValue:
+                case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0xFF:
                 {
-                        //We push CS:IP to the stack
-                        Push(Registers.CS);
-                        Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
+                    //Far call to another Segment
+                    Push(Registers.CS);
+                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
 
-                    //Check for a possible relocation
-                    int destinationValue;
-                    if (_currentInstruction.Immediate16 == ushort.MaxValue)
-                    {
-                        if (!Memory.GetSegment(Registers.CS).RelocationRecords
-                            .TryGetValue((ushort) (Registers.IP + 1), out var relocationRecord))
-                        {
-                            destinationValue = ushort.MaxValue;
-                        }
-                        else
-
-                        {
-                            //Relocation Record pointing to an internal Int16:Int16 address
-                            if (relocationRecord.Flag == EnumRecordsFlag.INTERNALREF)
-                            {
-                                Registers.CS = relocationRecord.TargetTypeValueTuple.Item2;
-                                Registers.IP = relocationRecord.TargetTypeValueTuple.Item4;
-                                return;
-                            }
-
-                            //Simulate an ENTER
-                            //Set BP to the current stack pointer
-                            Push(Registers.BP);
-                            Registers.BP = Registers.SP;
-
-                                _invokeExternalFunctionDelegate(relocationRecord.TargetTypeValueTuple.Item2,
-                                relocationRecord.TargetTypeValueTuple.Item3);
-
-                                //Simulate a LEAVE & retf
-                            Registers.SP = Registers.BP;
-                            Registers.SetValue(Register.BP, Pop());
-                            Registers.SetValue(Register.EIP, Pop());
-                            Registers.SetValue(Register.CS, Pop());
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        destinationValue = _currentInstruction.Immediate16;
-                    }
-
-                    //TODO -- Perform actual call
-                    break;
+                    Registers.CS = _currentInstruction.FarBranchSelector;
+                    Registers.IP = _currentInstruction.Immediate16;
+                    return;
                 }
+                case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
+                {
+                    //We push CS:IP to the stack
+                    Push(Registers.CS);
+                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
 
+                    //Simulate an ENTER
+                    //Set BP to the current stack pointer
+                    Push(Registers.BP);
+                    Registers.BP = Registers.SP;
+
+                    _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
+                        _currentInstruction.Immediate16);
+
+                    //Simulate a LEAVE & retf
+                    Registers.SP = Registers.BP;
+                    Registers.SetValue(Register.BP, Pop());
+                    Registers.SetValue(Register.EIP, Pop());
+                    Registers.SetValue(Register.CS, Pop());
+                    return;
+                }
                 case OpKind.NearBranch16:
                 {
                     //We push CS:IP to the stack
