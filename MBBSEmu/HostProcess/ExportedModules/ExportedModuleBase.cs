@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.Btrieve;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -25,8 +26,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     dictionary to track the variable by a given name (key) and the pointer to the segment
         ///     it lives in.
         /// </summary>
-        
-
         private protected PointerDictionary<UserSession> ChannelDictionary;
 
 
@@ -34,20 +33,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
+        private protected readonly PointerDictionary<BtrieveFile> BtrievePointerDictionary;
+        private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
 
         public CpuRegisters Registers;
         public MbbsModule Module;
 
-        private static readonly IntPtr16 HostMemoryPointer = new IntPtr16((ushort)EnumHostSegments.HostMemorySegmentBase, 0);
-
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
             _logger = ServiceResolver.GetService<ILogger>();
             Module = module;
             ChannelDictionary = channelDictionary;
-            FilePointerDictionary = new PointerDictionary<FileStream>(0xFF);
         }
 
         /// <summary>
@@ -61,110 +59,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset = (ushort) (Registers.BP + 7 + (2 * parameterOrdinal));
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
-
-        /// <summary>
-        ///     Allocates and Handles Host Memory
-        /// </summary>
-        /// <param name="size"></param>
-        /// <returns></returns>
-        private protected IntPtr16 AllocateHostMemory(ushort size)
-        {
-            //Do we have enough room in the current segment?
-            //If not, declare a new segment and start there
-            if (size + HostMemoryPointer.Offset >= ushort.MaxValue)
-            {
-                HostMemoryPointer.Segment++;
-                HostMemoryPointer.Offset = 0;
-
-                if (HostMemoryPointer.Segment > 0x2FF)
-                    throw new OutOfMemoryException("Exhausted Host Memory Segment Space 0x200->0x2FF");
-
-                Module.Memory.AddSegment(HostMemoryPointer.Segment);
-            }
-
-            if(!Module.Memory.HasSegment(HostMemoryPointer.Segment))
-                Module.Memory.AddSegment(HostMemoryPointer.Segment);
-
-#if DEBUG
-            _logger.Debug($"Allocated {size} bytes of memory in Host Memory Segment {HostMemoryPointer.Segment:X4}:{HostMemoryPointer.Offset:X4}");
-#endif
-            var currentOffset = HostMemoryPointer.Offset;
-            HostMemoryPointer.Offset += size;
-            return new IntPtr16(HostMemoryPointer.Segment, currentOffset);
-        }
-
-        /// <summary>
-        ///     Returns a 4 byte Segment used to hold a IntPtr16 value
-        ///
-        ///     This is basically a ring buffer of a maximum of 64 segments,
-        ///     which SHOULD be enough.... 
-        /// </summary>
-        /// <returns></returns>
-        private protected ushort GetPointerSegment()
-        {
-            if (VariablePointer.Segment > (ushort)EnumHostSegments.VariablePointerSegmentBase + 0x40)
-                VariablePointer.Segment = 0x400;
-
-            if(!Module.Memory.HasSegment(VariablePointer.Segment))
-                Module.Memory.AddSegment(VariablePointer.Segment, 4);
-
-            return VariablePointer.Segment++;
-        }
-
-        /// <summary>
-        ///     Calculates which Segment & Offset the specified channel's memory is in the
-        ///     Volatile Memory segments
-        /// </summary>
-        /// <param name="channel"></param>
-        /// <returns></returns>
-        private protected IntPtr16 GetVolatileMemoryPointer(byte channel)
-        {
-            var segment = (ushort)((ushort)EnumHostSegments.VolatileDataSegmentBase + (channel % 8));
-            var offset = (ushort)((channel / 8) * 0x800);
-
-            if(!Module.Memory.HasSegment(segment))
-                Module.Memory.AddSegment(segment);
-
-            return new IntPtr16(segment, offset);
-        }
-
-        public IntPtr16 GetHostMemoryVariablePointer(string variableName, ushort size = 0)
-        {
-            if (!HostMemoryVariables.TryGetValue(variableName, out var variablePointer))
-            {
-                if (size == 0)
-                    throw new ArgumentException($"Tried to allocate new variable {variableName} without size");
-
-                variablePointer = AllocateHostMemory(size);
-                HostMemoryVariables[variableName] = variablePointer;
-#if DEBUG
-                _logger.Info($"Allocated {size} bytes at {variablePointer.Segment:X4}:{variablePointer.Offset:X4} for {variableName}");
-#endif
-            }
-
-            return variablePointer;
-        }
-
-//        private protected IntPtr16 GetVariableSegment(string variableName, ushort size = 0x400)
-//        {
-//            if (!VariableSegments.TryGetValue(variableName, out var variablePointer))
-//            {
-//                if (VariableSegment.Segment > (ushort)EnumHostSegments.VariableSegmentBase + 0xFF)
-//                    throw new OutOfMemoryException("Exhausted Variable Segment Pool");
-
-//                Module.Memory.AddSegment(VariableSegment.Segment, size);
-
-//                variablePointer = new IntPtr16(VariableSegment.Segment, 0);
-
-//                VariableSegments.Add(variableName, variablePointer);
-//#if DEBUG
-//                _logger.Info($"Allocated new Variable Segment {VariableSegment.Segment:X4}:0000 ({size} bytes) for variable {variableName}");
-//#endif
-//                VariableSegment.Segment++;
-//            }
-
-//            return variablePointer;
-//        }
 
         /// <summary>
         ///     Parses File Access characters passed into FOPEN

@@ -16,8 +16,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public Galsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
-            if(!Module.Memory.HasSegment((ushort)EnumHostSegments.Bturno))
-                Module.Memory.AddSegment((ushort) EnumHostSegments.Bturno);
+            var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
+            Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes("97771457\0"));
+
         }
         public void UpdateSession(ushort channel)
         {
@@ -94,7 +95,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
             Registers = registers;
-            Module.Memory.SetWord(GetHostMemoryVariablePointer("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
         }
 
         /// <summary>
@@ -104,13 +105,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: DX == Segment containing bturno
         /// </summary>
         /// <returns></returns>
-        public ReadOnlySpan<byte> bturno()
-        {
-            const string registrationNumber = "97771457\0";
-            Module.Memory.SetArray((ushort)EnumHostSegments.Bturno, 0, Encoding.Default.GetBytes(registrationNumber));
-
-            return new IntPtr16((ushort) EnumHostSegments.Bturno, 0).ToSpan();
-        }
+        public ReadOnlySpan<byte> bturno() => Module.Memory.GetVariable("BTURNO").ToSpan();
 
         /// <summary>
         ///     Report the amount of space (number of bytes) available in the output buffer
@@ -152,7 +147,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Status Change
             //Set the Memory Value
-            Module.Memory.SetWord((ushort) EnumHostSegments.Status, 0, status);
+            Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), status);
 
             //Notify the Session that a Status Change has occured
             ChannelDictionary[channel].StatusChange = true;

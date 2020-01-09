@@ -2,19 +2,18 @@
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess;
 using System;
-using System.Collections.Generic;
 
 namespace MBBSEmu.Memory
 {
     public interface IMemoryCore
     {
         //Variable Memory Management
-        Dictionary<string, IntPtr16> Variables { get; set; }
-        bool AllocateVariable(ushort size);
+        IntPtr16 GetVariable(string name);
+        bool TryGetVariable(string name, out IntPtr16 pointer);
+        IntPtr16 AllocateVariable(string name, ushort size);
 
         //Segment Mangement
         void AddSegment(ushort segmentNumber, int size = 0x10000);
-        void AddSegment(EnumHostSegments segment);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
         bool HasSegment(ushort segmentNumber);

@@ -20,11 +20,72 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Segment> _segments;
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
+        private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
+        private readonly IntPtr16 _currentVariablePointer;
+        private const ushort VARIABLE_BASE = 0x100;
+
         public MemoryCore()
         {
             _memorySegments = new Dictionary<ushort, byte[]>();
             _segments = new Dictionary<ushort, Segment>();
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
+            _variablePointerDictionary = new Dictionary<string, IntPtr16>();
+            _currentVariablePointer = new IntPtr16(VARIABLE_BASE, 0);
+        }
+
+        public IntPtr16 AllocateVariable(string name, ushort size)
+        {
+            if (_variablePointerDictionary.ContainsKey(name))
+            {
+                _logger.Warn($"Attmped to re-allocate variable: {name}");
+                return _variablePointerDictionary[name];
+            }
+
+            //Do we have enough room in the current segment?
+            //If not, declare a new segment and start there
+            if (size + _currentVariablePointer.Offset >= ushort.MaxValue)
+            {
+                _currentVariablePointer.Segment++;
+                _currentVariablePointer.Offset = 0;
+                AddSegment(_currentVariablePointer.Segment);
+            }
+
+            if (!HasSegment(_currentVariablePointer.Segment))
+                AddSegment(_currentVariablePointer.Segment);
+
+#if DEBUG
+            _logger.Debug(
+                $"Allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
+#endif
+            var currentOffset = _currentVariablePointer.Offset;
+            _currentVariablePointer.Offset += size;
+
+            var newPointer = new IntPtr16(_currentVariablePointer.Segment, currentOffset);
+
+            if (!string.IsNullOrEmpty(name))
+                _variablePointerDictionary[name] = newPointer;
+
+            return newPointer;
+        }
+
+        public IntPtr16 GetVariable(string name)
+        {
+            if (!TryGetVariable(name, out var result))
+                throw new ArgumentException($"Unknown Variable: {name}");
+
+            return result;
+        }
+
+        public bool TryGetVariable(string name, out IntPtr16 pointer)
+        {
+            if (!_variablePointerDictionary.TryGetValue(name, out var result))
+            {
+                pointer = null;
+                return false;
+            }
+
+            pointer = result;
+            return true;
         }
 
         /// <summary>
@@ -38,8 +99,6 @@ namespace MBBSEmu.Memory
 
             _memorySegments[segmentNumber] = new byte[size];
         }
-
-        public void AddSegment(EnumHostSegments segment) => AddSegment((ushort) segment);
 
         public void AddSegment(Segment segment)
         {
