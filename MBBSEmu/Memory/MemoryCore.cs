@@ -38,7 +38,7 @@ namespace MBBSEmu.Memory
 
         public IntPtr16 AllocateVariable(string name, ushort size)
         {
-            if (_variablePointerDictionary.ContainsKey(name))
+            if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
             {
                 _logger.Warn($"Attmped to re-allocate variable: {name}");
                 return _variablePointerDictionary[name];

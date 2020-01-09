@@ -1798,11 +1798,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < numberOfBytesToWrite; i++)
             {
-                Module.Memory.SetByte(destinationSegment, (ushort) (destinationOffset +i), (byte)byteToWrite);
+                Module.Memory.SetByte(destinationSegment, (ushort) (destinationOffset + i), (byte) byteToWrite);
             }
 
 #if DEBUG
-            _logger.Info($"Set {numberOfBytesToWrite} bytes to {byteToWrite:X2} startint at {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info(
+                $"Set {numberOfBytesToWrite} bytes to {byteToWrite:X2} starting at {destinationSegment:X4}:{destinationOffset:X4}");
 #endif
         }
 

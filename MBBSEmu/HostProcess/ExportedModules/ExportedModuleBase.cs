@@ -46,6 +46,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger = ServiceResolver.GetService<ILogger>();
             Module = module;
             ChannelDictionary = channelDictionary;
+
+            FilePointerDictionary = new PointerDictionary<FileStream>();
+            BtrievePointerDictionary = new PointerDictionary<BtrieveFile>();
+            McvPointerDictionary = new PointerDictionary<McvFile>();
         }
 
         /// <summary>

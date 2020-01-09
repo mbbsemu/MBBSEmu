@@ -421,10 +421,27 @@ namespace MBBSEmu.HostProcess
                         }
                         case EnumRecordsFlag.INTERNALREF:
                         {
+
+                            //32-Bit Pointer
+                            if (relocationRecord.SourceType == 3)
+                            {
+                                var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
+                                    relocationRecord.TargetTypeValueTuple.Item4);
+
+                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+
+#if DEBUG
+                                _logger.Info(
+                                    $"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref Pointer value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+#endif
+                                break;
+                            }
+
 #if DEBUG
                             _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
 #endif
-                            Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
+
+                                Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
                         case EnumRecordsFlag.IMPORTNAME:
