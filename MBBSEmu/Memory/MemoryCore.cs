@@ -31,6 +31,9 @@ namespace MBBSEmu.Memory
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
             _variablePointerDictionary = new Dictionary<string, IntPtr16>();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE, 0);
+
+            //Add Segment 0 by default, stack segment
+            AddSegment(0);
         }
 
         public IntPtr16 AllocateVariable(string name, ushort size)
@@ -55,7 +58,7 @@ namespace MBBSEmu.Memory
 
 #if DEBUG
             _logger.Debug(
-                $"Allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
+                $"Variable {name} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
             _currentVariablePointer.Offset += size;
