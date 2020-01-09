@@ -79,6 +79,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
+            var pointer = Module.Memory.GetVariable("USER");
+            pointer.Offset += (ushort)(_channelNumber * 41);
+            Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -87,7 +90,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
             {
+                ChannelDictionary[channelNumber].InputBuffer.WriteByte(0x0);
                 ChannelDictionary[channelNumber].parsin();
+                ChannelDictionary[channelNumber].InputBuffer.SetLength(0);
                 Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
                 Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort) ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
@@ -111,6 +116,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Module.Memory.SetArray(margvPointer.Segment, (ushort) (margvPointer.Offset + (i * 4)),
                         currentMargVPointer.ToSpan());
                 }
+
+
             }
         }
 
@@ -1007,7 +1014,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
             var pointer = Module.Memory.GetVariable("PRFBUF");
-            ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetString(pointer));
+            ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetArray(pointer, (ushort) _outputBufferPosition));
             _outputBufferPosition = 0;
         }
 

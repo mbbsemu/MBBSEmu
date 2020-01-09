@@ -161,7 +161,7 @@ namespace MBBSEmu.Session
         /// </summary>
         public void rstrin()
         {
-            for (var i = 0; i < InputCommand.Length; i++)
+            for (var i = 0; i < InputCommand.Length - 1; i++)
             {
                 if (InputCommand[i] == 0x0)
                     InputCommand[i] = 0x20;

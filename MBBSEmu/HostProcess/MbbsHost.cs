@@ -105,6 +105,7 @@ namespace MBBSEmu.HostProcess
                             {
                                 s.StatusChange = false;
                                 s.SessionState = EnumSessionState.InModule;
+                                s.InputBuffer.SetLength(0);
                                 Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
                                 continue;
                             }
@@ -159,6 +160,10 @@ namespace MBBSEmu.HostProcess
                                     {
                                         s.SessionState = EnumSessionState.MainMenuDisplay;
                                         s.CurrentModule = null;
+                                        
+                                        //Reset States
+                                        s.Status = 0;
+                                        s.UsrPtr.Substt = 0;
 
                                         //Clear the Input Buffer
                                         s.InputBuffer.SetLength(0);
