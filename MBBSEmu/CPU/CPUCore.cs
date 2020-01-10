@@ -106,8 +106,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            if(Registers.IP == 0x1142)
-                Debugger.Break();
+           // if(Registers.IP == 0x1142)
+               // Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -258,7 +258,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            _logger.InfoRegisters(this);
+            //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
