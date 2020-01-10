@@ -421,6 +421,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 511:
                     rstrin();
                     break;
+                case 580:
+                    strncat();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -2436,5 +2439,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
 
         private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariable("USAPTR").ToSpan();
+
+        /// <summary>
+        ///     Appends the first num characters of source to destination, plus a terminating null-character.
+        ///
+        ///     Signature: char *strncat(char *destination, const char *source, size_t num)
+        /// </summary>
+        private void strncat()
+        {
+            var destinationOffset = GetParameter(0);
+            var destinationSegment = GetParameter(1);
+            var destinationPointer = new IntPtr16(destinationSegment, destinationOffset);
+
+            var sourceOffset = GetParameter(2);
+            var sourceSegment = GetParameter(3);
+            var sourcePointer = new IntPtr16(sourceSegment, sourceOffset);
+
+            var bytesToCopy = GetParameter(4);
+
+            var stringDestination = Module.Memory.GetString(destinationPointer);
+            var stringSource = Module.Memory.GetString(sourcePointer, true);
+
+            if (stringSource.Length < bytesToCopy)
+                bytesToCopy = (ushort) stringSource.Length;
+
+            var newString = new byte[stringDestination.Length + bytesToCopy];
+            Array.Copy(stringSource.Slice(0, bytesToCopy).ToArray(), 0, newString, 0, bytesToCopy);
+            Array.Copy(stringDestination.ToArray(), 0, newString, bytesToCopy, stringDestination.Length);
+
+#if DEBUG
+            _logger.Info($"Concatenated String 1 (Length:{stringSource.Length}b. Copied {bytesToCopy}b) with String 2 (Length: {stringDestination.Length}) to new String (Length: {newString.Length}b)");
+#endif
+            Module.Memory.SetArray(destinationPointer, newString);
+        }
     }
 }
