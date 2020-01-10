@@ -7,6 +7,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using MBBSEmu.Disassembler.Artifacts;
 
@@ -99,8 +100,6 @@ namespace MBBSEmu.HostProcess
                     {
                         switch (s.SessionState)
                         {
-
-
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
@@ -109,7 +108,20 @@ namespace MBBSEmu.HostProcess
                                 Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
                                 continue;
                             }
+                            case EnumSessionState.LoginRoutines:
+                            {
+                                foreach (var m in _modules.Values)
+                                {
+                                    if (m.EntryPoints.ContainsKey("lonrou"))
+                                    {
+                                        Run(m.ModuleIdentifier, m.EntryPoints["lonrou"],
+                                            s.Channel);
 
+                                    }
+                                }
+                                s.SessionState = EnumSessionState.MainMenuDisplay;
+                                continue;
+                            }
                             case EnumSessionState.InModule:
                             {
                                 //Process Character Interceptor in GSBL
@@ -394,7 +406,7 @@ namespace MBBSEmu.HostProcess
                             if (relocationRecord.SourceType == 3)
                             {
 #if DEBUG
-                                _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+                                //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
                                 Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
                                 continue;
@@ -414,7 +426,7 @@ namespace MBBSEmu.HostProcess
                                 result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
 #if DEBUG
-                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported value {result:X4}");
+                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported value {result:X4}");
 #endif
                             Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                             break;
@@ -431,14 +443,14 @@ namespace MBBSEmu.HostProcess
                                 Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
 
 #if DEBUG
-                                _logger.Info(
-                                    $"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref Pointer value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+                                //_logger.Info(
+                               //     $"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref Pointer value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
                                 break;
                             }
 
 #if DEBUG
-                            _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
+                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
 #endif
 
                                 Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
@@ -454,15 +466,39 @@ namespace MBBSEmu.HostProcess
                                 "MAJORBBS" => (ushort) 0xFFFF,
                                 "GALGSBL" => (ushort) 0xFFFE,
                                 "PHAPI" => (ushort) 0xFFFD,
-                                _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+                                _ => throw new Exception(
+                                    $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
 
                             };
 
                             var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+
+                            //32-Bit Pointer
+                            if (relocationRecord.SourceType == 3)
+                            {
 #if DEBUG
-                                _logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+                                //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
-                            Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                continue;
+                            }
+
+                            //16-Bit Values
+                            var result = relocationRecord.SourceType switch
+                            {
+                                //Offset
+                                2 => relocationPointer.Segment,
+                                5 => relocationPointer.Offset,
+                                _ => throw new ArgumentOutOfRangeException(
+                                    $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                            };
+#if DEBUG
+                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
+#endif
+                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                                result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+
+                            Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                             break;
 
                         }

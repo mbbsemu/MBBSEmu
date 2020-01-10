@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -30,8 +31,8 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     This Users UsrAcc* which is pass in from MajorBBS
         /// </summary>
-        public UserAccount UsrAcc;
-        
+        public UserAccount UsrAcc { get; set; }
+
         /// <summary>
         ///     This Users Number/Channel Number (used to identify target for output)
         /// </summary>

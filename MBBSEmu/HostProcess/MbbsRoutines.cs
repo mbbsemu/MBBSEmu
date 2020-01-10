@@ -235,7 +235,7 @@ namespace MBBSEmu.HostProcess
                 return;
             }
 
-            session.SessionState = EnumSessionState.MainMenuDisplay;
+            session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
         }
 

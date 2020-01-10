@@ -36,7 +36,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (offsetsOnly)
             {
                 var methodPointer = new IntPtr16(0xFFFE, ordinal);
-                _logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+#if DEBUG
+                //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+#endif
                 return methodPointer.ToSpan();
             }
 

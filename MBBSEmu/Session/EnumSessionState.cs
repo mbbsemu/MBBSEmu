@@ -30,11 +30,6 @@
         LoginPasswordInput,
 
         /// <summary>
-        ///     User is Logging in / being Authenticated
-        /// </summary>
-        LoggingIn,
-
-        /// <summary>
         ///     User is currently seeing Login Routines from Modules
         /// </summary>
         LoginRoutines,

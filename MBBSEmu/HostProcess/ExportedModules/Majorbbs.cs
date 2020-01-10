@@ -36,9 +36,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private int _inputCurrentCommand;
 
         private int _outputBufferPosition;
-        
 
-        public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+
+        public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
+            channelDictionary)
         {
             _outputBufferPosition = 0;
             _margvPointers = new List<IntPtr16>();
@@ -52,13 +53,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("USER", 0x28D7); //41 bytes * 255 users
             Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
-            Module.Memory.AllocateVariable("USRACC", 0x155); //UserAccount struct
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
             Module.Memory.AllocateVariable("MARGC", 0x2);
             Module.Memory.AllocateVariable("MARGN", 0x3FC);
             Module.Memory.AllocateVariable("MARGV", 0x3FC);
             Module.Memory.AllocateVariable("INPLEN", 0x2);
             Module.Memory.AllocateVariable("USERNUM", 0x2);
+            var usraccPointer = Module.Memory.AllocateVariable("USRACC", 0x155);
+            var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
+            Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
+            
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
         }
@@ -82,6 +86,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var pointer = Module.Memory.GetVariable("USER");
             pointer.Offset += (ushort)(_channelNumber * 41);
             Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -108,7 +113,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var currentMargVPointer = new IntPtr16(inputMemory.Segment,
                         (ushort) (inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i]));
 
-                    _logger.Info($"Command {i} {currentMargnPointer.Segment:X4}:{currentMargnPointer.Offset:X4}-{currentMargVPointer.Segment:X4}:{currentMargVPointer.Offset:X4}");
+                    _logger.Info($"Command {i} {currentMargVPointer.Segment:X4}:{currentMargVPointer.Offset:X4}-{currentMargnPointer.Segment:X4}:{currentMargnPointer.Offset:X4}");
 
                     Module.Memory.SetArray(margnPointer.Segment, (ushort) (margnPointer.Offset + (i * 4)),
                         currentMargnPointer.ToSpan());
@@ -182,12 +187,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return _exitfopen;
                 case 18:
                     return _exitopen;
+                case 624:
+                    return usaptr;
             }
 
             if (offsetsOnly)
             {
                 var methodPointer = new IntPtr16(0xFFFF, ordinal);
-                _logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+#if DEBUG
+                //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
+#endif
                 return methodPointer.ToSpan();
             }
 
@@ -2266,6 +2275,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 elementsWritten++;
             }
 
+#if DEBUG
+            _logger.Info($"Read {elementsWritten} group(s) of {size} bytes from {sourcePointerSegment:X4}:{sourcePointerOffset:X4}, written to {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4}");
+#endif
             Registers.AX = elementsWritten;
         }
 
@@ -2305,7 +2317,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             filenameInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
 
 #if DEBUG
-            _logger.Info($"Evaluated string length of {filenameInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}");
+            _logger.Info(
+                $"Evaluated string length of {filenameInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}: {Encoding.ASCII.GetString(filenameInputBuffer.ToArray())}");
 #endif
 
             Registers.AX = (ushort) filenameInputBuffer.Length;
@@ -2326,8 +2339,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void toupper()
         {
             var character = GetParameter(0);
-
-            Registers.AX = (ushort) (character - 32);
+            if (character >= 65 && character <= 90)
+            {
+                Registers.AX = (ushort) (character - 32);
+            }
+            else
+            {
+                Registers.AX = character;
+            }
+#if DEBUG
+            _logger.Info($"Converted {(char)character} to {(char)Registers.AX}");
+#endif
         }
 
         /// <summary>
@@ -2338,8 +2360,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void tolower()
         {
             var character = GetParameter(0);
-
-            Registers.AX = (ushort)(character + 32);
+            if (character >= 61 || character <= 122)
+            {
+                Registers.AX = (ushort) (character + 32);
+            }
+            else
+            {
+                Registers.AX = character;
+            }
+#if DEBUG
+            _logger.Info($"Converted {(char)character} to {(char)Registers.AX}");
+#endif
         }
 
         /// <summary>
@@ -2367,6 +2398,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new FileNotFoundException($"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
 
             File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}");
+
+#if DEBUG
+            _logger.Info($"Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
+#endif
 
             Registers.AX = 0;
         }
@@ -2399,5 +2434,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> _exitbuf => new byte[] {0x0, 0x0, 0x0, 0x0};
         private ReadOnlySpan<byte> _exitfopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
         private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+
+        private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariable("USAPTR").ToSpan();
     }
 }
