@@ -474,14 +474,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            //Get the current pointer
-            var hostSegment = base.Module.Memory.AllocateVariable(null, size);
+            var memoryPointer = Module.Memory.AllocateVariable(null, 4);
 
-            Registers.AX = hostSegment.Offset;
-            Registers.DX = hostSegment.Segment;
+            //Get the current pointer
+            var allocatedMemory = base.Module.Memory.AllocateVariable(null, size);
+
+            //Write address of the memory segment to the pointer
+            Module.Memory.SetArray(memoryPointer, allocatedMemory.ToSpan());
+
+            Registers.AX = memoryPointer.Offset;
+            Registers.DX = memoryPointer.Segment;
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {hostSegment.Segment:X4}:{hostSegment.Offset:X4}");
+            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory.Segment:X4}:{allocatedMemory.Offset:X4} (Pointer {memoryPointer.Segment}:{memoryPointer.Offset})");
 #endif
         }
 
@@ -2342,7 +2347,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void toupper()
         {
             var character = GetParameter(0);
-            if (character >= 65 && character <= 90)
+            if (character >= 97 && character <= 122)
             {
                 Registers.AX = (ushort) (character - 32);
             }
@@ -2363,7 +2368,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void tolower()
         {
             var character = GetParameter(0);
-            if (character >= 61 || character <= 122)
+            if (character >= 65 || character <= 90)
             {
                 Registers.AX = (ushort) (character + 32);
             }

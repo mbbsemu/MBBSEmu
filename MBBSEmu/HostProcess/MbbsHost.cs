@@ -112,13 +112,15 @@ namespace MBBSEmu.HostProcess
                             {
                                 foreach (var m in _modules.Values)
                                 {
-                                    if (m.EntryPoints.ContainsKey("lonrou"))
+                                    if (m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint))
                                     {
-                                        Run(m.ModuleIdentifier, m.EntryPoints["lonrou"],
-                                            s.Channel);
-
+                                        if (logonRoutineEntryPoint.Segment != 0 && logonRoutineEntryPoint.Offset != 0)
+                                        {
+                                            Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                        }
                                     }
                                 }
+
                                 s.SessionState = EnumSessionState.MainMenuDisplay;
                                 continue;
                             }

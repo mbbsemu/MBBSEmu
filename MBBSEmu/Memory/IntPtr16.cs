@@ -7,14 +7,22 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class IntPtr16
     {
-        public ushort Segment { get; set; }
-        public ushort Offset { get; set; }
-
-        public IntPtr16()
+        public ushort Segment
         {
-            Segment = 0;
-            Offset = 0;
+            get => BitConverter.ToUInt16(_pointerData, 2);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, _pointerData, 2, 2);
+
         }
+        public ushort Offset
+        {
+            get => BitConverter.ToUInt16(_pointerData, 0);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, _pointerData, 0, 2);
+
+        }
+
+        private readonly byte[] _pointerData = new byte[4];
+
+        public IntPtr16() { }
 
         public IntPtr16(ReadOnlySpan<byte> intPtr16Span)
         {
@@ -29,20 +37,31 @@ namespace MBBSEmu.Memory
 
         public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
         {
-            Offset = BitConverter.ToUInt16(intPtr16Span.Slice(0, 2));
-            Segment = BitConverter.ToUInt16(intPtr16Span.Slice(2, 2));
+            Array.Copy(intPtr16Span.ToArray(), 0, _pointerData, 0, 4);
         }
 
-        public int ToInt() => BitConverter.ToInt32(ToSpan());
+        /// <summary>
+        ///     Returns the int16:int16 pointer as a 32-bit value
+        /// </summary>
+        /// <returns></returns>
+        public int ToInt32() => BitConverter.ToInt32(ToSpan());
 
-        public byte[] ToArray() => ToSpan().ToArray();
+        /// <summary>
+        ///     Returns the int16:int16 pointer as a byte[]
+        /// </summary>
+        /// <returns></returns>
+        public byte[] ToArray() => _pointerData;
 
-        public ReadOnlySpan<byte> ToSpan()
-        {
-            var output = new byte[4];
-            Array.Copy(BitConverter.GetBytes(Offset), 0, output, 0, 2);
-            Array.Copy(BitConverter.GetBytes(Segment), 0, output, 2, 2);
-            return output;
-        }
+        /// <summary>
+        ///     Returns a reference to the int16:int16 pointer
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> ToSpan() => _pointerData;
+
+        /// <summary>
+        ///     Returns the int16:int16 pointer as a string
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() => $"{Segment:X4}:{Offset:X4}";
     }
 }

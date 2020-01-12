@@ -106,8 +106,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-           // if(Registers.IP == 0x1142)
-               // Debugger.Break();
+            //if(Registers.IP == 0xAF62)
+               //Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -258,7 +258,7 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.ByteLength;
 #if DEBUG
-            //_logger.InfoRegisters(this);
+           // _logger.InfoRegisters(this);
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
 #endif
@@ -273,27 +273,26 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         private ushort GetOperandValue(OpKind opKind, EnumOperandType operandType)
         {
-            ushort result;
             switch (opKind)
             {
                 case OpKind.Register:
-                    result = Registers.GetValue(operandType == EnumOperandType.Destination
+                {
+                    //for ops like imul bx, etc. where AX is the implicit destination
+                    if (operandType == EnumOperandType.Source && _currentInstruction.Op1Register == Register.None)
+                    {
+                        return Registers.AX;
+                    }
+
+                    return Registers.GetValue(operandType == EnumOperandType.Destination
                         ? _currentInstruction.Op0Register
                         : _currentInstruction.Op1Register);
-                    break;
-
+                }
                 case OpKind.Immediate8:
-                    result = _currentInstruction.Immediate8;
-                    break;
-
+                    return _currentInstruction.Immediate8;
                 case OpKind.Immediate16:
-                    result = _currentInstruction.Immediate16;
-                    break;
-
+                    return _currentInstruction.Immediate16;
                 case OpKind.Immediate8to16:
-                    result = (ushort) _currentInstruction.Immediate8to16;
-                    break;
-
+                    return (ushort) _currentInstruction.Immediate8to16;
                 case OpKind.Memory:
                 {
                     //Relocation Record is applied to the offset of the value
@@ -308,8 +307,6 @@ namespace MBBSEmu.CPU
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Op for: {opKind}");
             }
-
-            return result;
         }
 
         /// <summary>
@@ -505,7 +502,12 @@ namespace MBBSEmu.CPU
         {
             var source = (ushort)(GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source) + (Registers.F.Flags.IsFlagSet((ushort)EnumFlags.CF) ? 1 : 0));
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var result = (ushort)(destination - source);
+            ushort result;
+            unchecked
+            {
+                result = (ushort)(destination - source);
+            }
+            
             int operationSize;
 
             switch (_currentInstruction.Op0Kind)
@@ -514,6 +516,22 @@ namespace MBBSEmu.CPU
                 {
                     operationSize = _currentInstruction.Op0Register.GetSize();
                     Registers.SetValue(_currentInstruction.Op0Register, result);
+                    break;
+                }
+                case OpKind.Memory:
+                {
+
+                    if (_currentInstruction.MemorySize == MemorySize.UInt8)
+                    {
+                        operationSize = 1;
+                        Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), (byte)result);
+                    }
+                    else
+                    {
+                        operationSize = 2;
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), result);
+                    }
+
                     break;
                 }
                 default:
@@ -1509,20 +1527,43 @@ namespace MBBSEmu.CPU
 
         private void Op_Imul()
         {
-            var destination = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Destination);
-            var source = GetOperandValue(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            switch (_currentInstruction.OpCount)
+            {
+                case 1:
+                    Op_Imul_1operand();
+                    return;
+                case 2:
+                    throw new NotImplementedException("IMUL with 2 Opcodes not implemented");
+                case 3:
+                    Op_Imul_3operand();
+                    return;
+            }
+        }
+
+        private void Op_Imul_1operand()
+        {
+            var operand2 = Registers.AX;
+            var operand3 = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             ushort result;
             unchecked
             {
-                result = (ushort) (destination * source);
+                result = (ushort)(operand2 * operand3);
             }
 
-            switch (_currentInstruction.Op0Kind)
+            Registers.AX = result;
+        }
+
+        private void Op_Imul_3operand()
+        {
+            var operand2 = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+            var operand3 = GetOperandValue(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            ushort result;
+            unchecked
             {
-                case OpKind.Register:
-                    Registers.SetValue(_currentInstruction.Op0Register, result);
-                    return;
+                result = (ushort) (operand2 * operand3);
             }
+
+            Registers.SetValue(_currentInstruction.Op0Register, result);
         }
 
         private void Op_Idiv()
