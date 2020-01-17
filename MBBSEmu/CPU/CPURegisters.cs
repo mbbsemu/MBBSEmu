@@ -7,8 +7,6 @@ namespace MBBSEmu.CPU
 {
     public class CpuRegisters
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-
         /// <summary>
         ///     Flags
         /// </summary>
@@ -361,6 +359,37 @@ namespace MBBSEmu.CPU
         public int GetLong(Register highBytes, Register lowBytes)
         {
             return (GetValue(highBytes) << 16) | GetValue(lowBytes);
+        }
+
+        /// <summary>
+        ///     Returns a DOS.H compatible struct for register values (WORDREGS, BYTEREGS)
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> ToRegs()
+        {
+            var output = new byte[16];
+            Array.Copy(BitConverter.GetBytes(AX), 0, output, 0, 2);
+            Array.Copy(BitConverter.GetBytes(BX), 0, output, 2, 2);
+            Array.Copy(BitConverter.GetBytes(CX), 0, output, 4, 2);
+            Array.Copy(BitConverter.GetBytes(DX), 0, output, 6, 2);
+            Array.Copy(BitConverter.GetBytes(SI), 0, output, 8, 2);
+            Array.Copy(BitConverter.GetBytes(DI), 0, output, 10, 2);
+            //TODO -- Determine if we needs FLAGS
+            return output;
+        }
+
+        /// <summary>
+        ///     Loads this CpuRegisters instance with values from a DOS.H compatible struct for register values
+        /// </summary>
+        /// <param name="regs"></param>
+        public void FromRegs(ReadOnlySpan<byte> regs)
+        {
+            AX = BitConverter.ToUInt16(regs.Slice(0, 2));
+            BX = BitConverter.ToUInt16(regs.Slice(2, 2));
+            CX = BitConverter.ToUInt16(regs.Slice(4, 2));
+            DX = BitConverter.ToUInt16(regs.Slice(6, 2));
+            SI = BitConverter.ToUInt16(regs.Slice(8, 2));
+            DI = BitConverter.ToUInt16(regs.Slice(10, 2));
         }
     }
 }

@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0x9C6)
+            //if(Registers.IP == 0x6641)
                //Debugger.Break();
 #endif
 
@@ -1102,17 +1102,29 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var result = (ushort)(destination & source);
+            var operationSize = GetCurrentOperationSize();
 
-            var operationSize = 0;
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
                     Registers.SetValue(_currentInstruction.Op0Register, result);
-                    operationSize = _currentInstruction.Op0Register.GetSize();
                     break;
+                case OpKind.Memory when operationSize == 1:
+                {
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte)result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 2:
+                {
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
+                    return;
+                }
                 default:
-                    throw new Exception($"Unsupported OpKind for OR: {_currentInstruction.Op0Kind}");
+                    throw new Exception($"Unsupported OpKind for AND: {_currentInstruction.Op0Kind}");
             }
+
 
             //Clear Flags
             Registers.F.ClearFlag(EnumFlags.CF);

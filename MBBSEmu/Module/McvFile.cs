@@ -13,6 +13,8 @@ namespace MBBSEmu.Module
         public readonly byte[] FileContent;
         public readonly Dictionary<int, byte[]> Messages;
 
+        private bool _dynamicLength = false;
+
         public McvFile(string fileName, string path = "")
         {
             Messages = new Dictionary<int, byte[]>();
@@ -47,6 +49,9 @@ namespace MBBSEmu.Module
             var numberOfLanguages = BitConverter.ToInt16(mcvInfo.Slice(12, 2));
             var numberOfMessages = BitConverter.ToInt16(mcvInfo.Slice(14, 2));
 
+            if (languagesOffset == 0)
+                _dynamicLength = true;
+
             if(numberOfLanguages > 2)
                 throw new Exception("MbbsEmu does not support modules that implement more than 2 languages");
 
@@ -59,7 +64,7 @@ namespace MBBSEmu.Module
                 var messageLocationOffset = BitConverter.ToInt32(fileSpan.Slice(messageLocationsOffsets + offsetModifier, 4));
 
                 //Get Message Length
-                if (messageLengthsOffsets != 0)
+                if (!_dynamicLength)
                 {
                     messageLength = BitConverter.ToInt32(fileSpan.Slice(messageLengthsOffsets + offsetModifier, 4));
 
@@ -114,9 +119,20 @@ namespace MBBSEmu.Module
         public ReadOnlySpan<byte> GetString(int ordinal)
         {
             if (!Messages.TryGetValue(ordinal, out var result))
-                result = new byte[] {0x0};
+                return new byte[] {0x0};
 
-            return result;
+            //Empty String
+            if (result.Length == 0)
+                return new byte[] { 0x0 };
+
+            //If it's already null terminated, return it
+            if (result[^1] == 0x0)
+                return result;
+
+            var resultArray = new byte[result.Length + 1];
+            Array.Copy(result, 0, resultArray, 0, result.Length);
+
+            return resultArray;
         }
 
         /// <summary>
@@ -126,15 +142,24 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         private ReadOnlySpan<byte> GetMessageValue(int ordinal)
         {
-            Span<byte> message = Messages[ordinal];
+            ReadOnlySpan<byte> message = Messages[ordinal];
+
             for (var i = 1; i <= message.Length; i++)
             {
                 if (message[^i] == 0x3A || message[^i] == 0x20)
                     return message.Slice(message.Length - i, i);
             }
 
-            //if no split character is found, return the whole thing
+            //If no terminating characters were found, treat it as if it were a cstring and find the first null
+            for (int i = 0; i < message.Length; i++)
+            {
+                if (message[i] == 0x0)
+                    return message.Slice(0, i + 1);
+            }
+
             return message;
+
+            throw new Exception("Unable to find specified value");
         }
     }
 }

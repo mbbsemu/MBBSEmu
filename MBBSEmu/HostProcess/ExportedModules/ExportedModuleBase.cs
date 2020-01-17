@@ -4,12 +4,12 @@ using MBBSEmu.DependencyInjection;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -326,6 +326,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 msOutput.WriteByte(stringToParse[i]);
             }
             return msOutput.ToArray();
+        }
+
+        /// <summary>
+        ///     Implementation of sscanf C++ routine
+        /// </summary>
+        /// <param name="inputString"></param>
+        /// <param name="formatString"></param>
+        /// <param name="startingParameterOrdinal"></param>
+        private protected void sscanf(ReadOnlySpan<byte> inputString, ReadOnlySpan<byte> formatString, ushort startingParameterOrdinal)
+        {
+            //Take input value, spit into array
+            var stringValues = Encoding.ASCII.GetString(inputString).Split(' ');
+            var valueOrdinal = 0;
+            for (var i = 0; i < formatString.Length; i++)
+            {
+                if (formatString[i] == '%' && formatString[i + 1] != '*')
+                {
+                    i++;
+                    switch ((char) formatString[i])
+                    {
+                        case 'd':
+                            var numberValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
+                            startingParameterOrdinal += 2;
+                            var numberValue = short.Parse(stringValues[valueOrdinal++]);
+                            Module.Memory.SetWord(numberValueDestinationPointer, (ushort)numberValue);
+                            continue;
+                        case 's':
+                            var stringValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
+                            startingParameterOrdinal += 2;
+                            var stringValue = stringValues[valueOrdinal++] + "\0";
+                            Module.Memory.SetArray(stringValueDestinationPointer, Encoding.ASCII.GetBytes(stringValue));
+                            continue;
+                    }
+                }
+            }
         }
     }
 }
