@@ -32,7 +32,7 @@ namespace MBBSEmu.Module
             FileNameAtRuntime = $"{moduleName.ToUpper()}.MCV";
 
             _logger.Info($"Compiling MCV from {moduleName.ToUpper()}.MSG");
-            BuildMCV();
+           //BuildMCV();
         }
 
         /// <summary>

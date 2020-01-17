@@ -6,6 +6,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Telnet;
 using NLog;
 using System;
+using MBBSEmu.Reports;
 
 namespace MBBSEmu
 {
@@ -17,7 +18,7 @@ namespace MBBSEmu
         {
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
-
+            var bApiReport = false;
             for (var i = 0; i < args.Length; i++)
             {
 
@@ -47,6 +48,9 @@ namespace MBBSEmu
                         _logger.Info("Database Reset!");
                         break;
                     }
+                    case "-APIREPORT":
+                        bApiReport = true;
+                        break;
                     case "-M":
                         sInputModule = args[i + 1];
                         i++;
@@ -76,10 +80,21 @@ namespace MBBSEmu
                 return;
             }
 
+            var module = new MbbsModule(sInputModule, sInputPath);
+            if (bApiReport)
+            {
+                var apiReport = new ApiReport(module);
+                apiReport.GenerateReport();
+                return;
+            }
+
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
 
-            var module = new MbbsModule(sInputModule, sInputPath);
+            
+
+
+
             host.AddModule(module);
 
             var server = ServiceResolver.GetService<ITelnetServer>();

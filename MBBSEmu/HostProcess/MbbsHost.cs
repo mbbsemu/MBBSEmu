@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using MBBSEmu.Disassembler.Artifacts;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess
 {
@@ -31,20 +32,30 @@ namespace MBBSEmu.HostProcess
         private readonly Stopwatch _realTimeStopwatch;
         private bool _isAddingModule;
         private readonly IMbbsRoutines _mbbsRoutines;
+        private readonly IConfigurationRoot _configuration;
 
         private readonly Queue<UserSession> _incomingSessions;
 
-        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines)
+        private bool DoLoginRoutine;
+
+        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfigurationRoot configuration)
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
+            _configuration = configuration;
+
             _logger.Info("Constructing MbbsEmu Host...");
+
+            bool.TryParse(_configuration["Module.DoLoginRoutine"], out DoLoginRoutine);
+
             _channelDictionary = new PointerDictionary<UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _cpu = new CpuCore();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<UserSession>();
+
+
             _logger.Info("Constructed MbbsEmu Host!");
         }
 
@@ -110,17 +121,20 @@ namespace MBBSEmu.HostProcess
                             }
                             case EnumSessionState.LoginRoutines:
                             {
-                                foreach (var m in _modules.Values)
+                                if (DoLoginRoutine)
                                 {
-                                    if (m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint))
+                                    foreach (var m in _modules.Values)
                                     {
-                                        if (logonRoutineEntryPoint.Segment != 0 && logonRoutineEntryPoint.Offset != 0)
+                                        if (m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint))
                                         {
-                                            Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                            if (logonRoutineEntryPoint.Segment != 0 &&
+                                                logonRoutineEntryPoint.Offset != 0)
+                                            {
+                                                Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                            }
                                         }
                                     }
                                 }
-
                                 s.SessionState = EnumSessionState.MainMenuDisplay;
                                 continue;
                             }
@@ -151,7 +165,9 @@ namespace MBBSEmu.HostProcess
                                             s.Status = 3;
                                     }
 
-                                    s.DataToClient.WriteByte(s.LastCharacterReceived);
+                                    //If the client is in transparent mode, don't echo
+                                    if(!s.TransparentMode)
+                                        s.DataToClient.WriteByte(s.LastCharacterReceived);
                                 }
 
                                 //Did the text change cause a status update

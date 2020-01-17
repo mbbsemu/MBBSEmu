@@ -93,6 +93,8 @@ namespace MBBSEmu.Session
 
         public bool DataToProcess;
 
+        public bool TransparentMode;
+
         public string Username
         {
             get => UsrAcc.GetUserId();

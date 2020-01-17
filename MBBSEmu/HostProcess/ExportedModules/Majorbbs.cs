@@ -1373,7 +1373,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _currentMcvFile = McvPointerDictionary[mcvFileOffset];
 
 #if DEBUG
-            _logger.Info($"Set current MCV File: {McvPointerDictionary[mcvFileOffset].FileName}");
+            //_logger.Info($"Set current MCV File: {McvPointerDictionary[mcvFileOffset].FileName}");
 #endif
         }
 

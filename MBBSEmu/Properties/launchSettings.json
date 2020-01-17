@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-m RTSLORD -p C:\\dos\\modules\\lord\\ -dbreset"
+      "commandLineArgs": "-m GWWARROW -p C:\\dos\\install3 -dbreset"
     }
   }
 }

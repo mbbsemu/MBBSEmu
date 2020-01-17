@@ -17,7 +17,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public Galsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
             var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
-            Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes("97771457\0"));
+            Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes($"{_configuration["GSBL.Activation"]}\0"));
 
         }
         public void UpdateSession(ushort channel)
@@ -143,8 +143,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btutrg()
         {
-            //TODO -- Set callback for how characters should be processed
-            Registers.AX = 0;
+            var channel = GetParameter(0);
+            var numBytes = GetParameter(1);
+
+            if (numBytes == 0)
+            {
+                //Default ASCII mode -- we don't need to do anything
+                ChannelDictionary[channel].TransparentMode = false;
+                Registers.AX = 0;
+                return;
+            }
+
+            if (numBytes >= 1)
+            {
+                ChannelDictionary[channel].TransparentMode = true;
+                Registers.AX = 0;
+                return;
+            }
+
+            throw new ArgumentOutOfRangeException($"Invalid value for numBytes: {numBytes}");
         }
 
         /// <summary>
@@ -218,13 +235,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var bytesToRead = 0;
+            int bytesToRead;
             if (max > ChannelDictionary[channelNumber].InputBuffer.Length)
                 bytesToRead = (int) ChannelDictionary[channelNumber].InputBuffer.Length;
             else
                 bytesToRead = max;
 
             var bytesRead = new byte[bytesToRead];
+            ChannelDictionary[channelNumber].InputBuffer.Position = 0;
             ChannelDictionary[channelNumber].InputBuffer.Read(bytesRead, 0, bytesToRead);
 
             Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
@@ -262,10 +280,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routineOffset = GetParameter(1);
             var routineSegment = GetParameter(2);
 
+            //Unset on the specified channel
+            if (routineOffset == 0 && routineSegment == 0)
+            {
+
+                ChannelDictionary[channel].CharacterInterceptor = null;
+                Registers.AX = 0;
+
+#if DEBUG
+                _logger.Info($"Unassigned Character Interceptor Routine on Channel {channel}");
+#endif
+                return;
+            }
+
             ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routineSegment, routineOffset);
 
 #if DEBUG
-            _logger.Info($"Assigned Character Interceptor Routine {routineSegment:X4}:{routineOffset:X4} to Channel {channel}");
+            _logger.Info($"Assigned Character Interceptor Routine {ChannelDictionary[channel].CharacterInterceptor} to Channel {channel}");
 #endif
 
             Registers.AX = 0;

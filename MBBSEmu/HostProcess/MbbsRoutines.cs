@@ -209,7 +209,7 @@ namespace MBBSEmu.HostProcess
 
         private void LoginPasswordDisplay(UserSession session)
         {
-            session.DataToClient.Write("\r\n|B||WHITE|Password:|!B| ".EncodeToANSIArray());
+            session.DataToClient.Write("|B||WHITE|Password:|!B| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 
@@ -230,7 +230,7 @@ namespace MBBSEmu.HostProcess
 
             if (account == null)
             {
-                EchoToClient(session, "\r\n\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
+                EchoToClient(session, "\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
@@ -242,7 +242,7 @@ namespace MBBSEmu.HostProcess
 
         private void MainMenuDisplay(UserSession session, Dictionary<string, MbbsModule> modules)
         {
-            EchoToClient(session, "\r\n\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
+            EchoToClient(session, "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
             var currentMenuItem = 0;
             foreach (var m in modules)
@@ -290,7 +290,7 @@ namespace MBBSEmu.HostProcess
 
         private void LogoffConfirmationDisplay(UserSession session)
         {
-            EchoToClient(session, "\r\n|WHITE||BLINK||B|You are about to terminate this connection!|RESET|\r\n".EncodeToANSIArray());
+            EchoToClient(session, "|WHITE||BLINK||B|You are about to terminate this connection!|RESET|\r\n".EncodeToANSIArray());
             EchoToClient(session, "\r\n|CYAN||B|Are you sure (Y/N, or R to re-logon)? ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.ConfirmLogoffInput;
         }

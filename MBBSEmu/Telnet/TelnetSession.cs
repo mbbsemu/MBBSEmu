@@ -40,6 +40,8 @@ namespace MBBSEmu.Telnet
             _sendThread.Start();
             _receiveThread = new Thread(ReceiveWorker);
             _receiveThread.Start();
+            DataToClient.Write(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+
 
             //Add this Session to the Host
             _host.AddSession(this);
@@ -66,7 +68,7 @@ namespace MBBSEmu.Telnet
                     return;
                 }
 
-                Thread.Sleep(5);
+                Thread.Sleep(100);
             }
 
             //Cleanup if the connection was dropped
@@ -84,7 +86,7 @@ namespace MBBSEmu.Telnet
                     continue;
 
                 //Enter Key
-                if (socketReceiveBuffer[0] == 0xD)
+                if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
                 {
                     //Set Status == 3, which means there is a Command Ready
                     Status = 3;
@@ -102,7 +104,11 @@ namespace MBBSEmu.Telnet
                     InputBuffer.SetLength(0);
 
                     if (_iacComplete)
+                    {
+                        DataToClient.Write(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+                        DataToClient.Write(new byte[] { 0x1B, 0x5B, 0x48 });
                         SessionState = EnumSessionState.Unauthenticated;
+                    }
 
                     continue;
                 }

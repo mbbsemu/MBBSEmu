@@ -1,4 +1,6 @@
 ﻿using System;
+using MBBSEmu.DependencyInjection;
+using NLog;
 
 namespace MBBSEmu.Disassembler.Artifacts
 {
@@ -7,6 +9,13 @@ namespace MBBSEmu.Disassembler.Artifacts
     /// </summary>
     public class RelocationRecord
     {
+        protected static readonly ILogger _logger;
+
+        static RelocationRecord()
+        {
+            _logger = ServiceResolver.GetService<ILogger>();
+        }
+
         public byte[] Data;
         public byte SourceType => Data[0];
         public EnumRecordsFlag Flag => (EnumRecordsFlag) Data[1];
@@ -32,8 +41,11 @@ namespace MBBSEmu.Disassembler.Artifacts
                     case EnumRecordsFlag.IMPORTNAME:
                         return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.IMPORTNAME,
                             BitConverter.ToUInt16(Data, 4), BitConverter.ToUInt16(Data, 6), 0);
+                    default:
+                        _logger.Warn($"Unknown Relocation Flag Value: {Flag} ({Convert.ToString((byte)Flag, 2)})");
+                        return null;
+                        
                 }
-                return null;
             }
         }
     }

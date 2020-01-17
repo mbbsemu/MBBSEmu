@@ -1,16 +1,15 @@
-﻿using MBBSEmu.CPU;
+﻿using MBBSEmu.Btrieve;
+using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
-using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.Btrieve;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -37,6 +36,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
+        private protected readonly IConfigurationRoot _configuration;
 
         public CpuRegisters Registers;
         public MbbsModule Module;
@@ -44,6 +44,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
             _logger = ServiceResolver.GetService<ILogger>();
+            _configuration = ServiceResolver.GetService<IConfigurationRoot>();
+
             Module = module;
             ChannelDictionary = channelDictionary;
 
