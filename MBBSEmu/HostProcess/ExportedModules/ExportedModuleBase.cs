@@ -60,10 +60,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private protected ushort GetParameter(ushort parameterOrdinal)
+        private protected ushort GetParameter(int parameterOrdinal)
         {
             var parameterOffset = (ushort) (Registers.BP + 7 + (2 * parameterOrdinal));
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
+        }
+
+        /// <summary>
+        ///     Gets the parameter pointer by ordinal passed into the routine
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected IntPtr16 GetParameterPointer(int parameterOrdinal)
+        {
+            return new IntPtr16(GetParameter(parameterOrdinal + 1), GetParameter(parameterOrdinal));
         }
 
         /// <summary>

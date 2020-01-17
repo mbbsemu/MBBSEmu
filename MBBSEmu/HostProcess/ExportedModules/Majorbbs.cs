@@ -121,8 +121,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Module.Memory.SetArray(margvPointer.Segment, (ushort) (margvPointer.Offset + (i * 4)),
                         currentMargVPointer.ToSpan());
                 }
-
-
             }
         }
 
@@ -424,6 +422,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 580:
                     strncat();
                     break;
+                case 411:
+                    memset();
+                    break;
+                case 326:
+                    getmsg();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -486,7 +490,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = memoryPointer.Segment;
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory.Segment:X4}:{allocatedMemory.Offset:X4} (Pointer {memoryPointer.Segment}:{memoryPointer.Offset})");
+            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory} (Pointer {memoryPointer})");
 #endif
         }
 
@@ -775,7 +779,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 var outputValue = _currentMcvFile.GetString(msgnum);
 
-                variablePointer = base.Module.Memory.AllocateVariable($"STGOPT_{msgnum}", (ushort)outputValue.Length);
+                variablePointer = base.Module.Memory.AllocateVariable($"STGOPT_{msgnum}", (ushort) outputValue.Length); 
 
                 //Set Value in Memory
                 Module.Memory.SetArray(variablePointer, outputValue);
@@ -2318,18 +2322,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strlen()
         {
-            var stringOffset = GetParameter(0);
-            var stringSegment = GetParameter(1);
+            var stringPointer = GetParameterPointer(0);
 
-            using var stringInputBuffer = new MemoryStream();
-            stringInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
+            var stringValue = Module.Memory.GetString(stringPointer, true);
 
 #if DEBUG
             _logger.Info(
-                $"Evaluated string length of {stringInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}: {Encoding.ASCII.GetString(stringInputBuffer.ToArray())}");
+                $"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue.ToArray())}");
 #endif
 
-            Registers.AX = (ushort)stringInputBuffer.Length;
+            Registers.AX = (ushort)stringValue.Length;
         }
 
         /// <summary>
@@ -2476,6 +2478,54 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Concatenated String 1 (Length:{stringSource.Length}b. Copied {bytesToCopy}b) with String 2 (Length: {stringDestination.Length}) to new String (Length: {newString.Length}b)");
 #endif
             Module.Memory.SetArray(destinationPointer, newString);
+        }
+
+        /// <summary>
+        ///     Sets the first num bytes of the block of memory with the specified value
+        ///
+        ///     Signature: void memset(void *ptr, int value, size_t num);
+        /// </summary>
+        private void memset()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var valueToFill = GetParameter(2);
+            var numberOfByteToFill = GetParameter(3);
+
+            for (var i = 0; i < numberOfByteToFill; i++)
+            {
+                Module.Memory.SetByte(destinationPointer.Segment, (ushort) (destinationPointer.Offset + i), (byte) valueToFill);
+            }
+
+#if DEBUG
+            _logger.Info($"Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
+#endif
+        }
+
+        /// <summary>
+        ///     Read value of CNF option
+        ///
+        ///     Signature: char *bufard=getmsg(msgnum)
+        /// </summary>
+        private void getmsg()
+        {
+            var msgnum = GetParameter(0);
+
+            if (!Module.Memory.TryGetVariable($"GETMSG_{msgnum}", out var variablePointer))
+            {
+                var outputValue = _currentMcvFile.GetString(msgnum);
+
+                variablePointer = base.Module.Memory.AllocateVariable($"GETMSG_{msgnum}", (ushort) outputValue.Length);
+
+                //Set Value in Memory
+                Module.Memory.SetArray(variablePointer, outputValue);
+
+#if DEBUG
+                _logger.Info(
+                    $"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
+#endif
+            }
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
         }
     }
 }

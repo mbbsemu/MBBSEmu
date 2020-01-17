@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-m GWWARROW -p C:\\dos\\install3 -dbreset"
+      "commandLineArgs": "-m TSGARN -p C:\\dos\\modules\\telearena -dbreset"
     }
   }
 }

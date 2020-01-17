@@ -50,20 +50,38 @@ namespace MBBSEmu.Module
             if(numberOfLanguages > 2)
                 throw new Exception("MbbsEmu does not support modules that implement more than 2 languages");
 
+            var messageLength = 0;
             for (var i = 0; i < numberOfMessages; i++)
             {
                 var offsetModifier = i * 4;
-                var messageLength = BitConverter.ToInt32(fileSpan.Slice(messageLengthsOffsets + offsetModifier, 4));
 
-                //Usually means there's a second language (RIP more often than not)
-                //We won't support RIP, so we ignore the second value and only grab the 1st
-                if (messageLength > ushort.MaxValue)
-                {
-                    messageLength = BitConverter.ToInt16(fileSpan.Slice(messageLengthsOffsets + offsetModifier, 2));
-                }
-
+                //Get Message Location
                 var messageLocationOffset = BitConverter.ToInt32(fileSpan.Slice(messageLocationsOffsets + offsetModifier, 4));
 
+                //Get Message Length
+                if (messageLengthsOffsets != 0)
+                {
+                    messageLength = BitConverter.ToInt32(fileSpan.Slice(messageLengthsOffsets + offsetModifier, 4));
+
+                    //Usually means there's a second language (RIP more often than not)
+                    //We won't support RIP, so we ignore the second value and only grab the 1st
+                    if (messageLength > ushort.MaxValue)
+                    {
+                        messageLength = BitConverter.ToInt16(fileSpan.Slice(messageLengthsOffsets + offsetModifier, 2));
+                    }
+                }
+                else
+                {
+                    //If no lengths are specified, we treat every entry as a null terminated cstring.
+                    //Find the next null
+                    for (var j = 0; j < ushort.MaxValue; j++)
+                    {
+                        if (fileSpan[messageLocationOffset + j] != 0x0) continue;
+
+                        messageLength = j;
+                        break;
+                    }
+                }
                 var message = fileSpan.Slice(messageLocationOffset, messageLength);
 
                 Messages.Add(i, message.ToArray());
@@ -114,7 +132,9 @@ namespace MBBSEmu.Module
                 if (message[^i] == 0x3A || message[^i] == 0x20)
                     return message.Slice(message.Length - i, i);
             }
-            throw new Exception($"Unable to find Message Value for Ordinal {ordinal}");
+
+            //if no split character is found, return the whole thing
+            return message;
         }
     }
 }
