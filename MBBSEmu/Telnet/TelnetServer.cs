@@ -3,6 +3,7 @@ using NLog;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Telnet
 {
@@ -10,21 +11,23 @@ namespace MBBSEmu.Telnet
     {
         private readonly ILogger _logger;
         private readonly IMbbsHost _host;
+        private readonly IConfigurationRoot _configuration;
 
         private Socket _listenerSocket;
         private bool _isRunning;
         private Thread _listenerThread;
 
-        public TelnetServer(IMbbsHost host, ILogger logger)
+        public TelnetServer(IMbbsHost host, ILogger logger, IConfigurationRoot configuration)
         {
             _host = host;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public void Start()
         {
             //Setup Listener
-            var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 23);
+            var ipEndPoint = new IPEndPoint(IPAddress.Loopback, int.Parse(_configuration["Telnet.Port"]));
             _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _listenerSocket.ReceiveBufferSize = 0x800;
             _listenerSocket.Bind(ipEndPoint);

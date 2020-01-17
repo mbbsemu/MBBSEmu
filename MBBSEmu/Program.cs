@@ -7,6 +7,7 @@ using MBBSEmu.Telnet;
 using NLog;
 using System;
 using MBBSEmu.Reports;
+using MBBSEmu.Resources;
 
 namespace MBBSEmu
 {
@@ -19,10 +20,12 @@ namespace MBBSEmu
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
             var bApiReport = false;
+
+            if (args.Length == 0)
+                args = new[] {"-?"};
+
             for (var i = 0; i < args.Length; i++)
             {
-
-
                 switch (args[i].ToUpper())
                 {
                     case "-DBRESET":
@@ -60,13 +63,7 @@ namespace MBBSEmu
                         i++;
                         break;
                     case "-?":
-                        Console.WriteLine("-I <file> -- Input File to DisassembleSegment");
-                        Console.WriteLine("-O <file> -- Output File for Disassembly (Default ConsoleUI)");
-                        Console.WriteLine("-MINIMAL -- Minimal Disassembler Output");
-                        Console.WriteLine(
-                            "-ANALYSIS -- Additional Analysis on Imported Functions (if available)");
-                        Console.WriteLine(
-                            "-STRINGS -- Output all strings found in DATA segments at end of Disassembly");
+                        Console.WriteLine(ServiceResolver.GetService<IResourceManager>().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
                         return;
                     default:
                         Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
@@ -90,23 +87,11 @@ namespace MBBSEmu
 
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
-
-            
-
-
-
             host.AddModule(module);
 
             var server = ServiceResolver.GetService<ITelnetServer>();
 
             server.Start();
-
-            Console.ReadKey();
-            //host.Init();
-            //host.Run("sttrou");
-            //host.Run("stsrou");
-            //var textUI = new TextGUI();
-            //textUI.Run();
         }
     }
 }

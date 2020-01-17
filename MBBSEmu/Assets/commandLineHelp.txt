@@ -1,0 +1,14 @@
+﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
+By: Eric Nusbaum @ The MajorBBS Emulation Project
+https://www.mbbsemu.com
+-----------------------------------------------------------
+Command Line Options:
+-?                This Help Screen
+-M <identifier>   Module Identifier
+-P <path>         Path To Module
+-APIREPORT        Generate API Report
+-DBRESET          Reset the SQLite DB back to default (delete everything)
+-----------------------------------------------------------
+Example: ./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset
+
+-=[ Additional configuration options are located in the appconfig.json file ]=-

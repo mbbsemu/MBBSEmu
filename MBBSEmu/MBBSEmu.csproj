@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\login.ans" />
     <None Remove="Assets\signup.ans" />
     <None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
@@ -23,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
     <EmbeddedResource Include="Assets\signup.ans" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
@@ -52,6 +54,7 @@
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 

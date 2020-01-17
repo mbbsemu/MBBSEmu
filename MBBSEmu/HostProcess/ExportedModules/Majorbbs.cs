@@ -2321,15 +2321,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(0);
             var stringSegment = GetParameter(1);
 
-            using var filenameInputBuffer = new MemoryStream();
-            filenameInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
+            using var stringInputBuffer = new MemoryStream();
+            stringInputBuffer.Write(Module.Memory.GetString(stringSegment, stringOffset, true));
 
 #if DEBUG
             _logger.Info(
-                $"Evaluated string length of {filenameInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}: {Encoding.ASCII.GetString(filenameInputBuffer.ToArray())}");
+                $"Evaluated string length of {stringInputBuffer.Length} for string at {stringSegment:X4}:{stringOffset:X4}: {Encoding.ASCII.GetString(stringInputBuffer.ToArray())}");
 #endif
 
-            Registers.AX = (ushort) filenameInputBuffer.Length;
+            Registers.AX = (ushort)stringInputBuffer.Length;
         }
 
         /// <summary>
