@@ -1257,7 +1257,7 @@ namespace MBBSEmu.CPU
         public void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
-            if ((Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF))
+            if (Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF)
                 || Registers.F.IsFlagSet(EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
