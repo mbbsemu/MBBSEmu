@@ -27,24 +27,27 @@ namespace MBBSEmu.Disassembler.Artifacts
             {
                 switch (Flag)
                 {
-                    case EnumRecordsFlag.INTERNALREF | EnumRecordsFlag.ADDITIVE:
-                    case EnumRecordsFlag.INTERNALREF:
-                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.INTERNALREF, Data[4],
+                    case EnumRecordsFlag.InternalRefAdditive:
+                    case EnumRecordsFlag.InternalRef:
+                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.InternalRef, Data[4],
                             Data[5], BitConverter.ToUInt16(Data, 6));
 
-                    case EnumRecordsFlag.IMPORTORDINAL | EnumRecordsFlag.ADDITIVE:
-                    case EnumRecordsFlag.IMPORTORDINAL:
-                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.IMPORTORDINAL,
+                    case EnumRecordsFlag.ImportOrdinalAdditive:
+                    case EnumRecordsFlag.ImportOrdinal:
+                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.ImportOrdinal,
                             BitConverter.ToUInt16(Data, 4), BitConverter.ToUInt16(Data, 6), 0);
 
-                    case EnumRecordsFlag.IMPORTNAME | EnumRecordsFlag.ADDITIVE:
-                    case EnumRecordsFlag.IMPORTNAME:
-                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.IMPORTNAME,
+                    case EnumRecordsFlag.ImportNameAdditive:
+                    case EnumRecordsFlag.ImportName:
+                        return new Tuple<EnumRecordsFlag, ushort, ushort, ushort>(EnumRecordsFlag.ImportName,
                             BitConverter.ToUInt16(Data, 4), BitConverter.ToUInt16(Data, 6), 0);
+                    case EnumRecordsFlag.OSFIXUP:
+                    case EnumRecordsFlag.OSFIXUPAdditive:
+                        _logger.Warn($"Ignoring OSFIXUP Flag");
+                        return null;
                     default:
                         _logger.Warn($"Unknown Relocation Flag Value: {Flag} ({Convert.ToString((byte)Flag, 2)})");
                         return null;
-                        
                 }
             }
         }

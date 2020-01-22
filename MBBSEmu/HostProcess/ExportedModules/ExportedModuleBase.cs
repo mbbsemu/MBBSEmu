@@ -10,6 +10,7 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -78,42 +79,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Parses File Access characters passed into FOPEN
+        ///     Gets a long Parameter
         /// </summary>
-        /// <param name="flags"></param>
+        /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
-        private protected EnumFileAccessFlags ParseFileAccessFlags(ReadOnlySpan<byte> flags)
+        private protected int GetParameterLong(int parameterOrdinal)
         {
-            var result = EnumFileAccessFlags.Text;
-
-            foreach (var f in flags)
-            {
-                switch ((char)f)
-                {
-                    case 'r':
-                        result |= EnumFileAccessFlags.Read;
-                        break;
-                    case 'w':
-                        result |= EnumFileAccessFlags.Write;
-                        break;
-                    case 'a':
-                        result |= EnumFileAccessFlags.Append;
-                        break;
-                    case '+':
-                        result |= EnumFileAccessFlags.Update;
-                        break;
-                    case 'b':
-                    {
-                        result &= ~EnumFileAccessFlags.Text;
-                        result |= EnumFileAccessFlags.Binary;
-                        break;
-                    }
-                    default:
-                        throw new ArgumentOutOfRangeException($"Unknown File Access Flag: {(char) f}");
-                }
-            }
-            return result;
+            return GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16);
         }
+
 
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};

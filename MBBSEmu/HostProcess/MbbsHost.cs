@@ -402,9 +402,14 @@ namespace MBBSEmu.HostProcess
 
                 foreach(var relocationRecord in s.RelocationRecords.Values)
                 {
+                    //Ignored Relocation Record
+                    if (relocationRecord.TargetTypeValueTuple == null)
+                        continue;
+
                     switch (relocationRecord.TargetTypeValueTuple.Item1)
                     {
-                        case EnumRecordsFlag.IMPORTORDINAL:
+                        case EnumRecordsFlag.ImportOrdinalAdditive:
+                        case EnumRecordsFlag.ImportOrdinal:
                         {
                             var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
                             var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
@@ -440,7 +445,7 @@ namespace MBBSEmu.HostProcess
                                     $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
                             };
 
-                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
                                 result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
 #if DEBUG
@@ -449,7 +454,7 @@ namespace MBBSEmu.HostProcess
                             Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
-                        case EnumRecordsFlag.INTERNALREF:
+                        case EnumRecordsFlag.InternalRef:
                         {
 
                             //32-Bit Pointer
@@ -474,7 +479,9 @@ namespace MBBSEmu.HostProcess
                                 Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
-                        case EnumRecordsFlag.IMPORTNAME:
+
+                        case EnumRecordsFlag.ImportNameAdditive:
+                        case EnumRecordsFlag.ImportName:
                         {
                             var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
                             var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
@@ -513,7 +520,7 @@ namespace MBBSEmu.HostProcess
 #if DEBUG
                             //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
 #endif
-                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ADDITIVE))
+                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
                                 result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
                             Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);

@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -21,6 +22,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public class Majorbbs : ExportedModuleBase, IExportedModule
     {
+        public IntPtr16 GlobalCommandHandler;
+
         private IntPtr16 _currentMcvFile;
         private readonly Queue<IntPtr16> _previousMcvFile;
 
@@ -37,7 +40,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private int _outputBufferPosition;
 
-
         public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
             channelDictionary)
         {
@@ -52,6 +54,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", 0x28D7); //41 bytes * 255 users
             Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
+
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
             Module.Memory.AllocateVariable("MARGC", 0x2);
@@ -62,6 +65,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", 0x155);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
+            Module.Memory.AllocateVariable("VDAPTR", 0x4);
 
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
@@ -440,6 +444,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 783:
                     clrmlt();
                     break;
+                case 330:
+                    globalcmd();
+                    break;
+                case 94:
+                    catastro();
+                    break;
+                case 210:
+                    fgets();
+                    break;
+                case 571:
+                    strcat();
+                    break;
+                case 226:
+                    f_printf();
+                    break;
+                case 266:
+                    fseek();
+                    break;
+                case 430:
+                    nctime();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -637,17 +662,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < 9; i++)
             {
                 var currentOffset = (ushort)(25 + (i * 4));
+
                 var routineEntryPoint = new byte[4];
                 Array.Copy(moduleStruct.ToArray(), currentOffset, routineEntryPoint, 0, 4);
-
-                //If there's a Relocation record for this routine, apply it
-                if (relocationRecords.TryGetValue((ushort)(currentOffset + destinationPointer.Offset), out var routineRelocationRecord))
-                {
-                    Array.Copy(BitConverter.GetBytes(routineRelocationRecord.TargetTypeValueTuple.Item4), 0,
-                        routineEntryPoint, 0, 2);
-                    Array.Copy(BitConverter.GetBytes(routineRelocationRecord.TargetTypeValueTuple.Item2), 0,
-                        routineEntryPoint, 2, 2);
-                }
 
                 //Setup the Entry Points in the Module
                 Module.EntryPoints[moduleRoutines[i]] = new IntPtr16(BitConverter.ToUInt16(routineEntryPoint, 2), BitConverter.ToUInt16(routineEntryPoint, 0));
@@ -1859,18 +1876,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private void register_textvar()
         {
-            var textOffset = GetParameter(0);
-            var textSegment = GetParameter(1);
-            var destinationOffset = GetParameter(2);
-            var destinationSegment = GetParameter(3);
+            var textPointer = GetParameterPointer(0);
+            var functionPointer = GetParameterPointer(2);
 
-            var functionPointer = new IntPtr16(destinationSegment, destinationOffset);
-            var textBytes = Module.Memory.GetString(textSegment, textOffset);
+            var textBytes = Module.Memory.GetString(textPointer);
 
             _textVariables.Add(textBytes.ToArray(), functionPointer);
 
 #if DEBUG
-            _logger.Info($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {destinationSegment:X4}:{destinationOffset:X4}");
+            _logger.Info($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
 #endif
         }
 
@@ -1967,7 +1981,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *vdaptr
         /// </summary>
-        private ReadOnlySpan<byte> vdaptr => Module.Memory.GetVariable($"VOLATILE-{_channelNumber}").ToSpan();
+        private ReadOnlySpan<byte> vdaptr => Module.Memory.GetVariable($"VDAPTR").ToSpan();
 
         /// <summary>
         ///     After calling bgncnc(), the command is unparsed (has spaces again, not separate words),
@@ -2076,31 +2090,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_open()
         {
-            var filenameOffset = GetParameter(0);
-            var filenameSegment = GetParameter(1);
-            var modeOffset = GetParameter(2);
-            var modeSegment = GetParameter(3);
+            var filenamePointer = GetParameterPointer(0);
+            var modePointer = GetParameterPointer(2);
 
-
-            using var filenameInputBuffer = new MemoryStream();
-            filenameInputBuffer.Write(Module.Memory.GetString(filenameSegment, filenameOffset, true));
+            var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
             var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
 
-            using var modeInputBuffer = new MemoryStream();
-            modeInputBuffer.Write(Module.Memory.GetString(modeSegment, modeOffset, true));
+            var modeInputBuffer = Module.Memory.GetString(modePointer, true);
+            var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
 
-            var fileAccessMode = ParseFileAccessFlags(modeInputBuffer.ToArray());
-
+            //Allocate Memory for FILE struct
+            if (!Module.Memory.TryGetVariable($"FILE_{filenameInputValue}", out var fileStructPointer))
+                fileStructPointer = Module.Memory.AllocateVariable($"FILE_{filenameInputValue}", FileStruct.Size);
+            
+            //Write New Blank Pointer
+            var fileStruct = new FileStruct();
+            Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
 
             if (!File.Exists($"{Module.ModulePath}{filenameInputValue}"))
             {
-                if (fileAccessMode.HasFlag(EnumFileAccessFlags.Read))
+                if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
                 {
 #if DEBUG
                     _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
 #endif
-                    Registers.AX = 0;
-                    Registers.DX = 0;
+                    Registers.AX = fileStructPointer.Offset;
+                    Registers.DX = fileStructPointer.Segment;
                     return;
                 }
 
@@ -2113,7 +2128,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             else
             {
                 //Overwrite existing file for W
-                if (fileAccessMode.HasFlag(EnumFileAccessFlags.Write))
+                if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Write))
                 {
 #if DEBUG
                     _logger.Info($"Overwritting file {filenameInputValue}");
@@ -2125,13 +2140,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Opening File: {filenameInputValue}");
 #endif
-            //Setup the Memory Segment
-            var filePointerOffset =
-                FilePointerDictionary.Allocate(File.Open($"{Module.ModulePath}{filenameInputValue}",
-                    FileMode.OpenOrCreate));
+            //Setup the File Stream
+            var fileStreamPointer =  FilePointerDictionary.Allocate(File.Open($"{Module.ModulePath}{filenameInputValue}", FileMode.OpenOrCreate));
+            
+            //Set Struct Values
+            fileStruct.SetFlags(fileAccessMode);
+            fileStruct.curp = new IntPtr16(ushort.MaxValue, (ushort) fileStreamPointer);
+            Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
 
-            Registers.AX = (ushort)filePointerOffset;
-            Registers.DX = ushort.MaxValue;
+            Registers.AX = fileStructPointer.Offset;
+            Registers.DX = fileStructPointer.Segment;
         }
 
         /// <summary>
@@ -2141,11 +2159,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_close()
         {
-            var fileOffset = GetParameter(0);
-            var fileSegment = GetParameter(1);
+            var filePointer = GetParameterPointer(0);
 
+            var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
 
-            if (fileSegment == 0 && fileOffset == 0)
+            if (fileStruct.curp.Segment == 0 && fileStruct.curp.Offset == 0)
             {
 #if DEBUG
                 _logger.Warn($"Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
@@ -2154,15 +2172,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             }
 
-            if (!FilePointerDictionary.ContainsKey(fileOffset))
-                throw new Exception($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileSegment:X4}:{fileOffset:X4}");
+            if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
+                throw new Exception($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp}");
 
             //Clean Up File Stream Pointer
-            FilePointerDictionary[fileOffset].Dispose();
-            FilePointerDictionary.Remove(fileOffset);
+            FilePointerDictionary[fileStruct.curp.Offset].Dispose();
+            FilePointerDictionary.Remove(fileStruct.curp.Offset);
 
 #if DEBUG
-            _logger.Info($"Closed File {fileSegment:X4}:{fileOffset:X4}");
+            _logger.Info($"Closed File {filePointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 0;
         }
@@ -2200,13 +2218,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void fnd1st()
         {
-            var findBlockPointerOffset = GetParameter(0);
-            var findBlockPointerSegment = GetParameter(1);
-            var filespecOffset = GetParameter(2);
-            var filespecSegment = GetParameter(3);
+            var findBlockPointer = GetParameterPointer(0);
+            var filespecPointer = GetParameterPointer(2);
             var attrChar = GetParameter(4);
 
-            var fileName = Module.Memory.GetString(filespecSegment, filespecOffset, true);
+            var fileName = Module.Memory.GetString(filespecPointer, true);
             var fileNameString = Encoding.ASCII.GetString(fileName);
             Registers.AX = (ushort)(File.Exists($"{Module.ModulePath}{fileNameString}") ? 1 : 0);
         }
@@ -2219,15 +2235,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_read()
         {
-            var destinationPointerOffset = GetParameter(0);
-            var destinationPointerSegment = GetParameter(1);
+            var destinationPointer = GetParameterPointer(0);
             var size = GetParameter(2);
             var count = GetParameter(3);
-            var fileStreamPointerOffset = GetParameter(4);
-            var fileStreamPointerSegment = GetParameter(5);
+            var fileStructPointer = GetParameterPointer(4);
 
-            if (!FilePointerDictionary.TryGetValue(fileStreamPointerOffset, out var fileStream))
-                throw new FileNotFoundException($"File Pointer {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4} not found in the File Pointer Dictionary");
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
             ushort elementsRead = 0;
             for (var i = 0; i < count; i++)
@@ -2238,13 +2254,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (bytesRead != size)
                     break;
 
-                Module.Memory.SetArray(destinationPointerSegment, (ushort)(destinationPointerOffset + (i * size)), dataRead);
+                Module.Memory.SetArray(destinationPointer.Segment, (ushort) (destinationPointer.Offset + (i * size)),
+                    dataRead);
                 elementsRead++;
             }
 
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort) FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
 
 #if DEBUG
-            _logger.Info($"Read {elementsRead} group(s) of {size} bytes from {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4}, written to {destinationPointerSegment:X4}:{destinationPointerOffset:X4}");
+            _logger.Info($"Read {elementsRead} group(s) of {size} bytes from {fileStructPointer} (Stream: {fileStruct.curp}), written to {destinationPointer}");
 #endif
 
             Registers.AX = elementsRead;
@@ -2256,25 +2279,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_write()
         {
-            var sourcePointerOffset = GetParameter(0);
-            var sourcePointerSegment = GetParameter(1);
+            var sourcePointer = GetParameterPointer(0);
             var size = GetParameter(2);
             var count = GetParameter(3);
-            var fileStreamPointerOffset = GetParameter(4);
-            var fileStreamPointerSegment = GetParameter(5);
+            var fileStructPointer = GetParameterPointer(4);
 
-            if (!FilePointerDictionary.TryGetValue(fileStreamPointerOffset, out var fileStream))
-                throw new FileNotFoundException($"File Pointer {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4} not found in the File Pointer Dictionary");
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
             ushort elementsWritten = 0;
             for (var i = 0; i < count; i++)
             {
-                fileStream.Write(Module.Memory.GetArray(sourcePointerSegment, (ushort)(sourcePointerOffset + (i * size)), size));
+                fileStream.Write(Module.Memory.GetArray(sourcePointer.Segment, (ushort)(sourcePointer.Offset + (i * size)), size));
                 elementsWritten++;
             }
 
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
 #if DEBUG
-            _logger.Info($"Read {elementsWritten} group(s) of {size} bytes from {sourcePointerSegment:X4}:{sourcePointerOffset:X4}, written to {fileStreamPointerSegment:X4}:{fileStreamPointerOffset:X4}");
+            _logger.Info($"Read {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = elementsWritten;
         }
@@ -2598,5 +2628,203 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void clrmlt()
         /// </summary>
         private void clrmlt() => clrprf();
+
+        /// <summary>
+        ///     Registers a Global Command Handler -- any input in the BBS
+        ///     (even outside the module) is run through this
+        /// </summary>
+        private void globalcmd()
+        {
+            GlobalCommandHandler = GetParameterPointer(0);
+
+#if DEBUG
+            _logger.Info($"Registered Global Command Handler at: {GlobalCommandHandler}");
+#endif
+        }
+
+        /// <summary>
+        ///     Catastro Failure, basically a mega show stopping error
+        /// </summary>
+        private void catastro()
+        {
+            var messagePointer = GetParameterPointer(0);
+            var message = Module.Memory.GetString(messagePointer);
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.BackgroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Encoding.ASCII.GetString(message)}");
+            Console.ResetColor();
+        }
+
+        /// <summary>
+        ///     Reads the specified number of characters from the file until a new line or EOF
+        ///
+        ///     Signature: char* fgets(char* str, int num, FILE* stream )
+        /// </summary>
+        private void fgets()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var maxCharactersToRead = GetParameter(2);
+            var fileStructPointer = GetParameterPointer(3);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if(!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            var startingPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
+            for (var i = 0; i < maxCharactersToRead; i++)
+            {
+                var inputValue = (byte) fileStream.ReadByte();
+
+                if (inputValue == '\n' || fileStream.Position == fileStream.Length)
+                    break;
+
+                Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset++,inputValue);
+            }
+            Module.Memory.SetByte(destinationPointer, 0x0);
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Read string from {fileStructPointer} (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     Concatenates two strings and saves them to the destination.
+        ///
+        ///     Signature: char *strcat(char *destination, const char *source)
+        /// </summary>
+        public void strcat()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+
+            var destinationString = Module.Memory.GetString(destinationPointer, true);
+            var sourceString = Module.Memory.GetString(sourcePointer);
+
+            Module.Memory.SetArray(destinationPointer.Segment, (ushort) (destinationPointer.Offset + destinationString.Length),
+                sourceString);
+
+#if DEBUG
+            _logger.Info($"Concatenated strings {Encoding.ASCII.GetString(destinationString)} and {Encoding.ASCII.GetString(sourceString)} to {destinationPointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     Writes the C string pointed by format to the stream
+        ///
+        ///     Signature: int fprintf ( FILE * stream, const char * format, ... )
+        /// </summary>
+        private void f_printf()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if(!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            var output = Module.Memory.GetString(sourcePointer);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 4);
+
+            fileStream.Write(formattedMessage);
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Wrote {formattedMessage.Length} bytes to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+        }
+
+        /// <summary>
+        ///     Sets the position indicator associated with the stream to a new position.
+        /// 
+        ///     Signature: int fseek ( FILE * stream, long int offset, int origin )
+        /// </summary>
+        private void fseek()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var offset = GetParameterLong(2);
+            var origin = GetParameter(4);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            switch (origin)
+            {
+                case 2: //EOF
+                    fileStream.Seek(offset, SeekOrigin.End);
+                    break;
+                case 1: //CUR
+                    fileStream.Seek(offset, SeekOrigin.Current);
+                    break;
+                case 0: //SET
+                    fileStream.Seek(offset, SeekOrigin.Begin);
+                    break;
+            }
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Seek to {fileStream.Position} in {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+        }
+
+        /// <summary>
+        ///     Takes a packed time from now() and returns it as 'HH:MM:SS'
+        ///
+        ///     Signature: char *asctim=nctime(int time)
+        /// </summary>
+        private void nctime()
+        {
+            //From DOSFACE.H:
+            //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
+            //var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+
+            var packedTime = GetParameter(0);
+
+            var unpackedHour = (packedTime >> 11) & 0x1F;
+            var unpackedMinutes = (packedTime >> 5 & 0x1F);
+            var unpackedSeconds = packedTime & 0xF;
+
+            var unpackedTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, unpackedHour, unpackedMinutes, unpackedSeconds);
+
+            var timeString = unpackedTime.ToString("HH:mm:ss");
+
+            if (!Module.Memory.TryGetVariable("NTIME", out var variablePointer))
+            {
+                variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
+            }
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(timeString));
+
+#if DEBUG
+            _logger.Info($"Received value: {packedTime}, decoded string {timeString} saved to {variablePointer}");
+#endif
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
+        }
     }
 }

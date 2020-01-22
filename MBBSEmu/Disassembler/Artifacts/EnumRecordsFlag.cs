@@ -2,13 +2,16 @@
 
 namespace MBBSEmu.Disassembler.Artifacts
 {
-    [Flags]
     public enum EnumRecordsFlag
     {
-        INTERNALREF = 0,
-        IMPORTORDINAL = 1,
-        IMPORTNAME = 1 << 1,
-        //TARGET_MASK = 0x03,
-        ADDITIVE = 1 << 2
+        InternalRef = 0,
+        ImportOrdinal = 1,
+        ImportName = 2,
+        OSFIXUP = 3,
+        InternalRefAdditive = 4,
+        ImportOrdinalAdditive = 5,
+        ImportNameAdditive = 6,
+        OSFIXUPAdditive = 7
+
     }
 }

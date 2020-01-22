@@ -27,7 +27,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Module MSG File
         /// </summary>
-        public readonly MsgFile Msg;
+        public readonly List<MsgFile> Msgs;
 
         /// <summary>
         ///     Module MDF File
@@ -68,9 +68,16 @@ namespace MBBSEmu.Module
 
             Mdf = new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF");
             File = new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL");
+
             
-            if(Mdf.MSGFiles.Count > 0)
-                Msg = new MsgFile(ModulePath, ModuleIdentifier);
+            if (Mdf.MSGFiles.Count > 0)
+            {
+                Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
+                foreach (var m in Mdf.MSGFiles)
+                {
+                    Msgs.Add(new MsgFile(ModulePath, m));
+                }
+            }
 
             EntryPoints = new Dictionary<string, IntPtr16>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();

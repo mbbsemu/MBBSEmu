@@ -46,7 +46,7 @@ namespace MBBSEmu.Reports
             //Loop through each segment
             foreach (var s in _module.File.SegmentTable.Where(seg => seg.RelocationRecords != null && seg.RelocationRecords.Count > 0))
             {
-                foreach (var r in s.RelocationRecords.Values.Where(relo => relo.Flag == EnumRecordsFlag.IMPORTNAME || relo.Flag == EnumRecordsFlag.IMPORTORDINAL))
+                foreach (var r in s.RelocationRecords.Values.Where(relo => relo.Flag == EnumRecordsFlag.ImportName || relo.Flag == EnumRecordsFlag.ImportOrdinal))
                 {
                     var key = _module.File.ImportedNameTable[r.TargetTypeValueTuple.Item2].Name;
                     var ordinal = r.TargetTypeValueTuple.Item3;

@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-m TSGARN -p C:\\dos\\modules\\telearena -dbreset"
+      "commandLineArgs": "-m LUNATIX -p C:\\dos\\modules\\LUNATIX\\ -dbreset"
     }
   }
 }

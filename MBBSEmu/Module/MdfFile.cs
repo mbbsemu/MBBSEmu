@@ -35,10 +35,10 @@ namespace MBBSEmu.Module
                         Developer = keyValuePair[1];
                         break;
                     case "DLLS":
-                        DLLFiles = keyValuePair[1].Split(',').ToList();
+                        DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                     case "MSGS":
-                        MSGFiles = keyValuePair[1].Split(',').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
+                        MSGFiles = keyValuePair[1].Split(' ').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                 }
             }

@@ -34,7 +34,6 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         Opchat = 1 << 4,
 
-
         /// <summary>
         ///     channel-is-active (gen'ing status)
         /// </summary>

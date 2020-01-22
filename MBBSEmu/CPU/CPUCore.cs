@@ -1,12 +1,11 @@
 ﻿using Iced.Intel;
 using MBBSEmu.DependencyInjection;
-using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -27,6 +26,8 @@ namespace MBBSEmu.CPU
         private ushort STACK_SEGMENT;
         private ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
+
+        private readonly Queue<byte[]> _x87Stack = new Queue<byte[]>();
 
         public bool IsRunning;
 
@@ -104,7 +105,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
             //if(Registers.IP == 0x6641)
                //Debugger.Break();
@@ -214,6 +215,7 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Stosw:
                     Op_Stosw();
                     break;
+                case Mnemonic.Wait:
                 case Mnemonic.Nop:
                     break;
                 case Mnemonic.Enter:
@@ -251,6 +253,15 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Test:
                     Op_Test();
+                    break;
+                case Mnemonic.Fld:
+                    Op_Fld();
+                    break;
+                case Mnemonic.Fmul:
+                    Op_Fmul();
+                    break;
+                case Mnemonic.Fstp:
+                    Op_Fstp();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1730,6 +1741,42 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unknown CALL: {_currentInstruction.Op0Kind}");
             }
 
+        }
+
+        /// <summary>
+        ///     Floating Point Load Operation (x87)
+        /// </summary>
+        private void Op_Fld()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var floatToLoad = Memory.GetArray(Registers.DS, offset, 4);
+            _x87Stack.Enqueue(floatToLoad.ToArray());
+        }
+
+        /// <summary>
+        ///     Floating Point Multiplication (x87)
+        /// </summary>
+        private void Op_Fmul()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+
+            var float1 = BitConverter.ToSingle(_x87Stack.Dequeue());
+            var float2 = BitConverter.ToSingle(floatToMultiply);
+            
+            var result = float1 * float2;
+            _x87Stack.Enqueue(BitConverter.GetBytes(result));
+        }
+
+        /// <summary>
+        ///     Floating Pointe Store & Pop (x87)
+        /// </summary>
+        private void Op_Fstp()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+
+            var valueToSave = _x87Stack.Dequeue();
+            Memory.SetArray(Registers.DS, offset, valueToSave);
         }
     }
 }

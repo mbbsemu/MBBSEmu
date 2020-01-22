@@ -3,8 +3,6 @@ using NLog;
 using System;
 using System.IO;
 using System.Text;
-using MBBSEmu.Extensions;
-using NLog.LayoutRenderers;
 
 namespace MBBSEmu.Module
 {
@@ -23,16 +21,16 @@ namespace MBBSEmu.Module
         public readonly string FileName;
         public readonly string FileNameAtRuntime;
 
-        public MsgFile(string modulePath, string moduleName)
+        public MsgFile(string modulePath, string msgName)
         {
             _modulePath = modulePath;
-            _moduleName = moduleName;
+            _moduleName = msgName;
 
-            FileName = $"{moduleName.ToUpper()}.MSG";
-            FileNameAtRuntime = $"{moduleName.ToUpper()}.MCV";
+            FileName = $"{msgName.ToUpper()}.MSG";
+            FileNameAtRuntime = $"{msgName.ToUpper()}.MCV";
 
-            _logger.Info($"Compiling MCV from {moduleName.ToUpper()}.MSG");
-           //BuildMCV();
+            _logger.Info($"Compiling MCV from {FileName}");
+            BuildMCV();
         }
 
         /// <summary>
