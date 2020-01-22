@@ -27,7 +27,7 @@ namespace MBBSEmu.CPU
         private ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
 
-        private readonly Queue<byte[]> _x87Stack = new Queue<byte[]>();
+        private readonly List<byte[]> _fpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
 
         public bool IsRunning;
 
@@ -105,7 +105,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             //_logger.InfoRegisters(this);
-            _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
             //if(Registers.IP == 0x6641)
                //Debugger.Break();
@@ -262,6 +262,19 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fstp:
                     Op_Fstp();
+                    break;
+                case Mnemonic.Fcompp:
+                    Op_Fcompp();
+                    break;
+                case Mnemonic.Fild:
+                    Op_Fild();
+                    break;
+                case Mnemonic.Fnstsw:
+                case Mnemonic.Fstsw:
+                    Op_Fstsw();
+                    break;
+                case Mnemonic.Sahf:
+                    Op_Sahf();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1750,7 +1763,22 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
             var floatToLoad = Memory.GetArray(Registers.DS, offset, 4);
-            _x87Stack.Enqueue(floatToLoad.ToArray());
+            _fpuStack[Registers.Fpu.GetStackTop()] = floatToLoad.ToArray();
+            Registers.Fpu.PushStackTop();
+        }
+
+        /// <summary>
+        ///     Integer Load Operation (x87)
+        /// </summary>
+        private void Op_Fild()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var intToLoad = Memory.GetArray(Registers.DS, offset, 2);
+
+            var convertedInt = Convert.ToSingle(BitConverter.ToInt16(intToLoad));
+
+            _fpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(convertedInt);
+            Registers.Fpu.PushStackTop();
         }
 
         /// <summary>
@@ -1761,11 +1789,13 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
             var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
 
-            var float1 = BitConverter.ToSingle(_x87Stack.Dequeue());
+            Registers.Fpu.PopStackTop();
+            var float1 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
             var float2 = BitConverter.ToSingle(floatToMultiply);
             
             var result = float1 * float2;
-            _x87Stack.Enqueue(BitConverter.GetBytes(result));
+            _fpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            Registers.Fpu.PushStackTop();
         }
 
         /// <summary>
@@ -1775,8 +1805,106 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
-            var valueToSave = _x87Stack.Dequeue();
+            Registers.Fpu.PopStackTop();
+            var valueToSave = _fpuStack[Registers.Fpu.GetStackTop()];
             Memory.SetArray(Registers.DS, offset, valueToSave);
+        }
+
+        /// <summary>
+        ///     Floating Point Compare (x87)
+        /// </summary>
+        private void Op_Fcompp()
+        {
+            Registers.Fpu.PopStackTop();
+            var float1 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
+            Registers.Fpu.PopStackTop();
+            var float2 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
+
+            if (float1 > float2)
+            {
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+            }
+            else if (float1 < float2)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+            }
+            else
+            {
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+            }
+
+        }
+
+        /// <summary>
+        ///     Store Status Word to Memory or AX Register
+        /// </summary>
+        private void Op_Fstsw()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(Register.AX, Registers.Fpu.RegisterWord);
+                    break;
+                case OpKind.Memory:
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op0Kind), Registers.Fpu.RegisterWord);
+                    break;
+            }
+        }
+
+        private void Op_Sahf()
+        {
+
+            if (Registers.AH.IsFlagSet((byte) EnumFlags.SF))
+            {
+                Registers.F.SetFlag(EnumFlags.SF);
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.SF);
+            }
+
+            if (Registers.AH.IsFlagSet((byte)EnumFlags.ZF))
+            {
+                Registers.F.SetFlag(EnumFlags.ZF);
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.ZF);
+            }
+
+            if (Registers.AH.IsFlagSet((byte)EnumFlags.AF))
+            {
+                Registers.F.SetFlag(EnumFlags.AF);
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.AF);
+            }
+
+            if (Registers.AH.IsFlagSet((byte)EnumFlags.PF))
+            {
+                Registers.F.SetFlag(EnumFlags.PF);
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.PF);
+            }
+
+            if (Registers.AH.IsFlagSet((byte)EnumFlags.CF))
+            {
+                Registers.F.SetFlag(EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.CF);
+            }
         }
     }
 }

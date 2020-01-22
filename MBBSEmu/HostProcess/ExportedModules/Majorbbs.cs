@@ -486,6 +486,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 553:
                     skpwht();
                     break;
+                case 405:
+                    mdfgets();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -987,8 +990,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Pointer = GetParameterPointer(0);
             var string2Pointer = GetParameterPointer(2);
 
-            var string1 = Module.Memory.GetString(string1Pointer);
-            var string2 = Module.Memory.GetString(string2Pointer);
+            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true)).ToUpper();
+            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true)).ToUpper();
 
             //Quick Check
             if (string1.Length != string2.Length)
@@ -1009,7 +1012,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Info($"Returned {result} comparing {Encoding.ASCII.GetString(string1)} ({string1Pointer}) to {Encoding.ASCII.GetString(string1)} ({string2Pointer})");
+            _logger.Info($"Returned {result} comparing {string1} ({string1Pointer}) to {string2} ({string2Pointer})");
 #endif
 
             Registers.AX = (ushort) (result ? 1 : 0);
@@ -2973,6 +2976,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 1;
         }
 
+        /// <summary>
+        ///     Searches the string for any occurence of the substring
+        ///
+        ///     Signature: int found=samein(char *subs, char *string)
+        /// </summary>
         private void samein()
         {
             var stringToFindPointer = GetParameterPointer(0);
@@ -3036,6 +3044,42 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             Registers.AX = stringToSearchPointer.Offset;
             Registers.DX = stringToSearchPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Just like the standard fgets(), except it uses '\r' as a line terminator (a hard carriage return on The Major BBS),
+        ///     and it won't have a line terminator on the last line if the file doesn't have it.
+        ///
+        ///     Signature: char *mdfgets(char *buf,int size,FILE *fp)
+        /// </summary>
+        private void mdfgets()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var maxSize = GetParameter(2);
+            var fileStructPointer = GetParameterPointer(3);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if(!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            var startingDestinationPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
+
+            for (var i = 0; i < (maxSize-1); i++)
+            {
+                var inputByte = (byte)fileStream.ReadByte();
+
+                //EOF or Line Terminator
+                if (inputByte == 0x13 || fileStream.Position == fileStream.Length)
+                    break;
+
+                Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset++, inputByte);
+            }
+            Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset, 0x0);
+
+#if DEBUG
+      _logger.Info($"Read Line from {fileStructPointer} (Stream: {fileStruct.curp}) {startingDestinationPointer}->{destinationPointer}");          
+#endif
         }
     }
 }

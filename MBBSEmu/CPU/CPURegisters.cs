@@ -7,6 +7,8 @@ namespace MBBSEmu.CPU
 {
     public class CpuRegisters
     {
+        public FpuStatusRegister Fpu { get; set; }
+
         /// <summary>
         ///     Flags
         /// </summary>
@@ -191,6 +193,7 @@ namespace MBBSEmu.CPU
         public CpuRegisters()
         {
             F = new CpuFlags();
+            Fpu = new FpuStatusRegister();
         }
 
         /// <summary>
