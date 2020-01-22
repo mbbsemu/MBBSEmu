@@ -164,6 +164,10 @@ namespace MBBSEmu.Session
         /// </summary>
         public void rstrin()
         {
+            //This usually hits on first entry if it's called
+            if (InputCommand == null)
+                return;
+
             for (var i = 0; i < InputCommand.Length - 1; i++)
             {
                 if (InputCommand[i] == 0x0)

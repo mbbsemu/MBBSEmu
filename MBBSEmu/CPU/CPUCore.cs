@@ -74,7 +74,7 @@ namespace MBBSEmu.CPU
         {
             var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
 #if DEBUG
-           // _logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
+            //_logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
 #endif
             Registers.SP += 2;
             return value;
@@ -85,7 +85,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
 
 #if DEBUG
-           // _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }

@@ -88,7 +88,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16);
         }
 
-
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
         private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
@@ -335,6 +334,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
                 }
             }
+        }
+
+        private protected ReadOnlySpan<byte> StringFromArray(ReadOnlySpan<byte> inputArray, bool stripNull = false)
+        {
+            for (var i = 0; i < inputArray.Length; i++)
+            {
+                if (inputArray[i] == 0x0)
+                    return inputArray.Slice(0, i + (stripNull ? 0 : 1));
+            }
+
+            _logger.Warn("Unable to find String terminator");
+            return inputArray;
         }
     }
 }

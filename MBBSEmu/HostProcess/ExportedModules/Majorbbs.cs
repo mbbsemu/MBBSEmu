@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -9,7 +10,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -464,6 +464,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 430:
                     nctime();
+                    break;
+                case 572:
+                    strchr();
+                    break;
+                case 467:
+                    parsin();
+                    break;
+                case 420:
+                    movemem();
+                    break;
+                case 267:
+                    ftell();
+                    break;
+                case 352:
+                    instat();
+                    break;
+                case 521:
+                    samein();
+                    break;
+                case 553:
+                    skpwht();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -939,6 +960,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Copied {sourceString.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
+
+            //Because this is an ASM routine, we have to manually fix the stack
+            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            //Set stack back to entry state, minus parameters
+            Registers.SP += 14;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Registers.SP -= 2;
+            Registers.BP = Registers.SP;
         }
 
         /// <summary>
@@ -1379,16 +1414,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void setmbk()
         {
-            var mvcFilePointer = GetParameterPointer(0);
+            var mcvFilePointer = GetParameterPointer(0);
 
-            if (mvcFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mvcFilePointer.Offset))
-                throw new ArgumentException($"Invalid MCV File Pointer: {mvcFilePointer}");
+            if (mcvFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
+                throw new ArgumentException($"Invalid MCV File Pointer: {mcvFilePointer}");
 
             _previousMcvFile.Enqueue(_currentMcvFile);
-            _currentMcvFile = mvcFilePointer;
+            _currentMcvFile = mcvFilePointer;
 
 #if DEBUG
-            //_logger.Info($"Set current MCV File: {McvPointerDictionary[mcvFileOffset].FileName}");
+            _logger.Info($"Set current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
 #endif
         }
 
@@ -2406,19 +2441,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rename()
         {
-            var oldFilenameOffset = GetParameter(0);
-            var oldFilenameSegment = GetParameter(1);
+            var oldFilenamePointer = GetParameterPointer(0);
+            var newFilenamePointer = GetParameterPointer(2);
 
-            var newFilenameOffset = GetParameter(2);
-            var newFilenameSegment = GetParameter(3);
+            var oldFilenameInputBuffer = Module.Memory.GetString(oldFilenamePointer, true);
+            var oldFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer).ToUpper();
 
-            using var oldFilenameInputBuffer = new MemoryStream();
-            oldFilenameInputBuffer.Write(Module.Memory.GetString(oldFilenameSegment, oldFilenameOffset, true));
-            var oldFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer.ToArray()).ToUpper();
-
-            using var newFilenameInputBuffer = new MemoryStream();
-            newFilenameInputBuffer.Write(Module.Memory.GetString(newFilenameSegment, newFilenameOffset, true));
-            var newFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer.ToArray()).ToUpper();
+            var newFilenameInputBuffer = Module.Memory.GetString(newFilenamePointer, true);
+            var newFilenameInputValue = Encoding.Default.GetString(newFilenameInputBuffer).ToUpper();
 
             if (!File.Exists($"{Module.ModulePath}{oldFilenameInputValue}"))
                 throw new FileNotFoundException($"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
@@ -2825,6 +2855,187 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
+        }
+
+        /// <summary>
+        ///     Returns a pointer to the first occurence of character in the C string str
+        ///
+        ///     Signature: char * strchr ( const char * str, int character )
+        /// 
+        ///     More Info: http://www.cplusplus.com/reference/cstring/strchr/
+        /// </summary>
+        private void strchr()
+        {
+            var stringPointer = GetParameterPointer(0);
+            var characterToFind = GetParameter(2);
+
+            var stringToSearch = Module.Memory.GetString(stringPointer, true);
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[i] != (byte) characterToFind) continue;
+
+                Registers.AX = (ushort) (stringPointer.Offset + i);
+                Registers.DX = stringPointer.Segment;
+
+#if DEBUG
+                _logger.Info($"Found character {(char)characterToFind} at position {i} in string {stringPointer}");
+#endif
+                return;
+            }
+
+            //If character wasn't found, return a null pointer
+            Registers.AX = 0;
+            Registers.DX = 0;
+        }
+
+        /// <summary>
+        ///     Parses the input line (null terminating each word)
+        ///
+        ///     Signature: void parsin()
+        /// </summary>
+        private void parsin()
+        {
+            ChannelDictionary[_channelNumber].parsin();
+
+            var inputMemory = Module.Memory.GetVariable("INPUT");
+            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[_channelNumber].InputCommand);
+        }
+
+        /// <summary>
+        ///     Copies the values of num bytes from the location pointed by source to the memory block pointed by destination.
+        ///     Copying takes place as if an intermediate buffer were used, allowing the destination and source to overlap
+        ///
+        ///     Signature: void * memmove ( void * destination, const void * source, size_t num )
+        ///
+        ///     More Info: http://www.cplusplus.com/reference/cstring/memmove/
+        /// </summary>
+        private void movemem()
+        {
+            var sourcePointer = GetParameterPointer(0);
+            var destinationPointer = GetParameterPointer(2);
+            var bytesToMove = GetParameter(4);
+
+            //Cast to array as the write can overlap and overwrite, mucking up the span read
+            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove).ToArray();
+
+            Module.Memory.SetArray(destinationPointer, sourceData);
+
+#if DEBUG
+            _logger.Info($"Moved {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
+#endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Returns the current position in the specified FILE stream
+        ///
+        ///     Signature: long int ftell(FILE *stream );
+        /// </summary>
+        private void ftell()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            var currentPosition = FilePointerDictionary[fileStruct.curp.Offset].Position;
+
+#if DEBUG
+            _logger.Info($"Returning Current Position of {currentPosition} for {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+
+            Registers.DX = (ushort)(currentPosition >> 16);
+            Registers.AX = (ushort)(currentPosition & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Determines if a user is using a specific module
+        ///
+        ///     Signature: int isin=instat(char *usrid, int qstate)
+        /// </summary>
+        private void instat()
+        {
+            var useridPointer = GetParameterPointer(0);
+            var moduleId = GetParameter(2);
+
+            var userId = Module.Memory.GetString(useridPointer).ToArray();
+
+            var userSession = ChannelDictionary.Values.FirstOrDefault(x => userId.SequenceEqual(StringFromArray(x.UsrAcc.userid).ToArray()));
+
+            //User not found?
+            if (userSession == null || ChannelDictionary[userSession.Channel].UsrPtr.State != moduleId)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            Registers.AX = 1;
+        }
+
+        private void samein()
+        {
+            var stringToFindPointer = GetParameterPointer(0);
+            var stringToSearchPointer = GetParameterPointer(2);
+
+            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true)).ToUpper();
+            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true)).ToUpper();
+
+            //Won't find it if the substring is greater than the string to search
+            if (stringToFind.Length > stringToSearch.Length)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                //are there not enough charaters left to match?
+                if (stringToFind.Length > (stringToSearch.Length - i))
+                    break;
+
+                var isMatch = true;
+                for (var j = 0; j < stringToFind.Length; j++)
+                {
+                    if (stringToSearch[i + j] == stringToFind[j])
+                        continue;
+
+                    isMatch = false;
+                    break;
+                }
+
+                //Found a match?
+                if (isMatch)
+                {
+                    Registers.AX = 1;
+                    return;
+                }
+            }
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Skip past whitespace, returns pointer to the first NULL or non-whitespace character in the string
+        ///
+        ///     Signature: char *skpwht(char *string)
+        /// </summary>
+        private void skpwht()
+        {
+            var stringToSearchPointer = GetParameterPointer(0);
+
+            var stringToSearch = Module.Memory.GetString(stringToSearchPointer, false);
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[i] == 0x0 || stringToSearch[i] == 0x20) continue;
+
+                Registers.AX = (ushort) (stringToSearchPointer.Offset + i);
+                Registers.DX = stringToSearchPointer.Segment;
+                return;
+            }
+            Registers.AX = stringToSearchPointer.Offset;
+            Registers.DX = stringToSearchPointer.Segment;
         }
     }
 }

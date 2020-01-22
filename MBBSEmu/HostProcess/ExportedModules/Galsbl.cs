@@ -99,6 +99,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 52:
                     btutru();
                     break;
+                case 37:
+                    btuoes();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -437,8 +440,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btutru()
         {
-
             //TODO -- not sure the functionality here, need to research
+            Registers.AX = 0;
+        }
+
+        private void btuoes()
+        {
+            var channel = GetParameter(0);
+            var onoff = GetParameter(1);
+
+            if(onoff == 1)
+                throw new Exception("MBBSEmu doesn't support generating Status 5s when the output buffer is empty");
 
             Registers.AX = 0;
         }
