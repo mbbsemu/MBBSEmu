@@ -110,6 +110,7 @@ namespace MBBSEmu.HostProcess
                 case 0x8:
                 case 0x7F:
                     EchoToClient(session, new byte[] { 0x08, 0x20, 0x08 });
+                    session.InputBuffer.SetLength(session.InputBuffer.Length -1);
                     break;
                 default:
                     EchoToClient(session, secure ? (byte)0x2A : session.LastCharacterReceived);
@@ -453,10 +454,10 @@ namespace MBBSEmu.HostProcess
             if (_accountRepository.GetAccountByEmail(inputValue) != null)
             {
                 EchoToClient(session,
-                    "\r\n|RED|B|This email address is already in use on another account. Please"
+                    "\r\n|RED||B|This email address is already in use on another account. Please"
                         .EncodeToANSIArray());
                 EchoToClient(session,
-                    "\r\n|RED|B|login using that account or choose another email address.\r\n|RESET|"
+                    "\r\n|RED||B|login using that account or choose another email address.\r\n|RESET|"
                         .EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupEmailDisplay;
                 session.InputBuffer.SetLength(0);
@@ -468,7 +469,7 @@ namespace MBBSEmu.HostProcess
             //Create the user in the database
             _accountRepository.InsertAccount(session.Username, session.Password, session.email);
 
-            session.SessionState = EnumSessionState.MainMenuDisplay;
+            session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);
         }
     }

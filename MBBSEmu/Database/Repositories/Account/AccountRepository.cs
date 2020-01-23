@@ -64,7 +64,7 @@ namespace MBBSEmu.Database.Repositories.Account
 
         public AccountModel GetAccountByEmail(string email)
         {
-            return Query<AccountModel>(EnumQueries.GetAccountByUsername, new { email }).FirstOrDefault();
+            return Query<AccountModel>(EnumQueries.GetAccountByEmail, new { email }).FirstOrDefault();
         }
 
 

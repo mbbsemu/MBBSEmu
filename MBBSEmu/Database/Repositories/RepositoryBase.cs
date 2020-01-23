@@ -25,6 +25,7 @@ namespace MBBSEmu.Database.Repositories
         {
             using var connection = _sessionBuilder.GetConnection();
             return connection.Query<T>(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
+            
         }
 
         public IEnumerable<dynamic> Query(object enumQuery, object parameters)

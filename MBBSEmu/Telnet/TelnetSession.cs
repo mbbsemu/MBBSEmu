@@ -276,10 +276,25 @@ namespace MBBSEmu.Telnet
         ///     Validates SocketError returned from an operation doesn't put the socket in an error state
         /// </summary>
         /// <param name="socketError"></param>
-        private static void ValidateSocketState(SocketError socketError)
+        private void ValidateSocketState(SocketError socketError)
         {
-            if (socketError != SocketError.Success)
-                throw new Exception($"Socket Error: {Enum.GetName(typeof(SocketError), socketError)}");
+            switch (socketError)
+            {
+                case SocketError.SocketError:
+                    break;
+                case SocketError.Success:
+                    return;
+                case SocketError.TimedOut:
+                {
+                    _logger.Warn($"Session {SessionId} (Channel: {Channel}) timed out");
+                    _telnetConnection.Dispose();
+                    SessionState = EnumSessionState.LoggedOff;
+                    return;
+                }
+                default:
+                    throw new Exception($"Socket Error: {Enum.GetName(typeof(SocketError), socketError)}");
+            }
+
         }
     }
 }
