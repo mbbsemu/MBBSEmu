@@ -42,7 +42,6 @@ namespace MBBSEmu.Telnet
             _receiveThread.Start();
             DataToClient.Write(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
 
-
             //Add this Session to the Host
             _host.AddSession(this);
         }
@@ -53,7 +52,7 @@ namespace MBBSEmu.Telnet
         /// </summary>
         private void SendWorker()
         {
-            while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
+            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
             {
                 if (DataToClient.Length > 0)
                 {
@@ -77,7 +76,7 @@ namespace MBBSEmu.Telnet
 
         private void ReceiveWorker()
         {
-            while (_telnetConnection.IsConnected() && SessionState != EnumSessionState.LoggedOff)
+            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
             {
                 var bytesReceived = _telnetConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
@@ -280,15 +279,13 @@ namespace MBBSEmu.Telnet
         {
             switch (socketError)
             {
-                case SocketError.SocketError:
-                    break;
                 case SocketError.Success:
                     return;
                 case SocketError.TimedOut:
                 {
                     _logger.Warn($"Session {SessionId} (Channel: {Channel}) timed out");
-                    _telnetConnection.Dispose();
                     SessionState = EnumSessionState.LoggedOff;
+                    _telnetConnection.Dispose();
                     return;
                 }
                 default:
