@@ -23,7 +23,9 @@ namespace MBBSEmu.Telnet
         private readonly byte[] socketReceiveBuffer = new byte[256];
 
         private int _iacPhase;
-        private bool _iacComplete;
+
+        //Tracks Responses We've already sent -- prevents looping
+        private readonly List<IacResponse> _iacSentResponses = new List<IacResponse>();
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
@@ -32,7 +34,7 @@ namespace MBBSEmu.Telnet
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
             _telnetConnection.ReceiveBufferSize = 128;
-            
+
             SessionState = EnumSessionState.Negotiating;
 
             //Start Listeners & Senders
@@ -40,12 +42,14 @@ namespace MBBSEmu.Telnet
             _sendThread.Start();
             _receiveThread = new Thread(ReceiveWorker);
             _receiveThread.Start();
-            DataToClient.Write(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
 
             //Add this Session to the Host
             _host.AddSession(this);
-        }
 
+            DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+            DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x48 });
+            SessionState = EnumSessionState.Unauthenticated;
+        }
 
         /// <summary>
         ///     Send a Byte Array to the client
@@ -54,11 +58,35 @@ namespace MBBSEmu.Telnet
         {
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
             {
-                if (DataToClient.Length > 0)
+                //If client didn't initiate IAC, initiate it from the server
+                if (_iacPhase == 0 && SessionTimer.ElapsedMilliseconds > 500)
                 {
-                    var bytesSent = _telnetConnection.Send(DataToClient.ToArray(), SocketFlags.None, out var socketState);
-                    DataToClient.SetLength(0);
+                    _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
+                    DataToClient.Enqueue(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+                }
+
+                while (DataToClient.TryDequeue(out var datToSend))
+                {
+                    using var msOutputBuffer = new MemoryStream();
+                    foreach (var b in datToSend)
+                    {
+                        msOutputBuffer.WriteByte(b);
+
+                        if (SessionState != EnumSessionState.InModule) continue;
+
+                        //When we're in a module, since new lines are stripped from MVC's etc, and only
+                        //carriate returns remain, IF we're in a module and encounter a CR, add a NL
+                        if (b == 0xD)
+                            msOutputBuffer.WriteByte(0xA);
+
+                        //To escape a valid 0xFF, we have to send two
+                        if (b == 0xFF)
+                            msOutputBuffer.WriteByte(0xFF);
+                    }
+
+                    _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
                     ValidateSocketState(socketState);
+                    msOutputBuffer.SetLength(0);
                 }
 
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
@@ -81,7 +109,7 @@ namespace MBBSEmu.Telnet
                 var bytesReceived = _telnetConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
 
-                if(bytesReceived == 0)
+                if (bytesReceived == 0)
                     continue;
 
                 //Enter Key
@@ -89,8 +117,7 @@ namespace MBBSEmu.Telnet
                 {
                     //Set Status == 3, which means there is a Command Ready
                     Status = 3;
-                    DataToClient.WriteByte(0xD);
-                    DataToClient.WriteByte(0xA);
+                    DataToClient.Enqueue(new byte[] { 0xD, 0xA });
                     continue;
                 }
 
@@ -101,14 +128,6 @@ namespace MBBSEmu.Telnet
                 {
                     ParseIAC(InputBuffer.ToArray());
                     InputBuffer.SetLength(0);
-
-                    if (_iacComplete)
-                    {
-                        DataToClient.Write(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
-                        DataToClient.Write(new byte[] { 0x1B, 0x5B, 0x48 });
-                        SessionState = EnumSessionState.Unauthenticated;
-                    }
-
                     continue;
                 }
 
@@ -137,138 +156,150 @@ namespace MBBSEmu.Telnet
                 if (iacResponse[i] != 0xFF)
                     throw new Exception("Invalid IAC?");
 
-                var iacVerb = (EnumIacVerbs) iacResponse[i + 1];
-                var iacOption = (EnumIacOptions) iacResponse[i + 2];
+                var iacVerb = (EnumIacVerbs)iacResponse[i + 1];
+                var iacOption = (EnumIacOptions)iacResponse[i + 2];
 
-                _logger.Info($"Channel {Channel}: IAC {iacVerb} {iacOption}");
+                _logger.Info($">> Channel {Channel}: IAC {iacVerb} {iacOption}");
 
                 switch (iacOption)
                 {
                     case EnumIacOptions.BinaryTransmission:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
-                                _iacComplete = true;
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+                                    break;
+                                case EnumIacVerbs.DO:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.Echo:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.DO:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.DO:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.NegotiateAboutWindowSize:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT,
-                                    EnumIacOptions.NegotiateAboutWindowSize));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT,
+                                        EnumIacOptions.NegotiateAboutWindowSize));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.TerminalSpeed:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalSpeed));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalSpeed));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.TerminalType:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalType));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalType));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.EnvironmentOption:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.EnvironmentOption));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.EnvironmentOption));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case EnumIacOptions.SuppressGoAhead:
-                    {
-                        switch (iacVerb)
                         {
-                            case EnumIacVerbs.WILL:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.SuppressGoAhead));
-                                break;
-                            case EnumIacVerbs.DO:
-                                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.SuppressGoAhead));
-                                break;
-                            default:
-                                _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                break;
-                        }
+                            switch (iacVerb)
+                            {
+                                case EnumIacVerbs.WILL:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.SuppressGoAhead));
+                                    break;
+                                case EnumIacVerbs.DO:
+                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.SuppressGoAhead));
+                                    break;
+                                default:
+                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
+                                    break;
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                 }
             }
 
             if (_iacPhase == 0 && _iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
             {
                 _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
             }
 
             _iacPhase++;
 
             using var msIacToSend = new MemoryStream();
             foreach (var resp in _iacResponses)
-                msIacToSend.Write(resp.ToArray());
-
-            if (msIacToSend.Length == 0)
             {
-                _iacComplete = true;
-                return;
+                //Prevent Duplicate Responses
+                if (!_iacSentResponses.Any(x => x.Verb == resp.Verb && x.Option == resp.Option))
+                {
+                    _iacSentResponses.Add(resp);
+                    _logger.Info($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option}");
+                    msIacToSend.Write(resp.ToArray());
+                }
+                else
+                {
+                    _logger.Info($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option} (Ignored, Duplicate)");
+                }
             }
 
-            DataToClient.Write(msIacToSend.ToArray());
+            if (msIacToSend.Length == 0)
+                return;
+
+            DataToClient.Enqueue(msIacToSend.ToArray());
         }
 
         /// <summary>
@@ -281,13 +312,14 @@ namespace MBBSEmu.Telnet
             {
                 case SocketError.Success:
                     return;
+                case SocketError.ConnectionReset:
                 case SocketError.TimedOut:
-                {
-                    _logger.Warn($"Session {SessionId} (Channel: {Channel}) timed out");
-                    SessionState = EnumSessionState.LoggedOff;
-                    _telnetConnection.Dispose();
-                    return;
-                }
+                    {
+                        _logger.Warn($"Session {SessionId} (Channel: {Channel}) forcefully disconnected: {socketError}");
+                        SessionState = EnumSessionState.LoggedOff;
+                        _telnetConnection.Dispose();
+                        return;
+                    }
                 default:
                     throw new Exception($"Socket Error: {Enum.GetName(typeof(SocketError), socketError)}");
             }

@@ -66,9 +66,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
             Module.Memory.AllocateVariable("VDAPTR", 0x4);
-
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
+            Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
         }
 
         /// <summary>
@@ -191,6 +191,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return _exitopen;
                 case 624:
                     return usaptr;
+                case 757:
+                    return genbb;
             }
 
             if (offsetsOnly)
@@ -1096,7 +1098,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
             var pointer = Module.Memory.GetVariable("PRFBUF");
-            ChannelDictionary[userChannel].DataToClient.Write(Module.Memory.GetArray(pointer, (ushort)_outputBufferPosition));
+            ChannelDictionary[userChannel].DataToClient.Enqueue(Module.Memory.GetArray(pointer, (ushort)_outputBufferPosition).ToArray());
             _outputBufferPosition = 0;
         }
 
@@ -2687,6 +2689,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Console.BackgroundColor = ConsoleColor.Red;
             Console.WriteLine($"{Encoding.ASCII.GetString(message)}");
             Console.ResetColor();
+
+            Registers.Halt = true;
         }
 
         /// <summary>
@@ -3081,5 +3085,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
       _logger.Info($"Read Line from {fileStructPointer} (Stream: {fileStruct.curp}) {startingDestinationPointer}->{destinationPointer}");          
 #endif
         }
+
+        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariable("GENBB").ToSpan();
     }
 }

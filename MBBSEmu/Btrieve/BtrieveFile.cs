@@ -17,7 +17,7 @@ namespace MBBSEmu.Btrieve
         public ushort CurrentRecordNumber;
         public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + 0x206;
 
-        private byte[] _btrieveFileContent;
+        private readonly byte[] _btrieveFileContent;
         private readonly List<byte[]> _btrieveRecords;
 
         public BtrieveFile(string fileName, string path, ushort recordLength)

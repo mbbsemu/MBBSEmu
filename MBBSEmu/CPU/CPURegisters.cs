@@ -1,12 +1,18 @@
 ﻿using Iced.Intel;
-using MBBSEmu.Logging;
-using NLog;
 using System;
 
 namespace MBBSEmu.CPU
 {
     public class CpuRegisters
     {
+        /// <summary>
+        ///     Halt Flag - halts CPU operation
+        /// </summary>
+        public bool Halt { get; set; }
+
+        /// <summary>
+        ///     x87 FPU Status Register
+        /// </summary>
         public FpuStatusRegister Fpu { get; set; }
 
         /// <summary>

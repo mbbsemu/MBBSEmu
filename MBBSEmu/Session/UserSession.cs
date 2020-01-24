@@ -1,11 +1,10 @@
-﻿using System;
+﻿using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.Memory;
+using MBBSEmu.Module;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
-using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
-using MBBSEmu.Module;
 
 namespace MBBSEmu.Session
 {
@@ -89,7 +88,7 @@ namespace MBBSEmu.Session
 
         public List<int> mArgn;
 
-        public readonly MemoryStream DataToClient;
+        public readonly ConcurrentQueue<byte[]> DataToClient;
 
         public bool DataToProcess;
 
@@ -114,7 +113,7 @@ namespace MBBSEmu.Session
             UsrAcc = new UserAccount();
             Status = 0;
             SessionTimer = new Stopwatch();
-            DataToClient = new MemoryStream();
+            DataToClient = new ConcurrentQueue<byte[]>();
 
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();

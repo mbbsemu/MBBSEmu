@@ -138,11 +138,11 @@ namespace MBBSEmu.HostProcess
             //Handle Backspace or Delete
             if (dataToEcho == 0x8 || dataToEcho == 0x7F)
             {
-                session.DataToClient.Write(new byte[] {0x08, 0x20, 0x08});
+                session.DataToClient.Enqueue(new byte[] {0x08, 0x20, 0x08});
                 return;
             }
 
-            session.DataToClient.WriteByte(dataToEcho);
+            session.DataToClient.Enqueue(new[] {dataToEcho});
         }
 
         /// <summary>
@@ -170,18 +170,18 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         private void WelcomeScreenDisplay(UserSession session)
         {
-            session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-            session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x48});
-            session.DataToClient.Write(_resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
-            session.DataToClient.Write(Encoding.ASCII.GetBytes("\r\n "));
+            session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
+            session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x48});
+            session.DataToClient.Enqueue(_resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
+            session.DataToClient.Enqueue(Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
         }
 
         private void LoginUsernameDisplay(UserSession session)
         {
-            session.DataToClient.Write("\r\n|YELLOW|Enter Username or enter \"|B|NEW|!B|\" to create a new Account\r\n"
+            session.DataToClient.Enqueue("\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
                 .EncodeToANSIArray());
-            session.DataToClient.Write("|B||WHITE|Username:|!B| ".EncodeToANSIArray());
+            session.DataToClient.Enqueue("|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginUsernameInput;
         }
 
@@ -197,9 +197,9 @@ namespace MBBSEmu.HostProcess
             {
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
                 session.InputBuffer.SetLength(0);
-                session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-                session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x48});
-                session.DataToClient.Write(_resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
+                session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x48});
+                session.DataToClient.Enqueue(_resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 return;
             }
 
@@ -210,7 +210,7 @@ namespace MBBSEmu.HostProcess
 
         private void LoginPasswordDisplay(UserSession session)
         {
-            session.DataToClient.Write("|B||WHITE|Password:|!B| ".EncodeToANSIArray());
+            session.DataToClient.Enqueue("|B||WHITE|Password:|!B| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 
@@ -282,8 +282,8 @@ namespace MBBSEmu.HostProcess
             var selectedModule = modules.ElementAt(selectedMenuItem);
             session.CurrentModule = selectedModule.Value;
             session.SessionState = EnumSessionState.EnteringModule;
-            session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-            session.DataToClient.Write(new byte[] {0x1B, 0x5B, 0x48});
+            session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
+            session.DataToClient.Enqueue(new byte[] {0x1B, 0x5B, 0x48});
 
             //Clear the Input Buffer
             session.InputBuffer.SetLength(0);

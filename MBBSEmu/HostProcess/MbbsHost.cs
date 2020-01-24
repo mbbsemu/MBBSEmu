@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess
@@ -36,7 +37,9 @@ namespace MBBSEmu.HostProcess
 
         private readonly Queue<UserSession> _incomingSessions;
 
-        private bool DoLoginRoutine;
+        private readonly bool _doLoginRoutine;
+
+
 
         public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfigurationRoot configuration)
         {
@@ -46,7 +49,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info("Constructing MbbsEmu Host...");
 
-            bool.TryParse(_configuration["Module.DoLoginRoutine"], out DoLoginRoutine);
+            bool.TryParse(_configuration["Module.DoLoginRoutine"], out _doLoginRoutine);
 
             _channelDictionary = new PointerDictionary<UserSession>();
             _modules = new Dictionary<string, MbbsModule>();
@@ -75,6 +78,7 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
+            _cpu.Registers.Halt = true;
         }
 
         /// <summary>
@@ -88,6 +92,7 @@ namespace MBBSEmu.HostProcess
                 while (_incomingSessions.TryDequeue(out var incomingSession))
                 {
                     incomingSession.Channel = (ushort)_channelDictionary.Allocate(incomingSession);
+                    incomingSession.SessionTimer.Start();
                     _logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
                 }
 
@@ -121,7 +126,7 @@ namespace MBBSEmu.HostProcess
                             }
                             case EnumSessionState.LoginRoutines:
                             {
-                                if (DoLoginRoutine)
+                                if (_doLoginRoutine)
                                 {
                                     foreach (var m in _modules.Values)
                                     {
@@ -166,8 +171,8 @@ namespace MBBSEmu.HostProcess
                                     }
 
                                     //If the client is in transparent mode, don't echo
-                                    if(!s.TransparentMode)
-                                        s.DataToClient.WriteByte(s.LastCharacterReceived);
+                                    if (!s.TransparentMode)
+                                        s.DataToClient.Enqueue(new[] {s.LastCharacterReceived});
                                 }
 
                                 //Did the text change cause a status update
@@ -350,11 +355,10 @@ namespace MBBSEmu.HostProcess
                 cpuRegisters.BP = cpuRegisters.SP;
                 _cpu.Push(ushort.MaxValue); //CS
                 _cpu.Push(ushort.MaxValue); //IP
-                //_cpu.Push(ushort.MaxValue); //BP
             }
 
             //Run as long as the CPU still has code to execute and the host is still running
-            while (_cpu.IsRunning && _isRunning)
+            while (!_cpu.Registers.Halt)
                 _cpu.Tick();
 
             //Update the session with any information from memory
@@ -533,31 +537,5 @@ namespace MBBSEmu.HostProcess
                 }
             }
         }
-
-        /*
-        public bool VerifyImportedFunctions()
-        {
-            _logger.Info("Scanning CODE segments to ensure all Imported Functions are supported by MbbsEmu...");
-            var scanResult = true;
-            var ordinalMajorBbs = _module.File.ImportedNameTable.First(x => x.Name == "MAJORBBS");
-            foreach (var seg in _module.File.SegmentTable.Where(x => x.Flags.Contains(EnumSegmentFlags.Code)))
-            {
-                foreach (var relo in seg.RelocationRecords.Where(x =>
-                    x.Flag == EnumRecordsFlag.IMPORTORDINAL &&
-                    x.TargetTypeValueTuple.Item2 == ordinalMajorBbs.Ordinal))
-                {
-
-                    if (!_exportedFunctionDelegates["MAJORBBS"].ContainsKey(relo.TargetTypeValueTuple.Item3))
-                    {
-                        _logger.Error(
-                            $"Module Relies on MAJORBBS Function {relo.TargetTypeValueTuple.Item3}, which is not implemented");
-                        scanResult = false;
-                    }
-                }
-            }
-
-            return scanResult;
-        }
-        */
     }
 }

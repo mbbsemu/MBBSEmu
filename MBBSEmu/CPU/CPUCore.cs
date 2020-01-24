@@ -29,8 +29,6 @@ namespace MBBSEmu.CPU
 
         private readonly List<byte[]> _fpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
 
-        public bool IsRunning;
-
         static CpuCore()
         {
             _logger = ServiceResolver.GetService<ILogger>();
@@ -61,8 +59,7 @@ namespace MBBSEmu.CPU
             Registers.SP = STACK_BASE;
             Registers.SS = STACK_SEGMENT;
             Registers.ES = EXTRA_SEGMENT;
-
-            IsRunning = true;
+            Registers.Halt = false;
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
@@ -94,9 +91,9 @@ namespace MBBSEmu.CPU
         {
 
             //Check for segment end
-            if ((Registers.CS == ushort.MaxValue || Registers.CS == 0) && (Registers.IP == ushort.MaxValue || Registers.IP == 0)) 
+            if ((Registers.CS == ushort.MaxValue || Registers.CS == 0) && (Registers.IP == ushort.MaxValue || Registers.IP == 0))
             {
-                IsRunning = false;
+                Registers.Halt = true;
                 return;
             }
 

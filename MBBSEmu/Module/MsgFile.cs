@@ -74,6 +74,10 @@ namespace MBBSEmu.Module
                     continue;
                 }
 
+                //New Line Characters get stripped
+                if (buffer[0] == 0xA)
+                    continue;
+
                 //}
                 if (buffer[0] == 0x7D)
                 {

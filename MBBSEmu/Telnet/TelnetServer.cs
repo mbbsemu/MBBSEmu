@@ -28,8 +28,10 @@ namespace MBBSEmu.Telnet
         {
             //Setup Listener
             var ipEndPoint = new IPEndPoint(IPAddress.Loopback, int.Parse(_configuration["Telnet.Port"]));
-            _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _listenerSocket.ReceiveBufferSize = 0x800;
+            _listenerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                ReceiveBufferSize = 0x800
+            };
             _listenerSocket.Bind(ipEndPoint);
             _listenerThread = new Thread(ListenerThread);
 
