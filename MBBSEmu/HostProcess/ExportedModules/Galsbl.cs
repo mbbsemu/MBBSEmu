@@ -105,6 +105,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 11:
                     btuech();
                     break;
+                case 53:
+                    btutsw();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -472,6 +475,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Setting ECHO to: {mode == 0}");
 #endif
             ChannelDictionary[channel].TransparentMode = mode == 0;
+            Registers.AX = 0;
+        }
+
+        private void btutsw()
+        {
+            var channel = GetParameter(0);
+            var width = GetParameter(1);
+
+#if DEBUG
+            _logger.Warn($"Set Screen Width for Channel {channel} to {width}");
+#endif
             Registers.AX = 0;
         }
     }

@@ -67,7 +67,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
             Module.Memory.AllocateVariable("VDAPTR", 0x4);
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
+            Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
             Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
         }

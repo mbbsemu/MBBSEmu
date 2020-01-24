@@ -273,6 +273,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Sahf:
                     Op_Sahf();
                     break;
+                case Mnemonic.Rcl:
+                    Op_Rcl();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -410,6 +413,7 @@ namespace MBBSEmu.CPU
         ///     Returns if the Current Instruction is an 8bit or 16bit operation
         /// </summary>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int GetCurrentOperationSize()
         {
             var operationSize = _currentInstruction.Op0Kind switch
@@ -419,6 +423,34 @@ namespace MBBSEmu.CPU
                 _ => -1
             };
             return operationSize;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SaveResult(ushort result, int operationSize)
+        {
+
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                {
+                    Registers.SetValue(_currentInstruction.Op0Register, result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 1:
+                {
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte) result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 2:
+                {
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Destination: {_currentInstruction.Op0Kind}");
+            }
         }
 
         private void Op_Loop()
@@ -728,6 +760,83 @@ namespace MBBSEmu.CPU
                     //If CF was set, rotate that value in
                     if (Registers.F.IsFlagSet(EnumFlags.CF))
                         result.SetFlag(1 << 15);
+
+                    //Set new CF Value
+                    if (newCFValue)
+                    {
+                        Registers.F.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.F.ClearFlag(EnumFlags.CF);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        private void Op_Rcl()
+        {
+            //Get Comparison Operation Size
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operationSize = GetCurrentOperationSize();
+            var result = operationSize == 1
+                ? Op_Rcl_8(destination, source)
+                : Op_Rcl_16(destination, source);
+
+            SaveResult(result, operationSize);
+        }
+
+        private byte Op_Rcl_8(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = (byte)destination;
+                for (var i = 0; i < source; i++)
+                {
+                    //Determine the CF Value after rotation+carry
+                    var newCFValue = result.IsBitSet(7);
+
+                    //Perform Rotation
+                    result = (byte)(result << 1);
+
+                    //If CF was set, rotate that value in
+                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                        result.SetFlag(1);
+
+                    //Set new CF Value
+                    if (newCFValue)
+                    {
+                        Registers.F.SetFlag(EnumFlags.CF);
+                    }
+                    else
+                    {
+                        Registers.F.ClearFlag(EnumFlags.CF);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        private ushort Op_Rcl_16(ushort destination, ushort source)
+        {
+            unchecked
+            {
+                var result = destination;
+                for (var i = 0; i < source; i++)
+                {
+                    //Determine the CF Value after rotation+carry
+                    var newCFValue = result.IsBitSet(15);
+
+                    //Perform Rotation
+                    result = (ushort)(result << 1);
+
+                    //If CF was set, rotate that value in
+                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                        result.SetFlag(1);
 
                     //Set new CF Value
                     if (newCFValue)

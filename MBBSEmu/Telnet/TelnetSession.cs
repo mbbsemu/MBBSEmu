@@ -70,18 +70,26 @@ namespace MBBSEmu.Telnet
                     using var msOutputBuffer = new MemoryStream();
                     foreach (var b in datToSend)
                     {
-                        msOutputBuffer.WriteByte(b);
-
-                        if (SessionState != EnumSessionState.InModule) continue;
-
                         //When we're in a module, since new lines are stripped from MVC's etc, and only
                         //carriate returns remain, IF we're in a module and encounter a CR, add a NL
-                        if (b == 0xD)
-                            msOutputBuffer.WriteByte(0xA);
-
-                        //To escape a valid 0xFF, we have to send two
-                        if (b == 0xFF)
-                            msOutputBuffer.WriteByte(0xFF);
+                        if (SessionState == EnumSessionState.InModule)
+                        {
+                            switch (b)
+                            {
+                                case 0xD:
+                                    msOutputBuffer.WriteByte(0xA);
+                                    break;
+                                case 0xA:
+                                    msOutputBuffer.WriteByte(0xD);
+                                    break;
+                                case 0xFF:
+                                    msOutputBuffer.WriteByte(0xFF);
+                                    break;
+                                case 0x13:
+                                    continue;
+                            }
+                        }
+                        msOutputBuffer.WriteByte(b);
                     }
 
                     _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
