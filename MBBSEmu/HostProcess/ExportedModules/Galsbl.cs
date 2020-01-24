@@ -102,6 +102,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 37:
                     btuoes();
                     break;
+                case 11:
+                    btuech();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -452,6 +455,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if(onoff == 1)
                 throw new Exception("MBBSEmu doesn't support generating Status 5s when the output buffer is empty");
 
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Set Echo on/off
+        ///
+        ///     Signature: int btuech(int chan, int mode)
+        /// </summary>
+        private void btuech()
+        {
+            var channel = GetParameter(0);
+            var mode = GetParameter(1);
+
+#if DEBUG
+            _logger.Info($"Setting ECHO to: {mode == 0}");
+#endif
+            ChannelDictionary[channel].TransparentMode = mode == 0;
             Registers.AX = 0;
         }
     }

@@ -141,49 +141,18 @@ namespace MBBSEmu.Memory
 
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
+            //If it wasn't able to decompile linear through the data, there might have been
+            //data in the path of the code that messed up decoding, in this case, we grab up to
+            //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
             if(!_decompiledSegments[segment].TryGetValue(instructionPointer, out var outputInstruction))
             {
                 Span<byte> segmentData = _segments[segment].Data;
-                switch (segmentData[instructionPointer])
-                {
-                    //Look for an ENTER opcode that might have been decoded improperly due to data in the code segment
-                    case 0xC8:
-                    {
-                        var patchedInstruction = Instruction.Create(Code.Enterq_imm16_imm8);
-                        patchedInstruction.ByteLength = 4;
-                        patchedInstruction.IP16 = instructionPointer;
-                        patchedInstruction.Op0Kind = OpKind.Immediate16;
-                        patchedInstruction.Immediate16 = BitConverter.ToUInt16(segmentData.Slice(instructionPointer + 1, 2)); ;
-                        return patchedInstruction;
-                    }
-                    case 0x55:
-                    {
-                        var patchedInstruction = Instruction.Create(Code.Push_r16);
-                        patchedInstruction.ByteLength = 1;
-                        patchedInstruction.IP16 = instructionPointer;
-                        patchedInstruction.Op0Kind = OpKind.Register;
-                        patchedInstruction.Op0Register = Register.BP;
-                        return patchedInstruction;
-                        }
-                    case 0x56:
-                    {
-                        var patchedInstruction = Instruction.Create(Code.Push_r16);
-                        patchedInstruction.ByteLength = 1;
-                        patchedInstruction.IP16 = instructionPointer;
-                        patchedInstruction.Op0Kind = OpKind.Register;
-                        patchedInstruction.Op0Register = Register.SI;
-                        return patchedInstruction;
-                    }
-                    case 0x57:
-                    {
-                        var patchedInstruction = Instruction.Create(Code.Push_r16);
-                        patchedInstruction.ByteLength = 1;
-                        patchedInstruction.IP16 = instructionPointer;
-                        patchedInstruction.Op0Kind = OpKind.Register;
-                        patchedInstruction.Op0Register = Register.DI;
-                        return patchedInstruction;
-                    }
-                }
+                var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
+                var decoder = Decoder.Create(16, reader);
+                decoder.IP = instructionPointer;
+                decoder.Decode(out var instr);
+
+                return instr;
             }
             return outputInstruction;
         }

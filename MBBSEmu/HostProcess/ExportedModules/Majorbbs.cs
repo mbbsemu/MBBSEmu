@@ -69,6 +69,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x7F); //128 channels for now
             Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
+            Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
         }
 
         /// <summary>
@@ -193,6 +194,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return usaptr;
                 case 757:
                     return genbb;
+                case 459:
+                    return othusn;
             }
 
             if (offsetsOnly)
@@ -490,6 +493,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 405:
                     mdfgets();
+                    break;
+                case 181:
+                    echon();
+                    break;
+                case 587:
+                    strupr();
+                    break;
+                case 584:
+                    strstr();
+                    break;
+                case 164:
+                    depad();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -2154,8 +2169,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                     _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
 #endif
-                    Registers.AX = fileStructPointer.Offset;
-                    Registers.DX = fileStructPointer.Segment;
+                    Registers.AX = fileStruct.curp.Offset;
+                    Registers.DX = fileStruct.curp.Segment;
                     return;
                 }
 
@@ -2977,6 +2992,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
+            var othusnPointer = Module.Memory.GetVariable("OTHUSN");
+            Module.Memory.SetWord(othusnPointer, ChannelDictionary[userSession.Channel].Channel);
             Registers.AX = 1;
         }
 
@@ -3087,5 +3104,116 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         private ReadOnlySpan<byte> genbb => Module.Memory.GetVariable("GENBB").ToSpan();
+
+        /// <summary>
+        ///     Turns echo on for this channel
+        ///
+        ///     Signature: void echon()
+        /// </summary>
+        private void echon()
+        {
+            ChannelDictionary[_channelNumber].TransparentMode = false;
+        }
+
+        /// <summary>
+        ///     Converts all lowercase characters in a string to uppercase
+        ///
+        ///     Signature: char *upper=strlwr(char *string)
+        /// </summary>
+        private void strupr()
+        {
+            var stringToConvertPointer = GetParameterPointer(0);
+
+            var stringData = Module.Memory.GetString(stringToConvertPointer).ToArray();
+
+            for (var i = 0; i < stringData.Length; i++)
+            {
+                if (stringData[i] >= 97 && stringData[i] <= 122)
+                    stringData[i] -= 32;
+            }
+
+#if DEBUG
+            _logger.Info($"Converted string to {Encoding.ASCII.GetString(stringData)}");
+#endif
+
+            Module.Memory.SetArray(stringToConvertPointer, stringData);
+        }
+
+        /// <summary>
+        ///     Returns a pointer to the first occurrence of str2 in str1, or a null pointer if str2 is not part of str1.
+        /// </summary>
+        private void strstr()
+        {
+            var stringToSearchPointer = GetParameterPointer(0);
+            var stringToFindPointer = GetParameterPointer(2);
+
+            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true)).ToUpper();
+            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true)).ToUpper();
+
+            //Won't find it if the substring is greater than the string to search
+            if (stringToFind.Length > stringToSearch.Length)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                //are there not enough charaters left to match?
+                if (stringToFind.Length > (stringToSearch.Length - i))
+                    break;
+
+                var isMatch = true;
+                for (var j = 0; j < stringToFind.Length; j++)
+                {
+                    if (stringToSearch[i + j] == stringToFind[j])
+                        continue;
+
+                    isMatch = false;
+                    break;
+                }
+
+                //Found a match?
+                if (isMatch)
+                {
+                    Registers.AX = (ushort) (stringToSearchPointer.Offset + i);
+                    Registers.DX = stringToSearchPointer.Segment;
+                    return;
+                }
+            }
+
+            Registers.AX = 0;
+            Registers.DX = 0;
+        }
+
+        /// <summary>
+        ///     Removes trailing blank spaces from string
+        ///
+        ///     Signature: int nremoved=depad(char *string)
+        /// </summary>
+        private void depad()
+        {
+            var stringPointer = GetParameterPointer(0);
+
+            var stringToSearch = Module.Memory.GetString(stringPointer).ToArray();
+
+            ushort numRemoved = 0;
+            for (var i = 1; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[^i] == 0x0)
+                    continue;
+
+                if (stringToSearch[^i] != 0x20)
+                    break;
+
+                stringToSearch[^i] = 0x0;
+                numRemoved++;
+            }
+
+            Module.Memory.SetArray(stringPointer, stringToSearch);
+            Registers.AX = numRemoved;
+        }
+
+        private ReadOnlySpan<byte> othusn => Module.Memory.GetVariable("OTHUSN").ToSpan();
     }
 }
