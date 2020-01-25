@@ -416,13 +416,12 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int GetCurrentOperationSize()
         {
-            var operationSize = _currentInstruction.Op0Kind switch
+            return _currentInstruction.Op0Kind switch
             {
                 OpKind.Register => _currentInstruction.Op0Register.GetSize(),
                 OpKind.Memory => (_currentInstruction.MemorySize == MemorySize.UInt8 ? 1 : 2),
                 _ => -1
             };
-            return operationSize;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -439,13 +438,13 @@ namespace MBBSEmu.CPU
                 case OpKind.Memory when operationSize == 1:
                 {
                     Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), (byte) result);
+                        GetOperandOffset(_currentInstruction.Op0Kind), (byte) result);
                     return;
                 }
                 case OpKind.Memory when operationSize == 2:
                 {
                     Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination), result);
+                        GetOperandOffset(_currentInstruction.Op0Kind), result);
                     return;
                 }
                 default:

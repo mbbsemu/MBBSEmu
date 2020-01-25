@@ -124,8 +124,19 @@ namespace MBBSEmu.Telnet
                 if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
                 {
                     //Set Status == 3, which means there is a Command Ready
-                    Status = 3;
                     DataToClient.Enqueue(new byte[] { 0xD, 0xA });
+                    
+                    //If there's an interceptor, flag data is ready to process and we'll handle
+                    //setting status on return from that, otherwise, just set status
+                    if (CharacterInterceptor != null)
+                    {
+                        DataToProcess = true;
+                    }
+                    else
+                    {
+                        Status = 3;
+                    }
+
                     continue;
                 }
 

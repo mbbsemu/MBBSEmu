@@ -1,9 +1,9 @@
 ﻿using MBBSEmu.HostProcess;
+using Microsoft.Extensions.Configuration;
 using NLog;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Telnet
 {

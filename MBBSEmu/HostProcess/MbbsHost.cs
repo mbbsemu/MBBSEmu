@@ -1,17 +1,15 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
-using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.Telnet;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess
 {
@@ -34,12 +32,8 @@ namespace MBBSEmu.HostProcess
         private bool _isAddingModule;
         private readonly IMbbsRoutines _mbbsRoutines;
         private readonly IConfigurationRoot _configuration;
-
         private readonly Queue<UserSession> _incomingSessions;
-
         private readonly bool _doLoginRoutine;
-
-
 
         public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfigurationRoot configuration)
         {
@@ -116,6 +110,7 @@ namespace MBBSEmu.HostProcess
                     {
                         switch (s.SessionState)
                         {
+                            //Initial call to STTROU when a User is Entering a Module
                             case EnumSessionState.EnteringModule:
                             {
                                 s.StatusChange = false;
@@ -124,6 +119,8 @@ namespace MBBSEmu.HostProcess
                                 Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
                                 continue;
                             }
+                            
+                            //Post-Login Display Routine
                             case EnumSessionState.LoginRoutines:
                             {
                                 if (_doLoginRoutine)
@@ -143,6 +140,8 @@ namespace MBBSEmu.HostProcess
                                 s.SessionState = EnumSessionState.MainMenuDisplay;
                                 continue;
                             }
+
+                            //User is in the module, process all the in-module type of events
                             case EnumSessionState.InModule:
                             {
                                 //Process Character Interceptor in GSBL
@@ -161,13 +160,18 @@ namespace MBBSEmu.HostProcess
                                             initialStackValues);
 
                                         //Result replaces the character in the buffer
-                                        s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+                                        if(s.InputBuffer.Length > 0)
+                                            s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+
                                         s.InputBuffer.WriteByte((byte) result);
                                         s.LastCharacterReceived = (byte) result;
 
-                                        //If the new character is a carriage return, 
+                                        //If the new character is a carriage return, null terminate it and set status
                                         if (result == 0xD)
+                                        {
                                             s.Status = 3;
+                                            s.InputBuffer.WriteByte(0x0);
+                                        }
                                     }
 
                                     //If the client is in transparent mode, don't echo
@@ -206,10 +210,8 @@ namespace MBBSEmu.HostProcess
                                         //Clear any data waiting to be processed from the client
                                         s.InputBuffer.SetLength(0);
                                     }
-
                                     continue;
                                 }
-
                                 break;
                             }
 
@@ -261,6 +263,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
+            
             _isAddingModule = true;
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
             //Verify that the imported functions are all supported by MbbsEmu
