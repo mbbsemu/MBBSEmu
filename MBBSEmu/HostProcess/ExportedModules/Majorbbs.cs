@@ -70,6 +70,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
             Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
+            Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
         }
 
         /// <summary>
@@ -172,8 +173,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return vdaptr;
                 case 401:
                     return margc;
-                case 442:
-                    return nxtcmd;
                 case 477:
                     return prfptr;
                 case 350:
@@ -209,6 +208,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
+                case 442:
+                    nxtcmd();
+                    break;
                 case 561:
                     srand();
                     break;
@@ -505,6 +507,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 164:
                     depad();
+                    break;
+                case 357:
+                    invbtv();
+                    break;
+                case 261:
+                    fsdroom();
+                    break;
+                case 1101:
+                    stpbtvl();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -1472,7 +1483,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordLength = GetParameter(2);
 
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
-
+            
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
             var btrieveFile = new BtrieveFile(fileName, Module.ModulePath, recordLength);
@@ -1617,6 +1628,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info(
                 $"Inserted Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {btrieveRecord.Length} bytes");
+#endif
+        }
+
+
+        /// <summary>
+        ///     Insert new variable-length Btrieve record
+        ///
+        ///     Signature: void invbtv(char *recptr, int length)
+        /// </summary>
+        private void invbtv()
+        {
+            var btrieveRecordPointer = GetParameterPointer(0);
+            var recordLength = GetParameter(2);
+
+            var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
+
+            _currentBtrieveFile.Insert(record.ToArray(), true);
+
+#if DEBUG
+            _logger.Info(
+                $"Inserted Variable Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {recordLength} bytes");
 #endif
         }
 
@@ -1982,11 +2014,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            if (size > 0x800)
+            if (size > 0x3FFF)
                 throw new OutOfMemoryException("Volatile Memory declaration > 2k");
 
 #if DEBUG
-            _logger.Info($"Volatile Memory Size requested of {size} bytes (2048 bytes currently allocated per channel)");
+            _logger.Info($"Volatile Memory Size requested of {size} bytes ({0x3FFF} bytes currently allocated per channel)");
 #endif
         }
 
@@ -2008,7 +2040,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             if (!Module.Memory.TryGetVariable($"VOLATILE-{channel}", out var variablePointer))
             {
-                variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{channel}", 0xA00);
+                variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{channel}", 0x3FFF);
             }
 
             Registers.DX = variablePointer.Offset;
@@ -2060,12 +2092,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns the pointer to the next parsed input command from the user
         ///     If this is the first time it's called, it returns the first command
         /// </summary>
-        private ReadOnlySpan<byte> nxtcmd
+        private ReadOnlySpan<byte> nxtcmd()
         {
-            get
-            {
+           
                 var variablePointer = Module.Memory.GetVariable("INPUT");
                 var pointerSegment = Module.Memory.GetVariable("MARGN");
+                var nextCommandPointer = Module.Memory.GetVariable("NXTCMD");
                 if (_margvPointers.Count == 0 || _inputCurrentCommand > _margvPointers.Count)
                 {
 #if DEBUG
@@ -2080,8 +2112,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         $"Returning Next Command ({_inputCurrentCommand} ({_margvPointers[_inputCurrentCommand++].Segment:X4}:{_margvPointers[_inputCurrentCommand++].Offset})");
 #endif
                 }
-                return new IntPtr16(Module.Memory.GetArray(pointerSegment.Segment, (ushort)(pointerSegment.Offset + (_inputCurrentCommand * 4)), 4)).ToSpan();
-            }
+
+                var newPointer = new IntPtr16(Module.Memory.GetArray(pointerSegment.Segment,
+                    (ushort) (pointerSegment.Offset + (_inputCurrentCommand * 4)), 4));
+
+                Module.Memory.SetArray(nextCommandPointer, newPointer.ToSpan());
+
+                return nextCommandPointer.ToSpan();
+
         }
 
         /// <summary>
@@ -3215,5 +3253,64 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         private ReadOnlySpan<byte> othusn => Module.Memory.GetVariable("OTHUSN").ToSpan();
+
+        /// <summary>
+        ///     Returns number of bytes session will need, or -1=error in data
+        ///
+        ///     Signature: int fsdroom(int tmpmsg, char *fldspc, int amode)
+        /// </summary>
+        private void fsdroom()
+        {
+            //TODO: Need to learn more about FSD items
+            _logger.Warn("Not properly suppported, returning 1k by default");
+            Registers.AX = 0x400;
+        }
+
+        /// <summary>
+        ///     Btrieve Step Operation Supporting Locks
+        ///
+        ///     Signature: int stpbtvl (void *recptr, int stpopt, int loktyp)
+        /// </summary>
+        private void stpbtvl()
+        {
+            if (_currentBtrieveFile == null)
+                throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
+
+            var btrieveRecordPointer = GetParameterPointer(0);
+            var stpopt = GetParameter(2);
+
+            ushort resultCode = 0;
+            switch (stpopt)
+            {
+                case (ushort)EnumBtrieveOperationCodes.StepFirst:
+                    resultCode = _currentBtrieveFile.StepFirst();
+                    break;
+                case (ushort)EnumBtrieveOperationCodes.StepNext:
+                    resultCode = _currentBtrieveFile.StepNext();
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
+            }
+
+            Registers.AX = resultCode;
+
+            //Set Memory Values
+            if (btrieveRecordPointer.Segment != 0 && btrieveRecordPointer.Offset != 0 && resultCode > 0)
+            {
+                //See if the segment lives on the host or in the module
+                Module.Memory.SetArray(btrieveRecordPointer, _currentBtrieveFile.GetRecord());
+
+#if DEBUG
+                _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointer}, AX: {resultCode}");
+#endif
+                
+                return;
+            }
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Step {(EnumBtrieveOperationCodes)stpopt}, AX: {resultCode}");
+#endif
+
+        }
     }
 }

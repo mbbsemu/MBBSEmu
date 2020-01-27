@@ -115,11 +115,11 @@ namespace MBBSEmu.Btrieve
                 RecordCount++;
         }
 
-        public void Insert(byte[] recordData) => Insert(CurrentRecordNumber, recordData);
+        public void Insert(byte[] recordData, bool isVariableLength = false) => Insert(CurrentRecordNumber, recordData, isVariableLength);
 
-        public void Insert(ushort recordNumber, byte[] recordData)
+        public void Insert(ushort recordNumber, byte[] recordData, bool isVariableLength = false)
         {
-            if (recordData.Length != RecordLength)
+            if (!isVariableLength && recordData.Length != RecordLength)
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
             _btrieveRecords.Insert(recordNumber, recordData);

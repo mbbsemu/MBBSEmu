@@ -382,6 +382,7 @@ namespace MBBSEmu.HostProcess
                     "MAJORBBS" => new Majorbbs(module, _channelDictionary),
                     "GALGSBL" => new Galsbl(module, _channelDictionary),
                     "DOSCALLS" => new Doscalls(module, _channelDictionary),
+                    "GALME" => new Galme(module, _channelDictionary),
                     _ => _exportedFunctions[key]
                 };
 
@@ -401,6 +402,7 @@ namespace MBBSEmu.HostProcess
             var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
             var galsblHostFunctions = GetFunctions(module, "GALGSBL");
             var doscallsHostFunctions = GetFunctions(module, "DOSCALLS");
+            var galmeFunctions = GetFunctions(module, "GALME");
 
             foreach (var s in module.File.SegmentTable)
             {
@@ -426,6 +428,7 @@ namespace MBBSEmu.HostProcess
                                 "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal, true),
                                 "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
                                 "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
+                                "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
                                 _ => throw new Exception(
                                     $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
                             };
@@ -498,6 +501,7 @@ namespace MBBSEmu.HostProcess
                                 "MAJORBBS" => (ushort) 0xFFFF,
                                 "GALGSBL" => (ushort) 0xFFFE,
                                 "PHAPI" => (ushort) 0xFFFD,
+                                "GALME" => (ushort) 0xFFFC,
                                 _ => throw new Exception(
                                     $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
 
