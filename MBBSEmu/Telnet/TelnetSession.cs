@@ -157,6 +157,9 @@ namespace MBBSEmu.Telnet
 
             //Cleanup if the connection was dropped
             SessionState = EnumSessionState.LoggedOff;
+
+            //Dispose the socket connection
+            _telnetConnection.Dispose();
         }
 
         /// <summary>

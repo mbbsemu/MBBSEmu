@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-m DIALCHAT -p C:\\dos\\modules\\dialchat\\ -dbreset"
+      "commandLineArgs": "-m RTSLORD -p C:\\dos\\modules\\lord\\ -dbreset"
     }
   }
 }
