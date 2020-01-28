@@ -1498,6 +1498,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             Registers.AX = (ushort)btrieveFilePointer;
             Registers.DX = ushort.MaxValue;
+
+
+            //Setup Pointers
+            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvfileStruct.Size);
+            var btvFileName = Module.Memory.AllocateVariable(null, (ushort)btrieveFilename.Length);
+            var btvDataPointer = Module.Memory.AllocateVariable(null, recordLength);
+
+            var newBtvStruct = new BtvfileStruct {filenam = btvFileName, reclen = recordLength, data = btvDataPointer};
+            BtrievePointerDictionaryNew.Add(btvFileStructPointer, btrieveFile);
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
         }
 
         /// <summary>
