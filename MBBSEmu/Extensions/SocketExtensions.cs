@@ -4,6 +4,11 @@ namespace MBBSEmu.Extensions
 {
     static class SocketExtensions
     {
+        /// <summary>
+        ///     Fast routine to determine if a socket is indeed still connected or not
+        /// </summary>
+        /// <param name="socket"></param>
+        /// <returns></returns>
         public static bool IsConnected(this Socket socket)
         {
             try

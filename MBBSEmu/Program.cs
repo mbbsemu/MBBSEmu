@@ -6,14 +6,16 @@ using MBBSEmu.Module;
 using MBBSEmu.Telnet;
 using NLog;
 using System;
+using System.IO;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu
 {
     class Program
     {
-        private static ILogger _logger = ServiceResolver.GetService<ILogger>();
+        private static readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
 
         static void Main(string[] args)
         {
@@ -30,25 +32,7 @@ namespace MBBSEmu
                 {
                     case "-DBRESET":
                     {
-                        _logger.Info("Resetting Database...");
-                        var acct = ServiceResolver.GetService<IAccountRepository>();
-                        if (acct.TableExists())
-                            acct.DropTable();
-
-                        acct.CreateTable();
-                        var sysopUserId = acct.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
-                        
-                        var keys = ServiceResolver.GetService<IAccountKeyRepository>();
-
-                        if(keys.TableExists())
-                            keys.DropTable();
-                        
-                        keys.CreateTable();
-                        keys.InsertAccountKey(sysopUserId, "DEMO");
-                        keys.InsertAccountKey(sysopUserId, "NORMAL");
-                        keys.InsertAccountKey(sysopUserId, "SUPER");
-                        keys.InsertAccountKey(sysopUserId, "SYSOP");
-                        _logger.Info("Database Reset!");
+                        DatabaseReset();
                         break;
                     }
                     case "-APIREPORT":
@@ -85,6 +69,20 @@ namespace MBBSEmu
                 return;
             }
 
+            //Database Sanity Checks
+            var databaseFile = ServiceResolver.GetService<IConfigurationRoot>()["Database.File"];
+            if (string.IsNullOrEmpty(databaseFile))
+            {
+                _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
+                return;
+            }
+
+            if (!File.Exists(databaseFile))
+            {
+                _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
+                DatabaseReset();
+            }
+
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
             host.AddModule(module);
@@ -92,6 +90,29 @@ namespace MBBSEmu
             var server = ServiceResolver.GetService<ITelnetServer>();
 
             server.Start();
+        }
+
+        private static void DatabaseReset()
+        {
+            _logger.Info("Resetting Database...");
+            var acct = ServiceResolver.GetService<IAccountRepository>();
+            if (acct.TableExists())
+                acct.DropTable();
+
+            acct.CreateTable();
+            var sysopUserId = acct.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
+
+            var keys = ServiceResolver.GetService<IAccountKeyRepository>();
+
+            if (keys.TableExists())
+                keys.DropTable();
+
+            keys.CreateTable();
+            keys.InsertAccountKey(sysopUserId, "DEMO");
+            keys.InsertAccountKey(sysopUserId, "NORMAL");
+            keys.InsertAccountKey(sysopUserId, "SUPER");
+            keys.InsertAccountKey(sysopUserId, "SYSOP");
+            _logger.Info("Database Reset!");
         }
     }
 }

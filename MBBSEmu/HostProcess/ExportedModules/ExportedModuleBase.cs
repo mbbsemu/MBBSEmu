@@ -7,10 +7,10 @@ using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -34,6 +34,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
         private protected readonly PointerDictionary<BtrieveFile> BtrievePointerDictionary;
+        private protected readonly Dictionary<IntPtr16, BtrieveFile> BtrievePointerDictionaryNew;
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
@@ -53,6 +54,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary = new PointerDictionary<FileStream>();
             BtrievePointerDictionary = new PointerDictionary<BtrieveFile>();
             McvPointerDictionary = new PointerDictionary<McvFile>();
+            BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFile>();
         }
 
         /// <summary>
@@ -96,11 +98,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
-            for (var i = 0; i < spanToSearch.Length; i++)
+            foreach (var c in spanToSearch)
             {
-                if (spanToSearch[i] == character[0])
+                if (c == character[0])
                     return true;
             }
+
             return false;
         }
 

@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.Memory;
 using System;
+using System.Net.NetworkInformation;
 
 namespace MBBSEmu.HostProcess.Structs
 {
@@ -87,6 +88,8 @@ namespace MBBSEmu.HostProcess.Structs
         }
 
         private byte[] _btvfileStruct = new byte[192];
+
+        public const ushort Size = 192;
 
         public ReadOnlySpan<byte> ToSpan() => _btvfileStruct;
 
