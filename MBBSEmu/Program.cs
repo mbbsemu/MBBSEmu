@@ -61,6 +61,12 @@ namespace MBBSEmu
                 return;
             }
 
+            if (!File.Exists("BBSGEN.DAT"))
+            {
+                _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
+                File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
+            }
+
             var module = new MbbsModule(sInputModule, sInputPath);
             if (bApiReport)
             {

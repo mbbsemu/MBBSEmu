@@ -33,7 +33,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
-        private protected readonly PointerDictionary<BtrieveFile> BtrievePointerDictionary;
         private protected readonly Dictionary<IntPtr16, BtrieveFile> BtrievePointerDictionaryNew;
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
@@ -52,7 +51,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary = channelDictionary;
 
             FilePointerDictionary = new PointerDictionary<FileStream>();
-            BtrievePointerDictionary = new PointerDictionary<BtrieveFile>();
             McvPointerDictionary = new PointerDictionary<McvFile>();
             BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFile>();
         }

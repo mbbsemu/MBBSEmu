@@ -5,7 +5,7 @@ namespace MBBSEmu.Memory
     /// <summary>
     ///     Represents an Int16:Int16 Pointer
     /// </summary>
-    public class IntPtr16
+    public class IntPtr16 : IEquatable<IntPtr16>
     {
         public ushort Segment
         {
@@ -63,5 +63,28 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <returns></returns>
         public override string ToString() => $"{Segment:X4}:{Offset:X4}";
+
+        public bool Equals(IntPtr16 other)
+        {
+            if (other == null)
+                return false;
+
+            if (other.Segment != Segment)
+                return false;
+
+            if (other.Offset != Offset)
+                return false;
+
+            return true;
+        }
+
+        public override bool Equals(object obj) => Equals(obj as IntPtr16);
+
+        public override int GetHashCode()
+        {
+            return Offset.GetHashCode() ^ Segment.GetHashCode();
+        }
+
+        public static IntPtr16 Empty => new IntPtr16(0, 0);
     }
 }

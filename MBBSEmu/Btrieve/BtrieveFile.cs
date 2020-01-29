@@ -12,15 +12,19 @@ namespace MBBSEmu.Btrieve
 
         public string FileName;
         public ushort RecordCount;
+        public ushort MaxRecordLength;
         public ushort RecordLength;
-
+        public int RecordBaseOffset;
         public ushort CurrentRecordNumber;
-        public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + 0x206;
+        public ushort PageSize;
+        public ushort PageCount;
+
+        public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + RecordBaseOffset;
 
         private readonly byte[] _btrieveFileContent;
         private readonly List<byte[]> _btrieveRecords;
 
-        public BtrieveFile(string fileName, string path, ushort recordLength)
+        public BtrieveFile(string fileName, string path, ushort maxRecordLength)
         {
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -35,24 +39,20 @@ namespace MBBSEmu.Btrieve
             {
                 _logger.Warn($"Unable to locate existing btrieve file {FileName}, simulating creation of a new one");
                 _btrieveRecords = new List<byte[]>();
-                RecordLength = recordLength;
+                MaxRecordLength = maxRecordLength;
                 RecordCount = 0;
                 return;
             }
+
+            MaxRecordLength = maxRecordLength;
 
             _btrieveFileContent = File.ReadAllBytes($"{path}{FileName}");
 #if DEBUG
             _logger.Info($"Opened {fileName} and read {_btrieveFileContent.Length} bytes");
             _logger.Info("Parsing Header...");
 #endif
-            RecordLength = recordLength;
-            //RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
-            RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
-#if DEBUG
-            _logger.Info($"Record Length: {RecordLength}");
-            _logger.Info($"Record Count: {RecordCount}");
-            _logger.Info("Loading Records...");
-#endif 
+            ParseHeader();
+
             _btrieveRecords = new List<byte[]>(RecordCount);
 
             if (RecordCount > 0)
@@ -68,18 +68,50 @@ namespace MBBSEmu.Btrieve
 
         }
 
+        private void ParseHeader()
+        {
+            
+            RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
+            RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
+            PageSize = BitConverter.ToUInt16(_btrieveFileContent, 0x08);
+            PageCount = BitConverter.ToUInt16(_btrieveFileContent, 0x20);
+#if DEBUG
+            _logger.Info($"Max Record Length: {MaxRecordLength}");
+            _logger.Info($"Page Size: {PageSize}");
+            _logger.Info($"Page Count: {PageCount}");
+            _logger.Info($"Record Length: {RecordLength}");
+            _logger.Info($"Record Count: {RecordCount}");
+            _logger.Info("Loading Records...");
+#endif 
+        }
+
+
         private void LoadRecords()
         {
-            for (ushort i = 0; i < RecordCount; i++)
+            var recordsLoaded = 0;
+            //Starting at 1, since the first page is the header
+            for (var i = 1; i <= PageCount; i++)
             {
-                CurrentRecordNumber = i;
-                var recordArray = new byte[RecordLength];
-                Array.Copy(_btrieveFileContent, CurrentRecordOffset, recordArray, 0, RecordLength);
-                _btrieveRecords.Add(recordArray);
-            }
+                var pageOffset = (PageSize * i + 6);
+                var recordsInPage = (PageSize / RecordLength);
 
+                //Not a data page?
+                if (_btrieveFileContent[pageOffset - 1] != 0x80)
+                    continue;
+
+                for (var j = 0; j < recordsInPage; j++)
+                {
+                    if (recordsLoaded == RecordCount)
+                        break;
+
+                    var recordArray = new byte[RecordLength];
+                    Array.Copy(_btrieveFileContent, pageOffset + (RecordLength * j), recordArray, 0, RecordLength);
+                    _btrieveRecords.Add(recordArray);
+                    recordsLoaded++;
+                }
+            }
 #if DEBUG
-            _logger.Info($"Loaded {CurrentRecordNumber} records. Resetting cursor to 0");
+            _logger.Info($"Loaded {recordsLoaded} records. Resetting cursor to 0");
 #endif
             CurrentRecordNumber = 0;
         }
@@ -92,8 +124,14 @@ namespace MBBSEmu.Btrieve
 
         public ushort StepNext()
         {
+            if (CurrentRecordNumber + 1 >= _btrieveRecords.Count)
+                return 0;
+
             CurrentRecordNumber++;
 
+#if DEBUG
+            _logger.Info($"New Record Offset: 0x{CurrentRecordOffset:X4}");
+#endif
             return 1;
         }
 

@@ -27,8 +27,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private IntPtr16 _currentMcvFile;
         private readonly Queue<IntPtr16> _previousMcvFile;
 
-        private BtrieveFile _currentBtrieveFile;
-        private BtrieveFile _previousBtrieveFile;
+        private IntPtr16 _currentBtrieveFile;
+        private readonly Queue<IntPtr16> _previousBtrieveFile;
 
         private readonly Dictionary<byte[], IntPtr16> _textVariables = new Dictionary<byte[], IntPtr16>();
 
@@ -48,6 +48,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _margnPointers = new List<IntPtr16>();
             _inputCurrentCommand = 0;
             _previousMcvFile = new Queue<IntPtr16>(10);
+            _previousBtrieveFile = new Queue<IntPtr16>(10);
             //Setup Memory Spaces
             Module.Memory.AllocateVariable("PRFBUF", 0x2000); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
@@ -68,9 +69,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("VDAPTR", 0x4);
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
-            Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
+            
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
+
+            //Setup Generic User Database
+            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
+            var btvFileName = Module.Memory.AllocateVariable(null, 11); //BBSGEN.DAT\0
+            var btvDataPointer = Module.Memory.AllocateVariable(null, 8192); //GENSIZ -- Defined in MAJORBBS.H
+
+            var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
+            BtrievePointerDictionaryNew.Add(btvFileStructPointer, new BtrieveFile("BBSGEN.DAT", Directory.GetCurrentDirectory(), 8192));
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
+
+            var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
+            Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
         }
 
         /// <summary>
@@ -517,6 +530,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 1101:
                     stpbtvl();
                     break;
+                case 573:
+                    strcmp();
+                    break;
+                case 151:
+                    curusr();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -670,7 +689,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var limit = GetParameter(4);
 
             using var inputBuffer = new MemoryStream();
-            inputBuffer.Write(Module.Memory.GetArray(sourcePointer, limit));
+            var potentialString = Module.Memory.GetArray(sourcePointer, limit);
+            for (var i = 0; i < limit; i++)
+            {
+                if (potentialString[i] == 0x0)
+
+                    break;
+                inputBuffer.WriteByte(potentialString[i]);
+            }
 
             //If the value read is less than the limit, it'll be padded with null characters
             //per the MajorBBS Development Guide
@@ -680,7 +706,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
 
 #if DEBUG
-            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
+            _logger.Info($"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
@@ -1480,34 +1506,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void opnbtv()
         {
             var btrieveFilenamePointer = GetParameterPointer(0);
-            var recordLength = GetParameter(2);
-
+            var maxRecordLength = GetParameter(2);
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
-            
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
-
-            var btrieveFile = new BtrieveFile(fileName, Module.ModulePath, recordLength);
-
-            var btrieveFilePointer = BtrievePointerDictionary.Allocate(btrieveFile);
-
-            //Set it as current by default
-            _currentBtrieveFile = BtrievePointerDictionary[btrieveFilePointer];
-
-#if DEBUG
-            _logger.Info($"Opened file {fileName} and allocated it to {ushort.MaxValue:X4}:{btrieveFilePointer:X4}");
-#endif
-            Registers.AX = (ushort)btrieveFilePointer;
-            Registers.DX = ushort.MaxValue;
-
+            var btrieveFile = new BtrieveFile(fileName, Module.ModulePath, maxRecordLength);
 
             //Setup Pointers
-            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvfileStruct.Size);
-            var btvFileName = Module.Memory.AllocateVariable(null, (ushort)btrieveFilename.Length);
-            var btvDataPointer = Module.Memory.AllocateVariable(null, recordLength);
+            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
+            var btvFileNamePointer = Module.Memory.AllocateVariable(null, (ushort) btrieveFilename.Length);
+            var btvDataPointer = Module.Memory.AllocateVariable(null, maxRecordLength);
 
-            var newBtvStruct = new BtvfileStruct {filenam = btvFileName, reclen = recordLength, data = btvDataPointer};
+            var newBtvStruct = new BtvFileStruct {filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer};
             BtrievePointerDictionaryNew.Add(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
+            Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
+            _currentBtrieveFile = btvFileStructPointer;
+
+#if DEBUG
+            _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
+#endif
+            Registers.AX = btvFileStructPointer.Offset;
+            Registers.DX = btvFileStructPointer.Segment;
         }
 
         /// <summary>
@@ -1521,12 +1540,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilePointer = GetParameterPointer(0);
 
             if (_currentBtrieveFile != null)
-                _previousBtrieveFile = _currentBtrieveFile;
+                _previousBtrieveFile.Enqueue(_currentBtrieveFile);
 
-            _currentBtrieveFile = BtrievePointerDictionary[btrieveFilePointer.Offset];
+            _currentBtrieveFile = btrieveFilePointer;
 
 #if DEBUG
-            _logger.Info($"Setting current Btrieve file to {_currentBtrieveFile.FileName} ({btrieveFilePointer})");
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+            var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
+            _logger.Info($"Setting current Btrieve file to {btvFileName} ({btrieveFilePointer})");
 #endif
         }
 
@@ -1545,24 +1566,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
             var stpopt = GetParameter(2);
 
+            var btrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
             ushort resultCode = 0;
             switch (stpopt)
             {
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
-                    resultCode = _currentBtrieveFile.StepFirst();
+                    resultCode = btrieveFile.StepFirst();
                     break;
                 case (ushort)EnumBtrieveOperationCodes.StepNext:
-                    resultCode = _currentBtrieveFile.StepNext();
+                    resultCode = btrieveFile.StepNext();
                     break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
             }
 
             //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+            var btvDataPointer = btvStruct.data;
+            Module.Memory.SetArray(btvStruct.data, btrieveFile.GetRecord());
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
+#endif
             if (resultCode > 0)
             {
                 //See if the segment lives on the host or in the module
-                Module.Memory.SetArray(btrieveRecordPointer, _currentBtrieveFile.GetRecord());
+                Module.Memory.SetArray(btrieveRecordPointer, btrieveFile.GetRecord());
             }
 
             Registers.AX = resultCode;
@@ -1580,18 +1610,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void rstbtv()
         {
-            if (_previousBtrieveFile == null)
+            if (_previousBtrieveFile.Count == 0)
             {
-#if DEBUG
-                _logger.Info($"Previous Btrieve file == null, ignoring");
-#endif
+                _logger.Warn($"Previous Btrieve file == null, ignoring");
                 return;
             }
 
-            _currentBtrieveFile = _previousBtrieveFile;
+            _currentBtrieveFile = _previousBtrieveFile.Dequeue();
 
 #if DEBUG
-            _logger.Info($"Set current Btreieve file to {_previousBtrieveFile.FileName}");
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+            var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
+            _logger.Info($"Set current Btreieve file to {btvFileName}");
 #endif
         }
 
@@ -1605,16 +1635,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveRecordPointerPointer = GetParameterPointer(0);
 
-            //See if the segment lives on the host or in the module
-            using var btrieveRecord = new MemoryStream();
-            btrieveRecord.Write(Module.Memory.GetArray(btrieveRecordPointerPointer,
-                _currentBtrieveFile.RecordLength));
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
-            _currentBtrieveFile.Update(btrieveRecord.ToArray());
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.RecordLength);
+
+            currentBtrieveFile.Update(dataToWrite.ToArray());
 
 #if DEBUG
             _logger.Info(
-                $"Updated current Btrieve record ({_currentBtrieveFile.CurrentRecordNumber}) with {btrieveRecord.Length} bytes");
+                $"Updated current Btrieve record ({currentBtrieveFile.CurrentRecordNumber}) with {dataToWrite.Length} bytes");
 #endif
         }
 
@@ -1628,16 +1657,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
-            //See if the segment lives on the host or in the module
-            using var btrieveRecord = new MemoryStream();
-            btrieveRecord.Write(Module.Memory.GetArray(btrieveRecordPointer,
-                    _currentBtrieveFile.RecordLength));
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, currentBtrieveFile.RecordLength);
 
-            _currentBtrieveFile.Insert(btrieveRecord.ToArray());
+            currentBtrieveFile.Insert(dataToWrite.ToArray());
 
 #if DEBUG
             _logger.Info(
-                $"Inserted Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {btrieveRecord.Length} bytes");
+                $"Inserted Btrieve record at {currentBtrieveFile.CurrentRecordNumber} with {dataToWrite.Length} bytes");
 #endif
         }
 
@@ -1651,14 +1678,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveRecordPointer = GetParameterPointer(0);
             var recordLength = GetParameter(2);
-
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            _currentBtrieveFile.Insert(record.ToArray(), true);
+            currentBtrieveFile.Insert(record.ToArray(), true);
 
 #if DEBUG
             _logger.Info(
-                $"Inserted Variable Btrieve record at {_currentBtrieveFile.CurrentRecordNumber} with {recordLength} bytes");
+                $"Inserted Variable Btrieve record at {currentBtrieveFile.CurrentRecordNumber} with {recordLength} bytes");
 #endif
         }
 
@@ -2002,12 +2029,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var obtopt = GetParameter(5);
             var lockType = GetParameter(6);
 
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
             ushort result = 0;
             switch (obtopt)
             {
                 //GetEqual
                 case 5:
-                    result = (ushort)(_currentBtrieveFile.GetRecordByKey(Module.Memory.GetString(keySegment, keyOffset)) ? 1 : 0);
+                    result = (ushort)(currentBtrieveFile.GetRecordByKey(Module.Memory.GetString(keySegment, keyOffset)) ? 1 : 0);
                     break;
             }
 
@@ -3289,14 +3318,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
             var stpopt = GetParameter(2);
 
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
             ushort resultCode = 0;
             switch (stpopt)
             {
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
-                    resultCode = _currentBtrieveFile.StepFirst();
+                    resultCode = currentBtrieveFile.StepFirst();
                     break;
                 case (ushort)EnumBtrieveOperationCodes.StepNext:
-                    resultCode = _currentBtrieveFile.StepNext();
+                    resultCode = currentBtrieveFile.StepNext();
                     break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
@@ -3305,10 +3336,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = resultCode;
 
             //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+            var btvDataPointer = btvStruct.data;
+            Module.Memory.SetArray(btvStruct.data, currentBtrieveFile.GetRecord());
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
+#endif
             if (btrieveRecordPointer.Segment != 0 && btrieveRecordPointer.Offset != 0 && resultCode > 0)
             {
                 //See if the segment lives on the host or in the module
-                Module.Memory.SetArray(btrieveRecordPointer, _currentBtrieveFile.GetRecord());
+                Module.Memory.SetArray(btrieveRecordPointer, currentBtrieveFile.GetRecord());
 
 #if DEBUG
                 _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointer}, AX: {resultCode}");
@@ -3321,6 +3359,63 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Performed Btrieve Step {(EnumBtrieveOperationCodes)stpopt}, AX: {resultCode}");
 #endif
 
+        }
+
+        /// <summary>
+        ///     Compares the C string str1 to the C string str2
+        ///
+        ///     Signature: int strcmp ( const char * str1, const char * str2 )
+        /// </summary>
+        private void strcmp()
+        {
+
+            var string1Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
+
+            var string1 = Module.Memory.GetString(string1Pointer);
+            var string2 = Module.Memory.GetString(string2Pointer);
+
+            if (string1.Length != string2.Length)
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+#if DEBUG
+            _logger.Info($"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
+#endif
+
+            for (var i = 0; i < string1.Length; i++)
+            {
+                if (string1[i] > string2[i])
+                {
+                    Registers.AX = 1;
+                    return;
+                }
+
+                if (string1[i] < string2[i])
+                {
+                    Registers.AX = unchecked((ushort) -1);
+                    return;
+                }
+            }
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Change to a different user number
+        ///
+        ///     Signature: void curusr(int newunum)
+        /// </summary>
+        public void curusr()
+        {
+            var newUserNumber = GetParameter(0);
+            _channelNumber = newUserNumber;
+
+#if DEBUG
+            _logger.Info($"Setting Current User to {newUserNumber}");
+#endif
         }
     }
 }
