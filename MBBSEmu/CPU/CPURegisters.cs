@@ -191,11 +191,6 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort IP { get; set; }
 
-        /// <summary>
-        ///     Machine Status Word
-        /// </summary>
-        public int MSW { get; set; }
-
         public CpuRegisters()
         {
             F = new CpuFlags();
@@ -399,6 +394,24 @@ namespace MBBSEmu.CPU
             DX = BitConverter.ToUInt16(regs.Slice(6, 2));
             SI = BitConverter.ToUInt16(regs.Slice(8, 2));
             DI = BitConverter.ToUInt16(regs.Slice(10, 2));
+        }
+
+        /// <summary>
+        ///     Sets all Register values to Zero
+        /// </summary>
+        public void Zero()
+        {
+            AX = 0;
+            BX = 0;
+            CX = 0;
+            DX = 0;
+            SI = 0;
+            DI = 0;
+            IP = 0;
+            CS = 0;
+            DS = 0;
+            ES = 0;
+            SS = 0;
         }
     }
 }

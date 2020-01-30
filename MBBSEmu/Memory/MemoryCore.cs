@@ -1,6 +1,5 @@
 ﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using NLog;
 using System;
@@ -161,14 +160,20 @@ namespace MBBSEmu.Memory
 
         public byte GetByte(ushort segment, ushort offset)
         {
-            return _memorySegments[segment][offset];
+            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
+                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
+
+            return selectedSegment[offset];
         }
 
         public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         public ushort GetWord(ushort segment, ushort offset)
         {
-            return BitConverter.ToUInt16(_memorySegments[segment], offset);
+            if(!_memorySegments.TryGetValue(segment, out var selectedSegment))
+                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
+
+            return BitConverter.ToUInt16(selectedSegment, offset);
         }
 
         public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
@@ -176,7 +181,10 @@ namespace MBBSEmu.Memory
 
         public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
-            Span<byte> segmentSpan = _memorySegments[segment];
+            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
+                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
+
+            ReadOnlySpan<byte> segmentSpan = selectedSegment;
             return segmentSpan.Slice(offset, count);
         }
 
@@ -192,8 +200,11 @@ namespace MBBSEmu.Memory
         /// <param name="stripNull"></param>
         /// <returns></returns>
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
-        { 
-            Span<byte> segmentSpan = _memorySegments[segment];
+        {
+            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
+                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
+
+            ReadOnlySpan<byte> segmentSpan = selectedSegment;
 
             for (var i = 0; i < ushort.MaxValue; i++)
             {

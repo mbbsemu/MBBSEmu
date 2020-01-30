@@ -3,6 +3,7 @@ using MBBSEmu.Disassembler;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.Module
@@ -43,7 +44,11 @@ namespace MBBSEmu.Module
 
         public PointerDictionary<RealTimeRoutine> RtihdlrRoutines;
 
+        public List<TextVariable> TextVariables;
+
         public readonly IMemoryCore Memory;
+
+        public Queue<ExecutionUnit> ExecutionUnits;
 
         /// <summary>
         ///     Description of the Module as Defined by REGISTER_MODULE
@@ -82,7 +87,8 @@ namespace MBBSEmu.Module
             EntryPoints = new Dictionary<string, IntPtr16>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
-
+            TextVariables = new List<TextVariable>();
+            ExecutionUnits = new Queue<ExecutionUnit>(2);
             Memory = new MemoryCore();
 
             //Setup _INIT_ Entrypoint

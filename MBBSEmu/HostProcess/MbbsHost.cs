@@ -9,6 +9,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -103,9 +104,10 @@ namespace MBBSEmu.HostProcess
                     }
                 }
 
+                //Don't fire these events while the system is adding a module, prevents a race condition
                 if (!_isAddingModule)
                 {
-                    //Process Channels
+                    //Process channel events
                     foreach (var s in _channelDictionary.Values)
                     {
                         switch (s.SessionState)
@@ -223,19 +225,27 @@ namespace MBBSEmu.HostProcess
                         }
                     }
 
-                    //We don't want to run these while a module is still being kicked off
+                    //Check for any rtkick routines
                     foreach (var m in _modules.Values)
                     {
                         if (m.RtkickRoutines.Count == 0) continue;
 
-                        foreach (var r in m.RtkickRoutines)
+                        foreach (var r in m.RtkickRoutines.ToList())
                         {
-                            if (r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
+                            if (!r.Value.Executed && r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
                             {
                                 Run(m.ModuleIdentifier, m.EntryPoints[$"RTKICK-{r.Key}"], ushort.MaxValue);
-                                r.Value.Elapsed.Restart();
+                                r.Value.Elapsed.Stop();
+                                r.Value.Executed = true;
+                            }
+
+                            if (r.Value.Executed)
+                            {
+                                m.EntryPoints.Remove($"RTKICK-{r.Key}");
+                                m.RtkickRoutines.Remove(r.Key);
                             }
                         }
+
                     }
 
                     //Run rtihdlr routines

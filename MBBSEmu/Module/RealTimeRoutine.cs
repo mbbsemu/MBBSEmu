@@ -7,6 +7,8 @@ namespace MBBSEmu.Module
     {
         public readonly ushort Delay;
         public Stopwatch Elapsed;
+        public bool Executed;
+
         public RealTimeRoutine(ushort segment, ushort offset, ushort delay = 0) : base(segment, offset)
         {
             Delay = delay;

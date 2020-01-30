@@ -6,11 +6,12 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
 {
-    public class CpuCore
+    public class CpuCore : ICpuCore
     {
         protected static readonly ILogger _logger;
 
@@ -68,7 +69,7 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort Pop()
+        private ushort Pop()
         {
             var value = Memory.GetWord(Registers.SS, (ushort) (Registers.SP + 1));
 #if DEBUG
@@ -84,7 +85,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
 
 #if DEBUG
-            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+           // _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }
@@ -105,18 +106,18 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0x6641)
-               //Debugger.Break();
+            //if(Registers.IP == 0xB3B)
+              //Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
             {
                 //Instructions that will set the IP -- we just return
                 case Mnemonic.Retf:
-                    Op_retf();
+                    Op_Retf();
                     return;
                 case Mnemonic.Ret:
-                    Op_ret();
+                    Op_Ret();
                     return;
                 case Mnemonic.Je:
                     Op_Je();
@@ -276,6 +277,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Rcl:
                     Op_Rcl();
+                    break;
+                case Mnemonic.Not:
+                    Op_Not();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -989,14 +993,14 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Op_retf()
+        private void Op_Retf()
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Op_ret()
+        private void Op_Ret()
         {
             Registers.IP = Pop();
         }
@@ -1228,7 +1232,7 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Op_Jle()
+        private void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
             if (Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF)
@@ -1349,23 +1353,21 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort Op_Test_8(byte destination, byte source)
+        private void Op_Test_8(byte destination, byte source)
         {
             destination &= source;
             Registers.F.Evaluate<byte>(EnumFlags.ZF, destination);
             Registers.F.Evaluate<byte>(EnumFlags.SF, destination);
             Registers.F.Evaluate<byte>(EnumFlags.PF, destination);
-            return destination;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort Op_Test_16(ushort destination, ushort source)
+        private void Op_Test_16(ushort destination, ushort source)
         {
             destination &= source;
             Registers.F.Evaluate<ushort>(EnumFlags.ZF, destination);
             Registers.F.Evaluate<ushort>(EnumFlags.SF, destination);
             Registers.F.Evaluate<ushort>(EnumFlags.PF, destination);
-            return destination;
         }
 
         /// <summary>
@@ -1844,6 +1846,16 @@ namespace MBBSEmu.CPU
             {
                 Registers.F.ClearFlag(EnumFlags.CF);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Not()
+        {
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var operationSize = GetCurrentOperationSize();
+            var result = (ushort)~destination;
+
+            SaveResult(result, operationSize);
         }
     }
 }

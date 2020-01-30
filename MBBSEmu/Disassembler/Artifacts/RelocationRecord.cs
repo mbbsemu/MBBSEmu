@@ -43,7 +43,7 @@ namespace MBBSEmu.Disassembler.Artifacts
                             BitConverter.ToUInt16(Data, 4), BitConverter.ToUInt16(Data, 6), 0);
                     case EnumRecordsFlag.OSFIXUP:
                     case EnumRecordsFlag.OSFIXUPAdditive:
-                        _logger.Warn($"Ignoring OSFIXUP Flag");
+                        //_logger.Warn($"Ignoring OSFIXUP Flag");
                         return null;
                     default:
                         _logger.Warn($"Unknown Relocation Flag Value: {Flag} ({Convert.ToString((byte)Flag, 2)})");
