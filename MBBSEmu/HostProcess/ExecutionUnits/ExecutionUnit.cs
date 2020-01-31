@@ -6,34 +6,38 @@ using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess.ExecutionUnits
 {
+    /// <summary>
+    ///     Represents a single execution unit, everything that is required for a portion of code within a module
+    ///     to be executed, including CPU, Memory, Registers, and Module Exports
+    /// </summary>
     public class ExecutionUnit
     {
         /// <summary>
         ///     Module dedicated CPU Core
         /// </summary>
-        public ICpuCore ModuleCpu { get; set; }
+        public readonly ICpuCore ModuleCpu;
 
         /// <summary>
         ///     Module dedicated CPU Registers
         /// </summary>
-        public CpuRegisters ModuleCpuRegisters { get; set; }
+        public readonly CpuRegisters ModuleCpuRegisters;
 
         /// <summary>
         ///     Module Memory Space
         /// </summary>
-        public IMemoryCore ModuleMemory { get; set; }
+        public readonly IMemoryCore ModuleMemory;
 
         /// <summary>
         ///     Exported Modules to be called from the CPU
         /// </summary>
-        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
+        public readonly Dictionary<ushort, IExportedModule> ExportedModuleDictionary;
 
-        public ExecutionUnit(IMemoryCore moduleMemory)
+        public ExecutionUnit(IMemoryCore moduleMemory, Dictionary<ushort, IExportedModule> exportedModuleDictionary)
         {
             ModuleCpu = new CpuCore();
             ModuleCpuRegisters = new CpuRegisters();
             ModuleMemory = moduleMemory;
-            ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>();
+            ExportedModuleDictionary = exportedModuleDictionary;
 
             ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate);
         }
@@ -49,6 +53,9 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
 
         public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
+            //Reset Registers to Startup State for the CPU
+            ModuleCpu.Reset();
+
             //Reset Registers
             ModuleCpuRegisters.CS = entryPoint.Segment;
             ModuleCpuRegisters.IP = entryPoint.Offset;
@@ -59,7 +66,6 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 //Push Parameters
                 while (initialStackValues.TryDequeue(out var valueToPush))
                     ModuleCpu.Push(valueToPush);
-
             }
 
             //Simulating a CALL FAR
@@ -78,6 +84,10 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             //Run until complete
             while (!ModuleCpuRegisters.Halt)
                 ModuleCpu.Tick();
+
+            //Update Session State
+            if (channelNumber != ushort.MaxValue && initialStackValues == null)
+                ExportedModuleDictionary[Majorbbs.Segment].UpdateSession(channelNumber);
 
             //Return Registers
             return ModuleCpuRegisters;

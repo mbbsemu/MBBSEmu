@@ -11,15 +11,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions &amp; properties that are part of the Galacticomm
     ///     Global Software Breakout Library (GALGSBL.H). 
     /// </summary>
-    public class Galsbl : ExportedModuleBase, IExportedModule
+    public class Galgsbl : ExportedModuleBase, IExportedModule
     {
+        /// <summary>
+        ///     Segment Identifier for Relocation
+        /// </summary>
+        /// <returns></returns>
+        public const ushort Segment = 0xFFFE;
 
-        public Galsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        public Galgsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
             var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
             Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes($"{_configuration["GSBL.Activation"]}\0"));
 
         }
+
         public void UpdateSession(ushort channel)
         {
 

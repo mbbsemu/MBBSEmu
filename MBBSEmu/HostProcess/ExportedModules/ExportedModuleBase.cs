@@ -9,6 +9,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -41,6 +42,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public CpuRegisters Registers;
         public MbbsModule Module;
+
+        private protected ushort ChannelNumber;
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
@@ -347,6 +350,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             _logger.Warn("Unable to find String terminator");
             return inputArray;
+        }
+
+        private protected ReadOnlySpan<byte> ProcessTextVariables(ReadOnlySpan<byte> outputBuffer)
+        {
+            using var newOutputBuffer = new MemoryStream(outputBuffer.Length * 2);
+            for (var i = 0; i < outputBuffer.Length; i++)
+            {
+                if (outputBuffer[i] != 0x1)
+                {
+                    newOutputBuffer.WriteByte(outputBuffer[i]);
+                    continue;
+                }
+
+                //Increment 3 Bytes
+                i += 3;
+
+                using var variableName = new MemoryStream();
+                //Get variable name
+                while (outputBuffer[i] != 0x1)
+                {
+                    variableName.WriteByte(outputBuffer[i]);
+                    i++;
+                }
+
+                i++;
+                //Get Variable Entry Point
+                var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
+                var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true);
+                var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
+                newOutputBuffer.Write(variableData);
+            }
+
+            return newOutputBuffer.ToArray();
         }
     }
 }

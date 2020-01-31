@@ -1,15 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
     public class Doscalls : ExportedModuleBase, IExportedModule
     {
+        /// <summary>
+        ///     Segment Identifier for Relocation
+        /// </summary>
+        /// <returns></returns>
+        public const ushort Segment = 0xFFFB;
+
         internal Doscalls(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
         }
@@ -27,7 +31,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
-            throw new NotImplementedException();
+            return;
         }
 
         public void UpdateSession(ushort channelNumber)

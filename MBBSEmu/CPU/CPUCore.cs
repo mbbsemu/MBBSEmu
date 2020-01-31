@@ -68,6 +68,27 @@ namespace MBBSEmu.CPU
             Push(ushort.MaxValue);
         }
 
+        /// <summary>
+        ///     Only Resets Register Values
+        /// </summary>
+        public void Reset()
+        {
+            STACK_SEGMENT = 0;
+            EXTRA_SEGMENT = ushort.MaxValue;
+
+            //Setup Registers
+            Registers.BP = STACK_BASE;
+            Registers.SP = STACK_BASE;
+            Registers.SS = STACK_SEGMENT;
+            Registers.ES = EXTRA_SEGMENT;
+            Registers.Halt = false;
+
+            //These two values are the final values popped off on the routine's last RETF
+            //Seeing a ushort.max for CS and IP tells the routine it's now done
+            Push(ushort.MaxValue);
+            Push(ushort.MaxValue);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ushort Pop()
         {
@@ -285,7 +306,7 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
-            Registers.IP += (ushort)_currentInstruction.ByteLength;
+            Registers.IP += (ushort)_currentInstruction.Length;
 #if DEBUG
             //_logger.InfoRegisters(this);
             //_logger.InfoStack(this);
@@ -468,7 +489,7 @@ namespace MBBSEmu.CPU
             if (Registers.CX == 0)
             {
                 //Continue with the next instruction
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
                 return;
             }
 
@@ -1180,7 +1201,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1193,7 +1214,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1206,7 +1227,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1242,7 +1263,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1256,7 +1277,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1270,7 +1291,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1285,7 +1306,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort) _currentInstruction.ByteLength;
+                Registers.IP += (ushort) _currentInstruction.Length;
             }
         }
 
@@ -1299,7 +1320,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1313,7 +1334,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1327,7 +1348,7 @@ namespace MBBSEmu.CPU
             }
             else
             {
-                Registers.IP += (ushort)_currentInstruction.ByteLength;
+                Registers.IP += (ushort)_currentInstruction.Length;
             }
         }
 
@@ -1649,7 +1670,7 @@ namespace MBBSEmu.CPU
                 {
                     //Far call to another Segment
                     Push(Registers.CS);
-                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
+                    Push((ushort) (Registers.IP + _currentInstruction.Length));
 
                     Registers.CS = _currentInstruction.FarBranchSelector;
                     Registers.IP = _currentInstruction.Immediate16;
@@ -1659,7 +1680,7 @@ namespace MBBSEmu.CPU
                 {
                     //We push CS:IP to the stack
                     Push(Registers.CS);
-                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
+                    Push((ushort) (Registers.IP + _currentInstruction.Length));
 
                     //Simulate an ENTER
                     //Set BP to the current stack pointer
@@ -1680,7 +1701,7 @@ namespace MBBSEmu.CPU
                 {
                     //We push CS:IP to the stack
                     //Push the IP of the **NEXT** instruction to the stack
-                    Push((ushort) (Registers.IP + _currentInstruction.ByteLength));
+                    Push((ushort) (Registers.IP + _currentInstruction.Length));
                     Registers.IP = _currentInstruction.FarBranch16;
                     return;
                 }

@@ -158,7 +158,7 @@ namespace MBBSEmu.HostProcess
                                         initialStackValues.Enqueue(s.Channel);
 
                                         var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor,
-                                            s.Channel,
+                                            s.Channel, true,
                                             initialStackValues);
 
                                         //Result replaces the character in the buffer
@@ -276,10 +276,6 @@ namespace MBBSEmu.HostProcess
             
             _isAddingModule = true;
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
-            //Verify that the imported functions are all supported by MbbsEmu
-
-            //if (!VerifyImportedFunctions())
-            //    throw new Exception("Module is currently unsupported by MbbEmu! :(");
 
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
@@ -291,9 +287,16 @@ namespace MBBSEmu.HostProcess
                 _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
             }
 
+            //Setup Exported Modules
+            module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
+            module.ExportedModuleDictionary.Add(Galgsbl.Segment, GetFunctions(module, "GALGSBL"));
+            module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
+            module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
+            module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
+
             //Add it to the Module Dictionary
             _modules[module.ModuleIdentifier] = module;
-
+            
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
@@ -325,62 +328,18 @@ namespace MBBSEmu.HostProcess
         /// <param name="routine"></param>
         /// <param name="channelNumber"></param>
         /// <param name="initialStackValues"></param>
-        private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, Queue<ushort> initialStackValues = null)
+        private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
-            var module = _modules[moduleName];
-
-            //Setup Memory for User Objects in the Module Memory if Required
-            if (channelNumber != ushort.MaxValue)
-                _channelDictionary[channelNumber].StatusChange = false;
-
-            var cpuRegisters = new CpuRegisters
-            {
-                CS = routine.Segment, 
-                IP = routine.Offset
-            };
-
-            //Set Host Process Imported Methods
-            var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
-            majorbbsHostFunctions.SetState(cpuRegisters, channelNumber);
-
-            var galsblHostFunctions = GetFunctions(module, "GALGSBL");
-            galsblHostFunctions.SetState(cpuRegisters, channelNumber);
-
-            //Set CPU to Startup State
-            _cpu.Reset(module.Memory, cpuRegisters, delegate(ushort ordinal, ushort functionOrdinal)
-            {
-                return ordinal switch
-                {
-                    0xFFFF => majorbbsHostFunctions.Invoke(functionOrdinal),
-                    0xFFFE => galsblHostFunctions.Invoke(functionOrdinal),
-                    _ => throw new Exception($"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[ordinal].Name}")
-                };
-            });
-
-            //Check for Parameters for BTUCHI
-            if (initialStackValues != null)
-            {
-                //Push Parameters
-                while(initialStackValues.TryDequeue(out var valueToPush))
-                    _cpu.Push(valueToPush);
-
-                //Set stack to simulate CALL FAR
-                cpuRegisters.BP = cpuRegisters.SP;
-                _cpu.Push(ushort.MaxValue); //CS
-                _cpu.Push(ushort.MaxValue); //IP
-            }
-
-            //Run as long as the CPU still has code to execute and the host is still running
-            while (!_cpu.Registers.Halt)
-                _cpu.Tick();
-
-            //Update the session with any information from memory
-            if (channelNumber != ushort.MaxValue && initialStackValues == null)
-                majorbbsHostFunctions.UpdateSession(channelNumber);
-
-            return cpuRegisters.AX;
+            var resultRegisters = _modules[moduleName].Execute(routine, channelNumber, simulateCallFar, initialStackValues);
+            return resultRegisters.AX;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="module"></param>
+        /// <param name="exportedModule"></param>
+        /// <returns></returns>
         private IExportedModule GetFunctions(MbbsModule module, string exportedModule)
         {
             var key = $"{module.ModuleIdentifier}-{exportedModule}";
@@ -390,10 +349,11 @@ namespace MBBSEmu.HostProcess
                 _exportedFunctions[key] = exportedModule switch
                 {
                     "MAJORBBS" => new Majorbbs(module, _channelDictionary),
-                    "GALGSBL" => new Galsbl(module, _channelDictionary),
+                    "GALGSBL" => new Galgsbl(module, _channelDictionary),
                     "DOSCALLS" => new Doscalls(module, _channelDictionary),
                     "GALME" => new Galme(module, _channelDictionary),
-                    _ => _exportedFunctions[key]
+                    "PHAPI" => new Phapi(module, _channelDictionary),
+                    _ => throw new Exception($"Unknown Exported Function: {exportedModule}")
                 };
 
                 functions = _exportedFunctions[key];
@@ -403,9 +363,9 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Patches all relocation information into the 
+        ///     Patches all relocation information into the byte code
         /// </summary>
-        /// <param name="moduleIdentifier"></param>
+        /// <param name="module"></param>
         private void PatchRelocation(MbbsModule module)
         {
             //Declare Host Functions
@@ -413,6 +373,7 @@ namespace MBBSEmu.HostProcess
             var galsblHostFunctions = GetFunctions(module, "GALGSBL");
             var doscallsHostFunctions = GetFunctions(module, "DOSCALLS");
             var galmeFunctions = GetFunctions(module, "GALME");
+            var phapiFunctions = GetFunctions(module, "PHAPI");
 
             foreach (var s in module.File.SegmentTable)
             {
@@ -439,6 +400,7 @@ namespace MBBSEmu.HostProcess
                                 "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
                                 "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
                                 "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
+                                "PHAPI" => phapiFunctions.Invoke(functionOrdinal, true),
                                 _ => throw new Exception(
                                     $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
                             };
@@ -448,9 +410,6 @@ namespace MBBSEmu.HostProcess
                             //32-Bit Pointer
                             if (relocationRecord.SourceType == 3)
                             {
-#if DEBUG
-                                //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
-#endif
                                 Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
                                 continue;
                             }
@@ -468,9 +427,6 @@ namespace MBBSEmu.HostProcess
                             if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
                                 result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
-#if DEBUG
-                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported value {result:X4}");
-#endif
                             Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
@@ -484,19 +440,9 @@ namespace MBBSEmu.HostProcess
                                     relocationRecord.TargetTypeValueTuple.Item4);
 
                                 Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
-
-#if DEBUG
-                                //_logger.Info(
-                               //     $"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref Pointer value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
-#endif
                                 break;
                             }
-
-#if DEBUG
-                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Internal Ref value {relocationRecord.TargetTypeValueTuple.Item2:X4}");
-#endif
-
-                                Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
+                            Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
                             break;
                         }
 
@@ -508,10 +454,11 @@ namespace MBBSEmu.HostProcess
 
                             var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
                             {
-                                "MAJORBBS" => (ushort) 0xFFFF,
-                                "GALGSBL" => (ushort) 0xFFFE,
-                                "PHAPI" => (ushort) 0xFFFD,
-                                "GALME" => (ushort) 0xFFFC,
+                                "MAJORBBS" => Majorbbs.Segment,
+                                "GALGSBL" => Galgsbl.Segment,
+                                "PHAPI" => Phapi.Segment,
+                                "GALME" => Galme.Segment,
+                                "DOSCALLS" => Doscalls.Segment,
                                 _ => throw new Exception(
                                     $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
 
@@ -522,9 +469,6 @@ namespace MBBSEmu.HostProcess
                             //32-Bit Pointer
                             if (relocationRecord.SourceType == 3)
                             {
-#if DEBUG
-                                //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Pointer {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
-#endif
                                 Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
                                 continue;
                             }
@@ -538,9 +482,7 @@ namespace MBBSEmu.HostProcess
                                 _ => throw new ArgumentOutOfRangeException(
                                     $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
                             };
-#if DEBUG
-                            //_logger.Info($"Patching {s.Ordinal:X4}:{relocationRecord.Offset:X4} with Imported Name value {relocationPointer.Segment:X4}:{relocationPointer.Offset:X4}");
-#endif
+
                             if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
                                 result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 

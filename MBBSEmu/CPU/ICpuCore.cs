@@ -13,6 +13,7 @@ namespace MBBSEmu.CPU
         void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
             CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate);
 
+        void Reset();
         void Tick();
 
         void Push(ushort value);

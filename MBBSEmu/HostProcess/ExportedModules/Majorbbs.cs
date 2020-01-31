@@ -10,7 +10,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -31,13 +30,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private IntPtr16 _currentBtrieveFile;
         private readonly Queue<IntPtr16> _previousBtrieveFile;
 
-        private ushort _channelNumber;
-
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
         private int _inputCurrentCommand;
 
         private int _outputBufferPosition;
+
+        /// <summary>
+        ///     Segment Identifier for Relocation
+        /// </summary>
+        /// <returns></returns>
+        public const ushort Segment = 0xFFFF;
 
         public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
             channelDictionary)
@@ -100,7 +103,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
             Registers = registers;
-            _channelNumber = channelNumber;
+            ChannelNumber = channelNumber;
 
             //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
@@ -111,7 +114,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
             var pointer = Module.Memory.GetVariable("USER");
-            pointer.Offset += (ushort)(_channelNumber * 41);
+            pointer.Offset += (ushort)(ChannelNumber * 41);
             Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
 
@@ -160,12 +163,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void UpdateSession(ushort channel)
         {
             //If the status wasn't set internally, then set it to the default 5
-            ChannelDictionary[_channelNumber].Status = !ChannelDictionary[_channelNumber].StatusChange
+            ChannelDictionary[ChannelNumber].Status = !ChannelDictionary[ChannelNumber].StatusChange
                 ? (ushort)5
                 : Module.Memory.GetWord(base.Module.Memory.GetVariable("STATUS"));
 
             var userPointer = Module.Memory.GetVariable("USER");
-            ChannelDictionary[_channelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment,
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment,
                 (ushort)(userPointer.Offset + (channel * 41)), 41));
         }
 
@@ -1180,7 +1183,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userChannel = GetParameter(0);
             var pointer = Module.Memory.GetVariable("PRFBUF");
-            ChannelDictionary[userChannel].DataToClient.Enqueue(Module.Memory.GetArray(pointer, (ushort)_outputBufferPosition).ToArray());
+
+            var outputBuffer = Module.Memory.GetArray(pointer, (ushort) _outputBufferPosition).ToArray();
+
+            if (Module.TextVariables.Count > 0)
+            {
+                var newBuffer = ProcessTextVariables(outputBuffer);
+                ChannelDictionary[userChannel].DataToClient.Enqueue(newBuffer.ToArray());
+            }
+            else
+            {
+                ChannelDictionary[userChannel].DataToClient.Enqueue(outputBuffer);
+            }
+            
             _outputBufferPosition = 0;
         }
 
@@ -1217,7 +1232,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 var pointer = Module.Memory.GetVariable("USER");
-                pointer.Offset += (ushort)(_channelNumber * 41);
+                pointer.Offset += (ushort)(ChannelNumber * 41);
                 Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
                 return Module.Memory.GetVariable("USRPTR").ToSpan();
             }
@@ -2033,10 +2048,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var textPointer = GetParameterPointer(0);
             var functionPointer = GetParameterPointer(2);
 
-            var textBytes = Module.Memory.GetString(textPointer);
+            var textBytes = Module.Memory.GetString(textPointer, true);
 
-            var newTextVariable = new TextVariable() { Pointer = functionPointer, Name = textBytes.ToArray()};
-            Module.TextVariables.Add(newTextVariable);
+            Module.TextVariables.Add(Encoding.ASCII.GetString(textBytes), functionPointer);
 
 #if DEBUG
             _logger.Info($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
@@ -2130,7 +2144,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 var pointer = Module.Memory.GetVariable("USER");
-                pointer.Offset += (ushort)(41 * _channelNumber);
+                pointer.Offset += (ushort)(41 * ChannelNumber);
                 return pointer.ToSpan();
             }
         }
@@ -2144,10 +2158,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                if (!Module.Memory.TryGetVariable($"VOLATILE-{_channelNumber}-POINTER", out var variablePointer))
+                if (!Module.Memory.TryGetVariable($"VOLATILE-{ChannelNumber}-POINTER", out var variablePointer))
                 {
-                    var volatileMemoryAddress = Module.Memory.AllocateVariable($"VOLATILE-{_channelNumber}", 0x3FFF);
-                    variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{_channelNumber}-POINTER", 0x4);
+                    var volatileMemoryAddress = Module.Memory.AllocateVariable($"VOLATILE-{ChannelNumber}", 0x3FFF);
+                    variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{ChannelNumber}-POINTER", 0x4);
                     Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
                 }
 
@@ -2625,10 +2639,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rstrin()
         {
-            ChannelDictionary[_channelNumber].rstrin();
+            ChannelDictionary[ChannelNumber].rstrin();
 
             var inputMemory = Module.Memory.GetVariable("INPUT");
-            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[_channelNumber].InputCommand);
+            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[ChannelNumber].InputCommand);
         }
 
         private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
@@ -3042,10 +3056,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void parsin()
         {
-            ChannelDictionary[_channelNumber].parsin();
+            ChannelDictionary[ChannelNumber].parsin();
 
             var inputMemory = Module.Memory.GetVariable("INPUT");
-            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[_channelNumber].InputCommand);
+            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[ChannelNumber].InputCommand);
         }
 
         /// <summary>
@@ -3236,7 +3250,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void echon()
         {
-            ChannelDictionary[_channelNumber].TransparentMode = false;
+            ChannelDictionary[ChannelNumber].TransparentMode = false;
         }
 
         /// <summary>
@@ -3458,7 +3472,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void curusr()
         {
             var newUserNumber = GetParameter(0);
-            _channelNumber = newUserNumber;
+            ChannelNumber = newUserNumber;
 
 #if DEBUG
             _logger.Info($"Setting Current User to {newUserNumber}");
