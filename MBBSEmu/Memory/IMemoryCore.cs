@@ -1,6 +1,5 @@
 ﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.HostProcess;
 using System;
 
 namespace MBBSEmu.Memory
@@ -14,6 +13,7 @@ namespace MBBSEmu.Memory
 
         //Segment Mangement
         void AddSegment(ushort segmentNumber, int size = 0x10000);
+        void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList);
         void AddSegment(Segment segment);
         Segment GetSegment(ushort segmentNumber);
         bool HasSegment(ushort segmentNumber);
@@ -36,5 +36,8 @@ namespace MBBSEmu.Memory
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array);
         void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array);
+
+        //Nuke the world
+        void Clear();
     }
 }

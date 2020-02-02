@@ -80,6 +80,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var modulePointerPointer = Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
             Module.Memory.SetArray(modulePointerPointer, modulePointer.ToSpan());
             Module.Memory.AllocateVariable("UACOFF", 0x4);
+            Module.Memory.AllocateVariable("VDAPTR", 0x4);
 
             //Setup Generic User Database
             var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
@@ -1363,9 +1364,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void haskey()
         {
             var lockNamePointer = GetParameterPointer(0);
-            var lockNameBytes = Module.Memory.GetString(lockNamePointer);
-            var lockName = Encoding.ASCII.GetString(lockNameBytes.Slice(0, lockNameBytes.Length - 1));
+            var lockNameBytes = Module.Memory.GetString(lockNamePointer, true);
 
+#if DEBUG
+            _logger.Info($"Returning TRUE for Haskey({Encoding.ASCII.GetString(lockNameBytes)})");
+#endif
             Registers.AX = 1;
         }
 
@@ -1666,7 +1669,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
             var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
-            _logger.Info($"Set current Btreieve file to {btvFileName}");
+            _logger.Info($"Restoring Btreieve file to {btvFileName}");
 #endif
         }
 
@@ -2099,7 +2102,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var size = GetParameter(0);
 
             if (size > 0x3FFF)
-                throw new OutOfMemoryException("Volatile Memory declaration > 2k");
+                throw new OutOfMemoryException("Volatile Memory declaration > 16k");
 
 #if DEBUG
             _logger.Info($"Volatile Memory Size requested of {size} bytes ({0x3FFF} bytes currently allocated per channel)");
@@ -2122,12 +2125,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void vdaoff()
         {
             var channel = GetParameter(0);
-            if (!Module.Memory.TryGetVariable($"VOLATILE-{channel}-POINTER", out var variablePointer))
+
+            if (!Module.Memory.TryGetVariable($"VDAPTR", out var variablePointer))
             {
-                var volatileMemoryAddress = Module.Memory.AllocateVariable($"VOLATILE-{channel}", 0x3FFF);
-                variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{channel}-POINTER", 0x4);
-                Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
+                variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
             }
+
+            if (!Module.Memory.TryGetVariable($"VDA-{channel}", out var volatileMemoryAddress))
+            {
+                volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{channel}", 0x3FFF);
+            }
+
+            Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
 
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
@@ -2158,12 +2167,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                if (!Module.Memory.TryGetVariable($"VOLATILE-{ChannelNumber}-POINTER", out var variablePointer))
+                if (!Module.Memory.TryGetVariable($"VDAPTR", out var variablePointer))
                 {
-                    var volatileMemoryAddress = Module.Memory.AllocateVariable($"VOLATILE-{ChannelNumber}", 0x3FFF);
-                    variablePointer = Module.Memory.AllocateVariable($"VOLATILE-{ChannelNumber}-POINTER", 0x4);
-                    Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
+                    variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
                 }
+
+                if (!Module.Memory.TryGetVariable($"VDA-{ChannelNumber}", out var volatileMemoryAddress))
+                {
+                    volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{ChannelNumber}", 0x3FFF);
+                }
+
+                Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
 
                 return variablePointer.ToSpan();
             }
@@ -2823,10 +2837,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void globalcmd()
         {
-            GlobalCommandHandler = GetParameterPointer(0);
+            var globalCommandHandlerPointer = GetParameterPointer(0);
+
+            Module.GlobalCommandHandlers.Add(globalCommandHandlerPointer);
 
 #if DEBUG
-            _logger.Info($"Registered Global Command Handler at: {GlobalCommandHandler}");
+            _logger.Info($"Registered Global Command Handler at: {globalCommandHandlerPointer}");
 #endif
         }
 
@@ -3077,15 +3093,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var bytesToMove = GetParameter(4);
 
             //Cast to array as the write can overlap and overwrite, mucking up the span read
-            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove).ToArray();
+            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
 
             Module.Memory.SetArray(destinationPointer, sourceData);
 
 #if DEBUG
             _logger.Info($"Moved {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -3433,8 +3447,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Pointer = GetParameterPointer(0);
             var string2Pointer = GetParameterPointer(2);
 
-            var string1 = Module.Memory.GetString(string1Pointer);
-            var string2 = Module.Memory.GetString(string2Pointer);
+            var string1 = Module.Memory.GetString(string1Pointer, true);
+            var string2 = Module.Memory.GetString(string2Pointer, true);
+
+#if DEBUG
+            _logger.Info($"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
+#endif
 
             if (string1.Length != string2.Length)
             {
@@ -3442,23 +3460,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-#if DEBUG
-            _logger.Info($"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
-#endif
-
             for (var i = 0; i < string1.Length; i++)
             {
-                if (string1[i] > string2[i])
-                {
-                    Registers.AX = 1;
-                    return;
-                }
+                if (string1[i] == string2[i]) continue;
 
-                if (string1[i] < string2[i])
-                {
-                    Registers.AX = unchecked((ushort) -1);
-                    return;
-                }
+                Registers.AX = 1;
+                return;
             }
 
             Registers.AX = 0;

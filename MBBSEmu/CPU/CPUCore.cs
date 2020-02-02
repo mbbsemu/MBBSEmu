@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort) (Registers.SP - 1), value);
 
 #if DEBUG
-           // _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }
@@ -127,8 +127,8 @@ namespace MBBSEmu.CPU
             //_logger.InfoRegisters(this);
             //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
-            //if(Registers.IP == 0xB3B)
-              //Debugger.Break();
+            if(Registers.IP == 0x11F3)
+              Debugger.Break();
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -302,6 +302,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Not:
                     Op_Not();
                     break;
+                case Mnemonic.Xchg:
+                    Op_Xchg();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -456,9 +459,8 @@ namespace MBBSEmu.CPU
         /// <param name="result"></param>
         /// <param name="operationSize"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SaveResult(ushort result, int operationSize)
+        private void WriteToDestination(ushort result, int operationSize)
         {
-
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
@@ -482,6 +484,33 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Uknown Destination: {_currentInstruction.Op0Kind}");
             }
         }
+
+        private void WriteToSource(ushort result, int operationSize)
+        {
+            switch (_currentInstruction.Op1Kind)
+            {
+                case OpKind.Register:
+                {
+                    Registers.SetValue(_currentInstruction.Op1Register, result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 1:
+                {
+                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op1Kind), (byte)result);
+                    return;
+                }
+                case OpKind.Memory when operationSize == 2:
+                {
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op1Kind), result);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Uknown Source: {_currentInstruction.Op0Kind}");
+            }
+        }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Loop()
@@ -532,7 +561,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var operationSize = GetCurrentOperationSize();
             var result = operationSize == 1 ? Op_Neg_8((byte)destination) : Op_Neg_16(destination);
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -577,7 +606,7 @@ namespace MBBSEmu.CPU
                 ? Op_Sbb_8((byte) source, (byte) destination)
                 : Op_Sbb_16(source, destination);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -625,7 +654,7 @@ namespace MBBSEmu.CPU
             Registers.F.ClearFlag(EnumFlags.CF);
             Registers.F.ClearFlag(EnumFlags.OF);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -659,7 +688,7 @@ namespace MBBSEmu.CPU
                 ? Op_Rcr_8(destination, source)
                 : Op_Rcr_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -739,7 +768,7 @@ namespace MBBSEmu.CPU
                 ? Op_Rcl_8(destination, source)
                 : Op_Rcl_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -819,7 +848,7 @@ namespace MBBSEmu.CPU
                 ? Op_Sar_8(destination, source)
                 : Op_Sar_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -873,7 +902,7 @@ namespace MBBSEmu.CPU
                 ? Op_Shr_8(destination, source)
                 : Op_Shr_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -916,7 +945,7 @@ namespace MBBSEmu.CPU
                 ? Op_Shl_8(destination, source)
                 : Op_Shl_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1044,7 +1073,7 @@ namespace MBBSEmu.CPU
             var operationSize = GetCurrentOperationSize();
             var result = operationSize == 1 ? Op_Inc_8((byte)destination) : Op_Inc_16(destination);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1086,7 +1115,7 @@ namespace MBBSEmu.CPU
                 ? Op_Dec_8((byte) destination)
                 : Op_Dec_16(destination);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1127,7 +1156,7 @@ namespace MBBSEmu.CPU
             var operationSize = GetCurrentOperationSize();
             var result = operationSize == 1 ? Op_And_8((byte) destination, (byte) source) : Op_And_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
 
             //Clear Flags
             Registers.F.ClearFlag(EnumFlags.CF);
@@ -1165,7 +1194,7 @@ namespace MBBSEmu.CPU
                 ? Op_Xor_8(destination, source)
                 : Op_Xor_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
 
             //Clear Flags
             Registers.F.ClearFlag(EnumFlags.CF);
@@ -1422,7 +1451,7 @@ namespace MBBSEmu.CPU
                 ? Op_Sub_8((byte) destination, (byte) source)
                 : Op_Sub_16(destination, source);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1470,7 +1499,7 @@ namespace MBBSEmu.CPU
                 ? Op_Add_8((byte) destination, (byte) source, addCarry)
                 : Op_Add_16(destination, source, addCarry);
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1687,7 +1716,11 @@ namespace MBBSEmu.CPU
                     Push(Registers.BP);
                     Registers.BP = Registers.SP;
 
-                    _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
+#if DEBUG
+                        _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
+#endif
+
+                        _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                         _currentInstruction.Immediate16);
 
                     //Simulate a LEAVE & retf
@@ -1876,7 +1909,17 @@ namespace MBBSEmu.CPU
             var operationSize = GetCurrentOperationSize();
             var result = (ushort)~destination;
 
-            SaveResult(result, operationSize);
+            WriteToDestination(result, operationSize);
+        }
+
+        private void Op_Xchg()
+        {
+            var destination = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operationSize = GetCurrentOperationSize();
+
+            WriteToDestination(source, operationSize);
+            WriteToSource(destination, operationSize);
         }
     }
 }

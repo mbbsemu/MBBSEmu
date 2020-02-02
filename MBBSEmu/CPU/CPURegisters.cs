@@ -148,14 +148,17 @@ namespace MBBSEmu.CPU
         ///     Pointer Register
         /// </summary>
         public ushort SP { get; set; }
+
         /// <summary>
         ///     Base Register
         /// </summary>
         public ushort BP { get; set; }
+
         /// <summary>
         ///     Index Register
         /// </summary>
         public ushort SI { get; set; }
+
         /// <summary>
         ///     Index Register
         /// </summary>

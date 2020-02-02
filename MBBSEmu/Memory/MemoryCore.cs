@@ -35,6 +35,20 @@ namespace MBBSEmu.Memory
             AddSegment(0);
         }
 
+
+        /// <summary>
+        ///     Clears out the Memory Core and sets all values back to initial state
+        /// </summary>
+        public void Clear()
+        {
+            _memorySegments.Clear();
+            _segments.Clear();
+            _decompiledSegments.Clear();
+            _variablePointerDictionary.Clear();
+            _currentVariablePointer.Segment = VARIABLE_BASE;
+            _currentVariablePointer.Offset = 0;
+        }
+
         public IntPtr16 AllocateVariable(string name, ushort size)
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
@@ -132,6 +146,20 @@ namespace MBBSEmu.Memory
             }
 
             _segments[segment.Ordinal] = segment;
+        }
+
+        /// <summary>
+        ///     Adds the specified Segment with the specified InstructionList
+        /// </summary>
+        /// <param name="segmentNumber"></param>
+        /// <param name="segmentInstructionList"></param>
+        public void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList)
+        {
+            _decompiledSegments.Add(segmentNumber, new Dictionary<ushort, Instruction>());
+            foreach (var i in segmentInstructionList)
+            {
+                _decompiledSegments[segmentNumber].Add(i.IP16, i);
+            }
         }
 
         public Segment GetSegment(ushort segmentNumber) => _segments[segmentNumber];

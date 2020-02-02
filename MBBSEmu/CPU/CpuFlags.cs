@@ -27,9 +27,9 @@ namespace MBBSEmu.CPU
                 case EnumArithmeticOperation.Addition:
                 {
                     if (typeof(T) == typeof(byte))
-                        setFlag = ((byte) destination).IsNegative() && !((byte) result).IsNegative();
+                        setFlag = ((byte) destination).IsNegative() && result < destination;
                     else
-                        setFlag = destination.IsNegative() && !result.IsNegative();
+                        setFlag = destination.IsNegative() && result < destination;
                     break;
                 }
                 case EnumArithmeticOperation.Subtraction:

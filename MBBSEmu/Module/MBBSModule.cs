@@ -51,6 +51,7 @@ namespace MBBSEmu.Module
         public PointerDictionary<RealTimeRoutine> RtihdlrRoutines;
 
         public Dictionary<string, IntPtr16> TextVariables;
+        public List<IntPtr16> GlobalCommandHandlers;
 
         public readonly IMemoryCore Memory;
 
@@ -100,6 +101,7 @@ namespace MBBSEmu.Module
             TextVariables = new Dictionary<string, IntPtr16>();
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);
+            GlobalCommandHandlers = new List<IntPtr16>();
             Memory = new MemoryCore();
 
             //Setup _INIT_ Entrypoint
