@@ -549,7 +549,7 @@ namespace MBBSEmu.Tests.CPU
         public void ADD_RM16_AX_M16_ClearFlags(ushort value)
         {
             Reset();
-            CreateDataSegment(new byte[] {(byte)(value & 0x00FF), (byte)(value >> 8)}, 2);
+            CreateDataSegment(new[] {(byte)(value & 0x00FF), (byte)(value >> 8)}, 2);
             CreateCodeSegment(new byte[] { 0x03, 0x47, 0x00 });
             mbbsEmuCpuRegisters.DS = 2;
 
@@ -575,7 +575,7 @@ namespace MBBSEmu.Tests.CPU
         public void ADD_RM16_AX_M16_Offset_ClearFlags(ushort value)
         {
             Reset();
-            CreateDataSegment(new byte[] { (byte)(value & 0x00FF), (byte)(value >> 8) }, 2);
+            CreateDataSegment(new[] { (byte)(value & 0x00FF), (byte)(value >> 8) }, 2);
             CreateCodeSegment(new byte[] { 0x03, 0x47, 0xFF });
             mbbsEmuCpuRegisters.BX = 1;
             mbbsEmuCpuRegisters.DS = 2;

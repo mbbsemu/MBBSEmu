@@ -128,30 +128,23 @@ namespace MBBSEmu.Session
         /// </summary>
         public void parsin()
         {
-            InputBuffer.Position = 0;
-            InputCommand = new byte[InputBuffer.Length];
             mArgv.Clear();
             mArgn.Clear();
 
             mArgv.Add(0);
             //Input Command has spaces replaced by null characters
-            for (ushort i = 0; i < InputBuffer.Length; i++)
+            for (ushort i = 0; i < InputCommand.Length; i++)
             {
-                var inputByte = InputBuffer.ReadByte();
-
                 //We only parse command character on space, otherwise just copy
-                if (inputByte != 0x20)
-                {
-                    InputCommand[i] = (byte)inputByte;
+                if (InputCommand[i] != 0x20)
                     continue;
-                }
 
                 //Replace the space with null
                 InputCommand[i] = 0x0;
 
                 mArgn.Add(i);
 
-                if (i + 1 < InputBuffer.Length)
+                if (i + 1 < InputCommand.Length)
                     mArgv.Add(i + 1);
             }
             mArgn.Add((int) (InputBuffer.Length -1));

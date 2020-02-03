@@ -213,7 +213,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     //Finally i should be at the specifier 
                     if (!InSpan(PrintfSpecifiers, stringToParse.Slice(i, 1)))
-                        throw new Exception("Invalid printf format");
+                    {
+                        _logger.Warn($"Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
+                        continue;
+                    }
 
                     switch ((char) stringToParse[i])
                     {
@@ -387,6 +390,71 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return newOutputBuffer.ToArray();
+        }
+
+        /// <summary>
+        ///     This routine tried multiple cases for the path and filename in an
+        ///     attempt to locate the file if the file system is case sensitive.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        private protected string CheckFileCasing(string path, string fileName)
+        {
+            //Duh
+            if (File.Exists($"{path}{fileName}"))
+                return fileName;
+
+            if (File.Exists($"{path}{fileName.ToUpper()}"))
+                return fileName.ToUpper();
+
+            if (File.Exists($"{path}{fileName.ToLower()}"))
+                return fileName.ToLower();
+
+            if (fileName.Contains(@"/") || fileName.Contains(@"\"))
+            {
+                string[] fileNameElements = new []{ string.Empty};
+                var directorySpecifier = string.Empty;
+                if (fileName.Contains('/'))
+                {
+                    fileNameElements = fileName.Split('/');
+                    directorySpecifier = "/";
+                }
+
+                if (fileName.Contains(@"\"))
+                {
+                    fileNameElements = fileName.Split(@"\");
+                    directorySpecifier = @"\";
+                }
+
+                //We only support 1 directory deep.. for now
+                if (fileNameElements.Length > 2 || fileNameElements.Length == 0)
+                    return fileName;
+
+                fileNameElements[0] = fileNameElements[0].ToUpper();
+                fileNameElements[1] = fileNameElements[1].ToUpper();
+                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(directorySpecifier, fileNameElements);
+
+                fileNameElements[0] = fileNameElements[0].ToLower();
+                fileNameElements[1] = fileNameElements[1].ToUpper();
+                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(directorySpecifier, fileNameElements);
+
+                fileNameElements[0] = fileNameElements[0].ToUpper();
+                fileNameElements[1] = fileNameElements[1].ToLower();
+                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(directorySpecifier, fileNameElements);
+
+                fileNameElements[0] = fileNameElements[0].ToLower();
+                fileNameElements[1] = fileNameElements[1].ToLower();
+                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(directorySpecifier, fileNameElements);
+            }
+
+            _logger.Warn("Unable to locate file attempting multiple cases");
+
+            return fileName;
         }
     }
 }

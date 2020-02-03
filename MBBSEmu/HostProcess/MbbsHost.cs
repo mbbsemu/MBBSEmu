@@ -117,8 +117,13 @@ namespace MBBSEmu.HostProcess
                             {
                                 s.StatusChange = false;
                                 s.SessionState = EnumSessionState.InModule;
+
+                                //Transfer Input Buffer to Command Buffer
+                                s.InputBuffer.WriteByte(0x0);
+                                s.InputCommand = s.InputBuffer.ToArray();
+
                                 s.InputBuffer.SetLength(0);
-                                Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
+                                    Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
                                 continue;
                             }
                             
@@ -193,6 +198,11 @@ namespace MBBSEmu.HostProcess
                                 //Is there Text to send to the module
                                 if (s.Status == 3)
                                 {
+                                    //Transfer Input Buffer to Command Buffer
+                                    s.InputBuffer.WriteByte(0x0);
+                                    s.InputCommand = s.InputBuffer.ToArray();
+                                    s.InputBuffer.SetLength(0);
+
                                     var result = Run(s.CurrentModule.ModuleIdentifier,
                                         s.CurrentModule.EntryPoints["sttrou"], s.Channel);
 

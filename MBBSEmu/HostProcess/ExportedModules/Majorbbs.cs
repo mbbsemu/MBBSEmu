@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -68,7 +69,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", 0x155);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
-            Module.Memory.AllocateVariable("VDAPTR", 0x4);
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
             
@@ -128,9 +128,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
             {
-                ChannelDictionary[channelNumber].InputBuffer.WriteByte(0x0);
                 ChannelDictionary[channelNumber].parsin();
-                ChannelDictionary[channelNumber].InputBuffer.SetLength(0);
+                
                 Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
                 Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
@@ -146,7 +145,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var currentMargVPointer = new IntPtr16(inputMemory.Segment,
                         (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i]));
 
-                    _logger.Info($"Command {i} {currentMargVPointer.Segment:X4}:{currentMargVPointer.Offset:X4}-{currentMargnPointer.Segment:X4}:{currentMargnPointer.Offset:X4}");
+                    _logger.Info($"Command {i} {currentMargVPointer:X4}->{currentMargnPointer:X4}");
 
                     Module.Memory.SetArray(margnPointer.Segment, (ushort)(margnPointer.Offset + (i * 4)),
                         currentMargnPointer.ToSpan());
@@ -1632,15 +1631,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set Memory Values
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
             var btvDataPointer = btvStruct.data;
-            Module.Memory.SetArray(btvStruct.data, btrieveFile.GetRecord());
+
+            if (resultCode == 1)
+            {
+                Module.Memory.SetArray(btvStruct.data, btrieveFile.GetRecord());
 
 #if DEBUG
-            _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
+                _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
 #endif
-            if (resultCode > 0)
-            {
-                //See if the segment lives on the host or in the module
-                Module.Memory.SetArray(btrieveRecordPointer, btrieveFile.GetRecord());
+                if (resultCode > 0)
+                {
+                    //See if the segment lives on the host or in the module
+                    Module.Memory.SetArray(btrieveRecordPointer, btrieveFile.GetRecord());
+                }
             }
 
             Registers.AX = resultCode;
@@ -2302,6 +2305,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
             var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
+
+            //If non windows, change directory paths in filename
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && filenameInputValue.Contains(@"\"))
+            {
+                var newFilenameInputValue = filenameInputValue.Replace(@"\", "/");
+                _logger.Info($"Modifying Filename to be Linux Friendly: {filenameInputValue} to {newFilenameInputValue}");
+                filenameInputValue = CheckFileCasing(Module.ModulePath, newFilenameInputValue);
+            }
+
+            _logger.Debug($"Opening File: {Module.ModulePath}{filenameInputValue}");
 
             var modeInputBuffer = Module.Memory.GetString(modePointer, true);
             var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
@@ -3019,7 +3032,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
 
-            if (!Module.Memory.TryGetVariable("NTIME", out var variablePointer))
+            if (!Module.Memory.TryGetVariable("NCTIME", out var variablePointer))
             {
                 variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
             }

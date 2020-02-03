@@ -114,6 +114,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 53:
                     btutsw();
                     break;
+                case 58:
+                    btuxmn();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -493,6 +496,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Warn($"Set Screen Width for Channel {channel} to {width}");
 #endif
             Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Sends a message directly to another user
+        /// </summary>
+        private void btuxmn()
+        {
+            var channel = GetParameter(0);
+            var messagePointer = GetParameterPointer(1);
+
+            var messageToSend = Module.Memory.GetString(messagePointer);
+            ChannelDictionary[channel].DataToClient.Enqueue(messageToSend.ToArray());
         }
     }
 }

@@ -119,7 +119,8 @@ namespace MBBSEmu.Btrieve
         public ushort StepFirst()
         {
             CurrentRecordNumber = 0;
-            return (ushort) (RecordCount == 0 ? 0 : 1);
+
+            return (ushort) (RecordCount == 0 ? 9 : 1);
         }
 
         public ushort StepNext()

@@ -4,6 +4,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+
 namespace MBBSEmu.Module
 {
     public class McvFile
@@ -24,7 +26,22 @@ namespace MBBSEmu.Module
 
             if (!path.EndsWith(Path.DirectorySeparatorChar))
                 path += Path.DirectorySeparatorChar;
+
             FileName = fileName;
+
+            if(!File.Exists($"{path}{fileName}") && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (File.Exists($"{path}{fileName.ToUpper()}"))
+                {
+                    _logger.Warn($"Fixing casing on specified file: {fileName} to {fileName.ToUpper()}");
+                    fileName = fileName.ToUpper();
+                }
+                else if (File.Exists($"{path}{fileName.ToLower()}"))
+                {
+                    _logger.Warn($"Fixing casing on specified file: {fileName} to {fileName.ToLower()}");
+                    fileName = fileName.ToLower();
+                }
+            }
 
 #if DEBUG
             _logger.Info($"Loading MCV File: {fileName}");
