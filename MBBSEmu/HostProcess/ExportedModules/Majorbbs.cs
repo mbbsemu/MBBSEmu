@@ -167,8 +167,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 : Module.Memory.GetWord(base.Module.Memory.GetVariable("STATUS"));
 
             var userPointer = Module.Memory.GetVariable("USER");
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment,
-                (ushort)(userPointer.Offset + (channel * 41)), 41));
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, userPointer.Offset, 41));
         }
 
         /// <summary>

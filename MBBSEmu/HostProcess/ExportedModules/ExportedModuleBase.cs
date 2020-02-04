@@ -377,7 +377,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     i++;
                 }
 
-                i++;
                 //Get Variable Entry Point
                 var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
                 var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true);
