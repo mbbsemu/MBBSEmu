@@ -124,11 +124,12 @@ namespace MBBSEmu.CPU
             Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
-            //_logger.InfoRegisters(this);
-            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
-
-            //if(Registers.IP == 0x11F3)
-            //Debugger.Break();
+            if (Registers.IP >= 0x4C && Registers.IP <= 0x97)
+            {
+                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+                _logger.InfoRegisters(this);
+                //Debugger.Break();
+            }
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -309,12 +310,12 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
+
             Registers.IP += (ushort)_currentInstruction.Length;
-#if DEBUG
-            //_logger.InfoRegisters(this);
+
+            
             //_logger.InfoStack(this);
             //_logger.Info("--------------------------------------------------------------");
-#endif
         }
 
         /// <summary>
@@ -515,6 +516,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Loop()
         {
+            Registers.CX--;
+
             if (Registers.CX == 0)
             {
                 //Continue with the next instruction
@@ -522,7 +525,6 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            Registers.CX--;
             Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
         }
 

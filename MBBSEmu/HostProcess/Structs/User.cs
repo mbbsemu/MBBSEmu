@@ -57,7 +57,7 @@ namespace MBBSEmu.HostProcess.Structs
             var output = new MemoryStream();
             output.Write(BitConverter.GetBytes((short)6)); //class (ACTUSR)
             output.Write(new IntPtr16().ToSpan()); //keys:segment
-            output.Write(BitConverter.GetBytes((short)1)); //state (register_module always returns 1)
+            output.Write(BitConverter.GetBytes((short)0)); //state (register_module return)
             output.Write(BitConverter.GetBytes((short)0)); //substt (always starts at 0)
             output.Write(BitConverter.GetBytes((short)0)); //lofstt
             output.Write(BitConverter.GetBytes((short)0)); //usetmr
@@ -102,7 +102,7 @@ namespace MBBSEmu.HostProcess.Structs
             using var output = new MemoryStream();
             output.Write(BitConverter.GetBytes(UserClass)); //class (ACTUSR)
             output.Write(Keys.ToSpan()); //keys:segment
-            output.Write(BitConverter.GetBytes(State)); //state (register_module always returns 1)
+            output.Write(BitConverter.GetBytes(State)); //state (register_module return)
             output.Write(BitConverter.GetBytes(Substt)); //substt (always starts at 0)
             output.Write(BitConverter.GetBytes(Lofstt)); //lofstt
             output.Write(BitConverter.GetBytes(Usetmr)); //usetmr

@@ -41,6 +41,8 @@ namespace MBBSEmu.Module
         /// </summary>
         public readonly MdfFile Mdf;
 
+        public short StateCode { get; set; }
+
         /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>

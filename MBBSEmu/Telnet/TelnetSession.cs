@@ -119,6 +119,8 @@ namespace MBBSEmu.Telnet
 
                 if (bytesReceived == 0)
                     continue;
+                
+                LastCharacterReceived = socketReceiveBuffer[0];
 
                 //Enter Key
                 if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
@@ -150,7 +152,6 @@ namespace MBBSEmu.Telnet
                     continue;
                 }
 
-                LastCharacterReceived = socketReceiveBuffer[0];
                 DataToProcess = true;
                 Thread.Sleep(1);
             }

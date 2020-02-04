@@ -57,7 +57,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFBUF", 0x2000); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
-            Module.Memory.AllocateVariable("USER", 0x28D7); //41 bytes * 255 users
+            Module.Memory.AllocateVariable("USER-POINTER", 0x4);
+            Module.Memory.AllocateVariable("USER", 0x41);
             Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
@@ -110,16 +111,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channelNumber == ushort.MaxValue)
                 return;
 
-            
-
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
             var pointer = Module.Memory.GetVariable("USER");
-            pointer.Offset += (ushort)(ChannelNumber * 41);
             Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
+
+            Module.Memory.SetArray(Module.Memory.GetVariable("USER-POINTER"), pointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
-
-
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -775,6 +774,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //usrptr->state is the Module Number in use, as assigned by the host process
             //Because we only support 1 module running at a time right now, we just set this to one
             //TODO -- Update this to support multiple modules concurrently
+            Module.StateCode = 1;
             Registers.AX = 1;
         }
 
@@ -1231,8 +1231,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("USER");
-                pointer.Offset += (ushort)(ChannelNumber * 41);
+                var pointer = Module.Memory.GetVariable("USER-POINTER");
                 Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
                 return Module.Memory.GetVariable("USRPTR").ToSpan();
             }
@@ -2129,20 +2128,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"VDAPTR", out var variablePointer))
-            {
-                variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
-            }
-
             if (!Module.Memory.TryGetVariable($"VDA-{channel}", out var volatileMemoryAddress))
             {
                 volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{channel}", 0x3FFF);
             }
 
-            Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
-
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.AX = volatileMemoryAddress.Offset;
+            Registers.DX = volatileMemoryAddress.Segment;
         }
 
         /// <summary>
@@ -2155,8 +2147,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("USER");
-                pointer.Offset += (ushort)(41 * ChannelNumber);
+                var pointer = Module.Memory.GetVariable("USER-POINTER");
                 return pointer.ToSpan();
             }
         }
