@@ -113,6 +113,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
+            
             var pointer = Module.Memory.GetVariable("USER");
             Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
 
@@ -166,8 +167,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ? (ushort)5
                 : Module.Memory.GetWord(base.Module.Memory.GetVariable("STATUS"));
 
-            var userPointer = Module.Memory.GetVariable("USER");
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, userPointer.Offset, 41));
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(Module.Memory.GetVariable("USER"), 41));
         }
 
         /// <summary>
@@ -1230,7 +1230,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("USER-POINTER");
+                var pointer = Module.Memory.GetVariable("USER");
                 Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
                 return Module.Memory.GetVariable("USRPTR").ToSpan();
             }

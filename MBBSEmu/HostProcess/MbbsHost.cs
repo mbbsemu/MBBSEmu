@@ -340,7 +340,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="initialStackValues"></param>
         private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
-            var resultRegisters = _modules[moduleName].Execute(routine, channelNumber, simulateCallFar, initialStackValues);
+            var resultRegisters = _modules[moduleName].Execute(routine, channelNumber, simulateCallFar, false, initialStackValues);
             return resultRegisters.AX;
         }
 

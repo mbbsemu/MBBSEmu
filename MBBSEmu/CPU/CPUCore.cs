@@ -124,11 +124,11 @@ namespace MBBSEmu.CPU
             Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
-            if (Registers.IP >= 0x4C && Registers.IP <= 0x97)
+            if (Registers.IP >= 0x1372 && Registers.IP <= 0x1387)
             {
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
                 _logger.InfoRegisters(this);
-                //Debugger.Break();
+                Debugger.Break();
             }
 #endif
 

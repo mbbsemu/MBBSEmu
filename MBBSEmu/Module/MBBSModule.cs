@@ -115,7 +115,7 @@ namespace MBBSEmu.Module
             EntryPoints["_INIT_"] = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
         }
 
-        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false,
+        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null)
         {
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
@@ -125,7 +125,7 @@ namespace MBBSEmu.Module
                 executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary);
             }
 
-            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, initialStackValues);
+            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues);
             ExecutionUnits.Enqueue(executionUnit);
             return resultRegisters;
         }

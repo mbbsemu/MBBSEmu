@@ -379,7 +379,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 //Get Variable Entry Point
                 var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
-                var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true);
+                var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
                 var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 
 #if DEBUG

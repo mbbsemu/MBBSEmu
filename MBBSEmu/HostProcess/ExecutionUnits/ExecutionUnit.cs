@@ -51,7 +51,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             return exportedModule.Invoke(functionOrdinal);
         }
 
-        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
+        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null)
         {
             //Reset Registers to Startup State for the CPU
             ModuleCpu.Reset();
@@ -77,9 +77,10 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 ModuleCpu.Push(ushort.MaxValue); //IP
             }
 
-            //Setup the state of the exported functions
-            foreach (var em in ExportedModuleDictionary.Values)
-                em.SetState(ModuleCpuRegisters, channelNumber);
+            //Things like TEXT_VARIABLES don't need us to re-setup the state, the Exported Functions are already setup properly
+            if(!bypassState)
+                foreach (var em in ExportedModuleDictionary.Values)
+                    em.SetState(ModuleCpuRegisters, channelNumber);
 
             //Run until complete
             while (!ModuleCpuRegisters.Halt)
