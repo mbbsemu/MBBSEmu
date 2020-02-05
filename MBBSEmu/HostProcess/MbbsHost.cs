@@ -211,6 +211,7 @@ namespace MBBSEmu.HostProcess
                                     {
                                         s.SessionState = EnumSessionState.MainMenuDisplay;
                                         s.CurrentModule = null;
+                                        s.CharacterInterceptor = null;
                                         
                                         //Reset States
                                         s.Status = 0;

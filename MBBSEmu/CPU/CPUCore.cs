@@ -124,11 +124,11 @@ namespace MBBSEmu.CPU
             Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
-            if (Registers.IP >= 0x1372 && Registers.IP <= 0x1387)
+            if (Registers.IP >= 0x6B85 && Registers.IP <= 0x6B97)
             {
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
                 _logger.InfoRegisters(this);
-                Debugger.Break();
+                //Debugger.Break();
             }
 #endif
 
@@ -1461,7 +1461,7 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var result = (byte)(destination - (sbyte)source);
+                var result = (byte)(destination - source);
                 Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Subtraction, result, destination);
                 Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
@@ -1476,7 +1476,7 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var result = (ushort)(destination - (short)source);
+                var result = (ushort)(destination - source);
                 Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Subtraction, result, destination);
                 Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);

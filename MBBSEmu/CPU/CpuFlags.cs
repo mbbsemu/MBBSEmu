@@ -25,20 +25,20 @@ namespace MBBSEmu.CPU
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                {
-                    if (typeof(T) == typeof(byte))
-                        setFlag = ((byte) destination).IsNegative() && result < destination;
-                    else
-                        setFlag = destination.IsNegative() && result < destination;
-                    break;
-                }
+                    {
+                        if (typeof(T) == typeof(byte))
+                            setFlag = ((byte)destination).IsNegative() && result < destination;
+                        else
+                            setFlag = destination.IsNegative() && result < destination;
+                        break;
+                    }
                 case EnumArithmeticOperation.Subtraction:
-                {
-                    if (typeof(T) == typeof(byte))
-                        setFlag = !((byte)destination).IsNegative() && ((byte)result).IsNegative();
-                    else
-                        setFlag = !destination.IsNegative() && result.IsNegative();
-                    break;
+                    {
+                        if (typeof(T) == typeof(byte))
+                            setFlag = ((byte)result) > ((byte)destination);
+                        else
+                            setFlag = result > destination;
+                        break;
                     }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation, "Unsupported Carry Flag Operation for Evaluation");
@@ -69,77 +69,77 @@ namespace MBBSEmu.CPU
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                {
-                    //destination+source=result
-                    if (typeof(T) == typeof(byte))
                     {
-                        //positive+positive==negative
-                        if (!((byte)destination).IsNegative() && !((byte) source).IsNegative() &&
-                            ((byte) result).IsNegative())
+                        //destination+source=result
+                        if (typeof(T) == typeof(byte))
                         {
-                            setFlag = true;
+                            //positive+positive==negative
+                            if (!((byte)destination).IsNegative() && !((byte)source).IsNegative() &&
+                                ((byte)result).IsNegative())
+                            {
+                                setFlag = true;
+                            }
+
+                            //negative+negative==positive
+                            if (((byte)destination).IsNegative() && ((byte)source).IsNegative() &&
+                                !((byte)result).IsNegative())
+                            {
+                                setFlag = true;
+                            }
+                        }
+                        else
+                        {
+                            //positive+positive==negative
+                            if (!destination.IsNegative() && !source.IsNegative() && result.IsNegative())
+                            {
+                                setFlag = true;
+                            }
+
+                            //negative+negative==positive
+                            if (destination.IsNegative() && source.IsNegative() && !result.IsNegative())
+                            {
+                                setFlag = true;
+                            }
                         }
 
-                        //negative+negative==positive
-                        if (((byte) destination).IsNegative() && ((byte) source).IsNegative() &&
-                            !((byte) result).IsNegative())
-                        {
-                            setFlag = true;
-                        }
+                        break;
                     }
-                    else
-                    {
-                        //positive+positive==negative
-                        if (!destination.IsNegative() && !source.IsNegative() && result.IsNegative())
-                        {
-                            setFlag = true;
-                        }
-
-                        //negative+negative==positive
-                        if (destination.IsNegative() && source.IsNegative() && !result.IsNegative())
-                        {
-                            setFlag = true;
-                        }
-                    }
-
-                    break;
-                }
                 case EnumArithmeticOperation.Subtraction:
-                {
-                    //destination-source=result
-                    if (typeof(T) == typeof(byte))
                     {
-                        // negative-positive==positive
-                        if (((byte)destination).IsNegative() && !((byte) source).IsNegative() &&
-                            !((byte) result).IsNegative())
+                        //destination-source=result
+                        if (typeof(T) == typeof(byte))
                         {
-                            setFlag = true;
+                            // negative-positive==positive
+                            if (((byte)destination).IsNegative() && !((byte)source).IsNegative() &&
+                                !((byte)result).IsNegative())
+                            {
+                                setFlag = true;
+                            }
+
+                            // positive-negative==negative
+                            if (!((byte)destination).IsNegative() && ((byte)source).IsNegative() &&
+                                ((byte)result).IsNegative())
+                            {
+                                setFlag = true;
+                            }
+                        }
+                        else
+                        {
+                            // negative-positive==positive
+                            if (destination.IsNegative() && !source.IsNegative() && !result.IsNegative())
+                            {
+                                setFlag = true;
+                            }
+
+                            // positive-negative==negative
+                            if (!destination.IsNegative() && source.IsNegative() && result.IsNegative())
+                            {
+                                setFlag = true;
+                            }
                         }
 
-                        // positive-negative==negative
-                        if (!((byte)destination).IsNegative() && ((byte) source).IsNegative() &&
-                            ((byte) result).IsNegative())
-                        {
-                            setFlag = true;
-                        }
+                        break;
                     }
-                    else
-                    {
-                        // negative-positive==positive
-                        if (destination.IsNegative() && !source.IsNegative() && !result.IsNegative())
-                        {
-                            setFlag = true;
-                        }
-
-                        // positive-negative==negative
-                        if (!destination.IsNegative() && source.IsNegative() && result.IsNegative())
-                        {
-                            setFlag = true;
-                        }
-                    }
-
-                    break;
-                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -167,20 +167,20 @@ namespace MBBSEmu.CPU
             switch (flag)
             {
                 case EnumFlags.ZF:
-                {
-                    setFlag = result == 0;
-                    break;
-                }
+                    {
+                        setFlag = result == 0;
+                        break;
+                    }
                 case EnumFlags.SF:
-                {
-                    setFlag = typeof(T) == typeof(byte) ? ((byte) result).IsNegative() : result.IsNegative();
-                    break;
-                }
+                    {
+                        setFlag = typeof(T) == typeof(byte) ? ((byte)result).IsNegative() : result.IsNegative();
+                        break;
+                    }
                 case EnumFlags.PF:
-                {
-                    setFlag = typeof(T) == typeof(byte) ? ((byte) result).Parity() : result.Parity();
-                    break;
-                }
+                    {
+                        setFlag = typeof(T) == typeof(byte) ? ((byte)result).Parity() : result.Parity();
+                        break;
+                    }
 
                 //Unsupported Flags/Special Flags
                 case EnumFlags.CF:
