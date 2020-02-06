@@ -120,25 +120,20 @@ namespace MBBSEmu.Telnet
                 if (bytesReceived == 0)
                     continue;
                 
-                LastCharacterReceived = socketReceiveBuffer[0];
+                //Ignore IAC
+                if(socketReceiveBuffer[0] != 0xFF)
+                    LastCharacterReceived = socketReceiveBuffer[0];
 
                 //Enter Key
                 if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
                 {
                     //Set Status == 3, which means there is a Command Ready
-                    DataToClient.Enqueue(new byte[] { 0xD, 0xA });
-                    
+                    DataToClient.Enqueue(new byte[] {0xD, 0xA});
+
                     //If there's an interceptor, flag data is ready to process and we'll handle
                     //setting status on return from that, otherwise, just set status
-                    if (CharacterInterceptor != null)
-                    {
-                        DataToProcess = true;
-                    }
-                    else
-                    {
-                        Status = 3;
-                    }
 
+                    Status = 3;
                     continue;
                 }
 

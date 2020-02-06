@@ -114,119 +114,123 @@ namespace MBBSEmu.HostProcess
                         {
                             //Initial call to STTROU when a User is Entering a Module
                             case EnumSessionState.EnteringModule:
-                            {
-                                s.StatusChange = false;
-                                s.SessionState = EnumSessionState.InModule;
-                                s.UsrPtr.State = s.CurrentModule.StateCode; //Default ModuleID, need to make this dynamic
-                                //Transfer Input Buffer to Command Buffer
-                                s.InputBuffer.WriteByte(0x0);
-                                s.InputCommand = s.InputBuffer.ToArray();
+                                {
+                                    s.StatusChange = false;
+                                    s.SessionState = EnumSessionState.InModule;
+                                    s.UsrPtr.State = s.CurrentModule.StateCode; //Default ModuleID, need to make this dynamic
+                                                                                //Transfer Input Buffer to Command Buffer
+                                    s.InputBuffer.WriteByte(0x0);
+                                    s.InputCommand = s.InputBuffer.ToArray();
 
-                                s.InputBuffer.SetLength(0);
+                                    s.InputBuffer.SetLength(0);
                                     Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
-                                continue;
-                            }
-                            
+                                    continue;
+                                }
+
                             //Post-Login Display Routine
                             case EnumSessionState.LoginRoutines:
-                            {
-                                if (_doLoginRoutine)
                                 {
-                                    foreach (var m in _modules.Values)
+                                    if (_doLoginRoutine)
                                     {
-                                        if (m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint))
+                                        foreach (var m in _modules.Values)
                                         {
-                                            if (logonRoutineEntryPoint.Segment != 0 &&
-                                                logonRoutineEntryPoint.Offset != 0)
+                                            if (m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint))
                                             {
-                                                Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                                if (logonRoutineEntryPoint.Segment != 0 &&
+                                                    logonRoutineEntryPoint.Offset != 0)
+                                                {
+                                                    Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                                }
                                             }
                                         }
                                     }
+                                    s.SessionState = EnumSessionState.MainMenuDisplay;
+                                    continue;
                                 }
-                                s.SessionState = EnumSessionState.MainMenuDisplay;
-                                continue;
-                            }
 
                             //User is in the module, process all the in-module type of events
                             case EnumSessionState.InModule:
-                            {
-                                //Process Character Interceptor in GSBL
-                                if (s.DataToProcess)
                                 {
-                                    s.DataToProcess = false;
-                                    if (s.CharacterInterceptor != null)
+                                    //Process Character Interceptor in GSBL
+                                    if (s.DataToProcess)
                                     {
-                                        //Create Parameters for BTUCHI Routine
-                                        var initialStackValues = new Queue<ushort>(2);
-                                        initialStackValues.Enqueue(s.LastCharacterReceived);
-                                        initialStackValues.Enqueue(s.Channel);
-
-                                        var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor,
-                                            s.Channel, true,
-                                            initialStackValues);
-
-                                        //Result replaces the character in the buffer
-                                        if(s.InputBuffer.Length > 0)
-                                            s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
-
-                                        s.InputBuffer.WriteByte((byte) result);
-                                        s.LastCharacterReceived = (byte) result;
-
-                                        //If the new character is a carriage return, null terminate it and set status
-                                        if (result == 0xD)
+                                        s.DataToProcess = false;
+                                        if (s.CharacterInterceptor != null)
                                         {
-                                            s.Status = 3;
-                                            s.InputBuffer.WriteByte(0x0);
+                                            //Create Parameters for BTUCHI Routine
+                                            var initialStackValues = new Queue<ushort>(2);
+                                            initialStackValues.Enqueue(s.LastCharacterReceived);
+                                            initialStackValues.Enqueue(s.Channel);
+
+                                            var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor,
+                                                s.Channel, true,
+                                                initialStackValues);
+
+                                            //Result replaces the character in the buffer
+                                            if (s.InputBuffer.Length > 0 && result != 0xD)
+                                                s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+
+                                            //Ignore
+                                            if (result == 0)
+                                                continue;
+
+                                            s.InputBuffer.WriteByte((byte)result);
+                                            s.LastCharacterReceived = (byte)result;
+
+                                            //If the new character is a carriage return, null terminate it and set status
+                                            if (result == 0xD)
+                                            {
+                                                s.Status = 3;
+                                                s.InputBuffer.WriteByte(0x0);
+                                            }
                                         }
+
+                                        //If the client is in transparent mode, don't echo
+                                        if (!s.TransparentMode)
+                                            s.DataToClient.Enqueue(new[] { s.LastCharacterReceived });
                                     }
 
-                                    //If the client is in transparent mode, don't echo
-                                    if (!s.TransparentMode)
-                                        s.DataToClient.Enqueue(new[] {s.LastCharacterReceived});
-                                }
-
-                                //Did the text change cause a status update
-                                if (s.StatusChange || s.Status == 240)
-                                {
-                                    s.StatusChange = false;
-                                    Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["stsrou"],
-                                        s.Channel);
-                                    continue;
-                                }
-
-                                //Is there Text to send to the module
-                                if (s.Status == 3)
-                                {
-                                    //Transfer Input Buffer to Command Buffer
-                                    s.InputBuffer.WriteByte(0x0);
-                                    s.InputCommand = s.InputBuffer.ToArray();
-                                    s.InputBuffer.SetLength(0);
-
-                                    var result = Run(s.CurrentModule.ModuleIdentifier,
-                                        s.CurrentModule.EntryPoints["sttrou"], s.Channel);
-
-                                    //stt returned an exit code
-                                    if (result == 0)
+                                    //Did the text change cause a status update
+                                    if (s.StatusChange || s.Status == 240)
                                     {
-                                        s.SessionState = EnumSessionState.MainMenuDisplay;
-                                        s.CurrentModule = null;
-                                        s.CharacterInterceptor = null;
-                                        
-                                        //Reset States
-                                        s.Status = 0;
-                                        s.UsrPtr.Substt = 0;
-
-                                        //Clear the Input Buffer
-                                        s.InputBuffer.SetLength(0);
-
-                                        //Clear any data waiting to be processed from the client
-                                        s.InputBuffer.SetLength(0);
+                                        s.StatusChange = false;
+                                        Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["stsrou"],
+                                            s.Channel);
+                                        continue;
                                     }
-                                    continue;
+
+                                    //Is there Text to send to the module
+                                    if (s.Status == 3)
+                                    {
+                                        //Transfer Input Buffer to Command Buffer
+                                        s.InputBuffer.WriteByte(0x0);
+                                        s.InputCommand = s.InputBuffer.ToArray();
+                                        s.InputBuffer.SetLength(0);
+
+                                        var result = Run(s.CurrentModule.ModuleIdentifier,
+                                            s.CurrentModule.EntryPoints["sttrou"], s.Channel);
+
+                                        //stt returned an exit code
+                                        if (result == 0)
+                                        {
+                                            s.SessionState = EnumSessionState.MainMenuDisplay;
+                                            s.CurrentModule = null;
+                                            s.CharacterInterceptor = null;
+
+                                            //Reset States
+                                            s.Status = 0;
+                                            s.UsrPtr.Substt = 0;
+
+                                            //Clear the Input Buffer
+                                            s.InputBuffer.SetLength(0);
+
+                                            //Clear any data waiting to be processed from the client
+                                            s.InputBuffer.SetLength(0);
+                                        }
+                                        continue;
+                                    }
+                                    break;
                                 }
-                                break;
-                            }
 
                             //Check for any other session states, we handle these here as they are
                             //lower priority than handling "in-module" states
@@ -284,7 +288,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            
+
             _isAddingModule = true;
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
@@ -307,7 +311,7 @@ namespace MBBSEmu.HostProcess
 
             //Add it to the Module Dictionary
             _modules[module.ModuleIdentifier] = module;
-            
+
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
@@ -391,7 +395,7 @@ namespace MBBSEmu.HostProcess
                 if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)
                     continue;
 
-                foreach(var relocationRecord in s.RelocationRecords.Values)
+                foreach (var relocationRecord in s.RelocationRecords.Values)
                 {
                     //Ignored Relocation Record
                     if (relocationRecord.TargetTypeValueTuple == null)
@@ -401,106 +405,106 @@ namespace MBBSEmu.HostProcess
                     {
                         case EnumRecordsFlag.ImportOrdinalAdditive:
                         case EnumRecordsFlag.ImportOrdinal:
-                        {
-                            var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                            var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
-
-                            var relocationResult = module.File.ImportedNameTable[nametableOrdinal].Name switch
                             {
-                                "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal, true),
-                                "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
-                                "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
-                                "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
-                                "PHAPI" => phapiFunctions.Invoke(functionOrdinal, true),
-                                _ => throw new Exception(
-                                    $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
-                            };
+                                var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                                var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
 
-                            var relocationPointer = new IntPtr16(relocationResult);
+                                var relocationResult = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                                {
+                                    "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal, true),
+                                    "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
+                                    "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
+                                    "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
+                                    "PHAPI" => phapiFunctions.Invoke(functionOrdinal, true),
+                                    _ => throw new Exception(
+                                        $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+                                };
 
-                            //32-Bit Pointer
-                            if (relocationRecord.SourceType == 3)
-                            {
-                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
-                                continue;
-                            }
+                                var relocationPointer = new IntPtr16(relocationResult);
 
-                            //16-Bit Values
-                            var result = relocationRecord.SourceType switch
-                            {
-                                //Offset
-                                2 => relocationPointer.Segment,
-                                5 => relocationPointer.Offset,
-                                _ => throw new ArgumentOutOfRangeException(
-                                    $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                            };
+                                //32-Bit Pointer
+                                if (relocationRecord.SourceType == 3)
+                                {
+                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    continue;
+                                }
 
-                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
-                                result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+                                //16-Bit Values
+                                var result = relocationRecord.SourceType switch
+                                {
+                                    //Offset
+                                    2 => relocationPointer.Segment,
+                                    5 => relocationPointer.Offset,
+                                    _ => throw new ArgumentOutOfRangeException(
+                                        $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                                };
 
-                            Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                            break;
-                        }
-                        case EnumRecordsFlag.InternalRef:
-                        {
+                                if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
+                                    result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
 
-                            //32-Bit Pointer
-                            if (relocationRecord.SourceType == 3)
-                            {
-                                var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
-                                    relocationRecord.TargetTypeValueTuple.Item4);
-
-                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
                                 break;
                             }
-                            Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
-                            break;
-                        }
+                        case EnumRecordsFlag.InternalRef:
+                            {
+
+                                //32-Bit Pointer
+                                if (relocationRecord.SourceType == 3)
+                                {
+                                    var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
+                                        relocationRecord.TargetTypeValueTuple.Item4);
+
+                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    break;
+                                }
+                                Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
+                                break;
+                            }
 
                         case EnumRecordsFlag.ImportNameAdditive:
                         case EnumRecordsFlag.ImportName:
-                        {
-                            var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                            var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
-
-                            var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
                             {
-                                "MAJORBBS" => Majorbbs.Segment,
-                                "GALGSBL" => Galgsbl.Segment,
-                                "PHAPI" => Phapi.Segment,
-                                "GALME" => Galme.Segment,
-                                "DOSCALLS" => Doscalls.Segment,
-                                _ => throw new Exception(
-                                    $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+                                var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                                var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
 
-                            };
+                                var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                                {
+                                    "MAJORBBS" => Majorbbs.Segment,
+                                    "GALGSBL" => Galgsbl.Segment,
+                                    "PHAPI" => Phapi.Segment,
+                                    "GALME" => Galme.Segment,
+                                    "DOSCALLS" => Doscalls.Segment,
+                                    _ => throw new Exception(
+                                        $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
 
-                            var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+                                };
 
-                            //32-Bit Pointer
-                            if (relocationRecord.SourceType == 3)
-                            {
-                                Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
-                                continue;
+                                var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+
+                                //32-Bit Pointer
+                                if (relocationRecord.SourceType == 3)
+                                {
+                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    continue;
+                                }
+
+                                //16-Bit Values
+                                var result = relocationRecord.SourceType switch
+                                {
+                                    //Offset
+                                    2 => relocationPointer.Segment,
+                                    5 => relocationPointer.Offset,
+                                    _ => throw new ArgumentOutOfRangeException(
+                                        $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                                };
+
+                                if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
+                                    result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+
+                                Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
+                                break;
+
                             }
-
-                            //16-Bit Values
-                            var result = relocationRecord.SourceType switch
-                            {
-                                //Offset
-                                2 => relocationPointer.Segment,
-                                5 => relocationPointer.Offset,
-                                _ => throw new ArgumentOutOfRangeException(
-                                    $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                            };
-
-                            if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
-                                result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
-
-                            Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                            break;
-
-                        }
                         default:
                             throw new Exception("Unsupported Records Flag for Relocation Value");
                     }

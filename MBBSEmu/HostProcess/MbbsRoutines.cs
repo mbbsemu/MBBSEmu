@@ -210,7 +210,7 @@ namespace MBBSEmu.HostProcess
 
         private void LoginPasswordDisplay(UserSession session)
         {
-            session.DataToClient.Enqueue("|B||WHITE|Password:|!B| ".EncodeToANSIArray());
+            session.DataToClient.Enqueue("|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 

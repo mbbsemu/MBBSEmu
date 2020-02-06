@@ -340,7 +340,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     
+        ///     The Input Buffer Size
         /// </summary>
         public void btuibw()
         {
@@ -487,6 +487,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 0;
         }
 
+        /// <summary>
+        ///     Sets Screen Width (ignored)
+        /// </summary>
         private void btutsw()
         {
             var channel = GetParameter(0);
