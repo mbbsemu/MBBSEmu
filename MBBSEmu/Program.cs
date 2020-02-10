@@ -107,6 +107,7 @@ namespace MBBSEmu
 
             acct.CreateTable();
             var sysopUserId = acct.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
+            var guestUserId = acct.InsertAccount("guest", "guest", "guest@nusbaum.me");
 
             var keys = ServiceResolver.GetService<IAccountKeyRepository>();
 
@@ -114,10 +115,15 @@ namespace MBBSEmu
                 keys.DropTable();
 
             keys.CreateTable();
+
             keys.InsertAccountKey(sysopUserId, "DEMO");
             keys.InsertAccountKey(sysopUserId, "NORMAL");
             keys.InsertAccountKey(sysopUserId, "SUPER");
             keys.InsertAccountKey(sysopUserId, "SYSOP");
+
+            keys.InsertAccountKey(guestUserId, "DEMO");
+            keys.InsertAccountKey(guestUserId, "NORMAL");
+
             _logger.Info("Database Reset!");
         }
     }

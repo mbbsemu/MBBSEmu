@@ -14,7 +14,7 @@ Example: ./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset
 
 -----------------------------------------------------------
 appsettings.json Options:
-
+BBS.Title               Title (name) of your Bulletin Board, used by MAJORBBS.H
 GSBL.Activation         Activation Code for MajorBBS & Worldgroup (8-digit numeric)
 Module.DoLoginRoutine   Display Module Post-Login Messages (True/False)
 Telnet.Port             Port Number for Telnet to listn on (Default: 23)

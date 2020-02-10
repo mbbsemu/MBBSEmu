@@ -56,11 +56,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousBtrieveFile = new Queue<IntPtr16>(10);
 
             //Setup Memory for Variables
-            Module.Memory.AllocateVariable("PRFBUF", 0x2000); //Output buffer, 8kb
+            Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
-            Module.Memory.AllocateVariable("USER-POINTER", 0x4);
-            Module.Memory.AllocateVariable("USER", 0x41);
+            Module.Memory.AllocateVariable("USER", 0x41, true);
             Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
@@ -84,10 +83,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(modulePointerPointer, modulePointer.ToSpan());
             Module.Memory.AllocateVariable("UACOFF", 0x4);
             Module.Memory.AllocateVariable("VDAPTR", 0x4);
-            var vdatmpPointer = Module.Memory.AllocateVariable("VDATMP", 0x4);
-            Module.Memory.SetArray(vdatmpPointer, Module.Memory.AllocateVariable("VDATMP-DATA", VOLATILE_DATA_SIZE).ToSpan());
+            Module.Memory.AllocateVariable("VDATMP", VOLATILE_DATA_SIZE, true);
+            Module.Memory.SetWord(Module.Memory.AllocateVariable("VDASIZ", 0x2), VOLATILE_DATA_SIZE);
+            Module.Memory.AllocateVariable("BBSTTL", 0x32, true); //50 bytes for BBS Title
+            Module.Memory.AllocateVariable("COMPANY", 0x32, true); //50 bytes for company name
+            Module.Memory.AllocateVariable("ADDRES1", 0x32, true); //50 bytes for address line 1
+            Module.Memory.AllocateVariable("ADDRES2", 0x32, true); //50 bytes for address line 2
+            Module.Memory.AllocateVariable("DATAPH", 0x20, true); // 32 bytes for phone #
+            Module.Memory.AllocateVariable("LIVEPH", 0x20, true); // 32 bytes for phone #
 
-            var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x256);
+            var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
             /*
              * Fill CTYPE array with standard characters
@@ -131,13 +136,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channelNumber == ushort.MaxValue)
                 return;
 
+            if (!Module.Memory.TryGetVariable($"VDA-{channelNumber}", out var vdaChannelPointer))
+                vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
+
+            Module.Memory.SetArray(Module.Memory.GetVariable("VDAPTR"), vdaChannelPointer.ToSpan());
+
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
 
             var pointer = Module.Memory.GetVariable("USER");
             Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
 
-            Module.Memory.SetArray(Module.Memory.GetVariable("USER-POINTER"), pointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("*USER"), pointer.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
 
@@ -247,6 +257,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return _ctype;
                 case 640:
                     return vdatmp;
+                case 83:
+                    return bbsttl;
+                case 136:
+                    return company;
+                case 61:
+                    return addres1;
+                case 62:
+                    return addres2;
+                case 153:
+                    return dataph;
+                case 387:
+                    return liveph;
+                case 639:
+                    return vdasiz;
             }
 
             if (offsetsOnly)
@@ -583,6 +607,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 785:
                     outmlt();
+                    break;
+                case 622:
+                    updvbtv();
+                    break;
+                case 959:
+                    stlcpy();
+                    break;
+                case 568:
+                    stop_polling();
+                    break;
+                case 85:
+                    begin_polling();
+                    break;
+                case 712:
+                    stpans();
+                    break;
+                case 648:
+                    xlttxv();
+                    break;
+                case 787: //pmlt is just mult-lingual prf, so we just call prf
+                    prf();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -1181,7 +1226,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var pointer = Module.Memory.GetVariable("PRFBUF");
             Module.Memory.SetArray(pointer.Segment, (ushort)(_outputBufferPosition + pointer.Offset), formattedMessage);
-            _outputBufferPosition += formattedMessage.Length;
+            _outputBufferPosition += (formattedMessage.Length - 1);
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer");
@@ -2041,7 +2086,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *prfbuf
         /// </summary>
-        private ReadOnlySpan<byte> prfbuf => Module.Memory.GetVariable("PRFBUF").ToSpan();
+        private ReadOnlySpan<byte> prfbuf => Module.Memory.GetVariable("*PRFBUF").ToSpan();
 
         /// <summary>
         ///     Copies characters from a string
@@ -2176,7 +2221,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("USER-POINTER");
+                var pointer = Module.Memory.GetVariable("*USER");
                 return pointer.ToSpan();
             }
         }
@@ -2191,16 +2236,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get
             {
                 if (!Module.Memory.TryGetVariable($"VDAPTR", out var variablePointer))
-                {
                     variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
-                }
-
-                if (!Module.Memory.TryGetVariable($"VDA-{ChannelNumber}", out var volatileMemoryAddress))
-                {
-                    volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{ChannelNumber}", VOLATILE_DATA_SIZE);
-                }
-
-                Module.Memory.SetArray(variablePointer, volatileMemoryAddress.ToSpan());
 
                 return variablePointer.ToSpan();
             }
@@ -3571,12 +3607,329 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *vdatmp
         /// </summary>
-        public ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariable("VDATMP").ToSpan();
+        public ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariable("*VDATMP").ToSpan();
 
         /// <summary>
         ///     Send prfbuf to a channel & clear
         ///     Multilingual version of outprf(), for now we just call outprf()
         /// </summary>
         public void outmlt() => outprf();
+
+        /// <summary>
+        ///     Update the Btrieve current record with a variable length record
+        ///
+        ///     Signature: void updvbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        private void updvbtv()
+        {
+            var btrieveRecordPointerPointer = GetParameterPointer(0);
+
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.RecordLength);
+
+            currentBtrieveFile.Update(dataToWrite.ToArray());
+
+#if DEBUG
+            _logger.Info(
+                $"Updated current Btrieve record ({currentBtrieveFile.CurrentRecordNumber}) with {dataToWrite.Length} bytes");
+#endif
+        }
+
+        /// <summary>
+        ///     Copies a string with a fixed length
+        ///
+        ///     Signature: stlcpy(char *dest, char *source, int nbytes);
+        ///     Return: AX = Offset in Segment
+        ///             DX = Data Segment
+        /// </summary>
+        private void stlcpy()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+            var limit = GetParameter(4);
+
+            using var inputBuffer = new MemoryStream();
+            var potentialString = Module.Memory.GetArray(sourcePointer, limit);
+            for (var i = 0; i < limit; i++)
+            {
+                if (potentialString[i] == 0x0)
+
+                    break;
+                inputBuffer.WriteByte(potentialString[i]);
+            }
+
+            //If the value read is less than the limit, it'll be padded with null characters
+            //per the MajorBBS Development Guide
+            for (var i = inputBuffer.Length; i < limit; i++)
+                inputBuffer.WriteByte(0x0);
+
+            Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
+
+#if DEBUG
+            _logger.Info($"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
+#endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Turn on polling for the specified user number channel
+        ///
+        ///     This will be called as fast as possible, as often as possible until
+        ///     stop_polling() is called
+        /// 
+        ///     Signature: void begin_polling(int unum,void (*rouptr)())
+        /// </summary>
+        public void begin_polling()
+        {
+            var channelNumber = GetParameter(0);
+            var routinePointer = GetParameterPointer(1);
+
+            //Unset on the specified channel
+            if (routinePointer.Segment == 0 && routinePointer.Offset == 0)
+            {
+
+                ChannelDictionary[channelNumber].PollingRoutine = null;
+                Registers.AX = 0;
+
+#if DEBUG
+                _logger.Info($"Unassigned Polling Routine on Channel {channelNumber}");
+#endif
+                return;
+            }
+
+            ChannelDictionary[channelNumber].PollingRoutine = new IntPtr16(routinePointer.ToSpan());
+
+#if DEBUG
+            _logger.Info($"Assigned Polling Routine {ChannelDictionary[channelNumber].PollingRoutine} to Channel {channelNumber}");
+#endif
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Stop polling for the specified user number channel
+        ///
+        ///     Signature: void stop_polling(int unum)
+        /// </summary>
+        public void stop_polling()
+        {
+            var channelNumber = GetParameter(0);
+
+            ChannelDictionary[channelNumber].PollingRoutine = null;
+            Registers.AX = 0;
+
+#if DEBUG
+            _logger.Info($"Unassigned Polling Routine on Channel {channelNumber}");
+#endif
+            return;
+        }
+
+        /// <summary>
+        ///     Title of the MajorBBS System
+        ///
+        ///     Signature: char *bbsttl
+        /// </summary>
+        public ReadOnlySpan<byte> bbsttl
+        {
+            get
+            {
+                var title = _configuration["BBS.Title"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "MMBSEmu";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("BBSTTL");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*BBSTTL").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     The Company name of the MajorBBS system
+        ///
+        ///     Signature: char *company
+        /// </summary>
+        public ReadOnlySpan<byte> company
+        {
+            get
+            {
+                var title = _configuration["BBS.CompanyName"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "MMBSEmu";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("COMPANY");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*COMPANY").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     Mailing Address Line 1 of the MajorBBS System
+        ///
+        ///     Signature: char *addres1 (not a typo)
+        /// </summary>
+        public ReadOnlySpan<byte> addres1
+        {
+            get
+            {
+                var title = _configuration["BBS.Address1"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "4101 SW 47th Ave., Suite 101";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("ADDRES1");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*ADDRES1").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     Mailing Address Line 2 of the MajorBBS System
+        ///
+        ///     Signature: char *addres2 (not a typo)
+        /// </summary>
+        public ReadOnlySpan<byte> addres2
+        {
+            get
+            {
+                var title = _configuration["BBS.Address2"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "Fort Lauderdale, FL 33314";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("ADDRES2");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*ADDRES2").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     The first phone line connected to the MajorBBS system
+        ///
+        ///     Signature: char *dataph
+        /// </summary>
+        public ReadOnlySpan<byte> dataph
+        {
+            get
+            {
+                var title = _configuration["BBS.DataPhone"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "(305) 583-7808";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("DATAPH");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*DATAPH").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     The first phone line reserved for live users
+        ///
+        ///     Signature: char *liveph
+        /// </summary>
+        public ReadOnlySpan<byte> liveph
+        {
+            get
+            {
+                var title = _configuration["BBS.VoicePhone"];
+
+                if (string.IsNullOrEmpty(title))
+                    title = "(305) 583-5990";
+
+                if (!title.EndsWith("\0"))
+                    title += "\0";
+
+                var titlePointer = Module.Memory.GetVariable("LIVEPH");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                return Module.Memory.GetVariable("*LIVEPH").ToSpan();
+            }
+        }
+
+        /// <summary>
+        ///     Translate buffer (process any possible text_variables)
+        ///
+        ///     Signature: char *xlttxv(char *buffer,int size)
+        /// </summary>
+        public void xlttxv()
+        {
+            var stringToProcessPointer = GetParameterPointer(0);
+            var size = GetParameter(2);
+
+            var stringToProcess = Module.Memory.GetString(stringToProcessPointer);
+
+            var processedString = ProcessTextVariables(stringToProcess);
+
+            if (!Module.Memory.TryGetVariable("XLTTXV", out var resultPointer))
+                resultPointer = Module.Memory.AllocateVariable("XLTTXV", 0x800);
+
+            Module.Memory.SetArray(resultPointer, processedString);
+
+            Registers.AX = resultPointer.Offset;
+            Registers.DX = resultPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Strips ANSI from a string
+        ///
+        ///     Signature: char *stpans(char *str)
+        /// </summary>
+        public void stpans()
+        {
+            var stringToStripPointer = GetParameterPointer(0);
+            var stringToStrip = Module.Memory.GetString(stringToStripPointer);
+
+            var ansiFound = false;
+            foreach (var t in stringToStrip)
+            {
+                if (t == 0x1B)
+                    ansiFound = true;
+            }
+
+            if (ansiFound)
+                _logger.Warn($"ANSI found but was not stripped. Process not implemented.");
+
+#if DEBUG
+            _logger.Info("Ignoring, not stripping ANSI");
+#endif
+
+            Registers.AX = stringToStripPointer.Offset;
+            Registers.DX = stringToStripPointer.Segment;
+
+        }
+
+        /// <summary>
+        ///     Volatile Data Size after all INIT routines are complete
+        ///
+        ///     This is hard coded to VOLATILE_DATA_SIZE constant
+        ///
+        ///     Signature: int vdasiz;
+        /// </summary>
+        public ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariable("VDASIZ").ToSpan();
     }
 }

@@ -3,6 +3,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
+using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -14,12 +15,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFC;
 
-        internal Galme(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        internal Galme(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
+            channelDictionary)
         {
+            var txtlenPointer = Module.Memory.AllocateVariable("TXTLEN", 0x2);
+            Module.Memory.SetWord(txtlenPointer, 0x400);
+
         }
 
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
         {
+            switch (ordinal)
+            {
+                case 248:
+                    return _txtlen;
+            }
 
             if (offsetsOnly)
             {
@@ -35,9 +45,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 123:
                     simpsnd();
                     break;
-                case 248:
-                    txtlen();
-                    break;
             }
 
             return null;
@@ -45,7 +52,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(CpuRegisters registers, ushort channelNumber)
         {
-            return;
+            Registers = registers;
+            ChannelNumber = channelNumber;
         }
 
         public void UpdateSession(ushort channelNumber)
@@ -76,9 +84,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: unsigned txtlen(void)
         /// </summary>
-        private void txtlen()
-        {
-            Registers.AX = ushort.MaxValue;
-        }
+        private ReadOnlySpan<byte> _txtlen => Module.Memory.GetVariable("TXTLEN").ToSpan();
     }
 }

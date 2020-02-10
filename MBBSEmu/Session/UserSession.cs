@@ -82,6 +82,11 @@ namespace MBBSEmu.Session
 
         public IntPtr16 CharacterInterceptor;
 
+        /// <summary>
+        ///     Routine that is called by BEGIN_POLLING for this user number
+        /// </summary>
+        public IntPtr16 PollingRoutine;
+
         public int mArgCount;
 
         public List<int> mArgv;

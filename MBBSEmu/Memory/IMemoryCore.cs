@@ -9,7 +9,7 @@ namespace MBBSEmu.Memory
         //Variable Memory Management
         IntPtr16 GetVariable(string name);
         bool TryGetVariable(string name, out IntPtr16 pointer);
-        IntPtr16 AllocateVariable(string name, ushort size);
+        IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false);
 
         //Segment Mangement
         void AddSegment(ushort segmentNumber, int size = 0x10000);

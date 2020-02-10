@@ -6,7 +6,6 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -305,6 +304,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Xchg:
                     Op_Xchg();
+                    break;
+                case Mnemonic.Div:
+                    Op_Div();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1923,6 +1925,29 @@ namespace MBBSEmu.CPU
 
             WriteToDestination(source, operationSize);
             WriteToSource(destination, operationSize);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Div()
+        {
+            var source = GetOperandValue(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var operationSize = GetCurrentOperationSize();
+
+            int destination = 0;
+            switch (operationSize)
+            {
+                case 1:
+                    destination = Registers.AX;
+                    break;
+                case 2:
+                    destination = (Registers.DX << 16) | Registers.AX;
+                    break;
+            }
+
+            var quotient = Math.DivRem(destination, source, out var remainder);
+
+            Registers.AX = (ushort) quotient;
+            Registers.DX = (ushort) remainder;
         }
     }
 }

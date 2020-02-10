@@ -151,6 +151,12 @@ namespace MBBSEmu.HostProcess
                             //User is in the module, process all the in-module type of events
                             case EnumSessionState.InModule:
                                 {
+                                    //Perform Polling if it's set
+                                    if (s.PollingRoutine != null)
+                                    {
+                                        Run(s.CurrentModule.ModuleIdentifier, s.PollingRoutine, s.Channel, true);
+                                    }
+
                                     //Process Character Interceptor in GSBL
                                     if (s.DataToProcess)
                                     {

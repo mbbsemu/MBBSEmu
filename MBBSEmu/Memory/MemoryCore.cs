@@ -49,7 +49,7 @@ namespace MBBSEmu.Memory
             _currentVariablePointer.Offset = 0;
         }
 
-        public IntPtr16 AllocateVariable(string name, ushort size)
+        public IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false)
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
             {
@@ -74,12 +74,23 @@ namespace MBBSEmu.Memory
                 $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
-            _currentVariablePointer.Offset += size;
+            _currentVariablePointer.Offset += (ushort)(size + 1);
 
             var newPointer = new IntPtr16(_currentVariablePointer.Segment, currentOffset);
 
+            if(declarePointer && string.IsNullOrEmpty(name))
+                throw new Exception("Unsupported operation, declaring pointer type for NULL named variable");
+
             if (!string.IsNullOrEmpty(name))
+            {
                 _variablePointerDictionary[name] = newPointer;
+
+                if (declarePointer)
+                {
+                    var variablePointer = AllocateVariable($"*{name}", 0x4, false);
+                    SetArray(variablePointer, newPointer.ToSpan());
+                }
+            }
 
             return newPointer;
         }

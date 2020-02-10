@@ -295,11 +295,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
 
             var channel = GetParameter(0);
-            var routineOffset = GetParameter(1);
-            var routineSegment = GetParameter(2);
+            var routinePointer = GetParameterPointer(1);
 
             //Unset on the specified channel
-            if (routineOffset == 0 && routineSegment == 0)
+            if (routinePointer.Segment == 0 && routinePointer.Offset == 0)
             {
 
                 ChannelDictionary[channel].CharacterInterceptor = null;
@@ -311,7 +310,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routineSegment, routineOffset);
+            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routinePointer.ToSpan());
 
 #if DEBUG
             _logger.Info($"Assigned Character Interceptor Routine {ChannelDictionary[channel].CharacterInterceptor} to Channel {channel}");
