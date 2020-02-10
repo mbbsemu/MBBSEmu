@@ -1235,14 +1235,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourcePointer = GetParameterPointer(0);
 
-            var output = Module.Memory.GetString(sourcePointer);
+            var output = Module.Memory.GetString(sourcePointer, true);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
             var pointer = Module.Memory.GetVariable("PRFBUF");
             Module.Memory.SetArray(pointer.Segment, (ushort)(_outputBufferPosition + pointer.Offset), formattedMessage);
-            _outputBufferPosition += (formattedMessage.Length - 1);
+            _outputBufferPosition += formattedMessage.Length;
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer");
@@ -1284,6 +1284,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             else
             {
                 ChannelDictionary[userChannel].DataToClient.Enqueue(outputBuffer);
+            }
+
+            //Zero It Back out
+            for (var i = 0; i < _outputBufferPosition; i++)
+            {
+                Module.Memory.SetByte(pointer.Segment, (ushort) (pointer.Offset + i), 0x0);
             }
 
             _outputBufferPosition = 0;

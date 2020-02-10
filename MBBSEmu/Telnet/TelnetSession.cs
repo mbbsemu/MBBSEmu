@@ -62,6 +62,7 @@ namespace MBBSEmu.Telnet
                 if (_iacPhase == 0 && SessionTimer.ElapsedMilliseconds > 500)
                 {
                     _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
+                    _iacPhase = 1;
                     DataToClient.Enqueue(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
                 }
 
@@ -72,7 +73,7 @@ namespace MBBSEmu.Telnet
                     {
                         //When we're in a module, since new lines are stripped from MVC's etc, and only
                         //carriate returns remain, IF we're in a module and encounter a CR, add a NL
-                        if (SessionState == EnumSessionState.InModule)
+                        if (SessionState == EnumSessionState.InModule || SessionState == EnumSessionState.LoginRoutines)
                         {
                             switch (b)
                             {

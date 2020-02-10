@@ -1721,7 +1721,7 @@ namespace MBBSEmu.CPU
                         Registers.BP = Registers.SP;
 
 #if DEBUG
-                        _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
+                        //_logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
 
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,

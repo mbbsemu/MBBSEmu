@@ -249,6 +249,7 @@ namespace MBBSEmu.HostProcess
             foreach (var m in modules)
             {
                 EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
+                currentMenuItem++;
             }
 
             EchoToClient(session, "\r\n|GREEN|Main Menu|RESET|\r\n".EncodeToANSIArray());

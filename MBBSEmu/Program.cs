@@ -6,7 +6,10 @@ using MBBSEmu.Module;
 using MBBSEmu.Telnet;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +22,7 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
+            var config = ServiceResolver.GetService<IConfigurationRoot>();
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
             var bApiReport = false;
@@ -55,7 +59,7 @@ namespace MBBSEmu
                 }
             }
 
-            if (string.IsNullOrEmpty(sInputModule))
+            if (string.IsNullOrEmpty(sInputModule) && !config.GetSection("Modules").GetChildren().Any())
             {
                 Console.WriteLine("No Module Specified");
                 return;
@@ -67,11 +71,30 @@ namespace MBBSEmu
                 File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
             }
 
-            var module = new MbbsModule(sInputModule, sInputPath);
+            var modules = new List<MbbsModule>();
+
+            if (!string.IsNullOrEmpty(sInputModule))
+            {
+                //Load Command Line
+                modules.Add(new MbbsModule(sInputModule, sInputPath));
+            }
+            else
+            {
+                //Load Config File
+                foreach (var m in config.GetSection("Modules").GetChildren())
+                {
+                    _logger.Info($"Loading {m["Identifier"]}");
+                    modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
+                }
+            }
+
             if (bApiReport)
             {
-                var apiReport = new ApiReport(module);
-                apiReport.GenerateReport();
+                foreach (var m in modules)
+                {
+                    var apiReport = new ApiReport(m);
+                    apiReport.GenerateReport();
+                }
                 return;
             }
 
@@ -91,7 +114,8 @@ namespace MBBSEmu
 
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
-            host.AddModule(module);
+            foreach(var m in modules)
+                host.AddModule(m);
 
             var server = ServiceResolver.GetService<ITelnetServer>();
 
