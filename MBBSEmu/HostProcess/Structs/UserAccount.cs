@@ -375,9 +375,11 @@ namespace MBBSEmu.HostProcess.Structs
 
         private byte[] _usrAccStructBytes;
 
+        public const ushort Size = 341;
+
         public UserAccount()
         {
-            _usrAccStructBytes = new byte[302];
+            _usrAccStructBytes = new byte[341];
             flags = 1;
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }

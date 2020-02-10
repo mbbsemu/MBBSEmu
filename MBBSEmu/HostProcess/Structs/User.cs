@@ -4,27 +4,9 @@ using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess.Structs
 {
-    /* From MAJORBBS.H:
-        struct user {                 // volatile per-user info maintained        
-            int class;               //  [0,1]  class (offline, or flavor of online)  
-            int *keys;               //  [2,3,4,5]  dynamically alloc'd array of key bits 
-            int state;               //  [6,7]  state (module number in effect)       
-            int substt;              //  [8,9]  substate (for convenience of module)  
-            int lofstt;              //  state which has final lofrou() routine
-            int usetmr;              //  usage timer (for nonlive timeouts etc)
-            int minut4;              //  total minutes of use, times 4         
-            int countr;              //  general purpose counter               
-            int pfnacc;              //  profanity accumulator                 
-            unsigned long flags;     //  runtime flags                         
-            unsigned baud;           //  baud rate currently in effect         
-            int crdrat;              //  credit-consumption rate               
-            int nazapc;              //  no-activity auto-logoff counter       
-            int linlim;              //  "logged in" module loop limit         
-            struct clstab *cltptr;   //  ??  pointer to guys current class in table
-            void (*polrou)();        //  ??  pointer to current poll routine       
-            char lcstat;             //  ??  LAN chan state (IPX.H) 0=nonlan/nonhdw
-        };        
-    */
+    /// <summary>
+    ///     USER Struct as defined in MAJORBBS.H
+    /// </summary>
     public class User
     {
         public short UserClass { get; set; }
@@ -46,6 +28,8 @@ namespace MBBSEmu.HostProcess.Structs
         public char lcstat { get; set; }
 
         private byte[] _userStructBytes;
+
+        public const ushort Size = 41;
 
         public User()
         {
@@ -100,23 +84,23 @@ namespace MBBSEmu.HostProcess.Structs
         public ReadOnlySpan<byte> ToSpan()
         {
             using var output = new MemoryStream();
-            output.Write(BitConverter.GetBytes(UserClass)); //class (ACTUSR)
-            output.Write(Keys.ToSpan()); //keys:segment
-            output.Write(BitConverter.GetBytes(State)); //state (register_module return)
-            output.Write(BitConverter.GetBytes(Substt)); //substt (always starts at 0)
-            output.Write(BitConverter.GetBytes(Lofstt)); //lofstt
-            output.Write(BitConverter.GetBytes(Usetmr)); //usetmr
-            output.Write(BitConverter.GetBytes(Minut4)); //minut4
-            output.Write(BitConverter.GetBytes(Countr)); //countr
-            output.Write(BitConverter.GetBytes(Pfnacc)); //pfnacc
-            output.Write(BitConverter.GetBytes(Flags)); //flags
-            output.Write(BitConverter.GetBytes(Baud)); //baud
-            output.Write(BitConverter.GetBytes(Crdrat)); //crdrat
-            output.Write(BitConverter.GetBytes(Nazapc)); //nazapc
-            output.Write(BitConverter.GetBytes(Linlim)); //linlim
-            output.Write(Clsptr.ToSpan()); //clsptr
-            output.Write(Polrou.ToSpan()); //polrou
-            output.Write(BitConverter.GetBytes('0')); //lcstat
+            output.Write(BitConverter.GetBytes(UserClass)); //0-1
+            output.Write(Keys.ToSpan()); //2-3-4-5
+            output.Write(BitConverter.GetBytes(State)); //6-7
+            output.Write(BitConverter.GetBytes(Substt)); //8-9
+            output.Write(BitConverter.GetBytes(Lofstt)); //10-11
+            output.Write(BitConverter.GetBytes(Usetmr)); //12-13
+            output.Write(BitConverter.GetBytes(Minut4)); //14-15
+            output.Write(BitConverter.GetBytes(Countr)); //16-17
+            output.Write(BitConverter.GetBytes(Pfnacc)); //18-19
+            output.Write(BitConverter.GetBytes(Flags)); //20-21-22-23
+            output.Write(BitConverter.GetBytes(Baud)); //24-25
+            output.Write(BitConverter.GetBytes(Crdrat)); //26-27
+            output.Write(BitConverter.GetBytes(Nazapc)); //28-29
+            output.Write(BitConverter.GetBytes(Linlim)); //30-31
+            output.Write(Clsptr.ToSpan()); //32-33-34-35
+            output.Write(Polrou.ToSpan()); //36-37-38-39
+            output.WriteByte(0xFF); //40
             _userStructBytes = output.ToArray();
             return _userStructBytes;
         }

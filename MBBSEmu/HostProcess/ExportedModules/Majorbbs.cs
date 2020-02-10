@@ -38,6 +38,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private int _outputBufferPosition;
 
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
+        private const ushort NUMBER_OF_CHANNELS = 0x4;
 
         /// <summary>
         ///     Segment Identifier for Relocation
@@ -59,7 +60,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
-            Module.Memory.AllocateVariable("USER", 0x41, true);
+            Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
@@ -144,12 +145,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
             Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
 
-            var pointer = Module.Memory.GetVariable("USER");
-            Module.Memory.SetArray(pointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
+            var userBasePointer = Module.Memory.GetVariable("USER");
+            var currentUserPointer = new IntPtr16(userBasePointer.ToSpan());
+            currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
 
-            Module.Memory.SetArray(Module.Memory.GetVariable("*USER"), pointer.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
+            //Update User Array and Update Pointer to point to this user
+            Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), currentUserPointer.ToSpan());
+
+            if (!Module.Memory.TryGetVariable($"USRACC-{channelNumber}", out var usrAccPointer))
+                usrAccPointer = Module.Memory.AllocateVariable($"USRACC-{channelNumber}", UserAccount.Size);
+
+            Module.Memory.SetArray(usrAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("USAPTR"), usrAccPointer.ToSpan());
+            //Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -195,9 +204,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the status wasn't set internally, then set it to the default 5
             ChannelDictionary[ChannelNumber].Status = !ChannelDictionary[ChannelNumber].StatusChange
                 ? (ushort)5
-                : Module.Memory.GetWord(base.Module.Memory.GetVariable("STATUS"));
+                : Module.Memory.GetWord(Module.Memory.GetVariable("STATUS"));
 
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(Module.Memory.GetVariable("USER"), 41));
+            var userPointer = Module.Memory.GetVariable("USER");
+
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort) (userPointer.Offset +(User.Size * channel)), 41));
+
+#if DEBUG
+            _logger.Info($"{channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
+            _logger.Info($"{channel}->substt == {ChannelDictionary[ChannelNumber].UsrPtr.Substt}");
+#endif
         }
 
         /// <summary>
@@ -1187,7 +1203,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userNumber = GetParameter(0);
 
             if (!Module.Memory.TryGetVariable($"USRACC-{userNumber}", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable($"USRACC-{userNumber}", 0x155);
+                variablePointer = Module.Memory.AllocateVariable($"USRACC-{userNumber}", UserAccount.Size);
 
             //If user isnt online, return a null pointer
             if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
@@ -1301,16 +1317,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user *usrptr;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr
-        {
-            get
-            {
-                var pointer = Module.Memory.GetVariable("USER");
-                Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), pointer.ToSpan());
-                return Module.Memory.GetVariable("USRPTR").ToSpan();
-            }
-        }
-
+        private ReadOnlySpan<byte> usrptr =>  Module.Memory.GetVariable("USRPTR").ToSpan();
+                
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
         ///
