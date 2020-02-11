@@ -883,8 +883,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var offset = McvPointerDictionary.Allocate(new McvFile(msgFileName, Module.ModulePath));
 
-            if (_currentMcvFile != null)
-                _previousMcvFile.Enqueue(_currentMcvFile);
+            //if (_currentMcvFile != null)
+            //    _previousMcvFile.Enqueue(new IntPtr16(_currentMcvFile.ToSpan()));
 
             _currentMcvFile = new IntPtr16(ushort.MaxValue, (ushort)offset);
 
@@ -892,8 +892,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Opened MSG file: {msgFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
 #endif
-            Registers.AX = _currentMcvFile.Offset;
-            Registers.DX = _currentMcvFile.Segment;
+            Registers.AX = (ushort) offset;
+            Registers.DX = ushort.MaxValue;
         }
 
         /// <summary>
@@ -1610,7 +1610,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (mcvFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
                 throw new ArgumentException($"Invalid MCV File Pointer: {mcvFilePointer}");
 
-            _previousMcvFile.Enqueue(_currentMcvFile);
+            //if (mcvFilePointer.Equals(_currentMcvFile))
+            //{
+            //    _logger.Warn($"Duplicate set on already active MCV {_currentMcvFile} -> {mcvFilePointer}");
+            //    return;
+            //}
+
+            _previousMcvFile.Enqueue(new IntPtr16(_currentMcvFile.ToSpan()));
             _currentMcvFile = mcvFilePointer;
 
 #if DEBUG
@@ -1627,6 +1633,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void rstmbk()
         {
             _currentMcvFile = _previousMcvFile.Dequeue();
+#if DEBUG
+            _logger.Info($"Reset Current MCV to {McvPointerDictionary[_currentMcvFile.Offset].FileName} ({_currentMcvFile}) (Queue Depth: {_previousMcvFile.Count})");
+#endif
         }
 
         /// <summary>
@@ -2820,7 +2829,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} from file {_currentMcvFile}, already saved to {variablePointer}");
+            _logger.Info($"Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {_currentMcvFile}), already saved to {variablePointer}");
 #endif
 
             Registers.AX = variablePointer.Offset;
