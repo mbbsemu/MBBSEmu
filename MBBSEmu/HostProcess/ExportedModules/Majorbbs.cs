@@ -883,9 +883,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var offset = McvPointerDictionary.Allocate(new McvFile(msgFileName, Module.ModulePath));
 
-            //if (_currentMcvFile != null)
-            //    _previousMcvFile.Enqueue(new IntPtr16(_currentMcvFile.ToSpan()));
-
+            //Open just sets whatever the currently active MCV file is -- overwriting whatever was there
             _currentMcvFile = new IntPtr16(ushort.MaxValue, (ushort)offset);
 
 #if DEBUG
