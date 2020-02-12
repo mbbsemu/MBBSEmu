@@ -3,8 +3,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography;
 
 namespace MBBSEmu.Btrieve
 {
@@ -16,15 +14,13 @@ namespace MBBSEmu.Btrieve
         public ushort RecordCount;
         public ushort MaxRecordLength;
         public ushort RecordLength;
-        public int RecordBaseOffset;
         public ushort CurrentRecordNumber;
         public ushort PageLength;
         public ushort PageCount;
         public ushort KeyRecordLength;
         public ushort KeyLength;
         public ushort KeyCount;
-
-        public int CurrentRecordOffset => (CurrentRecordNumber * RecordLength) + RecordBaseOffset;
+        public uint AbsolutePosition;
 
         private readonly byte[] _btrieveFileContent;
         private readonly List<BtrieveRecord> _btrieveRecords;
@@ -235,6 +231,46 @@ namespace MBBSEmu.Btrieve
             }
 
             return recordFound;
+        }
+
+        /// <summary>
+        ///     Determines if the given key is present in the key collection
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public int HasKey(ReadOnlySpan<byte> key)
+        {
+            
+            foreach (var k in _btrieveKeys)
+            {
+                var result = true;
+                for (var i = 0; i < key.Length; i++)
+                {
+                    if (k.Key[i] == key[i]) continue;
+
+                    result = false;
+                    break;
+                }
+
+                if (result)
+                {
+                    AbsolutePosition = k.Offset;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)
+        {
+            foreach (var r in _btrieveRecords)
+            {
+                if (r.Offset == absolutePosition)
+                    return r.Data;
+            }
+
+            return null;
         }
     }
 }

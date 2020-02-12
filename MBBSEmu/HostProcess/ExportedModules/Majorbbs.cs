@@ -208,7 +208,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var userPointer = Module.Memory.GetVariable("USER");
 
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort) (userPointer.Offset +(User.Size * channel)), 41));
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort)(userPointer.Offset + (User.Size * channel)), 41));
 
 #if DEBUG
             _logger.Info($"{channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
@@ -645,6 +645,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 787: //pmlt is just mult-lingual prf, so we just call prf
                     prf();
                     break;
+                case 485:
+                    qrybtv();
+                    break;
+                case 53:
+                    absbtv();
+                    break;
+                case 313:
+                    gabbtv();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -890,7 +899,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Opened MSG file: {msgFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
 #endif
-            Registers.AX = (ushort) offset;
+            Registers.AX = (ushort)offset;
             Registers.DX = ushort.MaxValue;
         }
 
@@ -1287,7 +1296,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Zero It Back out
             for (var i = 0; i < _outputBufferPosition; i++)
             {
-                Module.Memory.SetByte(pointer.Segment, (ushort) (pointer.Offset + i), 0x0);
+                Module.Memory.SetByte(pointer.Segment, (ushort)(pointer.Offset + i), 0x0);
             }
 
             _outputBufferPosition = 0;
@@ -1321,8 +1330,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user *usrptr;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr =>  Module.Memory.GetVariable("USRPTR").ToSpan();
-                
+        private ReadOnlySpan<byte> usrptr => Module.Memory.GetVariable("USRPTR").ToSpan();
+
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
         ///
@@ -3566,7 +3575,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void curusr(int newunum)
         /// </summary>
-        public void curusr()
+        private void curusr()
         {
             var newUserNumber = GetParameter(0);
             ChannelNumber = newUserNumber;
@@ -3579,7 +3588,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Number of modules currently installed
         /// </summary>
-        public ReadOnlySpan<byte> nmods => Module.Memory.GetVariable("NMODS").ToSpan();
+        private ReadOnlySpan<byte> nmods => Module.Memory.GetVariable("NMODS").ToSpan();
 
         /// <summary>
         ///     This is the pointer, to the pointer, for the MODULE struct because module is declared
@@ -3587,7 +3596,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Pointer -> Pointer -> Struct
         /// </summary>
-        public ReadOnlySpan<byte> module => Module.Memory.GetVariable("MODULE-POINTER").ToSpan();
+        private ReadOnlySpan<byte> module => Module.Memory.GetVariable("MODULE-POINTER").ToSpan();
 
         /// <summary>
         ///     Long Shift Left (Borland C++ Implicit Function)
@@ -3595,7 +3604,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     DX:AX == Long Value
         ///     CL == How many to move
         /// </summary>
-        public void f_lxlsh()
+        private void f_lxlsh()
         {
             var inputValue = (Registers.DX << 16) | Registers.AX;
 
@@ -3610,7 +3619,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void byenow(int msgnum, TYPE p1, TYPE p2,...,pn)
         /// </summary>
-        public void byenow()
+        private void byenow()
         {
             prfmsg();
             Registers.AX = 0;
@@ -3621,20 +3630,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     See: CTYPE.H
         /// </summary>
-        public ReadOnlySpan<byte> _ctype => Module.Memory.GetVariable("CTYPE").ToSpan();
+        private ReadOnlySpan<byte> _ctype => Module.Memory.GetVariable("CTYPE").ToSpan();
 
         /// <summary>
         ///     Points to the ad-hoc Volatile Data Area
         ///
         ///     Signature: char *vdatmp
         /// </summary>
-        public ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariable("*VDATMP").ToSpan();
+        private ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariable("*VDATMP").ToSpan();
 
         /// <summary>
         ///     Send prfbuf to a channel & clear
         ///     Multilingual version of outprf(), for now we just call outprf()
         /// </summary>
-        public void outmlt() => outprf();
+        private void outmlt() => outprf();
 
         /// <summary>
         ///     Update the Btrieve current record with a variable length record
@@ -3703,7 +3712,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Signature: void begin_polling(int unum,void (*rouptr)())
         /// </summary>
-        public void begin_polling()
+        private void begin_polling()
         {
             var channelNumber = GetParameter(0);
             var routinePointer = GetParameterPointer(1);
@@ -3735,7 +3744,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void stop_polling(int unum)
         /// </summary>
-        public void stop_polling()
+        private void stop_polling()
         {
             var channelNumber = GetParameter(0);
 
@@ -3753,7 +3762,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *bbsttl
         /// </summary>
-        public ReadOnlySpan<byte> bbsttl
+        private ReadOnlySpan<byte> bbsttl
         {
             get
             {
@@ -3777,7 +3786,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *company
         /// </summary>
-        public ReadOnlySpan<byte> company
+        private ReadOnlySpan<byte> company
         {
             get
             {
@@ -3801,7 +3810,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *addres1 (not a typo)
         /// </summary>
-        public ReadOnlySpan<byte> addres1
+        private ReadOnlySpan<byte> addres1
         {
             get
             {
@@ -3825,7 +3834,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *addres2 (not a typo)
         /// </summary>
-        public ReadOnlySpan<byte> addres2
+        private ReadOnlySpan<byte> addres2
         {
             get
             {
@@ -3849,7 +3858,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *dataph
         /// </summary>
-        public ReadOnlySpan<byte> dataph
+        private ReadOnlySpan<byte> dataph
         {
             get
             {
@@ -3873,7 +3882,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *liveph
         /// </summary>
-        public ReadOnlySpan<byte> liveph
+        private ReadOnlySpan<byte> liveph
         {
             get
             {
@@ -3897,7 +3906,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *xlttxv(char *buffer,int size)
         /// </summary>
-        public void xlttxv()
+        private void xlttxv()
         {
             var stringToProcessPointer = GetParameterPointer(0);
             var size = GetParameter(2);
@@ -3920,7 +3929,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *stpans(char *str)
         /// </summary>
-        public void stpans()
+        private void stpans()
         {
             var stringToStripPointer = GetParameterPointer(0);
             var stringToStrip = Module.Memory.GetString(stringToStripPointer);
@@ -3951,6 +3960,83 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int vdasiz;
         /// </summary>
-        public ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariable("VDASIZ").ToSpan();
+        private ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariable("VDASIZ").ToSpan();
+
+        /// <summary>
+        ///     Performs a Btrieve Query Operation based on KEYS
+        ///
+        ///     Signature: int is=qrybtv(char *key, int keynum, int qryopt)
+        /// </summary>
+        private void qrybtv()
+        {
+            var keyPointer = GetParameterPointer(0);
+            var keyNumber = GetParameter(2);
+            var queryOption = GetParameter(3);
+
+            var key = Module.Memory.GetString(keyPointer);
+
+            if (queryOption <= 50)
+                throw new Exception($"Invalid Query Option: {queryOption}");
+
+            if (keyNumber != 0)
+                throw new Exception("No Support for Multiple Keys");
+
+            var result = 0;
+            switch (queryOption)
+            {
+                //Get Equal
+                case 55:
+                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].HasKey(key);
+                    break;
+            }
+
+#if DEBUG
+            _logger.Info($"Performed Query {queryOption} on {BtrievePointerDictionaryNew[_currentBtrieveFile].FileName} ({_currentBtrieveFile}) with result {result}");
+#endif
+
+            Registers.AX = (ushort)result;
+        }
+
+        /// <summary>
+        ///     Returns the Absolute Position (offset) in the current Btrieve file
+        ///
+        ///     Signature: long absbtv()
+        /// </summary>
+        private void absbtv()
+        {
+            var offset = BtrievePointerDictionaryNew[_currentBtrieveFile].AbsolutePosition;
+
+            Registers.DX = (ushort)(offset >> 16);
+            Registers.AX = (ushort)(offset & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Gets the Btrieve Record located at the specified absolution position (offset)
+        ///
+        ///     Signature: void gabbtv(char *recptr, long abspos, int keynum)
+        /// </summary>
+        private void gabbtv()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var absolutePosition = GetParameterLong(2);
+            var keynum = GetParameter(4);
+
+            var record = BtrievePointerDictionaryNew[_currentBtrieveFile].GetRecordByAbsolutePosition((uint)absolutePosition);
+
+
+            //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+            var btvDataPointer = btvStruct.data;
+
+            if (record != null)
+            {
+                Module.Memory.SetArray(btvStruct.data, record);
+
+#if DEBUG
+                _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}");
+#endif
+                Module.Memory.SetArray(recordPointer, record);
+            }
+        }
     }
 }
