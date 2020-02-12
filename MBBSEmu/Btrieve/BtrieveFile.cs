@@ -20,6 +20,7 @@ namespace MBBSEmu.Btrieve
         public ushort CurrentRecordNumber;
         public ushort PageLength;
         public ushort PageCount;
+        public ushort KeyRecordLength;
         public ushort KeyLength;
         public ushort KeyCount;
 
@@ -80,7 +81,8 @@ namespace MBBSEmu.Btrieve
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
             PageLength = BitConverter.ToUInt16(_btrieveFileContent, 0x08);
             PageCount = BitConverter.ToUInt16(_btrieveFileContent, 0x20);
-            KeyLength = BitConverter.ToUInt16(_btrieveFileContent, 0x11C);
+            KeyRecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x11C);
+            KeyLength = BitConverter.ToUInt16(_btrieveFileContent, 0x11A);
             KeyCount = BitConverter.ToUInt16(_btrieveFileContent, 0x116);
 #if DEBUG
             _logger.Info($"Max Record Length: {MaxRecordLength}");
@@ -88,6 +90,7 @@ namespace MBBSEmu.Btrieve
             _logger.Info($"Page Count: {PageCount}");
             _logger.Info($"Record Length: {RecordLength}");
             _logger.Info($"Record Count: {RecordCount}");
+            _logger.Info($"Key Record Length: {KeyRecordLength}");
             _logger.Info($"Key Length: {KeyLength}");
             _logger.Info($"Key Count: {KeyCount}");
             _logger.Info("Loading Records...");
@@ -117,14 +120,14 @@ namespace MBBSEmu.Btrieve
                     for (int j = 0; j < KeyCount; j++)
                     {
 
-                        var keyRecord = new byte[KeyLength];
-                        Array.Copy(_btrieveFileContent, pageOffset + (KeyLength * j), keyRecord, 0, KeyLength);
+                        var keyRecord = new byte[KeyRecordLength];
+                        Array.Copy(_btrieveFileContent, pageOffset + (KeyRecordLength * j), keyRecord, 0, KeyRecordLength);
 
                         //Keys Start with 0xFFFFFFFF
                         if (BitConverter.ToUInt32(keyRecord, 0) != uint.MaxValue)
                             break;
 
-                        _btrieveKeys.Add(new BtrieveKey(keyRecord, 0));
+                        _btrieveKeys.Add(new BtrieveKey(keyRecord, 0, KeyRecordLength));
                     }
                     
 

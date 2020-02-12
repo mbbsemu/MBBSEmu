@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Btrieve;
+﻿using MBBSEmu.Btrieve;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
