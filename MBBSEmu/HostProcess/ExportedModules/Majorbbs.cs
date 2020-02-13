@@ -76,6 +76,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
+            Module.Memory.AllocateVariable("*OTHUSP", 0x4, false);
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
             Module.Memory.SetWord(Module.Memory.GetVariable("NMODS"), 0x1); //set this to 1 for now
@@ -287,6 +288,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return liveph;
                 case 639:
                     return vdasiz;
+                case 460:
+                    return othusp;
             }
 
             if (offsetsOnly)
@@ -4038,5 +4041,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(recordPointer, record);
             }
         }
+
+        /// <summary>
+        ///     Pointer to structure for that user in the user[] array (set by onsys() or instat())
+        ///
+        ///     Signature: struct user *othusp;
+        /// </summary>
+        private ReadOnlySpan<byte> othusp => Module.Memory.GetVariable("*OTHUSP").ToSpan();
     }
 }

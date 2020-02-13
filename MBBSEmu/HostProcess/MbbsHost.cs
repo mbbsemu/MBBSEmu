@@ -83,12 +83,15 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                //Add any incoming new sessions
-                while (_incomingSessions.TryDequeue(out var incomingSession))
+                if (_incomingSessions.Count > 0)
                 {
-                    incomingSession.Channel = (ushort)_channelDictionary.Allocate(incomingSession);
-                    incomingSession.SessionTimer.Start();
-                    _logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
+                    //Add any incoming new sessions
+                    while (_incomingSessions.TryDequeue(out var incomingSession))
+                    {
+                        incomingSession.Channel = (ushort) _channelDictionary.Allocate(incomingSession);
+                        incomingSession.SessionTimer.Start();
+                        _logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
+                    }
                 }
 
                 //Any Disconnects
