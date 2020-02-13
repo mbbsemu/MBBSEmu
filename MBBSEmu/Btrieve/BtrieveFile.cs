@@ -123,7 +123,7 @@ namespace MBBSEmu.Btrieve
                         if (BitConverter.ToUInt32(keyRecord, 0) != uint.MaxValue)
                             break;
 
-                        _btrieveKeys.Add(new BtrieveKey(keyRecord, 0, KeyRecordLength));
+                        _btrieveKeys.Add(new BtrieveKey(keyRecord, 0, KeyLength));
                     }
                     
 
