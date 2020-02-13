@@ -26,10 +26,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public IntPtr16 GlobalCommandHandler;
 
         private IntPtr16 _currentMcvFile;
-        private readonly Queue<IntPtr16> _previousMcvFile;
+        private readonly Stack<IntPtr16> _previousMcvFile;
 
         private IntPtr16 _currentBtrieveFile;
-        private readonly Queue<IntPtr16> _previousBtrieveFile;
+        private readonly Stack<IntPtr16> _previousBtrieveFile;
 
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
@@ -53,8 +53,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _inputCurrentCommand = 0;
-            _previousMcvFile = new Queue<IntPtr16>(10);
-            _previousBtrieveFile = new Queue<IntPtr16>(10);
+            _previousMcvFile = new Stack<IntPtr16>(10);
+            _previousBtrieveFile = new Stack<IntPtr16>(10);
 
             //Setup Memory for Variables
             Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
@@ -133,6 +133,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             Registers = registers;
             ChannelNumber = channelNumber;
+
+            _previousMcvFile.Clear();
 
             //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
@@ -874,10 +876,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //usrptr->state is the Module Number in use, as assigned by the host process
-            //Because we only support 1 module running at a time right now, we just set this to one
-            //TODO -- Update this to support multiple modules concurrently
-            Module.StateCode = 1;
-            Registers.AX = 1;
+            Registers.AX = (ushort)Module.StateCode;
         }
 
         /// <summary>
@@ -1564,6 +1563,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             McvPointerDictionary.Remove(filePointer.Offset);
+            _currentMcvFile = null;
         }
 
         /// <summary>
@@ -1620,17 +1620,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (mcvFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
                 throw new ArgumentException($"Invalid MCV File Pointer: {mcvFilePointer}");
 
-            //if (mcvFilePointer.Equals(_currentMcvFile))
-            //{
-            //    _logger.Warn($"Duplicate set on already active MCV {_currentMcvFile} -> {mcvFilePointer}");
-            //    return;
-            //}
+            //If there's an MVC currently set, push it to the queue
+            if (_currentMcvFile != null)
+            {
+                var previousMvc = new IntPtr16(_currentMcvFile.ToArray());
+#if DEBUG
+                _logger.Info($"Enqueud Previous MCV File: {McvPointerDictionary[previousMvc.Offset].FileName} (Pointer: {previousMvc})");
+#endif
+                _previousMcvFile.Push(previousMvc);
+            }
 
-            _previousMcvFile.Enqueue(new IntPtr16(_currentMcvFile.ToSpan()));
             _currentMcvFile = mcvFilePointer;
 
 #if DEBUG
-            _logger.Info($"Set current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
+            _logger.Info($"Set Current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
 #endif
         }
 
@@ -1642,7 +1645,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void rstmbk()
         {
-            _currentMcvFile = _previousMcvFile.Dequeue();
+            _currentMcvFile = _previousMcvFile.Pop();
 #if DEBUG
             _logger.Info($"Reset Current MCV to {McvPointerDictionary[_currentMcvFile.Offset].FileName} ({_currentMcvFile}) (Queue Depth: {_previousMcvFile.Count})");
 #endif
@@ -1693,7 +1696,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilePointer = GetParameterPointer(0);
 
             if (_currentBtrieveFile != null)
-                _previousBtrieveFile.Enqueue(_currentBtrieveFile);
+                _previousBtrieveFile.Push(_currentBtrieveFile);
 
             _currentBtrieveFile = btrieveFilePointer;
 
@@ -1773,7 +1776,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            _currentBtrieveFile = _previousBtrieveFile.Dequeue();
+            _currentBtrieveFile = _previousBtrieveFile.Pop();
 
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
@@ -2336,23 +2339,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sameto()
         {
-            var string1Offset = GetParameter(0);
-            var string1Segment = GetParameter(1);
-            var string2Offset = GetParameter(2);
-            var string2Segment = GetParameter(3);
+            var string1Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
 
-            using var string1InputBuffer = new MemoryStream();
-            string1InputBuffer.Write(Module.Memory.GetString(string1Segment, string1Offset));
-            var string1InputValue = Encoding.Default.GetString(string1InputBuffer.ToArray()).ToUpper();
+            var string1Buffer = Module.Memory.GetString(string1Pointer, true);
+            var string2Buffer = Module.Memory.GetString(string2Pointer, true);
 
-            using var string2InputBuffer = new MemoryStream();
-            string2InputBuffer.Write(Module.Memory.GetString(string2Segment, string2Offset));
-            var string2InputValue = Encoding.Default.GetString(string2InputBuffer.ToArray()).ToUpper();
+            if (string1Buffer.Length > string2Buffer.Length)
+            {
+#if DEBUG
+                _logger.Info($"Returning False, String 1 Length {string1Buffer.Length} > Stringe 2 Length {string2Buffer.Length}");
+#endif
+                Registers.AX = 0;
+                return;
+            }
 
-            var resultValue = string1InputValue.Equals(string2InputValue, StringComparison.InvariantCultureIgnoreCase);
+            var resultValue = true;
+            for (var i = 0; i < string1Buffer.Length; i++)
+            {
+                if (string1Buffer[i] == string2Buffer[i] || //same case
+                    string1Buffer[i] == string2Buffer[i] - 32 || //check upper->lower
+                    string1Buffer[i] == string2Buffer[i] + 32) //check lower->upper
+                    continue;
+
+                resultValue = false;
+                break;
+            }
 
 #if DEBUG
-            _logger.Info($"Returned {resultValue} comparing {string1InputValue} ({string1Segment:X4}:{string1Offset:X4}) to {string2InputValue} ({string2Segment:X4}:{string2Offset:X4})");
+            _logger.Info(
+                $"Returned {resultValue} comparing {Encoding.ASCII.GetString(string1Buffer)} ({string1Pointer}) to {Encoding.ASCII.GetString(string2Buffer)} ({string2Pointer})");
 #endif
 
             Registers.AX = (ushort)(resultValue ? 1 : 0);

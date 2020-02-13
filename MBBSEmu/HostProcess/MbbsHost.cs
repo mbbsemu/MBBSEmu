@@ -120,7 +120,7 @@ namespace MBBSEmu.HostProcess
                                 {
                                     s.StatusChange = false;
                                     s.SessionState = EnumSessionState.InModule;
-                                    s.UsrPtr.State = s.CurrentModule.StateCode; //Default ModuleID, need to make this dynamic
+                                    s.UsrPtr.State = (short) s.CurrentModule.StateCode; //Default ModuleID, need to make this dynamic
                                                                                 //Transfer Input Buffer to Command Buffer
                                     s.InputBuffer.WriteByte(0x0);
                                     s.InputCommand = s.InputBuffer.ToArray();
@@ -320,6 +320,7 @@ namespace MBBSEmu.HostProcess
 
             //Add it to the Module Dictionary
             _modules[module.ModuleIdentifier] = module;
+            module.StateCode = (short) _modules.Count;
 
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);

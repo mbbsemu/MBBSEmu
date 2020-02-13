@@ -17,6 +17,13 @@ namespace MBBSEmu.Module
         private protected readonly ILogger _logger;
 
         /// <summary>
+        ///     State returned by REGISTER_MODULE
+        ///
+        ///     Used to identify module within The MajorBBS/Worldgroup
+        /// </summary>
+        public short StateCode { get; set; }
+
+        /// <summary>
         ///     The unique name of the module (same as the DLL name)
         /// </summary>
         public readonly string ModuleIdentifier;
@@ -41,30 +48,26 @@ namespace MBBSEmu.Module
         /// </summary>
         public readonly MdfFile Mdf;
 
-        public short StateCode { get; set; }
+        /// <summary>
+        ///     Module Memory Manager
+        /// </summary>
+        public readonly IMemoryCore Memory;
 
         /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
-        public Dictionary<string, IntPtr16> EntryPoints;
-
-        public PointerDictionary<RealTimeRoutine> RtkickRoutines;
-
-        public PointerDictionary<RealTimeRoutine> RtihdlrRoutines;
-
-        public Dictionary<string, IntPtr16> TextVariables;
-        public List<IntPtr16> GlobalCommandHandlers;
-
-        public readonly IMemoryCore Memory;
-
-        public Queue<ExecutionUnit> ExecutionUnits;
-
-        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary;
+        public Dictionary<string, IntPtr16> EntryPoints { get; set; }
+        public PointerDictionary<RealTimeRoutine> RtkickRoutines { get; set; }
+        public PointerDictionary<RealTimeRoutine> RtihdlrRoutines { get; set; }
+        public Dictionary<string, IntPtr16> TextVariables { get; set; }
+        public List<IntPtr16> GlobalCommandHandlers { get; set; }
+        public Queue<ExecutionUnit> ExecutionUnits { get; set; }
+        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
 
         /// <summary>
         ///     Description of the Module as Defined by REGISTER_MODULE
         /// </summary>
-        public string ModuleDescription;
+        public string ModuleDescription { get; set; }
 
         public MbbsModule(string module, string path = "")
         {
