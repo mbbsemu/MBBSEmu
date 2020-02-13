@@ -311,6 +311,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fsub:
                     Op_Fsub();
                     break;
+                case Mnemonic.Fldz:
+                    Op_Fldz();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -1955,7 +1958,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Multiplication (x87)
+        ///     Floating Point Subtraction (x87)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Fsub()
@@ -1969,6 +1972,15 @@ namespace MBBSEmu.CPU
 
             var result = float1 - float2;
             FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            Registers.Fpu.PushStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Load Zero
+        /// </summary>
+        private void Op_Fldz()
+        {
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(0.0f);
             Registers.Fpu.PushStackTop();
         }
     }
