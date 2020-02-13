@@ -27,7 +27,7 @@ namespace MBBSEmu.CPU
         private ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
 
-        private readonly List<byte[]> _fpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
+        public readonly List<byte[]> FpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
 
         static CpuCore()
         {
@@ -123,12 +123,12 @@ namespace MBBSEmu.CPU
             Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
-            if (Registers.IP >= 0x101E && Registers.IP <= 0x104A)
-            {
-                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
-                _logger.InfoRegisters(this);
-                //Debugger.Break();
-            }
+            //if (Registers.IP >= 0x101E && Registers.IP <= 0x104A)
+            //{
+            //    _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+            //    _logger.InfoRegisters(this);
+            //    //Debugger.Break();
+            //}
 #endif
 
             switch (_currentInstruction.Mnemonic)
@@ -307,6 +307,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Div:
                     Op_Div();
+                    break;
+                case Mnemonic.Fsub:
+                    Op_Fsub();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1757,7 +1760,7 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
             var floatToLoad = Memory.GetArray(Registers.DS, offset, 4);
-            _fpuStack[Registers.Fpu.GetStackTop()] = floatToLoad.ToArray();
+            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad.ToArray();
             Registers.Fpu.PushStackTop();
         }
 
@@ -1772,7 +1775,7 @@ namespace MBBSEmu.CPU
 
             var convertedInt = Convert.ToSingle(BitConverter.ToInt16(intToLoad));
 
-            _fpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(convertedInt);
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(convertedInt);
             Registers.Fpu.PushStackTop();
         }
 
@@ -1786,16 +1789,16 @@ namespace MBBSEmu.CPU
             var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
 
             Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
+            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
             var float2 = BitConverter.ToSingle(floatToMultiply);
 
             var result = float1 * float2;
-            _fpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
             Registers.Fpu.PushStackTop();
         }
 
         /// <summary>
-        ///     Floating Pointe Store & Pop (x87)
+        ///     Floating Point Store & Pop (x87)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Fstp()
@@ -1803,7 +1806,7 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PopStackTop();
-            var valueToSave = _fpuStack[Registers.Fpu.GetStackTop()];
+            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
             Memory.SetArray(Registers.DS, offset, valueToSave);
         }
 
@@ -1814,9 +1817,9 @@ namespace MBBSEmu.CPU
         private void Op_Fcompp()
         {
             Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
+            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
             Registers.Fpu.PopStackTop();
-            var float2 = BitConverter.ToSingle(_fpuStack[Registers.Fpu.GetStackTop()]);
+            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
 
             if (float1 > float2)
             {
@@ -1949,6 +1952,24 @@ namespace MBBSEmu.CPU
 
             Registers.AX = (ushort) quotient;
             Registers.DX = (ushort) remainder;
+        }
+
+        /// <summary>
+        ///     Floating Point Multiplication (x87)
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Fsub()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+
+            Registers.Fpu.PopStackTop();
+            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            var float2 = BitConverter.ToSingle(floatToMultiply);
+
+            var result = float1 - float2;
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            Registers.Fpu.PushStackTop();
         }
     }
 }

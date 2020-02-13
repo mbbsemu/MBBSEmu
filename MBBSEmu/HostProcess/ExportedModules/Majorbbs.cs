@@ -2498,7 +2498,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
-                throw new Exception($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp}");
+            {
+                _logger.Warn($"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Alredy Closed?)");
+                Registers.AX = 0;
+                return;
+            }
 
             //Clean Up File Stream Pointer
             FilePointerDictionary[fileStruct.curp.Offset].Dispose();
