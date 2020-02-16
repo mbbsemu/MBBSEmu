@@ -3268,6 +3268,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var othusnPointer = Module.Memory.GetVariable("OTHUSN");
             Module.Memory.SetWord(othusnPointer, ChannelDictionary[userSession.Channel].Channel);
+
+            var userBase = new IntPtr16(Module.Memory.GetVariable("USER").ToSpan());
+            userBase.Offset += (ushort)(User.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariable("*OTHUSP"), userBase.ToSpan());
+
+#if DEBUG
+            _logger.Info($"User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
+#endif
             Registers.AX = 1;
         }
 

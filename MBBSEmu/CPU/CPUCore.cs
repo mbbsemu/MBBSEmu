@@ -131,6 +131,7 @@ namespace MBBSEmu.CPU
             //}
 #endif
 
+            //Jump Table
             switch (_currentInstruction.Mnemonic)
             {
                 //Instructions that will set the IP -- we just return
@@ -313,6 +314,19 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fldz:
                     Op_Fldz();
+                    break;
+                case Mnemonic.Fnstcw:
+                case Mnemonic.Fstcw:
+                    Op_Fstcw();
+                    break;
+                case Mnemonic.Fldcw:
+                    Op_Fldcw();
+                    break;
+                case Mnemonic.Fistp:
+                    Op_Fistp();
+                    break;
+                case Mnemonic.Faddp:
+                    Op_Faddp();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1854,11 +1868,11 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register:
-                    Registers.SetValue(Register.AX, Registers.Fpu.RegisterWord);
+                    Registers.SetValue(Register.AX, Registers.Fpu.StatusWord);
                     break;
                 case OpKind.Memory:
                     Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), Registers.Fpu.RegisterWord);
+                        GetOperandOffset(_currentInstruction.Op0Kind), Registers.Fpu.StatusWord);
                     break;
             }
         }
@@ -1981,6 +1995,65 @@ namespace MBBSEmu.CPU
         private void Op_Fldz()
         {
             FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(0.0f);
+            Registers.Fpu.PushStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Load Control Word
+        /// </summary>
+        private void Op_Fldcw()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var newControlWord = Memory.GetWord(Registers.DS, offset);
+
+            Registers.Fpu.ControlWord = newControlWord;
+        }
+
+        /// <summary>
+        ///     Floating Point Store Control Word
+        /// </summary>
+        private void Op_Fstcw()
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Register:
+                    Registers.SetValue(Register.AX, Registers.Fpu.ControlWord);
+                    break;
+                case OpKind.Memory:
+                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op0Kind), Registers.Fpu.ControlWord);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Floating Point Store Integer & Pop
+        /// </summary>
+        private void Op_Fistp()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+
+            Registers.Fpu.PopStackTop();
+            var valueToSave = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            Memory.SetWord(Registers.DS, offset, (ushort)valueToSave);
+        }
+
+        /// <summary>
+        ///     Floating Point Add ST0 to ST1
+        /// </summary>
+        private void Op_Faddp()
+        {
+            Registers.Fpu.PopStackTop(); //ST1
+            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            Registers.Fpu.PopStackTop(); //ST0
+            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            Registers.Fpu.PushStackTop(); //ST1
+
+            var result = float1 + float2;
+
+            //Store result at ST1
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+
             Registers.Fpu.PushStackTop();
         }
     }

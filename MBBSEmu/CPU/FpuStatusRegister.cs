@@ -5,24 +5,26 @@
     /// </summary>
     public class FpuStatusRegister
     {
-        public ushort RegisterWord { get; set; }
+        public ushort StatusWord { get; set; }
+
+        public ushort ControlWord { get; set; }
 
         public void SetFlag(EnumFpuStatusFlags statusFlag)
         {
-            RegisterWord = (ushort) (RegisterWord | (ushort) statusFlag);
+            StatusWord = (ushort) (StatusWord | (ushort) statusFlag);
         }
 
         public void ClearFlag(EnumFpuStatusFlags statusFlag)
         {
-            RegisterWord = (ushort) (RegisterWord & ~(ushort) statusFlag);
+            StatusWord = (ushort) (StatusWord & ~(ushort) statusFlag);
         }
 
-        public byte GetStackTop() => (byte) ((RegisterWord >> 11) & 0x7);
+        public byte GetStackTop() => (byte) ((StatusWord >> 11) & 0x7);
 
         public void SetStackTop(byte value)
         {
-            RegisterWord &= unchecked((ushort)(~0x3800)); //Zero out the previous value
-            RegisterWord |= (ushort)((value & 0x7) << 11); //Write new one
+            StatusWord &= unchecked((ushort)(~0x3800)); //Zero out the previous value
+            StatusWord |= (ushort)((value & 0x7) << 11); //Write new one
         } 
 
         public void PopStackTop()
@@ -53,7 +55,8 @@
 
         public FpuStatusRegister()
         {
-            RegisterWord = 0;
+            ControlWord = 0x37F;
+            StatusWord = 0;
             SetStackTop(7);
         }
     }
