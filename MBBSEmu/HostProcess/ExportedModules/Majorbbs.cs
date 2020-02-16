@@ -69,14 +69,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("MARGV", 0x3FC);
             Module.Memory.AllocateVariable("INPLEN", 0x2);
             Module.Memory.AllocateVariable("USERNUM", 0x2);
-            var usraccPointer = Module.Memory.AllocateVariable("USRACC", 0x155);
+            var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
+            Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
-            Module.Memory.AllocateVariable("*OTHUSP", 0x4, false);
+            Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
             Module.Memory.SetWord(Module.Memory.GetVariable("NMODS"), 0x1); //set this to 1 for now
@@ -156,12 +157,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), currentUserPointer.ToSpan());
 
-            if (!Module.Memory.TryGetVariable($"USRACC-{channelNumber}", out var usrAccPointer))
-                usrAccPointer = Module.Memory.AllocateVariable($"USRACC-{channelNumber}", UserAccount.Size);
+            var userAccBasePointer = Module.Memory.GetVariable("USRACC");
+            var currentUserAccPointer = new IntPtr16(userBasePointer.ToSpan());
+            currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
 
-            Module.Memory.SetArray(usrAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("USAPTR"), usrAccPointer.ToSpan());
-            //Module.Memory.SetArray(Module.Memory.GetVariable("USRACC"), ChannelDictionary[channelNumber].UsrAcc.ToSpan());
+            Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("USAPTR"), currentUserAccPointer.ToSpan());
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -292,6 +293,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return vdasiz;
                 case 460:
                     return othusp;
+                case 458:
+                    return othuap;
             }
 
             if (offsetsOnly)
@@ -658,6 +661,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 313:
                     gabbtv();
+                    break;
+                case 585:
+                    strtok();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -2843,21 +2849,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"GETMSG_{_currentMcvFile.Offset}_{msgnum}", out var variablePointer))
-            {
-                var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+            if (!Module.Memory.TryGetVariable($"GETMSG", out var variablePointer))
+                variablePointer = base.Module.Memory.AllocateVariable($"GETMSG", 0x1000);
+            
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
-                variablePointer = base.Module.Memory.AllocateVariable($"GETMSG_{_currentMcvFile.Offset}_{msgnum}", (ushort)outputValue.Length);
+            if(outputValue.Length > 0x1000)
+                throw new Exception($"MSG {msgnum} is larger than pre-defined buffer: {outputValue.Length}");
 
-                //Set Value in Memory
-                Module.Memory.SetArray(variablePointer, outputValue);
-
-#if DEBUG
-                //_logger.Info(
-                //$"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
-#endif
-            }
-
+            Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
             _logger.Info($"Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {_currentMcvFile}), already saved to {variablePointer}");
 #endif
@@ -3271,7 +3271,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var userBase = new IntPtr16(Module.Memory.GetVariable("USER").ToSpan());
             userBase.Offset += (ushort)(User.Size * userSession.Channel);
-            Module.Memory.SetArray(Module.Memory.GetVariable("*OTHUSP"), userBase.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("OTHUSP"), userBase.ToSpan());
+
+            var userAccBase = new IntPtr16(Module.Memory.GetVariable("USRACC").ToSpan());
+            userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariable("OTHUAP"), userAccBase.ToSpan());
 
 #if DEBUG
             _logger.Info($"User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
@@ -4076,5 +4080,60 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user *othusp;
         /// </summary>
         private ReadOnlySpan<byte> othusp => Module.Memory.GetVariable("*OTHUSP").ToSpan();
+
+        /// <summary>
+        ///     Pointer to structure for that user in the 'usracc' structure (set by onsys() or instat())
+        ///
+        ///     Signature: struct usracc *othuap;
+        /// </summary>
+        private ReadOnlySpan<byte> othuap => Module.Memory.GetVariable("*OTHUAP").ToSpan();
+
+        /// <summary>
+        ///     Splits the specified string into tokens based on the delimiters
+        /// </summary>
+        private void strtok()
+        {
+            var string2SplitPointer = GetParameterPointer(0);
+            var stringDelimitersPointer = GetParameterPointer(2);
+
+            if (!Module.Memory.TryGetVariable("STROK-RESULT", out var resultPointer))
+                resultPointer = Module.Memory.AllocateVariable("STROK-RESULT", 0x400);
+
+            if (!Module.Memory.TryGetVariable("STROK-ORIGINAL", out var originalPointer))
+                originalPointer = Module.Memory.AllocateVariable("STROK-ORIGINAL", 0x400);
+
+            if (!Module.Memory.TryGetVariable("STROK-ORDINAL", out var ordinalPointer))
+                ordinalPointer = Module.Memory.AllocateVariable("STROK-ORDINAL", 0x2);
+
+            //If it's the first call, reset the values in memory
+            if (!string2SplitPointer.Equals(IntPtr16.Empty))
+            {
+                Module.Memory.SetArray(originalPointer, Module.Memory.GetString(string2SplitPointer));
+                Module.Memory.SetWord(ordinalPointer, 0);
+            }
+
+            var ordinal = Module.Memory.GetWord(ordinalPointer);
+            var string2Split = Encoding.ASCII.GetString(Module.Memory.GetString(originalPointer, true));
+            var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, true));
+            
+            var splitString = string2Split.Split(stringDelimiter, StringSplitOptions.RemoveEmptyEntries);
+
+            if (ordinal >= splitString.Length)
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+                return;
+            }
+
+            //Save Result
+            Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes(splitString[ordinal]));
+
+            //Increment Ordinal for Next Call and save
+            ordinal++;
+            Module.Memory.SetWord(ordinalPointer, ordinal);
+
+            Registers.DX = resultPointer.Segment;
+            Registers.AX = resultPointer.Offset;
+        }
     }
 }

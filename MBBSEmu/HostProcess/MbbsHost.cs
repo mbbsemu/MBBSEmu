@@ -258,7 +258,7 @@ namespace MBBSEmu.HostProcess
                         {
                             if (!r.Value.Executed && r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
                             {
-                                //Run(m.ModuleIdentifier, m.EntryPoints[$"RTKICK-{r.Key}"], ushort.MaxValue);
+                                Run(m.ModuleIdentifier, m.EntryPoints[$"RTKICK-{r.Key}"], ushort.MaxValue);
                                 r.Value.Elapsed.Stop();
                                 r.Value.Executed = true;
                             }

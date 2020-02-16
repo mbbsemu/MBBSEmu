@@ -220,12 +220,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     switch ((char) stringToParse[i])
                     {
+                        //Character
                         case 'c':
                         {
                             var charParameter = GetParameter(currentParameter++);
                             msFormattedValue.WriteByte((byte) charParameter);
                             break;
                         }
+                        //String of characters
                         case 's':
                         {
                             ReadOnlySpan<byte> parameter;
@@ -250,7 +252,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             msFormattedValue.Write(parameter);
                             break;
                         }
+                        //Signed decimal integer
+                        case 'i':
                         case 'd':
+                        {
+                            if (!isVsPrintf)
+                            {
+                                var parameter = (short)GetParameter(currentParameter++);
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                            }
+                            else
+                            {
+                                var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                vsPrintfBase.Offset += 2;
+                            }
+
+                            break;
+                        }
+                        //Unsigned decimal integer
+                        case 'u':
                         {
                             if (!isVsPrintf)
                             {
@@ -259,7 +280,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                             else
                             {
-                                var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
+                                var parameterString = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset).ToString();
                                 msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
                                 vsPrintfBase.Offset += 2;
                             }
