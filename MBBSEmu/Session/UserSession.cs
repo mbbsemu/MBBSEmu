@@ -136,7 +136,14 @@ namespace MBBSEmu.Session
             mArgv.Clear();
             mArgn.Clear();
 
+            if (InputCommand.Length == 0 || InputCommand[0] == 0x0)
+            {
+                mArgCount = 0;
+                return;
+            }
+
             mArgv.Add(0);
+
             //Input Command has spaces replaced by null characters
             for (ushort i = 0; i < InputCommand.Length; i++)
             {

@@ -123,12 +123,13 @@ namespace MBBSEmu.CPU
             Registers.IP = _currentInstruction.IP16;
 
 #if DEBUG
-            //if (Registers.IP >= 0x101E && Registers.IP <= 0x104A)
+            //if (Registers.IP >= 0x799 && Registers.IP <= 0x7AC)
             //{
-            //    _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
-            //    _logger.InfoRegisters(this);
+                
+                
             //    //Debugger.Break();
             //}
+            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
 
             //Jump Table
@@ -335,9 +336,8 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.Length;
 
-            
-            //_logger.InfoStack(this);
-            //_logger.Info("--------------------------------------------------------------");
+            //_logger.InfoRegisters(this);
+
         }
 
         /// <summary>

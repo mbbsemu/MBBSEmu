@@ -61,7 +61,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
-            Module.Memory.AllocateVariable("USRPTR", 0x4); //pointer to the current USER record
+            Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
             Module.Memory.AllocateVariable("MARGC", 0x2);
@@ -155,10 +155,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Update User Array and Update Pointer to point to this user
             Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("USRPTR"), currentUserPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("*USRPTR"), currentUserPointer.ToSpan());
 
             var userAccBasePointer = Module.Memory.GetVariable("USRACC");
-            var currentUserAccPointer = new IntPtr16(userBasePointer.ToSpan());
+            var currentUserAccPointer = new IntPtr16(userAccBasePointer.ToSpan());
             currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
 
             Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
@@ -1338,7 +1338,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user *usrptr;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr => Module.Memory.GetVariable("USRPTR").ToSpan();
+        private ReadOnlySpan<byte> usrptr => Module.Memory.GetVariable("*USRPTR").ToSpan();
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -2859,7 +2859,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {_currentMcvFile}), already saved to {variablePointer}");
+            _logger.Info($"Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved to {variablePointer}");
 #endif
 
             Registers.AX = variablePointer.Offset;
