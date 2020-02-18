@@ -17,6 +17,10 @@ namespace MBBSEmu.Session
     /// </summary>
     public abstract class UserSession
     {
+        protected delegate void SendToClientDelegate(byte[] dataToSend);
+
+        protected SendToClientDelegate SendToClientMethod;
+
         /// <summary>
         ///     Unique ID for this Session
         /// </summary>
@@ -93,7 +97,7 @@ namespace MBBSEmu.Session
 
         public List<int> mArgn;
 
-        public readonly ConcurrentQueue<byte[]> DataToClient;
+        protected readonly ConcurrentQueue<byte[]> DataToClient;
 
         public bool DataToProcess;
 
@@ -110,6 +114,16 @@ namespace MBBSEmu.Session
         public string email;
 
         public Stopwatch SessionTimer;
+
+        public void SendToClientAsync(byte[] dataToSend)
+        {
+            DataToClient.Enqueue(dataToSend);
+        }
+
+        public void SendToClient(byte[] dataToSend)
+        {
+            SendToClientMethod(dataToSend);
+        }
 
         protected UserSession(string sessionId)
         {

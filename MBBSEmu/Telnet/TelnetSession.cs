@@ -29,6 +29,7 @@ namespace MBBSEmu.Telnet
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
+            SendToClientMethod = Send;
             _host = ServiceResolver.GetService<IMbbsHost>();
             _logger = ServiceResolver.GetService<ILogger>();
             _telnetConnection = telnetConnection;
@@ -46,9 +47,40 @@ namespace MBBSEmu.Telnet
             //Add this Session to the Host
             _host.AddSession(this);
 
-            DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
-            DataToClient.Enqueue(new byte[] { 0x1B, 0x5B, 0x48 });
+            Send(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+            Send(new byte[] { 0x1B, 0x5B, 0x48 });
             SessionState = EnumSessionState.Unauthenticated;
+        }
+
+        public void Send(byte[] dataToSend)
+        {
+            using var msOutputBuffer = new MemoryStream();
+            foreach (var b in dataToSend)
+            {
+                //When we're in a module, since new lines are stripped from MVC's etc, and only
+                //carriage returns remain, IF we're in a module and encounter a CR, add a NL
+                if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule || SessionState == EnumSessionState.LoginRoutines)
+                {
+                    switch (b)
+                    {
+                        case 0xD:
+                            msOutputBuffer.WriteByte(0xA);
+                            break;
+                        case 0xA:
+                            msOutputBuffer.WriteByte(0xD);
+                            break;
+                        case 0xFF:
+                            msOutputBuffer.WriteByte(0xFF);
+                            break;
+                        case 0x13:
+                            continue;
+                    }
+                }
+                msOutputBuffer.WriteByte(b);
+            }
+
+            _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
+            ValidateSocketState(socketState);
         }
 
         /// <summary>
@@ -63,39 +95,12 @@ namespace MBBSEmu.Telnet
                 {
                     _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
                     _iacPhase = 1;
-                    DataToClient.Enqueue(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+                    Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
                 }
 
-                while (DataToClient.TryDequeue(out var datToSend))
+                while (DataToClient.TryDequeue(out var dataToSend))
                 {
-                    using var msOutputBuffer = new MemoryStream();
-                    foreach (var b in datToSend)
-                    {
-                        //When we're in a module, since new lines are stripped from MVC's etc, and only
-                        //carriate returns remain, IF we're in a module and encounter a CR, add a NL
-                        if (SessionState == EnumSessionState.InModule || SessionState == EnumSessionState.LoginRoutines)
-                        {
-                            switch (b)
-                            {
-                                case 0xD:
-                                    msOutputBuffer.WriteByte(0xA);
-                                    break;
-                                case 0xA:
-                                    msOutputBuffer.WriteByte(0xD);
-                                    break;
-                                case 0xFF:
-                                    msOutputBuffer.WriteByte(0xFF);
-                                    break;
-                                case 0x13:
-                                    continue;
-                            }
-                        }
-                        msOutputBuffer.WriteByte(b);
-                    }
-
-                    _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
-                    ValidateSocketState(socketState);
-                    msOutputBuffer.SetLength(0);
+                    Send(dataToSend);
                 }
 
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
@@ -129,12 +134,18 @@ namespace MBBSEmu.Telnet
                 if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
                 {
                     //Set Status == 3, which means there is a Command Ready
-                    DataToClient.Enqueue(new byte[] {0xD, 0xA});
+                    Send(new byte[] {0xD, 0xA});
 
-                    //If there's an interceptor, flag data is ready to process and we'll handle
-                    //setting status on return from that, otherwise, just set status
-
-                    Status = 3;
+                    //If there's a character interceptor, don't write the CR to the buffer,
+                    //only mark that there is data ready and it'll process it from LastCharacterReceived
+                    if (CharacterInterceptor != null)
+                    {
+                        DataToProcess = true;
+                    }
+                    else
+                    {
+                        Status = 3;
+                    }
                     continue;
                 }
 
@@ -318,7 +329,7 @@ namespace MBBSEmu.Telnet
             if (msIacToSend.Length == 0)
                 return;
 
-            DataToClient.Enqueue(msIacToSend.ToArray());
+            Send(msIacToSend.ToArray());
         }
 
         /// <summary>

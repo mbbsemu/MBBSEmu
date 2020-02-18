@@ -111,22 +111,21 @@ namespace MBBSEmu.HostProcess
                 if (!_isAddingModule)
                 {
                     //Process channel events
-                    foreach (var s in _channelDictionary.Values)
+                    foreach (var session in _channelDictionary.Values)
                     {
-                        switch (s.SessionState)
+                        switch (session.SessionState)
                         {
                             //Initial call to STTROU when a User is Entering a Module
                             case EnumSessionState.EnteringModule:
                                 {
-                                    s.StatusChange = false;
-                                    s.SessionState = EnumSessionState.InModule;
-                                    s.UsrPtr.State = (short) s.CurrentModule.StateCode; //Default ModuleID, need to make this dynamic
-                                                                                //Transfer Input Buffer to Command Buffer
-                                    s.InputBuffer.WriteByte(0x0);
-                                    s.InputCommand = s.InputBuffer.ToArray();
+                                    session.StatusChange = false;
+                                    session.SessionState = EnumSessionState.InModule;
+                                    session.UsrPtr.State = session.CurrentModule.StateCode;
+                                    session.InputBuffer.WriteByte(0x0);
+                                    session.InputCommand = session.InputBuffer.ToArray();
 
-                                    s.InputBuffer.SetLength(0);
-                                    Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["sttrou"], s.Channel);
+                                    session.InputBuffer.SetLength(0);
+                                    Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["sttrou"], session.Channel);
                                     continue;
                                 }
 
@@ -142,12 +141,12 @@ namespace MBBSEmu.HostProcess
                                                 if (logonRoutineEntryPoint.Segment != 0 &&
                                                     logonRoutineEntryPoint.Offset != 0)
                                                 {
-                                                    Run(m.ModuleIdentifier, logonRoutineEntryPoint, s.Channel);
+                                                    Run(m.ModuleIdentifier, logonRoutineEntryPoint, session.Channel);
                                                 }
                                             }
                                         }
                                     }
-                                    s.SessionState = EnumSessionState.MainMenuDisplay;
+                                    session.SessionState = EnumSessionState.MainMenuDisplay;
                                     continue;
                                 }
 
@@ -155,86 +154,88 @@ namespace MBBSEmu.HostProcess
                             case EnumSessionState.InModule:
                                 {
                                     //Perform Polling if it's set
-                                    if (s.PollingRoutine != null)
+                                    if (session.PollingRoutine != null)
                                     {
-                                        Run(s.CurrentModule.ModuleIdentifier, s.PollingRoutine, s.Channel, true);
+                                        Run(session.CurrentModule.ModuleIdentifier, session.PollingRoutine, session.Channel, true);
                                     }
 
                                     //Process Character Interceptor in GSBL
-                                    if (s.DataToProcess)
+                                    if (session.DataToProcess)
                                     {
-                                        s.DataToProcess = false;
-                                        if (s.CharacterInterceptor != null)
+                                        session.DataToProcess = false;
+                                        if (session.CharacterInterceptor != null)
                                         {
                                             //Create Parameters for BTUCHI Routine
                                             var initialStackValues = new Queue<ushort>(2);
-                                            initialStackValues.Enqueue(s.LastCharacterReceived);
-                                            initialStackValues.Enqueue(s.Channel);
+                                            initialStackValues.Enqueue(session.LastCharacterReceived);
+                                            initialStackValues.Enqueue(session.Channel);
 
-                                            var result = Run(s.CurrentModule.ModuleIdentifier, s.CharacterInterceptor,
-                                                s.Channel, true,
+                                            var result = Run(session.CurrentModule.ModuleIdentifier, session.CharacterInterceptor,
+                                                session.Channel, true,
                                                 initialStackValues);
 
                                             //Result replaces the character in the buffer
-                                            if (s.InputBuffer.Length > 0 && result != 0xD)
-                                                s.InputBuffer.SetLength(s.InputBuffer.Length - 1);
+                                            if (session.InputBuffer.Length > 0 && result != 0xD)
+                                                session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
 
                                             //Ignore
                                             if (result == 0)
                                                 continue;
 
-                                            s.InputBuffer.WriteByte((byte)result);
-                                            s.LastCharacterReceived = (byte)result;
-
                                             //If the new character is a carriage return, null terminate it and set status
                                             if (result == 0xD)
                                             {
-                                                s.Status = 3;
-                                                s.InputBuffer.WriteByte(0x0);
+                                                session.Status = 3;
+                                                session.InputBuffer.WriteByte(0x0);
+                                            }
+                                            else
+                                            {
+                                                session.InputBuffer.WriteByte((byte)result);
+                                                session.LastCharacterReceived = (byte)result;
                                             }
                                         }
 
                                         //If the client is in transparent mode, don't echo
-                                        if (!s.TransparentMode)
-                                            s.DataToClient.Enqueue(new[] { s.LastCharacterReceived });
+                                        if (!session.TransparentMode)
+                                            session.SendToClient(new[] { session.LastCharacterReceived });
                                     }
 
                                     //Did the text change cause a status update
-                                    if (s.StatusChange || s.Status == 240)
+                                    if (session.StatusChange || session.Status == 240)
                                     {
-                                        s.StatusChange = false;
-                                        Run(s.CurrentModule.ModuleIdentifier, s.CurrentModule.EntryPoints["stsrou"],
-                                            s.Channel);
+                                        session.StatusChange = false;
+                                        Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["stsrou"],
+                                            session.Channel);
                                         continue;
                                     }
 
                                     //Is there Text to send to the module
-                                    if (s.Status == 3)
+                                    if (session.Status == 3)
                                     {
                                         //Transfer Input Buffer to Command Buffer
-                                        s.InputBuffer.WriteByte(0x0);
-                                        s.InputCommand = s.InputBuffer.ToArray();
-                                        s.InputBuffer.SetLength(0);
+                                        session.InputBuffer.WriteByte(0x0);
+                                        session.InputCommand = session.InputBuffer.ToArray();
+                                        session.InputBuffer.SetLength(0);
 
-                                        var result = Run(s.CurrentModule.ModuleIdentifier,
-                                            s.CurrentModule.EntryPoints["sttrou"], s.Channel);
+                                        var result = Run(session.CurrentModule.ModuleIdentifier,
+                                            session.CurrentModule.EntryPoints["sttrou"], session.Channel);
 
                                         //stt returned an exit code
                                         if (result == 0)
                                         {
-                                            s.SessionState = EnumSessionState.MainMenuDisplay;
-                                            s.CurrentModule = null;
-                                            s.CharacterInterceptor = null;
+                                            session.SessionState = EnumSessionState.MainMenuDisplay;
+                                            session.CurrentModule = null;
+                                            session.CharacterInterceptor = null;
 
                                             //Reset States
-                                            s.Status = 0;
-                                            s.UsrPtr.Substt = 0;
+                                            session.Status = 0;
+                                            session.UsrPtr.Substt = 0;
 
                                             //Clear the Input Buffer
-                                            s.InputBuffer.SetLength(0);
+                                            session.InputBuffer.SetLength(0);
 
                                             //Clear any data waiting to be processed from the client
-                                            s.InputBuffer.SetLength(0);
+                                            session.InputBuffer.SetLength(0);
                                         }
                                         continue;
                                     }
@@ -244,29 +245,29 @@ namespace MBBSEmu.HostProcess
                             //Check for any other session states, we handle these here as they are
                             //lower priority than handling "in-module" states
                             default:
-                                _mbbsRoutines.ProcessSessionState(s, _modules);
+                                _mbbsRoutines.ProcessSessionState(session, _modules);
                                 break;
                         }
                     }
 
                     //Check for any rtkick routines
-                    foreach (var m in _modules.Values)
+                    foreach (var module in _modules.Values)
                     {
-                        if (m.RtkickRoutines.Count == 0) continue;
+                        if (module.RtkickRoutines.Count == 0) continue;
 
-                        foreach (var r in m.RtkickRoutines.ToList())
+                        foreach (var routine in module.RtkickRoutines.ToList())
                         {
-                            if (!r.Value.Executed && r.Value.Elapsed.ElapsedMilliseconds > (r.Value.Delay * 1000))
+                            if (!routine.Value.Executed && routine.Value.Elapsed.ElapsedMilliseconds > (routine.Value.Delay * 1000))
                             {
-                                Run(m.ModuleIdentifier, m.EntryPoints[$"RTKICK-{r.Key}"], ushort.MaxValue);
-                                r.Value.Elapsed.Stop();
-                                r.Value.Executed = true;
+                                //Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{routine.Key}"], ushort.MaxValue);
+                                routine.Value.Elapsed.Stop();
+                                routine.Value.Executed = true;
                             }
 
-                            if (r.Value.Executed)
+                            if (routine.Value.Executed)
                             {
-                                m.EntryPoints.Remove($"RTKICK-{r.Key}");
-                                m.RtkickRoutines.Remove(r.Key);
+                                module.EntryPoints.Remove($"RTKICK-{routine.Key}");
+                                module.RtkickRoutines.Remove(routine.Key);
                             }
                         }
 

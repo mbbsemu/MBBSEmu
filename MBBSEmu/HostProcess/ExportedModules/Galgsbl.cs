@@ -364,7 +364,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            ChannelDictionary[channel].SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
         }
 
         /// <summary>
@@ -378,7 +378,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].DataToClient.Enqueue(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            ChannelDictionary[channel].SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
 
             Registers.AX = 0;
         }
@@ -509,7 +509,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var messagePointer = GetParameterPointer(1);
 
             var messageToSend = Module.Memory.GetString(messagePointer);
-            ChannelDictionary[channel].DataToClient.Enqueue(messageToSend.ToArray());
+            ChannelDictionary[channel].SendToClient(messageToSend.ToArray());
         }
     }
 }

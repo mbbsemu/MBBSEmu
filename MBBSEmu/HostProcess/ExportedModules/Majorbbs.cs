@@ -188,13 +188,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var currentMargVPointer = new IntPtr16(inputMemory.Segment,
                         (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i]));
 
-                    _logger.Info($"Command {i} {currentMargVPointer:X4}->{currentMargnPointer:X4}");
-
                     Module.Memory.SetArray(margnPointer.Segment, (ushort)(margnPointer.Offset + (i * 4)),
                         currentMargnPointer.ToSpan());
 
                     Module.Memory.SetArray(margvPointer.Segment, (ushort)(margvPointer.Offset + (i * 4)),
                         currentMargVPointer.ToSpan());
+
+                    _logger.Info($"Command {i} {currentMargVPointer:X4}->{currentMargnPointer:X4}: {Encoding.ASCII.GetString(Module.Memory.GetString(currentMargnPointer))}");
                 }
             }
         }
@@ -1294,11 +1294,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (Module.TextVariables.Count > 0)
             {
                 var newBuffer = ProcessTextVariables(outputBuffer);
-                ChannelDictionary[userChannel].DataToClient.Enqueue(newBuffer.ToArray());
+                ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
+
+#if DEBUG
+                _logger.Info($"Sent {newBuffer.Length} bytes to Channel {userChannel}");
+#endif
             }
             else
             {
-                ChannelDictionary[userChannel].DataToClient.Enqueue(outputBuffer);
+                ChannelDictionary[userChannel].SendToClient(outputBuffer);
+#if DEBUG
+                _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
+#endif
             }
 
             //Zero It Back out
@@ -2941,7 +2948,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _outputBufferPosition += formattedMessage.Length;
 
 #if DEBUG
-            _logger.Info($"Added {output.Length} bytes to the buffer");
+            _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber}");
 #endif
         }
 

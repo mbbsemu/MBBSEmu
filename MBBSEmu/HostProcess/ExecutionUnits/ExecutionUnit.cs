@@ -87,7 +87,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 ModuleCpu.Tick();
 
             //Update Session State
-            if (channelNumber != ushort.MaxValue && initialStackValues == null)
+            if (!bypassState && channelNumber != ushort.MaxValue && initialStackValues == null)
                 ExportedModuleDictionary[Majorbbs.Segment].UpdateSession(channelNumber);
 
             //Return Registers
