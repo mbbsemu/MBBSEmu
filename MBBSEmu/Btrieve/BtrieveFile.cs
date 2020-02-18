@@ -203,42 +203,11 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Searches records for a record using the key
-        /// </summary>
-        /// <param name="key"></param>
-        public bool GetRecordByKey(ReadOnlySpan<byte> key)
-        {
-            var recordFound = false;
-            for (ushort i = 0; i < _btrieveRecords.Count; i++)
-            {
-                var currentRecord = _btrieveRecords[i].Data;
-                var isMatch = true;
-                for (var j = 0; j < key.Length; j++)
-                {
-                    if (currentRecord[j] != key[j])
-                    {
-                        isMatch = false;
-                        break;
-                    }
-                }
-
-                if (!isMatch)
-                    continue;
-
-                CurrentRecordNumber = i;
-                recordFound = true;
-                break;
-            }
-
-            return recordFound;
-        }
-
-        /// <summary>
         ///     Determines if the given key is present in the key collection
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public int HasKey(ReadOnlySpan<byte> key)
+        public ushort HasKey(ReadOnlySpan<byte> key)
         {
             
             foreach (var k in _btrieveKeys)

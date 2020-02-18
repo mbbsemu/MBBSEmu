@@ -122,15 +122,16 @@ namespace MBBSEmu.CPU
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
             Registers.IP = _currentInstruction.IP16;
 
+            var bShowDebug = false;
+
 #if DEBUG
-            //if (Registers.IP >= 0x799 && Registers.IP <= 0x7AC)
+            //if (Registers.IP >= 0xCD0 && Registers.IP <= 0x73AE)
             //{
-                
-                
-            //    //Debugger.Break();
+            //    bShowDebug = true;
             //}
-            //_logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
+            if (bShowDebug)
+                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 
             //Jump Table
             switch (_currentInstruction.Mnemonic)
@@ -333,10 +334,10 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
-
             Registers.IP += (ushort)_currentInstruction.Length;
 
-            //_logger.InfoRegisters(this);
+            if (bShowDebug)
+                _logger.InfoRegisters(this);
 
         }
 
@@ -1967,8 +1968,8 @@ namespace MBBSEmu.CPU
 
             var quotient = Math.DivRem(destination, source, out var remainder);
 
-            Registers.AX = (ushort) quotient;
-            Registers.DX = (ushort) remainder;
+            Registers.AX = (ushort)quotient;
+            Registers.DX = (ushort)remainder;
         }
 
         /// <summary>

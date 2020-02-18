@@ -125,41 +125,57 @@ namespace MBBSEmu.Telnet
 
                 if (bytesReceived == 0)
                     continue;
-                
-                //Ignore IAC
-                if(socketReceiveBuffer[0] != 0xFF)
+
+                //Only set Last Character when it's NOT an IAC
+                if (socketReceiveBuffer[0] != 0xFF)
                     LastCharacterReceived = socketReceiveBuffer[0];
 
-                //Enter Key
-                if (!TransparentMode && socketReceiveBuffer[0] == 0xD)
+                //Handling Incoming Characters
+                switch (socketReceiveBuffer[0])
                 {
-                    //Set Status == 3, which means there is a Command Ready
-                    Send(new byte[] {0xD, 0xA});
-
-                    //If there's a character interceptor, don't write the CR to the buffer,
-                    //only mark that there is data ready and it'll process it from LastCharacterReceived
-                    if (CharacterInterceptor != null)
+                    //Backspace
+                    case 0x8 when SessionState == EnumSessionState.InModule:
                     {
+                        if (InputBuffer.Length > 0)
+                        {
+                            Send(new byte[] {0x08, 0x20, 0x08});
+                            InputBuffer.SetLength(InputBuffer.Length - 1);
+                        }
+                        break;
+                    }
+                    //Enter or Return
+                    case 0xD when !TransparentMode:
+                    {
+                        //Set Status == 3, which means there is a Command Ready
+                        Send(new byte[] {0xD, 0xA});
+
+                        //If there's a character interceptor, don't write the CR to the buffer,
+                        //only mark that there is data ready and it'll process it from LastCharacterReceived
+                        if (CharacterInterceptor != null)
+                        {
+                            DataToProcess = true;
+                        }
+                        else
+                        {
+                            Status = 3;
+                        }
+
+                        continue;
+                    }
+                    //IAC command
+                    case 0xFF:
+                    {
+                        ParseIAC(InputBuffer.ToArray());
+                        InputBuffer.SetLength(0);
+                        continue;
+                    }
+                    default:
+                    {
+                        InputBuffer.Write(socketReceiveBuffer, 0, bytesReceived);
                         DataToProcess = true;
+                        break;
                     }
-                    else
-                    {
-                        Status = 3;
-                    }
-                    continue;
                 }
-
-                InputBuffer.Write(socketReceiveBuffer, 0, bytesReceived);
-
-                //IAC Negotiation
-                if (socketReceiveBuffer[0] == 0xFF)
-                {
-                    ParseIAC(InputBuffer.ToArray());
-                    InputBuffer.SetLength(0);
-                    continue;
-                }
-
-                DataToProcess = true;
                 Thread.Sleep(1);
             }
 

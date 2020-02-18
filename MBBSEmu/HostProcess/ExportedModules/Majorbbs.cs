@@ -221,7 +221,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Invokes method by the specified ordinal
+        ///     Invokes method by the specified ordinal using a Jump Table
         /// </summary>
         /// <param name="ordinal"></param>
         /// <param name="offsetsOnly"></param>
@@ -1173,8 +1173,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Quick Check
             if (string1.Length != string2.Length)
-            {
+            { 
                 Registers.AX = 0;
+
+#if DEBUG
+                _logger.Info($"Returned FALSE comparing {string1} ({string1Pointer}) to {string2} ({string2Pointer}) (Length mismatch)");
+#endif
                 return;
             }
 
@@ -1735,43 +1739,47 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
             var stpopt = GetParameter(2);
 
-            var btrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
             ushort resultCode = 0;
             switch (stpopt)
             {
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
-                    resultCode = btrieveFile.StepFirst();
+                    resultCode = currentBtrieveFile.StepFirst();
                     break;
                 case (ushort)EnumBtrieveOperationCodes.StepNext:
-                    resultCode = btrieveFile.StepNext();
+                    resultCode = currentBtrieveFile.StepNext();
                     break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
             }
 
-            //Set Memory Values
-            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
-            var btvDataPointer = btvStruct.data;
-
-            if (resultCode == 1)
-            {
-                Module.Memory.SetArray(btvStruct.data, btrieveFile.GetRecord());
-
-#if DEBUG
-                _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
-#endif
-                if (resultCode > 0)
-                {
-                    //See if the segment lives on the host or in the module
-                    Module.Memory.SetArray(btrieveRecordPointer, btrieveFile.GetRecord());
-                }
-            }
 
             Registers.AX = resultCode;
 
+            //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+
+            //If there's a record, always save it to the btrieve file struct
+            if (resultCode == 1)
+                Module.Memory.SetArray(btvStruct.data, currentBtrieveFile.GetRecord());
 #if DEBUG
-            _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointer}, AX: {resultCode}");
+            _logger.Info($"Performed Btrieve Step - Record written to {btvStruct.data}, AX: {resultCode}");
+#endif
+
+            //If a record pointer was passed in AND the result code isn't 0
+            if (!btrieveRecordPointer.Equals(IntPtr16.Empty) && resultCode > 0)
+            {
+                switch (resultCode)
+                {
+                    case 1:
+                        Module.Memory.SetArray(btrieveRecordPointer, currentBtrieveFile.GetRecord());
+                        break;
+                }
+            }
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Step {(EnumBtrieveOperationCodes)stpopt}, AX: {resultCode}");
 #endif
         }
 
@@ -2186,7 +2194,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     As best I can tell, this routine performs a GetEqual based on the key specified
+        ///     Does a GetEqual based on the Key -- the record corresponding to the key is returned
         ///
         ///     Signature: int obtbtvl (void *recptr, void *key, int keynum, int obtopt, int loktyp)
         ///     Returns: AX == 0 record not found, 1 record found
@@ -2194,10 +2202,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void obtbtvl()
         {
-            var recordPointerOffset = GetParameter(0);
-            var recordPointerSegment = GetParameter(1);
-            var keyOffset = GetParameter(2);
-            var keySegment = GetParameter(3);
+            var recordPointer = GetParameterPointer(0);
+            var keyPointer = GetParameterPointer(2);
             var keyNum = GetParameter(4);
             var obtopt = GetParameter(5);
             var lockType = GetParameter(6);
@@ -2209,9 +2215,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 //GetEqual
                 case 5:
-                    result = (ushort)(currentBtrieveFile.GetRecordByKey(Module.Memory.GetString(keySegment, keyOffset)) ? 1 : 0);
+                {
+                    result = currentBtrieveFile.HasKey(Module.Memory.GetString(keyPointer));
                     break;
+                }
             }
+
+            //Store the Record if it's there
+            if (!recordPointer.Equals(IntPtr16.Empty) && result == 1)
+                Module.Memory.SetArray(recordPointer, currentBtrieveFile.GetRecordByAbsolutePosition(currentBtrieveFile.AbsolutePosition));
+
+            //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+
+            //If there's a record, always save it to the btrieve file struct
+            if (result == 1)
+                Module.Memory.SetArray(btvStruct.data, currentBtrieveFile.GetRecordByAbsolutePosition(currentBtrieveFile.AbsolutePosition));
 
             Registers.AX = result;
         }
@@ -2858,10 +2877,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!Module.Memory.TryGetVariable($"GETMSG", out var variablePointer))
                 variablePointer = base.Module.Memory.AllocateVariable($"GETMSG", 0x1000);
-            
+
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
-            if(outputValue.Length > 0x1000)
+            if (outputValue.Length > 0x1000)
                 throw new Exception($"MSG {msgnum} is larger than pre-defined buffer: {outputValue.Length}");
 
             Module.Memory.SetArray(variablePointer, outputValue);
@@ -2948,7 +2967,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _outputBufferPosition += formattedMessage.Length;
 
 #if DEBUG
-            _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber}");
+            _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
 #endif
         }
 
@@ -3553,22 +3572,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Set Memory Values
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
-            var btvDataPointer = btvStruct.data;
-            Module.Memory.SetArray(btvStruct.data, currentBtrieveFile.GetRecord());
 
+            //If there's a record, always save it to the btrieve file struct
+            if (resultCode == 1)
+                Module.Memory.SetArray(btvStruct.data, currentBtrieveFile.GetRecord());
 #if DEBUG
-            _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}, AX: {resultCode}");
+            _logger.Info($"Performed Btrieve Step - Record written to {btvStruct.data}, AX: {resultCode}");
 #endif
-            if (btrieveRecordPointer.Segment != 0 && btrieveRecordPointer.Offset != 0 && resultCode > 0)
+
+            //If a record pointer was passed in AND the result code isn't 0
+            if (!btrieveRecordPointer.Equals(IntPtr16.Empty) && resultCode > 0)
             {
-                //See if the segment lives on the host or in the module
-                Module.Memory.SetArray(btrieveRecordPointer, currentBtrieveFile.GetRecord());
-
-#if DEBUG
-                _logger.Info($"Performed Btrieve Step - Record written to {btrieveRecordPointer}, AX: {resultCode}");
-#endif
-
-                return;
+                switch (resultCode)
+                {
+                    case 1:
+                        Module.Memory.SetArray(btrieveRecordPointer, currentBtrieveFile.GetRecord());
+                        break;
+                }
             }
 
 #if DEBUG
@@ -3588,27 +3608,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Pointer = GetParameterPointer(0);
             var string2Pointer = GetParameterPointer(2);
 
-            var string1 = Module.Memory.GetString(string1Pointer, true);
-            var string2 = Module.Memory.GetString(string2Pointer, true);
+            var string1 = Module.Memory.GetString(string1Pointer);
+            var string2 = Module.Memory.GetString(string2Pointer);
 
 #if DEBUG
             _logger.Info($"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
 #endif
 
-            if (string1.Length != string2.Length)
-            {
-                Registers.AX = 1;
-                return;
-            }
-
             for (var i = 0; i < string1.Length; i++)
             {
                 if (string1[i] == string2[i]) continue;
 
-                Registers.AX = 1;
+                //1 < 2 == -1 (0xFFFF)
+                //1 > 2 == 1 (0x0001)
+                Registers.AX = (ushort) (string1[i] < string2[i] ?  0xFFFF : 1);
                 return;
             }
-
             Registers.AX = 0;
         }
 
@@ -4122,7 +4137,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var ordinal = Module.Memory.GetWord(ordinalPointer);
             var string2Split = Encoding.ASCII.GetString(Module.Memory.GetString(originalPointer, true));
             var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, true));
-            
+
             var splitString = string2Split.Split(stringDelimiter, StringSplitOptions.RemoveEmptyEntries);
 
             if (ordinal >= splitString.Length)

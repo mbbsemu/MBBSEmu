@@ -376,6 +376,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return inputArray;
         }
 
+        /// <summary>
+        ///     Routine handles processing of text variables within an outprf string if they're present and registered
+        /// </summary>
+        /// <param name="outputBuffer"></param>
+        /// <returns></returns>
         private protected ReadOnlySpan<byte> ProcessTextVariables(ReadOnlySpan<byte> outputBuffer)
         {
             using var newOutputBuffer = new MemoryStream(outputBuffer.Length * 2);
