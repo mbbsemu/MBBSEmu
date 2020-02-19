@@ -233,10 +233,10 @@ namespace MBBSEmu.Btrieve
 
         public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)
         {
-            foreach (var r in _btrieveRecords)
+            foreach (var record in _btrieveRecords)
             {
-                if (r.Offset == absolutePosition)
-                    return r.Data;
+                if (record.Offset == absolutePosition)
+                    return record.Data;
             }
 
             return null;

@@ -259,7 +259,7 @@ namespace MBBSEmu.HostProcess
                         {
                             if (!routine.Value.Executed && routine.Value.Elapsed.ElapsedMilliseconds > (routine.Value.Delay * 1000))
                             {
-                                //Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{routine.Key}"], ushort.MaxValue);
+                                Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{routine.Key}"], ushort.MaxValue);
                                 routine.Value.Elapsed.Stop();
                                 routine.Value.Executed = true;
                             }
