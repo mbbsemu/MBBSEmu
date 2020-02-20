@@ -136,6 +136,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelNumber = channelNumber;
 
             _previousMcvFile.Clear();
+            _previousBtrieveFile.Clear();
 
             //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
@@ -715,20 +716,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            var memoryPointer = Module.Memory.AllocateVariable(null, 4);
-
-            //Get the current pointer
-            var allocatedMemory = base.Module.Memory.AllocateVariable(null, size);
-
-            //Write address of the memory segment to the pointer
-            Module.Memory.SetArray(memoryPointer, allocatedMemory.ToSpan());
-
-            Registers.AX = memoryPointer.Offset;
-            Registers.DX = memoryPointer.Segment;
+            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory} (Pointer {memoryPointer})");
+            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
 #endif
+
+            Registers.AX = allocatedMemory.Offset;
+            Registers.DX = allocatedMemory.Segment;
         }
 
         /// <summary>
@@ -748,34 +743,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void gmdnam()
         {
+            //Points to the module MDF file, but we'll assume it's the same one loaded on startup
             var dataSegmentPointer = GetParameterPointer(0);
-            var size = GetParameter(2);
+
+            //Get the Module Name from the Mdf
+            var moduleName = Module.Mdf.ModuleName + "\0";
 
             //Only needs to be set once
             if (!Module.Memory.TryGetVariable("GMDNAM", out var variablePointer))
-            {
+                variablePointer = Module.Memory.AllocateVariable("GMDNAM", (ushort)moduleName.Length);
 
-                //Get the current pointer
-                variablePointer = Module.Memory.AllocateVariable("GMDNAM", size);
-
-                //Get the Module Name from the Mdf
-                var moduleName = Module.Mdf.ModuleName;
-
-                //Sanity Check -- 
-                if (moduleName.Length > size)
-                {
-                    _logger.Warn($"Module Name \"{moduleName}\" greater than specified size {size}, truncating");
-                    moduleName = moduleName.Substring(0, size);
-                }
-
-                //Set Memory
-                Module.Memory.SetArray(variablePointer,
-                    Encoding.Default.GetBytes(Module.Mdf.ModuleName));
+            //Set Memory
+            Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(moduleName));
 #if DEBUG
-                _logger.Info(
-                    $"Retrieved Module Name \"{Module.Mdf.ModuleName}\" and saved it at host memory offset {Registers.DX:X4}:{Registers.AX:X4}");
+            _logger.Info(
+                $"Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {variablePointer}");
 #endif
-            }
 
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
@@ -898,7 +881,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var msgFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
 
+            //If the MCV file doesn't exist, but the MSG does -- we need to build the MCV
+            if (!File.Exists($"{Module.ModulePath}{msgFileName}") &&
+                File.Exists($"{Module.ModulePath}{msgFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase)}"))
+                new MsgFile(Module.ModulePath,
+                    msgFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
+
             var offset = McvPointerDictionary.Allocate(new McvFile(msgFileName, Module.ModulePath));
+
+            if (_currentMcvFile != null)
+                _previousMcvFile.Push(_currentMcvFile);
 
             //Open just sets whatever the currently active MCV file is -- overwriting whatever was there
             _currentMcvFile = new IntPtr16(ushort.MaxValue, (ushort)offset);
@@ -1050,10 +1042,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = $"{highByte << 16 | lowByte}\0";
 
             if (!Module.Memory.TryGetVariable($"L2AS", out var variablePointer))
-            {
                 //Pre-allocate space for the maximum number of characters for a ulong
-                variablePointer = base.Module.Memory.AllocateVariable("L2AS", 0xFF);
-            }
+                variablePointer = Module.Memory.AllocateVariable("L2AS", 0xFF);
 
             Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(outputValue));
 
@@ -1173,7 +1163,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Quick Check
             if (string1.Length != string2.Length)
-            { 
+            {
                 Registers.AX = 0;
 
 #if DEBUG
@@ -1640,17 +1630,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If there's an MVC currently set, push it to the queue
             if (_currentMcvFile != null)
             {
-                var previousMvc = new IntPtr16(_currentMcvFile.ToArray());
+                _previousMcvFile.Push(new IntPtr16(_currentMcvFile.ToSpan()));
 #if DEBUG
-                _logger.Info($"Enqueud Previous MCV File: {McvPointerDictionary[previousMvc.Offset].FileName} (Pointer: {previousMvc})");
+                _logger.Info("Enqueue Previous MCV File: {0} (Pointer: {1})", McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile);
 #endif
-                _previousMcvFile.Push(previousMvc);
             }
 
             _currentMcvFile = mcvFilePointer;
 
 #if DEBUG
-            _logger.Info($"Set Current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
+            _logger.Info("Set Current MCV File: {0} (Pointer: {1})", McvPointerDictionary[_currentMcvFile.Offset].FileName, mcvFilePointer);
 #endif
         }
 
@@ -1686,7 +1675,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
-            var btvFileNamePointer = Module.Memory.AllocateVariable(null, (ushort)btrieveFilename.Length);
+            var btvFileNamePointer = Module.Memory.AllocateVariable(null, (ushort)(btrieveFilename.Length + 1));
             var btvDataPointer = Module.Memory.AllocateVariable(null, maxRecordLength);
 
             var newBtvStruct = new BtvFileStruct { filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer };
@@ -1713,7 +1702,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilePointer = GetParameterPointer(0);
 
             if (_currentBtrieveFile != null)
-                _previousBtrieveFile.Push(_currentBtrieveFile);
+                _previousBtrieveFile.Push(new IntPtr16(_currentBtrieveFile.ToSpan()));
 
             _currentBtrieveFile = btrieveFilePointer;
 
@@ -1940,7 +1929,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var result = value1 * value2;
 
 #if DEBUG
-            _logger.Info($"Performed Long Multiplication {value1}*{value2}={result}");
+            //_logger.Info($"Performed Long Multiplication {value1}*{value2}={result}");
 #endif
 
             Registers.DX = (ushort)(result >> 16);
@@ -1964,7 +1953,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var quotient = Math.DivRem(arg1, arg2, out var remainder);
 
 #if DEBUG
-            _logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
+            //_logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
 #endif
 
             Registers.DX = (ushort)(quotient >> 16);
@@ -2034,9 +2023,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Setup Host Memory Variables Pointer
             if (!Module.Memory.TryGetVariable($"SCNMDF", out var variablePointer))
-            {
                 variablePointer = base.Module.Memory.AllocateVariable("SCNMDF", 0xFF);
-            }
 
             var recordFound = false;
             foreach (var line in File.ReadAllLines($"{Module.ModulePath}{mdfName}"))
@@ -2215,10 +2202,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 //GetEqual
                 case 5:
-                {
-                    result = currentBtrieveFile.HasKey(Module.Memory.GetString(keyPointer));
-                    break;
-                }
+                    {
+                        result = currentBtrieveFile.HasKey(Module.Memory.GetString(keyPointer));
+                        break;
+                    }
             }
 
             //Store the Record if it's there
@@ -2885,7 +2872,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved to {variablePointer}");
+            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved to {3}", msgnum, McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, variablePointer);
 #endif
 
             Registers.AX = variablePointer.Offset;
@@ -3621,7 +3608,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 //1 < 2 == -1 (0xFFFF)
                 //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort) (string1[i] < string2[i] ?  0xFFFF : 1);
+                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
                 return;
             }
             Registers.AX = 0;

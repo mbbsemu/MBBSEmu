@@ -255,19 +255,22 @@ namespace MBBSEmu.HostProcess
                     {
                         if (module.RtkickRoutines.Count == 0) continue;
 
-                        foreach (var routine in module.RtkickRoutines.ToList())
+                        foreach (var (key, value) in module.RtkickRoutines.ToList())
                         {
-                            if (!routine.Value.Executed && routine.Value.Elapsed.ElapsedMilliseconds > (routine.Value.Delay * 1000))
+                            if (!value.Executed && value.Elapsed.ElapsedMilliseconds > (value.Delay * 1000))
                             {
-                                Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{routine.Key}"], ushort.MaxValue);
-                                routine.Value.Elapsed.Stop();
-                                routine.Value.Executed = true;
+#if DEBUG
+                                _logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
+#endif
+                                Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{key}"], ushort.MaxValue);
+                                value.Elapsed.Stop();
+                                value.Executed = true;
                             }
 
-                            if (routine.Value.Executed)
+                            if (value.Executed)
                             {
-                                module.EntryPoints.Remove($"RTKICK-{routine.Key}");
-                                module.RtkickRoutines.Remove(routine.Key);
+                                module.EntryPoints.Remove($"RTKICK-{key}");
+                                module.RtkickRoutines.Remove(key);
                             }
                         }
 

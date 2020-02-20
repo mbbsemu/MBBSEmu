@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MBBSEmu.Memory
 {
@@ -270,7 +271,15 @@ namespace MBBSEmu.Memory
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
+
+#if DEBUG
+            for (var i = 0; i < array.Length; i++)
+            {
+                _memorySegments[segment][offset + i] = array[i];
+            }
+#else
             Array.Copy(array.ToArray(), 0, _memorySegments[segment], offset, array.Length);
+#endif
         }
     }
 }

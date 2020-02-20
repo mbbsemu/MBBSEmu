@@ -381,6 +381,7 @@ namespace MBBSEmu.HostProcess.Structs
         {
             _usrAccStructBytes = new byte[341];
             flags = 1;
+            sex = 'M';  //Set everyone to male for now
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }
 

@@ -6,6 +6,7 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -122,17 +123,24 @@ namespace MBBSEmu.CPU
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
             Registers.IP = _currentInstruction.IP16;
 
-            var bShowDebug = false;
+
 
 #if DEBUG
-            //if (Registers.IP >= 0xCD0 && Registers.IP <= 0x73AE)
+            bool bShowDebug = false;
+
+            //if ((Registers.CS == 0x6 && Registers.IP == 0x176) || (Registers.CS == 0x2 && Registers.IP == 0xD54B))
             //{
+            //    //Debugger.Break();
             //    bShowDebug = true;
             //}
-#endif
+            //else
+            //{
+            //    //bShowDebug = Registers.CS == 0x6 && Registers.IP >= 0x7B && Registers.IP <= 0x86;
+            //}
+
             if (bShowDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
-
+#endif
             //Jump Table
             switch (_currentInstruction.Mnemonic)
             {
@@ -336,8 +344,10 @@ namespace MBBSEmu.CPU
 
             Registers.IP += (ushort)_currentInstruction.Length;
 
+#if DEBUG
             if (bShowDebug)
                 _logger.InfoRegisters(this);
+#endif
 
         }
 
