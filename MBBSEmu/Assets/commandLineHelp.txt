@@ -5,8 +5,8 @@ Private Alpha 5 (02/xx/2020) - Patreon Exclusive
 -----------------------------------------------------------
 Command Line Options:
 -?                This Help Screen
--C <configfile>   Specify a custom configuration file
-                  If no configuration file is specified, default is used
+-C <configFile>   Specify a custom configuration file
+                  If configFile is not specified, "appconfig.json" is used by default
 -M <identifier>   Module Identifier (Overrides appsettings.json)
 -P <path>         Path To Module    (Overrides appsettings.json)
 -APIREPORT        Generate API Report

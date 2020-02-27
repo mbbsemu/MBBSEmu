@@ -21,10 +21,12 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
-            var config = ServiceResolver.GetService<IConfigurationRoot>();
+            
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
             var bApiReport = false;
+            var bConfigFile = false;
+            var sConfigFile = string.Empty;
 
             if (args.Length == 0)
                 args = new[] {"-?"};
@@ -50,15 +52,38 @@ namespace MBBSEmu
                         i++;
                         break;
                     case "-?":
-                        Console.WriteLine(ServiceResolver.GetService<IResourceManager>().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
+                        Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
                         return;
+                    case "-CONFIG":
+                    case "-C":
+                    {
+                        bConfigFile = true;
+                        //Is there a following argument that doesn't start with '-'
+                        //If so, it's the config file name
+                        if (i + 1 < args.Length && args[i + 1][0] != '-')
+                        {
+                            sConfigFile = args[i + 1];
+                        }
+                        else
+                        {
+                            sConfigFile = "appsettings.json";
+                        }
+
+                        break;
+                    }
                     default:
                         Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                         return;
                 }
             }
 
-            if (string.IsNullOrEmpty(sInputModule) && !config.GetSection("Modules").GetChildren().Any())
+            //Setup Config File if one is specified
+            if (bConfigFile)
+                Configuration.Builder.Build(sConfigFile);
+
+            var config = ServiceResolver.GetService<IConfigurationRoot>();
+
+            if (string.IsNullOrEmpty(sInputModule) && (!bConfigFile || !config.GetSection("Modules").GetChildren().Any()))
             {
                 Console.WriteLine("No Module Specified");
                 return;
@@ -77,7 +102,7 @@ namespace MBBSEmu
                 //Load Command Line
                 modules.Add(new MbbsModule(sInputModule, sInputPath));
             }
-            else
+            else if(bConfigFile)
             {
                 //Load Config File
                 foreach (var m in config.GetSection("Modules").GetChildren())
@@ -85,6 +110,12 @@ namespace MBBSEmu
                     _logger.Info($"Loading {m["Identifier"]}");
                     modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
                 }
+            }
+            else
+            {
+                _logger.Warn($"You must specify a module to load either via Command Line or Config File");
+                _logger.Warn($"Use the command line argument -? for more information");
+                return;
             }
 
             if (bApiReport)

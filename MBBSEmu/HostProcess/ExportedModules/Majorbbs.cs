@@ -784,7 +784,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
-            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}: {Encoding.ASCII.GetString(inputBuffer)}");
+            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
 
             Registers.AX = destinationPointer.Offset;

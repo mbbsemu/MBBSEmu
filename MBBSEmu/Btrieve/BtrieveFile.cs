@@ -117,6 +117,7 @@ namespace MBBSEmu.Btrieve
                 if (keyDefinition.Segment)
                 {
                     _logger.Warn("MBBSEmu currently does not support Key Segments, additional segments for this key will be ignored");
+                    currentKeyNumber++;
                     continue;
                 }
 
