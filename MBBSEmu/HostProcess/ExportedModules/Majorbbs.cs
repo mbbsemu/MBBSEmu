@@ -669,6 +669,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 1125:
                     fputs();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -783,6 +784,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
+            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}: {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
 
             Registers.AX = destinationPointer.Offset;
@@ -2205,6 +2207,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //GetEqual
                 case 5:
                     {
+                        result = currentBtrieveFile.HasKey(keyNum, Module.Memory.GetString(keyPointer));
                         break;
                     }
             }
