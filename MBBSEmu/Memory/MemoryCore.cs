@@ -5,6 +5,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
+using Decoder = Iced.Intel.Decoder;
 
 namespace MBBSEmu.Memory
 {
@@ -242,7 +244,10 @@ namespace MBBSEmu.Memory
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         {
             if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
-                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
+            {
+                _logger.Error($"Invalid Pointer -> {segment:X4}:{offset:X4}");
+                return Encoding.ASCII.GetBytes("Invalid Pointer");
+            }
 
             ReadOnlySpan<byte> segmentSpan = selectedSegment;
 

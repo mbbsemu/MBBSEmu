@@ -54,33 +54,42 @@ namespace MBBSEmu.Telnet
 
         public void Send(byte[] dataToSend)
         {
-            using var msOutputBuffer = new MemoryStream();
-            foreach (var b in dataToSend)
+            try
             {
-                //When we're in a module, since new lines are stripped from MVC's etc, and only
-                //carriage returns remain, IF we're in a module and encounter a CR, add a NL
-                if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule || SessionState == EnumSessionState.LoginRoutines)
+                using var msOutputBuffer = new MemoryStream();
+                foreach (var b in dataToSend)
                 {
-                    switch (b)
+                    //When we're in a module, since new lines are stripped from MVC's etc, and only
+                    //carriage returns remain, IF we're in a module and encounter a CR, add a NL
+                    if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
+                        SessionState == EnumSessionState.LoginRoutines)
                     {
-                        case 0xD:
-                            msOutputBuffer.WriteByte(0xA);
-                            break;
-                        case 0xA:
-                            msOutputBuffer.WriteByte(0xD);
-                            break;
-                        case 0xFF:
-                            msOutputBuffer.WriteByte(0xFF);
-                            break;
-                        case 0x13:
-                            continue;
+                        switch (b)
+                        {
+                            case 0xD:
+                                msOutputBuffer.WriteByte(0xA);
+                                break;
+                            case 0xA:
+                                msOutputBuffer.WriteByte(0xD);
+                                break;
+                            case 0xFF:
+                                msOutputBuffer.WriteByte(0xFF);
+                                break;
+                            case 0x13:
+                                continue;
+                        }
                     }
-                }
-                msOutputBuffer.WriteByte(b);
-            }
 
-            _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
-            ValidateSocketState(socketState);
+                    msOutputBuffer.WriteByte(b);
+                }
+
+                _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
+                ValidateSocketState(socketState);
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.Warn($"Channel {Channel}: Attempted to write on a disposed socket");
+            }
         }
 
         /// <summary>

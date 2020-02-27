@@ -17,14 +17,12 @@ namespace MBBSEmu.Btrieve
         public ushort CurrentRecordNumber;
         public ushort PageLength;
         public ushort PageCount;
-        public ushort KeyRecordLength;
-        public ushort KeyLength;
         public ushort KeyCount;
         public uint AbsolutePosition;
 
         private readonly byte[] _btrieveFileContent;
-        private readonly List<BtrieveRecord> _btrieveRecords;
-        private readonly List<BtrieveKey> _btrieveKeys;
+        public readonly List<BtrieveRecord> Records;
+        public readonly Dictionary<ushort, BtrieveKey> Keys;
 
         public BtrieveFile(string fileName, string path, ushort maxRecordLength)
         {
@@ -35,8 +33,15 @@ namespace MBBSEmu.Btrieve
                 path += Path.DirectorySeparatorChar;
 
             FileName = fileName;
-            _btrieveRecords = new List<BtrieveRecord>();
-            _btrieveKeys = new List<BtrieveKey>();
+            Records = new List<BtrieveRecord>();
+            Keys = new Dictionary<ushort, BtrieveKey>();
+
+            //Strip any absolute pathing
+            if (FileName.ToUpper().StartsWith(@"\BBSV6") || FileName.ToUpper().StartsWith(@"\WGSERV"))
+            {
+                var relativePathStart = FileName.IndexOf('\\', FileName.IndexOf('\\') + 1);
+                FileName = FileName.Substring(relativePathStart + 1);
+            }
 
             //MajorBBS/WG will create a blank btrieve file if attempting to open one that doesn't exist
             if (!File.Exists($"{path}{FileName}"))
@@ -52,10 +57,14 @@ namespace MBBSEmu.Btrieve
 
             _btrieveFileContent = File.ReadAllBytes($"{path}{FileName}");
 #if DEBUG
-            _logger.Info($"Opened {fileName} and read {_btrieveFileContent.Length} bytes");
+            _logger.Info($"Opened {FileName} and read {_btrieveFileContent.Length} bytes");
             _logger.Info("Parsing Header...");
 #endif
             ParseHeader();
+
+            //Only Parse Keys if they are defined
+            if(KeyCount > 0)
+                ParseKeyDefinitions();
 
             if (RecordCount > 0)
             {
@@ -67,7 +76,6 @@ namespace MBBSEmu.Btrieve
                 _logger.Info($"No records to load");
 #endif
             }
-
         }
 
         private void ParseHeader()
@@ -76,23 +84,71 @@ namespace MBBSEmu.Btrieve
             RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
             PageLength = BitConverter.ToUInt16(_btrieveFileContent, 0x08);
-            PageCount = BitConverter.ToUInt16(_btrieveFileContent, 0x20);
-            KeyRecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x11C);
-            KeyLength = BitConverter.ToUInt16(_btrieveFileContent, 0x11A);
-            KeyCount = BitConverter.ToUInt16(_btrieveFileContent, 0x116);
+            PageCount = (ushort) ((_btrieveFileContent.Length / PageLength) - 1); //-1 to not count the header
+            KeyCount = BitConverter.ToUInt16(_btrieveFileContent, 0x14);
+
+            //TODO: Support this eventually
+            if(KeyCount > 1)
+                _logger.Warn("MBBSEmu currently only supports 1 Btrieve Key (Key 0) -- all other keys will be ignored");
 #if DEBUG
             _logger.Info($"Max Record Length: {MaxRecordLength}");
             _logger.Info($"Page Size: {PageLength}");
             _logger.Info($"Page Count: {PageCount}");
             _logger.Info($"Record Length: {RecordLength}");
             _logger.Info($"Record Count: {RecordCount}");
-            _logger.Info($"Key Record Length: {KeyRecordLength}");
-            _logger.Info($"Key Length: {KeyLength}");
             _logger.Info($"Key Count: {KeyCount}");
             _logger.Info("Loading Records...");
 #endif 
         }
 
+        private void ParseKeyDefinitions()
+        {
+            var keyDefinitionBase = 0x110;
+            var keyDefinitionLength = 0x1E;
+            ReadOnlySpan<byte> btrieveFileContentSpan = _btrieveFileContent;
+
+            ushort currentKeyNumber = 0;
+            ushort previousKeyNumber = 0;
+            while(currentKeyNumber < KeyCount)
+            {
+                var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray()};
+
+                //TODO: Support this eventually
+                if (keyDefinition.Segment)
+                {
+                    _logger.Warn("MBBSEmu currently does not support Key Segments, additional segments for this key will be ignored");
+                    continue;
+                }
+
+                if (keyDefinition.Segment)
+                {
+                    keyDefinition.SegmentOf = previousKeyNumber;
+                    keyDefinition.Number = previousKeyNumber;
+                }
+                else
+                {
+                    keyDefinition.Number = currentKeyNumber;
+                    currentKeyNumber++;
+                }
+
+#if DEBUG
+                _logger.Info("----------------");
+                _logger.Info("Loaded Key Definition:");
+                _logger.Info("----------------");
+                _logger.Info($"Number: {keyDefinition.Number}");
+                _logger.Info($"Total Records: {keyDefinition.TotalRecords}");
+                _logger.Info($"Data Type: {keyDefinition.DataType}");
+                _logger.Info($"Attributes: {keyDefinition.Attributes}");
+                _logger.Info($"Position: {keyDefinition.Position}");
+                _logger.Info($"Length: {keyDefinition.Length}");
+                _logger.Info("----------------");
+#endif
+                var newKey = new BtrieveKey() {Definition = keyDefinition};
+                Keys.Add(keyDefinition.Number, newKey);
+
+                keyDefinitionBase += keyDefinitionLength;
+            }
+        }
 
         private void LoadRecords()
         {
@@ -104,29 +160,26 @@ namespace MBBSEmu.Btrieve
                 var recordsInPage = (PageLength / RecordLength);
 
                 //Key Page
-                if (_btrieveFileContent[pageOffset + 5] == 0x00)
+                //Key Pages have 0xFFFFFFFF at 0x8
+                if (BitConverter.ToUInt32(_btrieveFileContent, pageOffset + 8) == uint.MaxValue)
                 {
-                    pageOffset += 8;
+                    //TODO: This will need to change as additional key support added
+                    ushort currentKey = 0;
 
-                    //Start of Keys 0xFFFFFF
-                    if (BitConverter.ToUInt32(_btrieveFileContent, pageOffset) != uint.MaxValue)
-                        continue;
-
-                    pageOffset += 4;
-                    for (int j = 0; j < KeyCount; j++)
+                    pageOffset += 0xC;
+                    for (var j = 0; j < Keys[currentKey].Definition.TotalRecords; j++)
                     {
-
-                        var keyRecord = new byte[KeyRecordLength];
-                        Array.Copy(_btrieveFileContent, pageOffset + (KeyRecordLength * j), keyRecord, 0, KeyRecordLength);
+                        var keyRecordLength = Keys[currentKey].Definition.RecordLength;
+                        var keyRecord = new byte[keyRecordLength];
+                        
+                        Array.Copy(_btrieveFileContent, pageOffset + (keyRecordLength * j), keyRecord, 0, keyRecordLength);
 
                         //Keys Start with 0xFFFFFFFF
                         if (BitConverter.ToUInt32(keyRecord, 0) != uint.MaxValue)
                             break;
 
-                        _btrieveKeys.Add(new BtrieveKey(keyRecord, 0, KeyLength));
+                        Keys[currentKey].Keys.Add(new BtrieveKeyRecord(keyRecord, 0, Keys[currentKey].Definition.Length));
                     }
-                    
-
                     continue;
                 }
 
@@ -146,10 +199,14 @@ namespace MBBSEmu.Btrieve
                         if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
                             continue;
 
-                        _btrieveRecords.Add(new BtrieveRecord(pageOffset + (RecordLength * j), recordArray));
+                        Records.Add(new BtrieveRecord(pageOffset + (RecordLength * j), recordArray));
                         recordsLoaded++;
                     }
+
+                    continue;
                 }
+
+                _logger.Warn($"Unknown Btrieve Page Identifier: {_btrieveFileContent[pageOffset + 5]:X2} at {pageOffset + 5:X4}");
             }
 #if DEBUG
             _logger.Info($"Loaded {recordsLoaded} records. Resetting cursor to 0");
@@ -166,7 +223,7 @@ namespace MBBSEmu.Btrieve
 
         public ushort StepNext()
         {
-            if (CurrentRecordNumber + 1 >= _btrieveRecords.Count)
+            if (CurrentRecordNumber + 1 >= Records.Count)
                 return 0;
 
             CurrentRecordNumber++;
@@ -176,7 +233,7 @@ namespace MBBSEmu.Btrieve
 
         public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
 
-        public byte[] GetRecord(ushort recordNumber) => _btrieveRecords[recordNumber].Data;
+        public byte[] GetRecord(ushort recordNumber) => Records[recordNumber].Data;
 
 
         public void Update(byte[] recordData) => Update(CurrentRecordNumber, recordData);
@@ -186,7 +243,7 @@ namespace MBBSEmu.Btrieve
             if (recordData.Length != RecordLength)
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
-            _btrieveRecords[recordNumber].Data = recordData;
+            Records[recordNumber].Data = recordData;
 
             if (RecordCount == 0)
                 RecordCount++;
@@ -199,7 +256,7 @@ namespace MBBSEmu.Btrieve
             if (!isVariableLength && recordData.Length != RecordLength)
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
-            _btrieveRecords.Insert(recordNumber, new BtrieveRecord(0, recordData));
+            Records.Insert(recordNumber, new BtrieveRecord(0, recordData));
         }
 
         /// <summary>
@@ -207,10 +264,10 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public ushort HasKey(ReadOnlySpan<byte> key)
+        public ushort HasKey(ushort keyNumber, ReadOnlySpan<byte> key)
         {
             
-            foreach (var k in _btrieveKeys)
+            foreach (var k in Keys[keyNumber].Keys)
             {
                 var result = true;
                 for (var i = 0; i < key.Length; i++)
@@ -233,7 +290,7 @@ namespace MBBSEmu.Btrieve
 
         public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)
         {
-            foreach (var record in _btrieveRecords)
+            foreach (var record in Records)
             {
                 if (record.Offset == absolutePosition)
                     return record.Data;

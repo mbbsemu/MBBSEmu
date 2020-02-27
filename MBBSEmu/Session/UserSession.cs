@@ -29,7 +29,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     This Users UsrPtr* which is passed in from MajorBBS
         /// </summary>
-        public User UsrPtr;
+        public User UsrPtr { get; set; }
 
         /// <summary>
         ///     This Users UsrAcc* which is pass in from MajorBBS
@@ -39,27 +39,27 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     This Users Number/Channel Number (used to identify target for output)
         /// </summary>
-        public ushort Channel;
+        public ushort Channel { get; set; }
 
         /// <summary>
         ///     Current Module the user is in
         /// </summary>
-        public MbbsModule CurrentModule;
+        public MbbsModule CurrentModule { get; set; }
 
         /// <summary>
         ///     MajorBBS User Status
         /// </summary>
-        public ushort Status;
+        public ushort Status { get; set; }
 
         /// <summary>
         ///     Status State has been changes
         /// </summary>
-        public bool StatusChange;
+        public bool StatusChange { get; set; }
 
         /// <summary>
         ///     Current State of this Users Session
         /// </summary>
-        public EnumSessionState SessionState;
+        public EnumSessionState SessionState { get; set; }
 
         /// <summary>
         ///     GSBL Echo Buffer
@@ -67,59 +67,97 @@ namespace MBBSEmu.Session
         ///     Used to send data "promptly" to the user, bypassing MajorBBS and
         ///     sending the data straight through GSBL
         /// </summary>
-        public MemoryStream EchoBuffer;
+        public MemoryStream EchoBuffer { get; set; }
 
         /// <summary>
         ///     Buffer of Data Received from the Client, unparsed
         /// </summary>
-        public MemoryStream InputBuffer;
+        public MemoryStream InputBuffer { get; set; }
 
         /// <summary>
         ///     Parsed Command Input
         /// </summary>
-        public byte[] InputCommand;
+        public byte[] InputCommand { get; set; }
 
         /// <summary>
         ///     Last Character Received from the Client
         /// </summary>
-        public byte LastCharacterReceived;
+        public byte LastCharacterReceived { get; set; }
 
-        public IntPtr16 CharacterInterceptor;
+        public IntPtr16 CharacterInterceptor { get; set; }
 
         /// <summary>
         ///     Routine that is called by BEGIN_POLLING for this user number
         /// </summary>
-        public IntPtr16 PollingRoutine;
+        public IntPtr16 PollingRoutine { get; set; }
 
-        public int mArgCount;
+        /// <summary>
+        ///     Total Number of Commands Passed in from user input by parsin()
+        /// </summary>
+        public int mArgCount { get; set; }
 
-        public List<int> mArgv;
+        /// <summary>
+        ///     Pointers to the START of each command
+        /// </summary>
+        public List<int> mArgv { get; set; }
 
-        public List<int> mArgn;
+        /// <summary>
+        ///     Pointers to the END of each command
+        /// </summary>
+        public List<int> mArgn { get; set; }
 
-        protected readonly ConcurrentQueue<byte[]> DataToClient;
+        /// <summary>
+        ///     Queue to hold data to be sent async to Client
+        /// </summary>
+        protected ConcurrentQueue<byte[]> DataToClient { get; set; }
+        
+        /// <summary>
+        ///     Specified that there is data to be processed from this channel
+        /// </summary>
+        public bool DataToProcess { get; set; }
 
-        public bool DataToProcess;
+        /// <summary>
+        ///     Specifies if User Input should be Echo'd back or not
+        /// </summary>
+        public bool TransparentMode { get; set; }
 
-        public bool TransparentMode;
-
+        /// <summary>
+        ///     Helper Method to get Username from the UsrAcc struct
+        /// </summary>
         public string Username
         {
             get => UsrAcc.GetUserId();
             set => UsrAcc.SetUserId(value);
         }
 
-        public string Password;
+        /// <summary>
+        ///     Users Password
+        /// </summary>
+        public string Password { get; set; }
 
-        public string email;
+        /// <summary>
+        ///     Users Email Address
+        /// </summary>
+        public string Email { get; set; }
 
-        public Stopwatch SessionTimer;
+        /// <summary>
+        /// Tracks how long a user has been online
+        /// </summary>
+        public Stopwatch SessionTimer { get; set; }
 
+        /// <summary>
+        ///     Helper Method to enqueue data to be sent to the client Async
+        /// </summary>
+        /// <param name="dataToSend"></param>
         public void SendToClientAsync(byte[] dataToSend)
         {
             DataToClient.Enqueue(dataToSend);
         }
 
+        /// <summary>
+        ///     Helper Method to send data to the client synchronously
+        /// </summary>
+        /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
             SendToClientMethod(dataToSend);
@@ -178,7 +216,7 @@ namespace MBBSEmu.Session
         }
 
         /// <summary>
-        ///     Restores the Input Command back to it's unparsed date (null's to spaces)
+        ///     Restores the Input Command back to it's unparsed date (NULL to spaces)
         /// </summary>
         public void rstrin()
         {

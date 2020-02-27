@@ -465,10 +465,10 @@ namespace MBBSEmu.HostProcess
                 return;
             }
 
-            session.email = inputValue;
+            session.Email = inputValue;
 
             //Create the user in the database
-            _accountRepository.InsertAccount(session.Username, session.Password, session.email);
+            _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

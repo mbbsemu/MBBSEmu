@@ -1,5 +1,4 @@
-﻿using System.Text;
-using MBBSEmu.Btrieve;
+﻿using MBBSEmu.Btrieve;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -13,10 +12,9 @@ namespace MBBSEmu.Tests.Btrieve
             var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
             Assert.Equal(1, btrieveFile.PageCount);
             Assert.Equal(512, btrieveFile.PageLength);
-            Assert.Equal(0, btrieveFile.KeyCount);
-            Assert.Equal(0, btrieveFile.KeyLength);
             Assert.Equal(0, btrieveFile.RecordCount);
             Assert.Equal(70, btrieveFile.RecordLength);
+            Assert.Equal(0, btrieveFile.KeyCount);
         }
 
         [Theory]
@@ -24,12 +22,14 @@ namespace MBBSEmu.Tests.Btrieve
         public void Btrieve_MultiplePages_Keys(string path, string fileName)
         {
             var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
-            Assert.Equal(1, btrieveFile.PageCount);
-            Assert.Equal(512, btrieveFile.PageLength);
-            Assert.Equal(0, btrieveFile.KeyCount);
-            Assert.Equal(0, btrieveFile.KeyLength);
-            Assert.Equal(0, btrieveFile.RecordCount);
-            Assert.Equal(70, btrieveFile.RecordLength);
+            Assert.Equal(24, btrieveFile.PageCount);
+            Assert.Equal(1024, btrieveFile.PageLength);
+            Assert.Equal(61, btrieveFile.RecordCount);
+            Assert.Equal(333, btrieveFile.RecordLength);
+            Assert.Equal(1, btrieveFile.KeyCount);
+            Assert.Equal(1, btrieveFile.Keys[0].Definition.Position);
+            Assert.Equal(9, btrieveFile.Keys[0].Definition.Length);
+            Assert.Equal(61, btrieveFile.Keys[0].Definition.TotalRecords);
         }
 
         [Theory]
@@ -40,9 +40,11 @@ namespace MBBSEmu.Tests.Btrieve
             Assert.Equal(2, btrieveFile.PageCount);
             Assert.Equal(1024, btrieveFile.PageLength);
             Assert.Equal(1, btrieveFile.KeyCount);
-            Assert.Equal(30, btrieveFile.KeyLength);
             Assert.Equal(1, btrieveFile.RecordCount);
             Assert.Equal(256, btrieveFile.RecordLength);
+            Assert.Equal(1, btrieveFile.Keys[0].Definition.Position);
+            Assert.Equal(30, btrieveFile.Keys[0].Definition.Length);
+            Assert.Equal(1, btrieveFile.Keys[0].Definition.TotalRecords);
         }
 
         [Theory]
@@ -50,7 +52,7 @@ namespace MBBSEmu.Tests.Btrieve
         public void GetRecord_ByKey(string path, string fileName, byte[] key)
         {
             var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
-            var result = btrieveFile.HasKey(key);
+            var result = btrieveFile.HasKey(0, key);
 
             Assert.Equal(1, result);
             Assert.Equal((uint)2054, btrieveFile.AbsolutePosition);
@@ -69,7 +71,6 @@ namespace MBBSEmu.Tests.Btrieve
             Assert.Equal(0x6F, record[3]);
             Assert.Equal(0x70, record[4]);
             Assert.Equal(0x00, record[5]);
-
         }
     }
 }

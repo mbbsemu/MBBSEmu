@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using MBBSEmu.Btrieve.Enums;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -666,6 +667,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 585:
                     strtok();
                     break;
+                case 1125:
+                    fputs();
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
@@ -780,7 +783,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
-            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
 
             Registers.AX = destinationPointer.Offset;
@@ -2203,7 +2205,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //GetEqual
                 case 5:
                     {
-                        result = currentBtrieveFile.HasKey(Module.Memory.GetString(keyPointer));
                         break;
                     }
             }
@@ -2872,7 +2873,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved to {3}", msgnum, McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, variablePointer);
+            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum, McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length, variablePointer);
 #endif
 
             Registers.AX = variablePointer.Offset;
@@ -2896,7 +2897,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
 #if DEBUG
-            //_logger.Info($"Processed sscanf on {Encoding.ASCII.GetString(formatString)}");
+            _logger.Info($"Processed sscanf on {Encoding.ASCII.GetString(inputString)}-> {Encoding.ASCII.GetString(formatString)}");
 #endif
         }
 
@@ -4030,7 +4031,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 //Get Equal
                 case 55:
-                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].HasKey(key);
+                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].HasKey(keyNumber, key);
                     break;
             }
 
@@ -4143,6 +4144,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.DX = resultPointer.Segment;
             Registers.AX = resultPointer.Offset;
+        }
+
+        /// <summary>
+        ///     fputs - puts a string on a stream
+        ///
+        ///     Signature: int fputs(const char *string, FILE *stream);
+        /// </summary>
+        private void fputs()
+        {
+            var stringPointer = GetParameterPointer(0);
+            var fileStructPointer = GetParameterPointer(2);
+
+            var stringToWrite = Module.Memory.GetString(stringPointer, true);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            fileStream.Write(stringToWrite);
+            fileStream.Flush();
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Wrote {stringToWrite.Length} bytes from {stringPointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+            Registers.AX = 1;
         }
     }
 }

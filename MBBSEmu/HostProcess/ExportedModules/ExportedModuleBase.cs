@@ -235,7 +235,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             {
                                 var parameterOffset = GetParameter(currentParameter++);
                                 var parameterSegment = GetParameter(currentParameter++);
-                                parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                                if (Module.Memory.HasSegment(parameterSegment))
+                                {
+                                    parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                                }
+                                else
+                                {
+                                    parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
+                                    _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                                }
                             }
                             else
                             {
@@ -352,12 +360,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             startingParameterOrdinal += 2;
                             var numberValue = short.Parse(stringValues[valueOrdinal++]);
                             Module.Memory.SetWord(numberValueDestinationPointer, (ushort)numberValue);
+#if DEBUG
+                            _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
+#endif
                             continue;
                         case 's':
                             var stringValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
                             startingParameterOrdinal += 2;
                             var stringValue = stringValues[valueOrdinal++] + "\0";
                             Module.Memory.SetArray(stringValueDestinationPointer, Encoding.ASCII.GetBytes(stringValue));
+#if DEBUG
+                            _logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {stringValueDestinationPointer}");
+#endif
                             continue;
                     }
                 }

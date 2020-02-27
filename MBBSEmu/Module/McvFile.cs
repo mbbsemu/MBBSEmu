@@ -136,7 +136,7 @@ namespace MBBSEmu.Module
         public ReadOnlySpan<byte> GetString(int ordinal)
         {
             if (!Messages.TryGetValue(ordinal, out var result))
-                return new byte[] {0x0};
+                throw new ArgumentOutOfRangeException($"Message Number {ordinal} out of range in {FileName}");
 
             //Empty String
             if (result.Length == 0)
