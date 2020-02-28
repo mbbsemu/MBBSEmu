@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using Iced.Intel;
 using MBBSEmu.Btrieve.Enums;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -125,15 +126,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
         }
 
+        public void SetRegisters(CpuRegisters registers)
+        {
+            Registers = registers;
+        }
+
         /// <summary>
         ///     Sets State for the Module Registers and the current Channel Number that's running
         /// </summary>
-        /// <param name="registers"></param>
         /// <param name="channelNumber"></param>
         /// <param name="numberOfModules"></param>
-        public void SetState(CpuRegisters registers, ushort channelNumber)
+        public void SetState(ushort channelNumber)
         {
-            Registers = registers;
             ChannelNumber = channelNumber;
 
             _previousMcvFile.Clear();
@@ -2262,9 +2266,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
 
             if (!Module.Memory.TryGetVariable($"VDA-{channel}", out var volatileMemoryAddress))
-            {
                 volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{channel}", VOLATILE_DATA_SIZE);
-            }
+
+#if DEBUG
+            _logger.Info($"Returned VDAOFF {volatileMemoryAddress} for Channel {channel}");
+#endif
 
             Registers.AX = volatileMemoryAddress.Offset;
             Registers.DX = volatileMemoryAddress.Segment;

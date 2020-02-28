@@ -29,7 +29,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
-        public void SetState(CpuRegisters registers, ushort channelNumber)
+        public void SetRegisters(CpuRegisters registers)
+        {
+            Registers = registers;
+        }
+
+        public void SetState(ushort channelNumber)
         {
             return;
         }

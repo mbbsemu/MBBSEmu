@@ -128,15 +128,15 @@ namespace MBBSEmu.CPU
 #if DEBUG
             bool bShowDebug = false;
 
-            //if ((Registers.CS == 0x6 && Registers.IP == 0x176) || (Registers.CS == 0x2 && Registers.IP == 0xD54B))
-            //{
-            //    //Debugger.Break();
-            //    bShowDebug = true;
-            //}
-            //else
-            //{
-            //    //bShowDebug = Registers.CS == 0x6 && Registers.IP >= 0x7B && Registers.IP <= 0x86;
-            //}
+            if(Registers.IP >= 0x8075 && Registers.IP <= 0x8089)
+            {
+                //Debugger.Break();
+                bShowDebug = true;
+            }
+            else
+            {
+                //bShowDebug = Registers.CS == 0x6 && Registers.IP >= 0x7B && Registers.IP <= 0x86;
+            }
 
             if (bShowDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");

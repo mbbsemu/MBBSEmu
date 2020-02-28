@@ -31,6 +31,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         }
 
+        public void SetRegisters(CpuRegisters registers)
+        {
+            Registers = registers;
+        }
+
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
         {
             switch (ordinal)
@@ -124,9 +129,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return null;
         }
 
-        public void SetState(CpuRegisters registers, ushort channelNumber)
+        public void SetState(ushort channelNumber)
         {
-            Registers = registers;
             Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
         }
 

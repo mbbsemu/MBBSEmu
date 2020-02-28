@@ -48,6 +48,10 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 throw new Exception(
                     $"Unknown or Unimplemented Imported Module: {ordinal:X4}");
 
+            //Because EU's can be nested, we always need to ensure that the current module is using the
+            //registers associated with this EU
+            exportedModule.SetRegisters(ModuleCpuRegisters);
+
             return exportedModule.Invoke(functionOrdinal);
         }
 
@@ -77,10 +81,15 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 ModuleCpu.Push(ushort.MaxValue); //IP
             }
 
-            //Things like TEXT_VARIABLES don't need us to re-setup the state, the Exported Functions are already setup properly
-            if(!bypassState)
-                foreach (var em in ExportedModuleDictionary.Values)
-                    em.SetState(ModuleCpuRegisters, channelNumber);
+            
+            foreach (var em in ExportedModuleDictionary.Values)
+            {
+                //Things like TEXT_VARIABLES don't need us to re-setup the state, the Exported Functions are already setup properly
+                if (!bypassState)
+                    em.SetState(channelNumber);
+
+                em.SetRegisters(ModuleCpuRegisters);
+            }
 
             //Run until complete
             while (!ModuleCpuRegisters.Halt)

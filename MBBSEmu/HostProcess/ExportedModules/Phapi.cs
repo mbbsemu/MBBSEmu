@@ -25,7 +25,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             throw new NotImplementedException();
         }
 
-        public void SetState(CpuRegisters registers, ushort channelNumber)
+        public void SetRegisters(CpuRegisters registers)
+        {
+            Registers = registers;
+        }
+
+        public void SetState(ushort channelNumber)
         {
             return;
         }

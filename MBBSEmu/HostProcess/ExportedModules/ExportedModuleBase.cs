@@ -421,7 +421,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
                 var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
                 var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
-
+                
 #if DEBUG
                 _logger.Info($"Processing Text Variable {Encoding.ASCII.GetString(variableName.ToArray())} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
 #endif
