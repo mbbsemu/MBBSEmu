@@ -105,6 +105,7 @@ namespace MBBSEmu.Telnet
                     _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
                     _iacPhase = 1;
                     Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+                    
                 }
 
                 while (DataToClient.TryDequeue(out var dataToSend))
@@ -174,8 +175,7 @@ namespace MBBSEmu.Telnet
                     //IAC command
                     case 0xFF:
                     {
-                        ParseIAC(InputBuffer.ToArray());
-                        InputBuffer.SetLength(0);
+                        ParseIAC(socketReceiveBuffer);
                         continue;
                     }
                     default:

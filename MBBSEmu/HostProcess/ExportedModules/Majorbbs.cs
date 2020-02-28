@@ -182,7 +182,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
                 Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
+
+#if DEBUG
                 _logger.Info($"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory.Segment:X4}:{inputMemory.Offset}");
+#endif
                 var margnPointer = Module.Memory.GetVariable("MARGN");
                 var margvPointer = Module.Memory.GetVariable("MARGV");
 
@@ -200,7 +203,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Module.Memory.SetArray(margvPointer.Segment, (ushort)(margvPointer.Offset + (i * 4)),
                         currentMargVPointer.ToSpan());
 
+#if DEBUG
                     _logger.Info($"Command {i} {currentMargVPointer:X4}->{currentMargnPointer:X4}: {Encoding.ASCII.GetString(Module.Memory.GetString(currentMargnPointer))}");
+#endif
                 }
             }
         }
@@ -1523,9 +1528,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void ncdate()
         {
             /* From DOSFACE.H:
-                #define ddyear(date) ((((date)>>9)&0x007F)+1980)
-                #define ddmon(date)   (((date)>>5)&0x000F)
-                #define ddday(date)    ((date)    &0x001F)
+#define ddyear(date) ((((date)>>9)&0x007F)+1980)
+#define ddmon(date)   (((date)>>5)&0x000F)
+#define ddday(date)    ((date)    &0x001F)
              */
 
             var packedDate = GetParameter(0);
@@ -2448,7 +2453,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 filenameInputValue = CheckFileCasing(Module.ModulePath, newFilenameInputValue);
             }
 
+#if DEBUG
             _logger.Debug($"Opening File: {Module.ModulePath}{filenameInputValue}");
+#endif
 
             var modeInputBuffer = Module.Memory.GetString(modePointer, true);
             var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
@@ -2491,9 +2498,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
             }
 
-#if DEBUG
-            _logger.Info($"Opening File: {filenameInputValue}");
-#endif
+
             //Setup the File Stream
             var fileStreamPointer = FilePointerDictionary.Allocate(File.Open($"{Module.ModulePath}{filenameInputValue}", FileMode.OpenOrCreate));
 

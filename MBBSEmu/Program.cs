@@ -27,6 +27,7 @@ namespace MBBSEmu
             var bApiReport = false;
             var bConfigFile = false;
             var sConfigFile = string.Empty;
+            var bResetDatabase = false;
 
             if (args.Length == 0)
                 args = new[] {"-?"};
@@ -37,7 +38,7 @@ namespace MBBSEmu
                 {
                     case "-DBRESET":
                     {
-                        DatabaseReset();
+                        bResetDatabase = true;
                         break;
                     }
                     case "-APIREPORT":
@@ -77,11 +78,16 @@ namespace MBBSEmu
                 }
             }
 
+            if (string.IsNullOrEmpty(sConfigFile))
+                sConfigFile = "appsettings.json";
+
             //Setup Config File if one is specified
-            if (bConfigFile)
-                Configuration.Builder.Build(sConfigFile);
+            Configuration.Builder.Build(sConfigFile);
 
             var config = ServiceResolver.GetService<IConfigurationRoot>();
+
+            if(bResetDatabase)
+                DatabaseReset();
 
             if (string.IsNullOrEmpty(sInputModule) && (!bConfigFile || !config.GetSection("Modules").GetChildren().Any()))
             {

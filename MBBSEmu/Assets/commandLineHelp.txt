@@ -1,7 +1,7 @@
 ﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
 By: Eric Nusbaum @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
-Private Alpha 5 (02/xx/2020) - Patreon Exclusive
+Private Alpha 5 (02/28/2020) - Patreon Exclusive
 -----------------------------------------------------------
 Command Line Options:
 -?                This Help Screen
@@ -10,6 +10,8 @@ Command Line Options:
 -M <identifier>   Module Identifier (Overrides appsettings.json)
 -P <path>         Path To Module    (Overrides appsettings.json)
 -APIREPORT        Generate API Report
+                  This generates a JSON file which details the imported APIs used by the
+                  module, assisting in development of MBBSEmu
 -DBRESET          Reset the SQLite DB back to default (deletes everything)
 
 Examples: 
