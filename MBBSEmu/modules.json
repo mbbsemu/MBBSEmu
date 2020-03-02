@@ -1,0 +1,12 @@
+{
+  "Modules": [
+    {
+      "Identifier": "LUNATIX",
+      "Path": "c:\\dos\\modules\\lunatix\\"
+    },
+    {
+      "Identifier": "RTSLORD",
+      "Path": "c:\\dos\\modules\\lord\\"
+    }
+  ]
+}

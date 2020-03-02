@@ -21,13 +21,13 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
-            
             var sInputModule = string.Empty;
             var sInputPath = string.Empty;
             var bApiReport = false;
             var bConfigFile = false;
             var sConfigFile = string.Empty;
             var bResetDatabase = false;
+            var config = ServiceResolver.GetService<IConfigurationRoot>();
 
             if (args.Length == 0)
                 args = new[] {"-?"};
@@ -64,10 +64,17 @@ namespace MBBSEmu
                         if (i + 1 < args.Length && args[i + 1][0] != '-')
                         {
                             sConfigFile = args[i + 1];
+
+                            if (!File.Exists(sConfigFile))
+                            {
+                                    Console.Write($"Specified Module Configuration File not found: {sConfigFile}");
+                                    return;
+                            }
+                            i++;
                         }
                         else
                         {
-                            sConfigFile = "appsettings.json";
+                           Console.WriteLine("Please specify a Module Configuration File when using the -C command line option");
                         }
 
                         break;
@@ -78,31 +85,25 @@ namespace MBBSEmu
                 }
             }
 
-            if (string.IsNullOrEmpty(sConfigFile))
-                sConfigFile = "appsettings.json";
-
-            //Setup Config File if one is specified
-            Configuration.Builder.Build(sConfigFile);
-
-            var config = ServiceResolver.GetService<IConfigurationRoot>();
-
-            if(bResetDatabase)
+            //Database Reset
+            if (bResetDatabase)
                 DatabaseReset();
 
-            if (string.IsNullOrEmpty(sInputModule) && (!bConfigFile || !config.GetSection("Modules").GetChildren().Any()))
-            {
-                Console.WriteLine("No Module Specified");
-                return;
-            }
-
+            //Setup Generic Database
             if (!File.Exists("BBSGEN.DAT"))
             {
                 _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
+                if (!File.Exists("BBSGEN.VIR"))
+                {
+                    _logger.Fatal("Unable to locate BBSGEN.VIR -- aborting");
+                    return;
+                }
+
                 File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
             }
 
+            //Setup Modules
             var modules = new List<MbbsModule>();
-
             if (!string.IsNullOrEmpty(sInputModule))
             {
                 //Load Command Line
@@ -111,7 +112,10 @@ namespace MBBSEmu
             else if(bConfigFile)
             {
                 //Load Config File
-                foreach (var m in config.GetSection("Modules").GetChildren())
+                var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile(sConfigFile, optional: false, reloadOnChange: true).Build();
+
+                foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                 {
                     _logger.Info($"Loading {m["Identifier"]}");
                     modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
@@ -120,10 +124,11 @@ namespace MBBSEmu
             else
             {
                 _logger.Warn($"You must specify a module to load either via Command Line or Config File");
-                _logger.Warn($"Use the command line argument -? for more information");
+                _logger.Warn($"View help documentation using -? for more information");
                 return;
             }
 
+            //API Report
             if (bApiReport)
             {
                 foreach (var m in modules)
@@ -141,21 +146,20 @@ namespace MBBSEmu
                 _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
                 return;
             }
-
             if (!File.Exists(databaseFile))
             {
                 _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
                 DatabaseReset();
             }
 
+            //Setup and Run Host
             var host = ServiceResolver.GetService<IMbbsHost>();
             host.Start();
             foreach(var m in modules)
                 host.AddModule(m);
 
-            var server = ServiceResolver.GetService<ITelnetServer>();
-
-            server.Start();
+            //Setup and Run Telnet Server
+            ServiceResolver.GetService<ITelnetServer>().Start();
         }
 
         private static void DatabaseReset()
@@ -166,8 +170,8 @@ namespace MBBSEmu
                 acct.DropTable();
 
             acct.CreateTable();
-            var sysopUserId = acct.InsertAccount("sysop", "sysop", "eric@nusbaum.me");
-            var guestUserId = acct.InsertAccount("guest", "guest", "guest@nusbaum.me");
+            var sysopUserId = acct.InsertAccount("sysop", "sysop", "sysop@mbbsemu.com");
+            var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
 
             var keys = ServiceResolver.GetService<IAccountKeyRepository>();
 

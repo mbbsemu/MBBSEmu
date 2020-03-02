@@ -3,7 +3,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
-using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {

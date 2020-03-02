@@ -322,8 +322,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 442:
                     nxtcmd();
                     break;
-                case 561:
-                    srand();
+                case 561: //srand() handled internally
                     break;
                 case 599:
                     time();
@@ -679,21 +678,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 1125:
                     fputs();
                     break;
+                case 429:
+                    ncedat();
+                    break;
+                case 487:
+                    rawmsg();
+                    break;
+                case 107:
+                    chropt();
+                    break;
+                case 208:
+                    fgetc();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
             }
 
             return null;
         }
-
-        /// <summary>
-        ///     Initializes the Pseudo-Random Number Generator with the given seen
-        ///
-        ///     Since we'll handle this internally, we'll just ignore this
-        ///
-        ///     Signature: void srand (unsigned int seed);
-        /// </summary>
-        private void srand() { }
 
         /// <summary>
         ///     Get the current calendar time as a value of type time_t
@@ -1542,9 +1544,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
 
             if (!Module.Memory.TryGetVariable("NCDATE", out var variablePointer))
-            {
                 variablePointer = Module.Memory.AllocateVariable("NCDATE", (ushort)outputDate.Length);
-            }
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputDate));
+
+#if DEBUG
+            _logger.Info($"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+#endif
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
+        }
+
+        /// <summary>
+        ///     Returns Packed Date as a char* in 'DD-MMM-YY' format
+        ///
+        ///     Signature: char *ascdat=ncdate(int date)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment  
+        /// </summary>
+        /// <returns></returns>
+        private void ncedat()
+        {
+            var packedDate = GetParameter(0);
+
+            //Pack the Date
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+            var outputDate = $"{day:D2}/{month:D2}/{year % 100}\0";
+
+            if (!Module.Memory.TryGetVariable("NCEDAT", out var variablePointer))
+                variablePointer = Module.Memory.AllocateVariable("NCEDAT", (ushort)outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputDate));
 
@@ -4190,6 +4220,81 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Wrote {stringToWrite.Length} bytes from {stringPointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Read raw value of CNF option
+        ///
+        ///     Signature: char *bufard=rawmsg(msgnum)
+        /// </summary>
+        private void rawmsg()
+        {
+            var msgnum = GetParameter(0);
+
+            if (!Module.Memory.TryGetVariable($"RAWMSG", out var variablePointer))
+                variablePointer = base.Module.Memory.AllocateVariable($"RAWMSG", 0x1000);
+
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+
+            if (outputValue.Length > 0x1000)
+                throw new Exception($"MSG {msgnum} is larger than pre-defined buffer: {outputValue.Length}");
+
+            Module.Memory.SetArray(variablePointer, outputValue);
+#if DEBUG
+            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum, McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length, variablePointer);
+#endif
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
+        }
+
+
+        /// <summary>
+        ///     Read raw value of CNF option
+        ///
+        ///     Signature: char result=chropt(msgnum)
+        /// </summary>
+        private void chropt()
+        {
+            var msgnum = GetParameter(0);
+
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)[0];
+
+#if DEBUG
+            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}): {3}", msgnum, McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue);
+#endif
+
+            Registers.AX = outputValue;
+        }
+
+        /// <summary>
+        ///     Reads a single character from the current pointer of the specified file stream
+        ///
+        ///     Signature: int fgetc ( FILE * stream )
+        /// </summary>
+        private void fgetc()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            var characterRead = fileStream.ReadByte();
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Read 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}): {characterRead:X2}");
+#endif
+
+            Registers.AX = (ushort)characterRead;
         }
     }
 }

@@ -8,6 +8,7 @@ using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
+using System.IO;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -19,8 +20,11 @@ namespace MBBSEmu.DependencyInjection
         {
             var serviceCollection = new ServiceCollection();
 
+            var ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).Build();
+
             //Base Configuration Items
-            serviceCollection.AddSingleton<IConfigurationRoot>(Configuration.Builder.ConfigurationRoot);
+            serviceCollection.AddSingleton(ConfigurationRoot);
             serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
 
             //Database Repositories
