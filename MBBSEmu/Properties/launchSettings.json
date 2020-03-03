@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-P c:\\dos\\modules\\lord\\ -M RTSLORD -dbreset"
+      "commandLineArgs": "-P c:\\dos\\modules\\lord\\ -M RTSLORD"
     }
   }
 }

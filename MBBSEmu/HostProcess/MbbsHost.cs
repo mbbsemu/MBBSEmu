@@ -32,11 +32,11 @@ namespace MBBSEmu.HostProcess
         private readonly Stopwatch _realTimeStopwatch;
         private bool _isAddingModule;
         private readonly IMbbsRoutines _mbbsRoutines;
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         private readonly Queue<UserSession> _incomingSessions;
         private readonly bool _doLoginRoutine;
 
-        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfigurationRoot configuration)
+        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfiguration configuration)
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
@@ -390,6 +390,8 @@ namespace MBBSEmu.HostProcess
 
             return functions;
         }
+
+        public IList<UserSession> GetUserSessions() => _channelDictionary.Values.ToList();
 
         /// <summary>
         ///     Patches all relocation information into the byte code

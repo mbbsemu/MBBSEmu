@@ -1,4 +1,6 @@
-﻿using MBBSEmu.Module;
+﻿using System.Collections;
+using System.Collections.Generic;
+using MBBSEmu.Module;
 using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess
@@ -33,5 +35,11 @@ namespace MBBSEmu.HostProcess
         /// <param name="channel"></param>
         /// <returns></returns>
         bool RemoveSession(ushort channel);
+
+        /// <summary>
+        ///     Returns the List of Current User Sessions
+        /// </summary>
+        /// <returns></returns>
+        public IList<UserSession> GetUserSessions();
     }
 }

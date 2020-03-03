@@ -11,13 +11,13 @@ namespace MBBSEmu.Telnet
     {
         private readonly ILogger _logger;
         private readonly IMbbsHost _host;
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
 
         private Socket _listenerSocket;
         private bool _isRunning;
         private Thread _listenerThread;
 
-        public TelnetServer(IMbbsHost host, ILogger logger, IConfigurationRoot configuration)
+        public TelnetServer(IMbbsHost host, ILogger logger, IConfiguration configuration)
         {
             _host = host;
             _logger = logger;

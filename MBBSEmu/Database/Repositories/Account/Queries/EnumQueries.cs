@@ -27,6 +27,10 @@ namespace MBBSEmu.Database.Repositories.Account.Queries
 
         [SqlQuery("GetAccountByEmail.sql")]
         [Description("Gets Account by the specified Email")]
-        GetAccountByEmail
+        GetAccountByEmail,
+
+        [SqlQuery("GetAccounts.sql")]
+        [Description("Gets All Accounts from the Account Table")]
+        GetAccounts
     }
 }

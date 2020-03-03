@@ -67,6 +67,8 @@ namespace MBBSEmu.Database.Repositories.Account
             return Query<AccountModel>(EnumQueries.GetAccountByEmail, new { email }).FirstOrDefault();
         }
 
+        public IEnumerable<AccountModel> GetAccounts() => Query<AccountModel>(EnumQueries.GetAccounts, null);
+
 
         /// <summary>
         ///     Generates a cryptographically strong random sequence of bytes

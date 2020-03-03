@@ -38,7 +38,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
-        private protected readonly IConfigurationRoot _configuration;
+        private protected readonly IConfiguration _configuration;
 
         public CpuRegisters Registers;
         public MbbsModule Module;
@@ -48,7 +48,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
         {
             _logger = ServiceResolver.GetService<ILogger>();
-            _configuration = ServiceResolver.GetService<IConfigurationRoot>();
+            _configuration = ServiceResolver.GetService<IConfiguration>();
 
             Module = module;
             ChannelDictionary = channelDictionary;

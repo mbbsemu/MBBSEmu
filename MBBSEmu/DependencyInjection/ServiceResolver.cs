@@ -9,39 +9,48 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System.IO;
+using MBBSEmu.ManagementApi;
 
 namespace MBBSEmu.DependencyInjection
 {
     public static class ServiceResolver
     {
         private static ServiceProvider _provider;
+        private static IServiceCollection _serviceCollection;
 
         static ServiceResolver()
         {
-            var serviceCollection = new ServiceCollection();
+            _serviceCollection = new ServiceCollection();
 
             var ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).Build();
 
             //Base Configuration Items
-            serviceCollection.AddSingleton(ConfigurationRoot);
-            serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            _serviceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
+            _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
 
             //Database Repositories
-            serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
-            serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
-            serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
+            _serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
+            _serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
+            _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
-            serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
-            serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
-            serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
+            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            _serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
+            _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
+            _serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
 
-            _provider = serviceCollection.BuildServiceProvider();
+            //API Host Objects
+            _serviceCollection.AddSingleton<IApiHost, ApiHost>();
+
+            _provider = _serviceCollection.BuildServiceProvider();
         }
 
         public static void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;
+
+        public static ServiceProvider GetServiceProvider() => _provider;
+
+        public static IServiceCollection GetServiceCollection() => _serviceCollection;
 
         public static T GetService<T>() => _provider.GetService<T>();
     }

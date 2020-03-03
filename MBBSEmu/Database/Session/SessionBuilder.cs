@@ -10,7 +10,7 @@ namespace MBBSEmu.Database.Session
 
         public DbConnection GetConnection() => GetConnection(_connectionString);
 
-        public SessionBuilder(IConfigurationRoot appConfig)
+        public SessionBuilder(IConfiguration appConfig)
         {
             var dbFile = appConfig["Database.File"];
 

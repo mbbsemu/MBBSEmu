@@ -11,7 +11,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using MBBSEmu.ManagementApi;
 
 namespace MBBSEmu
 {
@@ -27,7 +27,7 @@ namespace MBBSEmu
             var bConfigFile = false;
             var sConfigFile = string.Empty;
             var bResetDatabase = false;
-            var config = ServiceResolver.GetService<IConfigurationRoot>();
+            var config = ServiceResolver.GetService<IConfiguration>();
 
             if (args.Length == 0)
                 args = new[] {"-?"};
@@ -140,7 +140,7 @@ namespace MBBSEmu
             }
 
             //Database Sanity Checks
-            var databaseFile = ServiceResolver.GetService<IConfigurationRoot>()["Database.File"];
+            var databaseFile = ServiceResolver.GetService<IConfiguration>()["Database.File"];
             if (string.IsNullOrEmpty(databaseFile))
             {
                 _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
@@ -160,6 +160,10 @@ namespace MBBSEmu
 
             //Setup and Run Telnet Server
             ServiceResolver.GetService<ITelnetServer>().Start();
+
+            //Setup and Run API Host
+            if(bool.TryParse(config["ManagementAPI.Enabled"], out var managementApiEnabled) && managementApiEnabled)
+                ServiceResolver.GetService<IApiHost>().Start();
         }
 
         private static void DatabaseReset()
@@ -168,9 +172,28 @@ namespace MBBSEmu
             var acct = ServiceResolver.GetService<IAccountRepository>();
             if (acct.TableExists())
                 acct.DropTable();
-
             acct.CreateTable();
-            var sysopUserId = acct.InsertAccount("sysop", "sysop", "sysop@mbbsemu.com");
+
+            var bPasswordMatch = false;
+            var sSysopPassword = string.Empty;
+            while (!bPasswordMatch)
+            {
+                Console.Write("Enter New Systop Password: ");
+                var password1 = Console.ReadLine();
+                Console.Write("Re-Enter New Sysop Password: ");
+                var password2 = Console.ReadLine();
+                if (password1 == password2)
+                {
+                    bPasswordMatch = true;
+                    sSysopPassword = password1;
+                }
+                else
+                {
+                    Console.WriteLine("Password mismatch, please tray again.");
+                }
+            }
+
+            var sysopUserId = acct.InsertAccount("sysop", sSysopPassword, "sysop@mbbsemu.com");
             var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
 
             var keys = ServiceResolver.GetService<IAccountKeyRepository>();

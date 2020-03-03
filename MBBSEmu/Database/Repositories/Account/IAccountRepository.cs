@@ -1,4 +1,5 @@
-﻿using MBBSEmu.Database.Repositories.Account.Model;
+﻿using System.Collections.Generic;
+using MBBSEmu.Database.Repositories.Account.Model;
 
 namespace MBBSEmu.Database.Repositories.Account
 {
@@ -11,5 +12,6 @@ namespace MBBSEmu.Database.Repositories.Account
         AccountModel GetAccountByUsername(string userName);
         AccountModel GetAccountByEmail(string email);
         AccountModel GetAccountByUsernameAndPassword(string userName, string password);
+        IEnumerable<AccountModel> GetAccounts();
     }
 }

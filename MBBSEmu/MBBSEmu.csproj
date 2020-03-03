@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\login.ans" />
     <None Remove="Assets\signup.ans" />
@@ -20,6 +24,7 @@
     <None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
     <None Remove="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
     <None Remove="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
+    <None Remove="Database\Repositories\Account\Queries\GetAccounts.sql" />
     <None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
   </ItemGroup>
 
@@ -37,18 +42,21 @@
     <EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
+    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccounts.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\InsertAccount.sql" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.30" />
     <PackageReference Include="Iced" Version="1.5.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.2" />
     <PackageReference Include="NLog" Version="4.6.8" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.6.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -63,10 +71,6 @@
     <None Update="modules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="RestAPI\" />
   </ItemGroup>
 
 </Project>
