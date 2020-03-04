@@ -21,11 +21,14 @@
     <None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
     <None Remove="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <None Remove="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
+    <None Remove="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
     <None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
     <None Remove="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
+    <None Remove="Database\Repositories\Account\Queries\GetAccountById.sql" />
     <None Remove="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
     <None Remove="Database\Repositories\Account\Queries\GetAccounts.sql" />
     <None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
+    <None Remove="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,11 +42,14 @@
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
+    <EmbeddedResource Include="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
+    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountById.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccounts.sql" />
     <EmbeddedResource Include="Database\Repositories\Account\Queries\InsertAccount.sql" />
+    <EmbeddedResource Include="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,6 +62,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.2" />
     <PackageReference Include="NLog" Version="4.6.8" />
+    <PackageReference Include="NSwag.AspNetCore" Version="13.2.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.6.0" />
   </ItemGroup>
 

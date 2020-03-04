@@ -16,9 +16,12 @@ namespace MBBSEmu.ManagementApi
 
         public ApiHost(IConfiguration configuration, ILogger logger)
         {
+            if (!int.TryParse(configuration["ManagementAPI.Port"], out var port))
+                port = 8080;
+
             _logger = logger;
             _apiHost = new WebHostBuilder()
-                .UseKestrel(options => { options.Listen(IPAddress.Any, 8080); }).UseConfiguration(configuration)
+                .UseKestrel(options => { options.Listen(IPAddress.Any, port); }).UseConfiguration(configuration)
                 .UseStartup<Startup>().Build();
 
             _apiHostThread = new Thread(HostThread);

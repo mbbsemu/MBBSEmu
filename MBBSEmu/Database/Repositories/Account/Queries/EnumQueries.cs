@@ -31,6 +31,18 @@ namespace MBBSEmu.Database.Repositories.Account.Queries
 
         [SqlQuery("GetAccounts.sql")]
         [Description("Gets All Accounts from the Account Table")]
-        GetAccounts
+        GetAccounts,
+
+        [SqlQuery("GetAccountById.sql")]
+        [Description("Gets Specified Account from Account Table")]
+        GetAccountById,
+
+        [SqlQuery("DeleteAccountById.sql")]
+        [Description("Deletes Specified Account by ID")]
+        DeleteAccountById,
+
+        [SqlQuery("UpdateAccountById.sql")]
+        [Description("Updates Specified Account by ID")]
+        UpdateAccountById
     }
 }

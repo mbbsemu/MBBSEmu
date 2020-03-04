@@ -13,5 +13,8 @@ namespace MBBSEmu.Database.Repositories.Account
         AccountModel GetAccountByEmail(string email);
         AccountModel GetAccountByUsernameAndPassword(string userName, string password);
         IEnumerable<AccountModel> GetAccounts();
+        AccountModel GetAccountById(int accountId);
+        void DeleteAccountById(int accountId);
+        void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email);
     }
 }

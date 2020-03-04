@@ -1,9 +1,9 @@
-﻿using System.Linq;
-using MBBSEmu.Database.Repositories.Account;
+﻿using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.HostProcess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using System.Linq;
 
 namespace MBBSEmu.ManagementApi.Controllers
 {
@@ -18,6 +18,7 @@ namespace MBBSEmu.ManagementApi.Controllers
             
         }
 
+        [HttpGet]
         [Route("users/online")]
         public IActionResult UsersOnline()
         {
@@ -31,18 +32,22 @@ namespace MBBSEmu.ManagementApi.Controllers
                 sessionState = x.SessionState.ToString(), 
                 sessionTime = x.SessionTimer.Elapsed.TotalSeconds
             });
-
             return Ok(usersOnline);
         }
 
-
+        [HttpGet]
         [Route("users")]
         public IActionResult Users()
         {
             var userRepository = DependencyInjection.ServiceResolver.GetService<IAccountRepository>();
 
-            var users = userRepository.
-            return Ok("Authorized");
+            var totalUsers = userRepository.GetAccounts();
+
+            var userStats = new
+            {
+                total = totalUsers.Count()
+            };
+            return Ok(userStats);
         }
     }
 }

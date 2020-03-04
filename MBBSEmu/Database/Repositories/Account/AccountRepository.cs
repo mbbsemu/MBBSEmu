@@ -69,6 +69,23 @@ namespace MBBSEmu.Database.Repositories.Account
 
         public IEnumerable<AccountModel> GetAccounts() => Query<AccountModel>(EnumQueries.GetAccounts, null);
 
+        public AccountModel GetAccountById(int accountId) =>
+            Query<AccountModel>(EnumQueries.GetAccountById, new { accountId }).FirstOrDefault();
+
+        public void DeleteAccountById(int accountId)
+        {
+            Query(EnumQueries.DeleteAccountById, new {accountId});
+        }
+
+        public void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email)
+        {
+            var passwordSaltBytes = GenerateSalt();
+            var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(plaintextPassword), passwordSaltBytes);
+            var passwordSalt = System.Convert.ToBase64String(passwordSaltBytes);
+            var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
+
+            Query(EnumQueries.UpdateAccountById, new { accountId, userName, passwordHash, passwordSalt, email });
+        }
 
         /// <summary>
         ///     Generates a cryptographically strong random sequence of bytes

@@ -7,6 +7,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MBBSEmu.ManagementApi.Controllers
 {
@@ -19,6 +20,7 @@ namespace MBBSEmu.ManagementApi.Controllers
             
         }
 
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Get(string username, string password)
         {
