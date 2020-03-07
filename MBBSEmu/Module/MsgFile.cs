@@ -7,7 +7,7 @@ using System.Text;
 namespace MBBSEmu.Module
 {
     /// <summary>
-    ///     Parses the Module MSG file and builds an output MCV
+    ///     Parses a given Worldgroup/MajorBBS MSG file and outputs a compiled MCV file
     ///
     ///     Only one language is supported, so anything other than English/ANSI will be
     ///     ignored.
@@ -34,7 +34,7 @@ namespace MBBSEmu.Module
         }
 
         /// <summary>
-        ///     Takes the Specified Msg File and compiles a MCV file to be used at runtime
+        ///     Takes the Specified MSG File and compiles a MCV file to be used at runtime
         /// </summary>
         private void BuildMCV()
         {
@@ -43,6 +43,7 @@ namespace MBBSEmu.Module
             using var msMessageLengths = new MemoryStream();
             using var msMessageOffsets = new MemoryStream();
             using var msCurrentValue = new MemoryStream();
+
             var messageCount = 0;
 
             using var fileToRead = File.OpenRead($"{_modulePath}{_moduleName}.MSG");
@@ -107,7 +108,7 @@ namespace MBBSEmu.Module
                         continue;
                     }
 
-
+                    //Write Result to respective output streams
                     msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                     msMessages.Write(msCurrentValue.ToArray());
                     msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
@@ -116,6 +117,7 @@ namespace MBBSEmu.Module
                     continue;
                 }
 
+                //Otherwise, we're still parsing a value. Write it to the output buffer and move on to the next byte
                 if(bInVariable)
                     msCurrentValue.Write(buffer);
             }

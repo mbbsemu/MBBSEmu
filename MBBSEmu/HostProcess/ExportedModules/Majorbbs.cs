@@ -688,7 +688,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     chropt();
                     break;
                 case 208:
+                case 19:
                     fgetc();
+                    break;
+                case 576:
+                    stricmp();
+                    break;
+                case 400:
+                    galmalloc();
+                    break;
+                case 615:
+                    fungetc();
+                    break;
+                case 230:
+                    galfree();
+                    break;
+                case 227:
+                    f_putc();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -2808,10 +2824,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newFilenameInputBuffer = Module.Memory.GetString(newFilenamePointer, true);
             var newFilenameInputValue = Encoding.Default.GetString(newFilenameInputBuffer).ToUpper();
 
+            //If non windows, change directory paths in filename
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && oldFilenameInputValue.Contains(@"\"))
+            {
+                var fixedOldFilenameInputValue = oldFilenameInputValue.Replace(@"\", "/");
+                _logger.Info($"Modifying Filename to be Linux Friendly: {oldFilenameInputValue} to {fixedOldFilenameInputValue}");
+                oldFilenameInputValue = CheckFileCasing(Module.ModulePath, fixedOldFilenameInputValue);
+
+                var fixedNewFilenameInputValue = newFilenameInputValue.Replace(@"\", "/");
+                _logger.Info($"Modifying Filename to be Linux Friendly: {newFilenameInputValue} to {fixedNewFilenameInputValue}");
+                newFilenameInputValue = CheckFileCasing(Module.ModulePath, fixedNewFilenameInputValue);
+            }
+
             if (!File.Exists($"{Module.ModulePath}{oldFilenameInputValue}"))
                 throw new FileNotFoundException($"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
 
-            File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}");
+            File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}", true);
 
 #if DEBUG
             _logger.Info($"Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
@@ -4295,6 +4323,157 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             Registers.AX = (ushort)characterRead;
+        }
+
+        /// <summary>
+        ///     Case Insensitive Comparison of the C string str1 to the C string str2
+        ///
+        ///     Signature: int stricmp ( const char * str1, const char * str2 )
+        /// </summary>
+        private void stricmp()
+        {
+
+            var string1Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
+
+            var string1 = Module.Memory.GetString(string1Pointer, true);
+            var string2 = Module.Memory.GetString(string2Pointer, true);
+
+#if DEBUG
+            _logger.Info($"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
+#endif
+
+            if (string1.Length == 0)
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            if (string2.Length == 0)
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            for (var i = 0; i < string1.Length; i++)
+            {
+                //We're at the end of string 2, string 1 is longer
+                if (i == string2.Length)
+                {
+                    Registers.AX = 1;
+                    return;
+                }
+
+                if (string1[i] == string2[i]) continue;
+                if (string1[i] == string2[i] + 32) continue;
+                if (string1[i] == string2[i] - 32) continue;
+
+                //1 < 2 == -1 (0xFFFF)
+                //1 > 2 == 1 (0x0001)
+                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
+                return;
+            }
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Galacticomm's malloc() for debugging
+        /// 
+        ///     Signature: void * galmalloc(unsigned int size);
+        ///     Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        /// </summary>
+        private void galmalloc()
+        {
+            var size = GetParameter(0);
+
+            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
+
+#if DEBUG
+            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
+#endif
+
+            Registers.AX = allocatedMemory.Offset;
+            Registers.DX = allocatedMemory.Segment;
+        }
+
+
+        /// <summary>
+        ///     Ungets character from stream and decreases the internal file position by 1
+        ///
+        ///     Signature: int ungetc(int character,FILE *stream )
+        /// </summary>
+        private void fungetc()
+        {
+            var character = GetParameter(0);
+            var fileStructPointer = GetParameterPointer(1);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            fileStream.Position -= 1;
+            fileStream.WriteByte((byte)character);
+            fileStream.Position -= 1;
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Unget 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}). New Position: {fileStream.Position}, Character: {(char)character}");
+#endif
+
+            Registers.AX = character;
+        }
+
+        /// <summary>
+        ///     Galacticomm's free() for debugging
+        ///
+        ///     Signature: void galfree(void *block);
+        /// </summary>
+        private void galfree()
+        {
+            //Until we can refactor the memory controller, just return 
+
+            //TODO: Memory is going to be leaked, need to fix this
+            return;
+        }
+
+
+        /// <summary>
+        ///     Write the input character to the specified stream
+        ///
+        ///     Signature: int fputc(int character, FILE *stream );
+        /// </summary>
+        private void f_putc()
+        {
+            var character = GetParameter(0);
+            var fileStructPointer = GetParameterPointer(1);
+
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            fileStream.WriteByte((byte)character);
+            fileStream.Flush();
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            }
+
+#if DEBUG
+            _logger.Info($"Character {(char)character} written to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+            Registers.AX = 1;
         }
     }
 }
