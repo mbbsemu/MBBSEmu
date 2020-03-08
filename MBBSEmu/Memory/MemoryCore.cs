@@ -5,6 +5,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using Decoder = Iced.Intel.Decoder;
 
@@ -26,6 +27,9 @@ namespace MBBSEmu.Memory
         private readonly IntPtr16 _currentVariablePointer;
         private const ushort VARIABLE_BASE = 0x100;
 
+        private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
+
+
         public MemoryCore()
         {
             _memorySegments = new Dictionary<ushort, byte[]>();
@@ -33,6 +37,8 @@ namespace MBBSEmu.Memory
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
             _variablePointerDictionary = new Dictionary<string, IntPtr16>();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE, 0);
+
+            _bigMemoryBlocks = new PointerDictionary<Dictionary<ushort, IntPtr16>>();
 
             //Add Segment 0 by default, stack segment
             AddSegment(0);
@@ -286,5 +292,18 @@ namespace MBBSEmu.Memory
             Array.Copy(array.ToArray(), 0, _memorySegments[segment], offset, array.Length);
 #endif
         }
+
+        public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
+        {
+            var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, IntPtr16>());
+
+            //Fill the Region
+            for (ushort i = 0; i < quantity; i++)
+                _bigMemoryBlocks[newBlockOffset].Add(i, AllocateVariable($"ALCBLOK-{newBlockOffset}-{i}", size));
+
+            return new IntPtr16(0xFFFF, (ushort)newBlockOffset);
+        }
+
+        public IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index) => _bigMemoryBlocks[block.Offset][index];
     }
 }

@@ -37,6 +37,11 @@ namespace MBBSEmu.Session
         public UserAccount UsrAcc { get; set; }
 
         /// <summary>
+        ///     This Users Extusr* which is passed in from MajorMBBS
+        /// </summary>
+        public ExtUser ExtUsrAcc { get; set; }
+
+        /// <summary>
         ///     This Users Number/Channel Number (used to identify target for output)
         /// </summary>
         public ushort Channel { get; set; }
@@ -168,6 +173,7 @@ namespace MBBSEmu.Session
             SessionId = sessionId;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
+            ExtUsrAcc = new ExtUser();
             Status = 0;
             SessionTimer = new Stopwatch();
             DataToClient = new ConcurrentQueue<byte[]>();

@@ -16,7 +16,7 @@ Command Line Options:
 
 Examples: 
 ./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset
-./MBBSEmu -C customConfig.json
+./MBBSEmu -C moduleConfig.json
 
 -----------------------------------------------------------
 appsettings.json Options:

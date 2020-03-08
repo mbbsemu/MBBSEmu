@@ -74,7 +74,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
+
+            var usrExtPointer = Module.Memory.AllocateVariable("EXTUSR", (ExtUser.Size * NUMBER_OF_CHANNELS), true);
+            var extPtrPointer = Module.Memory.AllocateVariable("EXTPTR", 0x4);
+            Module.Memory.SetArray(extPtrPointer, usrExtPointer.ToSpan());
+
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
+            Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
 
@@ -87,6 +93,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var modulePointerPointer = Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
             Module.Memory.SetArray(modulePointerPointer, modulePointer.ToSpan());
             Module.Memory.AllocateVariable("UACOFF", 0x4);
+            Module.Memory.AllocateVariable("EXTOFF", 0x4);
             Module.Memory.AllocateVariable("VDAPTR", 0x4);
             Module.Memory.AllocateVariable("VDATMP", VOLATILE_DATA_SIZE, true);
             Module.Memory.SetWord(Module.Memory.AllocateVariable("VDASIZ", 0x2), VOLATILE_DATA_SIZE);
@@ -166,9 +173,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userAccBasePointer = Module.Memory.GetVariable("USRACC");
             var currentUserAccPointer = new IntPtr16(userAccBasePointer.ToSpan());
             currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
-
             Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
             Module.Memory.SetArray(Module.Memory.GetVariable("USAPTR"), currentUserAccPointer.ToSpan());
+
+            var userExtAccBasePointer = Module.Memory.GetVariable("EXTUSR");
+            var currentExtUserAccPointer = new IntPtr16(userExtAccBasePointer.ToSpan());
+            currentExtUserAccPointer.Offset += (ushort)(ExtUser.Size * channelNumber);
+            Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariable("EXTPTR"), currentExtUserAccPointer.ToSpan());
 
             //Write Blank Input
             var inputMemory = Module.Memory.GetVariable("INPUT");
@@ -306,6 +318,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return othusp;
                 case 458:
                     return othuap;
+                case 826:
+                    return othexp;
+                case 825:
+                    return extptr;
             }
 
             if (offsetsOnly)
@@ -705,6 +721,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 227:
                     f_putc();
+                    break;
+                case 879:
+                    alcblok();
+                    break;
+                case 880:
+                    ptrblok();
+                    break;
+                case 827:
+                    extoff();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
@@ -2876,6 +2901,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
         private ReadOnlySpan<byte> _exitfopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
         private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+        private ReadOnlySpan<byte> extptr => Module.Memory.GetVariable("EXTPTR").ToSpan();
         private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariable("USAPTR").ToSpan();
 
         /// <summary>
@@ -3362,6 +3388,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userAccBase = new IntPtr16(Module.Memory.GetVariable("USRACC").ToSpan());
             userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariable("OTHUAP"), userAccBase.ToSpan());
+
+            var userExtAcc = new IntPtr16(Module.Memory.GetVariable("USREXT").ToSpan());
+            userExtAcc.Offset += (ushort)(ExtUser.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariable("OTHEXP"), userExtAcc.ToSpan());
 
 #if DEBUG
             _logger.Info($"User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
@@ -4164,6 +4194,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> othusp => Module.Memory.GetVariable("*OTHUSP").ToSpan();
 
         /// <summary>
+        ///     Pointer to structure for that user in the extusr structure (set by onsys() or instat())
+        ///
+        ///     Signature: struct extusr *othexp;
+        /// </summary>
+        private ReadOnlySpan<byte> othexp => Module.Memory.GetVariable("*OTHEXP").ToSpan();
+
+        /// <summary>
         ///     Pointer to structure for that user in the 'usracc' structure (set by onsys() or instat())
         ///
         ///     Signature: struct usracc *othuap;
@@ -4474,6 +4511,81 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Character {(char)character} written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Allocate a very large memory region, qty by sizblock bytes
+        ///
+        ///     Signature: void *alcblok(unsigned qty,unsigned size);
+        /// </summary>
+        public void alcblok()
+        {
+            var qty = GetParameter(0);
+            var size = GetParameter(1);
+
+            var bigRegion = Module.Memory.AllocateBigMemoryBlock(qty, size);
+
+#if DEBUG
+            _logger.Info($"Created Big Memory Region that is {qty} records of {size} bytes in length at {bigRegion}");
+#endif
+
+            Registers.AX = bigRegion.Offset;
+            Registers.DX = bigRegion.Segment;
+        }
+
+        /// <summary>
+        ///     Dereference an alcblok()'d region
+        ///
+        ///     Signature: void *ptrblok(void *bigptr,unsigned index);
+        /// </summary>
+        public void ptrblok()
+        {
+            var bigRegionPointer = GetParameterPointer(0);
+            var index = GetParameter(2);
+
+            var indexPointer = Module.Memory.GetBigMemoryBlock(bigRegionPointer, index);
+
+#if DEBUG
+            _logger.Info($"Retrieved Big Memory block {bigRegionPointer}, returned pointer to index {index}: {indexPointer}");
+#endif
+
+            Registers.AX = indexPointer.Offset;
+            Registers.DX = indexPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Gets the extended User Account Information
+        /// 
+        ///     Signature: struct extusr *exptr=extoff(unum)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment  
+        /// </summary>
+        /// <returns></returns>
+        private void extoff()
+        {
+            var userNumber = GetParameter(0);
+
+            if (!Module.Memory.TryGetVariable($"EXTUSR-{userNumber}", out var variablePointer))
+                variablePointer = Module.Memory.AllocateVariable($"EXTUSR-{userNumber}", ExtUser.Size);
+
+            //If user isnt online, return a null pointer
+            if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
+            {
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            //Set Pointer to new user array
+            var extoffPointer = Module.Memory.GetVariable("EXTOFF");
+            Module.Memory.SetArray(extoffPointer, variablePointer.ToSpan());
+
+            //Set User Array Value
+            Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.ToSpan());
+
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
         }
     }
 }
