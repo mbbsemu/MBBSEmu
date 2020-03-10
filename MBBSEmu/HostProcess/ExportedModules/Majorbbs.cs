@@ -732,7 +732,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     extoff();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
 
             return null;
@@ -2543,9 +2543,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
                 {
-#if DEBUG
                     _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
-#endif
                     Registers.AX = fileStruct.curp.Offset;
                     Registers.DX = fileStruct.curp.Segment;
                     return;
@@ -3389,7 +3387,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariable("OTHUAP"), userAccBase.ToSpan());
 
-            var userExtAcc = new IntPtr16(Module.Memory.GetVariable("USREXT").ToSpan());
+            var userExtAcc = new IntPtr16(Module.Memory.GetVariable("EXTUSR").ToSpan());
             userExtAcc.Offset += (ushort)(ExtUser.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariable("OTHEXP"), userExtAcc.ToSpan());
 

@@ -25,7 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 89:
                     return dossetvec;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Ordinal: {ordinal}");
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in DOSCALLS: {ordinal}");
             }
         }
 

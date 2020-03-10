@@ -6,7 +6,15 @@
     },
     {
       "Identifier": "RTSLORD",
-      "Path": "c:\\dos\\modules\\lord\\"
+      "Path": "c:\\dos\\bbsv6\\"
+    },
+    {
+      "Identifier": "GWWARROW",
+      "Path": "c:\\dos\\install3\\"
+    },
+    {
+      "Identifier": "DIALCHAT",
+      "Path": "c:\\dos\\modules\\dialchat\\"
     }
   ]
 }

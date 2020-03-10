@@ -123,7 +123,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     btuxmn();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal: {ordinal}");
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
 
             return null;

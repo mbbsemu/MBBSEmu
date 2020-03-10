@@ -44,6 +44,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 123:
                     simpsnd();
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALME: {ordinal}");
             }
 
             return null;
