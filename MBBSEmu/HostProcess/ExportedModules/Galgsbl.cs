@@ -19,11 +19,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFE;
 
+        private ushort MonitoredChannel { get; set; }
+        private ushort MonitoredChannel2 { get; set; }
+
+        private readonly DateTime _startDate;
+
         public Galgsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
+            _startDate = DateTime.Now;
             var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
             Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes($"{_configuration["GSBL.Activation"]}\0"));
+            Module.Memory.AllocateVariable("TICKER", 0x02); //ushort increments once per second
 
+            MonitoredChannel2 = 0xFFFF;
+            MonitoredChannel = 0xFFFF;
         }
 
         public void UpdateSession(ushort channel)
@@ -42,6 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 case 72:
                     return bturno();
+                case 65:
+                    return ticker;
             }
 
             if (offsetsOnly)
@@ -122,6 +133,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 58:
                     btuxmn();
                     break;
+                case 34:
+                    btumon2();
+                    break;
+                case 32:
+                    btumks2();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -167,6 +184,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
             var numBytes = GetParameter(1);
+
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
+            }
 
             if (numBytes == 0)
             {
@@ -283,6 +306,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void btucli()
         {
             var channelNumber = GetParameter(0);
+
+            if (!ChannelDictionary.ContainsKey(channelNumber))
+            {
+                Registers.AX = 0;
+                return;
+            }
 
             ChannelDictionary[channelNumber].InputBuffer.SetLength(0);
 
@@ -483,6 +512,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var mode = GetParameter(1);
 
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
 #if DEBUG
             _logger.Info($"Setting ECHO to: {mode == 0}");
 #endif
@@ -514,6 +549,63 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var messageToSend = Module.Memory.GetString(messagePointer);
             ChannelDictionary[channel].SendToClient(messageToSend.ToArray());
+        }
+
+        private void btumon2()
+        {
+            var channel = GetParameter(0);
+
+            //Disable Monitoring
+            if (channel == 0xFFFF)
+            {
+#if DEBUG
+                _logger.Info($"Disabling Monitoring on all Channels");
+#endif
+                foreach (var c in ChannelDictionary.Values)
+                {
+                    c.Monitored = false;
+                }
+
+                MonitoredChannel2 = 0xFFFF;
+                Registers.AX = 0;
+            }
+
+            if (!ChannelDictionary.TryGetValue(channel, out var userChannel))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            userChannel.Monitored2 = true;
+            MonitoredChannel2 = channel;
+            Registers.AX = 0;
+#if DEBUG
+            _logger.Info($"Enabled Monitoring on Channel {channel}");
+#endif
+        }
+
+        private void btumks2()
+        {
+            var character = GetParameter(0);
+
+            if (MonitoredChannel2 == 0xFFFF)
+                return;
+
+            ChannelDictionary[MonitoredChannel2].LastCharacterReceived = (byte) character;
+            ChannelDictionary[MonitoredChannel2].InputBuffer.WriteByte((byte) character);
+            ChannelDictionary[MonitoredChannel2].DataToProcess = true;
+        }
+
+        private ReadOnlySpan<byte> ticker
+        {
+            get
+            {
+                var tickerPointer = Module.Memory.GetVariable("TICKER");
+
+                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+                Module.Memory.SetWord(tickerPointer, seconds);
+                return tickerPointer.ToSpan();
+            }
         }
     }
 }

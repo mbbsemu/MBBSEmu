@@ -42,6 +42,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
         private const ushort NUMBER_OF_CHANNELS = 0x4;
 
+        
+
         /// <summary>
         ///     Segment Identifier for Relocation
         /// </summary>
@@ -57,6 +59,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _inputCurrentCommand = 0;
             _previousMcvFile = new Stack<IntPtr16>(10);
             _previousBtrieveFile = new Stack<IntPtr16>(10);
+            
 
             //Setup Memory for Variables
             Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
@@ -103,6 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("ADDRES2", 0x32, true); //50 bytes for address line 2
             Module.Memory.AllocateVariable("DATAPH", 0x20, true); // 32 bytes for phone #
             Module.Memory.AllocateVariable("LIVEPH", 0x20, true); // 32 bytes for phone #
+            
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -326,7 +330,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (offsetsOnly)
             {
-                var methodPointer = new IntPtr16(0xFFFF, ordinal);
+                var methodPointer = new IntPtr16(Segment, ordinal);
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
@@ -503,6 +507,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     register_textvar();
                     break;
                 case 997:
+                case 444:
                     obtbtvl();
                     break;
                 case 158:
@@ -730,6 +735,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 827:
                     extoff();
+                    break;
+                case 231:
+                    frzseg();
+                    break;
+                case 614: //unfrez -- unlocks video memory, ignored
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2550,10 +2560,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 //Create a new file for W or A
-                File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
-#if DEBUG
                 _logger.Info($"Creating new file {filenameInputValue}");
-#endif
+                File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
             }
             else
             {
@@ -2569,7 +2577,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
             //Setup the File Stream
-            var fileStreamPointer = FilePointerDictionary.Allocate(File.Open($"{Module.ModulePath}{filenameInputValue}", FileMode.OpenOrCreate));
+            var fileStream = File.Open($"{Module.ModulePath}{filenameInputValue}", FileMode.OpenOrCreate);
+
+            if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
+                fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
+
+            var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
             //Set Struct Values
             fileStruct.SetFlags(fileAccessMode);
@@ -4584,6 +4597,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = variablePointer.Offset;
             Registers.DX = variablePointer.Segment;
+        }
+
+        /// <summary>
+        ///     Gets Video RAM Base Address
+        ///
+        ///     We write this to a dummy address. This is usually used to show custom graphics
+        ///     on the Sysop console
+        /// 
+        ///     Signature: char *frzseg(void)
+        /// </summary>
+        private void frzseg()
+        {
+            if(!Module.Memory.HasSegment(0xF000))
+                Module.Memory.AddSegment(0xF000);
+
+            Registers.AX = 0x0;
+            Registers.DX = 0xF000;
         }
     }
 }

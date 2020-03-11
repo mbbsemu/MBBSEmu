@@ -1,6 +1,10 @@
 {
   "Modules": [
     {
+      "Identifier": "HVSXROAD",
+      "Path" :  "c:\\dos\\modules\\xroads\\" 
+    },
+    {
       "Identifier": "LUNATIX",
       "Path": "c:\\dos\\modules\\lunatix\\"
     },

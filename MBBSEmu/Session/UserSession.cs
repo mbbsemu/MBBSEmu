@@ -127,6 +127,16 @@ namespace MBBSEmu.Session
         public bool TransparentMode { get; set; }
 
         /// <summary>
+        ///     Specifies if a channel is monitored or not, specifically via BTUMON
+        /// </summary>
+        public bool Monitored { get; set; }
+
+        /// <summary>
+        ///     Specifies if a channel is monitored or not, specifically via BTUMON2
+        /// </summary>
+        public bool Monitored2 { get; set; }
+
+        /// <summary>
         ///     Helper Method to get Username from the UsrAcc struct
         /// </summary>
         public string Username

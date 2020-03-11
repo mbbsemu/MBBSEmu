@@ -128,9 +128,9 @@ namespace MBBSEmu.CPU
 #if DEBUG
             bool bShowDebug = false;
 
-            if(Registers.IP >= 0x8075 && Registers.IP <= 0x8089)
+            if(Registers.IP == 0x1215)
             {
-                //Debugger.Break();
+                Debugger.Break();
                 bShowDebug = true;
             }
             else
