@@ -4,6 +4,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
 using System.Text;
+using System.Threading;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -33,6 +34,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             MonitoredChannel2 = 0xFFFF;
             MonitoredChannel = 0xFFFF;
+
+            new Thread(Timer1Hz).Start();
         }
 
         public void UpdateSession(ushort channel)
@@ -43,6 +46,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void SetRegisters(CpuRegisters registers)
         {
             Registers = registers;
+        }
+
+        /// <summary>
+        ///     Internal timer for operations that need to happen every 1 seconds
+        /// </summary>
+        private void Timer1Hz()
+        {
+            while (true)
+            {
+                //Update TICKER
+                var tickerPointer = Module.Memory.GetVariable("TICKER");
+                var seconds = (ushort) ((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+                Module.Memory.SetWord(tickerPointer, seconds);
+                Thread.Sleep(999);
+            }
         }
 
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
@@ -138,6 +156,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 32:
                     btumks2();
+                    break;
+                case 48:
+                    btusts();
+                    break;
+                case 29:
+                    btumds2();
+                    break;
+                case 41:
+                    bturst();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
@@ -596,16 +623,54 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
 
-        private ReadOnlySpan<byte> ticker
-        {
-            get
-            {
-                var tickerPointer = Module.Memory.GetVariable("TICKER");
+        private ReadOnlySpan<byte> ticker => Module.Memory.GetVariable("TICKER").ToSpan();
 
-                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
-                Module.Memory.SetWord(tickerPointer, seconds);
-                return tickerPointer.ToSpan();
+        /// <summary>
+        ///     Status of a Channel
+        ///
+        ///     Signature: int btusts(int chan)
+        /// </summary>
+        private void btusts()
+        {
+            var channel = GetParameter(0);
+
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
             }
+
+            if (ChannelDictionary[channel].DataToProcess && ChannelDictionary[channel].Status == 3)
+            {
+                Registers.AX = 3;
+            }
+            else
+            {
+                Registers.AX = 0;
+            }
+        }
+
+        /// <summary>
+        ///     Gets Last Character Echo'd to a Channel
+        /// </summary>
+        private void btumds2()
+        {
+            if (MonitoredChannel2 == 0xFFFF)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     Resets A Channel
+        /// </summary>
+        private void bturst()
+        {
+            Registers.AX = 0;
         }
     }
 }

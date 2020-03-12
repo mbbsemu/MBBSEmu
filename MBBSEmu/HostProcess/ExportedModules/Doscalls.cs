@@ -14,6 +14,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFB;
 
+        public const ushort DosSegmentBase = 0x200;
+        public ushort DosSegmentOffset = 0;
+
         internal Doscalls(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
         {
         }
@@ -68,9 +71,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var selectorPointer = GetParameterPointer(1);
             var flags = GetParameter(3);
 
-            Module.Memory.AddSegment(0xA00);
+            Module.Memory.AddSegment((ushort) (DosSegmentBase + DosSegmentOffset));
 
-            var segPointer = new IntPtr16(0xA00,0x0);
+            var segPointer = new IntPtr16(0x300,0x0);
+
+            DosSegmentOffset++;
 
             Registers.AX = 0;
         }
