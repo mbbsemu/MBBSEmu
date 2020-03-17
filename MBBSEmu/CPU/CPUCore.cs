@@ -24,6 +24,26 @@ namespace MBBSEmu.CPU
 
         private Instruction _currentInstruction;
 
+        //Debug Pointers
+
+        /// <summary>
+        ///     Current Location of the Instruction Pointer
+        /// </summary>
+        private IntPtr16 _currentInstructionPointer;
+
+        /// <summary>
+        ///     Previous Location of the Instruction Pointer
+        /// </summary>
+        private IntPtr16 _previousInstructionPointer;
+
+        /// <summary>
+        ///     Previous Location of a CALL into the current function
+        /// </summary>
+        private IntPtr16 _previousCallPointer;
+
+        private bool _showDebug;
+
+
         private ushort STACK_SEGMENT;
         private ushort EXTRA_SEGMENT;
         private const ushort STACK_BASE = 0xFFFF;
@@ -46,6 +66,11 @@ namespace MBBSEmu.CPU
         public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
         {
+            //Setup Debug Pointers
+            _currentInstructionPointer = IntPtr16.Empty;
+            _previousInstructionPointer = IntPtr16.Empty;
+            _previousCallPointer = IntPtr16.Empty;
+
             //Setup Delegate Call   
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
@@ -90,7 +115,7 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort Pop()
+        public ushort Pop()
         {
             var value = Memory.GetWord(Registers.SS, (ushort)(Registers.SP + 1));
 #if DEBUG
@@ -120,25 +145,28 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            _currentInstructionPointer.Offset = Registers.IP;
+            _currentInstructionPointer.Segment = Registers.CS;
+
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
             Registers.IP = _currentInstruction.IP16;
 
-
-
 #if DEBUG
-            bool bShowDebug = false;
 
-            if(Registers.IP == 0x1215)
+            if (Registers.CS == 0x9 && ((Registers.IP >= 0xEAE && Registers.IP <= 0x1202) || (Registers.IP >= 0xA34 && Registers.IP <= 0xA4B)))
             {
-                Debugger.Break();
-                bShowDebug = true;
+                if(Registers.IP == 0x0a4B)
+                    Debugger.Break();
+
+                _showDebug = true;
             }
             else
             {
+                _showDebug = false;
                 //bShowDebug = Registers.CS == 0x6 && Registers.IP >= 0x7B && Registers.IP <= 0x86;
             }
 
-            if (bShowDebug)
+            if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
             //Jump Table
@@ -338,14 +366,23 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Faddp:
                     Op_Faddp();
                     break;
+                case Mnemonic.Cli:
+                    Op_Cli();
+                    break;
+                case Mnemonic.Sti:
+                    Op_Sti();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
+            _previousInstructionPointer.Offset = Registers.IP;
+            _previousInstructionPointer.Segment = Registers.CS;
+
             Registers.IP += (ushort)_currentInstruction.Length;
 
 #if DEBUG
-            if (bShowDebug)
+            if (_showDebug)
                 _logger.InfoRegisters(this);
 #endif
 
@@ -1302,10 +1339,28 @@ namespace MBBSEmu.CPU
             {
                 //Get the destination offset
                 var offsetToDestinationValue = GetOperandOffset(_currentInstruction.Op0Kind);
-                var destinationOffset = Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offsetToDestinationValue);
 
-                Registers.IP = destinationOffset;
-                return;
+                if (_currentInstruction.IsJmpNearIndirect)
+                {
+                    var destinationOffset = Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offsetToDestinationValue);
+                    Registers.IP = destinationOffset;
+                    return;
+                }
+
+                if (_currentInstruction.IsJmpFarIndirect)
+                {
+                    var destinationPointerData = Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        offsetToDestinationValue, 4);
+
+                    var destinationPointer = new IntPtr16(destinationPointerData);
+
+                    Registers.IP = destinationPointer.Offset;
+                    Registers.CS = destinationPointer.Segment;
+                    return;
+                }
+
+                throw new Exception($"Unhandled Indirect Jump in x86 Core: {_currentInstruction}");
+                
             }
 
             //Near Jumps
@@ -1634,26 +1689,24 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort Op_Idiv_8(ushort source, ushort destination)
+        private void Op_Idiv_8(ushort source, ushort destination)
         {
             unchecked
             {
                 var quotient = Math.DivRem(source, destination, out var remainder);
                 Registers.AL = (byte)quotient;
                 Registers.AH = (byte)remainder;
-                return 0;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort Op_Idiv_16(int source, ushort destination)
+        private void Op_Idiv_16(int source, ushort destination)
         {
             unchecked
             {
                 var quotient = Math.DivRem(source, destination, out var remainder);
                 Registers.AX = (ushort)quotient;
                 Registers.DX = (ushort)remainder;
-                return 0;
             }
         }
 
@@ -1728,8 +1781,23 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Call()
         {
+            _previousCallPointer.Segment = Registers.CS;
+            _previousCallPointer.Offset = Registers.IP;
+
             switch (_currentInstruction.Op0Kind)
             {
+                case OpKind.Memory when _currentInstruction.IsCallFarIndirect:
+                    {
+                        //Far call with target offset at memory location
+                        Push(Registers.CS);
+                        Push((ushort)(Registers.IP + _currentInstruction.Length));
+
+                        var offset = GetOperandOffset(OpKind.Memory);
+                        var pointer = new IntPtr16(Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
+                        Registers.CS = pointer.Segment;
+                        Registers.IP = pointer.Offset;
+                        return;
+                    }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0xFF:
                     {
                         //Far call to another Segment
@@ -1752,10 +1820,6 @@ namespace MBBSEmu.CPU
                         Push(Registers.BP);
                         Registers.BP = Registers.SP;
 
-#if DEBUG
-                        //_logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
-
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
 
@@ -1771,7 +1835,7 @@ namespace MBBSEmu.CPU
                         //We push CS:IP to the stack
                         //Push the IP of the **NEXT** instruction to the stack
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
-                        Registers.IP = _currentInstruction.FarBranch16;
+                        Registers.IP = _currentInstruction.NearBranch16;
                         return;
                     }
                 default:
@@ -2066,6 +2130,22 @@ namespace MBBSEmu.CPU
             FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
 
             Registers.Fpu.PushStackTop();
+        }
+
+        /// <summary>
+        ///     Clear Interrupt Flag
+        /// </summary>
+        private void Op_Cli()
+        {
+            Registers.F.ClearFlag(EnumFlags.IF);
+        }
+
+        /// <summary>
+        ///     Set Interrupt Flag
+        /// </summary>
+        private void Op_Sti()
+        {
+            Registers.F.SetFlag(EnumFlags.IF);
         }
     }
 }

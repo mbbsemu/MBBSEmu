@@ -741,6 +741,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 614: //unfrez -- unlocks video memory, ignored
                     break;
+                case 541:
+                    setjmp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -4614,6 +4617,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = 0x0;
             Registers.DX = 0xF000;
+        }
+
+        /// <summary>
+        ///     Borland C++ Macro
+        ///
+        ///     This macro with functional form fills env with information about the current state of the calling environment
+        ///     in that point of code execution, so that it can be restored by a later call to longjmp.
+        /// 
+        ///     Signature: int setjmp(jmp_buf env)
+        /// </summary>
+        private void setjmp()
+        {
+            var jmpBufPointer = GetParameterPointer(0);
+
+            var jmpBuf = new JmpBufStruct
+            {
+                bp = Registers.BP,
+                cs = Registers.CS,
+                di = Registers.DI,
+                ds = Registers.DS,
+                es = Registers.ES,
+                ip = Registers.IP,
+                si = Registers.SI,
+                sp = Registers.SP,
+                ss = Registers.SS
+            };
+
+            Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
+            Registers.AX = 0;
         }
     }
 }
