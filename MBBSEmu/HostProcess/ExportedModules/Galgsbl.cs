@@ -166,6 +166,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 41:
                     bturst();
                     break;
+                case 40:
+                    btupmt();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -670,6 +673,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bturst()
         {
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Set prompt character
+        ///
+        ///     Signature: int btupmt(int chan, char pmchar)
+        /// </summary>
+        private void btupmt()
+        {
+            var channel = GetParameter(0);
+            var character = GetParameter(1);
+
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            ChannelDictionary[channel].PromptCharacter = (byte) character;
             Registers.AX = 0;
         }
     }

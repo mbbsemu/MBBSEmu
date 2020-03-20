@@ -42,8 +42,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
         private const ushort NUMBER_OF_CHANNELS = 0x4;
 
-        
-
         /// <summary>
         ///     Segment Identifier for Relocation
         /// </summary>
@@ -339,10 +337,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
+                //Ignored Ones
+                case 561: //srand() handled internally
+                case 614: //unfrez -- unlocks video memory, ignored
+                case 174: //DSAIRP
+                case 189: //ENAIRP
+                    break;
                 case 442:
                     nxtcmd();
-                    break;
-                case 561: //srand() handled internally
                     break;
                 case 599:
                     time();
@@ -739,10 +741,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 231:
                     frzseg();
                     break;
-                case 614: //unfrez -- unlocks video memory, ignored
-                    break;
                 case 541:
                     setjmp();
+                    break;
+                case 191:
+                    endcnc();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2405,7 +2408,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bgncnc()
         {
-            //TODO -- Dunno what I should do with this
+            _inputCurrentCommand = 0;
         }
 
         /// <summary>
@@ -4646,6 +4649,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
             Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Returns if we're at the end, or "done", with the current command
+        ///
+        ///     Signature: int done=endcnc()
+        /// </summary>
+        private void endcnc()
+        {
+            Registers.AX = _inputCurrentCommand < _margvPointers.Count ? (ushort) 0 : (ushort) 1;
         }
     }
 }

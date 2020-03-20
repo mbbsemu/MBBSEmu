@@ -97,6 +97,11 @@ namespace MBBSEmu.Session
         public IntPtr16 PollingRoutine { get; set; }
 
         /// <summary>
+        ///     Prompt Character set by BTUPMT
+        /// </summary>
+        public byte PromptCharacter { get; set; }
+
+        /// <summary>
         ///     Total Number of Commands Passed in from user input by parsin()
         /// </summary>
         public int mArgCount { get; set; }
