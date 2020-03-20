@@ -131,7 +131,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
 
 #if DEBUG
-            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+           // _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }
@@ -1796,7 +1796,7 @@ namespace MBBSEmu.CPU
                         var pointer = new IntPtr16(Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
                         Registers.CS = pointer.Segment;
                         Registers.IP = pointer.Offset;
-                        return;
+                        break;
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0xFF:
                     {
@@ -1806,8 +1806,7 @@ namespace MBBSEmu.CPU
 
                         Registers.CS = _currentInstruction.FarBranchSelector;
                         Registers.IP = _currentInstruction.Immediate16;
-
-                        return;
+                        break;
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
                     {
@@ -1820,15 +1819,21 @@ namespace MBBSEmu.CPU
                         Push(Registers.BP);
                         Registers.BP = Registers.SP;
 
+                        var ipBeforeCall = Registers.IP;
+
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
+
+                        //Control Transfer Occured in the CALL, so we clean up the stack and return
+                        if (ipBeforeCall != Registers.IP)
+                            return;
 
                         //Simulate a LEAVE & retf
                         Registers.SP = Registers.BP;
                         Registers.SetValue(Register.BP, Pop());
                         Registers.SetValue(Register.EIP, Pop());
                         Registers.SetValue(Register.CS, Pop());
-                        return;
+                        break;
                     }
                 case OpKind.NearBranch16:
                     {
@@ -1836,7 +1841,7 @@ namespace MBBSEmu.CPU
                         //Push the IP of the **NEXT** instruction to the stack
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
                         Registers.IP = _currentInstruction.NearBranch16;
-                        return;
+                        break;
                     }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown CALL: {_currentInstruction.Op0Kind}");

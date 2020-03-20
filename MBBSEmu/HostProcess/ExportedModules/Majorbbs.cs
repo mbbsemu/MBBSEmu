@@ -747,6 +747,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 191:
                     endcnc();
                     break;
+                case 393:
+                    longjmp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1450,10 +1453,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void shocst()
         {
             var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
 
             var stringSummary = Module.Memory.GetString(string1Pointer);
-            var stringDetail = Module.Memory.GetString(string2Pointer);
+            var stringDetail = FormatPrintf(Module.Memory.GetString(string2Pointer), 4);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.BackgroundColor = ConsoleColor.Blue;
@@ -4634,21 +4637,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var jmpBufPointer = GetParameterPointer(0);
 
-            var jmpBuf = new JmpBufStruct
-            {
-                bp = Registers.BP,
-                cs = Registers.CS,
-                di = Registers.DI,
-                ds = Registers.DS,
-                es = Registers.ES,
-                ip = Registers.IP,
-                si = Registers.SI,
-                sp = Registers.SP,
-                ss = Registers.SS
-            };
+            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpBufPointer, JmpBufStruct.Size));
 
-            Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
-            Registers.AX = 0;
+            if (jmpBuf.ip == 0 && jmpBuf.cs == 0)
+            {
+                //Not a jump -- first set
+                jmpBuf.bp = Module.Memory.GetWord(Registers.SS, (ushort) (Registers.BP + 1)); //Base Pointer is pushed and set on the simulated ENTER
+                jmpBuf.cs = Registers.CS;
+                jmpBuf.di = Registers.DI;
+                jmpBuf.ds = Registers.DS;
+                jmpBuf.es = Registers.ES;
+                jmpBuf.ip = Registers.IP;
+                jmpBuf.si = Registers.SI;
+                jmpBuf.sp = (ushort) (Registers.SP + 6); //remove the parameter to set stack prior to the call
+                jmpBuf.ss = Registers.SS;
+                Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
+                Registers.AX = 0;
+            }
+
+#if DEBUG
+            _logger.Debug($"{jmpBuf.cs:X4}:{jmpBuf.ip:X4} -- {Registers.AX}");
+#endif
         }
 
         /// <summary>
@@ -4659,6 +4668,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void endcnc()
         {
             Registers.AX = _inputCurrentCommand < _margvPointers.Count ? (ushort) 0 : (ushort) 1;
+        }
+
+        /// <summary>
+        ///     longjmp - performs a non-local goto
+        ///
+        ///     Signature: 
+        /// </summary>
+        private void longjmp()
+        {
+            var jmpPointer = GetParameterPointer(0);
+            var value = GetParameter(2);
+
+            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpPointer, JmpBufStruct.Size));
+
+            Registers.BP = jmpBuf.bp;
+            Registers.CS = jmpBuf.cs;
+            Registers.DI = jmpBuf.di;
+            Registers.DS = jmpBuf.ds;
+            Registers.ES = jmpBuf.es;
+            Registers.IP = (ushort) (jmpBuf.ip + 5);
+            Registers.SI = jmpBuf.si;
+            Registers.SP = jmpBuf.sp;
+            Registers.SS = jmpBuf.ss;
+            Registers.AX = value;
+
+#if DEBUG
+            _logger.Debug($"{jmpBuf.cs:X4}:{jmpBuf.ip:X4} -- {Registers.AX}");
+#endif
         }
     }
 }

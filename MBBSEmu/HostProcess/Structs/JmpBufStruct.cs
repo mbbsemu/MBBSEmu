@@ -78,6 +78,14 @@ namespace MBBSEmu.HostProcess.Structs
             Data = new byte[Size];
         }
 
+        public JmpBufStruct(ReadOnlySpan<byte> data)
+        {
+            if(data.Length > Size)
+                throw new OverflowException($"Data for JmpBuf is too long and will overflow: {data.Length} bytes");
+
+            Data = data.ToArray();
+        }
+
         public ReadOnlySpan<byte> ToSpan => new ReadOnlySpan<byte>(Data);
 
         public void FromSpan(ReadOnlySpan<byte> data) => Data = data.ToArray();
