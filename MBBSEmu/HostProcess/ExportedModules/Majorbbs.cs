@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
@@ -11,8 +12,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using Iced.Intel;
-using MBBSEmu.Btrieve.Enums;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -35,7 +34,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
-        private int _inputCurrentCommand;
+        private int _inputCurrentPosition;
 
         private int _outputBufferPosition;
 
@@ -54,7 +53,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _outputBufferPosition = 0;
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
-            _inputCurrentCommand = 0;
+            _inputCurrentPosition = 0;
             _previousMcvFile = new Stack<IntPtr16>(10);
             _previousBtrieveFile = new Stack<IntPtr16>(10);
             
@@ -749,6 +748,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 393:
                     longjmp();
+                    break;
+                case 121:
+                    cncall();
+                    break;
+                case 419:
+                    morcnc();
+                    break;
+                case 125:
+                    cncint();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2411,7 +2419,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bgncnc()
         {
-            _inputCurrentCommand = 0;
+            _inputCurrentPosition = 0;
         }
 
         /// <summary>
@@ -2431,7 +2439,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var variablePointer = Module.Memory.GetVariable("INPUT");
             var pointerSegment = Module.Memory.GetVariable("MARGN");
             var nextCommandPointer = Module.Memory.GetVariable("NXTCMD");
-            if (_margvPointers.Count == 0 || _inputCurrentCommand > _margvPointers.Count)
+            if (_margvPointers.Count == 0 || _inputCurrentPosition > _margvPointers.Count)
             {
 #if DEBUG
                 _logger.Info(
@@ -2442,12 +2450,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
 #if DEBUG
                 _logger.Info(
-                    $"Returning Next Command ({_inputCurrentCommand} ({_margvPointers[_inputCurrentCommand++].Segment:X4}:{_margvPointers[_inputCurrentCommand++].Offset})");
+                    $"Returning Next Command ({_inputCurrentPosition} ({_margvPointers[_inputCurrentPosition++].Segment:X4}:{_margvPointers[_inputCurrentPosition++].Offset})");
 #endif
             }
 
             var newPointer = new IntPtr16(Module.Memory.GetArray(pointerSegment.Segment,
-                (ushort)(pointerSegment.Offset + (_inputCurrentCommand * 4)), 4));
+                (ushort)(pointerSegment.Offset + (_inputCurrentPosition * 4)), 4));
 
             Module.Memory.SetArray(nextCommandPointer, newPointer.ToSpan());
 
@@ -2503,7 +2511,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cncchr()
         {
-            Registers.AX = 0;
+            var inputPointer = Module.Memory.GetVariable("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+
+            var inputLegnth = Module.Memory.GetWord(inputLengthPointer);
+
+            if (inputLegnth == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var input = Module.Memory.GetArray(inputPointer, inputLegnth);
+
+            var result = input[_inputCurrentPosition];
+
+            //Convert to Caps
+            if (result > 91)
+                result -= 32;
+
+            Registers.AX = result;
         }
 
         /// <summary>
@@ -4667,7 +4694,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void endcnc()
         {
-            Registers.AX = _inputCurrentCommand < _margvPointers.Count ? (ushort) 0 : (ushort) 1;
+            Registers.AX = _inputCurrentPosition < _margvPointers.Count ? (ushort) 0 : (ushort) 1;
         }
 
         /// <summary>
@@ -4696,6 +4723,80 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"{jmpBuf.cs:X4}:{jmpBuf.ip:X4} -- {Registers.AX}");
 #endif
+        }
+
+        /// <summary>
+        ///     Expect a variable-length word sequence (consume all remaining input)
+        ///
+        ///     Signature: char *cncall(void)
+        /// </summary>
+        private void cncall()
+        {
+            rstrin();
+
+            var inputPointer = Module.Memory.GetVariable("INPUT");
+
+            Registers.AX = (ushort) (inputPointer.Offset + _inputCurrentPosition);
+            Registers.DX = inputPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Checks to see if there's any more command to parse
+        ///     Similar to PEEK
+        ///
+        ///     Signature: char morcnc(void)
+        /// </summary>
+        private void morcnc()
+        {
+            var inputPointer = Module.Memory.GetVariable("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+
+            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+
+            if (inputLength == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputCommand = Module.Memory.GetArray(inputPointer, inputLength);
+
+            var result = inputCommand[_inputCurrentPosition];
+
+            Registers.AX = result;
+
+        }
+
+        /// <summary>
+        ///     Expect an integer from the user
+        ///
+        ///     Signature: int n=cncint()
+        /// </summary>
+        private void cncint()
+        {
+            var inputPointer = Module.Memory.GetVariable("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+
+            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+
+            if (inputLength == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputCommand = Module.Memory.GetArray(inputPointer, inputLength);
+
+            var msResult = new MemoryStream();
+            while (_inputCurrentPosition < inputLength && inputCommand[_inputCurrentPosition] != 0x0 && inputCommand[_inputCurrentPosition] != 0x20)
+            {
+                msResult.WriteByte(inputCommand[_inputCurrentPosition]);
+                _inputCurrentPosition++;
+            }
+
+            ushort.TryParse(Encoding.ASCII.GetString(msResult.ToArray()), out var result);
+
+            Registers.AX = result;
         }
     }
 }
