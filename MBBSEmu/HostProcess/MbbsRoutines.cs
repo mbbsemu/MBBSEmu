@@ -262,10 +262,10 @@ namespace MBBSEmu.HostProcess
             if (session.Status != 3) return;
             session.Status = 0;
 
-            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper();
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper()[0];
 
             //User is Logging Off
-            if (inputValue == "X")
+            if (inputValue == 'X')
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
                 session.InputBuffer.SetLength(0);
@@ -273,7 +273,7 @@ namespace MBBSEmu.HostProcess
             }
 
             //If at this point, it's an unknown selection and it's NOT a module number, then re-display menu
-            if (!int.TryParse(inputValue, out var selectedMenuItem))
+            if (!int.TryParse(inputValue.ToString(), out var selectedMenuItem))
             {
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 session.InputBuffer.SetLength(0);
@@ -287,7 +287,7 @@ namespace MBBSEmu.HostProcess
             session.SendToClient(new byte[] {0x1B, 0x5B, 0x48});
 
             //Clear the Input Buffer
-            session.InputBuffer.SetLength(0);
+            //session.InputBuffer.SetLength(0);
         }
 
         private void LogoffConfirmationDisplay(UserSession session)

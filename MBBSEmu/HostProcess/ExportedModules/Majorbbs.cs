@@ -195,6 +195,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
                 Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
+                _inputCurrentPosition = 0;
 
 #if DEBUG
                 _logger.Info($"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory.Segment:X4}:{inputMemory.Offset}");
@@ -2419,7 +2420,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bgncnc()
         {
-            _inputCurrentPosition = 0;
+            rstrin();
         }
 
         /// <summary>
@@ -2514,15 +2515,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputPointer = Module.Memory.GetVariable("INPUT");
             var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
 
-            var inputLegnth = Module.Memory.GetWord(inputLengthPointer);
+            var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
-            if (inputLegnth == 0)
+            if (inputLength == 0)
             {
                 Registers.AX = 0;
                 return;
             }
 
-            var input = Module.Memory.GetArray(inputPointer, inputLegnth);
+            var input = Module.Memory.GetArray(inputPointer, inputLength);
 
             var result = input[_inputCurrentPosition];
 
@@ -2530,6 +2531,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (result > 91)
                 result -= 32;
 
+#if DEBUG
+            _logger.Info($"Returned Character: {(char)result}, Position: {_inputCurrentPosition}");
+#endif
+
+            _inputCurrentPosition++;
             Registers.AX = result;
         }
 
@@ -4694,7 +4700,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void endcnc()
         {
-            Registers.AX = _inputCurrentPosition < _margvPointers.Count ? (ushort) 0 : (ushort) 1;
+            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+
+            if (inputLength == 0)
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+#if DEBUG
+            _logger.Info($"Input Length: {inputLength}, Input Current Position: {_inputCurrentPosition}");
+#endif
+
+            Registers.AX = _inputCurrentPosition < inputLength - 1 ? (ushort) 0 : (ushort) 1;
         }
 
         /// <summary>
@@ -4735,9 +4754,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             rstrin();
 
             var inputPointer = Module.Memory.GetVariable("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
             Registers.AX = (ushort) (inputPointer.Offset + _inputCurrentPosition);
             Registers.DX = inputPointer.Segment;
+            _inputCurrentPosition = inputLength;
         }
 
         /// <summary>
@@ -4753,7 +4775,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
-            if (inputLength == 0)
+            if (inputLength == 0 || _inputCurrentPosition >= inputLength)
             {
                 Registers.AX = 0;
                 return;
@@ -4795,6 +4817,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             ushort.TryParse(Encoding.ASCII.GetString(msResult.ToArray()), out var result);
+
+#if DEBUG
+            _logger.Info($"Returned Int: {result}");
+#endif
 
             Registers.AX = result;
         }

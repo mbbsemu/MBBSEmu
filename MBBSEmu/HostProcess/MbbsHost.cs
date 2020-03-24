@@ -83,9 +83,9 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
+                //Add any incoming new sessions
                 if (_incomingSessions.Count > 0)
                 {
-                    //Add any incoming new sessions
                     while (_incomingSessions.TryDequeue(out var incomingSession))
                     {
                         incomingSession.Channel = (ushort) _channelDictionary.Allocate(incomingSession);
@@ -123,9 +123,28 @@ namespace MBBSEmu.HostProcess
                                     session.UsrPtr.State = session.CurrentModule.StateCode;
                                     session.InputBuffer.WriteByte(0x0);
                                     session.InputCommand = session.InputBuffer.ToArray();
-
                                     session.InputBuffer.SetLength(0);
-                                    Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["sttrou"], session.Channel);
+                                    session.Status = 3;
+                                    var result = Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["sttrou"], session.Channel);
+
+                                    //stt returned an exit code
+                                    if (result == 0)
+                                    {
+                                        session.SessionState = EnumSessionState.MainMenuDisplay;
+                                        session.CurrentModule = null;
+                                        session.CharacterInterceptor = null;
+
+                                        //Reset States
+                                        session.Status = 0;
+                                        session.UsrPtr.Substt = 0;
+
+                                        //Clear the Input Buffer
+                                        session.InputBuffer.SetLength(0);
+
+                                        //Clear any data waiting to be processed from the client
+                                        session.InputBuffer.SetLength(0);
+                                    }
+
                                     continue;
                                 }
 
