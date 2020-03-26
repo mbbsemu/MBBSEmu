@@ -1,8 +1,8 @@
 {
   "Modules": [
     {
-      "Identifier": "EXAMPLE",
-      "Path" :  "c:\\dos\\WGSERV\\" 
+      "Identifier": "HVSXROAD",
+      "Path" :  "c:\\dos\\modules\\xroads\\" 
     }
   ]
 }

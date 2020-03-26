@@ -8,6 +8,7 @@ using MBBSEmu.Session;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -88,7 +89,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
-            Module.Memory.SetWord(Module.Memory.GetVariable("NMODS"), 0x1); //set this to 1 for now
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("NMODS"), 0x1); //set this to 1 for now
             var modulePointer = Module.Memory.AllocateVariable("MODULE", 0x4); //Pointer to Registered Module
             var modulePointerPointer = Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
             Module.Memory.SetArray(modulePointerPointer, modulePointer.ToSpan());
@@ -103,6 +104,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("ADDRES2", 0x32, true); //50 bytes for address line 2
             Module.Memory.AllocateVariable("DATAPH", 0x20, true); // 32 bytes for phone #
             Module.Memory.AllocateVariable("LIVEPH", 0x20, true); // 32 bytes for phone #
+            Module.Memory.AllocateVariable("MMUCCR", 0x2); //Main Menu Credit Consumption Rate
+            Module.Memory.SetVariable("MMUCCR", (ushort)1);
+            Module.Memory.AllocateVariable("PFNLVL", 0x2);
+            Module.Memory.SetVariable("PFNLVL", (ushort) 0);
             
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
@@ -116,9 +121,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
              * We accomplish this by ++ the offset of the pointer first then writing. Every byte
              * should be shifted by 1, thus giving us a proper value lookup post-relocation
              */
+            var resultByte = 0;
             for (var i = 0; i < 256; i++)
             {
-                Module.Memory.SetByte(ctypePointer.Segment, (ushort)(ctypePointer.Offset + i + 1), (byte)i);
+                if (i == 32)
+                {
+                    //IS_SP
+                    resultByte = 1;
+                }
+                else if (i >= 48 && i <= 57)
+                {
+                    //IS_DIG
+                    resultByte = 2;
+                }
+                else if (i >= 65 && i <= 90)
+                {
+                    //IS_LOW
+                    resultByte = 4;
+                }
+                else if (i >= 97 && i <= 122)
+                {
+                    //IS_UP
+                    resultByte = 8;
+                }
+                else if (i >= 33 && i <= 47)
+                {
+                    //IS_PUN
+                    resultByte = 64;
+                }
+                else if (i >= 91 && i <= 96)
+                {
+                    //IS_PUN
+                    resultByte = 64;
+                }
+                else if (i >= 123 && i <= 126)
+                {
+                    //IS_PUN
+                    resultByte = 64;
+                }
+                else
+                {
+                    resultByte = 0;
+                }
+
+                Module.Memory.SetByte(ctypePointer.Segment, (ushort)(ctypePointer.Offset + i + 1), (byte)resultByte);
             }
 
             //Setup Generic User Database
@@ -155,53 +201,54 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channelNumber == ushort.MaxValue)
                 return;
 
-            if (!Module.Memory.TryGetVariable($"VDA-{channelNumber}", out var vdaChannelPointer))
+            if (!Module.Memory.TryGetVariablePointer($"VDA-{channelNumber}", out var vdaChannelPointer))
                 vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
-            Module.Memory.SetArray(Module.Memory.GetVariable("VDAPTR"), vdaChannelPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.ToSpan());
 
-            Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
-            Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), ChannelDictionary[channelNumber].Status);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].Status);
 
-            var userBasePointer = Module.Memory.GetVariable("USER");
+            var userBasePointer = Module.Memory.GetVariablePointer("USER");
             var currentUserPointer = new IntPtr16(userBasePointer.ToSpan());
             currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
 
             //Update User Array and Update Pointer to point to this user
             Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("*USRPTR"), currentUserPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.ToSpan());
 
-            var userAccBasePointer = Module.Memory.GetVariable("USRACC");
+            var userAccBasePointer = Module.Memory.GetVariablePointer("USRACC");
             var currentUserAccPointer = new IntPtr16(userAccBasePointer.ToSpan());
             currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
             Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("USAPTR"), currentUserAccPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), currentUserAccPointer.ToSpan());
 
-            var userExtAccBasePointer = Module.Memory.GetVariable("EXTUSR");
+            var userExtAccBasePointer = Module.Memory.GetVariablePointer("EXTUSR");
             var currentExtUserAccPointer = new IntPtr16(userExtAccBasePointer.ToSpan());
             currentExtUserAccPointer.Offset += (ushort)(ExtUser.Size * channelNumber);
             Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.ToSpan());
-            Module.Memory.SetArray(Module.Memory.GetVariable("EXTPTR"), currentExtUserAccPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), currentExtUserAccPointer.ToSpan());
 
             //Write Blank Input
-            var inputMemory = Module.Memory.GetVariable("INPUT");
+            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
             Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("NXTCMD"), inputMemory.ToSpan());
 
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
             {
                 ChannelDictionary[channelNumber].parsin();
 
-                Module.Memory.SetWord(Module.Memory.GetVariable("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
-                Module.Memory.SetWord(Module.Memory.GetVariable("INPLEN"), (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
+                Module.Memory.SetWord(Module.Memory.GetVariablePointer("MARGC"), (ushort)ChannelDictionary[channelNumber].mArgCount);
+                Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"), (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
                 Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[channelNumber].InputCommand);
                 _inputCurrentPosition = 0;
 
 #if DEBUG
                 _logger.Info($"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory.Segment:X4}:{inputMemory.Offset}");
 #endif
-                var margnPointer = Module.Memory.GetVariable("MARGN");
-                var margvPointer = Module.Memory.GetVariable("MARGV");
+                var margnPointer = Module.Memory.GetVariablePointer("MARGN");
+                var margvPointer = Module.Memory.GetVariablePointer("MARGV");
 
                 //Build Command Word Pointers
                 for (var i = 0; i < ChannelDictionary[channelNumber].mArgCount; i++)
@@ -233,9 +280,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the status wasn't set internally, then set it to the default 5
             ChannelDictionary[ChannelNumber].Status = !ChannelDictionary[ChannelNumber].StatusChange
                 ? (ushort)5
-                : Module.Memory.GetWord(Module.Memory.GetVariable("STATUS"));
+                : Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
 
-            var userPointer = Module.Memory.GetVariable("USER");
+            var userPointer = Module.Memory.GetVariablePointer("USER");
 
             ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort)(userPointer.Offset + (User.Size * channel)), 41));
 
@@ -324,6 +371,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return othexp;
                 case 825:
                     return extptr;
+                case 414:
+                    return mmuccr;
+                case 468:
+                    return pfnlvl;
             }
 
             if (offsetsOnly)
@@ -342,6 +393,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 614: //unfrez -- unlocks video memory, ignored
                 case 174: //DSAIRP
                 case 189: //ENAIRP
+                case 512: //RSTRXF
                     break;
                 case 442:
                     nxtcmd();
@@ -834,7 +886,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleName = Module.Mdf.ModuleName + "\0";
 
             //Only needs to be set once
-            if (!Module.Memory.TryGetVariable("GMDNAM", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer("GMDNAM", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable("GMDNAM", (ushort)moduleName.Length);
 
             //Set Memory
@@ -917,7 +969,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void register_module()
         {
             var destinationPointer = GetParameterPointer(0);
-            Module.Memory.SetArray(Module.Memory.GetVariable("MODULE"), destinationPointer.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("MODULE"), destinationPointer.ToSpan());
 
             var moduleStruct = Module.Memory.GetArray(destinationPointer, 61);
 
@@ -925,7 +977,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleDescription = Encoding.Default.GetString(moduleStruct.ToArray(), 0, 25);
             Module.ModuleDescription = moduleDescription;
 #if DEBUG
-            _logger.Info($"MODULE pointer ({Module.Memory.GetVariable("MODULE")}) set to {destinationPointer}");
+            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE")}) set to {destinationPointer}");
             _logger.Info($"Module Description set to {moduleDescription}");
 #endif
 
@@ -1076,7 +1128,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"STGOPT_{_currentMcvFile.Offset}_{msgnum}", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"STGOPT_{_currentMcvFile.Offset}_{msgnum}", out var variablePointer))
             {
                 var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
@@ -1125,7 +1177,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputValue = $"{highByte << 16 | lowByte}\0";
 
-            if (!Module.Memory.TryGetVariable($"L2AS", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"L2AS", out var variablePointer))
                 //Pre-allocate space for the maximum number of characters for a ulong
                 variablePointer = Module.Memory.AllocateVariable("L2AS", 0xFF);
 
@@ -1281,7 +1333,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usernum => base.Module.Memory.GetVariable("USERNUM").ToSpan();
+        private ReadOnlySpan<byte> usernum => base.Module.Memory.GetVariablePointer("USERNUM").ToSpan();
 
         /// <summary>
         ///     Gets the online user account info
@@ -1295,7 +1347,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"USRACC-{userNumber}", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"USRACC-{userNumber}", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable($"USRACC-{userNumber}", UserAccount.Size);
 
             //If user isnt online, return a null pointer
@@ -1307,7 +1359,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Set Pointer to new user array
-            var uacoffPointer = Module.Memory.GetVariable("UACOFF");
+            var uacoffPointer = Module.Memory.GetVariablePointer("UACOFF");
             Module.Memory.SetArray(uacoffPointer, variablePointer.ToSpan());
 
             //Set User Array Value
@@ -1333,7 +1385,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            var pointer = Module.Memory.GetVariable("PRFBUF");
+            var pointer = Module.Memory.GetVariablePointer("PRFBUF");
             Module.Memory.SetArray(pointer.Segment, (ushort)(_outputBufferPosition + pointer.Offset), formattedMessage);
             _outputBufferPosition += formattedMessage.Length;
 
@@ -1365,7 +1417,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void outprf()
         {
             var userChannel = GetParameter(0);
-            var pointer = Module.Memory.GetVariable("PRFBUF");
+            var pointer = Module.Memory.GetVariablePointer("PRFBUF");
 
             var outputBuffer = Module.Memory.GetArray(pointer, (ushort)_outputBufferPosition).ToArray();
 
@@ -1423,7 +1475,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user *usrptr;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usrptr => Module.Memory.GetVariable("*USRPTR").ToSpan();
+        private ReadOnlySpan<byte> usrptr => Module.Memory.GetVariablePointer("*USRPTR").ToSpan();
 
         /// <summary>
         ///     Like prf(), but the control string comes from an .MCV file
@@ -1443,7 +1495,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var formattedMessage = FormatPrintf(outputMessage, 1);
 
-            var variablePointer = Module.Memory.GetVariable("PRFBUF");
+            var variablePointer = Module.Memory.GetVariablePointer("PRFBUF");
 
             Module.Memory.SetArray(variablePointer.Segment, (ushort)(variablePointer.Offset + _outputBufferPosition), formattedMessage);
             _outputBufferPosition += formattedMessage.Length;
@@ -1484,7 +1536,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("CHANNEL");
+                var pointer = Module.Memory.GetVariablePointer("CHANNEL");
 
                 //Update the Channel Array with the latest channel/user info
                 var arrayOutput = new byte[0x1FE];
@@ -1612,7 +1664,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var day = packedDate & 0x001F;
             var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
 
-            if (!Module.Memory.TryGetVariable("NCDATE", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer("NCDATE", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable("NCDATE", (ushort)outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputDate));
@@ -1642,7 +1694,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var day = packedDate & 0x001F;
             var outputDate = $"{day:D2}/{month:D2}/{year % 100}\0";
 
-            if (!Module.Memory.TryGetVariable("NCEDAT", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer("NCEDAT", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable("NCEDAT", (ushort)outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, Encoding.Default.GetBytes(outputDate));
@@ -1978,7 +2030,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns: Segment holding the Users Status
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> status => Module.Memory.GetVariable("STATUS").ToSpan();
+        private ReadOnlySpan<byte> status => Module.Memory.GetVariablePointer("STATUS").ToSpan();
 
         /// <summary>
         ///     Deduct real credits from online acct
@@ -2011,7 +2063,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (formattedMessage.Length > 0x400)
                 throw new OutOfMemoryException($"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
 
-            if (!Module.Memory.TryGetVariable("SPR", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer("SPR", out var variablePointer))
             {
                 //allocate 1k for the SPR buffer
                 variablePointer = base.Module.Memory.AllocateVariable("SPR", 0x400);
@@ -2134,7 +2186,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
 
             //Setup Host Memory Variables Pointer
-            if (!Module.Memory.TryGetVariable($"SCNMDF", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"SCNMDF", out var variablePointer))
                 variablePointer = base.Module.Memory.AllocateVariable("SCNMDF", 0xFF);
 
             var recordFound = false;
@@ -2242,7 +2294,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *prfbuf
         /// </summary>
-        private ReadOnlySpan<byte> prfbuf => Module.Memory.GetVariable("*PRFBUF").ToSpan();
+        private ReadOnlySpan<byte> prfbuf => Module.Memory.GetVariablePointer("*PRFBUF").ToSpan();
 
         /// <summary>
         ///     Copies characters from a string
@@ -2352,7 +2404,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
         }
 
-        private ReadOnlySpan<byte> nterms => Module.Memory.GetVariable("NTERMS").ToSpan();
+        private ReadOnlySpan<byte> nterms => Module.Memory.GetVariablePointer("NTERMS").ToSpan();
 
         /// <summary>
         ///     Compute volatile data pointer for the specified User Number
@@ -2369,7 +2421,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"VDA-{channel}", out var volatileMemoryAddress))
+            if (!Module.Memory.TryGetVariablePointer($"VDA-{channel}", out var volatileMemoryAddress))
                 volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{channel}", VOLATILE_DATA_SIZE);
 
 #if DEBUG
@@ -2390,7 +2442,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("*USER");
+                var pointer = Module.Memory.GetVariablePointer("*USER");
                 return pointer.ToSpan();
             }
         }
@@ -2404,7 +2456,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                if (!Module.Memory.TryGetVariable($"VDAPTR", out var variablePointer))
+                if (!Module.Memory.TryGetVariablePointer($"VDAPTR", out var variablePointer))
                     variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
 
                 return variablePointer.ToSpan();
@@ -2428,41 +2480,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int margc
         /// </summary>
-        private ReadOnlySpan<byte> margc => Module.Memory.GetVariable("MARGC").ToSpan();
+        private ReadOnlySpan<byte> margc => Module.Memory.GetVariablePointer("MARGC").ToSpan();
 
         /// <summary>
         ///     Returns the pointer to the next parsed input command from the user
         ///     If this is the first time it's called, it returns the first command
         /// </summary>
-        private ReadOnlySpan<byte> nxtcmd()
-        {
-
-            var variablePointer = Module.Memory.GetVariable("INPUT");
-            var pointerSegment = Module.Memory.GetVariable("MARGN");
-            var nextCommandPointer = Module.Memory.GetVariable("NXTCMD");
-            if (_margvPointers.Count == 0 || _inputCurrentPosition > _margvPointers.Count)
-            {
-#if DEBUG
-                _logger.Info(
-                    $"No Input, returning pointer to 1st (null) byte in Input Memory ({variablePointer.Segment:X4}:{variablePointer.Offset})");
-#endif
-            }
-            else
-            {
-#if DEBUG
-                _logger.Info(
-                    $"Returning Next Command ({_inputCurrentPosition} ({_margvPointers[_inputCurrentPosition++].Segment:X4}:{_margvPointers[_inputCurrentPosition++].Offset})");
-#endif
-            }
-
-            var newPointer = new IntPtr16(Module.Memory.GetArray(pointerSegment.Segment,
-                (ushort)(pointerSegment.Offset + (_inputCurrentPosition * 4)), 4));
-
-            Module.Memory.SetArray(nextCommandPointer, newPointer.ToSpan());
-
-            return nextCommandPointer.ToSpan();
-
-        }
+        private ReadOnlySpan<byte> nxtcmd() => Module.Memory.GetVariablePointer("NXTCMD").ToSpan();
 
         /// <summary>
         ///     Case-ignoring substring match
@@ -2512,8 +2536,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cncchr()
         {
-            var inputPointer = Module.Memory.GetVariable("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
 
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
@@ -2548,8 +2572,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var pointer = Module.Memory.GetVariable("PRFPTR");
-                var prfbufPointer = Module.Memory.GetVariable("PRFBUF");
+                var pointer = Module.Memory.GetVariablePointer("PRFPTR");
+                var prfbufPointer = Module.Memory.GetVariablePointer("PRFBUF");
                 Module.Memory.SetArray(pointer, new IntPtr16(prfbufPointer.Segment, (ushort)(prfbufPointer.Offset + _outputBufferPosition)).ToSpan());
                 return pointer.ToSpan();
             }
@@ -2584,7 +2608,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
 
             //Allocate Memory for FILE struct
-            if (!Module.Memory.TryGetVariable($"FILE_{filenameInputValue}", out var fileStructPointer))
+            if (!Module.Memory.TryGetVariablePointer($"FILE_{filenameInputValue}", out var fileStructPointer))
                 fileStructPointer = Module.Memory.AllocateVariable($"FILE_{filenameInputValue}", FileStruct.Size);
 
             //Write New Blank Pointer
@@ -2842,7 +2866,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char input[]
         /// </summary>
-        private ReadOnlySpan<byte> input => Module.Memory.GetVariable("INPUT").ToSpan();
+        private ReadOnlySpan<byte> input => Module.Memory.GetVariablePointer("INPUT").ToSpan();
 
         /// <summary>
         ///     Converts a lowercase letter to uppercase
@@ -2873,7 +2897,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void tolower()
         {
             var character = GetParameter(0);
-            if (character >= 65 || character <= 90)
+            if (character >= 65 && character <= 90)
             {
                 Registers.AX = (ushort)(character + 32);
             }
@@ -2932,11 +2956,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int inplen
         /// </summary>
-        private ReadOnlySpan<byte> inplen => Module.Memory.GetVariable("INPLEN").ToSpan();
+        private ReadOnlySpan<byte> inplen => Module.Memory.GetVariablePointer("INPLEN").ToSpan();
 
-        private ReadOnlySpan<byte> margv => Module.Memory.GetVariable("MARGV").ToSpan();
+        private ReadOnlySpan<byte> margv => Module.Memory.GetVariablePointer("MARGV").ToSpan();
 
-        private ReadOnlySpan<byte> margn => Module.Memory.GetVariable("MARGN").ToSpan();
+        private ReadOnlySpan<byte> margn => Module.Memory.GetVariablePointer("MARGN").ToSpan();
 
         /// <summary>
         ///     Restore parsed input line (undoes effects of parsin())
@@ -2947,15 +2971,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             ChannelDictionary[ChannelNumber].rstrin();
 
-            var inputMemory = Module.Memory.GetVariable("INPUT");
+            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
             Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[ChannelNumber].InputCommand);
+
+#if DEBUG
+            _logger.Info("Restored Input");
+#endif
         }
 
         private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
         private ReadOnlySpan<byte> _exitfopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
         private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
-        private ReadOnlySpan<byte> extptr => Module.Memory.GetVariable("EXTPTR").ToSpan();
-        private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariable("USAPTR").ToSpan();
+        private ReadOnlySpan<byte> extptr => Module.Memory.GetVariablePointer("EXTPTR").ToSpan();
+        private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariablePointer("USAPTR").ToSpan();
 
         /// <summary>
         ///     Appends the first num characters of source to destination, plus a terminating null-character.
@@ -3014,7 +3042,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"GETMSG", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"GETMSG", out var variablePointer))
                 variablePointer = base.Module.Memory.AllocateVariable($"GETMSG", 0x1000);
 
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
@@ -3101,7 +3129,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 1);
 
-            var pointer = Module.Memory.GetVariable("PRFBUF");
+            var pointer = Module.Memory.GetVariablePointer("PRFBUF");
             Module.Memory.SetArray(pointer.Segment, (ushort)(_outputBufferPosition + pointer.Offset), formattedMessage);
             _outputBufferPosition += formattedMessage.Length;
 
@@ -3306,7 +3334,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
 
-            if (!Module.Memory.TryGetVariable("NCTIME", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer("NCTIME", out var variablePointer))
             {
                 variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
             }
@@ -3361,7 +3389,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             ChannelDictionary[ChannelNumber].parsin();
 
-            var inputMemory = Module.Memory.GetVariable("INPUT");
+            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
             Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset, ChannelDictionary[ChannelNumber].InputCommand);
         }
 
@@ -3431,20 +3459,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var othusnPointer = Module.Memory.GetVariable("OTHUSN");
+            var othusnPointer = Module.Memory.GetVariablePointer("OTHUSN");
             Module.Memory.SetWord(othusnPointer, ChannelDictionary[userSession.Channel].Channel);
 
-            var userBase = new IntPtr16(Module.Memory.GetVariable("USER").ToSpan());
+            var userBase = new IntPtr16(Module.Memory.GetVariablePointer("USER").ToSpan());
             userBase.Offset += (ushort)(User.Size * userSession.Channel);
-            Module.Memory.SetArray(Module.Memory.GetVariable("OTHUSP"), userBase.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUSP"), userBase.ToSpan());
 
-            var userAccBase = new IntPtr16(Module.Memory.GetVariable("USRACC").ToSpan());
+            var userAccBase = new IntPtr16(Module.Memory.GetVariablePointer("USRACC").ToSpan());
             userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
-            Module.Memory.SetArray(Module.Memory.GetVariable("OTHUAP"), userAccBase.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUAP"), userAccBase.ToSpan());
 
-            var userExtAcc = new IntPtr16(Module.Memory.GetVariable("EXTUSR").ToSpan());
+            var userExtAcc = new IntPtr16(Module.Memory.GetVariablePointer("EXTUSR").ToSpan());
             userExtAcc.Offset += (ushort)(ExtUser.Size * userSession.Channel);
-            Module.Memory.SetArray(Module.Memory.GetVariable("OTHEXP"), userExtAcc.ToSpan());
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHEXP"), userExtAcc.ToSpan());
 
 #if DEBUG
             _logger.Info($"User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
@@ -3558,7 +3586,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
         }
 
-        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariable("GENBB").ToSpan();
+        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariablePointer("GENBB").ToSpan();
 
         /// <summary>
         ///     Turns echo on for this channel
@@ -3669,7 +3697,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = numRemoved;
         }
 
-        private ReadOnlySpan<byte> othusn => Module.Memory.GetVariable("OTHUSN").ToSpan();
+        private ReadOnlySpan<byte> othusn => Module.Memory.GetVariablePointer("OTHUSN").ToSpan();
 
         /// <summary>
         ///     Returns number of bytes session will need, or -1=error in data
@@ -3788,7 +3816,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Number of modules currently installed
         /// </summary>
-        private ReadOnlySpan<byte> nmods => Module.Memory.GetVariable("NMODS").ToSpan();
+        private ReadOnlySpan<byte> nmods => Module.Memory.GetVariablePointer("NMODS").ToSpan();
 
         /// <summary>
         ///     This is the pointer, to the pointer, for the MODULE struct because module is declared
@@ -3796,7 +3824,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Pointer -> Pointer -> Struct
         /// </summary>
-        private ReadOnlySpan<byte> module => Module.Memory.GetVariable("MODULE-POINTER").ToSpan();
+        private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("MODULE-POINTER").ToSpan();
 
         /// <summary>
         ///     Long Shift Left (Borland C++ Implicit Function)
@@ -3830,14 +3858,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     See: CTYPE.H
         /// </summary>
-        private ReadOnlySpan<byte> _ctype => Module.Memory.GetVariable("CTYPE").ToSpan();
+        private ReadOnlySpan<byte> _ctype => Module.Memory.GetVariablePointer("CTYPE").ToSpan();
 
         /// <summary>
         ///     Points to the ad-hoc Volatile Data Area
         ///
         ///     Signature: char *vdatmp
         /// </summary>
-        private ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariable("*VDATMP").ToSpan();
+        private ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariablePointer("*VDATMP").ToSpan();
 
         /// <summary>
         ///     Send prfbuf to a channel & clear
@@ -3974,10 +4002,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("BBSTTL");
+                var titlePointer = Module.Memory.GetVariablePointer("BBSTTL");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*BBSTTL").ToSpan();
+                return Module.Memory.GetVariablePointer("*BBSTTL").ToSpan();
             }
         }
 
@@ -3998,10 +4026,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("COMPANY");
+                var titlePointer = Module.Memory.GetVariablePointer("COMPANY");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*COMPANY").ToSpan();
+                return Module.Memory.GetVariablePointer("*COMPANY").ToSpan();
             }
         }
 
@@ -4022,10 +4050,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("ADDRES1");
+                var titlePointer = Module.Memory.GetVariablePointer("ADDRES1");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*ADDRES1").ToSpan();
+                return Module.Memory.GetVariablePointer("*ADDRES1").ToSpan();
             }
         }
 
@@ -4046,10 +4074,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("ADDRES2");
+                var titlePointer = Module.Memory.GetVariablePointer("ADDRES2");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*ADDRES2").ToSpan();
+                return Module.Memory.GetVariablePointer("*ADDRES2").ToSpan();
             }
         }
 
@@ -4070,10 +4098,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("DATAPH");
+                var titlePointer = Module.Memory.GetVariablePointer("DATAPH");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*DATAPH").ToSpan();
+                return Module.Memory.GetVariablePointer("*DATAPH").ToSpan();
             }
         }
 
@@ -4094,10 +4122,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (!title.EndsWith("\0"))
                     title += "\0";
 
-                var titlePointer = Module.Memory.GetVariable("LIVEPH");
+                var titlePointer = Module.Memory.GetVariablePointer("LIVEPH");
 
                 Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
-                return Module.Memory.GetVariable("*LIVEPH").ToSpan();
+                return Module.Memory.GetVariablePointer("*LIVEPH").ToSpan();
             }
         }
 
@@ -4115,7 +4143,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var processedString = ProcessTextVariables(stringToProcess);
 
-            if (!Module.Memory.TryGetVariable("XLTTXV", out var resultPointer))
+            if (!Module.Memory.TryGetVariablePointer("XLTTXV", out var resultPointer))
                 resultPointer = Module.Memory.AllocateVariable("XLTTXV", 0x800);
 
             Module.Memory.SetArray(resultPointer, processedString);
@@ -4160,7 +4188,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int vdasiz;
         /// </summary>
-        private ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariable("VDASIZ").ToSpan();
+        private ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariablePointer("VDASIZ").ToSpan();
 
         /// <summary>
         ///     Performs a Btrieve Query Operation based on KEYS
@@ -4244,21 +4272,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: struct user *othusp;
         /// </summary>
-        private ReadOnlySpan<byte> othusp => Module.Memory.GetVariable("*OTHUSP").ToSpan();
+        private ReadOnlySpan<byte> othusp => Module.Memory.GetVariablePointer("*OTHUSP").ToSpan();
 
         /// <summary>
         ///     Pointer to structure for that user in the extusr structure (set by onsys() or instat())
         ///
         ///     Signature: struct extusr *othexp;
         /// </summary>
-        private ReadOnlySpan<byte> othexp => Module.Memory.GetVariable("*OTHEXP").ToSpan();
+        private ReadOnlySpan<byte> othexp => Module.Memory.GetVariablePointer("*OTHEXP").ToSpan();
 
         /// <summary>
         ///     Pointer to structure for that user in the 'usracc' structure (set by onsys() or instat())
         ///
         ///     Signature: struct usracc *othuap;
         /// </summary>
-        private ReadOnlySpan<byte> othuap => Module.Memory.GetVariable("*OTHUAP").ToSpan();
+        private ReadOnlySpan<byte> othuap => Module.Memory.GetVariablePointer("*OTHUAP").ToSpan();
 
         /// <summary>
         ///     Splits the specified string into tokens based on the delimiters
@@ -4268,13 +4296,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2SplitPointer = GetParameterPointer(0);
             var stringDelimitersPointer = GetParameterPointer(2);
 
-            if (!Module.Memory.TryGetVariable("STROK-RESULT", out var resultPointer))
+            if (!Module.Memory.TryGetVariablePointer("STROK-RESULT", out var resultPointer))
                 resultPointer = Module.Memory.AllocateVariable("STROK-RESULT", 0x400);
 
-            if (!Module.Memory.TryGetVariable("STROK-ORIGINAL", out var originalPointer))
+            if (!Module.Memory.TryGetVariablePointer("STROK-ORIGINAL", out var originalPointer))
                 originalPointer = Module.Memory.AllocateVariable("STROK-ORIGINAL", 0x400);
 
-            if (!Module.Memory.TryGetVariable("STROK-ORDINAL", out var ordinalPointer))
+            if (!Module.Memory.TryGetVariablePointer("STROK-ORDINAL", out var ordinalPointer))
                 ordinalPointer = Module.Memory.AllocateVariable("STROK-ORDINAL", 0x2);
 
             //If it's the first call, reset the values in memory
@@ -4349,7 +4377,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"RAWMSG", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"RAWMSG", out var variablePointer))
                 variablePointer = base.Module.Memory.AllocateVariable($"RAWMSG", 0x1000);
 
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
@@ -4618,7 +4646,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariable($"EXTUSR-{userNumber}", out var variablePointer))
+            if (!Module.Memory.TryGetVariablePointer($"EXTUSR-{userNumber}", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable($"EXTUSR-{userNumber}", ExtUser.Size);
 
             //If user isnt online, return a null pointer
@@ -4630,7 +4658,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Set Pointer to new user array
-            var extoffPointer = Module.Memory.GetVariable("EXTOFF");
+            var extoffPointer = Module.Memory.GetVariablePointer("EXTOFF");
             Module.Memory.SetArray(extoffPointer, variablePointer.ToSpan());
 
             //Set User Array Value
@@ -4670,28 +4698,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var jmpBufPointer = GetParameterPointer(0);
 
-            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpBufPointer, JmpBufStruct.Size));
-
-            if (jmpBuf.ip == 0 && jmpBuf.cs == 0)
+            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpBufPointer, JmpBufStruct.Size))
             {
-                //Not a jump -- first set
-                jmpBuf.bp = Module.Memory.GetWord(Registers.SS, (ushort) (Registers.BP + 1)); //Base Pointer is pushed and set on the simulated ENTER
-                jmpBuf.cs = Registers.CS;
-                jmpBuf.di = Registers.DI;
-                jmpBuf.ds = Registers.DS;
-                jmpBuf.es = Registers.ES;
-                jmpBuf.ip = Registers.IP;
-                jmpBuf.si = Registers.SI;
-                jmpBuf.sp = (ushort) (Registers.SP + 6); //remove the parameter to set stack prior to the call
-                jmpBuf.ss = Registers.SS;
-                Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
-                Registers.AX = 0;
-            }
+                //Base Pointer is pushed and set on the simulated ENTER
+                //remove the parameter to set stack prior to the call
+                bp = Module.Memory.GetWord(Registers.SS,
+                    (ushort) (Registers.BP + 1)),
+                cs = Registers.CS,
+                di = Registers.DI,
+                ds = Registers.DS,
+                es = Registers.ES,
+                ip = Registers.IP,
+                si = Registers.SI,
+                sp = (ushort) (Registers.SP + 6),
+                ss = Registers.SS
+            };
+            Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
+            Registers.AX = 0;
 
 #if DEBUG
-            _logger.Debug($"{jmpBuf.cs:X4}:{jmpBuf.ip:X4} -- {Registers.AX}");
+            _logger.Debug($"Jump Set -- {jmpBuf.cs:X4}:{jmpBuf.ip:X4} AX:{Registers.AX}");
 #endif
         }
+
 
         /// <summary>
         ///     Returns if we're at the end, or "done", with the current command
@@ -4700,7 +4729,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void endcnc()
         {
-            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
             if (inputLength == 0)
@@ -4753,8 +4782,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             rstrin();
 
-            var inputPointer = Module.Memory.GetVariable("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
             Registers.AX = (ushort) (inputPointer.Offset + _inputCurrentPosition);
@@ -4770,8 +4799,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void morcnc()
         {
-            var inputPointer = Module.Memory.GetVariable("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
 
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
@@ -4796,8 +4825,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cncint()
         {
-            var inputPointer = Module.Memory.GetVariable("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariable("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
 
             var inputLength = Module.Memory.GetWord(inputLengthPointer);
 
@@ -4824,5 +4853,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = result;
         }
+
+        /// <summary>
+        ///     Main menu credit consumption rate per minute
+        ///
+        ///     Signature: int mmucrr
+        /// </summary>
+        private ReadOnlySpan<byte> mmuccr => Module.Memory.GetVariablePointer("MMUCCR").ToSpan();
+
+        /// <summary>
+        ///     'Profanity Level' of the Input (from configuration)
+        ///
+        ///     This is hard coded to 0, which means no profanity detected
+        /// </summary>
+        private ReadOnlySpan<byte> pfnlvl => Module.Memory.GetVariablePointer("PFNLVL").ToSpan();
     }
 }

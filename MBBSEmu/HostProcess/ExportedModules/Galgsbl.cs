@@ -56,7 +56,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             while (true)
             {
                 //Update TICKER
-                var tickerPointer = Module.Memory.GetVariable("TICKER");
+                var tickerPointer = Module.Memory.GetVariablePointer("TICKER");
                 var seconds = (ushort) ((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
                 Module.Memory.SetWord(tickerPointer, seconds);
                 Thread.Sleep(999);
@@ -178,7 +178,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(ushort channelNumber)
         {
-            Module.Memory.SetWord(Module.Memory.GetVariable("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: DX == Segment containing bturno
         /// </summary>
         /// <returns></returns>
-        public ReadOnlySpan<byte> bturno() => Module.Memory.GetVariable("BTURNO").ToSpan();
+        public ReadOnlySpan<byte> bturno() => Module.Memory.GetVariablePointer("BTURNO").ToSpan();
 
         /// <summary>
         ///     Report the amount of space (number of bytes) available in the output buffer
@@ -253,7 +253,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Status Change
             //Set the Memory Value
-            Module.Memory.SetWord(Module.Memory.GetVariable("STATUS"), status);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), status);
 
             //Notify the Session that a Status Change has occured
             ChannelDictionary[channel].StatusChange = true;
@@ -626,7 +626,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
 
-        private ReadOnlySpan<byte> ticker => Module.Memory.GetVariable("TICKER").ToSpan();
+        private ReadOnlySpan<byte> ticker => Module.Memory.GetVariablePointer("TICKER").ToSpan();
 
         /// <summary>
         ///     Status of a Channel

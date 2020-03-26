@@ -89,6 +89,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: unsigned txtlen(void)
         /// </summary>
-        private ReadOnlySpan<byte> _txtlen => Module.Memory.GetVariable("TXTLEN").ToSpan();
+        private ReadOnlySpan<byte> _txtlen => Module.Memory.GetVariablePointer("TXTLEN").ToSpan();
     }
 }

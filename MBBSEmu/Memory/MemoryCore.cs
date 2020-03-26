@@ -104,15 +104,15 @@ namespace MBBSEmu.Memory
             return newPointer;
         }
 
-        public IntPtr16 GetVariable(string name)
+        public IntPtr16 GetVariablePointer(string name)
         {
-            if (!TryGetVariable(name, out var result))
+            if (!TryGetVariablePointer(name, out var result))
                 throw new ArgumentException($"Unknown Variable: {name}");
 
             return result;
         }
 
-        public bool TryGetVariable(string name, out IntPtr16 pointer)
+        public bool TryGetVariablePointer(string name, out IntPtr16 pointer)
         {
             if (!_variablePointerDictionary.TryGetValue(name, out var result))
             {
@@ -123,6 +123,14 @@ namespace MBBSEmu.Memory
             pointer = result;
             return true;
         }
+
+        public void SetVariable(string name, byte value) => SetByte(GetVariablePointer(name), value);
+
+        public void SetVariable(string name, ushort value) => SetWord(GetVariablePointer(name), value);
+
+        public void SetVariable(string name, ReadOnlySpan<byte> value) => SetArray(GetVariablePointer(name), value);
+
+        
 
         /// <summary>
         ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number

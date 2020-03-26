@@ -7,8 +7,11 @@ namespace MBBSEmu.Memory
     public interface IMemoryCore
     {
         //Variable Memory Management
-        IntPtr16 GetVariable(string name);
-        bool TryGetVariable(string name, out IntPtr16 pointer);
+        IntPtr16 GetVariablePointer(string name);
+        bool TryGetVariablePointer(string name, out IntPtr16 pointer);
+        void SetVariable(string name, byte value);
+        void SetVariable(string name, ushort value);
+        void SetVariable(string name, ReadOnlySpan<byte> value);
         IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false);
         IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size);
         IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index);

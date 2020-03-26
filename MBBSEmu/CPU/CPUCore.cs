@@ -153,10 +153,10 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            if (Registers.CS == 0x9 && ((Registers.IP >= 0xEAE && Registers.IP <= 0x1202) || (Registers.IP >= 0xA34 && Registers.IP <= 0xA4B)))
+            if (Registers.CS == 0x2 && ((Registers.IP >= 0x46D && Registers.IP <= 0xB16)))
             {
-                if(Registers.IP == 0x0a4B)
-                    Debugger.Break();
+                //if(Registers.IP == 0x05D9)
+                    //Debugger.Break();
 
                 _showDebug = true;
             }
