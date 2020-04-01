@@ -2,7 +2,23 @@
   "Modules": [
     {
       "Identifier": "HVSXROAD",
-      "Path" :  "c:\\dos\\modules\\xroads\\" 
+      "Path": "c:\\dos\\modules\\xroads\\"
+    },
+    {
+      "Identifier": "LUNATIX",
+      "Path": "c:\\dos\\modules\\lunatix\\"
+    },
+    {
+      "Identifier": "RTSLORD",
+      "Path": "c:\\dos\\bbsv6\\"
+    },
+    {
+      "Identifier": "GWWARROW",
+      "Path": "c:\\dos\\install3\\"
+    },
+    {
+      "Identifier": "DIALCHAT",
+      "Path": "c:\\dos\\modules\\dialchat\\"
     }
   ]
 }

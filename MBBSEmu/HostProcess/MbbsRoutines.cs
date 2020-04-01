@@ -262,6 +262,13 @@ namespace MBBSEmu.HostProcess
             if (session.Status != 3) return;
             session.Status = 0;
 
+            if (session.InputBuffer.Length == 0)
+            {
+                session.SessionState = EnumSessionState.MainMenuDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper()[0];
 
             //User is Logging Off
