@@ -1392,6 +1392,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer");
 #endif
+
+            //Update Pointer
+            Module.Memory.SetVariable("PRFPTR", new IntPtr16(pointer.Segment, (ushort) (pointer.Offset + _outputBufferPosition)));
         }
 
 
@@ -1503,6 +1506,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
 #endif
+            //Update Pointer
+            Module.Memory.SetVariable("PRFPTR", new IntPtr16(variablePointer.Segment, (ushort)(variablePointer.Offset + _outputBufferPosition)));
         }
 
         /// <summary>
@@ -2123,8 +2128,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(quotient >> 16);
             Registers.AX = (ushort)(quotient & 0xFFFF);
 
-            Registers.DI = (ushort)(remainder >> 16);
-            Registers.SI = (ushort)(remainder & 0xFFFF);
+            //Registers.DI = (ushort)(remainder >> 16);
+            //Registers.SI = (ushort)(remainder & 0xFFFF);
 
             var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
             var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
@@ -2568,16 +2573,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *prfptr;
         /// </summary>
-        private ReadOnlySpan<byte> prfptr
-        {
-            get
-            {
-                var pointer = Module.Memory.GetVariablePointer("PRFPTR");
-                var prfbufPointer = Module.Memory.GetVariablePointer("PRFBUF");
-                Module.Memory.SetArray(pointer, new IntPtr16(prfbufPointer.Segment, (ushort)(prfbufPointer.Offset + _outputBufferPosition)).ToSpan());
-                return pointer.ToSpan();
-            }
-        }
+        private ReadOnlySpan<byte> prfptr => Module.Memory.GetVariablePointer("PRFPTR").ToSpan();
 
         /// <summary>
         ///     Opens a new file for reading/writing
@@ -3136,6 +3132,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
 #endif
+            //Update Pointer
+            Module.Memory.SetVariable("PRFPTR", new IntPtr16(pointer.Segment, (ushort)(pointer.Offset + _outputBufferPosition)));
         }
 
         /// <summary>
@@ -4206,8 +4204,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (queryOption <= 50)
                 throw new Exception($"Invalid Query Option: {queryOption}");
 
-            if (keyNumber != 0)
-                throw new Exception("No Support for Multiple Keys");
+            //if (keyNumber != 0)
+                //throw new Exception("No Support for Multiple Keys");
 
             var result = 0;
             switch (queryOption)

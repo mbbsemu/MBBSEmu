@@ -3,6 +3,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace MBBSEmu.Btrieve
 {
@@ -160,31 +161,7 @@ namespace MBBSEmu.Btrieve
                 var pageOffset = (PageLength * i);
                 var recordsInPage = (PageLength / RecordLength);
 
-                //Key Page
-                //Key Pages have 0xFFFFFFFF at 0x8
-                if (BitConverter.ToUInt32(_btrieveFileContent, pageOffset + 8) == uint.MaxValue)
-                {
-                    //TODO: This will need to change as additional key support added
-                    ushort currentKey = 0;
-
-                    pageOffset += 0xC;
-                    for (var j = 0; j < Keys[currentKey].Definition.TotalRecords; j++)
-                    {
-                        var keyRecordLength = Keys[currentKey].Definition.RecordLength;
-                        var keyRecord = new byte[keyRecordLength];
-                        
-                        Array.Copy(_btrieveFileContent, pageOffset + (keyRecordLength * j), keyRecord, 0, keyRecordLength);
-
-                        //Keys Start with 0xFFFFFFFF
-                        if (BitConverter.ToUInt32(keyRecord, 0) != uint.MaxValue)
-                            break;
-
-                        Keys[currentKey].Keys.Add(new BtrieveKeyRecord(keyRecord, 0, Keys[currentKey].Definition.Length));
-                    }
-                    continue;
-                }
-
-                //Data Page
+                //Only Load Data Pages -- Ignore Keys/Otherwise
                 if (_btrieveFileContent[pageOffset + 5] == 0x80)
                 {
                     pageOffset += 6;
@@ -267,26 +244,23 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ushort HasKey(ushort keyNumber, ReadOnlySpan<byte> key)
         {
-            
-            foreach (var k in Keys[keyNumber].Keys)
-            {
-                var result = true;
-                for (var i = 0; i < key.Length; i++)
-                {
-                    if (k.Key[i] == key[i]) continue;
+           //Get Key Information By Number
+           var selectedKey = Keys[keyNumber];
+           var selectedKeyValue = new byte[selectedKey.Definition.Length];
+           Array.Copy(key.ToArray(), 0, selectedKeyValue, 0, key.Length);
+           
+           foreach (var r in Records)
+           {
+               var recordKey = r.ToSpan().Slice(selectedKey.Definition.Offset, selectedKey.Definition.Length);
 
-                    result = false;
-                    break;
-                }
+               if (recordKey.SequenceEqual(selectedKeyValue))
+               {
+                   AbsolutePosition = (uint) r.Offset;
+                   return 1;
+               }
+           }
 
-                if (result)
-                {
-                    AbsolutePosition = k.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
+           return 0;
         }
 
         public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)

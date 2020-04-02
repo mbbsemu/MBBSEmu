@@ -58,6 +58,8 @@ namespace MBBSEmu.Memory
             _currentVariablePointer.Offset = 0;
         }
 
+        
+
         public IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false)
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
@@ -130,7 +132,9 @@ namespace MBBSEmu.Memory
 
         public void SetVariable(string name, ReadOnlySpan<byte> value) => SetArray(GetVariablePointer(name), value);
 
-        
+        public void SetVariable(string name, IntPtr16 value) => SetArray(GetVariablePointer(name), value.ToSpan());
+
+
 
         /// <summary>
         ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number

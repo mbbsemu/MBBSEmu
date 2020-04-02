@@ -153,10 +153,11 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
+            //if(Registers.CS == 0x2 && Registers.IP == 0x10B8)
+              //  Debugger.Break();
+
             if (Registers.CS == 0x2 && ((Registers.IP >= 0x46D && Registers.IP <= 0xB16)))
             {
-                //if(Registers.IP == 0x05D9)
-                    //Debugger.Break();
 
                 _showDebug = true;
             }
@@ -1805,7 +1806,7 @@ namespace MBBSEmu.CPU
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
 
                         Registers.CS = _currentInstruction.FarBranchSelector;
-                        Registers.IP = _currentInstruction.Immediate16;
+                        Registers.IP = _currentInstruction.FarBranch16;
                         break;
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:

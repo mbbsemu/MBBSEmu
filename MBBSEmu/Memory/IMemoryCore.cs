@@ -12,6 +12,7 @@ namespace MBBSEmu.Memory
         void SetVariable(string name, byte value);
         void SetVariable(string name, ushort value);
         void SetVariable(string name, ReadOnlySpan<byte> value);
+        void SetVariable(string name, IntPtr16 value);
         IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false);
         IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size);
         IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index);

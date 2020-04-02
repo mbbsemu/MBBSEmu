@@ -14,5 +14,7 @@ namespace MBBSEmu.Btrieve
             Offset = offset;
             Data = data;
         }
+
+        public ReadOnlySpan<byte> ToSpan() => Data;
     }
 }
