@@ -156,7 +156,7 @@ namespace MBBSEmu.CPU
             //if(Registers.CS == 0x2 && Registers.IP == 0x10B8)
               //  Debugger.Break();
 
-            if (Registers.CS == 0x2 && ((Registers.IP >= 0x46D && Registers.IP <= 0xB16)))
+            if (Registers.CS == 0xFF && ((Registers.IP >= 0xBD7 && Registers.IP <= 0xC24)))
             {
 
                 _showDebug = true;
@@ -1027,7 +1027,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination << (sbyte)source);
-                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Addition, result, destination);
+                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.SF, result);
@@ -1042,7 +1042,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination << source);
-                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
@@ -1587,8 +1587,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValue(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var operationSize = GetCurrentOperationSize();
             var result = operationSize == 1
-                ? Op_Add_8((byte)destination, (byte)source, addCarry)
-                : Op_Add_16(destination, source, addCarry);
+                ? Op_Add_8((byte)source, (byte)destination, addCarry)
+                : Op_Add_16(source, destination, addCarry);
 
             WriteToDestination(result, operationSize);
         }
@@ -1598,11 +1598,11 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var result = (byte)(source + destination);
                 if (addCarry && Registers.F.IsFlagSet(EnumFlags.CF))
-                    result++;
+                    source++;
 
-                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Addition, result, destination);
+                var result = (byte)(source + destination);
+                Registers.F.EvaluateCarry<byte>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.EvaluateOverflow<byte>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<byte>(EnumFlags.SF, result);
                 Registers.F.Evaluate<byte>(EnumFlags.ZF, result);
@@ -1616,10 +1616,11 @@ namespace MBBSEmu.CPU
         {
             unchecked
             {
-                var result = (ushort)(source + destination);
                 if (addCarry && Registers.F.IsFlagSet(EnumFlags.CF))
-                    result++;
-                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination);
+                    source++;
+
+                var result = (ushort)(source + destination);
+                Registers.F.EvaluateCarry<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.EvaluateOverflow<ushort>(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate<ushort>(EnumFlags.SF, result);
                 Registers.F.Evaluate<ushort>(EnumFlags.ZF, result);

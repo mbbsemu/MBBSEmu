@@ -5,6 +5,8 @@
         Addition,
         Subtraction,
         Multiplication,
-        Division
+        Division,
+        ShiftLeft,
+        ShiftRight
     }
 }

@@ -1,16 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace MBBSEmu.Btrieve
 {
     public class BtrieveKey
     {
-        public BtrieveKeyDefinition Definition { get; set; }
+        public List<BtrieveKeyDefinition> Segments { get; set; }
 
         public BtrieveKey()
         {
+            Segments = new List<BtrieveKeyDefinition>();
+        }
 
+        public BtrieveKey(BtrieveKeyDefinition keyDefinition)
+        {
+            Segments = new List<BtrieveKeyDefinition>();
+            Segments.Add(keyDefinition);
         }
     }
 }

@@ -19,14 +19,17 @@ namespace MBBSEmu
     {
         private static readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
 
+        private static string sInputModule = string.Empty;
+        private static string sInputPath = string.Empty;
+        private static bool bApiReport = false;
+        private static bool bConfigFile = false;
+        private static string sConfigFile = string.Empty;
+        private static bool bResetDatabase = false;
+        private static string sSysopPassword = string.Empty;
+
         static void Main(string[] args)
         {
-            var sInputModule = string.Empty;
-            var sInputPath = string.Empty;
-            var bApiReport = false;
-            var bConfigFile = false;
-            var sConfigFile = string.Empty;
-            var bResetDatabase = false;
+           
             var config = ServiceResolver.GetService<IConfiguration>();
 
             if (args.Length == 0)
@@ -39,6 +42,12 @@ namespace MBBSEmu
                     case "-DBRESET":
                     {
                         bResetDatabase = true;
+                        if (i + 1 < args.Length && args[i + 1][0] != '-')
+                        {
+                            sSysopPassword = args[i + 1];
+                            i++;
+                        }
+
                         break;
                     }
                     case "-APIREPORT":
@@ -174,22 +183,24 @@ namespace MBBSEmu
                 acct.DropTable();
             acct.CreateTable();
 
-            var bPasswordMatch = false;
-            var sSysopPassword = string.Empty;
-            while (!bPasswordMatch)
+            if (string.IsNullOrEmpty(sSysopPassword))
             {
-                Console.Write("Enter New Systop Password: ");
-                var password1 = Console.ReadLine();
-                Console.Write("Re-Enter New Sysop Password: ");
-                var password2 = Console.ReadLine();
-                if (password1 == password2)
+                var bPasswordMatch = false;
+                while (!bPasswordMatch)
                 {
-                    bPasswordMatch = true;
-                    sSysopPassword = password1;
-                }
-                else
-                {
-                    Console.WriteLine("Password mismatch, please tray again.");
+                    Console.Write("Enter New Systop Password: ");
+                    var password1 = Console.ReadLine();
+                    Console.Write("Re-Enter New Sysop Password: ");
+                    var password2 = Console.ReadLine();
+                    if (password1 == password2)
+                    {
+                        bPasswordMatch = true;
+                        sSysopPassword = password1;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Password mismatch, please tray again.");
+                    }
                 }
             }
 

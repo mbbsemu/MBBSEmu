@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 using MBBSEmu.CPU;
 using Xunit;
 
@@ -84,6 +85,28 @@ namespace MBBSEmu.Tests.CPU
             //Verify Results
             Assert.Equal(0, mbbsEmuCpuRegisters.AL);
             Assert.NotEqual(value, mbbsEmuCpuRegisters.AL);
+
+            //Verify Flags
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.CF));
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.ZF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.OF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.SF));
+        }
+
+        [Theory]
+        [InlineData(0xFFFF, 0x1, 0x0)]
+        public void ADD_AX_IM16_CarryFlag_ZeroFlag(ushort axValue, ushort addValue, ushort expectedAxValue)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.AX = axValue;
+            CreateCodeSegment(new byte[] { 0x05, BitConverter.GetBytes(addValue)[0], BitConverter.GetBytes(addValue)[1] });
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedAxValue, mbbsEmuCpuRegisters.AX);
 
             //Verify Flags
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.CF));

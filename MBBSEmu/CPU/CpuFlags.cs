@@ -1,5 +1,7 @@
 ﻿using MBBSEmu.Extensions;
 using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.VisualBasic.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -19,7 +21,7 @@ namespace MBBSEmu.CPU
         /// <param name="result"></param>
         /// <param name="destination"></param>
         /// <param name="source"></param>
-        public void EvaluateCarry<T>(EnumArithmeticOperation arithmeticOperation, ushort result = 0, ushort destination = 0)
+        public void EvaluateCarry<T>(EnumArithmeticOperation arithmeticOperation, ushort result = 0, ushort destination = 0, ushort source = 0)
         {
             bool setFlag;
             switch (arithmeticOperation)
@@ -27,9 +29,9 @@ namespace MBBSEmu.CPU
                 case EnumArithmeticOperation.Addition:
                     {
                         if (typeof(T) == typeof(byte))
-                            setFlag = ((byte)destination).IsNegative() && result < destination;
+                            setFlag = (source + destination) > byte.MaxValue;
                         else
-                            setFlag = destination.IsNegative() && result < destination;
+                            setFlag = (source + destination) > ushort.MaxValue;
                         break;
                     }
                 case EnumArithmeticOperation.Subtraction:
@@ -38,6 +40,14 @@ namespace MBBSEmu.CPU
                             setFlag = ((byte)result) > ((byte)destination);
                         else
                             setFlag = result > destination;
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftLeft:
+                    {
+                        if (typeof(T) == typeof(byte))
+                            setFlag = !((byte)result).IsNegative() && ((byte)destination).IsNegative();
+                        else
+                            setFlag = !result.IsNegative() && destination.IsNegative();
                         break;
                     }
                 default:

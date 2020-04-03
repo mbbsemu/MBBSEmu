@@ -3,7 +3,9 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using MBBSEmu.Btrieve.Enums;
 
 namespace MBBSEmu.Btrieve
 {
@@ -24,6 +26,11 @@ namespace MBBSEmu.Btrieve
         private readonly byte[] _btrieveFileContent;
         public readonly List<BtrieveRecord> Records;
         public readonly Dictionary<ushort, BtrieveKey> Keys;
+
+        private ushort _queryKeyOffset;
+        private int _queryKeyLength;
+        private EnumKeyDataType _queryKeyType;
+        private byte[] _queryKey;
 
         public BtrieveFile(string fileName, string path, ushort maxRecordLength)
         {
@@ -64,7 +71,7 @@ namespace MBBSEmu.Btrieve
             ParseHeader();
 
             //Only Parse Keys if they are defined
-            if(KeyCount > 0)
+            if (KeyCount > 0)
                 ParseKeyDefinitions();
 
             if (RecordCount > 0)
@@ -85,11 +92,11 @@ namespace MBBSEmu.Btrieve
             RecordLength = BitConverter.ToUInt16(_btrieveFileContent, 0x16);
             RecordCount = BitConverter.ToUInt16(_btrieveFileContent, 0x1C);
             PageLength = BitConverter.ToUInt16(_btrieveFileContent, 0x08);
-            PageCount = (ushort) ((_btrieveFileContent.Length / PageLength) - 1); //-1 to not count the header
+            PageCount = (ushort)((_btrieveFileContent.Length / PageLength) - 1); //-1 to not count the header
             KeyCount = BitConverter.ToUInt16(_btrieveFileContent, 0x14);
 
             //TODO: Support this eventually
-            if(KeyCount > 1)
+            if (KeyCount > 1)
                 _logger.Warn("MBBSEmu currently only supports 1 Btrieve Key (Key 0) -- all other keys will be ignored");
 #if DEBUG
             _logger.Info($"Max Record Length: {MaxRecordLength}");
@@ -110,17 +117,9 @@ namespace MBBSEmu.Btrieve
 
             ushort currentKeyNumber = 0;
             ushort previousKeyNumber = 0;
-            while(currentKeyNumber < KeyCount)
+            while (currentKeyNumber < KeyCount)
             {
-                var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray()};
-
-                //TODO: Support this eventually
-                if (keyDefinition.Segment)
-                {
-                    _logger.Warn("MBBSEmu currently does not support Key Segments, additional segments for this key will be ignored");
-                    currentKeyNumber++;
-                    continue;
-                }
+                var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
 
                 if (keyDefinition.Segment)
                 {
@@ -145,8 +144,16 @@ namespace MBBSEmu.Btrieve
                 _logger.Info($"Length: {keyDefinition.Length}");
                 _logger.Info("----------------");
 #endif
-                var newKey = new BtrieveKey() {Definition = keyDefinition};
-                Keys.Add(keyDefinition.Number, newKey);
+                if (!Keys.TryGetValue(keyDefinition.Number, out var key))
+                {
+                    key = new BtrieveKey(keyDefinition);
+                    Keys.Add(keyDefinition.Number, key);
+                }
+                else
+                {
+                    key.Segments.Add(keyDefinition);
+                }
+
 
                 keyDefinitionBase += keyDefinitionLength;
             }
@@ -161,30 +168,26 @@ namespace MBBSEmu.Btrieve
                 var pageOffset = (PageLength * i);
                 var recordsInPage = (PageLength / RecordLength);
 
-                //Only Load Data Pages -- Ignore Keys/Otherwise
-                if (_btrieveFileContent[pageOffset + 5] == 0x80)
-                {
-                    pageOffset += 6;
-                    for (var j = 0; j < recordsInPage; j++)
-                    {
-                        if (recordsLoaded == RecordCount)
-                            break;
-
-                        var recordArray = new byte[RecordLength];
-                        Array.Copy(_btrieveFileContent, pageOffset + (RecordLength * j), recordArray, 0, RecordLength);
-
-                        //End of Page 0xFFFFFFFF
-                        if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
-                            continue;
-
-                        Records.Add(new BtrieveRecord(pageOffset + (RecordLength * j), recordArray));
-                        recordsLoaded++;
-                    }
-
+                if (BitConverter.ToUInt32(_btrieveFileContent, pageOffset + 0x8) == uint.MaxValue)
                     continue;
-                }
 
-                _logger.Warn($"Unknown Btrieve Page Identifier: {_btrieveFileContent[pageOffset + 5]:X2} at {pageOffset + 5:X4}");
+
+                pageOffset += 6;
+                for (var j = 0; j < recordsInPage; j++)
+                {
+                    if (recordsLoaded == RecordCount)
+                        break;
+
+                    var recordArray = new byte[RecordLength];
+                    Array.Copy(_btrieveFileContent, pageOffset + (RecordLength * j), recordArray, 0, RecordLength);
+
+                    //End of Page 0xFFFFFFFF
+                    if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
+                        continue;
+
+                    Records.Add(new BtrieveRecord(pageOffset + (RecordLength * j), recordArray));
+                    recordsLoaded++;
+                }
             }
 #if DEBUG
             _logger.Info($"Loaded {recordsLoaded} records. Resetting cursor to 0");
@@ -242,25 +245,54 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public ushort HasKey(ushort keyNumber, ReadOnlySpan<byte> key)
+        public ushort HasKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes operationCode = EnumBtrieveOperationCodes.None, bool newQuery = true)
         {
-           //Get Key Information By Number
-           var selectedKey = Keys[keyNumber];
-           var selectedKeyValue = new byte[selectedKey.Definition.Length];
-           Array.Copy(key.ToArray(), 0, selectedKeyValue, 0, key.Length);
-           
-           foreach (var r in Records)
-           {
-               var recordKey = r.ToSpan().Slice(selectedKey.Definition.Offset, selectedKey.Definition.Length);
+            if (newQuery)
+            {
+                _queryKeyOffset = Keys[keyNumber].Segments[0].Offset;
+                _queryKeyLength = Keys[keyNumber].Segments.Sum(x => x.Length);
+                _queryKeyType = Keys[keyNumber].Segments[0].DataType;
 
-               if (recordKey.SequenceEqual(selectedKeyValue))
-               {
-                   AbsolutePosition = (uint) r.Offset;
-                   return 1;
-               }
-           }
+                //Get Key Information By Number
+                _queryKey = new byte[_queryKeyLength];
+                Array.Copy(key.ToArray(), 0, _queryKey, 0, key.Length);
 
-           return 0;
+                AbsolutePosition = 0;
+            }
+
+            foreach (var r in Records.Where(x=> x.Offset > AbsolutePosition))
+            {
+                var recordKey = r.ToSpan().Slice(_queryKeyOffset, _queryKeyLength);
+
+                switch (operationCode)
+                {
+                    case EnumBtrieveOperationCodes.None:
+                        {
+                            if (recordKey.SequenceEqual(_queryKey))
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                return 1;
+                            }
+
+                            break;
+                        }
+                    case EnumBtrieveOperationCodes.GetLessThan when _queryKeyType == EnumKeyDataType.UnsignedBinary:
+                        {
+                           ushort.TryParse(Encoding.ASCII.GetString(_queryKey), out var searchValue);
+                            var keyValue = BitConverter.ToUInt16(recordKey);
+                            if (keyValue < searchValue)
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                return 1;
+                            }
+
+                            break;
+                        }
+                }
+            }
+            return 0;
         }
 
         public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)
@@ -272,6 +304,18 @@ namespace MBBSEmu.Btrieve
             }
 
             return null;
+        }
+
+        private void UpdateRecordNumberByAbsolutePosition(uint absolutePosition)
+        {
+            CurrentRecordNumber = 0;
+            foreach (var record in Records)
+            {
+                if (record.Offset == absolutePosition)
+                    return;
+
+                CurrentRecordNumber++;
+            }
         }
     }
 }

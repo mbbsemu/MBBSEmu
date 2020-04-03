@@ -811,6 +811,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 125:
                     cncint();
                     break;
+                case 656:
+                    f_ludiv();
+                    break;
+                case 317:
+                    getbtv();
+                    break;
+                case 484:
+                    qnpbtv();
+                    break;
+                case 134:
+                    cofdate();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1693,7 +1705,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var packedDate = GetParameter(0);
 
-            //Pack the Date
+            //Unpack the Date
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
@@ -2752,6 +2764,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
+            if (fileStream.Position >= fileStream.Length)
+            {
+                _logger.Warn("Attempting to read EOF file, returning null pointer");
+                Registers.AX = 0;
+                return;
+            }
+
             ushort elementsRead = 0;
             for (var i = 0; i < count; i++)
             {
@@ -3072,7 +3091,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
 #if DEBUG
-            _logger.Info($"Processed sscanf on {Encoding.ASCII.GetString(inputString)}-> {Encoding.ASCII.GetString(formatString)}");
+            //_logger.Info($"Processed sscanf on {Encoding.ASCII.GetString(inputString)}-> {Encoding.ASCII.GetString(formatString)}");
 #endif
         }
 
@@ -3191,6 +3210,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
+            if (fileStream.Position == fileStream.Length)
+            {
+                _logger.Warn("Attempting to read EOF file, returning null pointer");
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
             var startingPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
             for (var i = 0; i < maxCharactersToRead; i++)
             {
@@ -3211,8 +3238,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Info($"Read string from {fileStructPointer} (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer}");
+            _logger.Info($"Read string from {fileStructPointer} (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -3278,7 +3307,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fseek()
         {
             var fileStructPointer = GetParameterPointer(0);
-            var offset = GetParameterLong(2);
+            var offset = GetParameterULong(2);
             var origin = GetParameter(4);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
@@ -4208,10 +4237,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //throw new Exception("No Support for Multiple Keys");
 
             var result = 0;
-            switch (queryOption)
+            switch ((EnumBtrieveOperationCodes)queryOption)
             {
                 //Get Equal
-                case 55:
+                case EnumBtrieveOperationCodes.GetKeyLast:
+                case EnumBtrieveOperationCodes.GetKeyEqual:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile].HasKey(keyNumber, key);
                     break;
             }
@@ -4865,5 +4895,130 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This is hard coded to 0, which means no profanity detected
         /// </summary>
         private ReadOnlySpan<byte> pfnlvl => Module.Memory.GetVariablePointer("PFNLVL").ToSpan();
+
+        /// <summary>
+        ///     Long Unsigned Division (Borland C++ Implicit Function)
+        ///
+        ///     Input: Two long values on stack (arg1/arg2)
+        ///     Output: DX:AX = quotient
+        ///             DI:SI = remainder
+        /// </summary>
+        /// <returns></returns>
+        private void f_ludiv()
+        {
+
+            var arg1 = (uint) (GetParameter(1) << 16) | GetParameter(0);
+            var arg2 = (uint) (GetParameter(3) << 16) | GetParameter(2);
+
+            var quotient = Math.DivRem(arg1, arg2, out var remainder);
+
+#if DEBUG
+            //_logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
+#endif
+
+            Registers.DX = (ushort)(quotient >> 16);
+            Registers.AX = (ushort)(quotient & 0xFFFF);
+
+            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            //Set stack back to entry state, minus parameters
+            Registers.SP += 14;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Registers.SP -= 2;
+            Registers.BP = Registers.SP;
+        }
+
+
+        /// <summary>
+        ///     Get a Btrieve record (bomb if not there)
+        ///
+        ///     Signature: void getbtv(char *recptr, char *key, int keynum, int getopt)
+        /// </summary>
+        /// <returns></returns>
+        private void getbtv()
+        {
+            if (_currentBtrieveFile == null)
+                throw new FileNotFoundException("Current Btrieve file hasn't been set using SETBTV()");
+
+            var btrieveRecordPointer = GetParameterPointer(0);
+            var keyPointer = GetParameterPointer(2);
+            var keyNumber = GetParameter(4);
+            var queryOption = GetParameter(5);
+
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+            var key = Module.Memory.GetString(keyPointer);
+
+            currentBtrieveFile.HasKey(keyNumber, key, (EnumBtrieveOperationCodes) queryOption);
+
+            //Set Memory Values
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+
+
+            Module.Memory.SetArray(btvStruct.data,
+                currentBtrieveFile.GetRecordByAbsolutePosition(currentBtrieveFile.AbsolutePosition));
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Get - Record written to {btvStruct.data}");
+#endif
+
+            Module.Memory.SetArray(btrieveRecordPointer, currentBtrieveFile.GetRecord());
+
+#if DEBUG
+            _logger.Info($"Performed Btrieve Get {(EnumBtrieveOperationCodes)queryOption}, Position: {currentBtrieveFile.AbsolutePosition}");
+#endif
+        }
+
+        /// <summary>
+        ///     Query Next/Previous Btrieve utility
+        ///
+        ///     Signature: int qnpbtv (int getopt)
+        /// </summary>
+        private void qnpbtv()
+        {
+            var queryOption = GetParameter(0);
+
+            if (queryOption <= 50)
+                throw new Exception($"Invalid Query Option: {queryOption}");
+
+            var result = 0;
+            switch ((EnumBtrieveOperationCodes)queryOption)
+            {
+                //Get Next -- repeating the same previous query
+                case EnumBtrieveOperationCodes.GetKeyNext:
+                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].HasKey(0, null, EnumBtrieveOperationCodes.None, false);
+                    break;
+            }
+
+#if DEBUG
+            _logger.Info($"Performed Query {queryOption} on {BtrievePointerDictionaryNew[_currentBtrieveFile].FileName} ({_currentBtrieveFile}) with result {result}");
+#endif
+
+            Registers.AX = (ushort)result;
+        }
+
+        /// <summary>
+        ///     Counts the number of days since 1/1/80
+        /// 
+        ///     Signature: int count=cofdat(int date)
+        /// </summary>
+        private void cofdate()
+        {
+            var packedDate = GetParameter(0);
+
+            //Unpack the Date
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+
+            var originDate = new DateTime(1980, 1, 1);
+            var specifiedDate = new DateTime(year, month, day);
+
+            Registers.AX = (ushort) (specifiedDate - originDate).TotalDays;
+        }
     }
 }

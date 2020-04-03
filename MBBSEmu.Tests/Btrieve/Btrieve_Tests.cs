@@ -27,9 +27,9 @@ namespace MBBSEmu.Tests.Btrieve
             Assert.Equal(61, btrieveFile.RecordCount);
             Assert.Equal(333, btrieveFile.RecordLength);
             Assert.Equal(1, btrieveFile.KeyCount);
-            Assert.Equal(1, btrieveFile.Keys[0].Definition.Position);
-            Assert.Equal(9, btrieveFile.Keys[0].Definition.Length);
-            Assert.Equal(61, btrieveFile.Keys[0].Definition.TotalRecords);
+            Assert.Equal(1, btrieveFile.Keys[0].Segments[0].Position);
+            Assert.Equal(9, btrieveFile.Keys[0].Segments[0].Length);
+            Assert.Equal(61, btrieveFile.Keys[0].Segments[0].TotalRecords);
         }
 
         [Theory]
@@ -42,9 +42,9 @@ namespace MBBSEmu.Tests.Btrieve
             Assert.Equal(1, btrieveFile.KeyCount);
             Assert.Equal(1, btrieveFile.RecordCount);
             Assert.Equal(256, btrieveFile.RecordLength);
-            Assert.Equal(1, btrieveFile.Keys[0].Definition.Position);
-            Assert.Equal(30, btrieveFile.Keys[0].Definition.Length);
-            Assert.Equal(1, btrieveFile.Keys[0].Definition.TotalRecords);
+            Assert.Equal(1, btrieveFile.Keys[0].Segments[0].Position);
+            Assert.Equal(30, btrieveFile.Keys[0].Segments[0].Length);
+            Assert.Equal(1, btrieveFile.Keys[0].Segments[0].TotalRecords);
         }
 
         [Theory]

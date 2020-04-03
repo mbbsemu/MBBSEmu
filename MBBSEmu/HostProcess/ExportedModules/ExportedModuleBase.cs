@@ -91,6 +91,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16);
         }
 
+        /// <summary>
+        ///     Gets a Unsigned Long Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        private protected uint GetParameterULong(int parameterOrdinal)
+        {
+            return (uint) (GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
+        }
+
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
         private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
@@ -361,7 +371,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var numberValue = short.Parse(stringValues[valueOrdinal++]);
                             Module.Memory.SetWord(numberValueDestinationPointer, (ushort)numberValue);
 #if DEBUG
-                            _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
+                           // _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
 #endif
                             continue;
                         case 's':
@@ -370,7 +380,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var stringValue = stringValues[valueOrdinal++] + "\0";
                             Module.Memory.SetArray(stringValueDestinationPointer, Encoding.ASCII.GetBytes(stringValue));
 #if DEBUG
-                            _logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {stringValueDestinationPointer}");
+                            //_logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {stringValueDestinationPointer}");
 #endif
                             continue;
                     }

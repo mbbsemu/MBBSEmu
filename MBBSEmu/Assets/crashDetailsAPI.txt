@@ -1,0 +1,10 @@
+﻿This exception was thrown because MBBSEmu doesn't yet support an API that this module attempted to use.
+Please send the above crash information to The MajorBBS Emulation Project by emailing eric@mbbsemu.com
+or by dropping by the Discord server.
+
+You can view API Support Information by library and ordinal (provided in the exception above), by visiting
+the API Support Information section of the website at the following URL:
+
+https://www.mbbsemu.com/ApiInformation
+
+Thanks!

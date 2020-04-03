@@ -401,7 +401,8 @@ namespace MBBSEmu.HostProcess
                     "DOSCALLS" => new Doscalls(module, _channelDictionary),
                     "GALME" => new Galme(module, _channelDictionary),
                     "PHAPI" => new Phapi(module, _channelDictionary),
-                    _ => throw new Exception($"Unknown Exported Function: {exportedModule}")
+                    "GALMSG" => new Galmsg(module, _channelDictionary),
+                    _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 
                 functions = _exportedFunctions[key];
@@ -424,6 +425,7 @@ namespace MBBSEmu.HostProcess
             var doscallsHostFunctions = GetFunctions(module, "DOSCALLS");
             var galmeFunctions = GetFunctions(module, "GALME");
             var phapiFunctions = GetFunctions(module, "PHAPI");
+            var galmsgFunctions = GetFunctions(module, "GALMSG");
 
             foreach (var s in module.File.SegmentTable)
             {
@@ -451,8 +453,9 @@ namespace MBBSEmu.HostProcess
                                     "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
                                     "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
                                     "PHAPI" => phapiFunctions.Invoke(functionOrdinal, true),
+                                    "GALMSG" => galmsgFunctions.Invoke(functionOrdinal, true),
                                     _ => throw new Exception(
-                                        $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
+                                        $"Unknown or Unimplemented Imported Library: {module.File.ImportedNameTable[nametableOrdinal].Name}")
                                 };
 
                                 var relocationPointer = new IntPtr16(relocationResult);

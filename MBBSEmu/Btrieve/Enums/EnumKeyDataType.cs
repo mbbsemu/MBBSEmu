@@ -18,6 +18,7 @@
         Lstring = 0xA,
         Zstring = 0xB,
         Unsigned = 0xD,
+        UnsignedBinary = 0xE,
         AutoInc = 0xF
     }
 }
