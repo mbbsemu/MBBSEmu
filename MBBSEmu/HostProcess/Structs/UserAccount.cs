@@ -373,14 +373,15 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value, 0, _usrAccStructBytes, 292, DATSIZ);
         }
 
-        private byte[] _usrAccStructBytes;
+        private readonly byte[] _usrAccStructBytes;
 
         public const ushort Size = 341;
 
         public UserAccount()
         {
             _usrAccStructBytes = new byte[341];
-            flags = 1;
+            flags = 1; //Set everyone to havign "MASTER" key
+            ansifl = (char)0x1; //Set everyone to ANSI enabled
             sex = 'M';  //Set everyone to male for now
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }

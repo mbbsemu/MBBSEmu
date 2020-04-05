@@ -42,6 +42,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
         private const ushort NUMBER_OF_CHANNELS = 0x4;
 
+        private readonly Stopwatch _highResolutionTimer = new Stopwatch();
+
         /// <summary>
         ///     Segment Identifier for Relocation
         /// </summary>
@@ -57,7 +59,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _inputCurrentPosition = 0;
             _previousMcvFile = new Stack<IntPtr16>(10);
             _previousBtrieveFile = new Stack<IntPtr16>(10);
-            
+            _highResolutionTimer.Start();
+
 
             //Setup Memory for Variables
             Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
@@ -822,6 +825,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 134:
                     cofdate();
+                    break;
+                case 862:
+                    htrval();
+                    break;
+                case 409:
+                    memcpy();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -5030,6 +5039,54 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var specifiedDate = new DateTime(year, month, day);
 
             Registers.AX = (ushort) (specifiedDate - originDate).TotalDays;
+        }
+
+        /// <summary>
+        ///     Read the free-running 65khz timer (not a typo)
+        ///
+        ///     Signature: unsigned long tix64k=hrtval()
+        /// </summary>
+        private void htrval()
+        {
+
+            var outputSeconds = (ushort)(_highResolutionTimer.Elapsed.TotalSeconds % ushort.MaxValue);
+            var outputMicroseconds = (ushort) _highResolutionTimer.Elapsed.Milliseconds;
+
+            Registers.DX = outputSeconds;
+            Registers.AX = outputMicroseconds;
+        }
+
+        /// <summary>
+        ///    Copies the values of num bytes from the location pointed to by source directly to the memory block pointed to by destination.
+        ///
+        ///     Signature: void* memcpy (void* destination, const void* source,size_t num );
+        ///
+        ///     More Info: http://www.cplusplus.com/reference/cstring/memcpy/
+        /// </summary>
+        private void memcpy()
+        {
+            var sourcePointer = GetParameterPointer(0);
+            var destinationPointer = GetParameterPointer(2);
+            var bytesToMove = GetParameter(4);
+
+            //Verify the Destination will not overlap with the Source
+            if (sourcePointer.Segment == destinationPointer.Segment)
+            {
+                if (destinationPointer.Offset < sourcePointer.Offset &&
+                    destinationPointer.Offset + bytesToMove >= sourcePointer.Offset)
+                {
+                    throw new Exception($"Destination {destinationPointer} would overlap with source {sourcePointer} ({bytesToMove} bytes)");
+                }
+            }
+
+            //Cast to array as the write can overlap and overwrite, mucking up the span read
+            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
+
+            Module.Memory.SetArray(destinationPointer, sourceData);
+
+#if DEBUG
+            _logger.Info($"Copied {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
+#endif
         }
     }
 }
