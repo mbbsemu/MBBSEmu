@@ -925,11 +925,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
 
             var inputBuffer = Module.Memory.GetString(sourcePointer);
-            Module.Memory.SetArray(destinationPointer, inputBuffer);
+
+            if (inputBuffer[0] != 0x0)
+            {
+                Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
-            _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+                _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
+            }
+            else
+            {
+#if DEBUG
+                _logger.Warn($"Ignoring, source ({sourcePointer}) is NULL");
+#endif
+            }
 
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
@@ -1284,6 +1294,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
             var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
             var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+
             //Set stack back to entry state, minus parameters
             Registers.SP += 14;
             Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
