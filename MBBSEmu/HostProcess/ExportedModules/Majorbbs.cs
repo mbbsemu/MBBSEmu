@@ -397,6 +397,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 174: //DSAIRP
                 case 189: //ENAIRP
                 case 512: //RSTRXF
+                case 114: //CLSXRF
                     break;
                 case 442:
                     nxtcmd();

@@ -410,13 +410,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             using var newOutputBuffer = new MemoryStream(outputBuffer.Length * 2);
             for (var i = 0; i < outputBuffer.Length; i++)
             {
+                //Look for initial signature byte -- faster
                 if (outputBuffer[i] != 0x1)
                 {
                     newOutputBuffer.WriteByte(outputBuffer[i]);
                     continue;
                 }
 
-                //Increment 3 Bytes
+                //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
+                if (i + 3 >= outputBuffer.Length)
+                    break;
+
+                //Look for full signature of 0x1,0x4E,0x26
+                if (outputBuffer[i + 1] != 0x4E && outputBuffer[i + 2] != 0x26)
+                    continue;
+
+                    //Increment 3 Bytes
                 i += 3;
 
                 using var variableName = new MemoryStream();
