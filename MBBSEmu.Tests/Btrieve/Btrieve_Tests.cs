@@ -52,7 +52,7 @@ namespace MBBSEmu.Tests.Btrieve
         public void GetRecord_ByKey(string path, string fileName, byte[] key)
         {
             var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
-            var result = btrieveFile.HasKey(0, key);
+            var result = btrieveFile.SeekByKey(0, key);
 
             Assert.Equal(1, result);
             Assert.Equal((uint)2054, btrieveFile.AbsolutePosition);

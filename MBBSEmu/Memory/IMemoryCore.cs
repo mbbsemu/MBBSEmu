@@ -30,6 +30,8 @@ namespace MBBSEmu.Memory
         byte GetByte(ushort segment, ushort offset);
         ushort GetWord(IntPtr16 pointer);
         ushort GetWord(ushort segment, ushort offset);
+        IntPtr16 GetPointer(IntPtr16 pointer);
+        IntPtr16 GetPointer(ushort segment, ushort offset);
         ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count);
         ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count);
         ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false);
@@ -42,6 +44,7 @@ namespace MBBSEmu.Memory
         void SetWord(ushort segment, ushort offset, ushort value);
         void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array);
         void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array);
+        void SetPointer(IntPtr16 pointer, IntPtr16 value);
 
         //Nuke the world
         void Clear();

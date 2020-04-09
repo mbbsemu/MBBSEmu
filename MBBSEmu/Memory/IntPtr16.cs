@@ -86,5 +86,7 @@ namespace MBBSEmu.Memory
         }
 
         public static IntPtr16 Empty => new IntPtr16(0, 0);
+
+        public const ushort Size = 4;
     }
 }

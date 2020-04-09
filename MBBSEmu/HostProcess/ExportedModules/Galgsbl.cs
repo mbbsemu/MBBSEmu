@@ -169,6 +169,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 40:
                     btupmt();
                     break;
+                case 9:
+                    btucmd();
+                    break;
+                case 56:
+                    btuxct();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -521,13 +527,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 0;
         }
 
+        /// <summary>
+        ///     Enable/Disable Output-Empty status codes
+        ///
+        ///     Signature: int btuoes(int chan,int onoff);
+        /// </summary>
         private void btuoes()
         {
             var channel = GetParameter(0);
             var onoff = GetParameter(1);
 
-            if(onoff == 1)
-                throw new Exception("MBBSEmu doesn't support generating Status 5s when the output buffer is empty");
+            _logger.Info(onoff == 1
+                ? $"Enable Output-Empty Status Codes: On (Ignored)"
+                : $"Enable Output-Empty Status Codes: Off (Ignored)");
 
             Registers.AX = 0;
         }
@@ -694,6 +706,58 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ChannelDictionary[channel].PromptCharacter = (byte) character;
             Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     This routine controls functions of the UART and (if used) the modem on a channel
+        /// 
+        ///     Signature: int btucmd(int chan,char *cmdstg);
+        /// </summary>
+        private void btucmd()
+        {
+            var channel = GetParameter(0);
+            var command = GetParameterPointer(1);
+
+            var commandString = Encoding.ASCII.GetString(Module.Memory.GetString(command, true));
+
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            switch (commandString)
+            {
+                case "[":
+                    _logger.Info($"Enable ANSI on channel {channel} (Ignored)");
+                    return;
+                case "]":
+                    _logger.Info($"Disable ANSI on channel {channel} (Ignored)");
+                    return;
+            }
+        }
+
+        /// <summary>
+        ///
+        ///
+        ///     Signature: int btuxct(int chan,int nbyt,char *datstg)
+        /// </summary>
+        private void btuxct()
+        {
+            var channel = GetParameter(0);
+            var bytesToSend = GetParameter(1);
+            var bytesPointer = GetParameterPointer(2);
+
+            if (!ChannelDictionary.ContainsKey(channel))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var dataToSend = Module.Memory.GetArray(bytesPointer, bytesToSend).ToArray();
+
+            ChannelDictionary[channel].SendToClient(dataToSend);
         }
     }
 }

@@ -1,21 +1,22 @@
 ﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
 By: Eric Nusbaum @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
-Private Alpha 8 (03/30/2020) - Patreon Exclusive
+Private Alpha 10 (04/xx/2020) - Patreon Exclusive
 -----------------------------------------------------------
 Command Line Options:
--?                This Help Screen
+-?                  This Help Screen
 -C <moduleConfig>   A Module Configuration File which allows for multiple modules to be
-                  loaded and executed
--M <identifier>   Module Identifier (Overrides -C)
--P <path>         Path To Module (Overrides -C)
--APIREPORT        Generate API Report
-                  This generates a JSON file which details the imported APIs used by the
-                  module, assisting in development of MBBSEmu
--DBRESET          Reset the SQLite DB back to default (deletes everything)
+                    loaded and executed
+-M <identifier>     Module Identifier (Overrides -C)
+-P <path>           Path To Module (Overrides -C)
+-APIREPORT          Generate API Report
+                    This generates a JSON file which details the imported APIs used by the
+                    module, assisting in development of MBBSEmu
+-DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
+                    is specified, you will be prompted to enter one
 
 Examples: 
-./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset
+./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset sysop
 ./MBBSEmu -C moduleConfig.json
 
 -----------------------------------------------------------

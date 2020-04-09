@@ -110,12 +110,29 @@ namespace MBBSEmu.Module
             Memory = new MemoryCore();
 
             //Setup _INIT_ Entrypoint
-            var initResidentName = File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT_"));
+            IntPtr16 initEntryPointPointer;
+            var initResidentName = File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
             if (initResidentName == null)
-                throw new Exception("Unable to locate _INIT_ entry in Resident Name Table");
+            {
+                _logger.Warn("Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
 
-            var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-            EntryPoints["_INIT_"] = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+                var initNonResidentName = File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
+
+                if(initNonResidentName == null)
+                    throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
+
+                var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
+                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+            }
+            else
+            {
+                var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+            }
+
+            
+            _logger.Info($"Located _INIT__: {initEntryPointPointer}");
+            EntryPoints["_INIT_"] = initEntryPointPointer;
         }
 
         public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,

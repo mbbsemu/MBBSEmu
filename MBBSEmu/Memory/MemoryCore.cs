@@ -45,6 +45,7 @@ namespace MBBSEmu.Memory
         }
 
 
+
         /// <summary>
         ///     Clears out the Memory Core and sets all values back to initial state
         /// </summary>
@@ -236,6 +237,11 @@ namespace MBBSEmu.Memory
             return BitConverter.ToUInt16(selectedSegment, offset);
         }
 
+        public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
+        
+
+        public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
+
         public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
             GetArray(pointer.Segment, pointer.Offset, count);
 
@@ -304,6 +310,9 @@ namespace MBBSEmu.Memory
             Array.Copy(array.ToArray(), 0, _memorySegments[segment], offset, array.Length);
 #endif
         }
+
+
+        public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.ToSpan());
 
         public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
         {

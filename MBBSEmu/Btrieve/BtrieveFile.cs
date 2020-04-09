@@ -51,6 +51,13 @@ namespace MBBSEmu.Btrieve
                 FileName = FileName.Substring(relativePathStart + 1);
             }
 
+            var virginFileName = FileName.Replace(".DAT", ".VIR");
+            if (!File.Exists($"{path}{FileName}") && File.Exists($"{path}{virginFileName}"))
+            {
+                File.Copy($"{path}{virginFileName}", $"{path}{FileName}");
+                _logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
+            }
+
             //MajorBBS/WG will create a blank btrieve file if attempting to open one that doesn't exist
             if (!File.Exists($"{path}{FileName}"))
             {
@@ -212,6 +219,14 @@ namespace MBBSEmu.Btrieve
             return 1;
         }
 
+        public ushort StepPrevious()
+        {
+            if (CurrentRecordNumber == 0) return 0;
+
+            CurrentRecordNumber--;
+            return 1;
+        }
+
         public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
 
         public byte[] GetRecord(ushort recordNumber) => Records[recordNumber].Data;
@@ -240,21 +255,43 @@ namespace MBBSEmu.Btrieve
             Records.Insert(recordNumber, new BtrieveRecord(0, recordData));
         }
 
+        public ushort Seek(EnumBtrieveOperationCodes operationCode)
+        { 
+            switch (operationCode)
+            {
+                case EnumBtrieveOperationCodes.GetFirst:
+                    return StepFirst();
+                case EnumBtrieveOperationCodes.GetNext:
+                    return StepNext();
+                case EnumBtrieveOperationCodes.GetPrevious:
+                    return StepPrevious();
+                default:
+                    throw new Exception($"Unsupported Btrieve Operation: {operationCode}");
+                    
+            }
+        }
+
         /// <summary>
         ///     Determines if the given key is present in the key collection
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public ushort HasKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes operationCode = EnumBtrieveOperationCodes.None, bool newQuery = true)
+        public ushort SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes operationCode = EnumBtrieveOperationCodes.None, bool newQuery = true)
         {
             if (newQuery)
             {
                 _queryKeyOffset = Keys[keyNumber].Segments[0].Offset;
-                _queryKeyLength = Keys[keyNumber].Segments.Sum(x => x.Length);
+                //_queryKeyLength = Keys[keyNumber].Segments.Sum(x => x.Length);
                 _queryKeyType = Keys[keyNumber].Segments[0].DataType;
 
                 //Get Key Information By Number
-                _queryKey = new byte[_queryKeyLength];
+
+                /*
+                 * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
+                 * There are modules that define in their btrieve file a STRING key of length 1, but pass in a char*
+                 * So for the time being, we just make the key length we're looking for whatever was passed in.
+                 */
+                _queryKey = new byte[key.Length];
                 Array.Copy(key.ToArray(), 0, _queryKey, 0, key.Length);
 
                 AbsolutePosition = 0;
@@ -262,7 +299,7 @@ namespace MBBSEmu.Btrieve
 
             foreach (var r in Records.Where(x=> x.Offset > AbsolutePosition))
             {
-                var recordKey = r.ToSpan().Slice(_queryKeyOffset, _queryKeyLength);
+                var recordKey = r.ToSpan().Slice(_queryKeyOffset, key.Length);
 
                 switch (operationCode)
                 {
@@ -317,5 +354,7 @@ namespace MBBSEmu.Btrieve
                 CurrentRecordNumber++;
             }
         }
+
+        public ushort GetKeyLength(ushort keyNumber) => (ushort) Keys[keyNumber].Segments.Sum(x => x.Length);
     }
 }

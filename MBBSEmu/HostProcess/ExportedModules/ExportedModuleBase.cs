@@ -9,7 +9,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -103,7 +102,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
         private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
-        private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+        private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*'};
         private static readonly char[] PrintfPrecision = {'.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private static readonly char[] PrintfLength = {'h', 'l', 'j', 'z', 't', 'L'};
 
@@ -192,6 +191,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (!string.IsNullOrEmpty(stringWidthValue))
                         stringWidth = int.Parse(stringWidthValue);
 
+                    if (stringWidth == -1)
+                    {
+                        
+                        if (!isVsPrintf)
+                        {
+                            //printf
+                            stringWidth = GetParameter(currentParameter++);
+                        }
+                        else
+                        {
+                            //vsprintf
+                            stringWidth = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset);
+                            vsPrintfBase.Offset += 2;
+                        }
+                    }
+
                     //Process Precision
                     var stringPrecision = 0;
                     var stringPrecisionValue = string.Empty;
@@ -233,9 +248,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         //Character
                         case 'c':
                         {
-                            var charParameter = GetParameter(currentParameter++);
-                            msFormattedValue.WriteByte((byte) charParameter);
+                            byte charParameter;
+                            if (!isVsPrintf)
+                            {
+                                charParameter = (byte)GetParameter(currentParameter++);
+                                
+                            }
+                            else
+                            {
+                                charParameter = Module.Memory.GetByte(vsPrintfBase.Segment, vsPrintfBase.Offset);
+                                vsPrintfBase.Offset += 2;
+                            }
+                            msFormattedValue.WriteByte(charParameter);
                             break;
+
                         }
                         //String of characters
                         case 's':
@@ -302,6 +328,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
                                 vsPrintfBase.Offset += 2;
                             }
+
+                            break;
+                        }
+                        case 'f':
+                        {
+                            var floatValue = new byte[8];
+                            if (!isVsPrintf)
+                            {
+                                var parameterHigh = GetParameterULong(currentParameter++);
+                                var parameterLow = GetParameterULong(currentParameter++);
+
+
+                                Array.Copy(BitConverter.GetBytes(parameterHigh), 0, floatValue, 0, 4);
+                                Array.Copy(BitConverter.GetBytes(parameterLow), 0, floatValue, 4, 4);
+
+
+                            }
+                            else
+                            {
+                                floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8).ToArray();
+                                vsPrintfBase.Offset += 8;
+                            }
+
+                            msFormattedValue.Write(
+                                Encoding.ASCII.GetBytes(BitConverter.ToSingle(floatValue).ToString()));
 
                             break;
                         }

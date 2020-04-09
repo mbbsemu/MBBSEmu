@@ -163,9 +163,11 @@ namespace MBBSEmu
 
             //Setup and Run Host
             var host = ServiceResolver.GetService<IMbbsHost>();
-            host.Start();
+            
             foreach(var m in modules)
                 host.AddModule(m);
+
+            host.Start();
 
             //Setup and Run Telnet Server
             ServiceResolver.GetService<ITelnetServer>().Start();
