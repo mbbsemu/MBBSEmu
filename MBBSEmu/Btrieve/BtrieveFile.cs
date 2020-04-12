@@ -51,6 +51,10 @@ namespace MBBSEmu.Btrieve
                 FileName = FileName.Substring(relativePathStart + 1);
             }
 
+            //Strip Relative Pathing, it'll always be relative to the module location
+            if (FileName.StartsWith(@".\"))
+                FileName = FileName.Replace(@".\", string.Empty);
+
             var virginFileName = FileName.Replace(".DAT", ".VIR");
             if (!File.Exists($"{path}{FileName}") && File.Exists($"{path}{virginFileName}"))
             {
@@ -102,9 +106,6 @@ namespace MBBSEmu.Btrieve
             PageCount = (ushort)((_btrieveFileContent.Length / PageLength) - 1); //-1 to not count the header
             KeyCount = BitConverter.ToUInt16(_btrieveFileContent, 0x14);
 
-            //TODO: Support this eventually
-            if (KeyCount > 1)
-                _logger.Warn("MBBSEmu currently only supports 1 Btrieve Key (Key 0) -- all other keys will be ignored");
 #if DEBUG
             _logger.Info($"Max Record Length: {MaxRecordLength}");
             _logger.Info($"Page Size: {PageLength}");
@@ -175,7 +176,12 @@ namespace MBBSEmu.Btrieve
                 var pageOffset = (PageLength * i);
                 var recordsInPage = (PageLength / RecordLength);
 
+                //Key Page
                 if (BitConverter.ToUInt32(_btrieveFileContent, pageOffset + 0x8) == uint.MaxValue)
+                    continue;
+
+                //Key Constraint Page
+                if (_btrieveFileContent[pageOffset + 0x6] == 0xAC)
                     continue;
 
 
@@ -252,7 +258,14 @@ namespace MBBSEmu.Btrieve
             if (!isVariableLength && recordData.Length != RecordLength)
                 throw new Exception($"Invalid Btrieve Record. Expected Length {RecordLength}, Actual Length {recordData.Length}");
 
-            Records.Insert(recordNumber, new BtrieveRecord(0, recordData));
+            //Make it +1 of the last record loaded, or make it 1 if it's the first
+            var newRecordOffset = Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
+
+            Records.Insert(recordNumber, new BtrieveRecord(newRecordOffset, recordData));
+
+#if DEBUG
+            _logger.Info($"Inserted Record into {FileName} (Offset: {newRecordOffset})");
+#endif
         }
 
         public ushort Seek(EnumBtrieveOperationCodes operationCode)
@@ -299,7 +312,15 @@ namespace MBBSEmu.Btrieve
 
             foreach (var r in Records.Where(x=> x.Offset > AbsolutePosition))
             {
-                var recordKey = r.ToSpan().Slice(_queryKeyOffset, key.Length);
+                ReadOnlySpan<byte> recordKey;
+                if (_queryKeyType == EnumKeyDataType.Integer)
+                {
+                    recordKey = r.ToSpan().Slice(_queryKeyOffset, key.Length);
+                }
+                else
+                {
+                    recordKey = r.ToSpan().Slice(_queryKeyOffset, key.Length);
+                }
 
                 switch (operationCode)
                 {
@@ -311,6 +332,13 @@ namespace MBBSEmu.Btrieve
                                 UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
                                 return 1;
                             }
+#if DEBUG
+                            else
+                            {
+                                if(_queryKeyType == EnumKeyDataType.Integer)
+                                    _logger.Info($"{BitConverter.ToString(recordKey.ToArray())} != {BitConverter.ToString(_queryKey)} (Record: {r.Offset:X4}, Key: {r.Offset + _queryKeyOffset:X4})");
+                            }
+#endif
 
                             break;
                         }

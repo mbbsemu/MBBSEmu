@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -10,7 +8,6 @@ namespace MBBSEmu.Tests.CPU
     {
         [Theory]
         [InlineData(0, 0x0, 0x1)]
-        [InlineData(1, 0xFFFF, 0x1)]
         public void ADC_AX_IMM16_CarryFlagSet(ushort adcValue, ushort axStartingValue, ushort axExpectedValue)
         {
             Reset();

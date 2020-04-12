@@ -1,8 +1,5 @@
 ﻿using MBBSEmu.Extensions;
 using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using Microsoft.VisualBasic.CompilerServices;
 
 namespace MBBSEmu.CPU
 {
@@ -13,45 +10,24 @@ namespace MBBSEmu.CPU
     {
         public ushort Flags;
 
-        /// <summary>
-        ///     Carry Flag is Evaluated Differently depending on the operation type
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="arithmeticOperation"></param>
-        /// <param name="result"></param>
-        /// <param name="destination"></param>
-        /// <param name="source"></param>
-        public void EvaluateCarry<T>(EnumArithmeticOperation arithmeticOperation, ushort result = 0, ushort destination = 0, ushort source = 0)
+        public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, byte result = 0,
+            byte destination = 0, byte source = 0)
         {
             bool setFlag;
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                    {
-                        if (typeof(T) == typeof(byte))
-                            setFlag = (source + destination) > byte.MaxValue;
-                        else
-                            setFlag = (source + destination) > ushort.MaxValue;
-                        break;
-                    }
+                    setFlag = (source + destination) > byte.MaxValue;
+                    break;
                 case EnumArithmeticOperation.Subtraction:
-                    {
-                        if (typeof(T) == typeof(byte))
-                            setFlag = ((byte)result) > ((byte)destination);
-                        else
-                            setFlag = result > destination;
-                        break;
-                    }
+                    setFlag = result > destination;
+                    break;
                 case EnumArithmeticOperation.ShiftLeft:
-                    {
-                        if (typeof(T) == typeof(byte))
-                            setFlag = !((byte)result).IsNegative() && ((byte)destination).IsNegative();
-                        else
-                            setFlag = !result.IsNegative() && destination.IsNegative();
-                        break;
-                    }
+                    setFlag = !result.IsNegative() && destination.IsNegative();
+                    break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation, "Unsupported Carry Flag Operation for Evaluation");
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
             }
 
             if (setFlag)
@@ -64,92 +40,109 @@ namespace MBBSEmu.CPU
             }
         }
 
-        /// <summary>
-        ///     Evaluates the Overflow Flag
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="arithmeticOperation"></param>
-        /// <param name="result"></param>
-        /// <param name="destination"></param>
-        /// <param name="source"></param>
-        public void EvaluateOverflow<T>(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
+        public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
             ushort destination = 0, ushort source = 0)
+        {
+            bool setFlag;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                    setFlag = (source + destination) > ushort.MaxValue;
+                    break;
+                case EnumArithmeticOperation.Subtraction:
+                    setFlag = result > destination;
+                    break;
+                case EnumArithmeticOperation.ShiftLeft:
+                    setFlag = !result.IsNegative() && destination.IsNegative();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                SetFlag(EnumFlags.CF);
+            }
+            else
+            {
+                ClearFlag(EnumFlags.CF);
+            }
+        }
+
+        public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, uint result = 0,
+            uint destination = 0, uint source = 0)
+        {
+            bool setFlag;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                    setFlag = ((ulong)source + destination) > uint.MaxValue;
+                    break;
+                case EnumArithmeticOperation.Subtraction:
+                    setFlag = result > destination;
+                    break;
+                case EnumArithmeticOperation.ShiftLeft:
+                    setFlag = !result.IsNegative() && destination.IsNegative();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                SetFlag(EnumFlags.CF);
+            }
+            else
+            {
+                ClearFlag(EnumFlags.CF);
+            }
+        }
+
+        public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, byte result = 0,
+            byte destination = 0, byte source = 0)
         {
             var setFlag = false;
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
+                {
+                    //positive+positive==negative
+                    if (!destination.IsNegative() && !source.IsNegative() &&
+                        result.IsNegative())
                     {
-                        //destination+source=result
-                        if (typeof(T) == typeof(byte))
-                        {
-                            //positive+positive==negative
-                            if (!((byte)destination).IsNegative() && !((byte)source).IsNegative() &&
-                                ((byte)result).IsNegative())
-                            {
-                                setFlag = true;
-                            }
-
-                            //negative+negative==positive
-                            if (((byte)destination).IsNegative() && ((byte)source).IsNegative() &&
-                                !((byte)result).IsNegative())
-                            {
-                                setFlag = true;
-                            }
-                        }
-                        else
-                        {
-                            //positive+positive==negative
-                            if (!destination.IsNegative() && !source.IsNegative() && result.IsNegative())
-                            {
-                                setFlag = true;
-                            }
-
-                            //negative+negative==positive
-                            if (destination.IsNegative() && source.IsNegative() && !result.IsNegative())
-                            {
-                                setFlag = true;
-                            }
-                        }
-
-                        break;
+                        setFlag = true;
                     }
+
+                    //negative+negative==positive
+                    if (destination.IsNegative() && source.IsNegative() &&
+                        !result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
                 case EnumArithmeticOperation.Subtraction:
+                {
+
+                    // negative-positive==positive
+                    if (destination.IsNegative() && !source.IsNegative() &&
+                        !result.IsNegative())
                     {
-                        //destination-source=result
-                        if (typeof(T) == typeof(byte))
-                        {
-                            // negative-positive==positive
-                            if (((byte)destination).IsNegative() && !((byte)source).IsNegative() &&
-                                !((byte)result).IsNegative())
-                            {
-                                setFlag = true;
-                            }
-
-                            // positive-negative==negative
-                            if (!((byte)destination).IsNegative() && ((byte)source).IsNegative() &&
-                                ((byte)result).IsNegative())
-                            {
-                                setFlag = true;
-                            }
-                        }
-                        else
-                        {
-                            // negative-positive==positive
-                            if (destination.IsNegative() && !source.IsNegative() && !result.IsNegative())
-                            {
-                                setFlag = true;
-                            }
-
-                            // positive-negative==negative
-                            if (!destination.IsNegative() && source.IsNegative() && result.IsNegative())
-                            {
-                                setFlag = true;
-                            }
-                        }
-
-                        break;
+                        setFlag = true;
                     }
+
+                    // positive-negative==negative
+                    if (!destination.IsNegative() && source.IsNegative() &&
+                        result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -165,32 +158,226 @@ namespace MBBSEmu.CPU
             }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="flag"></param>
-        /// <param name="result"></param>
-        public void Evaluate<T>(EnumFlags flag, ushort result = 0)
+        public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
+            ushort destination = 0, ushort source = 0)
+        {
+            var setFlag = false;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                {
+                    //positive+positive==negative
+                    if (!destination.IsNegative() && !source.IsNegative() &&
+                        result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    //negative+negative==positive
+                    if (destination.IsNegative() && source.IsNegative() &&
+                        !result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
+                case EnumArithmeticOperation.Subtraction:
+                {
+
+                    // negative-positive==positive
+                    if (destination.IsNegative() && !source.IsNegative() &&
+                        !result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    // positive-negative==negative
+                    if (!destination.IsNegative() && source.IsNegative() &&
+                        result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                SetFlag(EnumFlags.OF);
+            }
+            else
+            {
+                ClearFlag(EnumFlags.OF);
+            }
+        }
+
+        public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, uint result = 0,
+            uint destination = 0, uint source = 0)
+        {
+            var setFlag = false;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                {
+                    //positive+positive==negative
+                    if (!destination.IsNegative() && !source.IsNegative() &&
+                        result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    //negative+negative==positive
+                    if (destination.IsNegative() && source.IsNegative() &&
+                        !result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
+                case EnumArithmeticOperation.Subtraction:
+                {
+
+                    // negative-positive==positive
+                    if (destination.IsNegative() && !source.IsNegative() &&
+                        !result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    // positive-negative==negative
+                    if (!destination.IsNegative() && source.IsNegative() &&
+                        result.IsNegative())
+                    {
+                        setFlag = true;
+                    }
+
+                    break;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                SetFlag(EnumFlags.OF);
+            }
+            else
+            {
+                ClearFlag(EnumFlags.OF);
+            }
+        }
+
+        public void Evaluate(EnumFlags flag, byte result = 0)
+        {
+            bool setFlag;
+            switch (flag)
+            {
+                case EnumFlags.ZF:
+                {
+                    setFlag = result == 0;
+                    break;
+                }
+                case EnumFlags.SF:
+                {
+                    setFlag =  result.IsNegative();
+                    break;
+                }
+                case EnumFlags.PF:
+                {
+                    setFlag = result.Parity();
+                    break;
+                }
+
+                //Unsupported Flags/Special Flags
+                case EnumFlags.CF:
+                    throw new Exception("Carry Flag must be evaluated with EvaluateCarry()");
+
+                case EnumFlags.OF:
+                    throw new Exception("Overflow must be evaluated with EvaluateOverflow()");
+
+                //Everything Else
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(flag), flag, null);
+            }
+
+            if (setFlag)
+            {
+                SetFlag(flag);
+            }
+            else
+            {
+                ClearFlag(flag);
+            }
+        }
+
+        public void Evaluate(EnumFlags flag, ushort result = 0)
+        {
+            bool setFlag;
+            switch (flag)
+            {
+                case EnumFlags.ZF:
+                {
+                    setFlag = result == 0;
+                    break;
+                }
+                case EnumFlags.SF:
+                {
+                    setFlag = result.IsNegative();
+                    break;
+                }
+                case EnumFlags.PF:
+                {
+                    setFlag = result.Parity();
+                    break;
+                }
+
+                //Unsupported Flags/Special Flags
+                case EnumFlags.CF:
+                    throw new Exception("Carry Flag must be evaluated with EvaluateCarry()");
+
+                case EnumFlags.OF:
+                    throw new Exception("Overflow must be evaluated with EvaluateOverflow()");
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(flag), flag, null);
+            }
+
+            if (setFlag)
+            {
+                SetFlag(flag);
+            }
+            else
+            {
+                ClearFlag(flag);
+            }
+        }
+
+        public void Evaluate(EnumFlags flag, uint result = 0)
         {
             var setFlag = false;
             switch (flag)
             {
                 case EnumFlags.ZF:
-                    {
-                        setFlag = result == 0;
-                        break;
-                    }
+                {
+                    setFlag = result == 0;
+                    break;
+                }
                 case EnumFlags.SF:
-                    {
-                        setFlag = typeof(T) == typeof(byte) ? ((byte)result).IsNegative() : result.IsNegative();
-                        break;
-                    }
+                {
+                    setFlag = result.IsNegative();
+                    break;
+                }
                 case EnumFlags.PF:
-                    {
-                        setFlag = typeof(T) == typeof(byte) ? ((byte)result).Parity() : result.Parity();
-                        break;
-                    }
+                {
+                    setFlag = result.Parity();
+                    break;
+                }
 
                 //Unsupported Flags/Special Flags
                 case EnumFlags.CF:

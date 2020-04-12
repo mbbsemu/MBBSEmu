@@ -146,6 +146,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     using var msFormattedValue = new MemoryStream();
                     i++;
 
+                    //Found a Lone % as the last character in a string, consider it just outputting the string submitted
+                    if (stringToParse[i] == 0x0)
+                    {
+                        var parameterOffset = GetParameter(currentParameter++);
+                        var parameterSegment = GetParameter(currentParameter++);
+                        if (Module.Memory.HasSegment(parameterSegment))
+                        {
+                            msOutput.Write(Module.Memory.GetString(parameterSegment, parameterOffset));
+                        }
+                        else
+                        {
+                            msOutput.Write(Encoding.ASCII.GetBytes("Invalid Pointer"));
+                            _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                        }
+
+                        continue;
+                    }
+
                     //Process Flags
                     var stringFlags = EnumPrintfFlags.None;
                     while (InSpan(PrintfFlags, stringToParse.Slice(i, 1)))

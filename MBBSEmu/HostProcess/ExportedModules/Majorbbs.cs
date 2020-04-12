@@ -529,6 +529,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     updbtv();
                     break;
                 case 351:
+                case 170:
                     insbtv();
                     break;
                 case 488:
@@ -850,6 +851,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 850:
                     access();
+                    break;
+                case 447:
+                    omdbtv();
+                    break;
+                case 602:
+                    tokopt();
+                    break;
+                case 201:
+                    farcoreleft();
+                    break;
+                case 173:
+                    dostounix();
+                    break;
+                case 320:
+                    getdate();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2073,6 +2089,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Inserted Btrieve record at {currentBtrieveFile.CurrentRecordNumber} with {dataToWrite.Length} bytes");
 #endif
+            Registers.AX = 1;
         }
 
 
@@ -2429,15 +2446,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var keyPointer = GetParameterPointer(2);
             var keyNum = GetParameter(4);
             var obtopt = GetParameter(5);
-            var lockType = GetParameter(6);
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
             ushort result = 0;
-            switch (obtopt)
+
+#if DEBUG
+            _logger.Info($"Performing {(EnumBtrieveOperationCodes)obtopt} in {BtrievePointerDictionaryNew[_currentBtrieveFile].FileName} on key {keyNum} for: {Encoding.ASCII.GetString(Module.Memory.GetString(keyPointer, true))}");
+#endif
+
+            switch ((EnumBtrieveOperationCodes)obtopt)
             {
                 //GetEqual
-                case 5:
+                case EnumBtrieveOperationCodes.GetEqual:
                     {
                         result = currentBtrieveFile.SeekByKey(keyNum, Module.Memory.GetString(keyPointer));
                         break;
@@ -5217,6 +5238,124 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Registers.AX = result;
+        }
+
+        /// <summary>
+        ///     Set opnbtv() file-open mode
+        ///
+        ///     Signature: void omdbtv (int mode);
+        /// </summary>
+        private void omdbtv()
+        {
+            var mode = GetParameter(0);
+
+            switch (mode)
+            {
+                case 0:
+                    _logger.Info("Set opnbtv() mode to Normal");
+                    break;
+                case 0xFFFF:
+                    _logger.Info("Set opnbtv() mode to Accelerated");
+                    break;
+                case 0xFFFE:
+                    _logger.Info("Set opnbtv() mode to Read-Only");
+                    break;
+                case 0xFFFD:
+                    _logger.Info("Set opnbtv() mode to Verify (Read-After-Write)");
+                    break;
+                case 0xFFFC:
+                    _logger.Info("Set opnbtv() mode to Exclusive");
+                    break;
+                default:
+                    throw new Exception($"Unknown opnbtv() mode: {mode}");
+            }
+        }
+
+        /// <summary>
+        ///     Checks a type E CNF option for one of several possible values
+        /// 
+        ///     Signature: int index=tokopt(int msgnum, char *token1, chat *token2,....,NULL);
+        /// </summary>
+        private void tokopt()
+        {
+            var msgNum = GetParameter(0);
+
+            var tokenList = new List<byte[]>();
+
+            for (var i = 1; i < ushort.MaxValue; i += 2)
+            {
+                var messagePointer = GetParameterPointer(i);
+
+                //Break on NULL, as it's the last in the sequence
+                if (messagePointer.Equals(IntPtr16.Empty))
+                    break;
+
+                tokenList.Add(Module.Memory.GetString(messagePointer).ToArray());
+            }
+
+            var message = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgNum);
+
+            for (var i = 0; i < tokenList.Count; i++)
+            {
+                if(message.SequenceEqual(tokenList[i]))
+                {
+                    Registers.AX = (ushort) (i + 1);
+                    return;
+                }
+            }
+            Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     Returns the amount of memory left
+        ///     TODO: This returns MAX always -- should it not?
+        ///
+        ///     Signature: long farcoreleft(void);
+        /// </summary>
+        private void farcoreleft()
+        {
+            Registers.DX = (ushort) (uint.MaxValue >> 16);
+            Registers.AX = (ushort) (uint.MaxValue & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Converts date and time to UNIX time format
+        ///
+        ///     Signature: long dostounix(struct date *d, struct time *t);
+        /// </summary>
+        private void dostounix()
+        {
+            var datePointer = GetParameterPointer(0);
+            var timePointer = GetParameterPointer(2);
+
+            var dateStruct = new DateStruct(Module.Memory.GetArray(datePointer, DateStruct.Size));
+            var timeStruct = new TimeStruct(Module.Memory.GetArray(timePointer, TimeStruct.Size));
+
+            var specifiedDate = new DateTime(dateStruct.year, dateStruct.month, dateStruct.day, timeStruct.hours, timeStruct.minutes, timeStruct.seconds);
+
+            var epochTime = (uint)((DateTimeOffset) specifiedDate).ToUnixTimeSeconds();
+
+#if DEBUG
+            _logger.Info($"Returned DOSTOUNIX time: {epochTime}");
+#endif
+
+            Registers.DX = (ushort)(epochTime >> 16);
+            Registers.AX = (ushort)(epochTime & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Gets MS-DOS date
+        ///
+        ///     void getdate(struct date *dateblk);
+        /// </summary>
+        private void getdate()
+        {
+            var datePointer = GetParameterPointer(0);
+
+            var dateStruct = new DateStruct(DateTime.Now);
+
+            Module.Memory.SetArray(datePointer, dateStruct.ToSpan());
         }
     }
 }
