@@ -52,6 +52,9 @@ namespace MBBSEmu.CPU
 
         private int _currentOperationSize = 0;
 
+
+        public long InstructionCounter = 0;
+
         static CpuCore()
         {
             _logger = ServiceResolver.GetService<ILogger>();
@@ -114,6 +117,8 @@ namespace MBBSEmu.CPU
             //Seeing a ushort.max for CS and IP tells the routine it's now done
             Push(ushort.MaxValue);
             Push(ushort.MaxValue);
+
+            InstructionCounter = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -174,6 +179,8 @@ namespace MBBSEmu.CPU
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
 #endif
+            InstructionCounter++;
+
             //Jump Table
             switch (_currentInstruction.Mnemonic)
             {
@@ -778,7 +785,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -794,7 +800,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -827,7 +832,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -848,7 +852,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -880,7 +883,6 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
             return destination;
         }
@@ -892,7 +894,6 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
             return destination;
         }
@@ -1096,7 +1097,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1119,7 +1119,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1150,7 +1149,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1168,7 +1166,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1199,7 +1196,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1217,7 +1213,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1335,7 +1330,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1352,7 +1346,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1382,7 +1375,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1399,7 +1391,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1429,7 +1420,6 @@ namespace MBBSEmu.CPU
 
             destination &= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
             return destination;
         }
@@ -1442,7 +1432,6 @@ namespace MBBSEmu.CPU
 
             destination &= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
             return destination;
         }
@@ -1472,7 +1461,6 @@ namespace MBBSEmu.CPU
 
             var result = (byte)(destination ^ source);
             Registers.F.Evaluate(EnumFlags.ZF, result);
-            Registers.F.Evaluate(EnumFlags.PF, result);
             Registers.F.Evaluate(EnumFlags.SF, result);
             return result;
         }
@@ -1485,7 +1473,6 @@ namespace MBBSEmu.CPU
 
             var result = (ushort)(destination ^ source);
             Registers.F.Evaluate(EnumFlags.ZF, result);
-            Registers.F.Evaluate(EnumFlags.PF, result);
             Registers.F.Evaluate(EnumFlags.SF, result);
             return result;
         }
@@ -1698,7 +1685,6 @@ namespace MBBSEmu.CPU
             destination &= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1710,7 +1696,6 @@ namespace MBBSEmu.CPU
             destination &= source;
             Registers.F.Evaluate(EnumFlags.ZF, destination);
             Registers.F.Evaluate(EnumFlags.SF, destination);
-            Registers.F.Evaluate(EnumFlags.PF, destination);
         }
 
         /// <summary>
@@ -1761,7 +1746,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1779,7 +1763,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1798,7 +1781,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
                 Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1836,7 +1818,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }
@@ -1857,7 +1838,6 @@ namespace MBBSEmu.CPU
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.SF, result);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.PF, result);
                 return result;
             }
         }

@@ -1,8 +1,10 @@
 ﻿using MBBSEmu.Logging;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace MBBSEmu.Module
 {
@@ -21,8 +23,11 @@ namespace MBBSEmu.Module
         public readonly string FileName;
         public readonly string FileNameAtRuntime;
 
+        public readonly Dictionary<string, byte[]> MsgValues;
+
         public MsgFile(string modulePath, string msgName)
         {
+            MsgValues = new Dictionary<string, byte[]>();
             _modulePath = modulePath;
             _moduleName = msgName;
 
@@ -47,15 +52,16 @@ namespace MBBSEmu.Module
             var messageCount = 0;
 
             using var fileToRead = File.OpenRead($"{_modulePath}{_moduleName}.MSG");
-            var ringBuffer = new byte[1];
-
+            var ringBuffer = new byte[1]; 
+            Span<byte> buffer = ringBuffer;
+            var variableName = string.Empty;
             var bInVariable = false;
             var bIgnoreNext = false;
             var checkForLanguage = false;
+
             msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
             for (var i = 0; i < fileToRead.Length; i++)
             {
-                Span<byte> buffer = ringBuffer;
                 fileToRead.Read(buffer);
 
                 //','
@@ -68,10 +74,33 @@ namespace MBBSEmu.Module
                 //We're no longer looking for a comma after the previous value
                 checkForLanguage = false;
 
-                //{
-                if (buffer[0] == 0x7B && !bIgnoreNext)
+                //{ while in a variable, usually text areas
+                if (buffer[0] == 0x7B && bInVariable)
                 {
+                    bIgnoreNext = true;
+                    continue;
+                }
+
+                //{
+                if (buffer[0] == 0x7B && !bIgnoreNext && !bInVariable)
+                {   
                     bInVariable = true;
+
+                    var currentPosition = fileToRead.Position;
+                    fileToRead.Position--;
+                    //Work Backwards to get Variable Name
+                    while (buffer[0] >= 32 && fileToRead.Position > 0)
+                    {
+                        fileToRead.Read(buffer);
+                        fileToRead.Position -= 2;
+                    }
+
+                    var variableNameLength = (currentPosition -1) - fileToRead.Position;
+                    var variableNameBytes = new byte[variableNameLength];
+                    fileToRead.Read(variableNameBytes, 0, variableNameBytes.Length);
+                    fileToRead.Position = currentPosition;
+                    variableName = Encoding.ASCII.GetString(variableNameBytes).Trim();
+
                     continue;
                 }
 
@@ -112,6 +141,10 @@ namespace MBBSEmu.Module
                     msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                     msMessages.Write(msCurrentValue.ToArray());
                     msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
+
+                    //Write to Variable Dictionary
+                    MsgValues.Add(variableName, msCurrentValue.ToArray());
+
                     messageCount++;
                     msCurrentValue.SetLength(0);
                     continue;
@@ -137,7 +170,7 @@ namespace MBBSEmu.Module
             //Write it to the disk
             File.WriteAllBytes($"{_modulePath}{FileNameAtRuntime}", msOutput.ToArray());
 
-            _logger.Info($"Compiled {FileNameAtRuntime} ({msOutput.Length} bytes)");
+            _logger.Info($"Compiled {FileNameAtRuntime} ({MsgValues.Count} values, {msOutput.Length} bytes)");
         }
     }
 }

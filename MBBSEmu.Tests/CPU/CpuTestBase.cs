@@ -26,7 +26,9 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuMemoryCore.Clear();
             mbbsEmuCpuRegisters.CS = 1;
             mbbsEmuCpuRegisters.IP = 0;
+
         }
+
 
         protected void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
         {

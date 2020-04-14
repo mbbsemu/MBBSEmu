@@ -128,14 +128,10 @@ namespace MBBSEmu.Memory
         }
 
         public void SetVariable(string name, byte value) => SetByte(GetVariablePointer(name), value);
-
         public void SetVariable(string name, ushort value) => SetWord(GetVariablePointer(name), value);
-
+        public void SetVariable(string name, uint value) => SetArray(GetVariablePointer(name), BitConverter.GetBytes(value));
         public void SetVariable(string name, ReadOnlySpan<byte> value) => SetArray(GetVariablePointer(name), value);
-
         public void SetVariable(string name, IntPtr16 value) => SetArray(GetVariablePointer(name), value.ToSpan());
-
-
 
         /// <summary>
         ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number

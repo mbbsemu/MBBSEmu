@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using NLog.LayoutRenderers;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -44,6 +45,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private IntPtr16 _btrieveLastUsedRecordPointer;
         private IntPtr16 _btrieveLastUsedKeyRecord;
+
+        private AgentStruct _galacticommClientServerAgent;
 
         /// <summary>
         ///     Segment Identifier for Relocation
@@ -113,7 +116,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetVariable("PFNLVL", (ushort) 0);
             Module.Memory.AllocateVariable("VERSION", 5);
             Module.Memory.SetVariable("VERSION", Encoding.ASCII.GetBytes("2.00"));
-            
+            Module.Memory.AllocateVariable("SYSCYC", 0x4);
+
+            Module.Memory.AllocateVariable("NUMBYTS", 0x4);
+            Module.Memory.AllocateVariable("NUMFILS", 0x4);
+            Module.Memory.AllocateVariable("NUMBYTP", 0x4);
+            Module.Memory.AllocateVariable("NUMDIRS", 0x4);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -387,6 +395,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return nxtcmd;
                 case 909:
                     return version;
+                case 1048:
+                    return syscyc;
+                case 440:
+                    return numfils;
+                case 439:
+                    return numbyts;
+                case 901:
+                    return numbytp;
+                case 1072:
+                    return numdirs;
             }
 
             if (offsetsOnly)
@@ -407,6 +425,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 189: //ENAIRP
                 case 512: //RSTRXF
                 case 114: //CLSXRF
+                case 340: //HOWBUY -- emits how to buy credits, ignored for MBBSEmu
                     break;
                 case 599:
                     time();
@@ -793,9 +812,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     f_putc();
                     break;
                 case 879:
+                case 832:
                     alcblok();
                     break;
                 case 880:
+                case 833:
                     ptrblok();
                     break;
                 case 827:
@@ -866,6 +887,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 320:
                     getdate();
+                    break;
+                case 652:
+                    zonkhl();
+                    break;
+                case 315:
+                    genrnd();
+                    break;
+                case 501:
+                    rmvwht();
+                    break;
+                case 655:
+                    f_lmod();
+                    break;
+                case 930:
+                    register_agent();
+                    break;
+                case 421:
+                    msgscan();
+                    break;
+                case 321:
+                    getdtd();
+                    break;
+                case 132:
+                    cntdir();
+                    break;
+                case 117:
+                    clsbtv();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2329,8 +2377,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void f_lumod()
         {
-            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
-            var arg2 = (GetParameter(3) << 16) | GetParameter(2);
+            var arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
+            var arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
 
             var result = arg1 % arg2;
 
@@ -2737,6 +2785,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set Struct Values
             fileStruct.SetFlags(fileAccessMode);
             fileStruct.curp = new IntPtr16(ushort.MaxValue, (ushort)fileStreamPointer);
+            fileStruct.fd = (byte) fileStreamPointer;
             Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
 
             Registers.AX = fileStructPointer.Offset;
@@ -5227,13 +5276,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileNamePointer = GetParameterPointer(0);
             var mode = GetParameter(2);
 
-            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(fileNamePointer));
-            ushort result = 0;
+            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(fileNamePointer, true));
+
+            //Strip Relative Pathing, it'll always be relative to the module location
+            if (fileName.StartsWith(@".\"))
+                fileName = fileName.Replace(@".\", string.Empty);
+
+#if DEBUG
+            _logger.Info($"Checking access for: {fileName}");
+#endif
+
+            ushort result = 0xFFFF;
             switch (mode)
             {
                 case 0:
                     if (File.Exists($"{Module.ModulePath}{fileName}"))
-                        result = 1;
+                        result = 0;
                     break;
             }
 
@@ -5356,6 +5414,221 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dateStruct = new DateStruct(DateTime.Now);
 
             Module.Memory.SetArray(datePointer, dateStruct.ToSpan());
+        }
+
+        /// <summary>
+        ///     Capitalizes the first letter after each space in the specified string
+        ///
+        ///     Signature: void zonkhl(char *stg);
+        /// </summary>
+        private void zonkhl()
+        {
+            var stgPointer = GetParameterPointer(0);
+
+            var stgToParse = Module.Memory.GetString(stgPointer).ToArray();
+
+            var toUpper = true;
+            for (var i = 0; i < stgToParse.Length; i++)
+            {
+                if (toUpper)
+                {
+                    if(stgToParse[i] >= 'a' && stgToParse[i] <= 'z')
+                        stgToParse[i] -= 32;
+
+                    toUpper = false;
+                }
+                else if (stgToParse[i] == 32)
+                {
+                    toUpper = true;
+                }
+            }
+
+            Module.Memory.SetArray(stgPointer, stgToParse);
+        }
+
+        /// <summary>
+        ///     Generates a random number between min and max
+        ///
+        ///     Signature: int genrdn(int min,int max);
+        /// </summary>
+        private void genrnd()
+        {
+            var min = GetParameter(0);
+            var max = GetParameter(1);
+
+            var randomValue = (ushort)new Random(Guid.NewGuid().GetHashCode()).Next(min, max);
+
+#if DEBUG
+            _logger.Info($"Generated Random Number: {randomValue}");
+#endif
+
+            Registers.AX = randomValue;
+        }
+
+        /// <summary>
+        ///     Remove all whitespace characters
+        ///
+        ///     Signature: void rmvwht(char *string);
+        /// </summary>
+        private void rmvwht()
+        {
+            var stringPointer = GetParameterPointer(0);
+
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, true));
+
+            var parsedString = stringToParse.Trim() + '\0';
+
+            Module.Memory.SetArray(stringPointer, Encoding.ASCII.GetBytes(parsedString));
+        }
+
+        /// <summary>
+        ///     Signed Modulo, non-significant (Borland C++ Implicit Function)
+        ///
+        ///     Signature: DX:AX = arg1 % arg2
+        /// </summary>
+        /// <returns></returns>
+        private void f_lmod()
+        {
+            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            var arg2 =(GetParameter(3) << 16) | GetParameter(2);
+
+            var result = arg1 % arg2;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+
+            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            //Set stack back to entry state, minus parameters
+            Registers.SP += 14;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Registers.SP -= 2;
+            Registers.BP = Registers.SP;
+        }
+
+        /// <summary>
+        ///     Registers Module Agent information for Galacticomm Client/Server
+        ///
+        ///     While we set this -- we're going to ignore it
+        ///
+        ///     Signature: void register_agent(struct agent *agdptr);
+        /// </summary>
+        private void register_agent()
+        {
+            var agentPointer = GetParameterPointer(0);
+
+            _galacticommClientServerAgent = new AgentStruct(Module.Memory.GetArray(agentPointer, AgentStruct.Size));
+        }
+
+        private ReadOnlySpan<byte> syscyc => Module.Memory.GetVariablePointer("SYSCYC").ToSpan();
+
+        /// <summary>
+        ///     Read a CNF option from a .MSG file
+        ///
+        ///     Signature: char *msgscan(char *msgfile,char *vblname);
+        /// </summary>
+        private void msgscan()
+        {
+            var msgFilePointer = GetParameterPointer(0);
+            var variableNamePointer = GetParameterPointer(2);
+
+            var msgFileName = Encoding.ASCII.GetString(Module.Memory.GetString(msgFilePointer, true));
+            var variableName = Encoding.ASCII.GetString(Module.Memory.GetString(variableNamePointer, true));
+            var msgFile = Module.Msgs.First(x => x.FileName == msgFileName.ToUpper());
+
+            //Return Null Pointer if Value isn't found
+            if (!msgFile.MsgValues.TryGetValue(variableName, out var msgVariableValue))
+            {
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            if (!Module.Memory.TryGetVariablePointer("MSGSCAN", out var msgScanResultPointer))
+                msgScanResultPointer = Module.Memory.AllocateVariable("MSGSCAN", 0x1000);
+
+
+            Module.Memory.SetArray(msgScanResultPointer, new byte[0x1000]); //Zero it out
+            Module.Memory.SetArray(msgScanResultPointer, msgVariableValue); //Write
+
+            Registers.AX = msgScanResultPointer.Offset;
+            Registers.DX = msgScanResultPointer.Segment;
+
+        }
+
+        /// <summary>
+        ///     Returns a file date and time
+        ///
+        ///     Signature: long timendate=getdtd(int handle);
+        /// </summary>
+        private void getdtd()
+        {
+            var fileHandle = GetParameter(0);
+
+            var filePointer = FilePointerDictionary[fileHandle];
+
+            var fileTime = File.GetLastWriteTime(filePointer.Name);
+
+            var packedTime = (ushort) ((fileTime.Hour << 11) + (fileTime.Minute << 5) + (fileTime.Second >> 1));
+            var packedDate = (ushort) ((fileTime.Month << 5) + fileTime.Day + ((fileTime.Year - 1980) << 9));
+
+#if DEBUG
+            _logger.Info($"Returned Packed Date for {filePointer.Name} ({fileTime}) AX: {packedTime} DX: {packedDate}");
+#endif
+            Registers.AX = packedTime;
+            Registers.DX = packedDate;
+        }
+
+        /// <summary>
+        ///     Count the number of bytes and files in a directory
+        ///
+        ///     Signature: void cntdir(char *path)
+        /// </summary>
+        private void cntdir()
+        {
+            var pathPointer = GetParameterPointer(0);
+
+            var pathString = Encoding.ASCII.GetString(Module.Memory.GetString(pathPointer, true));
+
+
+            var files = Directory.GetFiles(Module.ModulePath, pathString);
+            uint totalBytes = 0;
+            foreach (var f in files)
+            {
+                totalBytes += (uint) new FileInfo(f).Length;
+            }
+
+            Module.Memory.SetVariable("NUMFILS", (uint) files.Length);
+            Module.Memory.SetVariable("NUMBYTS", totalBytes);
+
+        }
+
+        private ReadOnlySpan<byte> numfils => Module.Memory.GetVariablePointer("NUMFILS").ToSpan();
+        private ReadOnlySpan<byte> numbyts => Module.Memory.GetVariablePointer("NUMBYTS").ToSpan();
+        private ReadOnlySpan<byte> numbytp => Module.Memory.GetVariablePointer("NUMBYTP").ToSpan();
+        private ReadOnlySpan<byte> numdirs => Module.Memory.GetVariablePointer("NUMDIRS").ToSpan();
+
+        /// <summary>
+        ///     Closes the Specified Btrieve File
+        ///
+        ///     Signature: void clsbtv(struct btvblk *bbp)
+        /// </summary>
+        private void clsbtv()
+        {
+            var filePointer = GetParameterPointer(0);
+
+#if DEBUG
+            _logger.Info($"Closing BTV File: {filePointer}");
+#endif
+
+            BtrievePointerDictionaryNew.Remove(filePointer);
+            _currentMcvFile = null;
         }
     }
 }

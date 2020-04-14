@@ -41,40 +41,40 @@ namespace MBBSEmu.HostProcess.Structs
             FileIsATerminal = 1 << 9
         }
 
-        //fill/empty level of buffer
+        //fill/empty level of buffer [0-1]
         public ushort level
         {
             get => BitConverter.ToUInt16(_fileStruct, 0);
             set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 0, 2);
         }
 
-        //File status flags
+        //File status flags [2-3]
         public ushort flags
         {
             get => BitConverter.ToUInt16(_fileStruct, 2);
             set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 2, 2);
         }
 
-        //File descriptor
-        public char fd
+        //File descriptor [4]
+        public byte fd
         {
-            get => (char) _fileStruct[4];
-            set => _fileStruct[4] = (byte) value;
+            get => _fileStruct[4];
+            set => _fileStruct[4] = value;
         }
 
-        //Ungetc char if no buffer
+        //Ungetc char if no buffer [5]
         public byte hold {
             get => _fileStruct[5];
             set => _fileStruct[5] = value;
         }
 
-        //Buffer size
+        //Buffer size [6-7]
         public ushort bsize {
             get => BitConverter.ToUInt16(_fileStruct, 6);
             set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 6, 2);
         }
 
-        //Data transfer buffer
+        //Data transfer buffer [8-11]
         public IntPtr16 buffer
         {
             get
@@ -85,7 +85,7 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value.ToArray(), 0, _fileStruct, 8, 4);
         }
 
-        //Current active pointer
+        //Current active pointer [12-15]
         public IntPtr16 curp {
             get
             {
@@ -95,13 +95,13 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value.ToArray(), 0, _fileStruct, 12, 4);
         }
 
-        //Temporary file indicator
+        //Temporary file indicator [16]
         public byte istemp {
             get => _fileStruct[16];
             set => _fileStruct[16] = value;
         }
 
-        //Used for validity checking
+        //Used for validity checking [17-18]
         public short token
         {
             get => BitConverter.ToInt16(_fileStruct, 17);

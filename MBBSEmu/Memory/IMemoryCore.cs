@@ -11,6 +11,7 @@ namespace MBBSEmu.Memory
         bool TryGetVariablePointer(string name, out IntPtr16 pointer);
         void SetVariable(string name, byte value);
         void SetVariable(string name, ushort value);
+        void SetVariable(string name, uint value);
         void SetVariable(string name, ReadOnlySpan<byte> value);
         void SetVariable(string name, IntPtr16 value);
         IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false);
