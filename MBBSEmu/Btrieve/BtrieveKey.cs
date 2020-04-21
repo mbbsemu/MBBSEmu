@@ -13,8 +13,7 @@ namespace MBBSEmu.Btrieve
 
         public BtrieveKey(BtrieveKeyDefinition keyDefinition)
         {
-            Segments = new List<BtrieveKeyDefinition>();
-            Segments.Add(keyDefinition);
+            Segments = new List<BtrieveKeyDefinition> {keyDefinition};
         }
     }
 }

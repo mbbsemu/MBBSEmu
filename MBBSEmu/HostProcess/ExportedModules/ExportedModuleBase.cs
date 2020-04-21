@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.IO;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -33,11 +34,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
-        private protected readonly Dictionary<IntPtr16, BtrieveFile> BtrievePointerDictionaryNew;
+        private protected readonly Dictionary<IntPtr16, BtrieveFileProcessor> BtrievePointerDictionaryNew;
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
         private protected readonly IConfiguration _configuration;
+        private protected readonly IFileUtility _fileFinder;
 
         public CpuRegisters Registers;
         public MbbsModule Module;
@@ -48,13 +50,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _logger = ServiceResolver.GetService<ILogger>();
             _configuration = ServiceResolver.GetService<IConfiguration>();
+            _fileFinder = ServiceResolver.GetService<IFileUtility>();
 
             Module = module;
             ChannelDictionary = channelDictionary;
 
             FilePointerDictionary = new PointerDictionary<FileStream>();
             McvPointerDictionary = new PointerDictionary<McvFile>();
-            BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFile>();
+            BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFileProcessor>();
         }
 
         /// <summary>
@@ -65,7 +68,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected ushort GetParameter(int parameterOrdinal)
         {
-            var parameterOffset = (ushort) (Registers.BP + 7 + (2 * parameterOrdinal));
+            var parameterOffset = (ushort)(Registers.BP + 7 + (2 * parameterOrdinal));
             return Module.Memory.GetWord(Registers.SS, parameterOffset);
         }
 
@@ -97,14 +100,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected uint GetParameterULong(int parameterOrdinal)
         {
-            return (uint) (GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
+            return (uint)(GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
         }
 
-        private static readonly char[] PrintfSpecifiers = {'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%'};
-        private static readonly char[] PrintfFlags = {'-', '+', ' ', '#', '0'};
-        private static readonly char[] PrintfWidth = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*'};
-        private static readonly char[] PrintfPrecision = {'.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
-        private static readonly char[] PrintfLength = {'h', 'l', 'j', 'z', 't', 'L'};
+        private static readonly char[] PrintfSpecifiers = { 'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%' };
+        private static readonly char[] PrintfFlags = { '-', '+', ' ', '#', '0' };
+        private static readonly char[] PrintfWidth = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private static readonly char[] PrintfPrecision = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private static readonly char[] PrintfLength = { 'h', 'l', 'j', 'z', 't', 'L' };
 
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
@@ -168,7 +171,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var stringFlags = EnumPrintfFlags.None;
                     while (InSpan(PrintfFlags, stringToParse.Slice(i, 1)))
                     {
-                        switch ((char) stringToParse[i])
+                        switch ((char)stringToParse[i])
                         {
                             case '-':
                                 stringFlags |= EnumPrintfFlags.LeftJustify;
@@ -194,13 +197,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var stringWidthValue = string.Empty;
                     while (InSpan(PrintfWidth, stringToParse.Slice(i, 1)))
                     {
-                        switch ((char) stringToParse[i])
+                        switch ((char)stringToParse[i])
                         {
                             case '*':
                                 stringWidth = -1;
                                 break;
                             default:
-                                stringWidthValue += (char) stringToParse[i];
+                                stringWidthValue += (char)stringToParse[i];
                                 break;
 
                         }
@@ -211,7 +214,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     if (stringWidth == -1)
                     {
-                        
+
                         if (!isVsPrintf)
                         {
                             //printf
@@ -261,122 +264,122 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         continue;
                     }
 
-                    switch ((char) stringToParse[i])
+                    switch ((char)stringToParse[i])
                     {
                         //Character
                         case 'c':
-                        {
-                            byte charParameter;
-                            if (!isVsPrintf)
                             {
-                                charParameter = (byte)GetParameter(currentParameter++);
-                                
-                            }
-                            else
-                            {
-                                charParameter = Module.Memory.GetByte(vsPrintfBase.Segment, vsPrintfBase.Offset);
-                                vsPrintfBase.Offset += 2;
-                            }
-                            msFormattedValue.WriteByte(charParameter);
-                            break;
-
-                        }
-                        //String of characters
-                        case 's':
-                        {
-                            ReadOnlySpan<byte> parameter;
-                            if (!isVsPrintf)
-                            {
-                                var parameterOffset = GetParameter(currentParameter++);
-                                var parameterSegment = GetParameter(currentParameter++);
-                                if (Module.Memory.HasSegment(parameterSegment))
+                                byte charParameter;
+                                if (!isVsPrintf)
                                 {
-                                    parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                                    charParameter = (byte)GetParameter(currentParameter++);
+
                                 }
                                 else
                                 {
-                                    parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
-                                    _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                                    charParameter = Module.Memory.GetByte(vsPrintfBase.Segment, vsPrintfBase.Offset);
+                                    vsPrintfBase.Offset += 2;
                                 }
+                                msFormattedValue.WriteByte(charParameter);
+                                break;
+
                             }
-                            else
+                        //String of characters
+                        case 's':
                             {
+                                ReadOnlySpan<byte> parameter;
+                                if (!isVsPrintf)
+                                {
+                                    var parameterOffset = GetParameter(currentParameter++);
+                                    var parameterSegment = GetParameter(currentParameter++);
+                                    if (Module.Memory.HasSegment(parameterSegment))
+                                    {
+                                        parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
+                                    }
+                                    else
+                                    {
+                                        parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
+                                        _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                                    }
+                                }
+                                else
+                                {
 
-                                var address = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4);
-                                var stringPointer = new IntPtr16(address);
-                                parameter = Module.Memory.GetString(stringPointer.Segment, stringPointer.Offset);
-                                vsPrintfBase.Offset += 4;
+                                    var address = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4);
+                                    var stringPointer = new IntPtr16(address);
+                                    parameter = Module.Memory.GetString(stringPointer.Segment, stringPointer.Offset);
+                                    vsPrintfBase.Offset += 4;
+                                }
+
+                                if (parameter[^1] == 0x0)
+                                    parameter = parameter.Slice(0, parameter.Length - 1);
+
+                                msFormattedValue.Write(parameter);
+                                break;
                             }
-
-                            if (parameter[^1] == 0x0)
-                                parameter = parameter.Slice(0, parameter.Length - 1);
-
-                            msFormattedValue.Write(parameter);
-                            break;
-                        }
                         //Signed decimal integer
                         case 'i':
                         case 'd':
-                        {
-                            if (!isVsPrintf)
                             {
-                                var parameter = (short)GetParameter(currentParameter++);
-                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
-                            }
-                            else
-                            {
-                                var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
-                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                vsPrintfBase.Offset += 2;
-                            }
+                                if (!isVsPrintf)
+                                {
+                                    var parameter = (short)GetParameter(currentParameter++);
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                }
+                                else
+                                {
+                                    var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                    vsPrintfBase.Offset += 2;
+                                }
 
-                            break;
-                        }
+                                break;
+                            }
                         //Unsigned decimal integer
                         case 'u':
-                        {
-                            if (!isVsPrintf)
                             {
-                                var parameter = GetParameter(currentParameter++);
-                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
-                            }
-                            else
-                            {
-                                var parameterString = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset).ToString();
-                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                vsPrintfBase.Offset += 2;
-                            }
+                                if (!isVsPrintf)
+                                {
+                                    var parameter = GetParameter(currentParameter++);
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                }
+                                else
+                                {
+                                    var parameterString = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset).ToString();
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                    vsPrintfBase.Offset += 2;
+                                }
 
-                            break;
-                        }
+                                break;
+                            }
                         case 'f':
-                        {
-                            var floatValue = new byte[8];
-                            if (!isVsPrintf)
                             {
-                                var parameterHigh = GetParameterULong(currentParameter++);
-                                var parameterLow = GetParameterULong(currentParameter++);
+                                var floatValue = new byte[8];
+                                if (!isVsPrintf)
+                                {
+                                    var parameterHigh = GetParameterULong(currentParameter++);
+                                    var parameterLow = GetParameterULong(currentParameter++);
 
 
-                                Array.Copy(BitConverter.GetBytes(parameterHigh), 0, floatValue, 0, 4);
-                                Array.Copy(BitConverter.GetBytes(parameterLow), 0, floatValue, 4, 4);
+                                    Array.Copy(BitConverter.GetBytes(parameterHigh), 0, floatValue, 0, 4);
+                                    Array.Copy(BitConverter.GetBytes(parameterLow), 0, floatValue, 4, 4);
 
 
+                                }
+                                else
+                                {
+                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8).ToArray();
+                                    vsPrintfBase.Offset += 8;
+                                }
+
+                                msFormattedValue.Write(
+                                    Encoding.ASCII.GetBytes(BitConverter.ToSingle(floatValue).ToString()));
+
+                                break;
                             }
-                            else
-                            {
-                                floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8).ToArray();
-                                vsPrintfBase.Offset += 8;
-                            }
-
-                            msFormattedValue.Write(
-                                Encoding.ASCII.GetBytes(BitConverter.ToSingle(floatValue).ToString()));
-
-                            break;
-                        }
                         default:
                             throw new InvalidDataException(
-                                $"Unhandled Printf Control Character: {(char) stringToParse[i + 1]}");
+                                $"Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
                     }
 
                     //Process Padding
@@ -388,7 +391,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             if (stringFlags.HasFlag(EnumPrintfFlags.LeftJustify))
                             {
                                 //Pad at the end
-                                while(msFormattedValue.Length < stringWidth)
+                                while (msFormattedValue.Length < stringWidth)
                                     msFormattedValue.WriteByte((byte)' ');
                             }
                             else
@@ -396,7 +399,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 //Pad beginning
                                 var valueCache = msFormattedValue.ToArray();
                                 msFormattedValue.SetLength(0);
-                                while(msFormattedValue.Length < stringWidth - valueCache.Length)
+                                while (msFormattedValue.Length < stringWidth - valueCache.Length)
                                     msFormattedValue.WriteByte((byte)' ');
 
                                 msFormattedValue.Write(valueCache);
@@ -432,7 +435,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (formatString[i] == '%' && formatString[i + 1] != '*')
                 {
                     i++;
-                    switch ((char) formatString[i])
+                    switch ((char)formatString[i])
                     {
                         case 'd':
                             var numberValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
@@ -440,7 +443,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             var numberValue = short.Parse(stringValues[valueOrdinal++]);
                             Module.Memory.SetWord(numberValueDestinationPointer, (ushort)numberValue);
 #if DEBUG
-                           // _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
+                            // _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
 #endif
                             continue;
                         case 's':
@@ -494,7 +497,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (outputBuffer[i + 1] != 0x4E && outputBuffer[i + 2] != 0x26)
                     continue;
 
-                    //Increment 3 Bytes
+                //Increment 3 Bytes
                 i += 3;
 
                 using var variableName = new MemoryStream();
@@ -509,7 +512,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
                 var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
                 var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
-                
+
 #if DEBUG
                 _logger.Info($"Processing Text Variable {Encoding.ASCII.GetString(variableName.ToArray())} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
 #endif
@@ -517,71 +520,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return newOutputBuffer.ToArray();
-        }
-
-        /// <summary>
-        ///     This routine tried multiple cases for the path and filename in an
-        ///     attempt to locate the file if the file system is case sensitive.
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        private protected string CheckFileCasing(string path, string fileName)
-        {
-            //Duh
-            if (File.Exists($"{path}{fileName}"))
-                return fileName;
-
-            if (File.Exists($"{path}{fileName.ToUpper()}"))
-                return fileName.ToUpper();
-
-            if (File.Exists($"{path}{fileName.ToLower()}"))
-                return fileName.ToLower();
-
-            if (fileName.Contains(@"/") || fileName.Contains(@"\"))
-            {
-                string[] fileNameElements = new []{ string.Empty};
-                var directorySpecifier = string.Empty;
-                if (fileName.Contains('/'))
-                {
-                    fileNameElements = fileName.Split('/');
-                    directorySpecifier = "/";
-                }
-
-                if (fileName.Contains(@"\"))
-                {
-                    fileNameElements = fileName.Split(@"\");
-                    directorySpecifier = @"\";
-                }
-
-                //We only support 1 directory deep.. for now
-                if (fileNameElements.Length > 2 || fileNameElements.Length == 0)
-                    return fileName;
-
-                fileNameElements[0] = fileNameElements[0].ToUpper();
-                fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToLower();
-                fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToUpper();
-                fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToLower();
-                fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{path}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
-            }
-
-            _logger.Warn("Unable to locate file attempting multiple cases");
-
-            return fileName;
         }
     }
 }

@@ -5,7 +5,7 @@ namespace MBBSEmu.Btrieve
 {
     public class BtrieveKeyDefinition
     {
-        public byte[] Data;
+        public byte[] Data { get; set; }
         public ushort TotalRecords => BitConverter.ToUInt16(Data, 0x6);
         public ushort Position => (ushort) (Offset + 1);
         public ushort Length => BitConverter.ToUInt16(Data, 0x16);

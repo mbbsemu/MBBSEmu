@@ -4,10 +4,9 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using Decoder = Iced.Intel.Decoder;
+
 
 namespace MBBSEmu.Memory
 {

@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(@"C:\dos\install3", "GWWARROW.DAT")]
         public void Btrieve_SinglePage_NoKeys(string path, string fileName)
         {
-            var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
+            var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
             Assert.Equal(1, btrieveFile.PageCount);
             Assert.Equal(512, btrieveFile.PageLength);
             Assert.Equal(0, btrieveFile.RecordCount);
@@ -21,7 +21,7 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(@"C:\dos\modules\dialchat", "DIALACT.DAT")]
         public void Btrieve_MultiplePages_Keys(string path, string fileName)
         {
-            var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
+            var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
             Assert.Equal(24, btrieveFile.PageCount);
             Assert.Equal(1024, btrieveFile.PageLength);
             Assert.Equal(61, btrieveFile.RecordCount);
@@ -36,7 +36,7 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(@"C:\dos\modules\telearena", "tsgarn-c.DAT")]
         public void Btrieve_MultiplePages_Keys2(string path, string fileName)
         {
-            var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
+            var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
             Assert.Equal(2, btrieveFile.PageCount);
             Assert.Equal(1024, btrieveFile.PageLength);
             Assert.Equal(1, btrieveFile.KeyCount);
@@ -51,7 +51,7 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(@"C:\dos\modules\telearena", "tsgarn-c.DAT", new byte[] { 0x53, 0x79, 0x73, 0x6F, 0x70, 0x00 })]
         public void GetRecord_ByKey(string path, string fileName, byte[] key)
         {
-            var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
+            var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
             var result = btrieveFile.SeekByKey(0, key);
 
             Assert.Equal(1, result);
@@ -62,7 +62,7 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(@"C:\dos\modules\telearena", "tsgarn-c.DAT", 2054)]
         public void GetRecord_ByAbsolutePosition(string path, string fileName, ushort absolutePosition)
         {
-            var btrieveFile = new BtrieveFile(fileName, path, ushort.MaxValue);
+            var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
             var record = btrieveFile.GetRecordByAbsolutePosition(absolutePosition);
 
             Assert.Equal(0x53, record[0]);

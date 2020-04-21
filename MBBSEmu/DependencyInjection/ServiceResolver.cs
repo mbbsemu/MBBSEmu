@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System.IO;
+using MBBSEmu.IO;
 using MBBSEmu.ManagementApi;
 
 namespace MBBSEmu.DependencyInjection
@@ -28,6 +29,8 @@ namespace MBBSEmu.DependencyInjection
             //Base Configuration Items
             _serviceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
             _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
 
             //Database Repositories
             _serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
@@ -35,7 +38,7 @@ namespace MBBSEmu.DependencyInjection
             _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            
             _serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
             _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             _serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();

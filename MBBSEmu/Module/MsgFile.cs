@@ -121,8 +121,10 @@ namespace MBBSEmu.Module
                         continue;
                     }
 
-                    if (bInVariable)
-                        bInVariable = false;
+                    if (!bInVariable)
+                        continue;
+
+                    bInVariable = false;
 
                     //Always null terminate
                     msCurrentValue.WriteByte(0x0);

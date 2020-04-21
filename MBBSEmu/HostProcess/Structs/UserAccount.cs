@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.Structs
@@ -153,73 +152,73 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     system type code
         /// </summary>
-        public char systyp
+        public byte systyp
         {
-            get => (char)_usrAccStructBytes[206];
-            set => _usrAccStructBytes[206] = (byte)value;
+            get => _usrAccStructBytes[206];
+            set => _usrAccStructBytes[206] = value;
         }
 
         /// <summary>
         ///     user preference flags
         /// </summary>
-        public char usrprf
+        public byte usrprf
         {
-            get => (char)_usrAccStructBytes[207];
-            set => _usrAccStructBytes[207] = (byte)value;
+            get => _usrAccStructBytes[207];
+            set => _usrAccStructBytes[207] = value;
         }
 
         /// <summary>
         ///     ANSI flags
         /// </summary>
-        public char ansifl
+        public byte ansifl
         {
-            get => (char)_usrAccStructBytes[208];
-            set => _usrAccStructBytes[208] = (byte)value;
+            get => _usrAccStructBytes[208];
+            set => _usrAccStructBytes[208] = value;
         }
 
         /// <summary>
         ///     screen width in columns
         /// </summary>
-        public char scnwid
+        public byte scnwid
         {
-            get => (char)_usrAccStructBytes[209];
-            set => _usrAccStructBytes[209] = (byte)value;
+            get => _usrAccStructBytes[209];
+            set => _usrAccStructBytes[209] = value;
         }
 
         /// <summary>
         ///     screen length for page breaks
         /// </summary>
-        public char scnbrk
+        public byte scnbrk
         {
-            get => (char)_usrAccStructBytes[210];
-            set => _usrAccStructBytes[210] = (byte)value;
+            get => _usrAccStructBytes[210];
+            set => _usrAccStructBytes[210] = value;
         }
 
         /// <summary>
         ///     screen length for FSE stuff
         /// </summary>
-        public char scnfse
+        public byte scnfse
         {
-            get => (char)_usrAccStructBytes[211];
-            set => _usrAccStructBytes[211] = (byte)value;
+            get => _usrAccStructBytes[211];
+            set => _usrAccStructBytes[211] = value;
         }
 
         /// <summary>
         ///     user's age
         /// </summary>
-        public char age
+        public byte age
         {
-            get => (char)_usrAccStructBytes[212];
-            set => _usrAccStructBytes[212] = (byte)value;
+            get => _usrAccStructBytes[212];
+            set => _usrAccStructBytes[212] = value;
         }
 
         /// <summary>
         ///     user's sex ('M' or 'F')
         /// </summary>
-        public char sex
+        public byte sex
         {
-            get => (char)_usrAccStructBytes[213];
-            set => _usrAccStructBytes[213] = (byte)value;
+            get => _usrAccStructBytes[213];
+            set => _usrAccStructBytes[213] = value;
         }
 
         /// <summary>
@@ -381,44 +380,9 @@ namespace MBBSEmu.HostProcess.Structs
         {
             _usrAccStructBytes = new byte[341];
             flags = 1; //Set everyone to havign "MASTER" key
-            ansifl = (char)0x1; //Set everyone to ANSI enabled
-            sex = 'M';  //Set everyone to male for now
+            ansifl = 0x1; //Set everyone to ANSI enabled
+            sex = (byte)'M';  //Set everyone to male for now
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
-        }
-
-        public void FromSpan(ReadOnlySpan<byte> userAccSpan)
-        {
-            userid = userAccSpan.Slice(0, UIDSIZ).ToArray();
-            psword = userAccSpan.Slice(30, PSWSIZ).ToArray();
-            usrnam = userAccSpan.Slice(40, NADSIZ).ToArray();
-            usrad1 = userAccSpan.Slice(70, NADSIZ).ToArray();
-            usrad2 = userAccSpan.Slice(100, NADSIZ).ToArray();
-            usrad3 = userAccSpan.Slice(130, NADSIZ).ToArray();
-            usrad4 = userAccSpan.Slice(160, NADSIZ).ToArray();
-            usrpho = userAccSpan.Slice(190, PHOSIZ).ToArray();
-            systyp = (char)userAccSpan[206];
-            usrprf = (char)userAccSpan[207];
-            ansifl = (char)userAccSpan[208];
-            scnwid = (char)userAccSpan[209];
-            scnbrk = (char)userAccSpan[210];
-            scnfse = (char)userAccSpan[211];
-            age = (char)userAccSpan[212];
-            sex = (char)userAccSpan[213];
-            credat = BitConverter.ToUInt16(userAccSpan.ToArray(), 214);
-            usedat = BitConverter.ToUInt16(userAccSpan.ToArray(), 216);
-            csicnt = BitConverter.ToInt16(userAccSpan.ToArray(), 218);
-            flags = BitConverter.ToInt16(userAccSpan.ToArray(), 220);
-            access = userAccSpan.Slice(222, AXSSIZ*2).ToArray(); //14 bytes
-            emllim = BitConverter.ToInt32(userAccSpan.ToArray(), 236);
-            prmcls = userAccSpan.Slice(240, KEYSIZ).ToArray();
-            curcls = userAccSpan.Slice(256, KEYSIZ).ToArray();
-            timtdy = BitConverter.ToInt32(userAccSpan.ToArray(), 272);
-            daystt = BitConverter.ToUInt16(userAccSpan.ToArray(), 276);
-            fgvdys = BitConverter.ToUInt16(userAccSpan.ToArray(), 278);
-            creds = BitConverter.ToInt32(userAccSpan.ToArray(), 280);
-            totcreds = BitConverter.ToInt32(userAccSpan.ToArray(), 284);
-            totpaid = BitConverter.ToInt32(userAccSpan.ToArray(), 288);
-            birthd = userAccSpan.Slice(292, DATSIZ).ToArray();
         }
 
         public ReadOnlySpan<byte> ToSpan() => _usrAccStructBytes;

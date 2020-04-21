@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace MBBSEmu.CPU
 {
@@ -52,8 +53,9 @@ namespace MBBSEmu.CPU
 
         private int _currentOperationSize = 0;
 
-
         public long InstructionCounter = 0;
+
+        private IntPtr16 DiskTransferArea;
 
         static CpuCore()
         {
@@ -387,6 +389,18 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fst:
                     Op_Fst();
                     break;
+                case Mnemonic.Cbw:
+                    Op_Cbw();
+                    break;
+                case Mnemonic.Cld:
+                    Op_Cld();
+                    break;
+                case Mnemonic.Lodsb:
+                    Op_Lodsb();
+                    break;
+                case Mnemonic.Stosb:
+                    Op_Stosb();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -512,7 +526,7 @@ namespace MBBSEmu.CPU
             switch (opKind)
             {
                 case OpKind.Immediate8to32:
-                    return (ushort) _currentInstruction.Immediate8to32;
+                    return (ushort)_currentInstruction.Immediate8to32;
                 case OpKind.Immediate32:
                     return _currentInstruction.Immediate32;
                 case OpKind.Memory:
@@ -547,7 +561,7 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         private ushort GetOperandOffset(OpKind opKind)
         {
-            ushort result = 0;
+            ushort result;
             switch (opKind)
             {
                 case OpKind.Memory:
@@ -559,45 +573,24 @@ namespace MBBSEmu.CPU
                                 result = (ushort)_currentInstruction.MemoryDisplacement;
                                 break;
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
-                                {
-                                    //This is a hack, I'm just assuming there wont be > 32k passed in values or local variables
-                                    //this might break if it's a crazy module. ¯\_(ツ)_/¯
-                                    if (_currentInstruction.MemoryDisplacement > short.MaxValue)
-                                    {
-                                        result = (ushort)(Registers.BP -
-                                                           (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
-                                        break;
-                                    }
+                            {
 
-                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement + 1);
-                                    break;
-                                }
+                                result = (ushort) (Registers.BP + (short) _currentInstruction.MemoryDisplacement + 1);
+                                break;
+                            }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
-                                {
-                                    if (_currentInstruction.MemoryDisplacement > short.MaxValue)
-                                    {
-                                        result = (ushort)((Registers.BP + Registers.SI) -
-                                                           (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
-                                        break;
-                                    }
+                            {
 
-                                    result = (ushort)((Registers.BP + Registers.SI) +
-                                                       _currentInstruction.MemoryDisplacement + 1);
-                                    break;
-                                }
+                                result = (ushort) (Registers.BP + Registers.SI +
+                                                   (short) _currentInstruction.MemoryDisplacement + 1);
+                                break;
+                            }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
                             {
-                                if (_currentInstruction.MemoryDisplacement > short.MaxValue)
-                                {
-                                    result = (ushort)((Registers.BP + Registers.DI) -
-                                                      (ushort.MaxValue - _currentInstruction.MemoryDisplacement + 1));
-                                    break;
-                                }
-
-                                result = (ushort)((Registers.BP + Registers.DI) +
-                                                  _currentInstruction.MemoryDisplacement + 1);
+                                result = (ushort) (Registers.BP + Registers.DI +
+                                                   (short) _currentInstruction.MemoryDisplacement + 1);
                                 break;
                             }
 
@@ -737,20 +730,64 @@ namespace MBBSEmu.CPU
         {
             switch (Registers.AH)
             {
-
+                case 0x19:
+                    {
+                        //DOS - GET DEFAULT DISK NUMBER
+                        //Return: AL = Drive Number
+                        Registers.AL = 2; //C:
+                        return;
+                    }
+                case 0x1A:
+                    {
+                        //Specifies the memory area to be used for subsequent FCB operations.
+                        //DS:DX = Segment:offset of DTA
+                        DiskTransferArea = new IntPtr16(Registers.DS, Registers.DX);
+                        return;
+                    }
                 case 0x2A:
-                {
-                    //DOS - GET CURRENT DATE
-                    //Return: DL = day, DH = month, CX = year
-                    //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
-                    Registers.DL = (byte) DateTime.Now.Day;
-                    Registers.DH = (byte) DateTime.Now.Month;
-                    Registers.CX = (ushort) DateTime.Now.Year;
-                    Registers.AL = (byte) DateTime.Now.DayOfWeek;
-                    return;
-                }
+                    {
+                        //DOS - GET CURRENT DATE
+                        //Return: DL = day, DH = month, CX = year
+                        //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
+                        Registers.DL = (byte)DateTime.Now.Day;
+                        Registers.DH = (byte)DateTime.Now.Month;
+                        Registers.CX = (ushort)DateTime.Now.Year;
+                        Registers.AL = (byte)DateTime.Now.DayOfWeek;
+                        return;
+                    }
+                case 0x2F:
+                    {
+                        //Get DTA address
+                        /*
+                         *  Action:	Returns the segment:offset of the current DTA for read/write operations.
+                            On entry:	AH = 2Fh
+                            Returns:	ES:BX = Segment.offset of current DTA
+                         */
+                        if (DiskTransferArea == null && !Memory.TryGetVariablePointer("Int21h-DTA", out DiskTransferArea))
+                            DiskTransferArea = Memory.AllocateVariable("Int21h-DTA", 0xFF);
+
+                        Registers.ES = DiskTransferArea.Segment;
+                        Registers.BX = DiskTransferArea.Offset;
+                        return;
+                    }
+                case 0x47:
+                    {
+                        /*
+                            DOS 2+ - GET CURRENT DIRECTORY
+                            DL = drive (0=default, 1=A, etc.)
+                            DS:DI points to 64-byte buffer area
+                            Return: CF set on error
+                            AX = error code
+                            Note: the returned path does not include the initial backslash
+                         */
+                        Memory.SetArray(Registers.DS, Registers.SI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
+                        Registers.AX = 0;
+                        Registers.DL = 0;
+                        Registers.F.ClearFlag(EnumFlags.CF);
+                        return;
+                    }
                 default:
-                    throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: {Registers.AH:X2}");
+                    throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
             }
         }
 
@@ -770,7 +807,7 @@ namespace MBBSEmu.CPU
                 2 => Op_Neg_16(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
-            
+
             WriteToDestination(result);
         }
 
@@ -1658,7 +1695,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Test()
         {
-            switch(_currentOperationSize)
+            switch (_currentOperationSize)
             {
                 case 1:
                     Op_Test_8();
@@ -1776,7 +1813,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result =(destination - source);
+                var result = (destination - source);
                 Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Registers.F.Evaluate(EnumFlags.ZF, result);
@@ -1996,38 +2033,38 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register when _currentOperationSize == 1:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source));
-                    return;
-                }
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register,
+                            GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                        return;
+                    }
                 case OpKind.Register when _currentOperationSize == 2:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source));
-                    return;
-                }
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register,
+                            GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 1:
-                {
-                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind),
-                        GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source));
-                    return;
-                }
+                    {
+                        Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 2:
-                {
-                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind),
-                        GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source));
-                    return;
-                }
+                    {
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 4:
-                {
-                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind),
-                        BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
-                    return;
-                }
+                    {
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
+                        return;
+                    }
 
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown MOV: {_currentInstruction.Op0Kind}");
@@ -2272,7 +2309,7 @@ namespace MBBSEmu.CPU
                 2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
                 _ => throw new Exception("Unsupported Operation Size")
             };
-            
+
             var result = (ushort)~destination;
 
             WriteToDestination(result);
@@ -2447,6 +2484,63 @@ namespace MBBSEmu.CPU
 
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
             Memory.SetArray(Registers.DS, offset, valueToSave);
+        }
+
+        /// <summary>
+        ///     Covert Byte to Word
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Cbw()
+        {
+            Registers.AH = Registers.AL.IsNegative() ? (byte)0xFF : (byte)0x0;
+        }
+
+        /// <summary>
+        ///     Clears Direction Flag
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Cld()
+        {
+            Registers.F.ClearFlag(EnumFlags.DF);
+        }
+
+        /// <summary>
+        ///     Load byte at address DS:(E)SI into AL.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Lodsb()
+        {
+            Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
+
+            if (Registers.F.IsFlagSet(EnumFlags.DF))
+            {
+                Registers.SI--;
+            }
+            else
+            {
+                Registers.SI++;
+            }
+        }
+
+
+        /// <summary>
+        ///     Store AL at address ES:(E)DI.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Stosb()
+        {
+            Memory.SetByte(Registers.DS, Registers.SI, Registers.AL);
+
+            if (Registers.F.IsFlagSet(EnumFlags.DF))
+            {
+                Registers.SI--;
+                Registers.DI--;
+            }
+            else
+            {
+                Registers.SI++;
+                Registers.DI++;
+            }
         }
     }
 }

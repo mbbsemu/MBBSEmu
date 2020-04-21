@@ -13,7 +13,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using NLog.LayoutRenderers;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -110,18 +109,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("ADDRES2", 0x32, true); //50 bytes for address line 2
             Module.Memory.AllocateVariable("DATAPH", 0x20, true); // 32 bytes for phone #
             Module.Memory.AllocateVariable("LIVEPH", 0x20, true); // 32 bytes for phone #
-            Module.Memory.AllocateVariable("MMUCCR", 0x2); //Main Menu Credit Consumption Rate
+            Module.Memory.AllocateVariable("MMUCCR", sizeof(ushort)); //Main Menu Credit Consumption Rate
             Module.Memory.SetVariable("MMUCCR", (ushort)1);
-            Module.Memory.AllocateVariable("PFNLVL", 0x2);
+            Module.Memory.AllocateVariable("PFNLVL", sizeof(ushort));
             Module.Memory.SetVariable("PFNLVL", (ushort) 0);
             Module.Memory.AllocateVariable("VERSION", 5);
             Module.Memory.SetVariable("VERSION", Encoding.ASCII.GetBytes("2.00"));
-            Module.Memory.AllocateVariable("SYSCYC", 0x4);
+            Module.Memory.AllocateVariable("SYSCYC", sizeof(uint));
 
-            Module.Memory.AllocateVariable("NUMBYTS", 0x4);
-            Module.Memory.AllocateVariable("NUMFILS", 0x4);
-            Module.Memory.AllocateVariable("NUMBYTP", 0x4);
-            Module.Memory.AllocateVariable("NUMDIRS", 0x4);
+            Module.Memory.AllocateVariable("NUMBYTS", sizeof(uint));
+            Module.Memory.AllocateVariable("NUMFILS", sizeof(uint));
+            Module.Memory.AllocateVariable("NUMBYTP", sizeof(uint));
+            Module.Memory.AllocateVariable("NUMDIRS", sizeof(uint));
+            Module.Memory.AllocateVariable("NGLOBS", sizeof(ushort));
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -186,7 +186,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btvDataPointer = Module.Memory.AllocateVariable(null, 8192); //GENSIZ -- Defined in MAJORBBS.H
 
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
-            BtrievePointerDictionaryNew.Add(btvFileStructPointer, new BtrieveFile("BBSGEN.DAT", Directory.GetCurrentDirectory(), 8192));
+            BtrievePointerDictionaryNew.Add(btvFileStructPointer, new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory(), 8192));
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
 
             var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
@@ -300,7 +300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var userPointer = Module.Memory.GetVariablePointer("USER");
 
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort)(userPointer.Offset + (User.Size * channel)), 41));
+            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment, (ushort)(userPointer.Offset + (User.Size * channel)), User.Size));
 
 #if DEBUG
             _logger.Info($"{channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
@@ -405,6 +405,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return numbytp;
                 case 1072:
                     return numdirs;
+                case 733:
+                    return nglobs;
             }
 
             if (offsetsOnly)
@@ -915,6 +917,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 117:
                     clsbtv();
                     break;
+                case 322:
+                    getenv();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1023,7 +1028,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
-                _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+                _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
             }
             else
@@ -1972,7 +1978,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFile(fileName, Module.ModulePath, maxRecordLength);
+            var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath, maxRecordLength);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
@@ -2722,44 +2728,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var modePointer = GetParameterPointer(2);
 
             var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
-            var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
+            var filenameInputValue = Encoding.ASCII.GetString(filenameInputBuffer).ToUpper();
 
-            //If non windows, change directory paths in filename
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && filenameInputValue.Contains(@"\"))
-            {
-                var newFilenameInputValue = filenameInputValue.Replace(@"\", "/");
-                _logger.Info($"Modifying Filename to be Linux Friendly: {filenameInputValue} to {newFilenameInputValue}");
-                filenameInputValue = CheckFileCasing(Module.ModulePath, newFilenameInputValue);
-            }
+            var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
 
 #if DEBUG
-            _logger.Debug($"Opening File: {Module.ModulePath}{filenameInputValue}");
+            _logger.Debug($"Opening File: {Module.ModulePath}{fileName}");
 #endif
 
             var modeInputBuffer = Module.Memory.GetString(modePointer, true);
             var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
 
             //Allocate Memory for FILE struct
-            if (!Module.Memory.TryGetVariablePointer($"FILE_{filenameInputValue}", out var fileStructPointer))
-                fileStructPointer = Module.Memory.AllocateVariable($"FILE_{filenameInputValue}", FileStruct.Size);
+            if (!Module.Memory.TryGetVariablePointer($"FILE_{fileName}", out var fileStructPointer))
+                fileStructPointer = Module.Memory.AllocateVariable($"FILE_{fileName}", FileStruct.Size);
 
             //Write New Blank Pointer
             var fileStruct = new FileStruct();
             Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
 
-            if (!File.Exists($"{Module.ModulePath}{filenameInputValue}"))
+            if (!File.Exists($"{Module.ModulePath}{fileName}"))
             {
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
                 {
-                    _logger.Warn($"Unable to find file {Module.ModulePath}{filenameInputValue}");
+                    _logger.Warn($"Unable to find file {Module.ModulePath}{fileName}");
                     Registers.AX = fileStruct.curp.Offset;
                     Registers.DX = fileStruct.curp.Segment;
                     return;
                 }
 
                 //Create a new file for W or A
-                _logger.Info($"Creating new file {filenameInputValue}");
-                File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
+                _logger.Info($"Creating new file {fileName}");
+                File.Create($"{Module.ModulePath}{fileName}").Dispose();
             }
             else
             {
@@ -2767,15 +2767,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Write))
                 {
 #if DEBUG
-                    _logger.Info($"Overwritting file {filenameInputValue}");
+                    _logger.Info($"Overwritting file {fileName}");
 #endif
-                    File.Create($"{Module.ModulePath}{filenameInputValue}").Dispose();
+                    File.Create($"{Module.ModulePath}{fileName}").Dispose();
                 }
             }
 
 
             //Setup the File Stream
-            var fileStream = File.Open($"{Module.ModulePath}{filenameInputValue}", FileMode.OpenOrCreate);
+            var fileStream = File.Open($"{Module.ModulePath}{fileName}", FileMode.OpenOrCreate);
 
             if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
                 fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
@@ -2994,8 +2994,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringValue = Module.Memory.GetString(stringPointer, true);
 
 #if DEBUG
-            _logger.Info(
-                $"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue)}");
+            //_logger.Info($"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue)}");
+            _logger.Info($"Evaluated string length of {stringValue.Length} for string at {stringPointer}");
 #endif
 
             Registers.AX = (ushort)stringValue.Length;
@@ -3061,22 +3061,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newFilenamePointer = GetParameterPointer(2);
 
             var oldFilenameInputBuffer = Module.Memory.GetString(oldFilenamePointer, true);
-            var oldFilenameInputValue = Encoding.Default.GetString(oldFilenameInputBuffer).ToUpper();
+            var oldFilenameInputValue = Encoding.ASCII.GetString(oldFilenameInputBuffer).ToUpper();
 
             var newFilenameInputBuffer = Module.Memory.GetString(newFilenamePointer, true);
-            var newFilenameInputValue = Encoding.Default.GetString(newFilenameInputBuffer).ToUpper();
+            var newFilenameInputValue = Encoding.ASCII.GetString(newFilenameInputBuffer).ToUpper();
 
-            //If non windows, change directory paths in filename
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && oldFilenameInputValue.Contains(@"\"))
-            {
-                var fixedOldFilenameInputValue = oldFilenameInputValue.Replace(@"\", "/");
-                _logger.Info($"Modifying Filename to be Linux Friendly: {oldFilenameInputValue} to {fixedOldFilenameInputValue}");
-                oldFilenameInputValue = CheckFileCasing(Module.ModulePath, fixedOldFilenameInputValue);
-
-                var fixedNewFilenameInputValue = newFilenameInputValue.Replace(@"\", "/");
-                _logger.Info($"Modifying Filename to be Linux Friendly: {newFilenameInputValue} to {fixedNewFilenameInputValue}");
-                newFilenameInputValue = CheckFileCasing(Module.ModulePath, fixedNewFilenameInputValue);
-            }
+            oldFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, oldFilenameInputValue);
+            newFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, newFilenameInputValue);
 
             if (!File.Exists($"{Module.ModulePath}{oldFilenameInputValue}"))
                 throw new FileNotFoundException($"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
@@ -5629,6 +5620,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             BtrievePointerDictionaryNew.Remove(filePointer);
             _currentMcvFile = null;
+        }
+
+        private ReadOnlySpan<byte> nglobs => Module.Memory.GetVariablePointer("NGLOBS").ToSpan();
+
+        /// <summary>
+        ///     Retrieves a C-string containing the value of the environment variable whose name is specified in the argument
+        ///
+        ///     Signature: char* getenv(const char* name);
+        /// </summary>
+        private void getenv()
+        {
+            var namePointer = GetParameterPointer(0);
+
+            var name = Encoding.ASCII.GetString(Module.Memory.GetString(namePointer, true)).ToUpper();
+
+            if (!Module.Memory.TryGetVariablePointer("GETENV", out var resultPointer))
+                resultPointer = Module.Memory.AllocateVariable("GETENV", 0xFF);
+
+            switch (name)
+            {
+                case "PATH":
+                    Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes("C:\\BBSV6\\\0"));
+                    break;
+            }
+
+            Registers.AX = resultPointer.Offset;
+            Registers.DX = resultPointer.Segment;
         }
     }
 }
