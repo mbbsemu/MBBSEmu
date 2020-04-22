@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace MBBSEmu.Module
 {
@@ -73,13 +72,6 @@ namespace MBBSEmu.Module
 
                 //We're no longer looking for a comma after the previous value
                 checkForLanguage = false;
-
-                //{ while in a variable, usually text areas
-                if (buffer[0] == 0x7B && bInVariable)
-                {
-                    bIgnoreNext = true;
-                    continue;
-                }
 
                 //{
                 if (buffer[0] == 0x7B && !bIgnoreNext && !bInVariable)
