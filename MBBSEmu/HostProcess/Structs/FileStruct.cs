@@ -172,6 +172,8 @@ namespace MBBSEmu.HostProcess.Structs
                         result |= EnumFileAccessFlags.Text;
                         break;
                     }
+                    case ' ':
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException($"Unknown File Access Flag: {(char)f}");
                 }

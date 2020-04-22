@@ -136,7 +136,7 @@ namespace MBBSEmu.Module
         }
 
         public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
-            Queue<ushort> initialStackValues = null)
+            Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
@@ -145,7 +145,7 @@ namespace MBBSEmu.Module
                 executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary);
             }
 
-            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues);
+            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
             ExecutionUnits.Enqueue(executionUnit);
             return resultRegisters;
         }

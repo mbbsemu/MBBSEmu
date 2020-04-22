@@ -14,6 +14,7 @@ namespace MBBSEmu.CPU
             CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate);
 
         void Reset();
+        void Reset(ushort stackBase);
         void Tick();
 
         void Push(ushort value);

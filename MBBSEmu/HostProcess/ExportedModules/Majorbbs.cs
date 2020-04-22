@@ -11,7 +11,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -122,6 +121,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("NUMBYTP", sizeof(uint));
             Module.Memory.AllocateVariable("NUMDIRS", sizeof(uint));
             Module.Memory.AllocateVariable("NGLOBS", sizeof(ushort));
+            Module.Memory.AllocateVariable("FTG", FtgStruct.Size);
+            Module.Memory.AllocateVariable("FTGPTR", IntPtr16.Size);
+            Module.Memory.SetVariable("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
+            Module.Memory.AllocateVariable("TSHMSG", 81); //universal global Tagspec Handler message
+            Module.Memory.AllocateVariable("FTFSCB", FtfscbStruct.Size);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -407,6 +411,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return numdirs;
                 case 733:
                     return nglobs;
+                case 304:
+                    return ftgptr;
+                case 606:
+                    return tshmsg;
+                case 288:
+                    return ftfscb;
             }
 
             if (offsetsOnly)
@@ -920,6 +930,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 322:
                     getenv();
                     break;
+                case 302:
+                    ftgnew();
+                    break;
+                case 154:
+                    datofc();
+                    break;
+                case 305:
+                    ftgsbm();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -937,13 +956,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void time()
         {
             //For now, ignore the input pointer for time_t
+            var passedSeconds = (int) (DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
 
-            var outputArray = new byte[4];
-            var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-            Array.Copy(BitConverter.GetBytes(passedSeconds), 0, outputArray, 0, 4);
-
-            Registers.AX = BitConverter.ToUInt16(outputArray, 2);
-            Registers.DX = BitConverter.ToUInt16(outputArray, 0);
+            Registers.DX = (ushort) (passedSeconds >> 16);
+            Registers.AX = (ushort) (passedSeconds & 0xFFFF);
 
 #if DEBUG
             _logger.Info($"Passed seconds: {passedSeconds} (AX:{Registers.AX:X4}, DX:{Registers.DX:X4})");
@@ -1768,7 +1784,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(1, short.MaxValue);
 
 #if DEBUG
-            _logger.Info($"Generated random number {randomValue} and saved it to AX");
+            //_logger.Info($"Generated random number {randomValue} and saved it to AX");
 #endif
             Registers.AX = (ushort)randomValue;
         }
@@ -5648,5 +5664,92 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = resultPointer.Offset;
             Registers.DX = resultPointer.Segment;
         }
+
+        /// <summary>
+        ///     (File Transfer) Issue a new tagspec pointer
+        ///
+        ///     Always returns 0
+        ///
+        ///     Signature: int ftgnew(void);
+        /// </summary>
+        private void ftgnew()
+        {
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Compute DOS date
+        ///
+        ///     Signature: int date=datofc(int count);
+        /// </summary>
+        private void datofc()
+        {
+            var days = GetParameter(0);
+            var dtDateTime = new DateTime(1980, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddDays(days);
+
+            var packedDate = (dtDateTime.Month << 5) + dtDateTime.Day + ((dtDateTime.Year - 1980) << 9);
+
+            Registers.AX = (ushort) packedDate;
+
+        }
+
+        /// <summary>
+        ///     (File Transfer) Submit a tagspec for download
+        ///
+        ///     Always returns 0 to denote program now has control
+        /// 
+        ///     Signature: int ftgsbm(char *prot);
+        /// </summary>
+        private void ftgsbm()
+        {
+            //Ignore Protocol Pointer passed into this method
+
+            //Get Pointer to Download Method from FileSpec
+            var fileSpec = new FtgStruct(Module.Memory.GetArray(Module.Memory.GetVariablePointer("FTG"), FtgStruct.Size));
+
+            //Call TSHBEG to get file to send
+            //Decrement the initial Stack Pointer enough to ensure it wont overwrite anything in ththate current stack space
+            Module.Execute(fileSpec.tshndl, ChannelNumber, true, true,
+                new Queue<ushort>(new List<ushort> {(ushort) FtgStruct.TagSpecFunctionCodes.TSHBEG}), (ushort) (Registers.SP - 0x800));
+
+            //TSHMSG now holds the file to be transfered
+            var fileToSend = Encoding.ASCII.GetString(Module.Memory.GetString(Module.Memory.GetVariablePointer("TSHMSG"), true));
+
+            fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
+
+#if DEBUG
+            _logger.Info($"Channel {ChannelNumber} downloding: {fileToSend}");
+#endif
+
+            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes($"{Module.ModulePath}{fileToSend}"));
+
+            //Call TSHFIN to get file to send
+            //Decrement the initial Stack Pointer enough to ensure it wont overwrite anything in the current stack space
+            Module.Execute(fileSpec.tshndl, ChannelNumber, true, true,
+                new Queue<ushort>(new List<ushort> { (ushort)FtgStruct.TagSpecFunctionCodes.TSHFIN }), (ushort)(Registers.SP - 0x800));
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     (File Transfer) Global Tagspec Pointer
+        ///
+        ///     Signature: struct ftg *ftgptr;
+        /// </summary>
+        private ReadOnlySpan<byte> ftgptr => Module.Memory.GetVariablePointer("FTGPTR").ToSpan();
+
+        /// <summary>
+        ///     Universal global Tagspec Handler messag
+        ///
+        ///     Signature: char tshmsg[TSHLEN+1];
+        /// </summary>
+        private ReadOnlySpan<byte> tshmsg => Module.Memory.GetVariablePointer("TSHMSG").ToSpan();
+
+        /// <summary>
+        ///     (File Transfer) Contains fields for external use
+        ///
+        ///     Signature: struct ftfscb {...};
+        /// </summary>
+        private ReadOnlySpan<byte> ftfscb => Module.Memory.GetVariablePointer("FTFSCB").ToSpan();
     }
 }

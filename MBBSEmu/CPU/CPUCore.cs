@@ -44,10 +44,17 @@ namespace MBBSEmu.CPU
 
         private bool _showDebug;
 
-
-        private ushort STACK_SEGMENT;
         private ushort EXTRA_SEGMENT;
-        private const ushort STACK_BASE = 0xFFFF;
+
+        /// <summary>
+        ///     Default offset for the Stack Base
+        /// </summary>
+        public const ushort STACK_BASE = 0xFFFF;
+
+        /// <summary>
+        ///     Default segment for the Stack
+        /// </summary>
+        public const ushort STACK_SEGMENT = 0x0;
 
         public readonly List<byte[]> FpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
 
@@ -83,7 +90,6 @@ namespace MBBSEmu.CPU
 
             //Setup Memory Space
             Memory = memoryCore;
-            STACK_SEGMENT = 0;
             EXTRA_SEGMENT = ushort.MaxValue;
 
             //Setup Registers
@@ -100,17 +106,18 @@ namespace MBBSEmu.CPU
             Push(ushort.MaxValue);
         }
 
+        public void Reset() => Reset(STACK_BASE);
+
         /// <summary>
         ///     Only Resets Register Values
         /// </summary>
-        public void Reset()
+        public void Reset(ushort stackBase)
         {
-            STACK_SEGMENT = 0;
             EXTRA_SEGMENT = ushort.MaxValue;
 
             //Setup Registers
-            Registers.BP = STACK_BASE;
-            Registers.SP = STACK_BASE;
+            Registers.BP = stackBase;
+            Registers.SP = stackBase;
             Registers.SS = STACK_SEGMENT;
             Registers.ES = EXTRA_SEGMENT;
             Registers.Halt = false;
@@ -140,8 +147,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
 
 #if DEBUG
-            if (_showDebug)
-                _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }
@@ -164,8 +170,8 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            //if(Registers.CS == 0x2 && Registers.IP == 0x10B8)
-            //  Debugger.Break();
+            //if(Registers.CS == 13 && Registers.IP == 0xDE0)
+              //Debugger.Break();
 
             if (Registers.CS == 0xFF && ((Registers.IP >= 0x1075 && Registers.IP <= 0x108D)))
             {
