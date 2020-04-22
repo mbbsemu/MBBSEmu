@@ -20,27 +20,27 @@ namespace MBBSEmu.CPU
 
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
-        public CpuRegisters Registers;
-        private IMemoryCore Memory;
+        public CpuRegisters Registers { get; set; }
+        private IMemoryCore Memory { get; set; }
 
-        private Instruction _currentInstruction;
+        private Instruction _currentInstruction { get; set; }
 
         //Debug Pointers
 
         /// <summary>
         ///     Current Location of the Instruction Pointer
         /// </summary>
-        private IntPtr16 _currentInstructionPointer;
+        private IntPtr16 _currentInstructionPointer { get; set; }
 
         /// <summary>
         ///     Previous Location of the Instruction Pointer
         /// </summary>
-        private IntPtr16 _previousInstructionPointer;
+        private IntPtr16 _previousInstructionPointer { get; set; }
 
         /// <summary>
         ///     Previous Location of a CALL into the current function
         /// </summary>
-        private IntPtr16 _previousCallPointer;
+        private IntPtr16 _previousCallPointer { get; set; }
 
         private bool _showDebug;
 
