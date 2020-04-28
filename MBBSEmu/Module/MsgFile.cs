@@ -50,9 +50,8 @@ namespace MBBSEmu.Module
 
             var messageCount = 0;
 
-            using var fileToRead = File.OpenRead($"{_modulePath}{_moduleName}.MSG");
-            var ringBuffer = new byte[1]; 
-            Span<byte> buffer = ringBuffer;
+            var fileToRead = File.ReadAllBytes($"{_modulePath}{_moduleName}.MSG");
+
             var variableName = string.Empty;
             var bInVariable = false;
             var bIgnoreNext = false;
@@ -61,10 +60,8 @@ namespace MBBSEmu.Module
             msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
             for (var i = 0; i < fileToRead.Length; i++)
             {
-                fileToRead.Read(buffer);
-
                 //','
-                if (checkForLanguage && buffer[0] == 0x2C)
+                if (checkForLanguage && fileToRead[i] == ',')
                 {
                     bIgnoreNext = true;
                     continue;
@@ -74,34 +71,36 @@ namespace MBBSEmu.Module
                 checkForLanguage = false;
 
                 //{
-                if (buffer[0] == 0x7B && !bIgnoreNext && !bInVariable)
-                {   
+                if (fileToRead[i] == '{' && !bIgnoreNext && !bInVariable)
+                {
                     bInVariable = true;
 
-                    var currentPosition = fileToRead.Position;
-                    fileToRead.Position--;
+                    var currentPosition = i;
+                    i--;
                     //Work Backwards to get Variable Name
-                    while (buffer[0] >= 32 && fileToRead.Position > 0)
-                    {
-                        fileToRead.Read(buffer);
-                        fileToRead.Position -= 2;
-                    }
+                    while (i > 0 && fileToRead[i] >= ' ')
+                        i--;
 
-                    var variableNameLength = (currentPosition -1) - fileToRead.Position;
-                    var variableNameBytes = new byte[variableNameLength];
-                    fileToRead.Read(variableNameBytes, 0, variableNameBytes.Length);
-                    fileToRead.Position = currentPosition;
-                    variableName = Encoding.ASCII.GetString(variableNameBytes).Trim();
-
+                    var variableNameLength = (currentPosition - 1) - i;
+                    variableName = Encoding.ASCII.GetString(fileToRead, i, variableNameLength).Trim();
+                    i = currentPosition;
                     continue;
                 }
 
                 //New Line Characters get stripped
-                if (buffer[0] == 0xA)
+                if (fileToRead[i] == 0xA)
                     continue;
 
+                //Check for escaped end curly bracket
+                if (fileToRead[i] == '~' && fileToRead[i + 1] == '}')
+                {
+                    i++;
+                    msCurrentValue.WriteByte((byte) '}');
+                    continue;
+                }
+
                 //}
-                if (buffer[0] == 0x7D)
+                if (fileToRead[i] == '}')
                 {
                     //Check to see if the next character is a comma, denoting another language option
                     checkForLanguage = true;
@@ -145,8 +144,8 @@ namespace MBBSEmu.Module
                 }
 
                 //Otherwise, we're still parsing a value. Write it to the output buffer and move on to the next byte
-                if(bInVariable)
-                    msCurrentValue.Write(buffer);
+                if (bInVariable)
+                    msCurrentValue.WriteByte(fileToRead[i]);
             }
 
             //Build Final MCV File

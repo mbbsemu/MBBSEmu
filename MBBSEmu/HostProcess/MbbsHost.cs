@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using MBBSEmu.Session.Rlogin;
 
 namespace MBBSEmu.HostProcess
 {
@@ -24,7 +25,7 @@ namespace MBBSEmu.HostProcess
     {
         private readonly ILogger _logger;
 
-        private readonly PointerDictionary<UserSession> _channelDictionary;
+        private readonly PointerDictionary<SessionBase> _channelDictionary;
         private readonly Dictionary<string, MbbsModule> _modules;
         private readonly Dictionary<string, IExportedModule> _exportedFunctions;
         private readonly CpuCore _cpu;
@@ -33,7 +34,7 @@ namespace MBBSEmu.HostProcess
         private bool _isAddingModule;
         private readonly IMbbsRoutines _mbbsRoutines;
         private readonly IConfiguration _configuration;
-        private readonly Queue<UserSession> _incomingSessions;
+        private readonly Queue<SessionBase> _incomingSessions;
         private readonly bool _doLoginRoutine;
 
         public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfiguration configuration)
@@ -46,12 +47,12 @@ namespace MBBSEmu.HostProcess
 
             bool.TryParse(_configuration["Module.DoLoginRoutine"], out _doLoginRoutine);
 
-            _channelDictionary = new PointerDictionary<UserSession>();
+            _channelDictionary = new PointerDictionary<SessionBase>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _cpu = new CpuCore();
             _realTimeStopwatch = Stopwatch.StartNew();
-            _incomingSessions = new Queue<UserSession>();
+            _incomingSessions = new Queue<SessionBase>();
 
 
             _logger.Info("Constructed MbbsEmu Host!");
@@ -256,6 +257,13 @@ namespace MBBSEmu.HostProcess
 
                                         //Clear any data waiting to be processed from the client
                                         session.InputBuffer.SetLength(0);
+
+                                        //Is this an Rlogin session and its specific to a module, log them off
+                                        if (session.SessionType == EnumSessionType.Rlogin &&
+                                            !string.IsNullOrEmpty(((RloginSession) session).ModuleIdentifier))
+                                        {
+                                            session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
+                                        }
                                     }
 
                                     continue;
@@ -349,12 +357,19 @@ namespace MBBSEmu.HostProcess
             _logger.Info($"Module {module.ModuleIdentifier} added!");
             _isAddingModule = false;
         }
+        
+        /// <summary>
+        ///     Gets the Registered instance of the specified Module within the MBBS Host Process
+        /// </summary>
+        /// <param name="uniqueIdentifier"></param>
+        /// <returns></returns>
+        public MbbsModule GetModule(string uniqueIdentifier) => _modules[uniqueIdentifier];
 
         /// <summary>
         ///     Assigns a Channel # to a session and adds it to the Channel Dictionary
         /// </summary>
         /// <param name="session"></param>
-        public void AddSession(UserSession session)
+        public void AddSession(SessionBase session)
         {
             _incomingSessions.Enqueue(session);
             _logger.Info($"Session {session.SessionId} added to incoming queue");
@@ -409,7 +424,7 @@ namespace MBBSEmu.HostProcess
             return functions;
         }
 
-        public IList<UserSession> GetUserSessions() => _channelDictionary.Values.ToList();
+        public IList<SessionBase> GetUserSessions() => _channelDictionary.Values.ToList();
 
         /// <summary>
         ///     Patches all relocation information into the byte code

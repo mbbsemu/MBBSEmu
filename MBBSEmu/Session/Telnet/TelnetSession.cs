@@ -1,18 +1,20 @@
-﻿using MBBSEmu.DependencyInjection;
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess;
-using MBBSEmu.Session;
-using NLog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
+using MBBSEmu.DependencyInjection;
+using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess;
+using NLog;
 
-namespace MBBSEmu.Telnet
+namespace MBBSEmu.Session.Telnet
 {
-    public class TelnetSession : UserSession
+    /// <summary>
+    ///     Class for handling inbound Telnet Connections
+    /// </summary>
+    public class TelnetSession : SessionBase
     {
         private readonly ILogger _logger;
         private readonly IMbbsHost _host;
@@ -29,6 +31,7 @@ namespace MBBSEmu.Telnet
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
+            SessionType = EnumSessionType.Telent;
             SendToClientMethod = Send;
             _host = ServiceResolver.GetService<IMbbsHost>();
             _logger = ServiceResolver.GetService<ILogger>();
@@ -49,6 +52,7 @@ namespace MBBSEmu.Telnet
 
             Send(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             Send(new byte[] { 0x1B, 0x5B, 0x48 });
+            
             SessionState = EnumSessionState.Unauthenticated;
         }
 

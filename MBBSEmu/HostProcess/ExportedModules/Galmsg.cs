@@ -10,7 +10,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 {
     public class Galmsg : ExportedModuleBase, IExportedModule
     {
-        internal Galmsg(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        internal Galmsg(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
         }
 

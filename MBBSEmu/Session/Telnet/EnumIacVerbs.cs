@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MBBSEmu.Telnet
+﻿namespace MBBSEmu.Session.Telnet
 {
     public enum EnumIacVerbs : byte
     {

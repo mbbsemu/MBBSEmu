@@ -5,13 +5,17 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
-using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using MBBSEmu.ManagementApi;
+using MBBSEmu.Server.Socket;
+using MBBSEmu.Session;
+using MBBSEmu.Session.Rlogin;
+using MBBSEmu.Session.Telnet;
 
 namespace MBBSEmu
 {
@@ -170,10 +174,50 @@ namespace MBBSEmu
             host.Start();
 
             //Setup and Run Telnet Server
-            ServiceResolver.GetService<ITelnetServer>().Start();
+            if (bool.Parse(config["Telnet.Enabled"]))
+            {
+                if (string.IsNullOrEmpty("Telnet.Port"))
+                {
+                    _logger.Error("You must specify a port via Telnet.Port in appconfig.json if you're going to enable Telnet");
+                    return;
+                }
+
+                ServiceResolver.GetService<ISocketServer>()
+                    .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
+            }
+
+            //Setup and Run Rlogin Server
+            if (bool.Parse(config["Rlogin.Enabled"]))
+            {
+                if (string.IsNullOrEmpty("Rlogin.Port"))
+                {
+                    _logger.Error("You must specify a port via Rlogin.Port in appconfig.json if you're going to enable Rlogin");
+                    return;
+                }
+
+                if (string.IsNullOrEmpty("Rlogin.RemoteIP"))
+                {
+                    _logger.Error("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin");
+                    return;
+                }
+
+                ServiceResolver.GetService<ISocketServer>()
+                    .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
+            }
+
+            if (bool.Parse(config["Rlogin.PortPerModule"]))
+            {
+                var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
+                foreach (var m in modules)
+                {
+                    _logger.Info($"Rlogin port {rloginPort} listening for {m.ModuleIdentifier}");
+                    ServiceResolver.GetService<ISocketServer>()
+                        .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                }
+            }
 
             //Setup and Run API Host
-            if(bool.TryParse(config["ManagementAPI.Enabled"], out var managementApiEnabled) && managementApiEnabled)
+            if (bool.TryParse(config["ManagementAPI.Enabled"], out var managementApiEnabled) && managementApiEnabled)
                 ServiceResolver.GetService<IApiHost>().Start();
         }
 

@@ -16,9 +16,12 @@ namespace MBBSEmu.IO
     {
         private readonly ILogger _logger;
 
+        private readonly string _directorySpecifier;
+
         public FileUtility(ILogger logger)
         {
             _logger = logger;
+            _directorySpecifier = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"\" : "/";
         }
 
         public string FindFile(string modulePath, string fileName)
@@ -29,6 +32,10 @@ namespace MBBSEmu.IO
                 var relativePathStart = fileName.IndexOf('\\', fileName.IndexOf('\\') + 1);
                 fileName = fileName.Substring(relativePathStart + 1);
             }
+
+            //Strip Relative Pathing, it'll always be relative to the module location
+            if (fileName.StartsWith($".{_directorySpecifier}"))
+                fileName = fileName.Substring(2);
 
             fileName = CorrectPathSeparator(fileName);
 
@@ -44,16 +51,9 @@ namespace MBBSEmu.IO
             if (File.Exists($"{modulePath}{fileName.ToLower()}"))
                 return fileName.ToLower();
 
-            //Set Directory Specifier depending on the platform
-            var directorySpecifier = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"\" : "/";
-
-            //Strip Relative Pathing, it'll always be relative to the module location
-            if (fileName.StartsWith($".{directorySpecifier}"))
-                fileName = fileName.Substring(2);
-
-            if (fileName.Contains(directorySpecifier))
+            if (fileName.Contains(_directorySpecifier))
             {
-                var fileNameElements = fileName.Split(directorySpecifier);
+                var fileNameElements = fileName.Split(_directorySpecifier);
 
                 //We only support 1 directory deep.. for now
                 if (fileNameElements.Length > 2 || fileNameElements.Length == 0)
@@ -61,23 +61,23 @@ namespace MBBSEmu.IO
 
                 fileNameElements[0] = fileNameElements[0].ToUpper();
                 fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
+                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(_directorySpecifier, fileNameElements);
 
                 fileNameElements[0] = fileNameElements[0].ToLower();
                 fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
+                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(_directorySpecifier, fileNameElements);
 
                 fileNameElements[0] = fileNameElements[0].ToUpper();
                 fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
+                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(_directorySpecifier, fileNameElements);
 
                 fileNameElements[0] = fileNameElements[0].ToLower();
                 fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(directorySpecifier, fileNameElements);
+                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
+                    return string.Join(_directorySpecifier, fileNameElements);
             }
 
             _logger.Warn($"Unable to locate file attempting multiple cases: {fileName}");

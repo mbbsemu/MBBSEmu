@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace MBBSEmu.Telnet
+namespace MBBSEmu.Session.Telnet
 {
     public class IacResponse
     {

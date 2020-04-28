@@ -382,6 +382,7 @@ namespace MBBSEmu.HostProcess.Structs
             flags = 1; //Set everyone to havign "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
             sex = (byte)'M';  //Set everyone to male for now
+            creds = 31337;
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }
 

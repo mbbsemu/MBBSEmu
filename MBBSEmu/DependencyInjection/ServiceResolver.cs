@@ -2,15 +2,15 @@
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
+using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.ManagementApi;
 using MBBSEmu.Resources;
-using MBBSEmu.Telnet;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System.IO;
-using MBBSEmu.IO;
-using MBBSEmu.ManagementApi;
+using MBBSEmu.Server.Socket;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -38,10 +38,9 @@ namespace MBBSEmu.DependencyInjection
             _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            
             _serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
             _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
-            _serviceCollection.AddSingleton<ITelnetServer, TelnetServer>();
+            _serviceCollection.AddTransient<ISocketServer, SocketServer>();
 
             //API Host Objects
             _serviceCollection.AddSingleton<IApiHost, ApiHost>();

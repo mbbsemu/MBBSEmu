@@ -52,7 +52,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
-        public Majorbbs(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
+        public Majorbbs(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module,
             channelDictionary)
         {
             _margvPointers = new List<IntPtr16>();
@@ -126,6 +126,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetVariable("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
             Module.Memory.AllocateVariable("TSHMSG", 81); //universal global Tagspec Handler message
             Module.Memory.AllocateVariable("FTFSCB", FtfscbStruct.Size);
+            Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
+            Module.Memory.SetVariable("OUTBSZ", (ushort)0x1000);
+            Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -417,6 +420,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return tshmsg;
                 case 288:
                     return ftfscb;
+                case 462:
+                    return outbsz;
+                case 593:
+                    return sv;
             }
 
             if (offsetsOnly)
@@ -438,6 +445,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 512: //RSTRXF
                 case 114: //CLSXRF
                 case 340: //HOWBUY -- emits how to buy credits, ignored for MBBSEmu
+                case 564: //STANSI -- sets ANSI to user default, ignoring as ANSI is always on
                     break;
                 case 599:
                     time();
@@ -939,6 +947,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 305:
                     ftgsbm();
                     break;
+                case 386:
+                    listing();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -951,7 +962,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Epoch Time
         /// 
         ///     Signature: time_t time (time_t* timer);
-        ///     Return: Value is 32-Bit TIME_T (AX:DX)
+        ///     Return: Value is 32-Bit TIME_T (DX:AX)
         /// </summary>
         private void time()
         {
@@ -5751,5 +5762,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct ftfscb {...};
         /// </summary>
         private ReadOnlySpan<byte> ftfscb => Module.Memory.GetVariablePointer("FTFSCB").ToSpan();
+
+        /// <summary>
+        ///     Output buffer size per channel
+        ///
+        ///     Signature: int outbsz;
+        /// </summary>
+        private ReadOnlySpan<byte> outbsz => Module.Memory.GetVariablePointer("OUTBSZ").ToSpan();
+
+        /// <summary>
+        ///     System-Variable Btrieve Record Layout Struct (1 of 3)
+        ///
+        ///     Signature: struct sysvbl sv;
+        /// </summary>
+        private ReadOnlySpan<byte> sv => Module.Memory.GetVariablePointer("SV").ToSpan();
+
+        /// <summary>
+        ///     List an ASCII file to the users screen
+        ///
+        ///     Signature: void listing(char *path, void (*whndun)())
+        /// </summary>
+        private void listing()
+        {
+            var filenamePointer = GetParameterPointer(0);
+            var finishedFunctionPointer = GetParameterPointer(2);
+
+            var fileToSend = Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true));
+
+            fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
+
+#if DEBUG
+            _logger.Info($"Channel {ChannelNumber} listing: {fileToSend}");
+#endif
+
+            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes($"{Module.ModulePath}{fileToSend}"));
+
+            Module.Execute(finishedFunctionPointer, ChannelNumber, true, true,
+                null, (ushort)(Registers.SP - 0x800));
+        }
     }
 }

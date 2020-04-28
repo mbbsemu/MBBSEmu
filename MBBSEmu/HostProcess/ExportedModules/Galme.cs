@@ -14,7 +14,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFC;
 
-        internal Galme(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module,
+        internal Galme(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module,
             channelDictionary)
         {
             var txtlenPointer = Module.Memory.AllocateVariable("TXTLEN", 0x2);
@@ -41,6 +41,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
+                case 30: 
+                    oldsend();
+                    break;
                 case 123:
                     simpsnd();
                     break;
@@ -81,6 +84,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Warn("Ignoring SIMPSND for now, messaging not enabled in MBBSEmu");
 #endif
 
+            Registers.AX = 1;
+        }
+
+        private void oldsend()
+        {
+#if DEBUG
+            _logger.Warn("Ignoring OLDSEND for now, messaging not enabled in MBBSEmu");
+#endif
             Registers.AX = 1;
         }
 

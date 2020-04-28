@@ -17,7 +17,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort DosSegmentBase = 0x200;
         public ushort DosSegmentOffset = 0;
 
-        internal Doscalls(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        internal Doscalls(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
         }
 

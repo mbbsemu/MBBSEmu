@@ -15,11 +15,16 @@ namespace MBBSEmu.Session
     ///     This holds the basics for any given user session, and different source
     ///     (web, telnet, console, etc.) can implement this base.
     /// </summary>
-    public abstract class UserSession
+    public abstract class SessionBase
     {
         protected delegate void SendToClientDelegate(byte[] dataToSend);
 
         protected SendToClientDelegate SendToClientMethod;
+
+        /// <summary>
+        ///     Specifies the Type of Session the user is currently using
+        /// </summary>
+        public EnumSessionType SessionType { get; set; }
 
         /// <summary>
         ///     Unique ID for this Session
@@ -183,7 +188,7 @@ namespace MBBSEmu.Session
             SendToClientMethod(dataToSend);
         }
 
-        protected UserSession(string sessionId)
+        protected SessionBase(string sessionId)
         {
             SessionId = sessionId;
             UsrPtr = new User();

@@ -9,18 +9,20 @@ namespace MBBSEmu.Memory
     {
         public ushort Segment
         {
-            get => BitConverter.ToUInt16(_pointerData, 2);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _pointerData, 2, 2);
+            get => BitConverter.ToUInt16(Data, 2);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 2, 2);
 
         }
         public ushort Offset
         {
-            get => BitConverter.ToUInt16(_pointerData, 0);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _pointerData, 0, 2);
+            get => BitConverter.ToUInt16(Data, 0);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 0, 2);
 
         }
 
-        private readonly byte[] _pointerData = new byte[4];
+        public readonly byte[] Data = new byte[Size];
+
+        public const ushort Size = 4;
 
         public IntPtr16() { }
 
@@ -37,7 +39,7 @@ namespace MBBSEmu.Memory
 
         public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
         {
-            Array.Copy(intPtr16Span.ToArray(), 0, _pointerData, 0, 4);
+            Array.Copy(intPtr16Span.ToArray(), 0, Data, 0, 4);
         }
 
         /// <summary>
@@ -50,13 +52,13 @@ namespace MBBSEmu.Memory
         ///     Returns the int16:int16 pointer as a byte[]
         /// </summary>
         /// <returns></returns>
-        public byte[] ToArray() => _pointerData;
+        public byte[] ToArray() => Data;
 
         /// <summary>
         ///     Returns a reference to the int16:int16 pointer
         /// </summary>
         /// <returns></returns>
-        public ReadOnlySpan<byte> ToSpan() => _pointerData;
+        public ReadOnlySpan<byte> ToSpan() => Data;
 
         /// <summary>
         ///     Returns the int16:int16 pointer as a string
@@ -86,7 +88,5 @@ namespace MBBSEmu.Memory
         }
 
         public static IntPtr16 Empty => new IntPtr16(0, 0);
-
-        public const ushort Size = 4;
     }
 }

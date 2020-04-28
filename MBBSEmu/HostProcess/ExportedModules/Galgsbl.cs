@@ -25,7 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly DateTime _startDate;
 
-        public Galgsbl(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        public Galgsbl(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
             _startDate = DateTime.Now;
             var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
@@ -206,7 +206,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btuoba()
         {
-            Registers.AX = ushort.MaxValue;
+            Registers.AX = (ushort)short.MaxValue;
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿namespace MBBSEmu.Telnet
+﻿namespace MBBSEmu.Session.Telnet
 {
     public enum EnumIacOptions : byte
     {

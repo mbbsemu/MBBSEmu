@@ -27,7 +27,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     dictionary to track the variable by a given name (key) and the pointer to the segment
         ///     it lives in.
         /// </summary>
-        private protected PointerDictionary<UserSession> ChannelDictionary;
+        private protected PointerDictionary<SessionBase> ChannelDictionary;
 
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected ushort ChannelNumber;
 
-        private protected ExportedModuleBase(MbbsModule module, PointerDictionary<UserSession> channelDictionary)
+        private protected ExportedModuleBase(MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
             _logger = ServiceResolver.GetService<ILogger>();
             _configuration = ServiceResolver.GetService<IConfiguration>();
@@ -137,8 +137,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var vsPrintfBase = new IntPtr16();
             if (isVsPrintf)
             {
-                vsPrintfBase.Offset = GetParameter(currentParameter++);
-                vsPrintfBase.Segment = GetParameter(currentParameter++);
+                vsPrintfBase = GetParameterPointer(currentParameter);
+                currentParameter += 2;
             }
 
             for (var i = 0; i < stringToParse.Length; i++)
@@ -270,16 +270,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'c':
                             {
                                 byte charParameter;
-                                if (!isVsPrintf)
-                                {
-                                    charParameter = (byte)GetParameter(currentParameter++);
-
-                                }
-                                else
+                                if (isVsPrintf)
                                 {
                                     charParameter = Module.Memory.GetByte(vsPrintfBase.Segment, vsPrintfBase.Offset);
                                     vsPrintfBase.Offset += 2;
                                 }
+                                else
+                                {
+                                    charParameter = (byte)GetParameter(currentParameter++);
+                                }
+
                                 msFormattedValue.WriteByte(charParameter);
                                 break;
 
@@ -288,7 +288,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 's':
                             {
                                 ReadOnlySpan<byte> parameter;
-                                if (!isVsPrintf)
+                                if (isVsPrintf)
+                                {
+                                    var stringPointer = Module.Memory.GetPointer(vsPrintfBase);
+                                    parameter = Module.Memory.GetString(stringPointer);
+                                    vsPrintfBase.Offset += 4;
+                                }
+                                else
                                 {
                                     var parameterOffset = GetParameter(currentParameter++);
                                     var parameterSegment = GetParameter(currentParameter++);
@@ -302,14 +308,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                         _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
                                     }
                                 }
-                                else
-                                {
-
-                                    var address = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4);
-                                    var stringPointer = new IntPtr16(address);
-                                    parameter = Module.Memory.GetString(stringPointer.Segment, stringPointer.Offset);
-                                    vsPrintfBase.Offset += 4;
-                                }
 
                                 if (parameter[^1] == 0x0)
                                     parameter = parameter.Slice(0, parameter.Length - 1);
@@ -321,16 +319,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'i':
                         case 'd':
                             {
-                                if (!isVsPrintf)
+                                if (isVsPrintf)
                                 {
-                                    var parameter = (short)GetParameter(currentParameter++);
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                    var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase)).ToString();
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                    vsPrintfBase.Offset += 2;
                                 }
                                 else
                                 {
-                                    var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset)).ToString();
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                    vsPrintfBase.Offset += 2;
+                                    var parameter = (short)GetParameter(currentParameter++);
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
                                 }
 
                                 break;
@@ -338,16 +336,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         //Unsigned decimal integer
                         case 'u':
                             {
-                                if (!isVsPrintf)
+                                if (isVsPrintf)
                                 {
-                                    var parameter = GetParameter(currentParameter++);
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                    var parameterString = Module.Memory.GetWord(vsPrintfBase)
+                                        .ToString();
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                    vsPrintfBase.Offset += 2;
                                 }
                                 else
                                 {
-                                    var parameterString = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset).ToString();
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                    vsPrintfBase.Offset += 2;
+                                    var parameter = GetParameter(currentParameter++);
+                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
                                 }
 
                                 break;
@@ -355,7 +354,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'f':
                             {
                                 var floatValue = new byte[8];
-                                if (!isVsPrintf)
+                                if (isVsPrintf)
+                                {
+                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8)
+                                        .ToArray();
+                                    vsPrintfBase.Offset += 8;
+                                }
+                                else
                                 {
                                     var parameterHigh = GetParameterULong(currentParameter++);
                                     var parameterLow = GetParameterULong(currentParameter++);
@@ -363,13 +368,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                                     Array.Copy(BitConverter.GetBytes(parameterHigh), 0, floatValue, 0, 4);
                                     Array.Copy(BitConverter.GetBytes(parameterLow), 0, floatValue, 4, 4);
-
-
-                                }
-                                else
-                                {
-                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8).ToArray();
-                                    vsPrintfBase.Offset += 8;
                                 }
 
                                 msFormattedValue.Write(
@@ -416,7 +414,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 msOutput.WriteByte(stringToParse[i]);
             }
-            return msOutput.ToArray();
+            return ProcessEscapeCharacters(msOutput.ToArray());
         }
 
         /// <summary>
@@ -520,6 +518,71 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return newOutputBuffer.ToArray();
+        }
+
+        /// <summary>
+        ///     Handles replacing C++ escape characters within the specified string
+        /// </summary>
+        /// <param name="inputSpan"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> ProcessEscapeCharacters(ReadOnlySpan<byte> inputSpan)
+        {
+            using var resultStream = new MemoryStream(inputSpan.Length);
+            for (var i = 0; i < inputSpan.Length; i++)
+            {
+                if (inputSpan[i] != '\\')
+                {
+                    resultStream.WriteByte(inputSpan[i]);
+                    continue;
+                }
+
+                i++;
+                switch ((char)inputSpan[i])
+                {
+                    case 'a': //alert (bell)
+                        resultStream.WriteByte(0x7);
+                        continue;
+                    case 'b': //backspace
+                        resultStream.WriteByte(0x8);
+                        continue;
+                    case 't': //tab
+                        resultStream.WriteByte(0x9);
+                        continue;
+                    case 'n': //newline
+                        resultStream.WriteByte(0xA);
+                        continue;
+                    case 'v': //vertical tab
+                        resultStream.WriteByte(0xB);
+                        continue;
+                    case 'f': //form feed
+                        resultStream.WriteByte(0xC);
+                        continue;
+                    case 'r': //carriage return
+                        resultStream.WriteByte(0xD);
+                        continue;
+                    case '\\':
+                        resultStream.WriteByte((byte)'\\');
+                        continue;
+                    case '"':
+                        resultStream.WriteByte((byte)'"');
+                        continue;
+                    case '?':
+                        resultStream.WriteByte((byte)'?');
+                        continue;
+                    case 'x': //hex character
+                        {
+                            resultStream.WriteByte(Convert.ToByte($"{inputSpan[i + 1]}{inputSpan[i + 2]}"));
+                            i += 2;
+                            continue;
+                        }
+                    default:
+                        resultStream.WriteByte((byte)'\\');
+                        resultStream.WriteByte(inputSpan[i]);
+                        continue;
+                }
+            }
+
+            return resultStream.ToArray();
         }
     }
 }

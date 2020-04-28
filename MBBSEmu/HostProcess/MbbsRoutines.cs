@@ -27,7 +27,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="session"></param>
         /// <param name="modules"></param>
-        public void ProcessSessionState(UserSession session, Dictionary<string, MbbsModule> modules)
+        public void ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             switch (session.SessionState)
             {
@@ -99,7 +99,7 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessCharacter(UserSession session, bool secure = false)
+        private void ProcessCharacter(SessionBase session, bool secure = false)
         {
             //Check to see if there's anything that needs doing
             if (!session.DataToProcess) return;
@@ -120,7 +120,7 @@ namespace MBBSEmu.HostProcess
             HandleBackspace(session, session.LastCharacterReceived);
         }
 
-        private void EchoToClient(UserSession session, ReadOnlySpan<byte> dataToEcho)
+        private void EchoToClient(SessionBase session, ReadOnlySpan<byte> dataToEcho)
         {
             foreach (var t in dataToEcho)
                 EchoToClient(session, t);
@@ -133,7 +133,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="session"></param>
         /// <param name="dataToEcho"></param>
-        private void EchoToClient(UserSession session, byte dataToEcho)
+        private void EchoToClient(SessionBase session, byte dataToEcho)
         {
             //Handle Backspace or Delete
             if (dataToEcho == 0x8 || dataToEcho == 0x7F)
@@ -151,7 +151,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         /// <param name="inputFromUser"></param>
         /// <returns></returns>
-        private void HandleBackspace(UserSession session, byte inputFromUser)
+        private void HandleBackspace(SessionBase session, byte inputFromUser)
         {
             if (inputFromUser != 0x8 && inputFromUser != 0x7F)
                 return;
@@ -168,7 +168,7 @@ namespace MBBSEmu.HostProcess
         ///     Shows the Login Screen to a new User Session
         /// </summary>
         /// <param name="session"></param>
-        private void WelcomeScreenDisplay(UserSession session)
+        private void WelcomeScreenDisplay(SessionBase session)
         {
             session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
             session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x48});
@@ -177,7 +177,7 @@ namespace MBBSEmu.HostProcess
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
         }
 
-        private void LoginUsernameDisplay(UserSession session)
+        private void LoginUsernameDisplay(SessionBase session)
         {
             session.SendToClientAsync("\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
                 .EncodeToANSIArray());
@@ -185,7 +185,7 @@ namespace MBBSEmu.HostProcess
             session.SessionState = EnumSessionState.LoginUsernameInput;
         }
 
-        private void LoginUsernameInput(UserSession session)
+        private void LoginUsernameInput(SessionBase session)
         {
             //Only Process on CR
             if (session.Status != 3) return;
@@ -208,13 +208,13 @@ namespace MBBSEmu.HostProcess
             session.SessionState = EnumSessionState.LoginPasswordDisplay;
         }
 
-        private void LoginPasswordDisplay(UserSession session)
+        private void LoginPasswordDisplay(SessionBase session)
         {
             session.SendToClientAsync("|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 
-        private void LoginPasswordInput(UserSession session)
+        private void LoginPasswordInput(SessionBase session)
         {
             //Only Process on CR
             if (session.Status != 3) return;
@@ -241,7 +241,7 @@ namespace MBBSEmu.HostProcess
         }
 
 
-        private void MainMenuDisplay(UserSession session, Dictionary<string, MbbsModule> modules)
+        private void MainMenuDisplay(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             EchoToClient(session, "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
@@ -257,7 +257,7 @@ namespace MBBSEmu.HostProcess
             session.SessionState = EnumSessionState.MainMenuInput;
         }
 
-        private void MainMenuInput(UserSession session, Dictionary<string, MbbsModule> modules)
+        private void MainMenuInput(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             if (session.Status != 3) return;
             session.Status = 0;
@@ -297,14 +297,21 @@ namespace MBBSEmu.HostProcess
             //session.InputBuffer.SetLength(0);
         }
 
-        private void LogoffConfirmationDisplay(UserSession session)
+        private void LogoffConfirmationDisplay(SessionBase session)
         {
+            if (session.SessionType == EnumSessionType.Rlogin)
+            {
+                session.SessionState = EnumSessionState.LoggedOff;
+                EchoToClient(session, "\r\n|WHITE||B|<Press Any Key>|RESET|\r\n".EncodeToANSIArray());
+                return;
+            }
+
             EchoToClient(session, "|WHITE||BLINK||B|You are about to terminate this connection!|RESET|\r\n".EncodeToANSIArray());
             EchoToClient(session, "\r\n|CYAN||B|Are you sure (Y/N, or R to re-logon)? ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.ConfirmLogoffInput;
         }
 
-        private void LogoffConfirmationInput(UserSession session)
+        private void LogoffConfirmationInput(SessionBase session)
         {
             if (session.Status != 3) return;
             session.Status = 0;
@@ -333,19 +340,19 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
         }
 
-        private void LoggingOffDisplay(UserSession session)
+        private void LoggingOffDisplay(SessionBase session)
         {
             EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoggingOffProcessing;
         }
 
-        private void SignupUsernameDisplay(UserSession session)
+        private void SignupUsernameDisplay(SessionBase session)
         {
             EchoToClient(session, "\r\n|CYAN||B|Please enter a unique Username (Max. 30 Characters):|RESET||WHITE||B|\r\n".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupUsernameInput;
         }
 
-        private void SignupUsernameInput(UserSession session)
+        private void SignupUsernameInput(SessionBase session)
         {
             if (session.Status != 3) return;
             session.Status = 0;
@@ -367,7 +374,7 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
         }
 
-        private void SignupPasswordDisplay(UserSession session)
+        private void SignupPasswordDisplay(SessionBase session)
         {
             EchoToClient(session, "\r\n|RED||B|NOTE: Passwords are stored in a local database hashed with SHA-512+unique salt.\r\n".EncodeToANSIArray());
             EchoToClient(session, "The MajorBBS and Worldgroup have a maximum password size of only 9 characters,\r\n".EncodeToANSIArray());
@@ -377,7 +384,7 @@ namespace MBBSEmu.HostProcess
             session.SessionState = EnumSessionState.SignupPasswordInput;
         }
 
-        private void SignupPasswordInput(UserSession session)
+        private void SignupPasswordInput(SessionBase session)
         {
             if (session.Status != 3) return;
             session.Status = 0;
@@ -408,13 +415,13 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
         }
 
-        private void SignupPasswordConfirmDisplay(UserSession session)
+        private void SignupPasswordConfirmDisplay(SessionBase session)
         {
             EchoToClient(session, "\r\n|CYAN||B|Please re-enter your password to confirm:|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupPasswordConfirmInput;
         }
 
-        private void SignupPasswordConfirmInput(UserSession session)
+        private void SignupPasswordConfirmInput(SessionBase session)
         {
             if (session.Status != 3) return;
             session.Status = 0;
@@ -434,13 +441,13 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
         }
 
-        private void SignupEmailDisplay(UserSession session)
+        private void SignupEmailDisplay(SessionBase session)
         {
             EchoToClient(session, "\r\n|CYAN||B|Please enter a valid e-Mail Address:|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupEmailInput;
         }
 
-        private void SignupEmailInput(UserSession session)
+        private void SignupEmailInput(SessionBase session)
         {
             if (session.Status != 3) return;
             session.Status = 0;

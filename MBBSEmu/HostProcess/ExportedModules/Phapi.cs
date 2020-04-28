@@ -16,7 +16,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
-        internal Phapi(MbbsModule module, PointerDictionary<UserSession> channelDictionary) : base(module, channelDictionary)
+        internal Phapi(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
         }
 

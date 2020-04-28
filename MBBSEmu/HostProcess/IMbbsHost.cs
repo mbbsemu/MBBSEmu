@@ -27,7 +27,7 @@ namespace MBBSEmu.HostProcess
         ///     Assigns a Channel # to a session and adds it to the Channel Dictionary
         /// </summary>
         /// <param name="session"></param>
-        void AddSession(UserSession session);
+        void AddSession(SessionBase session);
 
         /// <summary>
         ///     Removes a Channel # from the Channel Dictionary
@@ -40,6 +40,13 @@ namespace MBBSEmu.HostProcess
         ///     Returns the List of Current User Sessions
         /// </summary>
         /// <returns></returns>
-        public IList<UserSession> GetUserSessions();
+        public IList<SessionBase> GetUserSessions();
+
+        /// <summary>
+        ///     Gets the Registered instance of the specified Module within the MBBS Host Process
+        /// </summary>
+        /// <param name="uniqueIdentifier"></param>
+        /// <returns></returns>
+        public MbbsModule GetModule(string uniqueIdentifier);
     }
 }
