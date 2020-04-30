@@ -203,16 +203,16 @@ namespace MBBSEmu
 
                 ServiceResolver.GetService<ISocketServer>()
                     .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
-            }
 
-            if (bool.Parse(config["Rlogin.PortPerModule"]))
-            {
-                var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
-                foreach (var m in modules)
+                if (bool.Parse(config["Rlogin.PortPerModule"]))
                 {
-                    _logger.Info($"Rlogin port {rloginPort} listening for {m.ModuleIdentifier}");
-                    ServiceResolver.GetService<ISocketServer>()
-                        .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                    var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
+                    foreach (var m in modules)
+                    {
+                        _logger.Info($"Rlogin port {rloginPort} listening for {m.ModuleIdentifier}");
+                        ServiceResolver.GetService<ISocketServer>()
+                            .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                    }
                 }
             }
 

@@ -170,10 +170,10 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            //if(Registers.CS == 13 && Registers.IP == 0xDE0)
+            //if(Registers.CS == 1 && Registers.IP == 0x1BE)
               //Debugger.Break();
 
-            if (Registers.CS == 0xFF && ((Registers.IP >= 0x1075 && Registers.IP <= 0x108D)))
+            if (Registers.CS == 0x1 && ((Registers.IP >= 0x1A9 && Registers.IP <= 0x1F2)))
             {
 
                 _showDebug = true;
@@ -238,6 +238,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Loop:
                     Op_Loop();
                     return;
+                case Mnemonic.Jcxz:
+                    Op_Jcxz();
+                    return;
+                case Mnemonic.Loope:
+                    Op_Loope();
+                    break;
 
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Clc:
@@ -407,6 +413,10 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Stosb:
                     Op_Stosb();
                     break;
+                case Mnemonic.Scasb:
+                    Op_Scasb();
+                    break;
+                
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -1266,11 +1276,7 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op1Kind);
             var segment = Registers.GetValue(_currentInstruction.MemorySegment);
 
-            var dataPointer = new IntPtr16(Memory.GetArray(segment, offset, 4));
-
-#if DEBUG
-            //_logger.Info($"LES Loaded {dataPointer.Segment:X4}:{dataPointer.Offset:X4}");
-#endif
+            var dataPointer = Memory.GetPointer(segment, offset);
 
             Registers.SetValue(_currentInstruction.Op0Register, dataPointer.Offset);
             Registers.ES = dataPointer.Segment;
@@ -1282,8 +1288,10 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op1Kind);
             var segment = Registers.GetValue(_currentInstruction.MemorySegment);
 
-            Registers.SetValue(_currentInstruction.Op0Register, offset);
-            Registers.DS = segment;
+            var dataPointer = Memory.GetPointer(segment, offset);
+
+            Registers.SetValue(_currentInstruction.Op0Register, dataPointer.Offset);
+            Registers.DS = dataPointer.Segment;
         }
 
 
@@ -2547,6 +2555,66 @@ namespace MBBSEmu.CPU
                 Registers.SI++;
                 Registers.DI++;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Jcxz()
+        {
+            // CX == 0
+            if (Registers.CX == 0)
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.Length;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Scasb()
+        {
+            var destination = Registers.AL;
+            var source = Memory.GetByte(Registers.ES, Registers.DI);
+
+#if DEBUG
+            _logger.Info($"Comparing {(char)destination} to {(char)source}");
+#endif
+
+            unchecked
+            {
+                var result = (byte)(destination - source);
+                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Registers.F.Evaluate(EnumFlags.SF, result);
+
+                if (Registers.F.IsFlagSet(EnumFlags.DF))
+                {
+                    Registers.SI--;
+                    Registers.DI--;
+                }
+                else
+                {
+                    Registers.SI++;
+                    Registers.DI++;
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Loope()
+        {
+            Registers.CX--;
+
+            if (Registers.CX == 0 && !Registers.F.IsFlagSet(EnumFlags.ZF))
+            {
+                //Continue with the next instruction
+                Registers.IP += (ushort)_currentInstruction.Length;
+                return;
+            }
+
+            Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
         }
     }
 }
