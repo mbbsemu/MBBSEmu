@@ -1,7 +1,7 @@
 ﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
 By: Eric Nusbaum @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
-Private Alpha 11 (04/21/2020) - Patreon Exclusive
+Private Alpha 12 (05/01/2020) - Patreon Exclusive
 -----------------------------------------------------------
 Command Line Options:
 -?                  This Help Screen
@@ -24,8 +24,13 @@ appsettings.json Options:
 
 BBS.Title               String         Title (name) of your Bulletin Board, used by MAJORBBS.H
 GSBL.Activation         Number         Activation Code for MajorBBS & Worldgroup (8-Digit)
-Module.DoLoginRoutine   True/False     Display Module Post-Login Messages (True/False)
-Telnet.Port             Number         Port Number for Telnet to listn on (Default: 23)
+Module.DoLoginRoutine   True/False     Display Module Post-Login Messages
+Telnet.Enabled          True/False     Enable Telnet Service
+Telnet.Port             Number         Port Number for Telnet to listn on
+Rlogin.Enabled          True/False     Enable Rlogin Service
+Rlogin.Port             Number         Port Number for Rlogin to listn on
+Rlogin.RemoteIP         Number         Port Number for Telnet to listn on
+Rlogin.PortPerModule    True/False     Expose dedicated Rlogin Ports for each module
 ManagementAPI.Enabled   True/False     Enable/Disable the Management REST API (Default: False)
 ManagementAPI.Port      Number         Port Number for the Management REST API (Default: 8080)
 ManagementAPI.Secret    String         Secret Key used for generating JWT Authorization Tokens

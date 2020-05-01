@@ -22,7 +22,7 @@ namespace MBBSEmu.Btrieve
         private readonly IFileUtility _fileFinder;
 
         public ushort RecordLength => _btrieveFile.RecordLength;
-        public string FileName => _btrieveFile.FileName;
+        public string FileName => _fileName;
 
         private string _path { get; set; }
         private string _fileName { get; set; }

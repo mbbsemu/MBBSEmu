@@ -188,9 +188,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Setup Generic User Database
-            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
-            var btvFileName = Module.Memory.AllocateVariable(null, 11); //BBSGEN.DAT\0
-            var btvDataPointer = Module.Memory.AllocateVariable(null, 8192); //GENSIZ -- Defined in MAJORBBS.H
+            var btvFileStructPointer = Module.Memory.AllocateVariable("BBSGEN-STRUCT", BtvFileStruct.Size);
+            var btvFileName = Module.Memory.AllocateVariable("BBSGEN-NAME", 11); //BBSGEN.DAT\0
+            var btvDataPointer = Module.Memory.AllocateVariable("BBSGEN-POINTER", 8192); //GENSIZ -- Defined in MAJORBBS.H
 
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
             BtrievePointerDictionaryNew.Add(btvFileStructPointer, new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory(), 8192));
@@ -873,7 +873,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     qnpbtv();
                     break;
                 case 134:
-                    cofdate();
+                    cofdat();
                     break;
                 case 862:
                     htrval();
@@ -2008,9 +2008,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath, maxRecordLength);
 
             //Setup Pointers
-            var btvFileStructPointer = Module.Memory.AllocateVariable(null, BtvFileStruct.Size);
-            var btvFileNamePointer = Module.Memory.AllocateVariable(null, (ushort)(btrieveFilename.Length + 1));
-            var btvDataPointer = Module.Memory.AllocateVariable(null, maxRecordLength);
+            var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
+            var btvFileNamePointer = Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(btrieveFilename.Length + 1));
+            var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", maxRecordLength);
 
             var newBtvStruct = new BtvFileStruct { filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer };
             BtrievePointerDictionaryNew.Add(btvFileStructPointer, btrieveFile);
@@ -5178,9 +5178,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// 
         ///     Signature: int count=cofdat(int date)
         /// </summary>
-        private void cofdate()
+        private void cofdat()
         {
             var packedDate = GetParameter(0);
+
+            if (packedDate == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
 
             //Unpack the Date
             var year = ((packedDate >> 9) & 0x007F) + 1980;
