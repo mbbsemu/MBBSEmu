@@ -29,7 +29,7 @@ Telnet.Enabled          True/False     Enable Telnet Service
 Telnet.Port             Number         Port Number for Telnet to listn on
 Rlogin.Enabled          True/False     Enable Rlogin Service
 Rlogin.Port             Number         Port Number for Rlogin to listn on
-Rlogin.RemoteIP         Number         Port Number for Telnet to listn on
+Rlogin.RemoteIP         IP Address     Remote IP allowed to connect via Rlogin
 Rlogin.PortPerModule    True/False     Expose dedicated Rlogin Ports for each module
 ManagementAPI.Enabled   True/False     Enable/Disable the Management REST API (Default: False)
 ManagementAPI.Port      Number         Port Number for the Management REST API (Default: 8080)
