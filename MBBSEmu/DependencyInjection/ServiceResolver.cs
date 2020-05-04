@@ -4,7 +4,6 @@ using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using MBBSEmu.ManagementApi;
 using MBBSEmu.Resources;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,9 +40,6 @@ namespace MBBSEmu.DependencyInjection
             _serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
             _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             _serviceCollection.AddTransient<ISocketServer, SocketServer>();
-
-            //API Host Objects
-            _serviceCollection.AddSingleton<IApiHost, ApiHost>();
 
             _provider = _serviceCollection.BuildServiceProvider();
         }

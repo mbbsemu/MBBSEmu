@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.Extensions.Logging.EventLog;
 
 namespace MBBSEmu.HostProcess.Structs
 {

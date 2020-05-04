@@ -26,8 +26,10 @@ namespace MBBSEmu.Memory
         private readonly IntPtr16 _currentVariablePointer;
         private const ushort VARIABLE_BASE = 0x100;
 
-        private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
+        private ushort _currentCodeSegment;
+        private Dictionary<ushort, Instruction> _currentCodeSegmentInstructions;
 
+        private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
 
         public MemoryCore()
         {
@@ -43,8 +45,6 @@ namespace MBBSEmu.Memory
             AddSegment(0);
         }
 
-
-
         /// <summary>
         ///     Clears out the Memory Core and sets all values back to initial state
         /// </summary>
@@ -57,8 +57,6 @@ namespace MBBSEmu.Memory
             _currentVariablePointer.Segment = VARIABLE_BASE;
             _currentVariablePointer.Offset = 0;
         }
-
-        
 
         public IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false)
         {
@@ -85,11 +83,11 @@ namespace MBBSEmu.Memory
                 $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
-            _currentVariablePointer.Offset += (ushort)(size + 1);
+            _currentVariablePointer.Offset += (ushort) (size + 1);
 
             var newPointer = new IntPtr16(_currentVariablePointer.Segment, currentOffset);
 
-            if(declarePointer && string.IsNullOrEmpty(name))
+            if (declarePointer && string.IsNullOrEmpty(name))
                 throw new Exception("Unsupported operation, declaring pointer type for NULL named variable");
 
             if (!string.IsNullOrEmpty(name))
@@ -128,7 +126,10 @@ namespace MBBSEmu.Memory
 
         public void SetVariable(string name, byte value) => SetByte(GetVariablePointer(name), value);
         public void SetVariable(string name, ushort value) => SetWord(GetVariablePointer(name), value);
-        public void SetVariable(string name, uint value) => SetArray(GetVariablePointer(name), BitConverter.GetBytes(value));
+
+        public void SetVariable(string name, uint value) =>
+            SetArray(GetVariablePointer(name), BitConverter.GetBytes(value));
+
         public void SetVariable(string name, ReadOnlySpan<byte> value) => SetArray(GetVariablePointer(name), value);
         public void SetVariable(string name, IntPtr16 value) => SetArray(GetVariablePointer(name), value.ToSpan());
 
@@ -138,7 +139,7 @@ namespace MBBSEmu.Memory
         /// <param name="segmentNumber"></param>
         public void AddSegment(ushort segmentNumber, int size = 0x10000)
         {
-            if(_memorySegments.ContainsKey(segmentNumber))
+            if (_memorySegments.ContainsKey(segmentNumber))
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
             _memorySegments[segmentNumber] = new byte[size];
@@ -148,7 +149,7 @@ namespace MBBSEmu.Memory
         {
             //Get Address for this Segment
             var segmentMemory = new byte[0x10000];
-            
+
             //Add the data to memory and record the segment offset in memory
             Array.Copy(segment.Data, 0, segmentMemory, 0, segment.Data.Length);
             _memorySegments.Add(segment.Ordinal, segmentMemory);
@@ -161,7 +162,7 @@ namespace MBBSEmu.Memory
                 var decoder = Decoder.Create(16, codeReader);
                 decoder.IP = 0x0;
 
-                while (decoder.IP < (ulong)segment.Data.Length)
+                while (decoder.IP < (ulong) segment.Data.Length)
                 {
                     decoder.Decode(out instructionList.AllocUninitializedElement());
                 }
@@ -196,19 +197,25 @@ namespace MBBSEmu.Memory
 
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
+            //Prevents constant hash lookups for instructions from the same segment
+            if (_currentCodeSegment != segment)
+            {
+                _currentCodeSegment = segment;
+                _currentCodeSegmentInstructions = _decompiledSegments[segment];
+            }
+
             //If it wasn't able to decompile linear through the data, there might have been
             //data in the path of the code that messed up decoding, in this case, we grab up to
             //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            if(!_decompiledSegments[segment].TryGetValue(instructionPointer, out var outputInstruction))
+            if (!_currentCodeSegmentInstructions.TryGetValue(instructionPointer, out var outputInstruction))
             {
                 Span<byte> segmentData = _segments[segment].Data;
                 var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
                 var decoder = Decoder.Create(16, reader);
                 decoder.IP = instructionPointer;
-                decoder.Decode(out var instr);
-
-                return instr;
+                decoder.Decode(out outputInstruction);
             }
+
             return outputInstruction;
         }
 
@@ -226,14 +233,14 @@ namespace MBBSEmu.Memory
 
         public ushort GetWord(ushort segment, ushort offset)
         {
-            if(!_memorySegments.TryGetValue(segment, out var selectedSegment))
+            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
                 throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
 
             return BitConverter.ToUInt16(selectedSegment, offset);
         }
 
         public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
-        
+
 
         public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
 
@@ -288,28 +295,28 @@ namespace MBBSEmu.Memory
 
         public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
-        public void SetWord(ushort segment, ushort offset, ushort value) => SetArray(segment, offset, BitConverter.GetBytes(value));
-        
+        public void SetWord(ushort segment, ushort offset, ushort value) =>
+            SetArray(segment, offset, BitConverter.GetBytes(value));
 
-        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) => SetArray(pointer.Segment, pointer.Offset, array);
+
+        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) =>
+            SetArray(pointer.Segment, pointer.Offset, array);
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
-
-#if DEBUG
-            for (var i = 0; i < array.Length; i++)
-            {
-                _memorySegments[segment][offset + i] = array[i];
-            }
-#else
-            Array.Copy(array.ToArray(), 0, _memorySegments[segment], offset, array.Length);
-#endif
+            var destinationSpan = new Span<byte>(_memorySegments[segment], offset, array.Length);
+            array.CopyTo(destinationSpan);
         }
-
 
         public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.ToSpan());
 
-        public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
+        public void SetZero(IntPtr16 pointer, int length)
+        {
+            var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);
+            destinationSpan.Fill(0);
+        }
+
+    public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
         {
             var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, IntPtr16>());
 

@@ -31,12 +31,12 @@ namespace MBBSEmu.Module
             FileName = fileUtility.FindFile(path, fileName);
 
 #if DEBUG
-            _logger.Info($"Loading MCV File: {fileName}");
+            _logger.Info($"Loading MCV File: {FileName}");
 #endif
-            FileContent = File.ReadAllBytes($"{path}{fileName}");
+            FileContent = File.ReadAllBytes($"{path}{FileName}");
 
 #if DEBUG
-            _logger.Info($"Parsing MCV File: {fileName}");
+            _logger.Info($"Parsing MCV File: {FileName}");
 #endif
             Parse();
         }

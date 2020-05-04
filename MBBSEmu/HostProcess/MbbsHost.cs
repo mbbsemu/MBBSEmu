@@ -31,7 +31,6 @@ namespace MBBSEmu.HostProcess
         private readonly CpuCore _cpu;
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
-        private bool _isAddingModule;
         private readonly IMbbsRoutines _mbbsRoutines;
         private readonly IConfiguration _configuration;
         private readonly Queue<SessionBase> _incomingSessions;
@@ -355,7 +354,6 @@ namespace MBBSEmu.HostProcess
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
             _logger.Info($"Module {module.ModuleIdentifier} added!");
-            _isAddingModule = false;
         }
         
         /// <summary>

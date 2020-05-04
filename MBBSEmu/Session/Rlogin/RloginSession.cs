@@ -133,21 +133,29 @@ namespace MBBSEmu.Session.Rlogin
 
                 //Parse RLogin Information
                 if (SessionState == EnumSessionState.Negotiating && bytesReceived > 2 &&
-                    socketReceiveBuffer[0] == 0x0 && socketReceiveBuffer[1] == 0x0)
+                    socketReceiveBuffer[0] == 0x0 )
                 {
                     var usernameLength = 0;
+                    var startingOrdinal = 1;
+
+                    if (socketReceiveBuffer[1] == 0)
+                        startingOrdinal++;
+
                     ReadOnlySpan<byte> bufferSpan = socketReceiveBuffer;
+
                     //Find End of Username
-                    for (var i = 2; i < bytesReceived; i++)
+                    for (var i = startingOrdinal; i < bytesReceived; i++)
                     {
                         if (socketReceiveBuffer[i] != 0x0) continue;
-                        usernameLength = i - 2;
+                        usernameLength = i - startingOrdinal;
                         break;
                     }
 
                     //Send 0 byte to ACK
                     Send(new byte[] {0x0});
-                    Username = Encoding.ASCII.GetString(bufferSpan.Slice(2, usernameLength));
+                    Username = Encoding.ASCII.GetString(bufferSpan.Slice(startingOrdinal, usernameLength));
+
+                    _logger.Info($"Rlogin For User: {Username}");
 
                     if (!string.IsNullOrEmpty(ModuleIdentifier))
                     {

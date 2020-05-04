@@ -51,7 +51,7 @@ namespace MBBSEmu.Btrieve
             _fileName = _fileFinder.FindFile(path, fileName);
 
             //If a .EMU version exists, load it over the .DAT file
-            var jsonFileName = fileName.ToUpper().Replace(".DAT", ".EMU");
+            var jsonFileName = _fileName.ToUpper().Replace(".DAT", ".EMU");
             if (File.Exists($"{path}{jsonFileName}"))
             {
                 _fileName = jsonFileName;
@@ -59,9 +59,8 @@ namespace MBBSEmu.Btrieve
             }
             else
             {
-                _fileName = fileName;
-                _btrieveFile = new BtrieveFile() { FileName = fileName };
-                LoadBtrieve(path, fileName);
+                _btrieveFile = new BtrieveFile() { FileName = _fileName };
+                LoadBtrieve(path, _fileName);
                 SaveJson();
             }
         }

@@ -591,7 +591,7 @@ namespace MBBSEmu.CPU
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                             {
 
-                                result = (ushort) (Registers.BP + (short) _currentInstruction.MemoryDisplacement + 1);
+                                result = (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
                                 break;
                             }
 
@@ -599,14 +599,14 @@ namespace MBBSEmu.CPU
                             {
 
                                 result = (ushort) (Registers.BP + Registers.SI +
-                                                   (short) _currentInstruction.MemoryDisplacement + 1);
+                                                   _currentInstruction.MemoryDisplacement + 1);
                                 break;
                             }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
                             {
                                 result = (ushort) (Registers.BP + Registers.DI +
-                                                   (short) _currentInstruction.MemoryDisplacement + 1);
+                                                   _currentInstruction.MemoryDisplacement + 1);
                                 break;
                             }
 

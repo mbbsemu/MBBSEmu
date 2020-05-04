@@ -125,7 +125,9 @@ namespace MBBSEmu.Session
         ///     Queue to hold data to be sent async to Client
         /// </summary>
         protected ConcurrentQueue<byte[]> DataToClient { get; set; }
-        
+
+        protected ConcurrentQueue<byte> DataFromClient { get; set; }
+
         /// <summary>
         ///     Specified that there is data to be processed from this channel
         /// </summary>
@@ -197,6 +199,8 @@ namespace MBBSEmu.Session
             Status = 0;
             SessionTimer = new Stopwatch();
             DataToClient = new ConcurrentQueue<byte[]>();
+            DataFromClient = new ConcurrentQueue<byte>();
+
 
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();
@@ -237,7 +241,7 @@ namespace MBBSEmu.Session
                 if (i + 1 < InputCommand.Length)
                     mArgv.Add(i + 1);
             }
-            mArgn.Add((int) (InputBuffer.Length -1));
+            mArgn.Add((int)(InputBuffer.Length - 1));
             mArgCount = mArgn.Count;
         }
 
@@ -254,6 +258,54 @@ namespace MBBSEmu.Session
             {
                 if (InputCommand[i] == 0x0)
                     InputCommand[i] = 0x20;
+            }
+        }
+
+        public void ProcessDataFromClient()
+        {
+            if (!DataFromClient.TryDequeue(out var clientData))
+                return;
+
+            //Handling Incoming Characters
+            switch (clientData)
+            {
+                //Backspace
+                case 0x8 when SessionState == EnumSessionState.InModule:
+                    {
+                        if (InputBuffer.Length > 0)
+                        {
+                            SendToClient(new byte[] { 0x08, 0x20, 0x08 });
+                            InputBuffer.SetLength(InputBuffer.Length - 1);
+                        }
+                        break;
+                    }
+
+                //Enter or Return
+                case 0xD when !TransparentMode:
+                    {
+                        //Set Status == 3, which means there is a Command Ready
+                        SendToClient(new byte[] { 0xD, 0xA });
+
+                        //If there's a character interceptor, don't write the CR to the buffer,
+                        //only mark that there is data ready and it'll process it from LastCharacterReceived
+                        if (CharacterInterceptor != null)
+                        {
+                            DataToProcess = true;
+                        }
+                        else
+                        {
+                            Status = 3;
+                        }
+
+                        break;
+                    }
+
+                default:
+                    {
+                        InputBuffer.WriteByte(clientData);
+                        DataToProcess = true;
+                        break;
+                    }
             }
         }
     }

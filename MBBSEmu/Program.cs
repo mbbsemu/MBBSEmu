@@ -5,17 +5,13 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
+using MBBSEmu.Server.Socket;
+using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.IO;
-using MBBSEmu.ManagementApi;
-using MBBSEmu.Server.Socket;
-using MBBSEmu.Session;
-using MBBSEmu.Session.Rlogin;
-using MBBSEmu.Session.Telnet;
 
 namespace MBBSEmu
 {
@@ -174,7 +170,7 @@ namespace MBBSEmu
             host.Start();
 
             //Setup and Run Telnet Server
-            if (bool.Parse(config["Telnet.Enabled"]))
+            if (!string.IsNullOrEmpty(config["Telnet.Enabled"]) && bool.Parse(config["Telnet.Enabled"]))
             {
                 if (string.IsNullOrEmpty("Telnet.Port"))
                 {
@@ -184,10 +180,16 @@ namespace MBBSEmu
 
                 ServiceResolver.GetService<ISocketServer>()
                     .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
+
+                _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
+            }
+            else
+            {
+                _logger.Info("Telnet Server Disabled (via appconfig.json)");
             }
 
             //Setup and Run Rlogin Server
-            if (bool.Parse(config["Rlogin.Enabled"]))
+            if (!string.IsNullOrEmpty(config["Rlogin.Enabled"]) && bool.Parse(config["Rlogin.Enabled"]))
             {
                 if (string.IsNullOrEmpty("Rlogin.Port"))
                 {
@@ -204,21 +206,23 @@ namespace MBBSEmu
                 ServiceResolver.GetService<ISocketServer>()
                     .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
 
+                _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
+
                 if (bool.Parse(config["Rlogin.PortPerModule"]))
                 {
                     var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
                     foreach (var m in modules)
                     {
-                        _logger.Info($"Rlogin port {rloginPort} listening for {m.ModuleIdentifier}");
+                        _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                         ServiceResolver.GetService<ISocketServer>()
                             .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
                     }
                 }
             }
-
-            //Setup and Run API Host
-            if (bool.TryParse(config["ManagementAPI.Enabled"], out var managementApiEnabled) && managementApiEnabled)
-                ServiceResolver.GetService<IApiHost>().Start();
+            else
+            {
+                _logger.Info("Rlogin Server Disabled (via appconfig.json)");
+            }
         }
 
         private static void DatabaseReset()

@@ -43,7 +43,7 @@ namespace MBBSEmu.IO
             if (File.Exists($"{modulePath}{fileName}"))
                 return fileName;
 
-            //Check all caps
+                //Check all caps
             if (File.Exists($"{modulePath}{fileName.ToUpper()}"))
                 return fileName.ToUpper();
 

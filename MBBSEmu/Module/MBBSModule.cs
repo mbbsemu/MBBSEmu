@@ -141,7 +141,7 @@ namespace MBBSEmu.Module
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
-                _logger.Warn($"{ModuleIdentifier} Exhausted Execution Units, creating additional");
+                _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
                 executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary);
             }
 
