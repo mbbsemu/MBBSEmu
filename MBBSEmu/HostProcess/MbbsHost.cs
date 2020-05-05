@@ -110,6 +110,9 @@ namespace MBBSEmu.HostProcess
                 //Process channel events
                 foreach (var session in _channelDictionary.Values)
                 {
+                    //Process a single incoming byte from the client session
+                    session.ProcessDataFromClient();
+
                     switch (session.SessionState)
                     {
                         //Initial call to STTROU when a User is Entering a Module

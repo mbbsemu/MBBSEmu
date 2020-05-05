@@ -433,9 +433,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (formatString[i] == '%' && formatString[i + 1] != '*')
                 {
                     i++;
-                    switch ((char)formatString[i])
+                    switch (formatString[i])
                     {
-                        case 'd':
+                        case 0x64: //d
                             var numberValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
                             startingParameterOrdinal += 2;
                             var numberValue = short.Parse(stringValues[valueOrdinal++]);
@@ -444,7 +444,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             // _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
 #endif
                             continue;
-                        case 's':
+                        case 0x73: //s
                             var stringValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
                             startingParameterOrdinal += 2;
                             var stringValue = stringValues[valueOrdinal++] + "\0";

@@ -266,6 +266,8 @@ namespace MBBSEmu.Session
             if (!DataFromClient.TryDequeue(out var clientData))
                 return;
 
+            LastCharacterReceived = clientData;
+
             //Handling Incoming Characters
             switch (clientData)
             {

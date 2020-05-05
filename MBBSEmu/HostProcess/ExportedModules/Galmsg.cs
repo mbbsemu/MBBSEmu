@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {

@@ -170,47 +170,10 @@ namespace MBBSEmu.Session.Rlogin
                     continue;
                 }
 
-                LastCharacterReceived = socketReceiveBuffer[0];
+                //Enqueue the incoming bytes for processing
+                for (var i = 0; i < bytesReceived; i++)
+                    DataFromClient.Enqueue(socketReceiveBuffer[0]);
 
-                //Handling Incoming Characters
-                switch (socketReceiveBuffer[0])
-                {
-                    //Backspace
-                    case 0x8 when SessionState == EnumSessionState.InModule:
-                        {
-                            if (InputBuffer.Length > 0)
-                            {
-                                Send(new byte[] { 0x08, 0x20, 0x08 });
-                                InputBuffer.SetLength(InputBuffer.Length - 1);
-                            }
-                            break;
-                        }
-                    //Enter or Return
-                    case 0xD when !TransparentMode:
-                        {
-                            //Set Status == 3, which means there is a Command Ready
-                            Send(new byte[] { 0xD, 0xA });
-
-                            //If there's a character interceptor, don't write the CR to the buffer,
-                            //only mark that there is data ready and it'll process it from LastCharacterReceived
-                            if (CharacterInterceptor != null)
-                            {
-                                DataToProcess = true;
-                            }
-                            else
-                            {
-                                Status = 3;
-                            }
-
-                            continue;
-                        }
-                    default:
-                        {
-                            InputBuffer.Write(socketReceiveBuffer, 0, bytesReceived);
-                            DataToProcess = true;
-                            break;
-                        }
-                }
                 Thread.Sleep(1);
             }
 

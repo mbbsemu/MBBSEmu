@@ -3255,7 +3255,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var msgnum = GetParameter(0);
 
             if (!Module.Memory.TryGetVariablePointer($"GETMSG", out var variablePointer))
-                variablePointer = base.Module.Memory.AllocateVariable($"GETMSG", 0x1000);
+                variablePointer = Module.Memory.AllocateVariable($"GETMSG", 0x1000);
 
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
