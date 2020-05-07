@@ -75,15 +75,22 @@ namespace MBBSEmu.Module
                 {
                     bInVariable = true;
 
-                    var currentPosition = i;
+                    var variableStart = i;
                     i--;
+
+                    while (i > 0 && fileToRead[i] <= ' ')
+                        i--;
+
+                    var variableNameEnd = i;
+
                     //Work Backwards to get Variable Name
                     while (i > 0 && fileToRead[i] >= ' ')
                         i--;
+                    var variableNameStart = i;
 
-                    var variableNameLength = (currentPosition - 1) - i;
+                    var variableNameLength = (variableNameEnd +1) - variableNameStart;
                     variableName = Encoding.ASCII.GetString(fileToRead, i, variableNameLength).Trim();
-                    i = currentPosition;
+                    i = variableStart;
                     continue;
                 }
 
@@ -95,7 +102,7 @@ namespace MBBSEmu.Module
                 if (fileToRead[i] == '~' && fileToRead[i + 1] == '}')
                 {
                     i++;
-                    msCurrentValue.WriteByte((byte) '}');
+                    msCurrentValue.WriteByte((byte)'}');
                     continue;
                 }
 
