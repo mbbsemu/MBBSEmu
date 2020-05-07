@@ -44,7 +44,11 @@ Eample Module Configuration JSON File Structure:
 {
   "Modules": [
     {
-      "Identifier": "EXAMPLE",
+      "Identifier": "EXAMPLE1",
+      "Path": "c:\\bbsv6\\"
+    },
+    {
+      "Identifier": "EXAMPLE2",
       "Path": "c:\\bbsv6\\"
     }
   ]
