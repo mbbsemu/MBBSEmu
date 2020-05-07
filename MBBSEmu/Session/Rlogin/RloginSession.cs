@@ -172,7 +172,7 @@ namespace MBBSEmu.Session.Rlogin
 
                 //Enqueue the incoming bytes for processing
                 for (var i = 0; i < bytesReceived; i++)
-                    DataFromClient.Enqueue(socketReceiveBuffer[0]);
+                    DataFromClient.Enqueue(socketReceiveBuffer[i]);
 
                 Thread.Sleep(1);
             }

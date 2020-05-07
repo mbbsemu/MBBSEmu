@@ -301,7 +301,9 @@ namespace MBBSEmu.Session
 
                         break;
                     }
-
+                //Ignore Linefeed
+                case 0xA:
+                    break;
                 default:
                     {
                         InputBuffer.WriteByte(clientData);
