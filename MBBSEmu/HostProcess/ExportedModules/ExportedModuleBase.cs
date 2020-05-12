@@ -353,21 +353,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                         case 'f':
                             {
-                                var floatValue = new byte[8];
+                                var floatValue = new byte[4];
                                 if (isVsPrintf)
                                 {
-                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8)
+                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4)
                                         .ToArray();
-                                    vsPrintfBase.Offset += 8;
+                                    vsPrintfBase.Offset += 4;
                                 }
                                 else
                                 {
-                                    var parameterHigh = GetParameterULong(currentParameter++);
-                                    var parameterLow = GetParameterULong(currentParameter++);
-
-
-                                    Array.Copy(BitConverter.GetBytes(parameterHigh), 0, floatValue, 0, 4);
-                                    Array.Copy(BitConverter.GetBytes(parameterLow), 0, floatValue, 4, 4);
+                                    var parameterValue = GetParameterULong(currentParameter++);
+                                    currentParameter++;
+                                    Array.Copy(BitConverter.GetBytes(parameterValue), 0, floatValue, 0, 4);
                                 }
 
                                 msFormattedValue.Write(

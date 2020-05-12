@@ -173,6 +173,11 @@ namespace MBBSEmu.Session
         public Stopwatch SessionTimer { get; set; }
 
         /// <summary>
+        ///     If enabled, Status 5 is generated after output has completed
+        /// </summary>
+        public bool OutputEmptyStatus { get; set; }
+
+        /// <summary>
         ///     Helper Method to enqueue data to be sent to the client Async
         /// </summary>
         /// <param name="dataToSend"></param>

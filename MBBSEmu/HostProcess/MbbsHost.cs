@@ -224,7 +224,7 @@ namespace MBBSEmu.HostProcess
                                 }
 
                                 //Did the text change cause a status update
-                                if (session.StatusChange || session.Status == 240)
+                                if (session.StatusChange || session.Status == 240 || session.Status == 5)
                                 {
                                     session.StatusChange = false;
                                     Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["stsrou"],
@@ -267,6 +267,8 @@ namespace MBBSEmu.HostProcess
                                             session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
                                         }
                                     }
+
+                                   
 
                                     continue;
                                 }

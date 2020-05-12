@@ -130,7 +130,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
             Module.Memory.SetVariable("OUTBSZ", (ushort) 0x1000);
             Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
-
+            Module.Memory.AllocateVariable("EURMSK", 1);
+            Module.Memory.SetVariable("EURMSK", (byte)0x7F);
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
             /*
@@ -307,10 +308,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="channel"></param>
         public void UpdateSession(ushort channel)
         {
-            //If the status wasn't set internally, then set it to the default 5
-            ChannelDictionary[ChannelNumber].Status = !ChannelDictionary[ChannelNumber].StatusChange
-                ? (ushort) 5
-                : Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            //Set the Channel Status
+            if (ChannelDictionary[ChannelNumber].OutputEmptyStatus)
+            {
+                ChannelDictionary[ChannelNumber].Status = 5;
+            }
+            else if (ChannelDictionary[ChannelNumber].StatusChange)
+            {
+                ChannelDictionary[ChannelNumber].Status = Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            }
+            else
+            {
+                ChannelDictionary[ChannelNumber].Status = 1;
+            }
 
             var userPointer = Module.Memory.GetVariablePointer("USER");
 
@@ -432,6 +442,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return outbsz;
                 case 593:
                     return sv;
+                case 194:
+                    return eurmsk;
             }
 
             if (offsetsOnly)
@@ -5954,5 +5966,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int enuf=tstcrd(long amount);
         /// </summary>
         private void tstcrd() => Registers.AX = 1;
+
+        /// <summary>
+        ///     0x7F if U.S.A. only, 0xFF if European
+        ///
+        ///     Signature: char eurmsk;
+        /// </summary>
+        private ReadOnlySpan<byte> eurmsk => Module.Memory.GetVariablePointer("EURMSK").ToSpan();
     }
 }

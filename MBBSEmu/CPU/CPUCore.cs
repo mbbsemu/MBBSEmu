@@ -2211,7 +2211,8 @@ namespace MBBSEmu.CPU
 
             Registers.Fpu.PopStackTop();
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
-            Memory.SetArray(Registers.DS, offset, valueToSave);
+
+            Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
         }
 
         /// <summary>

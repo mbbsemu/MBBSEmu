@@ -3,6 +3,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading;
 
@@ -174,6 +175,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 56:
                     btuxct();
+                    break;
+                case 64:
+                    chiout();
+                    break;
+                case 61:
+                    chiinj();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
@@ -537,9 +544,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var onoff = GetParameter(1);
 
-            _logger.Info(onoff == 1
-                ? $"Enable Output-Empty Status Codes: On (Ignored)"
-                : $"Enable Output-Empty Status Codes: Off (Ignored)");
+            //Notify the Session that a Status Change has occured
+            if (onoff == 1)
+            {
+                ChannelDictionary[channel].OutputEmptyStatus = true;
+                ChannelDictionary[channel].StatusChange = true;
+            }
+            else
+            {
+                ChannelDictionary[channel].OutputEmptyStatus = false;
+                ChannelDictionary[channel].StatusChange = true;
+            }
 
             Registers.AX = 0;
         }
@@ -758,6 +773,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dataToSend = Module.Memory.GetArray(bytesPointer, bytesToSend).ToArray();
 
             ChannelDictionary[channel].SendToClient(dataToSend);
+        }
+
+        /// <summary>
+        ///     Character Output (via Echo Buffer)
+        ///
+        ///     Signature: void chiout(int chan,char c);
+        /// </summary>
+        private void chiout()
+        {
+            var channel = GetParameter(0);
+            var byteToSend = GetParameter(1);
+
+            ChannelDictionary[channel].SendToClient(new byte[] {(byte) byteToSend});
+        }
+
+        /// <summary>
+        ///     Status Inject Utility
+        ///
+        ///     Signature: void chiinj(int chan,int status)
+        /// </summary>
+        private void chiinj()
+        {
+            var channel = GetParameter(0);
+            var status = GetParameter(1);
+
+            ChannelDictionary[channel].Status = status;
+            ChannelDictionary[channel].StatusChange = true;
+
+            Module.Memory.SetVariable("STATUS", status);
+
+#if DEBUG
+            _logger.Info($"Injecting Status {status} on Channel {channel}");
+#endif
         }
     }
 }
