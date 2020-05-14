@@ -12,6 +12,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using MBBSEmu.IO;
+using Newtonsoft.Json.Serialization;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -143,6 +144,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringToParse.Length; i++)
             {
+                //Handle escaped %% as a single %
+                if (stringToParse[i] == '%' && stringToParse[i + 1] == '%')
+                {
+                    i++;
+                    msOutput.WriteByte((byte)'%');
+                    continue;
+                }
+
                 //Found a Control Character
                 if (stringToParse[i] == '%' && stringToParse[i + 1] != '%')
                 {
@@ -252,8 +261,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     //Process Length
                     //TODO -- We'll process it but ignore it for now
+                    var variableLength = 0;
                     while (InSpan(PrintfLength, stringToParse.Slice(i, 1)))
                     {
+                        switch (stringToParse[i])
+                        {
+                            case (byte)'l':
+                                variableLength = 4;
+                                break;
+                            default:
+                                throw new Exception("Unsupported printf Length Specified");
+                        }
+
                         i++;
                     }
 
@@ -321,14 +340,53 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             {
                                 if (isVsPrintf)
                                 {
-                                    var parameterString = ((short)Module.Memory.GetWord(vsPrintfBase)).ToString();
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                    vsPrintfBase.Offset += 2;
+                                    switch (variableLength)
+                                    {
+                                        case 4:
+                                        {
+                                            var longLow = Module.Memory.GetWord(vsPrintfBase);
+                                                vsPrintfBase.Offset += 2;
+                                                var longHigh = Module.Memory.GetWord(vsPrintfBase);
+                                                vsPrintfBase.Offset += 2;
+                                                var longIntParameter = longHigh << 16 | longLow;
+                                                msFormattedValue.Write(
+                                                    Encoding.ASCII.GetBytes(longIntParameter.ToString()));
+                                                break;
+                                            }
+                                        case 0:
+                                        default:
+                                        {
+                                            var parameterString =
+                                                ((short) Module.Memory.GetWord(vsPrintfBase)).ToString();
+                                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                            vsPrintfBase.Offset += 2;
+                                            break;
+                                        }
+                                    }
+
                                 }
                                 else
                                 {
-                                    var parameter = (short)GetParameter(currentParameter++);
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                    switch (variableLength)
+                                    {
+                                        //ld or li (long int)
+                                        case 4:
+                                            {
+                                                var longLow = GetParameter(currentParameter++);
+                                                var longHigh = GetParameter(currentParameter++);
+                                                var longIntParameter = longHigh << 16 | longLow;
+                                                msFormattedValue.Write(
+                                                    Encoding.ASCII.GetBytes(longIntParameter.ToString()));
+                                                break;
+                                            }
+                                        case 0:
+                                        default:
+                                            var parameter = (short)GetParameter(currentParameter++);
+                                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                            break;
+                                    }
+
+
                                 }
 
                                 break;
@@ -534,43 +592,63 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 i++;
-                switch ((char)inputSpan[i])
+                switch (inputSpan[i])
                 {
-                    case 'a': //alert (bell)
+                    case (byte)'a': //alert (bell)
                         resultStream.WriteByte(0x7);
                         continue;
-                    case 'b': //backspace
+                    case (byte)'b': //backspace
                         resultStream.WriteByte(0x8);
                         continue;
-                    case 't': //tab
+                    case (byte)'t': //tab
                         resultStream.WriteByte(0x9);
                         continue;
-                    case 'n': //newline
+                    case (byte)'n': //newline
                         resultStream.WriteByte(0xA);
                         continue;
-                    case 'v': //vertical tab
+                    case (byte)'v': //vertical tab
                         resultStream.WriteByte(0xB);
                         continue;
-                    case 'f': //form feed
+                    case (byte)'f': //form feed
                         resultStream.WriteByte(0xC);
                         continue;
-                    case 'r': //carriage return
+                    case (byte)'r': //carriage return
                         resultStream.WriteByte(0xD);
                         continue;
-                    case '\\':
+                    case (byte)'\\':
                         resultStream.WriteByte((byte)'\\');
                         continue;
-                    case '"':
+                    case (byte)'"':
                         resultStream.WriteByte((byte)'"');
                         continue;
-                    case '?':
+                    case (byte)'?':
                         resultStream.WriteByte((byte)'?');
                         continue;
-                    case 'x': //hex character
+                    case (byte)'x': //hex character
                         {
                             resultStream.WriteByte(Convert.ToByte($"{inputSpan[i + 1]}{inputSpan[i + 2]}"));
                             i += 2;
                             continue;
+                        }
+                    case var n when (n >= '0' && n <= '9'):
+                        {
+                            var stringValue = inputSpan[i].ToString();
+
+                            if (inputSpan[i + 1] >= '0' && inputSpan[i + 1] <= '9')
+                            {
+                                stringValue += inputSpan[i + 1].ToString();
+                                i++;
+                            }
+
+                            if (inputSpan[i + 2] >= '0' && inputSpan[i + 2] <= '9')
+                            {
+                                stringValue += inputSpan[i + 2].ToString();
+                                i++;
+                            }
+
+                            resultStream.WriteByte(byte.Parse(stringValue));
+
+                            break;
                         }
                     default:
                         resultStream.WriteByte((byte)'\\');

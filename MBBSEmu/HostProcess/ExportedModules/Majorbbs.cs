@@ -1629,11 +1629,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             }
 
-            //Zero It Back out
-            for (var i = basePointer.Offset; i < outputLength; i++)
-            {
-                Module.Memory.SetByte(basePointer.Segment, i, 0x0);
-            }
+            Module.Memory.SetZero(basePointer, outputLength);
 
             //Set prfptr to the base address of prfbuf
             Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
