@@ -219,7 +219,7 @@ namespace MBBSEmu.HostProcess
                                     }
 
                                     //If the client is in transparent mode, don't echo
-                                    if (!session.TransparentMode)
+                                    if (!session.TransparentMode && session.Status == 1)
                                         session.SendToClient(new[] { session.LastCharacterReceived });
                                 }
 
@@ -267,10 +267,6 @@ namespace MBBSEmu.HostProcess
                                             session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
                                         }
                                     }
-
-                                   
-
-                                    continue;
                                 }
 
                                 break;

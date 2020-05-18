@@ -64,8 +64,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
             //Setup Memory for Variables
-            Module.Memory.AllocateVariable("PRFBUF", 0x2000, true); //Output buffer, 8kb
+            Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
+            Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
+            Module.Memory.SetVariable("OUTBSZ", (ushort)0x4000);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
@@ -127,8 +129,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetVariable("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
             Module.Memory.AllocateVariable("TSHMSG", 81); //universal global Tagspec Handler message
             Module.Memory.AllocateVariable("FTFSCB", FtfscbStruct.Size);
-            Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
-            Module.Memory.SetVariable("OUTBSZ", (ushort) 0x1000);
+            
             Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
             Module.Memory.AllocateVariable("EURMSK", 1);
             Module.Memory.SetVariable("EURMSK", (byte)0x7F);
@@ -976,6 +977,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 607:
                     tstcrd();
                     break;
+                case 754:
+                    strnicmp();
+                    break;
+                case 109:
+                    clock();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1081,8 +1088,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationPointer, inputBuffer);
 
 #if DEBUG
-                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
-                _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
+               _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+               // _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
             }
             else
@@ -5969,5 +5976,71 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: char eurmsk;
         /// </summary>
         private ReadOnlySpan<byte> eurmsk => Module.Memory.GetVariablePointer("EURMSK").ToSpan();
+
+        /// <summary>
+        ///     strnicmp - compare one string to another without case sensitivity
+        ///
+        ///     Signature: int strnicmp(const char *str1, const char *str2, size_t maxlen);
+        /// </summary>
+        private void strnicmp()
+        {
+            var string1Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
+            var length = GetParameter(4);
+
+            var string1 = Module.Memory.GetString(string1Pointer, true);
+            var string2 = Module.Memory.GetString(string2Pointer, true);
+
+#if DEBUG
+            _logger.Info(
+                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
+#endif
+
+            if (string1.Length == 0)
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            if (string2.Length == 0)
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            for (var i = 0; i < length; i++)
+            {
+                //We're at the end of string 2, string 1 is longer
+                if (i == string2.Length)
+                {
+                    Registers.AX = 1;
+                    return;
+                }
+
+                if (string1[i] == string2[i]) continue;
+                if (string1[i] == string2[i] + 32) continue;
+                if (string1[i] == string2[i] - 32) continue;
+
+                //1 < 2 == -1 (0xFFFF)
+                //1 > 2 == 1 (0x0001)
+                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
+                return;
+            }
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Determines processor time.
+        ///
+        ///     The clock function returns the processor time elapsed since the beginning of the program invocation.
+        ///
+        ///     Signature: clock_t clock(void);
+        /// </summary>
+        private void clock()
+        {
+            Registers.DX = (ushort) ((int) _highResolutionTimer.ElapsedMilliseconds & 0xFFFF);
+            Registers.AX = (ushort)(((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF0000) >> 16);
+        }
     }
 }

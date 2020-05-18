@@ -135,7 +135,8 @@ namespace MBBSEmu.CPU
         {
             var value = Memory.GetWord(Registers.SS, (ushort)(Registers.SP + 1));
 #if DEBUG
-            //_logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
+            if(_showDebug)
+                _logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
 #endif
             Registers.SP += 2;
             return value;
@@ -147,7 +148,8 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
 
 #if DEBUG
-            //_logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+            if(_showDebug)
+                _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
         }
@@ -170,10 +172,10 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            //if(Registers.CS == 1 && Registers.IP == 0x1BE)
-              //Debugger.Break();
+            //if(Registers.CS == 16 && Registers.IP == 0x1A07)
+            //  Debugger.Break();
 
-            if (Registers.CS == 0x1 && ((Registers.IP >= 0x1A9 && Registers.IP <= 0x1F2)))
+            if (Registers.CS == 0xFF && ((Registers.IP >= 0xD93 && Registers.IP <= 0xF25)))
             {
 
                 _showDebug = true;
