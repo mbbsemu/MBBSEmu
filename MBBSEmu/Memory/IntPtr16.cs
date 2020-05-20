@@ -87,6 +87,40 @@ namespace MBBSEmu.Memory
             return Offset.GetHashCode() ^ Segment.GetHashCode();
         }
 
+        public static bool operator ==(IntPtr16 left, IntPtr16 right)
+        {
+            if (left is null && right is null)
+                return true;
+
+            if (!(left is null) && right is null)
+                return false;
+
+            if (left.Segment != right.Segment)
+                return false;
+
+            if (left.Offset != right.Offset)
+                return false;
+
+            return true;
+        }
+
+        public static bool operator !=(IntPtr16 left, IntPtr16 right)
+        {
+            if (left is null && right is null)
+                return false;
+
+            if (!(left is null) && right is null)
+                return true;
+
+            if (left.Segment != right.Segment)
+                return true;
+
+            if (left.Offset != right.Offset)
+                return true;
+
+            return false;
+        }
+
         public static IntPtr16 Empty => new IntPtr16(0, 0);
     }
 }

@@ -261,6 +261,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Reset PRFPTR
             Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
 
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
@@ -816,6 +817,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     absbtv();
                     break;
                 case 313:
+                case 999: //gabbtvl
                     gabbtv();
                     break;
                 case 585:
@@ -975,6 +977,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     anpbtv();
                     break;
                 case 607:
+                case 461: //otstscrd -- always return true
                     tstcrd();
                     break;
                 case 754:
@@ -2590,14 +2593,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Performing {(EnumBtrieveOperationCodes) obtopt} in {BtrievePointerDictionaryNew[_currentBtrieveFile].FileName} on key {keyNum} for: {Encoding.ASCII.GetString(Module.Memory.GetString(keyPointer, true))}");
 #endif
 
+            byte[] keyValue;
+            if (currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.String)
+            {
+                keyValue = Module.Memory.GetString(keyPointer).ToArray();
+            }
+            else
+            {
+                keyValue = Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength(keyNum)).ToArray();
+            }
+
             switch ((EnumBtrieveOperationCodes) obtopt)
             {
                 //GetEqual
                 case EnumBtrieveOperationCodes.GetEqual:
                 {
-                    result = currentBtrieveFile.SeekByKey(keyNum, Module.Memory.GetString(keyPointer));
+                    result = currentBtrieveFile.SeekByKey(keyNum, keyValue);
                     break;
                 }
+                case EnumBtrieveOperationCodes.GetLast when keyNum == 0 && keyPointer == IntPtr16.Empty:
+                {
+                    result = currentBtrieveFile.StepLast();
+                    break;
+                }
+                case EnumBtrieveOperationCodes.GetGreaterThanOrEqual:
+                case EnumBtrieveOperationCodes.GetGreater:
+                {
+                    result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
+                        (EnumBtrieveOperationCodes) obtopt);
+                    break;
+                }
+                default:
+                    throw  new Exception($"Unsupported Btrieve Operation: {(EnumBtrieveOperationCodes)obtopt}");
             }
 
             //Store the Record if it's there
@@ -4495,6 +4522,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case EnumBtrieveOperationCodes.GetKeyEqual:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile].SeekByKey(keyNumber, key);
                     break;
+                case EnumBtrieveOperationCodes.GetKeyFirst:
+                    result = BtrievePointerDictionaryNew[_currentBtrieveFile]
+                        .SeekByKey(keyNumber, key, EnumBtrieveOperationCodes.GetKeyFirst);
+                    break;
+                default:
+                    throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
             }
 
 #if DEBUG
@@ -5265,11 +5298,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var result = 0;
             switch ((EnumBtrieveOperationCodes) queryOption)
             {
-                //Get Next -- repeating the same previous query
+                //Get Next -- repeating the same previous q uery
                 case EnumBtrieveOperationCodes.GetKeyNext:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile]
                         .SeekByKey(0, null, EnumBtrieveOperationCodes.None, false);
                     break;
+                default:
+                    throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
             }
 
 #if DEBUG

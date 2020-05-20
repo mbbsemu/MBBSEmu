@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\BBSGEN.VIR" />
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\crashDetailsAPI.txt" />
     <None Remove="Assets\login.ans" />
@@ -29,6 +30,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\BBSGEN.VIR">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
@@ -64,10 +69,6 @@
 
   <ItemGroup>
     <None Update="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-    </None>
-    <None Update="BBSGEN.VIR">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>

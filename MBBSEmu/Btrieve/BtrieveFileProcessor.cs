@@ -85,7 +85,7 @@ namespace MBBSEmu.Btrieve
             {
                 _logger.Warn($"Unable to locate existing btrieve file {fileName}, simulating creation of a new one");
 
-                _btrieveFile = new BtrieveFile {RecordCount = 0};
+                _btrieveFile = new BtrieveFile { RecordCount = 0 };
                 return;
             }
 
@@ -265,6 +265,13 @@ namespace MBBSEmu.Btrieve
             return 1;
         }
 
+        public ushort StepLast()
+        {
+            CurrentRecordNumber = (ushort)(_btrieveFile.Records.Count - 1);
+
+            return 1;
+        }
+
         public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
 
         public byte[] GetRecord(ushort recordNumber) => _btrieveFile.Records[recordNumber].Data;
@@ -304,7 +311,7 @@ namespace MBBSEmu.Btrieve
         }
 
         public ushort Seek(EnumBtrieveOperationCodes operationCode)
-        { 
+        {
             switch (operationCode)
             {
                 case EnumBtrieveOperationCodes.GetFirst:
@@ -315,7 +322,7 @@ namespace MBBSEmu.Btrieve
                     return StepPrevious();
                 default:
                     throw new Exception($"Unsupported Btrieve Operation: {operationCode}");
-                    
+
             }
         }
 
@@ -347,17 +354,11 @@ namespace MBBSEmu.Btrieve
                 AbsolutePosition = 0;
             }
 
-            foreach (var r in _btrieveFile.Records.Where(x=> x.Offset > AbsolutePosition))
+            var seekSuccessful = false;
+
+            foreach (var r in _btrieveFile.Records.Where(x => x.Offset > AbsolutePosition))
             {
-                ReadOnlySpan<byte> recordKey;
-                if (CurrentQuery.KeyDataType == EnumKeyDataType.Integer)
-                {
-                    recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, key.Length);
-                }
-                else
-                {
-                    recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, key.Length);
-                }
+                var recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, key.Length);
 
                 switch (operationCode)
                 {
@@ -372,7 +373,7 @@ namespace MBBSEmu.Btrieve
 #if DEBUG
                             else
                             {
-                                if(CurrentQuery.KeyDataType == EnumKeyDataType.Integer)
+                                if (CurrentQuery.KeyDataType == EnumKeyDataType.Integer)
                                     _logger.Info($"{BitConverter.ToString(recordKey.ToArray())} != {BitConverter.ToString(CurrentQuery.Key)} (Record: {r.Offset:X4}, Key: {r.Offset + CurrentQuery.KeyOffset:X4})");
                             }
 #endif
@@ -381,7 +382,7 @@ namespace MBBSEmu.Btrieve
                         }
                     case EnumBtrieveOperationCodes.GetLessThan when CurrentQuery.KeyDataType == EnumKeyDataType.UnsignedBinary:
                         {
-                           ushort.TryParse(Encoding.ASCII.GetString(CurrentQuery.Key), out var searchValue);
+                            ushort.TryParse(Encoding.ASCII.GetString(CurrentQuery.Key), out var searchValue);
                             var keyValue = BitConverter.ToUInt16(recordKey);
                             if (keyValue < searchValue)
                             {
@@ -392,8 +393,105 @@ namespace MBBSEmu.Btrieve
 
                             break;
                         }
+                    case EnumBtrieveOperationCodes.GetGreater when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
+                        {
+                            uint desiredKeyValue = 0;
+                            uint recordKeyValue = 0;
+                            switch (CurrentQuery.KeyLength)
+                            {
+                                case 2:
+                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
+                                    break;
+                                case 4:
+                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
+                                    break;
+                            }
+
+                            if (recordKeyValue > desiredKeyValue)
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                return 1;
+                            }
+
+                            break;
+                        }
+                    case EnumBtrieveOperationCodes.GetKeyLast when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
+                        {
+                            uint desiredKeyValue = 0;
+                            uint recordKeyValue = 0;
+                            switch (CurrentQuery.KeyLength)
+                            {
+                                case 2:
+                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
+                                    break;
+                                case 4:
+                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
+                                    break;
+                            }
+
+                            if (recordKeyValue == desiredKeyValue)
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                seekSuccessful = true;
+                            }
+
+                            break;
+                        }
+
+                    case EnumBtrieveOperationCodes.GetKeyFirst when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
+                        {
+                            uint desiredKeyValue = 0;
+                            uint recordKeyValue = 0;
+                            switch (CurrentQuery.KeyLength)
+                            {
+                                case 2:
+                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
+                                    break;
+                                case 4:
+                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
+                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
+                                    break;
+                            }
+
+                            if (recordKeyValue == desiredKeyValue)
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                return 1;
+                            }
+
+                            break;
+                        }
+                    case EnumBtrieveOperationCodes.GetGreaterThanOrEqual when CurrentQuery.KeyDataType == EnumKeyDataType.UnsignedBinary:
+                        {
+                            var desiredKeyValue = BitConverter.ToInt32(CurrentQuery.Key);
+                            var recordKeyValue = BitConverter.ToUInt32(recordKey);
+
+                            if (recordKeyValue >= desiredKeyValue)
+                            {
+                                AbsolutePosition = (uint)r.Offset;
+                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                                return 1;
+                            }
+
+                            break;
+                        }
+                    default:
+                        throw new Exception($"Unknown Operation Code: {operationCode}");
                 }
             }
+
+            //For operations where we look for first/last, check to see if we moved
+            if (seekSuccessful)
+                return 1;
+
             return 0;
         }
 
@@ -421,5 +519,7 @@ namespace MBBSEmu.Btrieve
         }
 
         public ushort GetKeyLength(ushort keyNumber) => (ushort)_btrieveFile.Keys[keyNumber].Segments.Sum(x => x.Length);
+
+        public EnumKeyDataType GetKeyType(ushort keyNumber) => _btrieveFile.Keys[keyNumber].Segments[0].DataType;
     }
 }

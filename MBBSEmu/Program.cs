@@ -29,199 +29,206 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
-           
-            var config = ServiceResolver.GetService<IConfiguration>();
-
-            if (args.Length == 0)
-                args = new[] {"-?"};
-
-            for (var i = 0; i < args.Length; i++)
+            try
             {
-                switch (args[i].ToUpper())
+                var config = ServiceResolver.GetService<IConfiguration>();
+
+                if (args.Length == 0)
+                    args = new[] { "-?" };
+
+                for (var i = 0; i < args.Length; i++)
                 {
-                    case "-DBRESET":
+                    switch (args[i].ToUpper())
                     {
-                        bResetDatabase = true;
-                        if (i + 1 < args.Length && args[i + 1][0] != '-')
-                        {
-                            sSysopPassword = args[i + 1];
-                            i++;
-                        }
-
-                        break;
-                    }
-                    case "-APIREPORT":
-                        bApiReport = true;
-                        break;
-                    case "-M":
-                        sInputModule = args[i + 1];
-                        i++;
-                        break;
-                    case "-P":
-                        sInputPath = args[i + 1];
-                        i++;
-                        break;
-                    case "-?":
-                        Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
-                        return;
-                    case "-CONFIG":
-                    case "-C":
-                    {
-                        bConfigFile = true;
-                        //Is there a following argument that doesn't start with '-'
-                        //If so, it's the config file name
-                        if (i + 1 < args.Length && args[i + 1][0] != '-')
-                        {
-                            sConfigFile = args[i + 1];
-
-                            if (!File.Exists(sConfigFile))
+                        case "-DBRESET":
                             {
-                                    Console.Write($"Specified Module Configuration File not found: {sConfigFile}");
-                                    return;
+                                bResetDatabase = true;
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    sSysopPassword = args[i + 1];
+                                    i++;
+                                }
+
+                                break;
                             }
+                        case "-APIREPORT":
+                            bApiReport = true;
+                            break;
+                        case "-M":
+                            sInputModule = args[i + 1];
                             i++;
-                        }
-                        else
-                        {
-                           Console.WriteLine("Please specify a Module Configuration File when using the -C command line option");
-                        }
+                            break;
+                        case "-P":
+                            sInputPath = args[i + 1];
+                            i++;
+                            break;
+                        case "-?":
+                            Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
+                            return;
+                        case "-CONFIG":
+                        case "-C":
+                            {
+                                bConfigFile = true;
+                                //Is there a following argument that doesn't start with '-'
+                                //If so, it's the config file name
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    sConfigFile = args[i + 1];
 
-                        break;
+                                    if (!File.Exists(sConfigFile))
+                                    {
+                                        Console.Write($"Specified Module Configuration File not found: {sConfigFile}");
+                                        return;
+                                    }
+                                    i++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Please specify a Module Configuration File when using the -C command line option");
+                                }
+
+                                break;
+                            }
+                        default:
+                            Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
+                            return;
                     }
-                    default:
-                        Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
+                }
+
+                //Database Reset
+                if (bResetDatabase)
+                    DatabaseReset();
+
+                //Setup Generic Database
+                if (!File.Exists("BBSGEN.DAT"))
+                {
+                    _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
+                    if (!File.Exists("BBSGEN.VIR"))
+                    {
+                        _logger.Fatal("Unable to locate BBSGEN.VIR -- aborting");
                         return;
+                    }
+
+                    File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
                 }
-            }
 
-            //Database Reset
-            if (bResetDatabase)
-                DatabaseReset();
-
-            //Setup Generic Database
-            if (!File.Exists("BBSGEN.DAT"))
-            {
-                _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
-                if (!File.Exists("BBSGEN.VIR"))
+                //Setup Modules
+                var modules = new List<MbbsModule>();
+                if (!string.IsNullOrEmpty(sInputModule))
                 {
-                    _logger.Fatal("Unable to locate BBSGEN.VIR -- aborting");
+                    //Load Command Line
+                    modules.Add(new MbbsModule(sInputModule, sInputPath));
+                }
+                else if (bConfigFile)
+                {
+                    //Load Config File
+                    var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                        .AddJsonFile(sConfigFile, optional: false, reloadOnChange: true).Build();
+
+                    foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
+                    {
+                        _logger.Info($"Loading {m["Identifier"]}");
+                        modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
+                    }
+                }
+                else
+                {
+                    _logger.Warn($"You must specify a module to load either via Command Line or Config File");
+                    _logger.Warn($"View help documentation using -? for more information");
                     return;
                 }
 
-                File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
-            }
-
-            //Setup Modules
-            var modules = new List<MbbsModule>();
-            if (!string.IsNullOrEmpty(sInputModule))
-            {
-                //Load Command Line
-                modules.Add(new MbbsModule(sInputModule, sInputPath));
-            }
-            else if(bConfigFile)
-            {
-                //Load Config File
-                var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(sConfigFile, optional: false, reloadOnChange: true).Build();
-
-                foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
+                //API Report
+                if (bApiReport)
                 {
-                    _logger.Info($"Loading {m["Identifier"]}");
-                    modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
-                }
-            }
-            else
-            {
-                _logger.Warn($"You must specify a module to load either via Command Line or Config File");
-                _logger.Warn($"View help documentation using -? for more information");
-                return;
-            }
-
-            //API Report
-            if (bApiReport)
-            {
-                foreach (var m in modules)
-                {
-                    var apiReport = new ApiReport(m);
-                    apiReport.GenerateReport();
-                }
-                return;
-            }
-
-            //Database Sanity Checks
-            var databaseFile = ServiceResolver.GetService<IConfiguration>()["Database.File"];
-            if (string.IsNullOrEmpty(databaseFile))
-            {
-                _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
-                return;
-            }
-            if (!File.Exists(databaseFile))
-            {
-                _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
-                DatabaseReset();
-            }
-
-            //Setup and Run Host
-            var host = ServiceResolver.GetService<IMbbsHost>();
-            
-            foreach(var m in modules)
-                host.AddModule(m);
-
-            host.Start();
-
-            //Setup and Run Telnet Server
-            if (!string.IsNullOrEmpty(config["Telnet.Enabled"]) && bool.Parse(config["Telnet.Enabled"]))
-            {
-                if (string.IsNullOrEmpty("Telnet.Port"))
-                {
-                    _logger.Error("You must specify a port via Telnet.Port in appconfig.json if you're going to enable Telnet");
-                    return;
-                }
-
-                ServiceResolver.GetService<ISocketServer>()
-                    .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
-
-                _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
-            }
-            else
-            {
-                _logger.Info("Telnet Server Disabled (via appconfig.json)");
-            }
-
-            //Setup and Run Rlogin Server
-            if (!string.IsNullOrEmpty(config["Rlogin.Enabled"]) && bool.Parse(config["Rlogin.Enabled"]))
-            {
-                if (string.IsNullOrEmpty("Rlogin.Port"))
-                {
-                    _logger.Error("You must specify a port via Rlogin.Port in appconfig.json if you're going to enable Rlogin");
-                    return;
-                }
-
-                if (string.IsNullOrEmpty("Rlogin.RemoteIP"))
-                {
-                    _logger.Error("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin");
-                    return;
-                }
-
-                ServiceResolver.GetService<ISocketServer>()
-                    .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
-
-                _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
-
-                if (bool.Parse(config["Rlogin.PortPerModule"]))
-                {
-                    var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
                     foreach (var m in modules)
                     {
-                        _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
-                        ServiceResolver.GetService<ISocketServer>()
-                            .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                        var apiReport = new ApiReport(m);
+                        apiReport.GenerateReport();
+                    }
+                    return;
+                }
+
+                //Database Sanity Checks
+                var databaseFile = ServiceResolver.GetService<IConfiguration>()["Database.File"];
+                if (string.IsNullOrEmpty(databaseFile))
+                {
+                    _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
+                    return;
+                }
+                if (!File.Exists(databaseFile))
+                {
+                    _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
+                    DatabaseReset();
+                }
+
+                //Setup and Run Host
+                var host = ServiceResolver.GetService<IMbbsHost>();
+
+                foreach (var m in modules)
+                    host.AddModule(m);
+
+                host.Start();
+
+                //Setup and Run Telnet Server
+                if (!string.IsNullOrEmpty(config["Telnet.Enabled"]) && bool.Parse(config["Telnet.Enabled"]))
+                {
+                    if (string.IsNullOrEmpty("Telnet.Port"))
+                    {
+                        _logger.Error("You must specify a port via Telnet.Port in appconfig.json if you're going to enable Telnet");
+                        return;
+                    }
+
+                    ServiceResolver.GetService<ISocketServer>()
+                        .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
+
+                    _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
+                }
+                else
+                {
+                    _logger.Info("Telnet Server Disabled (via appconfig.json)");
+                }
+
+                //Setup and Run Rlogin Server
+                if (!string.IsNullOrEmpty(config["Rlogin.Enabled"]) && bool.Parse(config["Rlogin.Enabled"]))
+                {
+                    if (string.IsNullOrEmpty("Rlogin.Port"))
+                    {
+                        _logger.Error("You must specify a port via Rlogin.Port in appconfig.json if you're going to enable Rlogin");
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty("Rlogin.RemoteIP"))
+                    {
+                        _logger.Error("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin");
+                        return;
+                    }
+
+                    ServiceResolver.GetService<ISocketServer>()
+                        .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
+
+                    _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
+
+                    if (bool.Parse(config["Rlogin.PortPerModule"]))
+                    {
+                        var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
+                        foreach (var m in modules)
+                        {
+                            _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
+                            ServiceResolver.GetService<ISocketServer>()
+                                .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                        }
                     }
                 }
+                else
+                {
+                    _logger.Info("Rlogin Server Disabled (via appconfig.json)");
+                }
             }
-            else
+            catch (Exception e)
             {
-                _logger.Info("Rlogin Server Disabled (via appconfig.json)");
+                Console.WriteLine("Critical Exception has occured:");
+                Console.WriteLine(e);
             }
         }
 

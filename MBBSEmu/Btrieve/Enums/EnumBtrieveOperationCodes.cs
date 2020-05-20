@@ -27,6 +27,7 @@
         //Get Key Operations
         GetKeyEqual = 0x37,
         GetKeyNext = 0x38,
+        GetKeyFirst = 0x3E,
         GetKeyLast = 0x3F,
 
         None = ushort.MaxValue
