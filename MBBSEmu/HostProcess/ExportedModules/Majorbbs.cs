@@ -1572,7 +1572,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourcePointer = GetParameterPointer(0);
 
-            var output = Module.Memory.GetString(sourcePointer, true);
+            var output = Module.Memory.GetString(sourcePointer, false);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
@@ -1582,7 +1582,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(pointerPosition.Segment, pointerPosition.Offset, formattedMessage);
 
             //Update prfptr value
-            pointerPosition.Offset += (ushort) formattedMessage.Length;
+            pointerPosition.Offset += (ushort)(formattedMessage.Length - 1);
             Module.Memory.SetVariable("PRFPTR", pointerPosition);
 
 #if DEBUG
@@ -1699,6 +1699,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
             currentPrfPositionPointer.Offset += (ushort) formattedMessage.Length;
+            Module.Memory.SetByte(currentPrfPositionPointer, 0x0); //Null terminate it
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
@@ -4524,7 +4525,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case EnumBtrieveOperationCodes.GetKeyFirst:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile]
-                        .SeekByKey(keyNumber, key, EnumBtrieveOperationCodes.GetKeyFirst);
+                        .SeekByKey(keyNumber, keyPointer == IntPtr16.Empty ? null : key, EnumBtrieveOperationCodes.GetKeyFirst);
                     break;
                 default:
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
@@ -5298,10 +5299,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var result = 0;
             switch ((EnumBtrieveOperationCodes) queryOption)
             {
-                //Get Next -- repeating the same previous q uery
+                //Get Next -- repeating the same previous query
                 case EnumBtrieveOperationCodes.GetKeyNext:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile]
-                        .SeekByKey(0, null, EnumBtrieveOperationCodes.None, false);
+                        .SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyNext, false);
                     break;
                 default:
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");

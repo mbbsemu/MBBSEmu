@@ -638,14 +638,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             {
                                 stringValue += inputSpan[i + 1].ToString();
                                 i++;
-                            }
 
-                            if (inputSpan[i + 2] >= '0' && inputSpan[i + 2] <= '9')
-                            {
-                                stringValue += inputSpan[i + 2].ToString();
-                                i++;
+                                if (inputSpan[i + 2] >= '0' && inputSpan[i + 2] <= '9')
+                                {
+                                    stringValue += inputSpan[i + 2].ToString();
+                                    i++;
+                                }
                             }
-
                             resultStream.WriteByte(byte.Parse(stringValue));
 
                             break;
@@ -655,6 +654,92 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         resultStream.WriteByte(inputSpan[i]);
                         continue;
                 }
+            }
+
+            return resultStream.ToArray();
+        }
+
+        /// <summary>
+        ///     The GSBL BTUXMT supports custom ANSI escape sequences where strings are sent to the client
+        ///     depending on if they have ANSI enabled or not. This routine parses those characters based on
+        ///     the specified ANSI Support Level.
+        ///
+        ///     Because MBBSEmu **ONLY** supports ANSI, we ignore the non-ANSI component if an IF-ANSI sequence
+        /// </summary>
+        /// <param name="isAnsi"></param>
+        /// <returns></returns>
+        private protected ReadOnlySpan<byte> ProcessIfANSI(ReadOnlySpan<byte> inputSpan, bool isAnsi = false)
+        {
+            using var resultStream = new MemoryStream();
+            for (var i = 0; i < inputSpan.Length; i++)
+            {
+                if (inputSpan[i] != 0x1B)
+                {
+                    resultStream.WriteByte(inputSpan[i]);
+                    continue;
+                }
+
+                //Normal ANSI
+                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] != '[')
+                {
+                    resultStream.WriteByte(inputSpan[i]);
+                    continue;
+                }
+
+                //Found IF-ANSI
+                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] == '[')
+                {
+                    i += 3;
+                    var substringStart = i;
+                    var substringEnd = i; //We will increment this
+
+                    //Find the end of the first segment
+                    while (substringEnd < inputSpan.Length)
+                    {
+                        //Break if we've found the unescaped end
+                        if (inputSpan[substringEnd] == '|' && inputSpan[substringEnd - 1] != '~')
+                            break;
+
+                        substringEnd++;
+                    }
+
+                    var substringSpan = inputSpan.Slice(substringStart, (substringEnd - substringStart));
+
+                    //Process Escape Characters for IF-ANSI and write to output buffer
+                    for (var j = 0; j < substringSpan.Length; j++)
+                    {
+                        switch (substringSpan[j])
+                        {
+                            case (byte) '|':
+                            case (byte) ']':
+                            case (byte) '~':
+                            {
+                                if (substringSpan[j - 1] == '~')
+                                    resultStream.WriteByte(substringSpan[j]);
+
+                                break;
+                            }
+                            default:
+                                resultStream.WriteByte(substringSpan[j]);
+                                break;
+                        }
+                    }
+
+                    //Set Cursor to where we're at now
+                    i = substringEnd;
+
+                    //Skip past 'else'
+                    //Find the end of the first segment
+                    while (i < inputSpan.Length)
+                    {
+                        //Break if we've found the unescaped end
+                        if (inputSpan[i] == ']' && inputSpan[i - 1] != '~')
+                            break;
+
+                        i++;
+                    }
+                }
+
             }
 
             return resultStream.ToArray();

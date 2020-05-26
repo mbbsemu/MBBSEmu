@@ -339,26 +339,36 @@ namespace MBBSEmu.Btrieve
                 {
                     KeyOffset = _btrieveFile.Keys[keyNumber].Segments[0].Offset,
                     KeyDataType = _btrieveFile.Keys[keyNumber].Segments[0].DataType,
-                    Key = new byte[key.Length]
+                    Key = key == null ? null :new byte[key.Length],
+                    KeyLength = GetKeyLength(keyNumber)
                 };
 
-                //Get Key Information By Number
+                /*
+                 * Occasionally, zstring keys are marked with a length of 1, where as the length is actually
+                 * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
+                 * we increase the size of the defined key in the query.
+                 */
+                if (key != null && key.Length > CurrentQuery.KeyLength)
+                    CurrentQuery.KeyLength = (ushort) key.Length;
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
                  * There are modules that define in their btrieve file a STRING key of length 1, but pass in a char*
                  * So for the time being, we just make the key length we're looking for whatever was passed in.
                  */
-                Array.Copy(key.ToArray(), 0, CurrentQuery.Key, 0, key.Length);
+                if (key != null)
+                {
+                    Array.Copy(key.ToArray(), 0, CurrentQuery.Key, 0, key.Length);
+                }
 
                 AbsolutePosition = 0;
             }
 
             var seekSuccessful = false;
 
-            foreach (var r in _btrieveFile.Records.Where(x => x.Offset > AbsolutePosition))
+            foreach (var r in _btrieveFile.Records.Where(x => x.Offset > AbsolutePosition).OrderBy(x=> x.Offset))
             {
-                var recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, key.Length);
+                var recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, CurrentQuery.KeyLength);
 
                 switch (operationCode)
                 {
@@ -444,31 +454,14 @@ namespace MBBSEmu.Btrieve
                             break;
                         }
 
-                    case EnumBtrieveOperationCodes.GetKeyFirst when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
-                        {
-                            uint desiredKeyValue = 0;
-                            uint recordKeyValue = 0;
-                            switch (CurrentQuery.KeyLength)
-                            {
-                                case 2:
-                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
-                                    break;
-                                case 4:
-                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
-                                    break;
-                            }
-
-                            if (recordKeyValue == desiredKeyValue)
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                return 1;
-                            }
-
-                            break;
-                        }
+                    case EnumBtrieveOperationCodes.GetKeyFirst:
+                    {
+                        return GetByKeyFirst(CurrentQuery);
+                    }
+                    case EnumBtrieveOperationCodes.GetKeyNext:
+                    {
+                        return GetByKeyNext(CurrentQuery);
+                    }
                     case EnumBtrieveOperationCodes.GetGreaterThanOrEqual when CurrentQuery.KeyDataType == EnumKeyDataType.UnsignedBinary:
                         {
                             var desiredKeyValue = BitConverter.ToInt32(CurrentQuery.Key);
@@ -521,5 +514,108 @@ namespace MBBSEmu.Btrieve
         public ushort GetKeyLength(ushort keyNumber) => (ushort)_btrieveFile.Keys[keyNumber].Segments.Sum(x => x.Length);
 
         public EnumKeyDataType GetKeyType(ushort keyNumber) => _btrieveFile.Keys[keyNumber].Segments[0].DataType;
+
+        /// <summary>
+        ///     Retrieves the First Record, numerically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        private ushort GetByKeyFirst(BtrieveQuery query)
+        {
+            //Since we're doing FIRST, we want to search all available records
+            var recordsToSearch = _btrieveFile.Records.OrderBy(x => x.Offset);
+            var lowestRecordOffset = int.MaxValue;
+            var lowestRecordKeyValue = int.MaxValue;
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+                uint recordKeyValue = 0;
+
+                switch (CurrentQuery.KeyLength)
+                {
+                    case 0: //null -- so just treat it as 16-bit
+                        recordKeyValue = 0;
+                        break;
+                    case 2:
+                        recordKeyValue = BitConverter.ToUInt16(recordKey);
+                        break;
+                    case 4:
+                        recordKeyValue = BitConverter.ToUInt32(recordKey);
+                        break;
+                }
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (recordKeyValue < lowestRecordKeyValue)
+                {
+                    lowestRecordOffset = r.Offset;
+                    lowestRecordKeyValue = (int) recordKeyValue;
+                }
+            }
+
+            //No first??? Throw 0
+            if (lowestRecordOffset == int.MaxValue)
+                return 0;
+
+            _logger.Info($"Offset set to {lowestRecordOffset}");
+
+            AbsolutePosition = (uint) lowestRecordOffset;
+            UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+            return 1;
+        }
+
+        private ushort GetByKeyNext(BtrieveQuery query)
+        {
+            switch (query.KeyDataType)
+            {
+                case EnumKeyDataType.AutoInc:
+                    return GetByKeyNextAutoInc(query);
+                default:
+                    throw new Exception($"Unsupported Key Data Type: {query.KeyDataType}");
+            }
+        }
+
+        private ushort GetByKeyNextAutoInc(BtrieveQuery query)
+        {
+            //Set Query Value to Current Value
+            CurrentQuery.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
+
+            //Increment the Value & Save It
+            switch (CurrentQuery.KeyLength)
+            {
+                case 2:
+                    CurrentQuery.Key = BitConverter.GetBytes((ushort)(BitConverter.ToUInt16(CurrentQuery.Key) + 1));
+                    break;
+                case 4:
+                    CurrentQuery.Key = BitConverter.GetBytes(BitConverter.ToUInt32(CurrentQuery.Key) + 1);
+                    break;
+                default:
+                    throw new Exception($"Unsupported Key Length: {CurrentQuery.KeyLength}");
+            }
+
+            return GetByKey(query);
+        }
+
+        private ushort GetByKey(BtrieveQuery query)
+        {
+            //Searching All Records for the Given Key
+            var recordsToSearch = _btrieveFile.Records.OrderBy(x => x.Offset);
+
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+
+                if (recordKey.SequenceEqual(CurrentQuery.Key))
+                {
+                    AbsolutePosition = (uint)r.Offset;
+                    UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                    return 1;
+                }
+            }
+
+            //Unable to find record with matching key value
+            return 0;
+        }
     }
 }

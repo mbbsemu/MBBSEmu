@@ -451,10 +451,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void btuxmt()
         {
             var channel = GetParameter(0);
-            var stringOffset = GetParameter(1);
-            var stringSegment = GetParameter(2);
+            var stringPointer = GetParameterPointer(1);
 
-            ChannelDictionary[channel].SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+
+            var stringToSend = Module.Memory.GetString(stringPointer);
+
+            var formattedString = ProcessIfANSI(stringToSend);
+
+            ChannelDictionary[channel].SendToClient(formattedString.ToArray());
 
             Registers.AX = 0;
         }
