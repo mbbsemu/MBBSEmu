@@ -174,13 +174,6 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-                                //Perform Polling if it's set
-                                if (session.PollingRoutine != null)
-                                {
-                                    Run(session.CurrentModule.ModuleIdentifier, session.PollingRoutine, session.Channel,
-                                        true);
-                                }
-
                                 //Process Character Interceptor in GSBL
                                 if (session.DataToProcess)
                                 {
@@ -224,7 +217,7 @@ namespace MBBSEmu.HostProcess
                                 }
 
                                 //Did the text change cause a status update
-                                if (session.StatusChange || session.Status == 240 || session.Status == 5)
+                                if (session.StatusChange && (session.Status == 240 || session.Status == 5))
                                 {
                                     session.StatusChange = false;
                                     Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["stsrou"],
@@ -269,6 +262,12 @@ namespace MBBSEmu.HostProcess
                                     }
                                 }
 
+                                //Perform Polling if it's set
+                                if (session.PollingRoutine != null)
+                                {
+                                    Run(session.CurrentModule.ModuleIdentifier, session.PollingRoutine, session.Channel,
+                                        true);
+                                }
                                 break;
                             }
 

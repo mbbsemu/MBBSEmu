@@ -55,7 +55,7 @@ namespace MBBSEmu.Tests.Btrieve
             var result = btrieveFile.SeekByKey(0, key);
 
             Assert.Equal(1, result);
-            Assert.Equal((uint)2054, btrieveFile.AbsolutePosition);
+            Assert.Equal((uint)2054, btrieveFile.Position);
         }
 
         [Theory]
@@ -63,7 +63,7 @@ namespace MBBSEmu.Tests.Btrieve
         public void GetRecord_ByAbsolutePosition(string path, string fileName, ushort absolutePosition)
         {
             var btrieveFile = new BtrieveFileProcessor(fileName, path, ushort.MaxValue);
-            var record = btrieveFile.GetRecordByAbsolutePosition(absolutePosition);
+            var record = btrieveFile.GetRecordByOffset(absolutePosition);
 
             Assert.Equal(0x53, record[0]);
             Assert.Equal(0x79, record[1]);

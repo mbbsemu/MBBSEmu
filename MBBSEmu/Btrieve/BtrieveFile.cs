@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace MBBSEmu.Btrieve
@@ -11,41 +12,106 @@ namespace MBBSEmu.Btrieve
         public string FileName { get; set; }
 
         /// <summary>
-        ///     Total Number of Records in Btrieve File
-        /// </summary>
-        public ushort RecordCount { get; set; }
-
-        /// <summary>
-        ///     Maximum Length of Records in Btrieve File
-        ///     Used with Btrieve Files which implement Variable Length Records
-        /// </summary>
-        public ushort MaxRecordLength { get; set; }
-
-        /// <summary>
-        ///     Record Length of Records in Btrieve File
-        /// </summary>
-        public ushort RecordLength { get; set; }
-
-        /// <summary>
-        ///     Length of Pages within the Btrieve File
-        /// </summary>
-        public ushort PageLength { get; set; }
-
-        /// <summary>
         ///     Number of Pages within the Btrieve File
         /// </summary>
-        public ushort PageCount { get; set; }
+        [JsonIgnore]
+        public ushort PageCount => (ushort) (Data.Length / PageLength - 1);
 
+        private ushort _recordCount;
         /// <summary>
-        ///     Number of Keys Defined in the Btrieve File
+        ///     Total Number of Records in the specified Btrieve File
         /// </summary>
-        public ushort KeyCount { get; set; }
+        public ushort RecordCount
+        {
+            get
+            {
+                if (Data?.Length > 0)
+                    return BitConverter.ToUInt16(Data, 0x1C);
+
+                return _recordCount;
+            }
+            set
+            {
+                if (Data?.Length > 0)
+                    Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x1C, sizeof(ushort));
+
+                _recordCount = value;
+            }
+        }
+
+
+        private ushort _recordLength;
+        /// <summary>
+        ///     Defined Length of the records within the Btrieve File
+        /// </summary>
+        public ushort RecordLength
+        {
+            get
+            {
+                if (Data?.Length > 0)
+                    return BitConverter.ToUInt16(Data, 0x16);
+
+                return _recordLength;
+            }
+            set
+            {
+                if (Data?.Length > 0)
+                    Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x16, sizeof(ushort));
+
+                _recordLength = value;
+            }
+        }
+
+        private ushort _pageLength;
+        /// <summary>
+        ///     Defined length of each Page within the Btrieve File
+        /// </summary>
+        public ushort PageLength
+        {
+            get
+            {
+                if (Data?.Length > 0)
+                    return BitConverter.ToUInt16(Data, 0x08);
+
+                return _pageLength;
+            }
+            set
+            {
+                if (Data?.Length > 0)
+                    Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x08, sizeof(ushort));
+
+                _pageLength = value;
+            }
+        }
+
+
+        private ushort _keyCount;
+        /// <summary>
+        ///     Number of Keys defined within the Btrieve File
+        /// </summary>
+        public ushort KeyCount
+        {
+            get
+            {
+                if (Data?.Length > 0)
+                    return BitConverter.ToUInt16(Data, 0x14);
+
+                return _pageLength;
+            }
+            set
+            {
+                if (Data?.Length > 0)
+                    Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x14, sizeof(ushort));
+
+                _pageLength = value;
+            }
+        }
 
         /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
-        [JsonIgnore]
-        public byte[] Data { get; set; }
+        [JsonIgnore] 
+        public byte[] Data { get; }
 
         /// <summary>
         ///     Btrieve Records
@@ -61,6 +127,11 @@ namespace MBBSEmu.Btrieve
         {
             Records = new List<BtrieveRecord>();
             Keys = new Dictionary<ushort, BtrieveKey>();
+        }
+
+        public BtrieveFile(ReadOnlySpan<byte> fileContents) : this()
+        {
+            Data = fileContents.ToArray();
         }
     }
 }

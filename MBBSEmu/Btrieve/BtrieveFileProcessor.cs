@@ -1,14 +1,11 @@
 ﻿using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using NLog;
 using System;
 using System.IO;
-using System.IO.Enumeration;
 using System.Linq;
-using System.Text;
-using MBBSEmu.IO;
 
 namespace MBBSEmu.Btrieve
 {
@@ -16,28 +13,40 @@ namespace MBBSEmu.Btrieve
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
-        private BtrieveFile _btrieveFile;
-
-        private readonly IConfiguration _configuration;
         private readonly IFileUtility _fileFinder;
 
-        public ushort RecordLength => _btrieveFile.RecordLength;
-        public string FileName => _fileName;
+        /// <summary>
+        ///     File Name of the Btrieve File currently loaded into the Processor
+        /// </summary>
+        public string LoadedFileName { get; set; }
 
-        private string _path { get; set; }
-        private string _fileName { get; set; }
+        /// <summary>
+        ///     File Path of the Btrieve File currently loaded into the Processor
+        /// </summary>
+        public string LoadedFilePath { get; set; }
 
-        public ushort CurrentRecordNumber { get; set; }
+        /// <summary>
+        ///     Btrieve File Loaded into the Processor
+        /// </summary>
+        private BtrieveFile LoadedFile { get; set; }
 
+        /// <summary>
+        ///     Current Position (offset) of the Processor in the Btrieve File
+        /// </summary>
+        public uint Position { get; set; }
 
-        public uint AbsolutePosition { get; set; }
+        /// <summary>
+        ///     The Previous Query that was executed
+        /// </summary>
+        private BtrieveQuery PreviousQuery { get; set; }
 
-        private BtrieveQuery CurrentQuery { get; set; }
-
-        public BtrieveFileProcessor(string fileName, string path, ushort maxRecordLength)
+        /// <summary>
+        ///     Constructor to load the specified Btrieve File at the given Path
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="path"></param>
+        public BtrieveFileProcessor(string fileName, string path)
         {
-
-            _configuration = DependencyInjection.ServiceResolver.GetService<IConfiguration>();
             _fileFinder = DependencyInjection.ServiceResolver.GetService<IFileUtility>();
 
             if (string.IsNullOrEmpty(path))
@@ -46,23 +55,27 @@ namespace MBBSEmu.Btrieve
             if (!path.EndsWith(Path.DirectorySeparatorChar))
                 path += Path.DirectorySeparatorChar;
 
-            _path = path;
-
-            _fileName = _fileFinder.FindFile(path, fileName);
+            LoadedFilePath = path;
+            LoadedFileName = _fileFinder.FindFile(path, fileName);
 
             //If a .EMU version exists, load it over the .DAT file
-            var jsonFileName = _fileName.ToUpper().Replace(".DAT", ".EMU");
-            if (File.Exists($"{path}{jsonFileName}"))
+            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
+            if (File.Exists($"{LoadedFilePath}{jsonFileName}"))
             {
-                _fileName = jsonFileName;
-                LoadJson(path, jsonFileName);
+                LoadedFileName = jsonFileName;
+                LoadJson(LoadedFilePath, LoadedFileName);
             }
             else
             {
-                _btrieveFile = new BtrieveFile() { FileName = _fileName };
-                LoadBtrieve(path, _fileName);
+                LoadBtrieve(LoadedFilePath, LoadedFileName);
                 SaveJson();
             }
+
+            //Ensure loaded records (regardless of source) are in order by their offset within the Btrieve file
+            LoadedFile.Records = LoadedFile.Records.OrderBy(x => x.Offset).ToList();
+
+            //Set Position to First Record
+            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
         }
 
         /// <summary>
@@ -72,7 +85,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="fileName"></param>
         private void LoadBtrieve(string path, string fileName)
         {
-
+            //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
             var virginFileName = fileName.Replace(".DAT", ".VIR");
             if (!File.Exists($"{path}{fileName}") && File.Exists($"{path}{virginFileName}"))
             {
@@ -80,28 +93,23 @@ namespace MBBSEmu.Btrieve
                 _logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
             }
 
-            //MajorBBS/WG will create a blank btrieve file if attempting to open one that doesn't exist
+            //If we're missing a DAT file, just bail. Because we don't know the file definition, we can't just create a "blank" one.
             if (!File.Exists($"{path}{fileName}"))
             {
-                _logger.Warn($"Unable to locate existing btrieve file {fileName}, simulating creation of a new one");
-
-                _btrieveFile = new BtrieveFile { RecordCount = 0 };
-                return;
+                _logger.Error($"Unable to locate existing btrieve file {fileName}");
+                throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
             }
 
-            _btrieveFile.Data = File.ReadAllBytes($"{path}{fileName}");
+            LoadedFile = new BtrieveFile(File.ReadAllBytes($"{path}{fileName}")) { FileName = LoadedFileName };
 #if DEBUG
-            _logger.Info($"Opened {fileName} and read {_btrieveFile.Data.Length} bytes");
-            _logger.Info("Parsing Header...");
+            _logger.Info($"Opened {fileName} and read {LoadedFile.Data.Length} bytes");
 #endif
-            LoadBtrieveHeader();
-
             //Only Parse Keys if they are defined
-            if (_btrieveFile.KeyCount > 0)
+            if (LoadedFile.KeyCount > 0)
                 LoadBtrieveKeyDefinitions();
 
             //Only load records if there are any present
-            if (_btrieveFile.RecordCount > 0)
+            if (LoadedFile.RecordCount > 0)
                 LoadBtrieveRecords();
         }
 
@@ -112,49 +120,28 @@ namespace MBBSEmu.Btrieve
         /// <param name="fileName"></param>
         private void LoadJson(string path, string fileName)
         {
-            _btrieveFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText($"{path}{fileName}"));
+            LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText($"{path}{fileName}"));
         }
 
         private void SaveJson()
         {
-            var jsonFileName = _fileName.ToUpper().Replace(".DAT", ".EMU");
-            File.WriteAllText($"{_path}{jsonFileName}",
-                JsonConvert.SerializeObject(_btrieveFile, Formatting.Indented));
+            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
+            File.WriteAllText($"{LoadedFilePath}{jsonFileName}",
+                JsonConvert.SerializeObject(LoadedFile, Formatting.Indented));
         }
 
         /// <summary>
-        ///     Loads Btrieve File Properties from the File Header
-        /// </summary>
-        private void LoadBtrieveHeader()
-        {
-
-            _btrieveFile.RecordLength = BitConverter.ToUInt16(_btrieveFile.Data, 0x16);
-            _btrieveFile.RecordCount = BitConverter.ToUInt16(_btrieveFile.Data, 0x1C);
-            _btrieveFile.PageLength = BitConverter.ToUInt16(_btrieveFile.Data, 0x08);
-            _btrieveFile.PageCount = (ushort)((_btrieveFile.Data.Length / _btrieveFile.PageLength) - 1); //-1 to not count the header
-            _btrieveFile.KeyCount = BitConverter.ToUInt16(_btrieveFile.Data, 0x14);
-
-#if DEBUG
-            _logger.Info($"Page Size: {_btrieveFile.PageLength}");
-            _logger.Info($"Page Count: {_btrieveFile.PageCount}");
-            _logger.Info($"Record Length: {_btrieveFile.RecordLength}");
-            _logger.Info($"Record Count: {_btrieveFile.RecordCount}");
-            _logger.Info($"Key Count: {_btrieveFile.KeyCount}");
-#endif 
-        }
-
-        /// <summary>
-        ///     Loads Btrieve Key Definitions from the File Header
+        ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
         /// </summary>
         private void LoadBtrieveKeyDefinitions()
         {
             ushort keyDefinitionBase = 0x110;
             const ushort keyDefinitionLength = 0x1E;
-            ReadOnlySpan<byte> btrieveFileContentSpan = _btrieveFile.Data;
+            ReadOnlySpan<byte> btrieveFileContentSpan = LoadedFile.Data;
 
             ushort currentKeyNumber = 0;
             ushort previousKeyNumber = 0;
-            while (currentKeyNumber < _btrieveFile.KeyCount)
+            while (currentKeyNumber < LoadedFile.KeyCount)
             {
                 var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
 
@@ -181,10 +168,10 @@ namespace MBBSEmu.Btrieve
                 _logger.Info($"Length: {keyDefinition.Length}");
                 _logger.Info("----------------");
 #endif
-                if (!_btrieveFile.Keys.TryGetValue(keyDefinition.Number, out var key))
+                if (!LoadedFile.Keys.TryGetValue(keyDefinition.Number, out var key))
                 {
                     key = new BtrieveKey(keyDefinition);
-                    _btrieveFile.Keys.Add(keyDefinition.Number, key);
+                    LoadedFile.Keys.Add(keyDefinition.Number, key);
                 }
                 else
                 {
@@ -203,143 +190,205 @@ namespace MBBSEmu.Btrieve
         {
             var recordsLoaded = 0;
             //Starting at 1, since the first page is the header
-            for (var i = 1; i <= _btrieveFile.PageCount; i++)
+            for (var i = 1; i <= LoadedFile.PageCount; i++)
             {
-                var pageOffset = (_btrieveFile.PageLength * i);
-                var recordsInPage = (_btrieveFile.PageLength / _btrieveFile.RecordLength);
+                var pageOffset = (LoadedFile.PageLength * i);
+                var recordsInPage = (LoadedFile.PageLength / LoadedFile.RecordLength);
 
                 //Key Page
-                if (BitConverter.ToUInt32(_btrieveFile.Data, pageOffset + 0x8) == uint.MaxValue)
+                if (BitConverter.ToUInt32(LoadedFile.Data, pageOffset + 0x8) == uint.MaxValue)
                     continue;
 
                 //Key Constraint Page
-                if (_btrieveFile.Data[pageOffset + 0x6] == 0xAC)
+                if (LoadedFile.Data[pageOffset + 0x6] == 0xAC)
                     continue;
 
-
+                //Page data starts 6 bytes in
                 pageOffset += 6;
                 for (var j = 0; j < recordsInPage; j++)
                 {
-                    if (recordsLoaded == _btrieveFile.RecordCount)
+                    if (recordsLoaded == LoadedFile.RecordCount)
                         break;
 
-                    var recordArray = new byte[_btrieveFile.RecordLength];
-                    Array.Copy(_btrieveFile.Data, pageOffset + (_btrieveFile.RecordLength * j), recordArray, 0, _btrieveFile.RecordLength);
+                    var recordArray = new byte[LoadedFile.RecordLength];
+                    Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.RecordLength * j), recordArray, 0, LoadedFile.RecordLength);
 
                     //End of Page 0xFFFFFFFF
                     if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
                         continue;
 
-                    _btrieveFile.Records.Add(new BtrieveRecord(pageOffset + (_btrieveFile.RecordLength * j), recordArray));
+                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (LoadedFile.RecordLength * j)), recordArray));
                     recordsLoaded++;
                 }
             }
 #if DEBUG
             _logger.Info($"Loaded {recordsLoaded} records. Resetting cursor to 0");
 #endif
-            CurrentRecordNumber = 0;
         }
 
+        /// <summary>
+        ///     Sets Position to the offset of the first Record in the loaded Btrieve File
+        /// </summary>
+        /// <returns></returns>
         public ushort StepFirst()
         {
-            CurrentRecordNumber = 0;
+            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
 
-            return (ushort)(_btrieveFile.RecordCount == 0 ? 9 : 1);
+            return (ushort)(LoadedFile.RecordCount == 0 ? 9 : 1);
         }
 
+        /// <summary>
+        ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File
+        /// </summary>
+        /// <returns></returns>
         public ushort StepNext()
         {
-            if (CurrentRecordNumber + 1 >= _btrieveFile.Records.Count)
+            var nextRecord = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault(x => x.Offset > Position);
+
+            if (nextRecord == null)
                 return 0;
 
-            CurrentRecordNumber++;
-
+            Position = nextRecord.Offset;
             return 1;
         }
 
+        /// <summary>
+        ///     Sets Position to the offset of the next logical record in the loaded Btrieve File
+        /// </summary>
+        /// <returns></returns>
         public ushort StepPrevious()
         {
-            if (CurrentRecordNumber == 0) return 0;
+            var previousRecord = LoadedFile.Records.Where(x => x.Offset < Position).OrderByDescending(x => x.Offset)
+                .FirstOrDefault();
 
-            CurrentRecordNumber--;
+            if (previousRecord == null)
+                return 0;
+
+            Position = previousRecord.Offset;
             return 1;
         }
 
+        /// <summary>
+        ///     Sets Position to the offset of the last Record in the loaded Btrieve File
+        /// </summary>
+        /// <returns></returns>
         public ushort StepLast()
         {
-            CurrentRecordNumber = (ushort)(_btrieveFile.Records.Count - 1);
+            var lastRecord = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault();
 
+            if (lastRecord == null)
+                return 0;
+
+            Position = lastRecord.Offset;
             return 1;
         }
 
-        public byte[] GetRecord() => GetRecord(CurrentRecordNumber);
+        /// <summary>
+        ///     Returns the Record at the current Position
+        /// </summary>
+        /// <returns></returns>
+        public byte[] GetRecord() => GetRecord(Position).Data;
 
-        public byte[] GetRecord(ushort recordNumber) => _btrieveFile.Records[recordNumber].Data;
-
-
-        public void Update(byte[] recordData) => Update(CurrentRecordNumber, recordData);
-
-        public void Update(ushort recordNumber, byte[] recordData)
+        /// <summary>
+        ///     Returns the Record at the specified Offset
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        public BtrieveRecord GetRecord(uint offset)
         {
-            if (recordData.Length != _btrieveFile.RecordLength)
-                throw new Exception($"Invalid Btrieve Record. Expected Length {_btrieveFile.RecordLength}, Actual Length {recordData.Length}");
+            var result = LoadedFile.Records.FirstOrDefault(x => x.Offset == offset);
 
-            _btrieveFile.Records[recordNumber].Data = recordData;
+            if (result == null)
+                _logger.Error($"No Record found at offset {offset}");
 
-            if (_btrieveFile.RecordCount == 0)
-                _btrieveFile.RecordCount++;
+            return result;
+        }
 
+        /// <summary>
+        ///     Updates the Record at the current Position
+        /// </summary>
+        /// <param name="recordData"></param>
+        public void Update(byte[] recordData) => Update(Position, recordData);
+
+        /// <summary>
+        ///     Updates the Record at the specified Offset
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="recordData"></param>
+        public void Update(uint offset, byte[] recordData)
+        {
+            if (recordData.Length != LoadedFile.RecordLength)
+                throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
+
+            //Find the Record to Update
+            for (var i = 0; i < LoadedFile.Records.Count; i++)
+            {
+                if (LoadedFile.Records[i].Offset != offset) continue;
+
+                //Update It
+                LoadedFile.Records[i].Data = recordData;
+                break;
+            }
+
+            //Save the Change
             SaveJson();
         }
 
-        public void Insert(byte[] recordData, bool isVariableLength = false) => Insert(CurrentRecordNumber, recordData, isVariableLength);
-
-        public void Insert(ushort recordNumber, byte[] recordData, bool isVariableLength = false)
+        /// <summary>
+        ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
+        /// </summary>
+        /// <param name="recordData"></param>
+        public void Insert(byte[] recordData)
         {
-            if (!isVariableLength && recordData.Length != _btrieveFile.RecordLength)
-                throw new Exception($"Invalid Btrieve Record. Expected Length {_btrieveFile.RecordLength}, Actual Length {recordData.Length}");
+            if (recordData.Length != LoadedFile.RecordLength)
+                throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
 
             //Make it +1 of the last record loaded, or make it 1 if it's the first
-            var newRecordOffset = _btrieveFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
+            var newRecordOffset = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
 
-            _btrieveFile.Records.Insert(recordNumber, new BtrieveRecord(newRecordOffset, recordData));
+            LoadedFile.Records.Add(new BtrieveRecord(newRecordOffset, recordData));
 
 #if DEBUG
-            _logger.Info($"Inserted Record into {_btrieveFile.FileName} (Offset: {newRecordOffset})");
+            _logger.Info($"Inserted Record into {LoadedFile.FileName} (Offset: {newRecordOffset})");
 #endif
             SaveJson();
         }
 
+        /// <summary>
+        ///     Performs a Step based Seek on the loaded Btrieve File
+        /// </summary>
+        /// <param name="operationCode"></param>
+        /// <returns></returns>
         public ushort Seek(EnumBtrieveOperationCodes operationCode)
         {
-            switch (operationCode)
+            return operationCode switch
             {
-                case EnumBtrieveOperationCodes.GetFirst:
-                    return StepFirst();
-                case EnumBtrieveOperationCodes.GetNext:
-                    return StepNext();
-                case EnumBtrieveOperationCodes.GetPrevious:
-                    return StepPrevious();
-                default:
-                    throw new Exception($"Unsupported Btrieve Operation: {operationCode}");
-
-            }
+                EnumBtrieveOperationCodes.GetFirst => StepFirst(),
+                EnumBtrieveOperationCodes.GetNext => StepNext(),
+                EnumBtrieveOperationCodes.GetPrevious => StepPrevious(),
+                _ => throw new Exception($"Unsupported Btrieve Operation: {operationCode}")
+            };
         }
 
         /// <summary>
-        ///     Determines if the given key is present in the key collection
+        ///     Performs a Key Based Query on the loaded Btrieve File
         /// </summary>
+        /// <param name="keyNumber"></param>
         /// <param name="key"></param>
+        /// <param name="btrieveOperationCode"></param>
+        /// <param name="newQuery"></param>
         /// <returns></returns>
-        public ushort SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes operationCode = EnumBtrieveOperationCodes.None, bool newQuery = true)
+        public ushort SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode, bool newQuery = true)
         {
+            BtrieveQuery currentQuery;
+
             if (newQuery)
             {
-                CurrentQuery = new BtrieveQuery
+                currentQuery = new BtrieveQuery
                 {
-                    KeyOffset = _btrieveFile.Keys[keyNumber].Segments[0].Offset,
-                    KeyDataType = _btrieveFile.Keys[keyNumber].Segments[0].DataType,
-                    Key = key == null ? null :new byte[key.Length],
+                    KeyOffset = LoadedFile.Keys[keyNumber].Segments[0].Offset,
+                    KeyDataType = LoadedFile.Keys[keyNumber].Segments[0].DataType,
+                    Key = key == null ? null : new byte[key.Length],
                     KeyLength = GetKeyLength(keyNumber)
                 };
 
@@ -348,8 +397,8 @@ namespace MBBSEmu.Btrieve
                  * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
                  * we increase the size of the defined key in the query.
                  */
-                if (key != null && key.Length > CurrentQuery.KeyLength)
-                    CurrentQuery.KeyLength = (ushort) key.Length;
+                if (key != null && key.Length > currentQuery.KeyLength)
+                    currentQuery.KeyLength = (ushort)key.Length;
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
@@ -358,162 +407,58 @@ namespace MBBSEmu.Btrieve
                  */
                 if (key != null)
                 {
-                    Array.Copy(key.ToArray(), 0, CurrentQuery.Key, 0, key.Length);
+                    Array.Copy(key.ToArray(), 0, currentQuery.Key, 0, key.Length);
                 }
 
-                AbsolutePosition = 0;
+                //Update Previous for the next run
+                PreviousQuery = currentQuery;
             }
-
-            var seekSuccessful = false;
-
-            foreach (var r in _btrieveFile.Records.Where(x => x.Offset > AbsolutePosition).OrderBy(x=> x.Offset))
+            else
             {
-                var recordKey = r.ToSpan().Slice(CurrentQuery.KeyOffset, CurrentQuery.KeyLength);
-
-                switch (operationCode)
-                {
-                    case EnumBtrieveOperationCodes.None:
-                        {
-                            if (recordKey.SequenceEqual(CurrentQuery.Key))
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                return 1;
-                            }
-#if DEBUG
-                            else
-                            {
-                                if (CurrentQuery.KeyDataType == EnumKeyDataType.Integer)
-                                    _logger.Info($"{BitConverter.ToString(recordKey.ToArray())} != {BitConverter.ToString(CurrentQuery.Key)} (Record: {r.Offset:X4}, Key: {r.Offset + CurrentQuery.KeyOffset:X4})");
-                            }
-#endif
-
-                            break;
-                        }
-                    case EnumBtrieveOperationCodes.GetLessThan when CurrentQuery.KeyDataType == EnumKeyDataType.UnsignedBinary:
-                        {
-                            ushort.TryParse(Encoding.ASCII.GetString(CurrentQuery.Key), out var searchValue);
-                            var keyValue = BitConverter.ToUInt16(recordKey);
-                            if (keyValue < searchValue)
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                return 1;
-                            }
-
-                            break;
-                        }
-                    case EnumBtrieveOperationCodes.GetGreater when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
-                        {
-                            uint desiredKeyValue = 0;
-                            uint recordKeyValue = 0;
-                            switch (CurrentQuery.KeyLength)
-                            {
-                                case 2:
-                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
-                                    break;
-                                case 4:
-                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
-                                    break;
-                            }
-
-                            if (recordKeyValue > desiredKeyValue)
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                return 1;
-                            }
-
-                            break;
-                        }
-                    case EnumBtrieveOperationCodes.GetKeyLast when CurrentQuery.KeyDataType == EnumKeyDataType.AutoInc:
-                        {
-                            uint desiredKeyValue = 0;
-                            uint recordKeyValue = 0;
-                            switch (CurrentQuery.KeyLength)
-                            {
-                                case 2:
-                                    desiredKeyValue = BitConverter.ToUInt16(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt16(recordKey);
-                                    break;
-                                case 4:
-                                    desiredKeyValue = BitConverter.ToUInt32(CurrentQuery.Key);
-                                    recordKeyValue = BitConverter.ToUInt32(recordKey);
-                                    break;
-                            }
-
-                            if (recordKeyValue == desiredKeyValue)
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                seekSuccessful = true;
-                            }
-
-                            break;
-                        }
-
-                    case EnumBtrieveOperationCodes.GetKeyFirst:
-                    {
-                        return GetByKeyFirst(CurrentQuery);
-                    }
-                    case EnumBtrieveOperationCodes.GetKeyNext:
-                    {
-                        return GetByKeyNext(CurrentQuery);
-                    }
-                    case EnumBtrieveOperationCodes.GetGreaterThanOrEqual when CurrentQuery.KeyDataType == EnumKeyDataType.UnsignedBinary:
-                        {
-                            var desiredKeyValue = BitConverter.ToInt32(CurrentQuery.Key);
-                            var recordKeyValue = BitConverter.ToUInt32(recordKey);
-
-                            if (recordKeyValue >= desiredKeyValue)
-                            {
-                                AbsolutePosition = (uint)r.Offset;
-                                UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
-                                return 1;
-                            }
-
-                            break;
-                        }
-                    default:
-                        throw new Exception($"Unknown Operation Code: {operationCode}");
-                }
+                currentQuery = PreviousQuery;
             }
 
-            //For operations where we look for first/last, check to see if we moved
-            if (seekSuccessful)
-                return 1;
-
-            return 0;
+            return btrieveOperationCode switch
+            {
+                EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.AutoInc => GetByKeyNextAutoInc(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.GetLessThan => GetByKeyLessThan(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
+                _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
+            };
         }
 
-        public ReadOnlySpan<byte> GetRecordByAbsolutePosition(uint absolutePosition)
+        /// <summary>
+        ///     Returns the Record at the specified position
+        /// </summary>
+        /// <param name="absolutePosition"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> GetRecordByOffset(uint absolutePosition)
         {
-            foreach (var record in _btrieveFile.Records)
+            foreach (var record in LoadedFile.Records)
             {
                 if (record.Offset == absolutePosition)
                     return record.Data;
             }
 
-            return null;
+            throw new Exception($"No Btrieve Record located at Offset {absolutePosition}");
         }
 
-        private void UpdateRecordNumberByAbsolutePosition(uint absolutePosition)
-        {
-            CurrentRecordNumber = 0;
-            foreach (var record in _btrieveFile.Records)
-            {
-                if (record.Offset == absolutePosition)
-                    return;
+        /// <summary>
+        ///     Returns the defined Data Length of the specified Key
+        /// </summary>
+        /// <param name="keyNumber"></param>
+        /// <returns></returns>
+        public ushort GetKeyLength(ushort keyNumber) => (ushort)LoadedFile.Keys[keyNumber].Segments.Sum(x => x.Length);
 
-                CurrentRecordNumber++;
-            }
-        }
-
-        public ushort GetKeyLength(ushort keyNumber) => (ushort)_btrieveFile.Keys[keyNumber].Segments.Sum(x => x.Length);
-
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => _btrieveFile.Keys[keyNumber].Segments[0].DataType;
+        /// <summary>
+        ///     Returns the defined Key Type of the specified Key
+        /// </summary>
+        /// <param name="keyNumber"></param>
+        /// <returns></returns>
+        public EnumKeyDataType GetKeyType(ushort keyNumber) => LoadedFile.Keys[keyNumber].Segments[0].DataType;
 
         /// <summary>
         ///     Retrieves the First Record, numerically, by the specified key
@@ -522,9 +467,9 @@ namespace MBBSEmu.Btrieve
         private ushort GetByKeyFirst(BtrieveQuery query)
         {
             //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = _btrieveFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = int.MaxValue;
-            var lowestRecordKeyValue = int.MaxValue;
+            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+            var lowestRecordOffset = uint.MaxValue;
+            var lowestRecordKeyValue = uint.MaxValue;
 
             //Loop through each record
             foreach (var r in recordsToSearch)
@@ -532,7 +477,7 @@ namespace MBBSEmu.Btrieve
                 var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
                 uint recordKeyValue = 0;
 
-                switch (CurrentQuery.KeyLength)
+                switch (query.KeyLength)
                 {
                     case 0: //null -- so just treat it as 16-bit
                         recordKeyValue = 0;
@@ -550,7 +495,7 @@ namespace MBBSEmu.Btrieve
                 if (recordKeyValue < lowestRecordKeyValue)
                 {
                     lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = (int) recordKeyValue;
+                    lowestRecordKeyValue = recordKeyValue;
                 }
             }
 
@@ -560,56 +505,29 @@ namespace MBBSEmu.Btrieve
 
             _logger.Info($"Offset set to {lowestRecordOffset}");
 
-            AbsolutePosition = (uint) lowestRecordOffset;
-            UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+            Position = (uint)lowestRecordOffset;
             return 1;
         }
 
+        /// <summary>
+        ///     GetNext for Non-AutoInc Key Types
+        ///
+        ///     Search for the next logical record with a matching Key that comes after the current Position
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
         private ushort GetByKeyNext(BtrieveQuery query)
         {
-            switch (query.KeyDataType)
-            {
-                case EnumKeyDataType.AutoInc:
-                    return GetByKeyNextAutoInc(query);
-                default:
-                    throw new Exception($"Unsupported Key Data Type: {query.KeyDataType}");
-            }
-        }
-
-        private ushort GetByKeyNextAutoInc(BtrieveQuery query)
-        {
-            //Set Query Value to Current Value
-            CurrentQuery.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
-
-            //Increment the Value & Save It
-            switch (CurrentQuery.KeyLength)
-            {
-                case 2:
-                    CurrentQuery.Key = BitConverter.GetBytes((ushort)(BitConverter.ToUInt16(CurrentQuery.Key) + 1));
-                    break;
-                case 4:
-                    CurrentQuery.Key = BitConverter.GetBytes(BitConverter.ToUInt32(CurrentQuery.Key) + 1);
-                    break;
-                default:
-                    throw new Exception($"Unsupported Key Length: {CurrentQuery.KeyLength}");
-            }
-
-            return GetByKey(query);
-        }
-
-        private ushort GetByKey(BtrieveQuery query)
-        {
-            //Searching All Records for the Given Key
-            var recordsToSearch = _btrieveFile.Records.OrderBy(x => x.Offset);
+            //Searching All Records AFTER current for the given key
+            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
 
             foreach (var r in recordsToSearch)
             {
                 var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
 
-                if (recordKey.SequenceEqual(CurrentQuery.Key))
+                if (recordKey.SequenceEqual(query.Key))
                 {
-                    AbsolutePosition = (uint)r.Offset;
-                    UpdateRecordNumberByAbsolutePosition(AbsolutePosition);
+                    Position = (uint)r.Offset;
                     return 1;
                 }
             }
@@ -617,5 +535,162 @@ namespace MBBSEmu.Btrieve
             //Unable to find record with matching key value
             return 0;
         }
+
+        /// <summary>
+        ///     GetNext for AutoInc key types
+        ///
+        ///     Key Value needs to be incremented, then the specific key needs to be found
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyNextAutoInc(BtrieveQuery query)
+        {
+            //Set Query Value to Current Value
+            query.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
+
+            //Increment the Value & Save It
+            switch (query.KeyLength)
+            {
+                case 2:
+                    query.Key = BitConverter.GetBytes((ushort)(BitConverter.ToUInt16(query.Key) + 1));
+                    break;
+                case 4:
+                    query.Key = BitConverter.GetBytes(BitConverter.ToUInt32(query.Key) + 1);
+                    break;
+                default:
+                    throw new Exception($"Unsupported Key Length: {query.KeyLength}");
+            }
+
+            return GetByKeyEqual(query);
+        }
+
+        /// <summary>
+        ///     Gets the First Logical Record for the given key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyEqual(BtrieveQuery query)
+        {
+            //Searching All Records for the Given Key
+            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+
+                if (recordKey.SequenceEqual(query.Key))
+                {
+                    Position = (uint)r.Offset;
+                    return 1;
+                }
+            }
+
+            //Unable to find record with matching key value
+            return 0;
+        }
+
+        /// <summary>
+        ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyLessThan(BtrieveQuery query)
+        {
+            //Only searching Records AFTER the current one in logical order
+            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
+            uint queryKeyValue = 0;
+
+            //Get the Query Key Value
+            switch (query.KeyLength)
+            {
+                case 0: //null -- so just treat it as 16-bit
+                    queryKeyValue = 0;
+                    break;
+                case 2:
+                    queryKeyValue = BitConverter.ToUInt16(query.Key);
+                    break;
+                case 4:
+                    queryKeyValue = BitConverter.ToUInt32(query.Key);
+                    break;
+            }
+
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+                uint recordKeyValue = 0;
+
+                switch (query.KeyLength)
+                {
+                    case 0: //null -- so just treat it as 16-bit
+                        recordKeyValue = 0;
+                        break;
+                    case 2:
+                        recordKeyValue = BitConverter.ToUInt16(recordKey);
+                        break;
+                    case 4:
+                        recordKeyValue = BitConverter.ToUInt32(recordKey);
+                        break;
+                }
+
+                if (recordKeyValue < queryKeyValue)
+                {
+                    Position = (uint)r.Offset;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Search for the Last logical record after the current position with the specified Key value
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyLast(BtrieveQuery query)
+        {
+            //Since we're doing LAST, we want to search all available records
+            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+            var highestRecordOffset = uint.MaxValue;
+            var highestRecordKeyValue = -1;
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+                uint recordKeyValue = 0;
+
+                switch (query.KeyLength)
+                {
+                    case 0: //null -- so just treat it as 16-bit
+                        recordKeyValue = 0;
+                        break;
+                    case 2:
+                        recordKeyValue = BitConverter.ToUInt16(recordKey);
+                        break;
+                    case 4:
+                        recordKeyValue = BitConverter.ToUInt32(recordKey);
+                        break;
+                }
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (recordKeyValue > highestRecordKeyValue)
+                {
+                    highestRecordOffset = r.Offset;
+                    highestRecordKeyValue = (int)recordKeyValue;
+                }
+            }
+
+            //No first??? Throw 0
+            if (highestRecordOffset == int.MaxValue)
+                return 0;
+
+            _logger.Info($"Offset set to {highestRecordOffset}");
+
+            Position = (uint)highestRecordOffset;
+            return 1;
+        }
+
     }
 }
