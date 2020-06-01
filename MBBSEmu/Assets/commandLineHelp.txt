@@ -1,7 +1,7 @@
 ﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
 By: Eric Nusbaum @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
-Private Alpha 15 (05/18/2020) - Patreon Exclusive
+Private Alpha 15 (06/01/2020) - Patreon Exclusive
 -----------------------------------------------------------
 Command Line Options:
 -?                  This Help Screen

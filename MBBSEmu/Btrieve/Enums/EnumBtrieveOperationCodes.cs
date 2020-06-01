@@ -10,9 +10,9 @@
         GetNext = 0x6,
         GetPrevious = 0x7,
         GetGreater = 0x8,
-        GetGreaterThanOrEqual = 0x9,
-        GetLessThan = 0xA,
-        GetLessThanOrEqual = 0xB,
+        GetGreaterOrEqual = 0x9,
+        GetLess = 0xA,
+        GetLessOrEqual = 0xB,
         GetFirst = 0xC,
         GetLast = 0xD,
 
@@ -27,6 +27,8 @@
         //Get Key Operations
         GetKeyEqual = 0x37,
         GetKeyNext = 0x38,
+        GetKeyGreater = 0x3A,
+        GetKeyLess = 0x3C,
         GetKeyFirst = 0x3E,
         GetKeyLast = 0x3F,
 

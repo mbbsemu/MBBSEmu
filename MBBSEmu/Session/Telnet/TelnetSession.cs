@@ -52,7 +52,7 @@ namespace MBBSEmu.Session.Telnet
 
             Send(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             Send(new byte[] { 0x1B, 0x5B, 0x48 });
-            
+
             SessionState = EnumSessionState.Unauthenticated;
         }
 
@@ -61,8 +61,10 @@ namespace MBBSEmu.Session.Telnet
             try
             {
                 using var msOutputBuffer = new MemoryStream();
-                foreach (var b in dataToSend)
+                for (var i = 0; i < dataToSend.Length; i++)
                 {
+                    var b = dataToSend[i];
+
                     //When we're in a module, since new lines are stripped from MVC's etc, and only
                     //carriage returns remain, IF we're in a module and encounter a CR, add a NL
                     if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
@@ -71,9 +73,14 @@ namespace MBBSEmu.Session.Telnet
                         switch (b)
                         {
                             case 0xD:
+                                if (i + 1 < dataToSend.Length && dataToSend[i + 1] == 0xA)
+                                    break;
+
                                 msOutputBuffer.WriteByte(0xA);
                                 break;
                             case 0xA:
+                                if (i + 1 < dataToSend.Length && dataToSend[i + 1] == 0xD)
+                                    break;
                                 msOutputBuffer.WriteByte(0xD);
                                 break;
                             case 0xFF:
@@ -109,7 +116,7 @@ namespace MBBSEmu.Session.Telnet
                     _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
                     _iacPhase = 1;
                     Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
-                    
+
                 }
 
                 while (DataToClient.TryDequeue(out var dataToSend))

@@ -230,8 +230,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.ToSpan());
-
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
+
+            ChannelDictionary[channelNumber].StatusChange = false;
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].Status);
 
             var userBasePointer = Module.Memory.GetVariablePointer("USER");
@@ -314,6 +315,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (ChannelDictionary[ChannelNumber].OutputEmptyStatus && !ChannelDictionary[ChannelNumber].StatusChange)
             {
                 ChannelDictionary[ChannelNumber].Status = 5;
+                ChannelDictionary[ChannelNumber].StatusChange = true;
             }
             else if (ChannelDictionary[ChannelNumber].StatusChange)
             {
@@ -2058,7 +2060,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath, maxRecordLength);
+            var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
@@ -2196,7 +2198,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.LoadedFile.RecordLength);
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
@@ -2217,7 +2219,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, currentBtrieveFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, currentBtrieveFile.LoadedFile.RecordLength);
 
             currentBtrieveFile.Insert(dataToWrite.ToArray());
 
@@ -2596,7 +2598,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             byte[] keyValue;
-            if (currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.String)
+            if (currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.String || currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.Zstring)
             {
                 keyValue = Module.Memory.GetString(keyPointer).ToArray();
             }
@@ -2618,13 +2620,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         result = currentBtrieveFile.StepLast();
                         break;
                     }
-                case EnumBtrieveOperationCodes.GetGreaterThanOrEqual:
+                case EnumBtrieveOperationCodes.GetFirst:
+                case EnumBtrieveOperationCodes.GetGreaterOrEqual:
                 case EnumBtrieveOperationCodes.GetGreater:
-                    {
-                        result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
-                            (EnumBtrieveOperationCodes)obtopt);
-                        break;
-                    }
+                case EnumBtrieveOperationCodes.GetLess:
+                {
+                    result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
+                        (EnumBtrieveOperationCodes)obtopt);
+                    break;
+                }
                 default:
                     throw new Exception($"Unsupported Btrieve Operation: {(EnumBtrieveOperationCodes)obtopt}");
             }
@@ -4189,7 +4193,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.LoadedFile.RecordLength);
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
@@ -4508,7 +4512,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var queryOption = GetParameter(3);
 
             var key = Module.Memory.GetArray(keyPointer,
-                BtrievePointerDictionaryNew[_currentBtrieveFile].GetKeyLength(keyNumber));
+                    BtrievePointerDictionaryNew[_currentBtrieveFile].GetKeyLength(keyNumber));
+
 
             if (queryOption <= 50)
                 throw new Exception($"Invalid Query Option: {queryOption}");
@@ -4519,12 +4524,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var result = 0;
             switch ((EnumBtrieveOperationCodes)queryOption)
             {
-                //Get Equal
+                case EnumBtrieveOperationCodes.GetKeyGreater:
                 case EnumBtrieveOperationCodes.GetKeyLast:
-                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].SeekByKey(keyNumber, key, EnumBtrieveOperationCodes.GetKeyLast);
-                    break;
                 case EnumBtrieveOperationCodes.GetKeyEqual:
-                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].SeekByKey(keyNumber, key, EnumBtrieveOperationCodes.GetKeyEqual);
+                case EnumBtrieveOperationCodes.GetKeyLess:
+                    result = BtrievePointerDictionaryNew[_currentBtrieveFile].SeekByKey(keyNumber, key, (EnumBtrieveOperationCodes)queryOption);
                     break;
                 case EnumBtrieveOperationCodes.GetKeyFirst:
                     result = BtrievePointerDictionaryNew[_currentBtrieveFile]
@@ -5970,7 +5974,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveOperation = GetParameter(2);
 
             //Landing spot for the data
-            byte[] btrieveRecord = new byte[BtrievePointerDictionaryNew[_currentBtrieveFile].RecordLength];
+            byte[] btrieveRecord = new byte[BtrievePointerDictionaryNew[_currentBtrieveFile].LoadedFile.RecordLength];
 
             switch ((EnumBtrieveOperationCodes)btrieveOperation)
             {

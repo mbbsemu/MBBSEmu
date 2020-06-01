@@ -108,6 +108,13 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Records appear to have a potential padding at the end of the records.
+        ///
+        ///     If we detect it, we can modify this value
+        /// </summary>
+        public int RecordPadding { get; set; }
+
+        /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
         [JsonIgnore] 

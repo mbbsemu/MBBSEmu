@@ -103,13 +103,10 @@ namespace MBBSEmu
                 if (!File.Exists("BBSGEN.DAT"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
-                    if (!File.Exists("BBSGEN.VIR"))
-                    {
-                        _logger.Fatal("Unable to locate BBSGEN.VIR -- aborting");
-                        return;
-                    }
-
-                    File.Copy("BBSGEN.VIR", "BBSGEN.DAT");
+                   
+                    var resourceManager = ServiceResolver.GetService<IResourceManager>();
+                    
+                    File.WriteAllBytes("BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
                 }
 
                 //Setup Modules

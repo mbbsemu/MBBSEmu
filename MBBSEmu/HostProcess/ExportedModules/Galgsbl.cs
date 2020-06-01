@@ -553,6 +553,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 ChannelDictionary[channel].OutputEmptyStatus = true;
                 ChannelDictionary[channel].StatusChange = true;
+                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 5); 
             }
             else
             {

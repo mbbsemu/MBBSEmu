@@ -6,6 +6,7 @@ using NLog;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.Btrieve
 {
@@ -28,7 +29,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Btrieve File Loaded into the Processor
         /// </summary>
-        private BtrieveFile LoadedFile { get; set; }
+        public BtrieveFile LoadedFile { get; set; }
 
         /// <summary>
         ///     Current Position (offset) of the Processor in the Btrieve File
@@ -210,6 +211,16 @@ namespace MBBSEmu.Btrieve
                     if (recordsLoaded == LoadedFile.RecordCount)
                         break;
 
+                    //TODO -- Need to figure out the source of this padding and if it's related to the key definition
+                    if (BitConverter.ToUInt64(LoadedFile.Data, pageOffset + (LoadedFile.RecordLength * j)) ==
+                        ulong.MaxValue)
+                    {
+                        _logger.Warn("Found Record Padding (8 bytes), adjusting Btrieve Values");
+                        LoadedFile.RecordPadding = 8;
+                        LoadedFile.RecordLength += 8;
+                        recordsInPage = (LoadedFile.PageLength / LoadedFile.RecordLength);
+                    }
+
                     var recordArray = new byte[LoadedFile.RecordLength];
                     Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.RecordLength * j), recordArray, 0, LoadedFile.RecordLength);
 
@@ -341,7 +352,7 @@ namespace MBBSEmu.Btrieve
         public void Insert(byte[] recordData)
         {
             if (recordData.Length != LoadedFile.RecordLength)
-                throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
+                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length} ({LoadedFile})");
 
             //Make it +1 of the last record loaded, or make it 1 if it's the first
             var newRecordOffset = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
@@ -397,8 +408,11 @@ namespace MBBSEmu.Btrieve
                  * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
                  * we increase the size of the defined key in the query.
                  */
-                if (key != null && key.Length > currentQuery.KeyLength)
-                    currentQuery.KeyLength = (ushort)key.Length;
+                if (key != null && key.Length != currentQuery.KeyLength)
+                {
+                    _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyLength}");
+                    currentQuery.KeyLength = (ushort) key.Length;
+                }
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
@@ -420,12 +434,21 @@ namespace MBBSEmu.Btrieve
 
             return btrieveOperationCode switch
             {
+                EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.AutoInc => GetByKeyNextAutoInc(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
-                EnumBtrieveOperationCodes.GetLessThan => GetByKeyLessThan(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetLess => GetByKeyLessNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLessNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetLast => GetByKeyLastNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
         }
@@ -464,7 +487,46 @@ namespace MBBSEmu.Btrieve
         ///     Retrieves the First Record, numerically, by the specified key
         /// </summary>
         /// <param name="query"></param>
-        private ushort GetByKeyFirst(BtrieveQuery query)
+        /// <returns></returns>
+        private ushort GetByKeyFirstAlphabetical(BtrieveQuery query)
+        {
+            //Since we're doing FIRST, we want to search all available records
+            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+            var lowestRecordOffset = uint.MaxValue;
+            var lowestRecordKeyValue = "ZZZZZZZZZZZZZZZZZ"; //hacky way of ensuring the first record we find is before this alphabetically :P
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (string.Compare(recordKeyValue, lowestRecordKeyValue) < 0)
+                {
+                    lowestRecordOffset = r.Offset;
+                    lowestRecordKeyValue = recordKeyValue;
+                }
+            }
+
+            //No first??? Throw 0
+            if (lowestRecordOffset == uint.MaxValue)
+            {
+                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
+                return 0;
+            }
+#if DEBUG
+            _logger.Info($"Offset set to {lowestRecordOffset}");
+#endif
+            Position = (uint)lowestRecordOffset;
+            return 1;
+        }
+
+        /// <summary>
+        ///     Retrieves the First Record, numerically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        private ushort GetByKeyFirstNumeric(BtrieveQuery query)
         {
             //Since we're doing FIRST, we want to search all available records
             var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
@@ -500,12 +562,15 @@ namespace MBBSEmu.Btrieve
             }
 
             //No first??? Throw 0
-            if (lowestRecordOffset == int.MaxValue)
+            if (lowestRecordOffset == uint.MaxValue)
+            {
+                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
                 return 0;
-
+            }
+#if DEBUG
             _logger.Info($"Offset set to {lowestRecordOffset}");
-
-            Position = (uint)lowestRecordOffset;
+#endif
+            Position = lowestRecordOffset;
             return 1;
         }
 
@@ -580,7 +645,7 @@ namespace MBBSEmu.Btrieve
 
                 if (recordKey.SequenceEqual(query.Key))
                 {
-                    Position = (uint)r.Offset;
+                    Position = r.Offset;
                     return 1;
                 }
             }
@@ -590,11 +655,67 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyGreaterAlphabetical(BtrieveQuery query)
+        {
+            //Since we're doing FIRST, we want to search all available records
+            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
+            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (string.Compare(recordKeyValue, currentRecordKey) > 0)
+                {
+                    Position = r.Offset;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyLessAlphabetical(BtrieveQuery query)
+        {
+            //Since we're doing FIRST, we want to search all available records
+            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
+            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (string.Compare(recordKeyValue, currentRecordKey) < 0)
+                {
+                    Position = r.Offset;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
         ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLessThan(BtrieveQuery query)
+        private ushort GetByKeyLessNumeric(BtrieveQuery query)
         {
             //Only searching Records AFTER the current one in logical order
             var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
@@ -643,11 +764,50 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Retrieves the Last Record, Alphabetically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyLastAlphabetical(BtrieveQuery query)
+        {
+            //Since we're doing FIRST, we want to search all available records
+            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+            var lowestRecordOffset = uint.MaxValue;
+            var lowestRecordKeyValue = "\0"; //hacky way of ensuring the first record we find is before this alphabetically :P
+
+            //Loop through each record
+            foreach (var r in recordsToSearch)
+            {
+                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
+
+                //Compare the value of the key, we're looking for the lowest
+                //If it's lower than the lowest we've already compared, save the offset
+                if (string.Compare(recordKeyValue, lowestRecordKeyValue) > 0)
+                {
+                    lowestRecordOffset = r.Offset;
+                    lowestRecordKeyValue = recordKeyValue;
+                }
+            }
+
+            //No first??? Throw 0
+            if (lowestRecordOffset == uint.MaxValue)
+            {
+                _logger.Warn($"Unable to locate Last record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
+                return 0;
+            }
+#if DEBUG
+            _logger.Info($"Offset set to {lowestRecordOffset}");
+#endif
+            Position = (uint)lowestRecordOffset;
+            return 1;
+        }
+
+        /// <summary>
         ///     Search for the Last logical record after the current position with the specified Key value
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLast(BtrieveQuery query)
+        private ushort GetByKeyLastNumeric(BtrieveQuery query)
         {
             //Since we're doing LAST, we want to search all available records
             var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
@@ -683,11 +843,11 @@ namespace MBBSEmu.Btrieve
             }
 
             //No first??? Throw 0
-            if (highestRecordOffset == int.MaxValue)
+            if (highestRecordOffset == uint.MaxValue)
                 return 0;
-
+#if DEBUG
             _logger.Info($"Offset set to {highestRecordOffset}");
-
+#endif
             Position = (uint)highestRecordOffset;
             return 1;
         }
