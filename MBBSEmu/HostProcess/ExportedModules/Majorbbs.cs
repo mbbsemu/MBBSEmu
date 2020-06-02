@@ -1623,11 +1623,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputLength = (ushort)(currentPointer.Offset - basePointer.Offset);
 
-            var outputBuffer = Module.Memory.GetArray(basePointer, outputLength).ToArray();
+            var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
+
+            var outputBufferProcessed = ProcessIfANSI(outputBuffer);
 
             if (Module.TextVariables.Count > 0)
             {
-                var newBuffer = ProcessTextVariables(outputBuffer);
+                var newBuffer = ProcessTextVariables(outputBufferProcessed);
                 ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
 
 #if DEBUG
@@ -1636,7 +1638,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             else
             {
-                ChannelDictionary[userChannel].SendToClient(outputBuffer);
+                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 #if DEBUG
                 _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif

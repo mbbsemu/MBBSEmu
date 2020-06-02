@@ -175,7 +175,7 @@ namespace MBBSEmu.CPU
             if(Registers.CS == 0xFF && Registers.IP == 0x4B5)
               Debugger.Break();
 
-            if (Registers.CS == 16 && ((Registers.IP >= 0x1A-7 && Registers.IP <= 0x1B6A)))
+            if (Registers.CS == 2 && ((Registers.IP >= 0x277E && Registers.IP <= 0x29D6)))
             {
 
                 _showDebug = true;
