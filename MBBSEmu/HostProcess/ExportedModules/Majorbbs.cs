@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json.Serialization;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -271,15 +272,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 Module.Memory.SetWord(Module.Memory.GetVariablePointer("MARGC"),
                     (ushort)ChannelDictionary[channelNumber].mArgCount);
-                Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
-                    (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
+
+                //If there's no command in the buffer, mark the length of 0
+                if (ChannelDictionary[channelNumber].InputCommand.Length == 1 &&
+                    ChannelDictionary[channelNumber].InputCommand[0] == 0x0)
+                {
+                    Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
+                        (ushort)0);
+                }
+                else
+                {
+                    Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
+                        (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
+
+#if DEBUG
+                    _logger.Info(
+                        $"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory}");
+#endif
+                }
+
                 Module.Memory.SetArray(inputMemory, ChannelDictionary[channelNumber].InputCommand);
                 _inputCurrentPosition = 0;
 
-#if DEBUG
-                _logger.Info(
-                    $"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory}");
-#endif
+
                 var margnPointer = Module.Memory.GetVariablePointer("MARGN");
                 var margvPointer = Module.Memory.GetVariablePointer("MARGV");
 
@@ -988,6 +1003,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 109:
                     clock();
+                    break;
+                case 581:
+                    strncmp();
+                    break;
+                case 180:
+                    dupdbtv();
+                    break;
+                case 451:
+                    open();
+                    break;
+                case 413:
+                    mkdir();
+                    break;
+                case 896: 
+                    getftime();
+                    break;
+                case 110:
+                    close();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -6029,48 +6062,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var string1Pointer = GetParameterPointer(0);
             var string2Pointer = GetParameterPointer(2);
-            var length = GetParameter(4);
+            var maxLength = GetParameter(4);
 
-            var string1 = Module.Memory.GetString(string1Pointer, true);
-            var string2 = Module.Memory.GetString(string2Pointer, true);
+            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
+            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
 
 #if DEBUG
             _logger.Info(
-                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
+                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
 #endif
 
-            if (string1.Length == 0)
-            {
-                Registers.AX = 0xFFFF;
-                return;
-            }
-
-            if (string2.Length == 0)
-            {
-                Registers.AX = 1;
-                return;
-            }
-
-            for (var i = 0; i < length; i++)
-            {
-                //We're at the end of string 2, string 1 is longer
-                if (i == string2.Length)
-                {
-                    Registers.AX = 1;
-                    return;
-                }
-
-                if (string1[i] == string2[i]) continue;
-                if (string1[i] == string2[i] + 32) continue;
-                if (string1[i] == string2[i] - 32) continue;
-
-                //1 < 2 == -1 (0xFFFF)
-                //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
-                return;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
         }
 
         /// <summary>
@@ -6084,6 +6086,137 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             Registers.DX = (ushort)((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF);
             Registers.AX = (ushort)(((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF0000) >> 16);
+        }
+
+        /// <summary>
+        ///     Comparison of the C string str1 to the C string str2
+        ///
+        ///     Signature: int strncmp(const char *str1, const char *str2, size_t maxlen);
+        /// </summary>
+        private void strncmp()
+        {
+
+            var string1Pointer = GetParameterPointer(0);
+            var string2Pointer = GetParameterPointer(2);
+            var maxLength = GetParameter(4);
+
+            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
+            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
+
+#if DEBUG
+            _logger.Info(
+                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
+#endif
+
+            Registers.AX = (ushort) string.Compare(string1, 0, string2, 0, maxLength);
+        }
+
+        /// <summary>
+        ///     More Tolerant Update to Current Record
+        ///
+        ///     Signature: int dupdbtv (void *recptr);
+        /// </summary>
+        private void dupdbtv()
+        {
+            //Since we're not checking for dupes (yet?), just update and signal success
+            updbtv();
+
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Opens a new file for reading/writing
+        ///
+        ///     This method differs from f_open in that it doesn't create a FILE struct, it only returns the handle
+        ///
+        ///     Signature: int open(const char *path, int access [, unsigned mode]); 
+        /// </summary>
+        private void open()
+        {
+            var filenamePointer = GetParameterPointer(0);
+            var mode = GetParameter(2);
+
+            var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
+            var filenameInputValue = Encoding.ASCII.GetString(filenameInputBuffer).ToUpper();
+
+            var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
+
+#if DEBUG
+            _logger.Debug($"Opening File: {Module.ModulePath}{fileName}");
+#endif
+
+            if (!File.Exists($"{Module.ModulePath}{fileName}"))
+            {
+                _logger.Warn($"Unable to find file {Module.ModulePath}{fileName}");
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            //Setup the File Stream
+            var fileStream = File.Open($"{Module.ModulePath}{fileName}", FileMode.OpenOrCreate);
+
+            var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+
+            Registers.AX = (ushort) fileStreamPointer;
+        }
+
+        /// <summary>
+        ///     Creates a Directory
+        ///
+        ///     Signature: int mkdir(const char *pathname);
+        /// </summary>
+        private void mkdir()
+        {
+            var directoryNamePointer = GetParameterPointer(0);
+
+            var directoryName = Encoding.ASCII.GetString(Module.Memory.GetString(directoryNamePointer, true));
+
+            if (!Directory.Exists($"{Module.ModulePath}{directoryName}"))
+            {
+                _logger.Info($"Created Directory: {Module.ModulePath}{directoryName}");
+                Directory.CreateDirectory($"{Module.ModulePath}{directoryName}");
+            }
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     getftime - gets file date and time
+        ///
+        ///     Signature: int getftime(int handle, struct ftime *ftimep);
+        /// </summary>
+        private void getftime()
+        {
+            var fileHandle = GetParameter(0);
+            var ftimePointer = GetParameterPointer(1);
+
+            var info = new FileInfo(FilePointerDictionary[fileHandle].Name);
+            
+            var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) +(info.CreationTime.Second >> 1));
+            var packedTimeData = BitConverter.GetBytes(packedTime);
+
+            var packedDate = (ushort)(((DateTime.Now.Year - 1980) << 9) + (DateTime.Now.Month << 5) + DateTime.Now.Day);
+            var packedDateData = BitConverter.GetBytes(packedDate);
+
+            var ftimeStruct = new byte[4];
+            Array.Copy(packedTimeData, 0, ftimeStruct, 0, sizeof(short));
+            Array.Copy(packedDateData, 0, ftimeStruct, 2, sizeof(short));
+
+            Module.Memory.SetArray(ftimePointer, ftimeStruct);
+        }
+
+        /// <summary>
+        ///     close - close a file handle
+        ///
+        ///     Signature: int close(int handle);
+        /// </summary>
+        private void close()
+        {
+            var fileHandle = GetParameter(0);
+
+            //Clean Up File Stream Pointer
+            FilePointerDictionary[fileHandle].Dispose();
+            FilePointerDictionary.Remove(fileHandle);
         }
     }
 }

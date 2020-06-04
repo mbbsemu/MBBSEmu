@@ -172,10 +172,10 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            if(Registers.CS == 0xFF && Registers.IP == 0x4B5)
+            if(Registers.CS == 0x2 && Registers.IP == 0x50CD)
               Debugger.Break();
 
-            if (Registers.CS == 2 && ((Registers.IP >= 0x277E && Registers.IP <= 0x29D6)))
+            if (Registers.CS == 2 && ((Registers.IP >= 0x10A3 && Registers.IP <= 0x50CD)))
             {
 
                 _showDebug = true;
@@ -418,7 +418,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Scasb:
                     Op_Scasb();
                     break;
-                
+                case Mnemonic.Fld1:
+                    Op_Fld1();
+                    break;
+                case Mnemonic.Fsqrt:
+                    Op_Fsqrt();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -2209,12 +2214,25 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Fstp()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PopStackTop();
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
 
-            Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Memory:
+                {
+                    var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
+                    break;
+                }
+                case OpKind.Register when _currentInstruction.Op0Register == Register.ST0:
+                    FpuStack[7] = valueToSave;
+                    break;
+                default:
+                    throw new Exception($"Unsupported Destination: {_currentInstruction.Op0Kind}:{_currentInstruction.Op0Register}");
+            }
+
         }
 
         /// <summary>
@@ -2618,6 +2636,29 @@ namespace MBBSEmu.CPU
             }
 
             Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
+        }
+
+        /// <summary>
+        ///     Floating Point Load Operation (x87)
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Fld1()
+        {
+            var floatToLoad = BitConverter.GetBytes((float) 1);
+            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
+            Registers.Fpu.PushStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Square Root Operation (x87)
+        ///
+        ///     Computes square root of ST(0) and stores the result in ST(0).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Fsqrt()
+        {
+            var floatToLoad = (float) Math.Sqrt(BitConverter.ToSingle(FpuStack[7]));
+            FpuStack[7] = BitConverter.GetBytes(floatToLoad);
         }
     }
 }

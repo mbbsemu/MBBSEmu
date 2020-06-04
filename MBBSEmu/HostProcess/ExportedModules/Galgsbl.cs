@@ -182,6 +182,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 61:
                     chiinj();
                     break;
+                case 15:
+                    btuhcr();
+                    break;
+                case 44:
+                    btuscr();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -811,6 +817,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Injecting Status {status} on Channel {channel}");
 #endif
+        }
+
+        /// <summary>
+        ///     Sets hard-CR Character
+        ///
+        ///     Signature: int btuhcr(int chan,char hardcr);
+        /// </summary>
+        private void btuhcr()
+        {
+            var channel = GetParameter(0);
+            var character = GetParameter(1);
+            _logger.Info($"Set hard-CR character {character:X2} on Channel {channel} (Ignored -- only for ASCII mode)");
+        }
+
+        /// <summary>
+        ///     Set the soft-CR character (for output wordwrap)
+        ///
+        ///     Signature: int btuscr(int chan,char softcr);
+        /// </summary>
+        private void btuscr()
+        {
+            var channel = GetParameter(0);
+            var character = GetParameter(1);
+            _logger.Info($"Set soft-CR character {character:X2} on Channel {channel} (Ignored -- only for ASCII mode)");
         }
     }
 }

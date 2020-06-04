@@ -56,7 +56,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module = module;
             ChannelDictionary = channelDictionary;
 
-            FilePointerDictionary = new PointerDictionary<FileStream>();
+            FilePointerDictionary = new PointerDictionary<FileStream>(1, int.MaxValue);
             McvPointerDictionary = new PointerDictionary<McvFile>();
             BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFileProcessor>();
         }
