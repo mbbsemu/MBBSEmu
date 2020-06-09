@@ -277,6 +277,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Notify the Session that a Status Change has occured
             ChannelDictionary[channel].StatusChange = true;
 
+#if DEBUG
+            _logger.Info($"Injecting Stauts {status} on channel {channel}");
+#endif
+
             Registers.AX = 0;
         }
 
@@ -565,7 +569,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 ChannelDictionary[channel].OutputEmptyStatus = false;
                 ChannelDictionary[channel].StatusChange = true;
+                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 1);
             }
+
+#if DEBUG
+            _logger.Info($"Value {onoff} for Channel {channel}");
+#endif
 
             Registers.AX = 0;
         }

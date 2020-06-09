@@ -5,51 +5,102 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Resources;
+using MBBSEmu.Server.Socket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NLog;
+using System;
 using System.IO;
-using MBBSEmu.Server.Socket;
 
 namespace MBBSEmu.DependencyInjection
 {
     public static class ServiceResolver
     {
         private static ServiceProvider _provider;
-        private static IServiceCollection _serviceCollection;
+        private static readonly IServiceCollection ServiceCollection;
 
         static ServiceResolver()
         {
-            _serviceCollection = new ServiceCollection();
+            ServiceCollection = new ServiceCollection();
 
             var ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).Build();
+                .AddJsonStream(LoadAppSettings())
+                .Build();
 
             //Base Configuration Items
-            _serviceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
-            _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
-            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
-            _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
+            ServiceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
+            ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            ServiceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            ServiceCollection.AddSingleton<IFileUtility, FileUtility>();
 
             //Database Repositories
-            _serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
-            _serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
-            _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
+            ServiceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
+            ServiceCollection.AddSingleton<IAccountRepository, AccountRepository>();
+            ServiceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            _serviceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
-            _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
-            _serviceCollection.AddTransient<ISocketServer, SocketServer>();
+            ServiceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
+            ServiceCollection.AddSingleton<IMbbsHost, MbbsHost>();
+            ServiceCollection.AddTransient<ISocketServer, SocketServer>();
 
-            _provider = _serviceCollection.BuildServiceProvider();
+            _provider = ServiceCollection.BuildServiceProvider();
         }
 
         public static void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;
 
         public static ServiceProvider GetServiceProvider() => _provider;
 
-        public static IServiceCollection GetServiceCollection() => _serviceCollection;
+        public static IServiceCollection GetServiceCollection() => ServiceCollection;
 
         public static T GetService<T>() => _provider.GetService<T>();
+
+        /// <summary>
+        ///     Safe loading of appsettings.json for Configuration Builder
+        /// </summary>
+        /// <returns></returns>
+        private static FileStream LoadAppSettings()
+        {
+            if(!File.Exists("appsettings.json"))
+                throw new FileNotFoundException("Unable to locate appsettings.json file. Please ensure the file is in the same directory as the MBBSEmu executable file.");
+
+            if(!IsValidJson(File.ReadAllText("appsettings.json")))
+                throw new InvalidDataException("Invalid JSON detected in appsettings.json. Please verify the format & contents of the file are valid JSON.");
+
+            return File.Open("appsettings.json", FileMode.Open, FileAccess.Read);
+        }
+
+        /// <summary>
+        ///     Validates that a JSON file is a correct Format
+        /// </summary>
+        /// <param name="strInput"></param>
+        /// <returns></returns>
+        private static bool IsValidJson(string strInput)
+        {
+            strInput = strInput.Trim();
+            if (strInput.StartsWith("{") && strInput.EndsWith("}") || //For object
+                strInput.StartsWith("[") && strInput.EndsWith("]")) //For array
+            {
+                try
+                {
+                    JToken.Parse(strInput);
+                    return true;
+                }
+                catch (JsonReaderException jex)
+                {
+                    //Exception in parsing json
+                    Console.WriteLine($"JSON Parsing Error: {jex.Message}");
+                    return false;
+                }
+                catch (Exception ex) //some other exception
+                {
+                    Console.WriteLine($"JSON Parsing Exception: {ex.Message}");
+                    return false;
+                }
+            }
+
+            return false;
+        }
     }
 }

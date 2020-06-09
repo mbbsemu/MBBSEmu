@@ -676,6 +676,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (inputSpan[i] != 0x1B)
                 {
                     resultStream.WriteByte(inputSpan[i]);
+
+                    //Process ~~ escape
+                    if (inputSpan[i] == '~' && inputSpan[i + 1] == '~')
+                        i++;
+
                     continue;
                 }
 

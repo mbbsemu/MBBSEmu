@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Session.Rlogin;
 
 namespace MBBSEmu.HostProcess
@@ -145,7 +146,6 @@ namespace MBBSEmu.HostProcess
                                     //Clear any data waiting to be processed from the client
                                     session.InputBuffer.SetLength(0);
                                 }
-
                                 continue;
                             }
 
@@ -189,6 +189,10 @@ namespace MBBSEmu.HostProcess
                                             session.CharacterInterceptor,
                                             session.Channel, true,
                                             initialStackValues);
+
+                                        //Only Take the low bytes, as it's the return character and not every routine/compiler
+                                        //would clear out AH before assigning AL
+                                        result &= 0xFF;
 
                                         //Result replaces the character in the buffer
                                         if (session.InputBuffer.Length > 0 && result != 0xD)

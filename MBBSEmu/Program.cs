@@ -12,6 +12,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace MBBSEmu
 {
@@ -226,6 +227,7 @@ namespace MBBSEmu
             {
                 Console.WriteLine("Critical Exception has occured:");
                 Console.WriteLine(e);
+                Environment.Exit(0);
             }
         }
 

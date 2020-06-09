@@ -279,11 +279,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
                         (ushort)0);
+
+                    ChannelDictionary[channelNumber].UsrPtr.Flags |= (uint)EnumRuntimeFlags.Concex;
                 }
                 else
                 {
                     Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
                         (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
+
+                    ChannelDictionary[channelNumber].UsrPtr.Flags = 0;
 
 #if DEBUG
                     _logger.Info(

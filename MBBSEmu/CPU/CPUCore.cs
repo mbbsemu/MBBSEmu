@@ -135,8 +135,8 @@ namespace MBBSEmu.CPU
         {
             var value = Memory.GetWord(Registers.SS, (ushort)(Registers.SP + 1));
 #if DEBUG
-            if(_showDebug)
-                _logger.Info($"Popped {value:X4} from {Registers.SP+1:X4}");
+            if (_showDebug)
+                _logger.Info($"Popped {value:X4} from {Registers.SP + 1:X4}");
 #endif
             Registers.SP += 2;
             return value;
@@ -148,7 +148,7 @@ namespace MBBSEmu.CPU
             Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
 
 #if DEBUG
-            if(_showDebug)
+            if (_showDebug)
                 _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
 #endif
             Registers.SP -= 2;
@@ -172,22 +172,15 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
 
-            if(Registers.CS == 0x2 && Registers.IP == 0x50CD)
-              Debugger.Break();
+            //Breakpoint
+            if (Registers.CS == 0xFF && Registers.IP == 0x66F5)
+                Debugger.Break();
 
-            if (Registers.CS == 2 && ((Registers.IP >= 0x10A3 && Registers.IP <= 0x50CD)))
-            {
-
-                _showDebug = true;
-            }
-            else
-            {
-                _showDebug = false;
-                //bShowDebug = Registers.CS == 0x6 && Registers.IP >= 0x7B && Registers.IP <= 0x86;
-            }
+            //Show Debugging
+            _showDebug = Registers.CS == 0xFF && Registers.IP >= 0x62CA && Registers.IP <= 0x66F5;
 
             if (_showDebug)
-                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction.ToString()}");
+                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
 #endif
             InstructionCounter++;
 
@@ -596,26 +589,26 @@ namespace MBBSEmu.CPU
                                 result = (ushort)_currentInstruction.MemoryDisplacement;
                                 break;
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
-                            {
+                                {
 
-                                result = (ushort) (Registers.BP + _currentInstruction.MemoryDisplacement + 1);
-                                break;
-                            }
+                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                                    break;
+                                }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
-                            {
+                                {
 
-                                result = (ushort) (Registers.BP + Registers.SI +
-                                                   _currentInstruction.MemoryDisplacement + 1);
-                                break;
-                            }
+                                    result = (ushort)(Registers.BP + Registers.SI +
+                                                       _currentInstruction.MemoryDisplacement + 1);
+                                    break;
+                                }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
-                            {
-                                result = (ushort) (Registers.BP + Registers.DI +
-                                                   _currentInstruction.MemoryDisplacement + 1);
-                                break;
-                            }
+                                {
+                                    result = (ushort)(Registers.BP + Registers.DI +
+                                                       _currentInstruction.MemoryDisplacement + 1);
+                                    break;
+                                }
 
                             case Register.BX when _currentInstruction.MemoryIndex == Register.None:
                                 result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement);
@@ -2221,11 +2214,11 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory:
-                {
-                    var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
-                    break;
-                }
+                    {
+                        var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
+                        break;
+                    }
                 case OpKind.Register when _currentInstruction.Op0Register == Register.ST0:
                     FpuStack[7] = valueToSave;
                     break;
@@ -2644,7 +2637,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Fld1()
         {
-            var floatToLoad = BitConverter.GetBytes((float) 1);
+            var floatToLoad = BitConverter.GetBytes((float)1);
             FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
             Registers.Fpu.PushStackTop();
         }
@@ -2657,7 +2650,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Fsqrt()
         {
-            var floatToLoad = (float) Math.Sqrt(BitConverter.ToSingle(FpuStack[7]));
+            var floatToLoad = (float)Math.Sqrt(BitConverter.ToSingle(FpuStack[7]));
             FpuStack[7] = BitConverter.GetBytes(floatToLoad);
         }
     }

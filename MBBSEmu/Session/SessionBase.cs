@@ -210,6 +210,7 @@ namespace MBBSEmu.Session
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();
 
+            InputCommand = new byte[] {0x0};
             mArgn = new List<int>();
             mArgv = new List<int>();
         }
@@ -223,7 +224,7 @@ namespace MBBSEmu.Session
             mArgv.Clear();
             mArgn.Clear();
 
-            if (InputCommand.Length == 0 || InputCommand[0] == 0x0)
+            if (InputCommand == null || InputCommand.Length == 0 || InputCommand[0] == 0x0)
             {
                 mArgCount = 0;
                 return;
