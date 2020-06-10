@@ -177,7 +177,7 @@ namespace MBBSEmu.CPU
                 Debugger.Break();
 
             //Show Debugging
-            _showDebug = Registers.CS == 0xFF && Registers.IP >= 0x62CA && Registers.IP <= 0x66F5;
+            _showDebug = Registers.CS == 0x1 && Registers.IP >= 0x1A8 && Registers.IP <= 0x1F2;
 
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
@@ -238,7 +238,7 @@ namespace MBBSEmu.CPU
                     return;
                 case Mnemonic.Loope:
                     Op_Loope();
-                    break;
+                    return;
 
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Clc:
@@ -2621,14 +2621,14 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (Registers.CX == 0 && !Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (Registers.F.IsFlagSet(EnumFlags.ZF) && Registers.CX != 0)
             {
-                //Continue with the next instruction
-                Registers.IP += (ushort)_currentInstruction.Length;
+                Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
             }
 
-            Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
+            //Continue with the next instruction
+            Registers.IP += (ushort)_currentInstruction.Length;
         }
 
         /// <summary>
