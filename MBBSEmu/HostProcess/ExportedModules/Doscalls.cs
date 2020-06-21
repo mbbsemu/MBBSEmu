@@ -43,6 +43,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 34:
                     DosAllocSeg();
                     break;
+                case 44:
+                    DosLoadModule();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in DOSCALLS: {ordinal}");
             }
@@ -81,5 +84,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         private ReadOnlySpan<byte> dossetvec => new byte[] {0x0, 0x0, 0x0, 0x0};
+
+        /// <summary>
+        ///     DosLoadModule tries to load a dynamic link module.
+        ///     If the module is an OS/2 dynamic link module then the module is loaded and a handle to the module is returned.
+        /// </summary>
+        public void DosLoadModule()
+        {
+            _logger.Warn($"Loading DLL's dynamically is currently not supported");
+            Registers.AX = 2; //ERROR_FILE_NOT_FOUND
+        }
     }
 }

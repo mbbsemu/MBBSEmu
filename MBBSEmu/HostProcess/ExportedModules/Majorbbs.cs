@@ -134,6 +134,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
             Module.Memory.AllocateVariable("EURMSK", 1);
             Module.Memory.SetVariable("EURMSK", (byte)0x7F);
+            Module.Memory.AllocateVariable("FSDSCB", 82, true);
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
             /*
@@ -468,6 +469,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return sv;
                 case 194:
                     return eurmsk;
+                case 263:
+                    return fsdscb;
             }
 
             if (offsetsOnly)
@@ -1025,6 +1028,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 110:
                     close();
+                    break;
+                case 234:
+                    fsdapr();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -2629,12 +2635,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
-            ushort result = 0;
-
-#if DEBUG
-            _logger.Info(
-                $"Performing {(EnumBtrieveOperationCodes)obtopt} in {BtrievePointerDictionaryNew[_currentBtrieveFile].LoadedFileName} on key {keyNum} for: {Encoding.ASCII.GetString(Module.Memory.GetString(keyPointer, true))}");
-#endif
+            ushort result;
 
             byte[] keyValue;
             if (currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.String || currentBtrieveFile.GetKeyType(keyNum) == EnumKeyDataType.Zstring)
@@ -3158,7 +3159,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringValue = Module.Memory.GetString(stringPointer, true);
 
 #if DEBUG
-            _logger.Info($"Evaluated string length of {stringValue.Length} for string at {stringPointer}");
+            _logger.Info($"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue)}");
 #endif
 
             Registers.AX = (ushort)stringValue.Length;
@@ -4035,6 +4036,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void fsdroom()
         {
+            var tmpmsg = GetParameter(0);
+            var fldspc = GetParameterPointer(1);
+            var amode = GetParameter(3);
+            
             //TODO: Need to learn more about FSD items
             _logger.Warn("Not properly suppported, returning 1k by default");
             Registers.AX = 0x400;
@@ -6222,5 +6227,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary[fileHandle].Dispose();
             FilePointerDictionary.Remove(fileHandle);
         }
+
+        /// <summary>
+        ///     Prepare answers (call after fsdroom()) (Full-Screen Data Entry)
+        ///
+        ///     Signature: void fsdapr(char *sesbuf, int sbleng, char *answers)
+        /// </summary>
+        private void fsdapr()
+        {
+            var sesbuf = GetParameterPointer(0);
+            var sbleng = GetParameter(2);
+            var answers = GetParameterPointer(3);
+
+
+        }
+
+        /// <summary>
+        ///     fsd information struct
+        ///
+        ///     Signature: struct fsdscb *fsdscb;
+        /// </summary>
+        private ReadOnlySpan<byte> fsdscb => Module.Memory.GetVariablePointer("FSDSCB").ToSpan();
     }
 }

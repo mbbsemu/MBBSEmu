@@ -173,12 +173,12 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 0xFF && Registers.IP == 0x66F5)
+            if (Registers.CS == 0xFF && Registers.IP == 0x1A8)
                 Debugger.Break();
 
             //Show Debugging
-            _showDebug = Registers.CS == 0x1 && Registers.IP >= 0x1A8 && Registers.IP <= 0x1F2;
-
+            _showDebug = Registers.CS == 0xFF && Registers.IP >= 0xD3 && Registers.IP <= 0x13F;
+            
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
 #endif
@@ -802,6 +802,19 @@ namespace MBBSEmu.CPU
                         Registers.F.ClearFlag(EnumFlags.CF);
                         return;
                     }
+                case 0x62:
+                {
+                        /*
+                            INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
+                            Return: BX = segment address of PSP
+                            We allocate 0xFFFF to ensure it has it's own segment in memory
+                         */
+                        if(!Memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
+                            pspPointer = Memory.AllocateVariable("Int21h-PSP", 0xFFFF);
+
+                        Registers.BX = pspPointer.Segment;
+                        return;
+                }
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
             }
@@ -2605,12 +2618,10 @@ namespace MBBSEmu.CPU
 
                 if (Registers.F.IsFlagSet(EnumFlags.DF))
                 {
-                    Registers.SI--;
                     Registers.DI--;
                 }
                 else
                 {
-                    Registers.SI++;
                     Registers.DI++;
                 }
             }
