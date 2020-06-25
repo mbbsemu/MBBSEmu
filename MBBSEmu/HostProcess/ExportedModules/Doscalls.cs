@@ -3,6 +3,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
+using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -17,7 +18,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort DosSegmentBase = 0x200;
         public ushort DosSegmentOffset = 0;
 
-        internal Doscalls(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        internal Doscalls(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module,
+            channelDictionary)
         {
         }
 
@@ -46,6 +48,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 44:
                     DosLoadModule();
                     break;
+                case 45:
+                    DosGetProcAddr();
+                    break;
+                case 47:
+                    DosGetModHandle();
+                    break;
+                case 48:
+                    DosGetModName();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in DOSCALLS: {ordinal}");
             }
@@ -68,19 +79,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        ///     This call allocates a segment of memory to a requesting process.
+        /// </summary>
         public void DosAllocSeg()
         {
             var size = GetParameter(0);
             var selectorPointer = GetParameterPointer(1);
             var flags = GetParameter(3);
 
-            Module.Memory.AddSegment((ushort) (DosSegmentBase + DosSegmentOffset));
+            var allocatedSegment = (ushort) (DosSegmentBase + DosSegmentOffset);
 
-            var segPointer = new IntPtr16(0x300,0x0);
-
+            Module.Memory.AddSegment(allocatedSegment);
+            Module.Memory.SetWord(selectorPointer, allocatedSegment);
             DosSegmentOffset++;
-
             Registers.AX = 0;
+
+            RealignStack(8);
         }
 
         private ReadOnlySpan<byte> dossetvec => new byte[] {0x0, 0x0, 0x0, 0x0};
@@ -93,6 +108,59 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _logger.Warn($"Loading DLL's dynamically is currently not supported");
             Registers.AX = 2; //ERROR_FILE_NOT_FOUND
+
+            RealignStack(14);
+        }
+
+        /// <summary>
+        ///     This call returns a handle to a previously loaded dynamic link module.
+        ///
+        ///     Signature: DosGetModHandle (ModuleName, ModuleHandle)
+        /// </summary>
+        public void DosGetModHandle()
+        {
+            _logger.Warn($"Getting External Modules is currently not supported");
+            Registers.AX = 0x126;
+        }
+
+        /// <summary>
+        ///     This call returns the fully qualified drive, path, file name, and extension associated with a referenced module handle.
+        ///
+        ///     Signature: DosGetModName (ModuleHandle, BufferLength, Buffer)
+        /// </summary>
+        public void DosGetModName()
+        {
+            var bufferPointer = GetParameterPointer(0);
+            var bufferLength = GetParameter(2);
+            var moduleHandle = GetParameter(3);
+
+            //I've only seen this in TW2002, and it passes in Code Segment
+            if (Module.Memory.HasSegment(moduleHandle))
+            {
+                var moduleFileName = Module.File.FileName + '\0';
+                Module.Memory.SetArray(bufferPointer, Encoding.ASCII.GetBytes(moduleFileName));
+                Registers.AX = 0;
+            }
+            else
+            {
+                _logger.Warn("");
+                Registers.AX = 6;
+            }
+
+            RealignStack(8);
+
+        }
+
+        /// <summary>
+        ///     This call returns a far address to a desired procedure within a dynamic link module.
+        ///
+        ///     Signature: USHORT  rc = DosGetProcAddr(ModuleHandle, ProcName, ProcAddress);
+        /// </summary>
+        public void DosGetProcAddr()
+        {
+            _logger.Warn($"Getting External Procedures is currently not supported");
+            Registers.AX = 6;
+            RealignStack(10);
         }
     }
 }

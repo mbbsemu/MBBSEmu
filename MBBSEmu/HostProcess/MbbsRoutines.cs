@@ -27,76 +27,78 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="session"></param>
         /// <param name="modules"></param>
-        public void ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
+        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             switch (session.SessionState)
             {
                 case EnumSessionState.Unauthenticated:
                     WelcomeScreenDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.LoginUsernameDisplay:
                     LoginUsernameDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.LoginUsernameInput:
                     LoginUsernameInput(session);
                     ProcessCharacter(session);
-                    return;
+                    break;
                 case EnumSessionState.LoginPasswordDisplay:
                     LoginPasswordDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.LoginPasswordInput:
                     LoginPasswordInput(session);
                     ProcessCharacter(session, true);
-                    return;
+                    break;
                 case EnumSessionState.SignupPasswordConfirmDisplay:
                     SignupPasswordConfirmDisplay(session);
                     ProcessCharacter(session, true);
-                    return;
+                    break;
                 case EnumSessionState.SignupPasswordConfirmInput:
                     SignupPasswordConfirmInput(session);
                     ProcessCharacter(session, true);
                     break;
                 case EnumSessionState.MainMenuDisplay:
                     MainMenuDisplay(session, modules);
-                    return;
+                    break;
                 case EnumSessionState.MainMenuInput:
                     MainMenuInput(session, modules);
                     ProcessCharacter(session);
-                    return;
+                    break;
                 case EnumSessionState.ConfirmLogoffDisplay:
                     LogoffConfirmationDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.ConfirmLogoffInput:
                     LogoffConfirmationInput(session);
                     ProcessCharacter(session);
-                    return;
+                    break;
                 case EnumSessionState.SignupUsernameDisplay:
                     SignupUsernameDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.SignupUsernameInput:
                     SignupUsernameInput(session);
                     ProcessCharacter(session);
-                    return;
+                    break;
                 case EnumSessionState.SignupPasswordDisplay:
                     SignupPasswordDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.SignupPasswordInput:
                     SignupPasswordInput(session);
                     ProcessCharacter(session, true);
-                    return;
+                    break;
                 case EnumSessionState.SignupEmailDisplay:
                     SignupEmailDisplay(session);
-                    return;
+                    break;
                 case EnumSessionState.SignupEmailInput:
                     SignupEmailInput(session);
                     ProcessCharacter(session);
-                    return;
+                    break;
                 case EnumSessionState.LoggingOffDisplay:
                     LoggingOffDisplay(session);
-                    return;
+                    break;
                 default:
-                    return;
+                    return false;
             }
+
+            return true;
         }
 
         private void ProcessCharacter(SessionBase session, bool secure = false)

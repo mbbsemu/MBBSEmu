@@ -61,25 +61,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     TODO: Need to research what this does
+        ///     Create a data selector corresponding to an executable (code) selector.
+        ///
+        ///     Because we don't do any relocation, just pass back the segment identifier
         /// </summary>
         private void DosCreatedAlias()
         {
-            //Set stack back to entry state, minus parameters
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            var destinationPointer = GetParameterPointer(0);
+            var segmentIdentifier = GetParameter(2);
 
-            Registers.SP += 12;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            Module.Memory.SetWord(destinationPointer, segmentIdentifier);
 
-            Registers.AX = 1;
+            RealignStack(6);
+
+            Registers.AX = 0;
         }
 
     }

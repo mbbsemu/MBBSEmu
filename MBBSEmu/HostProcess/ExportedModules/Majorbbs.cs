@@ -12,7 +12,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Newtonsoft.Json.Serialization;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -41,9 +40,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort NUMBER_OF_CHANNELS = 0x4;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
-
-        private IntPtr16 _btrieveLastUsedRecordPointer;
-        private IntPtr16 _btrieveLastUsedKeyRecord;
 
         private AgentStruct _galacticommClientServerAgent;
 
@@ -135,6 +131,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("EURMSK", 1);
             Module.Memory.SetVariable("EURMSK", (byte)0x7F);
             Module.Memory.AllocateVariable("FSDSCB", 82, true);
+            Module.Memory.AllocateVariable("BB", 4); //pointer for current btrieve struct
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
             /*
@@ -471,6 +468,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return eurmsk;
                 case 263:
                     return fsdscb;
+                case 741:
+                    return bb;
             }
 
             if (offsetsOnly)
@@ -1023,7 +1022,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 413:
                     mkdir();
                     break;
-                case 896: 
+                case 896:
                     getftime();
                     break;
                 case 110:
@@ -1031,6 +1030,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 234:
                     fsdapr();
+                    break;
+                case 586:
+                    strol();
+                    break;
+                case 238:
+                    fsdbkg();
+                    break;
+                case 260:
+                    fsdrft();
+                    break;
+                case 878: 
+                    fsdrhd();
+                    break;
+                case 241:
+                    fsdego();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -1438,31 +1452,44 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void atol()
         {
             var sourcePointer = GetParameterPointer(0);
-            var stringToLong = Module.Memory.GetString(sourcePointer, true);
+            var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
+            ReadOnlySpan<byte> stringToLongSpan = Encoding.ASCII.GetBytes(stringToLong);
+            var outputStringValue = stringToLong;
 
-            if (!int.TryParse(Encoding.Default.GetString(stringToLong), out var outputValue))
+            if (!int.TryParse(stringToLong, out var outputValue))
             {
-                /*
-                 * Unsuccessful parsing returns a 0 value
-                 * More info: http://www.cplusplus.com/reference/cstdlib/atol/
-                 */
-#if DEBUG
-                _logger.Warn($"atol(): Unable to cast string value located at {sourcePointer} to long");
-#endif
-                Registers.AX = 0;
-                Registers.DX = 0;
-                Registers.F.SetFlag(EnumFlags.CF);
-                return;
-            }
+                //If we couldn't parse the whole things at once, try and find the first value we CAN parse
+                for (var i = 0; i < stringToLong.Length; i++)
+                {
+                    if (stringToLongSpan[i] >= '0' && stringToLongSpan[i] <= '9')
+                        continue;
 
-#if DEBUG
-            _logger.Info($"Cast {Encoding.Default.GetString(stringToLong)} ({sourcePointer}) to long");
-#endif
+                    outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
+                    outputValue = int.Parse(outputStringValue);
+                    break;
+                }
+            }
 
             Registers.DX = (ushort)(outputValue >> 16);
             Registers.AX = (ushort)(outputValue & 0xFFFF);
-            Registers.F.ClearFlag(EnumFlags.CF);
+
+            if (outputStringValue == string.Empty)
+            {
+                Registers.F.SetFlag(EnumFlags.CF);
+
+#if DEBUG
+                _logger.Info($"Unable to cast {stringToLong} ({sourcePointer}) to long");
+#endif
+
+            }
+            else
+            {
+                Registers.F.ClearFlag(EnumFlags.CF);
+#if DEBUG
+                _logger.Info($"Cast {outputStringValue} ({sourcePointer}) to long");
+#endif
+            }
         }
 
         /// <summary>
@@ -2118,6 +2145,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             BtrievePointerDictionaryNew.Add(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
             Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
+            Module.Memory.SetVariable("BB", btvFileStructPointer);
             _currentBtrieveFile = btvFileStructPointer;
 
 #if DEBUG
@@ -2227,6 +2255,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
             var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
+            Module.Memory.SetVariable("BB", _currentBtrieveFile);
+
             _logger.Info($"Restoring Btreieve file to {btvFileName}");
 #endif
         }
@@ -2664,11 +2694,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case EnumBtrieveOperationCodes.GetGreaterOrEqual:
                 case EnumBtrieveOperationCodes.GetGreater:
                 case EnumBtrieveOperationCodes.GetLess:
-                {
-                    result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
-                        (EnumBtrieveOperationCodes)obtopt);
-                    break;
-                }
+                    {
+                        result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
+                            (EnumBtrieveOperationCodes)obtopt);
+                        break;
+                    }
                 default:
                     throw new Exception($"Unsupported Btrieve Operation: {(EnumBtrieveOperationCodes)obtopt}");
             }
@@ -2945,6 +2975,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileStruct.curp = new IntPtr16(ushort.MaxValue, (ushort)fileStreamPointer);
             fileStruct.fd = (byte)fileStreamPointer;
             Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+
+#if DEBUG
+            _logger.Info($"{fileName} FILE struct written to {fileStructPointer}");
+#endif
 
             Registers.AX = fileStructPointer.Offset;
             Registers.DX = fileStructPointer.Segment;
@@ -3473,9 +3507,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var messagePointer = GetParameterPointer(0);
             var message = Module.Memory.GetString(messagePointer);
 
+            var formattedMessage = FormatPrintf(message, 2);
+
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.BackgroundColor = ConsoleColor.Red;
-            Console.WriteLine($"{Encoding.ASCII.GetString(message)}");
+            Console.WriteLine($"{Encoding.ASCII.GetString(formattedMessage)}");
             Console.ResetColor();
 
             Registers.Halt = true;
@@ -3506,10 +3542,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var startingPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
-            for (var i = 0; i < maxCharactersToRead; i++)
+            var charactersRead = 0;
+            for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
-
+                charactersRead++;
                 if (inputValue == '\n' || fileStream.Position == fileStream.Length)
                     break;
 
@@ -3527,7 +3564,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Read string from {fileStructPointer} (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+                $"Read string from {fileStructPointer}, {charactersRead} bytes (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
@@ -4039,10 +4076,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var tmpmsg = GetParameter(0);
             var fldspc = GetParameterPointer(1);
             var amode = GetParameter(3);
-            
-            //TODO: Need to learn more about FSD items
-            _logger.Warn("Not properly suppported, returning 1k by default");
-            Registers.AX = 0x400;
+
+            Registers.AX = 0x2000;
+
+            //amode == 0 is just to calculate/report back the buffer space available
+            if (amode == 0)
+                return;
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", out var fsdBufferPointer))
+                fsdBufferPointer = Module.Memory.AllocateVariable($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldSpec-{ChannelNumber}", out var fsdFieldSpecPointer))
+                fsdFieldSpecPointer = Module.Memory.AllocateVariable($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+
+            //Zero out FSD Memory Areas
+            Module.Memory.SetZero(fsdBufferPointer, 0x2000);
+            Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
+
+            //Hydrate FSD Memory Areas with Values
+            Module.Memory.SetArray(fsdBufferPointer, McvPointerDictionary[_currentMcvFile.Offset].GetString(tmpmsg));
+            Module.Memory.SetArray(fsdFieldSpecPointer, Module.Memory.GetString(fldspc));
         }
 
         /// <summary>
@@ -6117,7 +6170,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
 #endif
 
-            Registers.AX = (ushort) string.Compare(string1, 0, string2, 0, maxLength);
+            Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);
         }
 
         /// <summary>
@@ -6149,12 +6202,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var filenameInputValue = Encoding.ASCII.GetString(filenameInputBuffer).ToUpper();
 
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
+            var fileMode = (EnumOpenFlags)mode;
 
 #if DEBUG
             _logger.Debug($"Opening File: {Module.ModulePath}{fileName}");
 #endif
-
-            if (!File.Exists($"{Module.ModulePath}{fileName}"))
+            if (!File.Exists($"{Module.ModulePath}{fileName}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
             {
                 _logger.Warn($"Unable to find file {Module.ModulePath}{fileName}");
                 Registers.AX = 0xFFFF;
@@ -6166,7 +6219,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
-            Registers.AX = (ushort) fileStreamPointer;
+            Registers.AX = (ushort)fileStreamPointer;
         }
 
         /// <summary>
@@ -6200,8 +6253,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var ftimePointer = GetParameterPointer(1);
 
             var info = new FileInfo(FilePointerDictionary[fileHandle].Name);
-            
-            var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) +(info.CreationTime.Second >> 1));
+
+            var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) + (info.CreationTime.Second >> 1));
             var packedTimeData = BitConverter.GetBytes(packedTime);
 
             var packedDate = (ushort)(((DateTime.Now.Year - 1980) << 9) + (DateTime.Now.Month << 5) + DateTime.Now.Day);
@@ -6239,7 +6292,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sbleng = GetParameter(2);
             var answers = GetParameterPointer(3);
 
-
+            //TODO: Needs Implementation
         }
 
         /// <summary>
@@ -6248,5 +6301,141 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct fsdscb *fsdscb;
         /// </summary>
         private ReadOnlySpan<byte> fsdscb => Module.Memory.GetVariablePointer("FSDSCB").ToSpan();
+
+        /// <summary>
+        ///     Current btvu file pointer set
+        ///
+        ///     Signature: struct btvblk *bb;
+        /// </summary>
+        private ReadOnlySpan<byte> bb => Module.Memory.GetVariablePointer("BB").ToSpan();
+
+        /// <summary>
+        ///     Convert a string to a long integer
+        ///
+        ///     Signature: long strtol(const char *strP, char **suffixPP, int radix);
+        /// </summary>
+        private void strol()
+        {
+            var stringPointer = GetParameterPointer(0);
+            var suffixPointer = GetParameterPointer(2);
+            var radix = GetParameter(4);
+
+            var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, true));
+
+            var longToParse = stringContainingLongs.Split(' ')[0];
+            var longToParseLength = longToParse.Length; //We do this as length might change with logic below
+
+            if (longToParseLength == 0)
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+                return;
+            }
+
+            if (radix == 0)
+            {
+                if (longToParse.StartsWith("0x"))
+                {
+                    radix = 16;
+                }
+                else
+                {
+                    radix = 10;
+                }
+            }
+
+            var isNegative = false;
+            if (radix != 10 && longToParse.StartsWith('-'))
+            {
+                longToParse = longToParse.TrimStart('-');
+                isNegative = true;
+            }
+
+            if (radix != 10 && longToParse.StartsWith('+'))
+                longToParse = longToParse.TrimStart('+');
+
+            var resultLong = Convert.ToInt32(longToParse, radix);
+
+            if (isNegative)
+                resultLong *= -1;
+
+            Registers.DX = (ushort)(resultLong >> 16);
+            Registers.AX = (ushort)(resultLong & 0xFFFF);
+
+            if (suffixPointer != IntPtr16.Empty)
+                Module.Memory.SetPointer(suffixPointer,
+                    new IntPtr16(stringPointer.Segment, (ushort) (stringPointer.Offset + longToParseLength + 1)));
+
+        }
+
+        /// <summary>
+        ///     Returns an unmodified copy of the FSD template (set in fsdroom())
+        ///
+        ///     Signature: char *fsdrft(void);
+        /// </summary>
+        private void fsdrft()
+        {
+            var templatePointer = Module.Memory.GetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}");
+
+            Registers.AX = templatePointer.Offset;
+            Registers.DX = templatePointer.Segment;
+        }
+
+        /// <summary>
+        ///     Display background for Full-Screen entry mode (Full-Screen Data Entry)
+        /// 
+        ///     Signature: void fsdbkg(char *templt);
+        /// </summary>
+        private void fsdbkg()
+        {
+            var templatePointer = GetParameterPointer(0);
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
+            ChannelDictionary[ChannelNumber].SendToClient(Module.Memory.GetString(templatePointer));
+        }
+
+        /// <summary>
+        ///     Sets the Header for FSD Session if using RIP
+        ///
+        ///     Signature: void fsdrhd (char *title);
+        /// </summary>
+        private void fsdrhd()
+        {
+            var ripHeaderStringPointer = GetParameterPointer(0);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-RIPHeader-{ChannelNumber}", out var ripHeaderPointer))
+                ripHeaderPointer = Module.Memory.AllocateVariable($"FSD-RIPHeader-{ChannelNumber}", 0xFF);
+
+            Module.Memory.SetArray(ripHeaderPointer, Module.Memory.GetString(ripHeaderStringPointer));
+        }
+
+        /// <summary>
+        ///     Begin FSD entry session (call after fsdroom(), fsdapr())
+        ///
+        ///     Signature: void fsdego(int (*fldvfy)(int fldno, char *answer), void (*whndun)(int save));
+        /// </summary>
+        private void fsdego()
+        {
+            var fieldVerificationPointer = GetParameterPointer(0);
+            var whenDoneRoutinePointer = GetParameterPointer(2);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldVerificationRoutine-{ChannelNumber}",
+                out var fsdFieldVerificationRoutinePointer))
+                fsdFieldVerificationRoutinePointer =
+                    Module.Memory.AllocateVariable($"FSD-FieldVerificationRoutine-{ChannelNumber}", IntPtr16.Size);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}",
+                out var fsdWhenDoneRoutinePointer))
+                fsdWhenDoneRoutinePointer =
+                    Module.Memory.AllocateVariable($"FSD-WhenDoneRoutine-{ChannelNumber}", IntPtr16.Size);
+
+            Module.Memory.SetPointer(fsdFieldVerificationRoutinePointer, fieldVerificationPointer);
+            Module.Memory.SetPointer(fsdWhenDoneRoutinePointer, whenDoneRoutinePointer);
+
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenDisplay;
+
+#if DEBUG
+            _logger.Info($"Channel {ChannelNumber} entering Full Screen Display (v:{fieldVerificationPointer}, d:{whenDoneRoutinePointer}");
+#endif
+        }
     }
 }

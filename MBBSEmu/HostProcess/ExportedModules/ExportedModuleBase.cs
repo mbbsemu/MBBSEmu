@@ -749,5 +749,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             return resultStream.ToArray();
         }
+
+        /// <summary>
+        ///     Some external code has stack realignment internally handled, meaning after a CALL, it does the
+        ///     leave & retf within it, setting the stack back to a pre-call state (no need to ADD SP, x post call)
+        ///
+        ///     This routine realigns the stack in a similar fashion
+        /// </summary>
+        /// <param name="bytesToRealign">Number of bytes pushed to stack prior to CALL</param>
+        private protected void RealignStack(ushort bytesToRealign)
+        {
+            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            //Set stack back to entry state, minus parameters
+            Registers.SP += (ushort)(bytesToRealign + 6); //6 bytes for the BP, IP, SP in addition to variables passed in
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
+            Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Registers.SP -= 2;
+            Registers.BP = Registers.SP;
+        }
     }
 }

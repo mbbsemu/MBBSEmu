@@ -6,6 +6,6 @@ namespace MBBSEmu.HostProcess
 {
     public interface IMbbsRoutines
     {
-        void ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules);
+        bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules);
     }
 }

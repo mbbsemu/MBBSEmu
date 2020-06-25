@@ -95,6 +95,14 @@
         /// <summary>
         ///     User is logged off, dispose of Session
         /// </summary>
-        LoggedOff
+        LoggedOff,
+
+        EnteringFullScreenDisplay,
+
+        InFullScreenDisplay,
+
+        EnteringFullScreenEditor,
+
+        InFullScreenEditor
     }
 }

@@ -33,6 +33,7 @@ namespace MBBSEmu.HostProcess
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
         private readonly IMbbsRoutines _mbbsRoutines;
+        private readonly IMbbsRoutines _fsdRoutines;
         private readonly IConfiguration _configuration;
         private readonly Queue<SessionBase> _incomingSessions;
         private readonly bool _doLoginRoutine;
@@ -41,6 +42,7 @@ namespace MBBSEmu.HostProcess
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
+            _fsdRoutines = new FsdRoutines();
             _configuration = configuration;
 
             _logger.Info("Constructing MbbsEmu Host...");
@@ -278,7 +280,12 @@ namespace MBBSEmu.HostProcess
                         //Check for any other session states, we handle these here as they are
                         //lower priority than handling "in-module" states
                         default:
-                            _mbbsRoutines.ProcessSessionState(session, _modules);
+                        {
+                            if (_mbbsRoutines.ProcessSessionState(session, _modules))
+                                break;
+
+                            _fsdRoutines.ProcessSessionState(session, _modules);
+                        }
                             break;
                     }
                 }

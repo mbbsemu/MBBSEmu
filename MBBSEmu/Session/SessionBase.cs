@@ -1,10 +1,12 @@
-﻿using MBBSEmu.HostProcess.Structs;
+﻿using System;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace MBBSEmu.Session
 {
@@ -194,6 +196,10 @@ namespace MBBSEmu.Session
         {
             SendToClientMethod(dataToSend);
         }
+
+        public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));
+
+        public void SendToClient(ReadOnlySpan<byte> dataToSend) => SendToClient(dataToSend.ToArray());
 
         protected SessionBase(string sessionId)
         {

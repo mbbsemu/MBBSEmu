@@ -110,7 +110,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 19;
 
-        private byte[] _fileStruct = new byte[19];
+        private byte[] _fileStruct = new byte[Size];
 
         public FileStruct() { }
 

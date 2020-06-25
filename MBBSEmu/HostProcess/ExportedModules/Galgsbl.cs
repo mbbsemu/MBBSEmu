@@ -446,11 +446,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void chious()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var stringOffset = GetParameter(1);
             var stringSegment = GetParameter(2);
 
-            ChannelDictionary[channel].SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ushort.MaxValue - 1;
+                return;
+            }
+
+            channel.SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
         }
 
         /// <summary>
@@ -770,6 +776,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case "]":
                     _logger.Info($"Disable ANSI on channel {channel} (Ignored)");
                     return;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unsupported BTUCMD: {command}");
             }
         }
 
