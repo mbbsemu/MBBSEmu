@@ -1,6 +1,7 @@
 ﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using System;
+using Microsoft.Extensions.Primitives;
 
 namespace MBBSEmu.Memory
 {
@@ -35,8 +36,11 @@ namespace MBBSEmu.Memory
         IntPtr16 GetPointer(ushort segment, ushort offset);
         ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count);
         ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count);
+        ReadOnlySpan<byte> GetArray(string variableName, ushort count);
         ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false);
         ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false);
+        ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false);
+        ReadOnlySpan<byte> GetStringDoubleNull(string variableName);
 
         //Setters
         void SetByte(IntPtr16 pointer, byte value);

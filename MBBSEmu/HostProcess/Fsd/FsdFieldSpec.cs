@@ -14,12 +14,12 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <summary>
         ///     Minimum Length for the Input Field
         /// </summary>
-        public int LengthMin { get; set; }
+        public int Minimum { get; set; }
 
         /// <summary>
         ///     Maximum Length for the Input Field
         /// </summary>
-        public int LengthMax { get; set; }
+        public int Maximum { get; set; }
 
         /// <summary>
         ///     Field Type for this Field
@@ -35,6 +35,21 @@ namespace MBBSEmu.HostProcess.Fsd
         ///     List of Values for Multiple Choide/Drop Down Fields
         /// </summary>
         public List<string> Values { get; set; }
+
+        /// <summary>
+        ///     X Position of the Field on the Screen
+        /// </summary>
+        public int X { get; set; }
+
+        /// <summary>
+        ///     Y Position of the Field on the Screen
+        /// </summary>
+        public int Y { get; set; }
+
+        /// <summary>
+        ///     Length of the Field as Defined in the Template
+        /// </summary>
+        public int FieldLength { get; set; }
 
         /// <summary>
         ///     Specified Field Value

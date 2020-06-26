@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Drawing;
 using System.Text;
-using System.Threading.Tasks;
-using NLog.Targets;
+using System.Text.RegularExpressions;
 
 namespace MBBSEmu.HostProcess.Fsd
 {
@@ -26,7 +25,7 @@ namespace MBBSEmu.HostProcess.Fsd
 
             for (var i = 0; i < fieldSpec.Length; i++)
             {
-                var newSpec = new FsdFieldSpec() {FsdFieldType = EnumFsdFieldType.Text};
+                var newSpec = new FsdFieldSpec() { FsdFieldType = EnumFsdFieldType.Text };
 
                 if (fieldSpec[i] == ' ')
                     continue;
@@ -34,17 +33,17 @@ namespace MBBSEmu.HostProcess.Fsd
                 //Extract Name
                 for (var n = i; n < fieldSpec.Length; n++)
                 {
-                    if (char.IsLetter((char) fieldSpec[n]))
+                    if (char.IsLetterOrDigit((char)fieldSpec[n]))
                         continue;
 
                     newSpec.Name = Encoding.ASCII.GetString(fieldSpec.Slice(i, n - i));
 
-                    if (fieldSpec[n] == ' ')
-                        n++;
-
                     i = n;
                     break;
                 }
+
+                if (fieldSpec[i] == ' ')
+                    i++;
 
                 //Extract Field Options (if there)
                 if (fieldSpec[i] == '(')
@@ -63,10 +62,10 @@ namespace MBBSEmu.HostProcess.Fsd
                                 newSpec.Values.Add(fieldOption[1]);
                                 break;
                             case "MIN":
-                                newSpec.LengthMin = int.Parse(fieldOption[1]);
+                                newSpec.Minimum = int.Parse(fieldOption[1]);
                                 break;
                             case "MAX":
-                                newSpec.LengthMax = int.Parse(fieldOption[1]);
+                                newSpec.Maximum = int.Parse(fieldOption[1]);
                                 break;
                             case "SECRET":
                                 newSpec.FsdFieldType = EnumFsdFieldType.Secret;
@@ -76,16 +75,106 @@ namespace MBBSEmu.HostProcess.Fsd
                                 break;
                         }
 
-                        i = o;
-
                         if (fieldSpec[o] == ')')
+                        {
+                            i = o;
                             break;
+                        }
+
+                        if (fieldSpec[o] == ' ')
+                        {
+                            o++; //skip the space, update option pointer
+                            i = o;
+                        }
                     }
+                    
                 }
+                else
+                {
+                    //The character we're most likely on is the 1st character of the next variable,
+                    //so we increment back one
+                    i--;
+                }
+
                 result.Add(newSpec);
             }
 
             return result;
+        }
+
+        public void GetFieldPositions(ReadOnlySpan<byte> template, List<FsdFieldSpec> fields)
+        {
+            //Get Template and Strip out ANSI Characters
+            var templateString = Encoding.ASCII.GetString(template.ToArray());
+            var templateWithoutAnsi = new Regex(@"\x1b\[[0-9;]*m").Replace(templateString, string.Empty);
+
+            var currentY = 1; //ANSI x/y positions are 1 based, so first loop these will be 1,1
+            var currentX = 0;
+            var currentField = 0;
+            var currentFieldLength = 0;
+
+            var foundFieldCharacter = '\xFF';
+
+            for (var i = 0; i < templateWithoutAnsi.Length; i++)
+            {
+                var c = templateWithoutAnsi[i];
+                //Increment the X Position
+                currentX++;
+
+                //If it's the character we previously found, keep going
+                if (c == foundFieldCharacter)
+                {
+                    currentFieldLength++;
+                    continue;
+                }
+
+                //If we're past it, and the previous field Character wasn't the default, mark the length
+                if (foundFieldCharacter != '\xFF')
+                {
+                    fields[currentField - 1].FieldLength = currentFieldLength + 1;
+                    currentFieldLength = 0;
+                }
+
+                //We're past the field now, reset the character
+                foundFieldCharacter = '\xFF';
+
+                //If it's a new line, increment Y and set X back to -1
+                if (c == '\r')
+                {
+                    currentY++;
+                    currentX = 0;
+                    continue;
+                }
+
+                if (c != '?' && c != '$')
+                    continue;
+
+                if (templateWithoutAnsi[i + 1] != '?' && templateWithoutAnsi[i + 1] != '$')
+                    continue;
+
+                //Set our Position
+                fields[currentField].X = currentX;
+                fields[currentField].Y = currentY;
+                currentField++;
+                foundFieldCharacter = c;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="answers"></param>
+        /// <param name="fields"></param>
+        public void SetAnswers(List<string> answers, List<FsdFieldSpec> fields)
+        {
+            for (var i = 0; i < fields.Count; i++)
+            {
+                //Sometimes the "DONE" or last item doesn't have an answer specified
+                if (answers[i].IndexOf("=", StringComparison.Ordinal) == -1)
+                    continue;
+
+                fields[i].Value = answers[i].Substring(answers[i].IndexOf("=", StringComparison.Ordinal) + 1);
+            }
         }
     }
 }

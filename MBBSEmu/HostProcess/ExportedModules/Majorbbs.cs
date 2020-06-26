@@ -6292,7 +6292,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sbleng = GetParameter(2);
             var answers = GetParameterPointer(3);
 
-            //TODO: Needs Implementation
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Answers-{ChannelNumber}", out var fsdAnswersPointer))
+                fsdAnswersPointer = Module.Memory.AllocateVariable($"FSD-Answers-{ChannelNumber}", 0x800);
+
+            Module.Memory.SetZero(fsdAnswersPointer, 0x800);
+
+            ushort answerBytesToRead = 0x800;
+            if (answers.Offset + 0x800 > ushort.MaxValue)
+                answerBytesToRead = (ushort) (ushort.MaxValue - answers.Offset);
+
+            Module.Memory.SetArray(fsdAnswersPointer, Module.Memory.GetArray(answers, answerBytesToRead));
         }
 
         /// <summary>

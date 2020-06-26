@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Primitives;
 using Decoder = Iced.Intel.Decoder;
 
 
@@ -248,6 +249,9 @@ namespace MBBSEmu.Memory
         public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
             GetArray(pointer.Segment, pointer.Offset, count);
 
+        public ReadOnlySpan<byte> GetArray(string variableName, ushort count) =>
+            GetArray(GetVariablePointer(variableName), count);
+
         public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
@@ -260,6 +264,8 @@ namespace MBBSEmu.Memory
         public ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false) =>
             GetString(pointer.Segment, pointer.Offset, stripNull);
 
+        public ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) =>
+            GetString(GetVariablePointer(variableName), stripNull);
         /// <summary>
         ///     Reads an array of bytes from the specified segment:offset, stopping
         ///     at the first null character denoting the end of the string.
@@ -285,6 +291,27 @@ namespace MBBSEmu.Memory
             }
 
             throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
+        }
+
+        public ReadOnlySpan<byte> GetStringDoubleNull(string variableName)
+        {
+            var variablePointer = GetVariablePointer(variableName);
+
+            if (!_memorySegments.TryGetValue(variablePointer.Segment, out var selectedSegment))
+            {
+                _logger.Error($"Invalid Pointer -> {variablePointer}");
+                return Encoding.ASCII.GetBytes("Invalid Pointer");
+            }
+
+            ReadOnlySpan<byte> segmentSpan = selectedSegment;
+
+            for (var i = variablePointer.Offset; i < ushort.MaxValue; i++)
+            {
+                if (segmentSpan[i] == 0x0 && segmentSpan[i-1] == 0x0)
+                    return segmentSpan.Slice(i,  variablePointer.Offset - i);
+            }
+
+            throw new Exception($"Invalid Double Null Terminated String at {variablePointer}");
         }
 
         public void SetByte(IntPtr16 pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
