@@ -38,7 +38,7 @@ namespace MBBSEmu.HostProcess.Fsd
 
         /// <summary>
         ///     X Position of the Field on the Screen
-        /// </summary>
+        /// </summary> 
         public int X { get; set; }
 
         /// <summary>
@@ -50,6 +50,16 @@ namespace MBBSEmu.HostProcess.Fsd
         ///     Length of the Field as Defined in the Template
         /// </summary>
         public int FieldLength { get; set; }
+
+        /// <summary>
+        ///     Currently Active/Selected Field
+        /// </summary>
+        public int ActiveFields { get; set; }
+
+        /// <summary>
+        ///     ANSI Sequence for the Field when not actively selected
+        /// </summary>
+        public byte[] FieldAnsi { get; set; }
 
         /// <summary>
         ///     Specified Field Value

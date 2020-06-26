@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -175,6 +174,57 @@ namespace MBBSEmu.HostProcess.Fsd
 
                 fields[i].Value = answers[i].Substring(answers[i].IndexOf("=", StringComparison.Ordinal) + 1);
             }
+        }
+
+        public void GetFieldAnsi(ReadOnlySpan<byte> template, List<FsdFieldSpec> fields)
+        {
+            var currentField = 0;
+            var foundFieldCharacter = 0xFF;
+
+            for (var i = 0; i < template.Length; i++)
+            {
+                var c = template[i];
+             
+                //If it's the character we previously found, keep going
+                if (c == foundFieldCharacter)
+                    continue;
+
+                //We're past the field now, reset the character
+                foundFieldCharacter = '\xFF';
+
+                //If it's a new line, increment Y and set X back to -1
+                if (c == '\r')
+                    continue;
+            
+                if (c != '?' && c != '$')
+                    continue;
+
+                if (template[i + 1] != '?' && template[i + 1] != '$')
+                    continue;
+
+                //Set our Position
+                fields[currentField].FieldAnsi = ExtractFieldAnsi(template.Slice(i - 10, 10));
+                currentField++;
+                foundFieldCharacter = c;
+            }
+        }
+
+        /// <summary>
+        ///     Extracts the ANSI formatting from the bytes preceding the field
+        ///
+        ///     Assumption is bytes immediately preceding field contains ANSI formatting
+        /// </summary>
+        /// <param name="fieldBytes"></param>
+        /// <returns></returns>
+        public byte[] ExtractFieldAnsi(ReadOnlySpan<byte> fieldBytes)
+        {
+            for (var i = fieldBytes.Length -1; i > 0; i--)
+            {
+                if (fieldBytes[i] == 0x1B)
+                    return fieldBytes.Slice(i, (fieldBytes.Length - i)).ToArray();
+            }
+
+            return null;
         }
     }
 }

@@ -103,6 +103,8 @@
 
         EnteringFullScreenEditor,
 
-        InFullScreenEditor
+        InFullScreenEditor,
+
+        ExitingFullScreenDisplay
     }
 }
