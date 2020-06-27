@@ -3,7 +3,7 @@
     public enum EnumFsdFieldType : int
     {
         Text,
-        Dropdown,
+        Numeric,
         MultipleChoice,
         Secret
     }

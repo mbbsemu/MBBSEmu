@@ -295,7 +295,7 @@ namespace MBBSEmu.Session
                     }
 
                 //Enter or Return
-                case 0xD when !TransparentMode:
+                case 0xD when !TransparentMode && SessionState != EnumSessionState.InFullScreenDisplay:
                     {
                         //Set Status == 3, which means there is a Command Ready
                         SendToClient(new byte[] { 0xD, 0xA });

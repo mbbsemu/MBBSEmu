@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Channels;
+using MBBSEmu.Btrieve;
 
 namespace MBBSEmu.HostProcess
 {
@@ -43,7 +44,6 @@ namespace MBBSEmu.HostProcess
                 case 0x8:
                 case 0x7F:
                     EchoToClient(session, new byte[] { 0x08, 0x20, 0x08 });
-                    session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
                     break;
                 default:
                     EchoToClient(session, secure ? (byte)0x2A : session.LastCharacterReceived);
@@ -184,24 +184,7 @@ namespace MBBSEmu.HostProcess
             }
 
             for (var i = 0; i < fields.Count; i++)
-            {
                 ResetField(session, i);
-                /*
-                var field = fields[i];
-                SetCursorPosition(session, field.X, field.Y);
-                session.SendToClient(new string(' ', field.FieldLength));
-                SetCursorPosition(session, field.X, field.Y);
-
-                if (field.FieldAnsi != null)
-                    session.SendToClient(field.FieldAnsi);
-
-                if (field.Value != null)
-                    session.SendToClient(field.FsdFieldType == EnumFsdFieldType.Secret
-                        ? new string('*', field.FieldLength)
-                        : field.Value);
-
-                */
-            }
 
             //Highlight the First Field
             HighlightField(session, 0);
@@ -209,19 +192,23 @@ namespace MBBSEmu.HostProcess
 
         private void InFullScreenDisplay(SessionBase session)
         {
+            //Is there data from the user?
             if (session.DataToProcess)
             {
-                if (session.InputBuffer.Length == 3)
+                var userInput = session.InputBuffer.ToArray();
+
+                //ANSI codes are 3 byte sequences
+                //Verify First 2 bytes are ANSI escape
+                if (userInput.Length == 3 && userInput[0] == 0x1B && userInput[1] == '[')
                 {
-                    var inputCode = session.InputBuffer.ToArray();
-
-                    if (inputCode[0] != 0x1B || inputCode[1] != '[')
-                        return;
-
+                    //Clear the input buffer
                     session.InputBuffer.SetLength(0);
+
+                    //Set the current field back to unselected because I assume we're moving/changing at this point
                     ResetField(session, _fsdFields[session.Channel].SelectedField);
 
-                    switch (inputCode[2])
+                    //Determine Command Entered
+                    switch (userInput[2])
                     {
                         case (byte)'A':
                             {
@@ -246,11 +233,106 @@ namespace MBBSEmu.HostProcess
                     HighlightField(session, _fsdFields[session.Channel].SelectedField);
                     return;
                 }
-                else
+
+                //User Typed a Character
+                if (userInput.Length == 1 && userInput[0] != 0x1B)
                 {
+                    //Clear the input buffer
+                    session.InputBuffer.SetLength(0);
+
+                    var selectedField = _fsdFields[session.Channel].Fields[_fsdFields[session.Channel].SelectedField];
+
                     //Not incoming ANSI
-                    if (session.InputBuffer.Length > 0 && session.InputBuffer.ToArray()[0] != 0x1B)
-                        ProcessCharacter(session);
+                    switch (selectedField.FsdFieldType)
+                    {
+                        //Text Box Input
+                        case EnumFsdFieldType.Secret:
+                        case EnumFsdFieldType.Text:
+                            {
+                                if (userInput[0] == 0x7F || userInput[0] == 0x8)
+                                {
+                                    if (selectedField.Value.Length > 0)
+                                    {
+                                        ProcessCharacter(session);
+                                        selectedField.Value =
+                                            selectedField.Value.Substring(0, selectedField.Value.Length - 1);
+                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                    }
+                                }
+                                else
+                                {
+                                    if (selectedField.FieldLength == selectedField.Value.Length)
+                                        break;
+
+                                    ProcessCharacter(session);
+                                    selectedField.Value += (char)userInput[0];
+                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                }
+
+                                break;
+                            }
+
+                        //Multiple Select
+                        case EnumFsdFieldType.MultipleChoice:
+                            {
+                                //ENTER cycles fields
+                                if (userInput[0] == '\r')
+                                {
+                                    selectedField.SelectedValue++;
+
+                                    if (selectedField.SelectedValue >= selectedField.Values.Count)
+                                        selectedField.SelectedValue = 0;
+
+                                    selectedField.Value = selectedField.Values[selectedField.SelectedValue];
+                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                    break;
+                                }
+
+                                //First Character of one of the choices selects it
+                                for (var i = 0; i < selectedField.Values.Count; i++)
+                                {
+                                    if (selectedField.Values[i].StartsWith(((char)userInput[0]).ToString(), StringComparison.InvariantCultureIgnoreCase))
+                                    {
+                                        selectedField.SelectedValue = i;
+                                        selectedField.Value = selectedField.Values[selectedField.SelectedValue];
+                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                        break;
+                                    }
+
+                                }
+
+                                break;
+                            }
+
+                        //Numeric Only Input Field
+                        case EnumFsdFieldType.Numeric:
+                            {
+                                if (userInput[0] == 0x7F || userInput[0] == 0x8)
+                                {
+                                    if (selectedField.Value.Length > 0)
+                                    {
+                                        ProcessCharacter(session);
+                                        selectedField.Value =
+                                            selectedField.Value.Substring(0, selectedField.Value.Length - 1);
+                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                    }
+                                }
+
+                                else if (char.IsNumber((char)userInput[0]))
+                                {
+                                    if (selectedField.FieldLength == selectedField.Value.Length)
+                                        break;
+
+                                    ProcessCharacter(session);
+                                    selectedField.Value += (char)userInput[0];
+                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                }
+
+                                break;
+                            }
+
+                    }
+
                 }
 
             }

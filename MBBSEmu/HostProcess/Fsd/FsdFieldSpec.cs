@@ -52,9 +52,9 @@ namespace MBBSEmu.HostProcess.Fsd
         public int FieldLength { get; set; }
 
         /// <summary>
-        ///     Currently Active/Selected Field
+        ///     Currently Selected Value (Multiple Choice)
         /// </summary>
-        public int ActiveFields { get; set; }
+        public int SelectedValue { get; set; }
 
         /// <summary>
         ///     ANSI Sequence for the Field when not actively selected

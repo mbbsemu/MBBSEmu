@@ -148,6 +148,9 @@ namespace MBBSEmu.HostProcess.Fsd
                 if (c != '?' && c != '$')
                     continue;
 
+                if (c == '$')
+                    fields[currentField].FsdFieldType = EnumFsdFieldType.Numeric;
+
                 if (templateWithoutAnsi[i + 1] != '?' && templateWithoutAnsi[i + 1] != '$')
                     continue;
 
