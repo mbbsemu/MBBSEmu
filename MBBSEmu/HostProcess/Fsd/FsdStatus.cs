@@ -10,9 +10,16 @@ namespace MBBSEmu.HostProcess.Fsd
         public int Channel { get; set; }
 
         /// <summary>
-        ///     Currently Selected Field Number
+        ///     Currently Selected Field
         /// </summary>
-        public int SelectedField { get; set; }
+        public FsdFieldSpec SelectedField
+        {
+            get => Fields[SelectedOrdinal]; 
+            set => Fields[SelectedOrdinal] = value; 
+
+        }
+
+        public int SelectedOrdinal { get; set; }
 
         /// <summary>
         ///     Field Specifications

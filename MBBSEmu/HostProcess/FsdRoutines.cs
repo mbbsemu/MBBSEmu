@@ -1,13 +1,11 @@
-﻿using System;
-using MBBSEmu.HostProcess.Fsd;
+﻿using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection.Metadata.Ecma335;
+using System.Linq;
 using System.Text;
-using System.Threading.Channels;
-using MBBSEmu.Btrieve;
 
 namespace MBBSEmu.HostProcess
 {
@@ -108,21 +106,30 @@ namespace MBBSEmu.HostProcess
             session.SendToClient($"\x1B[{y};{x}f");
         }
 
-        private void HighlightField(SessionBase session, int fieldNumber)
+        /// <summary>
+        ///     Sets the Specified Field to Active (Cursor Entered, Highlighted)
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="field"></param>
+        private void SetFieldActive(SessionBase session, FsdFieldSpec field)
         {
-            var field = _fsdFields[session.Channel].Fields[fieldNumber];
-
             SetCursorPosition(session, field.X, field.Y);
             session.SendToClient($"\x1B[0;1;7m");
             session.SendToClient(new string(' ', field.FieldLength));
             SetCursorPosition(session, field.X, field.Y);
-            session.SendToClient(field.Value);
+            session.SendToClient(field.Value ?? string.Empty);
+
+            //Set Original Value to be reset upon validation failure
+            field.OriginalValue = field.Value;
         }
 
-        private void ResetField(SessionBase session, int fieldNumber)
+        /// <summary>
+        ///     Sets the specified Field to Inactive Default (Default Formatting)
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="field"></param>
+        private void SetFieldInactive(SessionBase session, FsdFieldSpec field)
         {
-            var field = _fsdFields[session.Channel].Fields[fieldNumber];
-
             //Reset Formatting
             session.SendToClient($"\x1B[0;1m");
 
@@ -138,6 +145,88 @@ namespace MBBSEmu.HostProcess
                 session.SendToClient(field.FsdFieldType == EnumFsdFieldType.Secret
                     ? new string('*', field.FieldLength)
                     : field.Value);
+        }
+
+        /// <summary>
+        ///     Verifies a specified field value passes the specified validation
+        /// </summary>
+        /// <param name="field"></param>
+        private bool ValidateField(SessionBase session, FsdFieldSpec field, FsdFieldSpec errorField)
+        {
+            switch (field.FsdFieldType)
+            {
+                //Text Validations
+                case EnumFsdFieldType.Text:
+                case EnumFsdFieldType.Secret:
+                    {
+                        if (field.Value.Length > field.Maximum)
+                        {
+                            DisplayErrorMessage(session, errorField, $"Enter at most {field.Maximum} character(s)");
+                            return false;
+                        }
+
+                        if (field.Value.Length < field.Minimum)
+                        {
+                            DisplayErrorMessage(session, errorField, $"Enter at least {field.Minimum} character(s)");
+                            return false;
+                        }
+
+                        break;
+                    }
+                //Numeric Validation
+                case EnumFsdFieldType.Numeric when int.Parse(field.Value) > field.Maximum:
+                    DisplayErrorMessage(session, errorField, $"Enter no higher than {field.Maximum}");
+                    return false;
+                case EnumFsdFieldType.Numeric when int.Parse(field.Value) < field.Minimum:
+                    DisplayErrorMessage(session, errorField, $"Enter at least {field.Maximum}");
+                    return false;
+
+                //Multiple Choice Validation
+                case EnumFsdFieldType.MultipleChoice when field.Value == string.Empty:
+                    DisplayErrorMessage(session, errorField, $"Choices: {string.Join(' ', field.Values).ToUpper()}");
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        ///     Displays an Error Message to the User
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="errorField"></param>
+        /// <param name="errorMessage"></param>
+        private void DisplayErrorMessage(SessionBase session, FsdFieldSpec errorField, string errorMessage)
+        {
+            //Reset Formatting
+            session.SendToClient($"\x1B[0;1m");
+
+            SetCursorPosition(session, errorField.X, errorField.Y);
+
+            if (errorField.FieldAnsi != null)
+                session.SendToClient(errorField.FieldAnsi);
+
+            session.SendToClient(new string(' ', errorField.FieldLength));
+            SetCursorPosition(session, errorField.X, errorField.Y);
+
+            session.SendToClient(errorMessage);
+        }
+
+        /// <summary>
+        ///     Clears a Displayed Error Message to the User
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="errorField"></param>
+        private void ClearErrorMessage(SessionBase session, FsdFieldSpec errorField)
+        {
+            session.SendToClient($"\x1B[0;1m");
+
+            SetCursorPosition(session, errorField.X, errorField.Y);
+
+            if (errorField.FieldAnsi != null)
+                session.SendToClient(errorField.FieldAnsi);
+
+            session.SendToClient(new string(' ', errorField.FieldLength));
         }
 
         private void EnteringFullScreenDisplay(SessionBase session)
@@ -172,7 +261,7 @@ namespace MBBSEmu.HostProcess
             _fsdUtility.GetFieldAnsi(fsdTemplate, fields);
 
             session.SessionState = EnumSessionState.InFullScreenDisplay;
-            var fsdStatus = new FsdStatus { Fields = fields, Channel = session.Channel, SelectedField = 0 };
+            var fsdStatus = new FsdStatus { Fields = fields, Channel = session.Channel, SelectedOrdinal = 0 };
 
             if (!_fsdFields.ContainsKey(session.Channel))
             {
@@ -184,10 +273,10 @@ namespace MBBSEmu.HostProcess
             }
 
             for (var i = 0; i < fields.Count; i++)
-                ResetField(session, i);
+                SetFieldInactive(session, fsdStatus.Fields[i]);
 
-            //Highlight the First Field
-            HighlightField(session, 0);
+            //Set Original Value & Highlight the First Field
+            SetFieldActive(session, fsdStatus.SelectedField);
         }
 
         private void InFullScreenDisplay(SessionBase session)
@@ -204,33 +293,84 @@ namespace MBBSEmu.HostProcess
                     //Clear the input buffer
                     session.InputBuffer.SetLength(0);
 
+                    //Validate
+                    if (!ValidateField(session, _fsdFields[session.Channel].SelectedField, _fsdFields[session.Channel].Fields.FirstOrDefault(x => x.FsdFieldType == EnumFsdFieldType.Error)))
+                    {
+                        //Reset the Field
+                        _fsdFields[session.Channel].SelectedField.Value =
+                            _fsdFields[session.Channel].SelectedField.OriginalValue;
+
+                        //Mark it Active
+                        SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
+                        return;
+                    }
+
+                    ClearErrorMessage(session, _fsdFields[session.Channel].Fields.FirstOrDefault(x => x.FsdFieldType == EnumFsdFieldType.Error));
+
                     //Set the current field back to unselected because I assume we're moving/changing at this point
-                    ResetField(session, _fsdFields[session.Channel].SelectedField);
+                    SetFieldInactive(session, _fsdFields[session.Channel].SelectedField);
 
                     //Determine Command Entered
                     switch (userInput[2])
                     {
                         case (byte)'A':
                             {
-                                if (_fsdFields[session.Channel].SelectedField == 0)
-                                    return;
+                                if (_fsdFields[session.Channel].SelectedOrdinal == 0)
+                                {
+                                    //Cycle back to the bottom
+                                    _fsdFields[session.Channel].SelectedOrdinal =
+                                        _fsdFields[session.Channel].Fields
+                                            .Count(f => f.FsdFieldType != EnumFsdFieldType.Error) - 1;
+                                    break;
+                                }
 
-                                _fsdFields[session.Channel].SelectedField--;
+                                _fsdFields[session.Channel].SelectedOrdinal--;
                                 break;
                             }
                         case (byte)'B':
                             {
-                                if (_fsdFields[session.Channel].SelectedField >= _fsdFields[session.Channel].Fields.Count)
-                                    return;
+                                if (_fsdFields[session.Channel].SelectedOrdinal >= _fsdFields[session.Channel].Fields.Count(f => f.FsdFieldType != EnumFsdFieldType.Error) - 1)
+                                {
+                                    //Cycle back to the top
+                                    _fsdFields[session.Channel].SelectedOrdinal = 0;
+                                    break;
+                                }
 
-                                _fsdFields[session.Channel].SelectedField++;
+                                _fsdFields[session.Channel].SelectedOrdinal++;
                                 break;
                             }
                         default:
                             return;
                     }
 
-                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                    SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
+                    return;
+                }
+
+                //Enter Key Cycles through Fields
+                if (userInput.Length == 1 && userInput[0] == '\r')
+                {
+                    //Clear the input buffer
+                    session.InputBuffer.SetLength(0);
+
+                    if (_fsdFields[session.Channel].SelectedOrdinal >= _fsdFields[session.Channel].Fields.Count)
+                        return;
+
+                    //Validate
+                    if (!ValidateField(session, _fsdFields[session.Channel].SelectedField, _fsdFields[session.Channel].Fields.FirstOrDefault(x => x.FsdFieldType == EnumFsdFieldType.Error)))
+                    {
+                        //Reset the Field
+                        _fsdFields[session.Channel].SelectedField.Value =
+                            _fsdFields[session.Channel].SelectedField.OriginalValue;
+
+                        //Mark it Active
+                        SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
+                        return;
+                    }
+                    ClearErrorMessage(session, _fsdFields[session.Channel].Fields.FirstOrDefault(x => x.FsdFieldType == EnumFsdFieldType.Error));
+                    SetFieldInactive(session, _fsdFields[session.Channel].SelectedField);
+                    _fsdFields[session.Channel].SelectedOrdinal++;
+                    SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                     return;
                 }
 
@@ -240,33 +380,35 @@ namespace MBBSEmu.HostProcess
                     //Clear the input buffer
                     session.InputBuffer.SetLength(0);
 
-                    var selectedField = _fsdFields[session.Channel].Fields[_fsdFields[session.Channel].SelectedField];
-
                     //Not incoming ANSI
-                    switch (selectedField.FsdFieldType)
+                    switch (_fsdFields[session.Channel].SelectedField.FsdFieldType)
                     {
                         //Text Box Input
                         case EnumFsdFieldType.Secret:
                         case EnumFsdFieldType.Text:
+                        case EnumFsdFieldType.Numeric:
                             {
                                 if (userInput[0] == 0x7F || userInput[0] == 0x8)
                                 {
-                                    if (selectedField.Value.Length > 0)
+                                    if (_fsdFields[session.Channel].SelectedField.Value.Length > 0)
                                     {
                                         ProcessCharacter(session);
-                                        selectedField.Value =
-                                            selectedField.Value.Substring(0, selectedField.Value.Length - 1);
-                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                        _fsdFields[session.Channel].SelectedField.Value =
+                                            _fsdFields[session.Channel].SelectedField.Value.Substring(0, _fsdFields[session.Channel].SelectedField.Value.Length - 1);
                                     }
                                 }
                                 else
                                 {
-                                    if (selectedField.FieldLength == selectedField.Value.Length)
+                                    //Don't let us input more than the field length
+                                    if (_fsdFields[session.Channel].SelectedField.FieldLength == _fsdFields[session.Channel].SelectedField.Value.Length)
+                                        break;
+
+                                    //If it's numeric, ensure what was entered was in fact a number
+                                    if (_fsdFields[session.Channel].SelectedField.FsdFieldType == EnumFsdFieldType.Numeric && !char.IsNumber((char)userInput[0]))
                                         break;
 
                                     ProcessCharacter(session);
-                                    selectedField.Value += (char)userInput[0];
-                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                    _fsdFields[session.Channel].SelectedField.Value += (char)userInput[0];
                                 }
 
                                 break;
@@ -276,56 +418,30 @@ namespace MBBSEmu.HostProcess
                         case EnumFsdFieldType.MultipleChoice:
                             {
                                 //ENTER cycles fields
-                                if (userInput[0] == '\r')
+                                if (userInput[0] == 0x20) //space
                                 {
-                                    selectedField.SelectedValue++;
+                                    _fsdFields[session.Channel].SelectedField.SelectedValue++;
 
-                                    if (selectedField.SelectedValue >= selectedField.Values.Count)
-                                        selectedField.SelectedValue = 0;
+                                    if (_fsdFields[session.Channel].SelectedField.SelectedValue >= _fsdFields[session.Channel].SelectedField.Values.Count)
+                                        _fsdFields[session.Channel].SelectedField.SelectedValue = 0;
 
-                                    selectedField.Value = selectedField.Values[selectedField.SelectedValue];
-                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                    _fsdFields[session.Channel].SelectedField.Value = _fsdFields[session.Channel]
+                                        .SelectedField.Values[_fsdFields[session.Channel].SelectedField.SelectedValue];
+                                    SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                                     break;
                                 }
 
                                 //First Character of one of the choices selects it
-                                for (var i = 0; i < selectedField.Values.Count; i++)
+                                for (var i = 0; i < _fsdFields[session.Channel].SelectedField.Values.Count; i++)
                                 {
-                                    if (selectedField.Values[i].StartsWith(((char)userInput[0]).ToString(), StringComparison.InvariantCultureIgnoreCase))
+                                    if (_fsdFields[session.Channel].SelectedField.Values[i].StartsWith(((char)userInput[0]).ToString(), StringComparison.InvariantCultureIgnoreCase))
                                     {
-                                        selectedField.SelectedValue = i;
-                                        selectedField.Value = selectedField.Values[selectedField.SelectedValue];
-                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
+                                        _fsdFields[session.Channel].SelectedField.SelectedValue = i;
+                                        _fsdFields[session.Channel].SelectedField.Value = _fsdFields[session.Channel].SelectedField.Values[_fsdFields[session.Channel].SelectedField.SelectedValue];
+                                        SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                                         break;
                                     }
 
-                                }
-
-                                break;
-                            }
-
-                        //Numeric Only Input Field
-                        case EnumFsdFieldType.Numeric:
-                            {
-                                if (userInput[0] == 0x7F || userInput[0] == 0x8)
-                                {
-                                    if (selectedField.Value.Length > 0)
-                                    {
-                                        ProcessCharacter(session);
-                                        selectedField.Value =
-                                            selectedField.Value.Substring(0, selectedField.Value.Length - 1);
-                                        HighlightField(session, _fsdFields[session.Channel].SelectedField);
-                                    }
-                                }
-
-                                else if (char.IsNumber((char)userInput[0]))
-                                {
-                                    if (selectedField.FieldLength == selectedField.Value.Length)
-                                        break;
-
-                                    ProcessCharacter(session);
-                                    selectedField.Value += (char)userInput[0];
-                                    HighlightField(session, _fsdFields[session.Channel].SelectedField);
                                 }
 
                                 break;

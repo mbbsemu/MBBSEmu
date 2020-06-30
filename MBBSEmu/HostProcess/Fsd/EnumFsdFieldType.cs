@@ -5,6 +5,7 @@
         Text,
         Numeric,
         MultipleChoice,
-        Secret
+        Secret,
+        Error
     }
 }

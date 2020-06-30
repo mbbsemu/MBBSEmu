@@ -95,6 +95,10 @@ namespace MBBSEmu.HostProcess.Fsd
                     i--;
                 }
 
+                //If no Max is specified, use the field length as max for text fields
+                if (newSpec.FsdFieldType == EnumFsdFieldType.Text && newSpec.Maximum == 0 && newSpec.FieldLength > 0)
+                    newSpec.Maximum = newSpec.FieldLength;
+
                 result.Add(newSpec);
             }
 
@@ -145,14 +149,34 @@ namespace MBBSEmu.HostProcess.Fsd
                     continue;
                 }
 
-                if (c != '?' && c != '$')
+                if (c != '?' && c != '$' && c != '!')
                     continue;
 
-                if (c == '$')
-                    fields[currentField].FsdFieldType = EnumFsdFieldType.Numeric;
+                //If the next character is a known control character, then we're in a field definition
+                switch (templateWithoutAnsi[i + 1])
+                {
+                    case '?':
+                    case '$':
+                    case '!':
+                        break;
+                    default:
+                        //Otherwise keep searching
+                        continue;
+                }
 
-                if (templateWithoutAnsi[i + 1] != '?' && templateWithoutAnsi[i + 1] != '$')
-                    continue;
+
+                switch (c)
+                {
+                    case '!':
+                    {
+                        //Add a new field for the Error, as it's not included in the Field Spec
+                        fields.Add(new FsdFieldSpec { FsdFieldType = EnumFsdFieldType.Error });
+                        break;
+                    }
+                    case '$':
+                        fields[currentField].FsdFieldType = EnumFsdFieldType.Numeric;
+                        break;
+                }
 
                 //Set our Position
                 fields[currentField].X = currentX;
@@ -163,7 +187,7 @@ namespace MBBSEmu.HostProcess.Fsd
         }
 
         /// <summary>
-        /// 
+        ///     
         /// </summary>
         /// <param name="answers"></param>
         /// <param name="fields"></param>
@@ -171,7 +195,6 @@ namespace MBBSEmu.HostProcess.Fsd
         {
             for (var i = 0; i < fields.Count; i++)
             {
-                //Sometimes the "DONE" or last item doesn't have an answer specified
                 if (answers[i].IndexOf("=", StringComparison.Ordinal) == -1)
                     continue;
 
@@ -199,10 +222,10 @@ namespace MBBSEmu.HostProcess.Fsd
                 if (c == '\r')
                     continue;
             
-                if (c != '?' && c != '$')
+                if (c != '?' && c != '$' && c != '!')
                     continue;
 
-                if (template[i + 1] != '?' && template[i + 1] != '$')
+                if (template[i + 1] != '?' && template[i + 1] != '$' && template[i + 1] != '!')
                     continue;
 
                 //Set our Position

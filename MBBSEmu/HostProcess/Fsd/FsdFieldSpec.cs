@@ -12,12 +12,12 @@ namespace MBBSEmu.HostProcess.Fsd
         /// </summary>
         public string Name { get; set; }
         /// <summary>
-        ///     Minimum Length for the Input Field
+        ///     Minimum for the Input Field
         /// </summary>
         public int Minimum { get; set; }
 
         /// <summary>
-        ///     Maximum Length for the Input Field
+        ///     Maximum for the Input Field
         /// </summary>
         public int Maximum { get; set; }
 
@@ -66,10 +66,16 @@ namespace MBBSEmu.HostProcess.Fsd
         /// </summary>
         public string Value { get; set; }
 
+        /// <summary>
+        ///     This is the value that is saved when you enter a field, if validation fails it resets
+        /// </summary>
+        public string OriginalValue { get; set; }
+
         public FsdFieldSpec()
         {
             Values = new List<string>();
             FsdFieldType = EnumFsdFieldType.Text;
+            Maximum = 20;
         }
     }
 }
