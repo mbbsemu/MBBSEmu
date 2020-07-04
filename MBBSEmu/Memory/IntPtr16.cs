@@ -31,6 +31,11 @@ namespace MBBSEmu.Memory
             FromSpan(intPtr16Span);
         }
 
+        public IntPtr16(ReadOnlySpan<byte> intPtr16Span, int startIndex)
+        {
+            FromSpan(intPtr16Span.Slice(startIndex, 4));
+        }
+
         public IntPtr16(ushort segment, ushort offset)
         {
             Segment = segment;

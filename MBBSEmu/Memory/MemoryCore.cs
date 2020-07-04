@@ -4,9 +4,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
-using Microsoft.Extensions.Primitives;
 using Decoder = Iced.Intel.Decoder;
 
 
@@ -266,6 +264,7 @@ namespace MBBSEmu.Memory
 
         public ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) =>
             GetString(GetVariablePointer(variableName), stripNull);
+
         /// <summary>
         ///     Reads an array of bytes from the specified segment:offset, stopping
         ///     at the first null character denoting the end of the string.
@@ -284,10 +283,10 @@ namespace MBBSEmu.Memory
 
             ReadOnlySpan<byte> segmentSpan = selectedSegment;
 
-            for (var i = 0; i < ushort.MaxValue; i++)
+            for (var i = offset; i < ushort.MaxValue; i++)
             {
-                if (segmentSpan[offset + i] == 0x0)
-                    return segmentSpan.Slice(offset, i + (stripNull ? 0 : 1));
+                if (segmentSpan[i] == 0x0)
+                    return segmentSpan.Slice(offset, (i - offset) + (stripNull ? 0 : 1));
             }
 
             throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
@@ -336,7 +335,10 @@ namespace MBBSEmu.Memory
             array.CopyTo(destinationSpan);
         }
 
-        public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.ToSpan());
+        public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.Data);
+
+        public void SetPointer(string variableName, IntPtr16 value) =>
+            SetArray(GetVariablePointer(variableName), value.Data);
 
         public void SetZero(IntPtr16 pointer, int length)
         {

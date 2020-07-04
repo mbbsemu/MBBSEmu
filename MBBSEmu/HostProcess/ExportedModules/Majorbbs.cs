@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.Fsd;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -132,6 +133,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetVariable("EURMSK", (byte)0x7F);
             Module.Memory.AllocateVariable("FSDSCB", 82, true);
             Module.Memory.AllocateVariable("BB", 4); //pointer for current btrieve struct
+            Module.Memory.AllocateVariable("FSDEMG", 80); //error message for FSD
+
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
             /*
@@ -262,6 +265,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Reset PRFPTR
             Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
             Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
+
+            //Set FSDSCB Pointer for Current User
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
+                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+
+            Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
+
 
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
@@ -470,6 +480,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return fsdscb;
                 case 741:
                     return bb;
+                case 242:
+                    return fsdemg;
             }
 
             if (offsetsOnly)
@@ -1040,11 +1052,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 260:
                     fsdrft();
                     break;
-                case 878: 
+                case 878:
                     fsdrhd();
                     break;
                 case 241:
                     fsdego();
+                    break;
+                case 641:
+                    vfyadn();
+                    break;
+                case 249:
+                    fsdnan();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -4096,6 +4114,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Hydrate FSD Memory Areas with Values
             Module.Memory.SetArray(fsdBufferPointer, McvPointerDictionary[_currentMcvFile.Offset].GetString(tmpmsg));
             Module.Memory.SetArray(fsdFieldSpecPointer, Module.Memory.GetString(fldspc));
+
+            //Establish a new FSD Status Struct for this Channel
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
+                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+
+            var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
+            {
+                fldspc = fsdFieldSpecPointer
+            };
+
+            Module.Memory.SetVariable($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
         }
 
         /// <summary>
@@ -6299,7 +6328,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ushort answerBytesToRead = 0x800;
             if (answers.Offset + 0x800 > ushort.MaxValue)
-                answerBytesToRead = (ushort) (ushort.MaxValue - answers.Offset);
+                answerBytesToRead = (ushort)(ushort.MaxValue - answers.Offset);
 
             Module.Memory.SetArray(fsdAnswersPointer, Module.Memory.GetArray(answers, answerBytesToRead));
         }
@@ -6309,7 +6338,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: struct fsdscb *fsdscb;
         /// </summary>
-        private ReadOnlySpan<byte> fsdscb => Module.Memory.GetVariablePointer("FSDSCB").ToSpan();
+        private ReadOnlySpan<byte> fsdscb => Module.Memory.GetVariablePointer("*FSDSCB").ToSpan();
 
         /// <summary>
         ///     Current btvu file pointer set
@@ -6373,7 +6402,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (suffixPointer != IntPtr16.Empty)
                 Module.Memory.SetPointer(suffixPointer,
-                    new IntPtr16(stringPointer.Segment, (ushort) (stringPointer.Offset + longToParseLength + 1)));
+                    new IntPtr16(stringPointer.Segment, (ushort)(stringPointer.Offset + longToParseLength + 1)));
 
         }
 
@@ -6442,9 +6471,145 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenDisplay;
 
+            //Update fsdscb struct
+            var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
+            fsdscbStruct.fldvfy = fieldVerificationPointer;
+            Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+
 #if DEBUG
             _logger.Info($"Channel {ChannelNumber} entering Full Screen Display (v:{fieldVerificationPointer}, d:{whenDoneRoutinePointer}");
 #endif
+        }
+
+        /// <summary>
+        ///     Error message for fsdppc(), fsdprc(), etc. (Full-Screen Data Entry)
+        ///
+        ///     Signature: char fsdemg[];
+        /// </summary>
+        private ReadOnlySpan<byte> fsdemg => Module.Memory.GetVariablePointer("FSDEMG").ToSpan();
+
+        /// <summary>
+        ///     Factory-issue field verify routine, for ask-done-at-end scheme
+        ///
+        ///     Signature: int vfyadn(int fldno, char *answer);
+        /// </summary>
+        private void vfyadn()
+        {
+            var fieldNo = GetParameter(0);
+            var answerPointer = GetParameterPointer(1);
+
+            var answer = Module.Memory.GetString(answerPointer);
+
+            //Get fsdscb Struct for this channel
+            var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbPointer, FsdscbStruct.Size));
+
+            //If we're on the last field
+            if (fieldNo == fsdscbStruct.numtpl - 1)
+            {
+                switch (fsdscbStruct.xitkey)
+                {
+                    case (ushort)EnumKeyCodes.CRSDN: //Down
+                    case 9: //Tab
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        return;
+
+                    case 27: //Escape
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYDEF;
+                        return;
+                }
+
+                switch (answer[0])//First Character of Answer
+                {
+                    case (byte)'S': //SAVE
+                    case (byte)'Y': //YES=Done and Save
+                    case (byte)'D': //DONE
+                        {
+                            fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDSAV;
+                            Registers.AX = (ushort)EnumFsdStateCodes.FSDSAV;
+                            break;
+                        }
+
+                    case (byte)'Q': //QUIT
+                    case (byte)'X': //eXit
+                    case (byte)'A': //Abort or Abandon
+                        {
+                            fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDQIT;
+                            Registers.AX = (ushort)EnumFsdStateCodes.FSDQIT;
+                            break;
+                        }
+
+                    case (byte)'N': //No == Edit Some More
+                    case (byte)'E': //Edit
+                        {
+                            Registers.AX = (ushort)EnumFsdStateCodes.VFYDEF;
+                            break;
+                        }
+                    default:
+                        //Default
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        break;
+                }
+            }
+            else
+            {
+                //Any field that's not the last
+                switch (fsdscbStruct.xitkey)
+                {
+                    case 27 when fsdscbStruct.chgcnt > 0: //Escape
+                        {
+                            Module.Memory.SetVariable("FSDEMG", Encoding.ASCII.GetBytes("Are you sure? Enter QUIT to quit now\0"));
+                            Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                            break;
+                        }
+                    default:
+                        //Default
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        break;
+                }
+            }
+
+            //Save any changes to fsdscb struct
+            Module.Memory.SetArray(fsdscbPointer, fsdscbStruct.Data);
+        }
+
+        /// <summary>
+        ///     Get a field's answer (Full-Screen Data Entry)
+        ///
+        ///     Signature: char *stg=fsdnan(int fldno);
+        /// </summary>
+        private void fsdnan()
+        {
+            var fieldNo = GetParameter(0);
+
+            var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbPointer, FsdscbStruct.Size));
+
+            var answerData = Module.Memory.GetArray(fsdscbStruct.newans, 0x800);
+
+            if (!Module.Memory.TryGetVariablePointer("fsdnan-buffer", out var fsdnanPointer))
+                fsdnanPointer = Module.Memory.AllocateVariable("fsdnan-buffer", 0xFF);
+
+            var fieldStart = 0;
+            var currentField = 0;
+            for (var i = 0; i < answerData.Length; i++)
+            {
+                if (answerData[i] != 0x0) continue;
+
+                if (fieldNo == currentField)
+                {
+                    Module.Memory.SetArray(fsdnanPointer, answerData.Slice(fieldStart, i - fieldStart));
+                    break;
+                }
+
+                currentField++;
+                fieldStart = i;
+            }
+
+            Registers.AX = fsdnanPointer.Offset;
+            Registers.DX = fsdnanPointer.Segment;
         }
     }
 }

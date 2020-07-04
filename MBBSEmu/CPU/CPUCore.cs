@@ -177,7 +177,7 @@ namespace MBBSEmu.CPU
                 Debugger.Break();
 
             //Show Debugging
-            _showDebug = Registers.CS == 0xFF && Registers.IP >= 0x1547 && Registers.IP <= 0x156F;
+            _showDebug = Registers.CS == 0xFF && Registers.IP >= 0x3E22 && Registers.IP <= 0x4499;
             
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");

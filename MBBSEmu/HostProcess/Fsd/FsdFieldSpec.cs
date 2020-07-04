@@ -22,6 +22,11 @@ namespace MBBSEmu.HostProcess.Fsd
         public int Maximum { get; set; }
 
         /// <summary>
+        ///     Specifies if the Field is Read-Only and cannot be selected
+        /// </summary>
+        public bool IsReadOnly { get; set; }
+
+        /// <summary>
         ///     Field Type for this Field
         /// </summary>
         public EnumFsdFieldType FsdFieldType { get; set; }

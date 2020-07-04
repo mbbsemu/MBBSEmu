@@ -10,7 +10,7 @@ namespace MBBSEmu.HostProcess.Fsd
         public int Channel { get; set; }
 
         /// <summary>
-        ///     Currently Selected Field
+        ///     Currently Selected Field (based on Ordinal)
         /// </summary>
         public FsdFieldSpec SelectedField
         {
@@ -19,7 +19,15 @@ namespace MBBSEmu.HostProcess.Fsd
 
         }
 
+        /// <summary>
+        ///     Currently Selected Field Ordinal
+        /// </summary>
         public int SelectedOrdinal { get; set; }
+
+        /// <summary>
+        ///     Error field for error messages, if defined in the template
+        /// </summary>
+        public FsdFieldSpec ErrorField { get; set; }
 
         /// <summary>
         ///     Field Specifications

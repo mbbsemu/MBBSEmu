@@ -379,10 +379,12 @@ namespace MBBSEmu.HostProcess.Structs
         public UserAccount()
         {
             _usrAccStructBytes = new byte[341];
-            flags = 1; //Set everyone to havign "MASTER" key
+            flags = 1; //Set everyone to having "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
             sex = (byte)'M';  //Set everyone to male for now
             creds = 31337;
+            scnwid = 80; //Screen Width to 80 Columns
+            scnfse = 24; //Screen Height to 24 Lines
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }
 
