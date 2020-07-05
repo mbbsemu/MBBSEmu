@@ -1,22 +1,32 @@
-﻿using MBBSEmu.HostProcess.Fsd;
+﻿using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace MBBSEmu.HostProcess
 {
     public class FsdRoutines : IMbbsRoutines
     {
+        private readonly ILogger _logger;
+        private readonly IGlobalCache _globalCache;
+
         private readonly Dictionary<int, FsdStatus> _fsdFields = new Dictionary<int, FsdStatus>();
         private readonly FsdUtility _fsdUtility = new FsdUtility();
 
         private ushort _userInput;
+
+        public FsdRoutines(ILogger logger, IGlobalCache globalCache)
+        {
+            _logger = logger;
+            _globalCache = globalCache;
+        }
 
         public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
@@ -215,12 +225,12 @@ namespace MBBSEmu.HostProcess
 
             switch (fsdscbStruct.state)
             {
-                case (byte) EnumFsdStateCodes.FSDQIT:
-                case (byte) EnumFsdStateCodes.FSDSAV:
-                {
-                    session.SessionState = EnumSessionState.ExitingFullScreenDisplay;
-                    break;
-                }
+                case (byte)EnumFsdStateCodes.FSDQIT:
+                case (byte)EnumFsdStateCodes.FSDSAV:
+                    {
+                        session.SessionState = EnumSessionState.ExitingFullScreenDisplay;
+                        break;
+                    }
             }
 
             return result.AX == (ushort)EnumFsdStateCodes.VFYCHK;
@@ -376,8 +386,8 @@ namespace MBBSEmu.HostProcess
 
             //Get fsdscb Struct for this channel
             var fsdscbStruct = GetFsdscbStruct(session);
-            fsdscbStruct.numtpl = (ushort) fsdStatus.Fields.Count;
-            fsdscbStruct.state = (byte) EnumFsdStateCodes.FSDAEN;
+            fsdscbStruct.numtpl = (ushort)fsdStatus.Fields.Count;
+            fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDAEN;
             fsdscbStruct.newans = answerPointer; //1k buffer for answer string
             SaveFsdscbStruct(session, fsdscbStruct);
 
@@ -455,6 +465,15 @@ namespace MBBSEmu.HostProcess
                                 break;
                             }
 
+                            if (_fsdFields[session.Channel].SelectedField.OriginalValue !=
+                                _fsdFields[session.Channel].SelectedField.Value)
+                            {
+                                //Increment Change Count
+                                var fsdscbStruct = GetFsdscbStruct(session);
+                                fsdscbStruct.chgcnt++;
+                                SaveFsdscbStruct(session, fsdscbStruct);
+                            }
+
                             _fsdFields[session.Channel].SelectedOrdinal--;
 
                             //Keep going until we find a non-readonly field
@@ -469,6 +488,15 @@ namespace MBBSEmu.HostProcess
                                 //Cycle back to the top
                                 _fsdFields[session.Channel].SelectedOrdinal = 0;
                                 break;
+                            }
+
+                            if (_fsdFields[session.Channel].SelectedField.OriginalValue !=
+                                _fsdFields[session.Channel].SelectedField.Value)
+                            {
+                                //Increment Change Count
+                                var fsdscbStruct = GetFsdscbStruct(session);
+                                fsdscbStruct.chgcnt++;
+                                SaveFsdscbStruct(session, fsdscbStruct);
                             }
 
                             _fsdFields[session.Channel].SelectedOrdinal++;
@@ -511,10 +539,7 @@ namespace MBBSEmu.HostProcess
                             ProcessCharacter(session);
                             _fsdFields[session.Channel].SelectedField.Value += (char)_userInput;
 
-                            //Increment Change Count
-                            var fsdscbStruct = GetFsdscbStruct(session);
-                            fsdscbStruct.chgcnt++;
-                            SaveFsdscbStruct(session, fsdscbStruct);
+
 
                             break;
                         }
@@ -576,10 +601,10 @@ namespace MBBSEmu.HostProcess
                     case 'X' - 64: //CRTL-X
                     case 'Q' - 64: //CTRL-Q
                     case 'S' - 64: //CTRL-S
-                    {
-                        ValidateField(session, _fsdFields[session.Channel]);
-                        break;
-                    }
+                        {
+                            ValidateField(session, _fsdFields[session.Channel]);
+                            break;
+                        }
                     case 13: //CR
                         {
                             //Clear the input buffer
@@ -591,6 +616,15 @@ namespace MBBSEmu.HostProcess
                             //Validate
                             if (!ValidateField(session, _fsdFields[session.Channel]))
                                 return;
+
+                            if (_fsdFields[session.Channel].SelectedField.OriginalValue !=
+                                _fsdFields[session.Channel].SelectedField.Value)
+                            {
+                                //Increment Change Count
+                                var fsdscbStruct = GetFsdscbStruct(session);
+                                fsdscbStruct.chgcnt++;
+                                SaveFsdscbStruct(session, fsdscbStruct);
+                            }
 
                             ClearErrorMessage(session, _fsdFields[session.Channel].ErrorField);
                             SetFieldInactive(session, _fsdFields[session.Channel].SelectedField);
@@ -610,17 +644,26 @@ namespace MBBSEmu.HostProcess
             var fsdWhenDonePointer = session.CurrentModule.Memory.GetVariablePointer($"FSD-WhenDoneRoutine-{session.Channel}");
             var fsdWhenDoneRoutine = session.CurrentModule.Memory.GetPointer(fsdWhenDonePointer);
 
+            //Save FSD Status to Global Cache
+            _globalCache.Set($"FSD-Status-{session.Channel}", _fsdFields[session.Channel]);
+
             //Build Answers String
             var answersString = string.Join('\0', _fsdFields[session.Channel].Fields.Select(x => x.Value));
             session.CurrentModule.Memory.SetZero(fsdscbStruct.newans, 0x800);
             session.CurrentModule.Memory.SetArray(fsdscbStruct.newans, Encoding.ASCII.GetBytes(answersString));
+
+            SetCursorPosition(session, 0, 24);
+            session.SendToClient("|RESET|".EncodeToANSIArray());
+            session.SendToClient("|GREEN||B|".EncodeToANSIArray());
 
             //Invoke When Done Routine
             var result = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, true,
                 new Queue<ushort>(new List<ushort> { (ushort)(fsdscbStruct.state == (byte)EnumFsdStateCodes.FSDSAV ? 1 : 0) }),
                 0xF200); //2k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
 
+            //Invokes STT on exit
             session.SessionState = EnumSessionState.InModule;
+            session.Status = 3;
         }
     }
 }

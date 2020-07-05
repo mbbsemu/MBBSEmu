@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -11,8 +12,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.IO;
-using Newtonsoft.Json.Serialization;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -41,6 +40,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly ILogger _logger;
         private protected readonly IConfiguration _configuration;
         private protected readonly IFileUtility _fileFinder;
+        private protected readonly IGlobalCache _globalCache;
 
         public CpuRegisters Registers;
         public MbbsModule Module;
@@ -52,6 +52,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger = ServiceResolver.GetService<ILogger>();
             _configuration = ServiceResolver.GetService<IConfiguration>();
             _fileFinder = ServiceResolver.GetService<IFileUtility>();
+            _globalCache = ServiceResolver.GetService<IGlobalCache>();
 
             Module = module;
             ChannelDictionary = channelDictionary;

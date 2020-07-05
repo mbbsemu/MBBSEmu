@@ -50,8 +50,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
-        public Majorbbs(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module,
-            channelDictionary)
+        public Majorbbs(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
@@ -1063,6 +1062,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 249:
                     fsdnan();
+                    break;
+                case 252:
+                    fsdord();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -6584,32 +6586,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var fieldNo = GetParameter(0);
 
-            var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
-            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbPointer, FsdscbStruct.Size));
+            //Get FSD Status from the Global Cache
+            var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
 
-            var answerData = Module.Memory.GetArray(fsdscbStruct.newans, 0x800);
+            if (!Module.Memory.TryGetVariablePointer($"fsdnan-buffer-{fieldNo}", out var fsdnanPointer))
+                fsdnanPointer = Module.Memory.AllocateVariable($"fsdnan-buffer-{fieldNo}", 0xFF);
 
-            if (!Module.Memory.TryGetVariablePointer("fsdnan-buffer", out var fsdnanPointer))
-                fsdnanPointer = Module.Memory.AllocateVariable("fsdnan-buffer", 0xFF);
-
-            var fieldStart = 0;
-            var currentField = 0;
-            for (var i = 0; i < answerData.Length; i++)
-            {
-                if (answerData[i] != 0x0) continue;
-
-                if (fieldNo == currentField)
-                {
-                    Module.Memory.SetArray(fsdnanPointer, answerData.Slice(fieldStart, i - fieldStart));
-                    break;
-                }
-
-                currentField++;
-                fieldStart = i;
-            }
+            Module.Memory.SetArray(fsdnanPointer, Encoding.ASCII.GetBytes(fsdStatus.Fields[fieldNo].Value + '\0'));
 
             Registers.AX = fsdnanPointer.Offset;
             Registers.DX = fsdnanPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Gets a fields ordinal for a Multiple-Choice Field
+        ///
+        ///     Signature: int fsdord(int fldi);
+        /// </summary>
+        private void fsdord()
+        {
+            var fieldNo = GetParameter(0);
+
+            //Get FSD Status from the Global Cache
+            var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
+
+            Registers.AX = (ushort) fsdStatus.Fields[fieldNo].SelectedValue;
         }
     }
 }

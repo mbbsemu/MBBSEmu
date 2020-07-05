@@ -68,7 +68,7 @@ namespace MBBSEmu.Session.Telnet
                     //When we're in a module, since new lines are stripped from MVC's etc, and only
                     //carriage returns remain, IF we're in a module and encounter a CR, add a NL
                     if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
-                        SessionState == EnumSessionState.LoginRoutines)
+                        SessionState == EnumSessionState.LoginRoutines || SessionState == EnumSessionState.ExitingFullScreenDisplay)
                     {
                         switch (b)
                         {

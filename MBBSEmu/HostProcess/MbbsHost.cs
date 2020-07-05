@@ -32,17 +32,16 @@ namespace MBBSEmu.HostProcess
         private readonly CpuCore _cpu;
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
-        private readonly IMbbsRoutines _mbbsRoutines;
+        private readonly IEnumerable<IMbbsRoutines> _mbbsRoutines;
         private readonly IMbbsRoutines _fsdRoutines;
         private readonly IConfiguration _configuration;
         private readonly Queue<SessionBase> _incomingSessions;
         private readonly bool _doLoginRoutine;
 
-        public MbbsHost(ILogger logger, IMbbsRoutines mbbsRoutines, IConfiguration configuration)
+        public MbbsHost(ILogger logger, IEnumerable<IMbbsRoutines> mbbsRoutines, IConfiguration configuration)
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
-            _fsdRoutines = new FsdRoutines();
             _configuration = configuration;
 
             _logger.Info("Constructing MbbsEmu Host...");
@@ -281,10 +280,10 @@ namespace MBBSEmu.HostProcess
                         //lower priority than handling "in-module" states
                         default:
                         {
-                            if (_mbbsRoutines.ProcessSessionState(session, _modules))
-                                break;
-
-                            _fsdRoutines.ProcessSessionState(session, _modules);
+                            foreach (var r in _mbbsRoutines)
+                                if (r.ProcessSessionState(session, _modules))
+                                    break;
+                            
                         }
                             break;
                     }
