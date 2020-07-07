@@ -13,6 +13,7 @@ using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.IO;
+using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.DependencyInjection
@@ -35,7 +36,10 @@ namespace MBBSEmu.DependencyInjection
             ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();
             ServiceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             ServiceCollection.AddSingleton<IFileUtility, FileUtility>();
+
+            //FSD Items
             ServiceCollection.AddSingleton<IGlobalCache, GlobalCache>();
+            ServiceCollection.AddTransient<IFsdUtility, FsdUtility>();
 
             //Database Repositories
             ServiceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualBasic.CompilerServices;
@@ -228,7 +229,9 @@ namespace MBBSEmu.HostProcess.Fsd
                 if (answers[i].IndexOf("=", StringComparison.Ordinal) == -1)
                     continue;
 
-                fields[i].Value = answers[i].Substring(answers[i].IndexOf("=", StringComparison.Ordinal) + 1);
+                var answerComponents = answers[i].Split('=');
+
+                fields.First(x => x.Name == answerComponents[0]).Value = answerComponents[1];
             }
         }
 
@@ -350,6 +353,22 @@ namespace MBBSEmu.HostProcess.Fsd
             var templateWithoutAnsi = new Regex(@"\x1b\[[0-9;]*m").Replace(Encoding.ASCII.GetString(msResult.ToArray()), string.Empty);
 
             return Encoding.ASCII.GetBytes(templateWithoutAnsi);
+        }
+
+        /// <summary>
+        ///     Builds an Answer String from the Specified FsdStatus Object
+        /// </summary>
+        /// <param name="fsdStatus"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> BuildAnswerString(FsdStatus fsdStatus)
+        {
+            using var result = new MemoryStream();
+            foreach (var field in fsdStatus.Fields)
+            {
+                result.Write(Encoding.ASCII.GetBytes($"{field.Name}={field.Value}\0"));
+            }
+            result.WriteByte(0);
+            return result.ToArray();
         }
     }
 }

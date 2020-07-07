@@ -1066,6 +1066,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 252:
                     fsdord();
                     break;
+                case 265:
+                    fsdxan();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -4121,9 +4124,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
                 channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
 
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", out var newansPointer))
+                newansPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+
             var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
             {
-                fldspc = fsdFieldSpecPointer
+                fldspc = fsdFieldSpecPointer,
+                newans = newansPointer
             };
 
             Module.Memory.SetVariable($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
@@ -6594,6 +6601,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(fsdnanPointer, Encoding.ASCII.GetBytes(fsdStatus.Fields[fieldNo].Value + '\0'));
 
+#if DEBUG
+            _logger.Info($"Retrieved Field {fieldNo}: {fsdStatus.Fields[fieldNo].Value} ({fsdnanPointer})");
+#endif
+
             Registers.AX = fsdnanPointer.Offset;
             Registers.DX = fsdnanPointer.Segment;
         }
@@ -6611,6 +6622,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
 
             Registers.AX = (ushort) fsdStatus.Fields[fieldNo].SelectedValue;
+        }
+
+        /// <summary>
+        ///     no-preparation- extract answer from answer string (Full Screen Data Entry)
+        ///
+        ///     Signature: char *fsdxan(char *answer, char *name);
+        /// </summary>
+        private void fsdxan()
+        {
+            var answerPointer = GetParameterPointer(0);
+            var answerNamePointer = GetParameterPointer(2);
+
+            var answerName = Encoding.ASCII.GetString(Module.Memory.GetString(answerNamePointer, true));
+            var answerString = Encoding.ASCII.GetString(Module.Memory.GetArray(answerPointer, 0x400));
+
+            //Trim the Answer String to just the component we need
+            var answerStart = answerString.IndexOf(answerName, StringComparison.InvariantCultureIgnoreCase);
+            var trimmedAnswerString = answerString.Substring(answerStart);
+            trimmedAnswerString = trimmedAnswerString.Substring(0, trimmedAnswerString.IndexOf('\0'));
+
+            var answerComponents = trimmedAnswerString.Split('=');
+
+            if (!Module.Memory.TryGetVariablePointer("fsdxan-buffer", out var fsdxanPointer))
+                fsdxanPointer = Module.Memory.AllocateVariable("fsdxan-buffer", 0xFF);
+
+            Module.Memory.SetZero(fsdxanPointer, 0xFF);
+            Module.Memory.SetArray(fsdxanPointer, Encoding.ASCII.GetBytes($"{answerComponents[1]}"));
+
+            Registers.AX = fsdxanPointer.Offset;
+            Registers.DX = fsdxanPointer.Segment;
         }
     }
 }

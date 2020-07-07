@@ -29,7 +29,7 @@ namespace MBBSEmu.HostProcess.Structs
         }
 
         /// <summary>
-        ///     Room for fsdppc() to put array of field info
+        ///     room for fsdppc() to put embedded punctuation templts
         /// </summary>
         public IntPtr16 mbpunc
         {

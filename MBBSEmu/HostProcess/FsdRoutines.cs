@@ -206,8 +206,9 @@ namespace MBBSEmu.HostProcess
             if (!session.CurrentModule.Memory.TryGetVariablePointer($"FSD-CurrentAnswer-{session.Channel}", out var currentAnswerPointer))
                 currentAnswerPointer =
                     session.CurrentModule.Memory.AllocateVariable($"FSD-CurrentAnswer-{session.Channel}", 0xFF);
-
+            session.CurrentModule.Memory.SetZero(currentAnswerPointer, 0xFF);
             session.CurrentModule.Memory.SetArray(currentAnswerPointer, Encoding.ASCII.GetBytes(fieldStatus.SelectedField.Value));
+            session.CurrentModule.Memory.SetArray(fsdscbStruct.newans, _fsdUtility.BuildAnswerString(fieldStatus));
 
             //Set fsdscb struct values and save it
             fsdscbStruct.ansbuf = Encoding.ASCII.GetBytes(fieldStatus.SelectedField.Value);
@@ -216,7 +217,7 @@ namespace MBBSEmu.HostProcess
             fsdscbStruct.xitkey = _userInput;
             SaveFsdscbStruct(session, fsdscbStruct);
 
-            var result = session.CurrentModule.Execute(fsdscbStruct.fldvfy, session.Channel, true, true,
+            var result = session.CurrentModule.Execute(fsdscbStruct.fldvfy, session.Channel, true, false,
                 new Queue<ushort>(new List<ushort> { currentAnswerPointer.Segment, currentAnswerPointer.Offset, (ushort)fieldStatus.SelectedOrdinal }),
                 0xF200); //2k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
 
@@ -229,7 +230,7 @@ namespace MBBSEmu.HostProcess
                 case (byte)EnumFsdStateCodes.FSDSAV:
                     {
                         session.SessionState = EnumSessionState.ExitingFullScreenDisplay;
-                        break;
+                        return true;
                     }
             }
 
@@ -397,22 +398,32 @@ namespace MBBSEmu.HostProcess
         ///     Processes data sent by the user and sets the ASCII (0-127) value, or the EnumKeyCode value for special characters
         /// </summary>
         /// <param name="userInput"></param>
-        private ushort SetUserInput(byte[] userInput)
+        private ushort SetUserInput(SessionBase session)
         {
+            var userInput = session.InputBuffer.ToArray();
             switch (userInput.Length)
             {
                 case 3 when userInput[0] == 0x1B && userInput[1] == '[': //ANSI Sequence
+                {
                     switch (userInput[2])
                     {
-                        case (byte)'A':
-                            return (ushort)EnumKeyCodes.CRSUP;
-                        case (byte)'B':
-                            return (ushort)EnumKeyCodes.CRSDN;
+                        case (byte) 'A':
+                            return (ushort) EnumKeyCodes.CRSUP;
+                        case (byte) 'B':
+                            return (ushort) EnumKeyCodes.CRSDN;
                         default:
-                            throw new Exception($"Unsupported ANSI Sequence {userInput}");
+                            session.InputBuffer.SetLength(0);
+                                _logger.Warn($"Unsupported ANSI Sequence {userInput}");
+                            break;
                     }
+
+                    break;
+                }
                 case 1 when userInput[0] != 0x1B: //ASCII
                     return userInput[0];
+                case var _ when userInput.Length > 3:
+                    session.InputBuffer.SetLength(0);
+                    break;
             }
 
             return 0xFFFF;
@@ -427,7 +438,7 @@ namespace MBBSEmu.HostProcess
             //bail if there's no input data on the channel to process
             if (!session.DataToProcess) return;
 
-            _userInput = SetUserInput(session.InputBuffer.ToArray());
+            _userInput = SetUserInput(session);
 
             //Invalid Input Sequence
             if (_userInput == 0xFFFF)
@@ -628,6 +639,12 @@ namespace MBBSEmu.HostProcess
 
                             ClearErrorMessage(session, _fsdFields[session.Channel].ErrorField);
                             SetFieldInactive(session, _fsdFields[session.Channel].SelectedField);
+
+                            //Hitting Enter on the last Field
+                            if (_fsdFields[session.Channel].SelectedOrdinal ==
+                                _fsdFields[session.Channel].Fields.Count - 1)
+                                return;
+
                             _fsdFields[session.Channel].SelectedOrdinal++;
                             SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                             return;
@@ -657,9 +674,9 @@ namespace MBBSEmu.HostProcess
             session.SendToClient("|GREEN||B|".EncodeToANSIArray());
 
             //Invoke When Done Routine
-            var result = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, true,
+            var result = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, false,
                 new Queue<ushort>(new List<ushort> { (ushort)(fsdscbStruct.state == (byte)EnumFsdStateCodes.FSDSAV ? 1 : 0) }),
-                0xF200); //2k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
+                0xF100); //3k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
 
             //Invokes STT on exit
             session.SessionState = EnumSessionState.InModule;
