@@ -340,6 +340,8 @@ namespace MBBSEmu.Memory
         public void SetPointer(string variableName, IntPtr16 value) =>
             SetArray(GetVariablePointer(variableName), value.Data);
 
+        public void SetPointer(ushort segment, ushort offset, IntPtr16 value) => SetArray(segment, offset, value.Data);
+
         public void SetZero(IntPtr16 pointer, int length)
         {
             var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);

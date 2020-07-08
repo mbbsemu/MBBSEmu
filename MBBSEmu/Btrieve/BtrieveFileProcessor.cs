@@ -245,8 +245,7 @@ namespace MBBSEmu.Btrieve
         public ushort StepFirst()
         {
             Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
-
-            return (ushort)(LoadedFile.RecordCount == 0 ? 9 : 1);
+            return 0;
         }
 
         /// <summary>

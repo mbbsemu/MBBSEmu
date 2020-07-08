@@ -51,6 +51,7 @@ namespace MBBSEmu.Memory
         void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array);
         void SetPointer(IntPtr16 pointer, IntPtr16 value);
         void SetPointer(string variableName, IntPtr16 value);
+        void SetPointer(ushort segment, ushort offset, IntPtr16 value);
         void SetZero(IntPtr16 pointer, int length);
 
         //Nuke the world

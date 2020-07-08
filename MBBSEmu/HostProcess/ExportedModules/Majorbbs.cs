@@ -14,6 +14,7 @@ using System.Linq;
 using System.Text;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess.Fsd;
+using NLog.LayoutRenderers;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -1069,6 +1070,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 265:
                     fsdxan();
+                    break;
+                case 558:
+                    sortstgs();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -6629,7 +6633,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Get FSD Status from the Global Cache
             var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
 
-            Registers.AX = (ushort) fsdStatus.Fields[fieldNo].SelectedValue;
+            Registers.AX = (ushort)fsdStatus.Fields[fieldNo].SelectedValue;
         }
 
         /// <summary>
@@ -6660,6 +6664,40 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = fsdxanPointer.Offset;
             Registers.DX = fsdxanPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Sorts a bunch of strings by re-arranging an array of pointers
+        ///
+        ///     Signature: void sortstgs(char *stgs[],int num);
+        /// </summary>
+        private void sortstgs()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+            var numberOfStrings = GetParameter(2);
+
+            if (numberOfStrings == 0)
+                return;
+
+            var listOfStrings = new List<Tuple<IntPtr16, string>>(numberOfStrings);
+
+            //Grab the pointers and the strings they point to, save in a Tuple
+            for (var i = 0; i < numberOfStrings; i++)
+            {
+                var pointerOffset = (ushort)(stringPointerBase.Offset + (i * IntPtr16.Size));
+                var destinationPointer = Module.Memory.GetPointer(stringPointerBase.Segment, pointerOffset);
+                listOfStrings.Add(new Tuple<IntPtr16, string>(destinationPointer, Encoding.ASCII.GetString(Module.Memory.GetString(destinationPointer, true))));
+            }
+
+            //Order them alphabetically by string
+            var sortedStrings = listOfStrings.OrderBy(x => x.Item2).ToList();
+
+            //Write the new string destination pointers
+            for (var i = 0; i < numberOfStrings; i++)
+            {
+                var pointerOffset = (ushort)(stringPointerBase.Offset + (i * IntPtr16.Size));
+                Module.Memory.SetPointer(stringPointerBase.Segment, pointerOffset, sortedStrings[i].Item1);
+            }
         }
     }
 }
