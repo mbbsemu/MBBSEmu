@@ -9,7 +9,7 @@ namespace MBBSEmu.HostProcess.Structs
     ///
     ///     FSD.H
     /// </summary>
-    public class Fsdfld
+    public class FsdfldStruct
     {
         /// <summary>
         ///     ANSI command to go to field start
@@ -114,14 +114,14 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 23;
 
-        public Fsdfld()
+        public FsdfldStruct()
         {
             Data = new byte[Size];
         }
 
-        public Fsdfld(ReadOnlySpan<byte> data)
+        public FsdfldStruct(ReadOnlySpan<byte> data)
         {
-            Data = data;
+            Data = data.ToArray();
         }
     }
 }

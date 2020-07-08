@@ -390,6 +390,7 @@ namespace MBBSEmu.HostProcess
             fsdscbStruct.numtpl = (ushort)fsdStatus.Fields.Count;
             fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDAEN;
             fsdscbStruct.newans = answerPointer; //1k buffer for answer string
+            _fsdUtility.SetFieldAttributes(session.CurrentModule.Memory.GetArray($"FSD-Fsdscb-{session.Channel}-flddat", FsdfldStruct.Size * 100), fields);
             SaveFsdscbStruct(session, fsdscbStruct);
 
         }

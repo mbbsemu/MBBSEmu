@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
 using Microsoft.VisualBasic.CompilerServices;
 
 namespace MBBSEmu.HostProcess.Fsd
@@ -11,7 +13,7 @@ namespace MBBSEmu.HostProcess.Fsd
     /// <summary>
     ///     This class contains helper functions related to the FSD Functionality
     /// </summary>
-    public class FsdUtility
+    public class FsdUtility : IFsdUtility
     {
         /// <summary>
         ///     Parses a Field Spec String for FSD and returns a strongly typed list of the Field Specifications
@@ -370,5 +372,25 @@ namespace MBBSEmu.HostProcess.Fsd
             result.WriteByte(0);
             return result.ToArray();
         }
+
+        /// <summary>
+        ///     Exchanges Field Information between the fsdfld definitions and the FsdFieldSpec List3
+        /// 
+        ///     fsdfldSpan.flags & 0x80 -> fields.IsReadOnly    
+        /// </summary>
+        /// <param name="fsdfldSpan"></param>
+        /// <param name="fields"></param>
+        public void SetFieldAttributes(ReadOnlySpan<byte> fsdfldSpan, List<FsdFieldSpec> fields)
+        {
+            for (var i = 0; i < fields.Count; i++)
+            {
+                var offset = i * FsdfldStruct.Size;
+                var currentFieldStruct = new FsdfldStruct(fsdfldSpan.Slice(offset, FsdfldStruct.Size));
+
+                //Field Evaluations
+                fields[i].IsReadOnly = currentFieldStruct.flags.IsFlagSet((byte) EnumFsdfldFlags.FFFAVD);
+                //TODO -- Other Fields Here
+            }
+        }
     }
-}
+    }

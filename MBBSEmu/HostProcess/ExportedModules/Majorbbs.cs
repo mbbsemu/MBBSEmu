@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess.Fsd;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -4117,8 +4118,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
 
             //Hydrate FSD Memory Areas with Values
-            Module.Memory.SetArray(fsdBufferPointer, McvPointerDictionary[_currentMcvFile.Offset].GetString(tmpmsg));
-            Module.Memory.SetArray(fsdFieldSpecPointer, Module.Memory.GetString(fldspc));
+            var template = McvPointerDictionary[_currentMcvFile.Offset].GetString(tmpmsg);
+            Module.Memory.SetArray(fsdBufferPointer, template);
+            var fieldSpec = Module.Memory.GetString(fldspc);
+            Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
 
             //Establish a new FSD Status Struct for this Channel
             if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
@@ -4127,9 +4130,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", out var newansPointer))
                 newansPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
 
+            //Declare flddat -- allocating enough room for up to 100 fields
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", out var fsdfldPointer))
+                fsdfldPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+
             var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
             {
                 fldspc = fsdFieldSpecPointer,
+                flddat = fsdfldPointer,
                 newans = newansPointer
             };
 
