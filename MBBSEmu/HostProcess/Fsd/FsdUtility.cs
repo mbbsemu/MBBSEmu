@@ -1,12 +1,11 @@
-﻿using System;
+﻿using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess.Structs;
-using Microsoft.VisualBasic.CompilerServices;
 
 namespace MBBSEmu.HostProcess.Fsd
 {

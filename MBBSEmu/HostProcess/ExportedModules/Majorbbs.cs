@@ -92,7 +92,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("NMODS"), 0x1); //set this to 1 for now
+            Module.Memory.SetVariable("NMODS", (ushort)0x1); //set this to 1 for now
             var modulePointer = Module.Memory.AllocateVariable("MODULE", 0x4); //Pointer to Registered Module
             var modulePointerPointer =
                 Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
@@ -3335,6 +3335,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[ChannelNumber].rstrin();
 
             var inputMemory = Module.Memory.GetVariablePointer("INPUT");
+            Module.Memory.SetZero(inputMemory, 0xFF);
             Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset,
                 ChannelDictionary[ChannelNumber].InputCommand);
 
@@ -3781,6 +3782,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[ChannelNumber].parsin();
 
             var inputMemory = Module.Memory.GetVariablePointer("INPUT");
+            Module.Memory.SetZero(inputMemory, 0xFF);
             Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset,
                 ChannelDictionary[ChannelNumber].InputCommand);
         }
