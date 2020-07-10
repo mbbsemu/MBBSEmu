@@ -122,9 +122,5 @@ namespace MBBSEmu.HostProcess.Structs
             UserClass = 6;
             Minut4 = 0xA00;
         }
-
-        public void FromSpan(ReadOnlySpan<byte> userSpan) => Data = userSpan.ToArray();
-
-        public ReadOnlySpan<byte> ToSpan() => Data;
     }
 }

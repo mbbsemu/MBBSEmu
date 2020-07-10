@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -12,9 +13,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.DependencyInjection;
-using MBBSEmu.HostProcess.Fsd;
-using NLog.LayoutRenderers;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -243,7 +241,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
 
             //Update User Array and Update Pointer to point to this user
-            Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.ToSpan());
+            Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.ToSpan());
 
             var userAccBasePointer = Module.Memory.GetVariablePointer("USRACC");
@@ -356,8 +354,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var userPointer = Module.Memory.GetVariablePointer("USER");
 
-            ChannelDictionary[ChannelNumber].UsrPtr.FromSpan(Module.Memory.GetArray(userPointer.Segment,
-                (ushort)(userPointer.Offset + (User.Size * channel)), User.Size));
+            ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
+                (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
 #if DEBUG
             _logger.Info($"{channel}->status == {ChannelDictionary[ChannelNumber].Status}");
@@ -1073,6 +1071,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 558:
                     sortstgs();
+                    break;
+                case 381:
+                    lastwd();
+                    break;
+                case 554:
+                    skpwrd();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -6698,6 +6702,48 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var pointerOffset = (ushort)(stringPointerBase.Offset + (i * IntPtr16.Size));
                 Module.Memory.SetPointer(stringPointerBase.Segment, pointerOffset, sortedStrings[i].Item1);
             }
+        }
+
+        /// <summary>
+        ///     Get the last word of a string
+        ///
+        ///     Signature: char *lastwd(char *string);
+        /// </summary>
+        private void lastwd()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase));
+
+            if (!Module.Memory.TryGetVariablePointer("laswd-buffer", out var lastwdBufferPointer))
+                lastwdBufferPointer = Module.Memory.AllocateVariable("lastwd-buffer", 0xFF);
+
+            Module.Memory.SetArray(lastwdBufferPointer, Encoding.ASCII.GetBytes($"{stringToParse.Split(' ').Last()}\0"));
+
+            Registers.AX = lastwdBufferPointer.Offset;
+            Registers.DX = lastwdBufferPointer.Segment;
+        }
+
+        /// <summary>
+        ///     Skip past non-white spaces, returns first NULL or whitespace character in the string
+        ///
+        ///     Signature: char *skpwrd(char *cp);
+        /// </summary>
+        private void skpwrd()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+
+            for (var i = stringPointerBase.Offset; i < ushort.MaxValue; i++)
+            {
+                var currentCharacter = Module.Memory.GetByte(stringPointerBase.Segment, i);
+                if (currentCharacter != 0 && currentCharacter != ' ') continue;
+                Registers.AX = i;
+                Registers.DX = stringPointerBase.Segment;
+                return;
+            }
+
+            Registers.AX = 0;
+            Registers.DX = 0;
         }
     }
 }
