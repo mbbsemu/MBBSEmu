@@ -1498,7 +1498,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         continue;
 
                     outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
-                    outputValue = int.Parse(outputStringValue);
+
+                    if (!int.TryParse(outputStringValue, out outputValue))
+                    {
+                        outputValue = 0;
+                        outputStringValue = string.Empty;
+                    }
+
                     break;
                 }
             }
@@ -1511,7 +1517,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.F.SetFlag(EnumFlags.CF);
 
 #if DEBUG
-                _logger.Info($"Unable to cast {stringToLong} ({sourcePointer}) to long");
+                _logger.Warn($"Unable to cast {stringToLong} ({sourcePointer}) to long");
 #endif
 
             }
