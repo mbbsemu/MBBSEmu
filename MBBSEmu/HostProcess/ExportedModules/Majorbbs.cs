@@ -1494,25 +1494,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //If we couldn't parse the whole things at once, try and find the first value we CAN parse
                 for (var i = 0; i < stringToLong.Length; i++)
                 {
-                    if (stringToLongSpan[i] >= '0' && stringToLongSpan[i] <= '9')
+                    if (char.IsNumber((char)stringToLongSpan[i]))
                         continue;
 
                     outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
 
                     if (!int.TryParse(outputStringValue, out outputValue))
-                    {
-                        outputValue = 0;
-                        outputStringValue = string.Empty;
-                    }
-
-                    break;
+                        break;
                 }
+
+                outputValue = 0;
+                outputStringValue = string.Empty;
             }
 
             Registers.DX = (ushort)(outputValue >> 16);
             Registers.AX = (ushort)(outputValue & 0xFFFF);
 
-            if (outputStringValue == string.Empty)
+            if (string.IsNullOrEmpty(outputStringValue))
             {
                 Registers.F.SetFlag(EnumFlags.CF);
 
