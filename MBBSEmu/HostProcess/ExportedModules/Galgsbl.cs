@@ -3,7 +3,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System;
-using System.ComponentModel.DataAnnotations;
 using System.Text;
 using System.Threading;
 
@@ -25,6 +24,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ushort MonitoredChannel2 { get; set; }
 
         private readonly DateTime _startDate;
+
+        private const ushort CHANNEL_NOT_DEFINED = ushort.MaxValue - 9;
 
         public Galgsbl(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
@@ -58,7 +59,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 //Update TICKER
                 var tickerPointer = Module.Memory.GetVariablePointer("TICKER");
-                var seconds = (ushort) ((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
                 Module.Memory.SetWord(tickerPointer, seconds);
                 Thread.Sleep(999);
             }
@@ -362,7 +363,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.ContainsKey(channelNumber))
             {
-                Registers.AX = 0;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -433,7 +434,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = ushort.MaxValue - 1;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -452,7 +453,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = ushort.MaxValue - 1;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -466,15 +467,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public void btuxmt()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var stringPointer = GetParameterPointer(1);
 
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = CHANNEL_NOT_DEFINED;
+                return;
+            }
 
             var stringToSend = Module.Memory.GetString(stringPointer);
-
             var formattedString = ProcessIfANSI(stringToSend);
 
-            ChannelDictionary[channel].SendToClient(formattedString.ToArray());
+            channel.SendToClient(formattedString.ToArray());
 
             Registers.AX = 0;
         }
@@ -523,8 +528,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuclc()
         {
-            var channel = GetParameter(0);
-            ChannelDictionary[channel].InputCommand = new byte[] {0x0};
+            var channelNumber = GetParameter(0);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.InputCommand = new byte[] {0x0};
 
             Registers.AX = 0;
         }
@@ -561,20 +573,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuoes()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var onoff = GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = CHANNEL_NOT_DEFINED;
+                return;
+            }
 
             //Notify the Session that a Status Change has occured
             if (onoff == 1)
             {
-                ChannelDictionary[channel].OutputEmptyStatus = true;
-                ChannelDictionary[channel].StatusChange = true;
+                channel.OutputEmptyStatus = true;
+                channel.StatusChange = true;
                 Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 5); 
             }
             else
             {
-                ChannelDictionary[channel].OutputEmptyStatus = false;
-                ChannelDictionary[channel].StatusChange = true;
+                channel.OutputEmptyStatus = false;
+                channel.StatusChange = true;
                 Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 1);
             }
 
@@ -592,19 +610,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuech()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var mode = GetParameter(1);
 
-            if (!ChannelDictionary.ContainsKey(channel))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
 #if DEBUG
             _logger.Info($"Setting ECHO to: {mode == 0}");
 #endif
-            ChannelDictionary[channel].TransparentMode = mode == 0;
+            channel.TransparentMode = mode == 0;
             Registers.AX = 0;
         }
 
@@ -627,19 +645,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuxmn()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var messagePointer = GetParameterPointer(1);
 
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = CHANNEL_NOT_DEFINED;
+                return;
+            }
+
             var messageToSend = Module.Memory.GetString(messagePointer);
-            ChannelDictionary[channel].SendToClient(messageToSend.ToArray());
+            channel.SendToClient(messageToSend.ToArray());
         }
 
         private void btumon2()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
 
             //Disable Monitoring
-            if (channel == 0xFFFF)
+            if (channelNumber == 0xFFFF)
             {
 #if DEBUG
                 _logger.Info($"Disabling Monitoring on all Channels");
@@ -653,17 +677,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.AX = 0;
             }
 
-            if (!ChannelDictionary.TryGetValue(channel, out var userChannel))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
-            userChannel.Monitored2 = true;
-            MonitoredChannel2 = channel;
+            channel.Monitored2 = true;
+            MonitoredChannel2 = channelNumber;
             Registers.AX = 0;
 #if DEBUG
-            _logger.Info($"Enabled Monitoring on Channel {channel}");
+            _logger.Info($"Enabled Monitoring on Channel {channelNumber}");
 #endif
         }
 
@@ -688,15 +712,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btusts()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
 
-            if (!ChannelDictionary.ContainsKey(channel))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
-            if (ChannelDictionary[channel].DataToProcess && ChannelDictionary[channel].Status == 3)
+            if (channel.DataToProcess && channel.Status == 3)
             {
                 Registers.AX = 3;
             }
@@ -736,16 +760,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btupmt()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var character = GetParameter(1);
 
-            if (!ChannelDictionary.ContainsKey(channel))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = CHANNEL_NOT_DEFINED;
                 return;
             }
 
-            ChannelDictionary[channel].PromptCharacter = (byte) character;
+            channel.PromptCharacter = (byte) character;
             Registers.AX = 0;
         }
 
@@ -757,27 +781,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btucmd()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var command = GetParameterPointer(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = CHANNEL_NOT_DEFINED;
+                return;
+            }
 
             var commandString = Encoding.ASCII.GetString(Module.Memory.GetString(command, true));
 
-            if (!ChannelDictionary.ContainsKey(channel))
-            {
-                Registers.AX = 0;
-                return;
-            }
+            
 
             switch (commandString)
             {
                 case "[":
-                    _logger.Info($"Enable ANSI on channel {channel} (Ignored)");
+                    _logger.Info($"Enable ANSI on channel {channelNumber} (Ignored)");
                     return;
                 case "]":
-                    _logger.Info($"Disable ANSI on channel {channel} (Ignored)");
+                    _logger.Info($"Disable ANSI on channel {channelNumber} (Ignored)");
                     return;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unsupported BTUCMD: {command}");
+                    throw new ArgumentOutOfRangeException($"Unsupported BTUCMD: {channelNumber}");
             }
         }
 
