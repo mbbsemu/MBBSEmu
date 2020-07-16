@@ -161,14 +161,13 @@ namespace MBBSEmu
 
                 //Setup and Run Host
                 var host = ServiceResolver.GetService<IMbbsHost>();
-
                 foreach (var m in modules)
                     host.AddModule(m);
 
                 host.Start();
 
                 //Setup and Run Telnet Server
-                if (!string.IsNullOrEmpty(config["Telnet.Enabled"]) && bool.Parse(config["Telnet.Enabled"]))
+                if (bool.TryParse(config["Telnet.Enabled"], out var telnetEnabled) && telnetEnabled)
                 {
                     if (string.IsNullOrEmpty("Telnet.Port"))
                     {
@@ -183,11 +182,11 @@ namespace MBBSEmu
                 }
                 else
                 {
-                    _logger.Info("Telnet Server Disabled (via appconfig.json)");
+                    _logger.Info("Telnet Server Disabled (via appsettings.json)");
                 }
 
                 //Setup and Run Rlogin Server
-                if (!string.IsNullOrEmpty(config["Rlogin.Enabled"]) && bool.Parse(config["Rlogin.Enabled"]))
+                if (bool.TryParse(config["Rlogin.Enabled"], out var rloginEnabled) && rloginEnabled)
                 {
                     if (string.IsNullOrEmpty("Rlogin.Port"))
                     {
@@ -219,7 +218,7 @@ namespace MBBSEmu
                 }
                 else
                 {
-                    _logger.Info("Rlogin Server Disabled (via appconfig.json)");
+                    _logger.Info("Rlogin Server Disabled (via appsettings.json)");
                 }
             }
             catch (Exception e)
@@ -230,6 +229,11 @@ namespace MBBSEmu
             }
         }
 
+        /// <summary>
+        ///     Performs a Database Reset
+        ///
+        ///     Deletes the Accounts Table and sets up a new SYSOP and GUEST user
+        /// </summary>
         private static void DatabaseReset()
         {
             _logger.Info("Resetting Database...");
@@ -243,7 +247,7 @@ namespace MBBSEmu
                 var bPasswordMatch = false;
                 while (!bPasswordMatch)
                 {
-                    Console.Write("Enter New Systop Password: ");
+                    Console.Write("Enter New Sysop Password: ");
                     var password1 = Console.ReadLine();
                     Console.Write("Re-Enter New Sysop Password: ");
                     var password2 = Console.ReadLine();
@@ -269,11 +273,13 @@ namespace MBBSEmu
 
             keys.CreateTable();
 
+            //Keys for SYSOP
             keys.InsertAccountKey(sysopUserId, "DEMO");
             keys.InsertAccountKey(sysopUserId, "NORMAL");
             keys.InsertAccountKey(sysopUserId, "SUPER");
             keys.InsertAccountKey(sysopUserId, "SYSOP");
 
+            //Keys for GUEST
             keys.InsertAccountKey(guestUserId, "DEMO");
             keys.InsertAccountKey(guestUserId, "NORMAL");
 
