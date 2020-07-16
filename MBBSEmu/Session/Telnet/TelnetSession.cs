@@ -65,7 +65,7 @@ namespace MBBSEmu.Session.Telnet
                 {
                     var b = dataToSend[i];
 
-                    //When we're in a module, since new lines are stripped from MVC's etc, and only
+                    //When we're in a module, since new lines are stripped from MCV's etc, and only
                     //carriage returns remain, IF we're in a module and encounter a CR, add a NL
                     if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
                         SessionState == EnumSessionState.LoginRoutines || SessionState == EnumSessionState.ExitingFullScreenDisplay)
@@ -104,7 +104,7 @@ namespace MBBSEmu.Session.Telnet
         }
 
         /// <summary>
-        ///     Send a Byte Array to the client
+        ///     Worker for Thread Responsible for Sending Data to Client
         /// </summary>
         private void SendWorker()
         {
@@ -137,6 +137,9 @@ namespace MBBSEmu.Session.Telnet
             SessionState = EnumSessionState.LoggedOff;
         }
 
+        /// <summary>
+        ///     Worker for Thread Responsible for Receiving Data from Client
+        /// </summary>
         private void ReceiveWorker()
         {
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
@@ -301,10 +304,20 @@ namespace MBBSEmu.Session.Telnet
                 }
             }
 
-            if (_iacPhase == 0 && _iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
+            if (_iacPhase == 0)
             {
-                _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
-                _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
+                if (_iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
+                {
+                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
+                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
+                }
+
+                if (_iacResponses.All(x => x.Option != EnumIacOptions.Echo))
+                {
+                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
+                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
+                }
+
             }
 
             _iacPhase++;
