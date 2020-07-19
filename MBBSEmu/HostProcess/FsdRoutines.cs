@@ -647,6 +647,11 @@ namespace MBBSEmu.HostProcess
                                 return;
 
                             _fsdFields[session.Channel].SelectedOrdinal++;
+
+                            //Keep going until we find a non-readonly field
+                            while (_fsdFields[session.Channel].SelectedField.IsReadOnly)
+                                _fsdFields[session.Channel].SelectedOrdinal++;
+
                             SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                             return;
                         }
@@ -682,6 +687,7 @@ namespace MBBSEmu.HostProcess
             //Invokes STT on exit
             session.SessionState = EnumSessionState.InModule;
             session.Status = 3;
+            session.UsrPtr.Substt++;
         }
     }
 }

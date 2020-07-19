@@ -39,8 +39,11 @@ namespace MBBSEmu.Server.Socket
             var ipEndPoint = new IPEndPoint(IPAddress.Any, port);
             _listenerSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
             {
-                ReceiveBufferSize = 0x800
+                ReceiveBufferSize = 0x800,
+                DontFragment = true,
+                NoDelay = false
             };
+
             _listenerSocket.Bind(ipEndPoint);
             _listenerThread = new Thread(ListenerThread);
 
@@ -65,7 +68,7 @@ namespace MBBSEmu.Server.Socket
                 {
                     case EnumSessionType.Telent:
                         {
-                            _logger.Info($"Acceping incoming Telnet connection from {client.RemoteEndPoint}...");
+                            _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
                             var telnetSession = new TelnetSession(client);
                             break;
                         }
@@ -79,7 +82,7 @@ namespace MBBSEmu.Server.Socket
                                 continue;
                             }
 
-                            _logger.Info($"Acceping incoming Rlogin connection from {client.RemoteEndPoint}...");
+                            _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
                             var rloginSession = new RloginSession(client, _moduleIdentifier);
                             break;
                         }

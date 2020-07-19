@@ -1,13 +1,13 @@
-﻿using System;
+﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.HostProcess;
+using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess;
-using NLog;
 
 namespace MBBSEmu.Session.Telnet
 {
@@ -26,6 +26,10 @@ namespace MBBSEmu.Session.Telnet
 
         private int _iacPhase;
 
+        private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
+        private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
+        private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
+
         //Tracks Responses We've already sent -- prevents looping
         private readonly List<IacResponse> _iacSentResponses = new List<IacResponse>();
 
@@ -36,8 +40,8 @@ namespace MBBSEmu.Session.Telnet
             _host = ServiceResolver.GetService<IMbbsHost>();
             _logger = ServiceResolver.GetService<ILogger>();
             _telnetConnection = telnetConnection;
-            _telnetConnection.ReceiveTimeout = (1000 * 60) * 5;
-            _telnetConnection.ReceiveBufferSize = 128;
+            _telnetConnection.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
+            _telnetConnection.ReceiveBufferSize = 256;
 
             SessionState = EnumSessionState.Negotiating;
 
@@ -50,12 +54,38 @@ namespace MBBSEmu.Session.Telnet
             //Add this Session to the Host
             _host.AddSession(this);
 
-            Send(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
-            Send(new byte[] { 0x1B, 0x5B, 0x48 });
+            Send(ANSI_ERASE_DISPLAY);
+            Send(ANSI_RESET_CURSOR);
 
             SessionState = EnumSessionState.Unauthenticated;
         }
 
+        /// <summary>
+        ///     Sends a NOP IAC command to detect if the socket is still available
+        /// </summary>
+        /// <returns></returns>
+        public bool Heartbeat()
+        {
+            try
+            {
+                //Telnet IAC NOP
+                _telnetConnection.Send(IAC_NOP, SocketFlags.None, out var socketState);
+                ValidateSocketState(socketState);
+            }
+            catch (Exception)
+            {
+                _logger.Warn($"Detected Channel {Channel} disconnect -- cleaning up");
+                SessionState = EnumSessionState.LoggedOff;
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        ///     Sends data to the connected session
+        /// </summary>
+        /// <param name="dataToSend"></param>
         public void Send(byte[] dataToSend)
         {
             try
@@ -104,12 +134,15 @@ namespace MBBSEmu.Session.Telnet
         }
 
         /// <summary>
-        ///     Worker for Thread Responsible for Sending Data to Client
+        ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
         /// </summary>
         private void SendWorker()
         {
-            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
+            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
+                if (!Heartbeat())
+                    continue;
+
                 //If client didn't initiate IAC, initiate it from the server
                 if (_iacPhase == 0 && SessionTimer.ElapsedMilliseconds > 500)
                 {
@@ -142,10 +175,11 @@ namespace MBBSEmu.Session.Telnet
         /// </summary>
         private void ReceiveWorker()
         {
-            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.IsConnected())
+            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
                 var bytesReceived =
                     _telnetConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
+
                 ValidateSocketState(socketState);
 
                 if (bytesReceived == 0)
@@ -161,8 +195,6 @@ namespace MBBSEmu.Session.Telnet
                 //Enqueue the incoming bytes for processing
                 for (var i = 0; i < bytesReceived; i++)
                     DataFromClient.Enqueue(socketReceiveBuffer[i]);
-
-                Thread.Sleep(1);
             }
 
             //Cleanup if the connection was dropped
@@ -304,6 +336,7 @@ namespace MBBSEmu.Session.Telnet
                 }
             }
 
+            //In the 1st phase of IAC negotiation, ensure the required items are being negotiated
             if (_iacPhase == 0)
             {
                 if (_iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
@@ -355,11 +388,11 @@ namespace MBBSEmu.Session.Telnet
                 case SocketError.Success:
                     return;
                 case SocketError.ConnectionReset:
+                case SocketError.ConnectionAborted:
                 case SocketError.TimedOut:
                     {
                         _logger.Warn($"Session {SessionId} (Channel: {Channel}) forcefully disconnected: {socketError}");
                         SessionState = EnumSessionState.LoggedOff;
-                        _telnetConnection.Dispose();
                         return;
                     }
                 default:

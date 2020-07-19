@@ -172,18 +172,18 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         private void WelcomeScreenDisplay(SessionBase session)
         {
-            session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-            session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x48});
-            session.SendToClientAsync(_resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
-            session.SendToClientAsync(Encoding.ASCII.GetBytes("\r\n "));
+            EchoToClient(session, new byte[] {0x1B, 0x5B, 0x32, 0x4A});
+            EchoToClient(session, new byte[] {0x1B, 0x5B, 0x48});
+            EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
+            EchoToClient(session, Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
         }
 
         private void LoginUsernameDisplay(SessionBase session)
         {
-            session.SendToClientAsync("\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
+            EchoToClient(session, "\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
                 .EncodeToANSIArray());
-            session.SendToClientAsync("|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
+            EchoToClient(session, "|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginUsernameInput;
         }
 
@@ -195,13 +195,19 @@ namespace MBBSEmu.HostProcess
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
+            if (string.IsNullOrEmpty(inputValue))
+            {
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                return;
+            }
+
             if (inputValue.ToUpper() == "NEW")
             {
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
                 session.InputBuffer.SetLength(0);
-                session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-                session.SendToClientAsync(new byte[] {0x1B, 0x5B, 0x48});
-                session.SendToClientAsync(_resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                EchoToClient(session, new byte[] {0x1B, 0x5B, 0x32, 0x4A});
+                EchoToClient(session, new byte[] {0x1B, 0x5B, 0x48});
+                EchoToClient(session,_resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 return;
             }
 
@@ -212,7 +218,7 @@ namespace MBBSEmu.HostProcess
 
         private void LoginPasswordDisplay(SessionBase session)
         {
-            session.SendToClientAsync("|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
+            EchoToClient(session, "|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
         }
 
@@ -361,6 +367,18 @@ namespace MBBSEmu.HostProcess
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
+            //Validation for the blank username
+            if (string.IsNullOrEmpty(inputValue))
+            {
+                EchoToClient(session,
+                    "\r\n|RED||B|Please enter a valid Username.\r\n|RESET|"
+                        .EncodeToANSIArray());
+                session.SessionState = EnumSessionState.SignupUsernameDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
+            //Validation for an existing username
             if (_accountRepository.GetAccountByUsername(inputValue) != null)
             {
                 EchoToClient(session,
@@ -463,19 +481,6 @@ namespace MBBSEmu.HostProcess
             {
                 EchoToClient(session,
                     "\r\n|RED|B|Please enter a valid e-Mail address.\r\n|RESET|".EncodeToANSIArray());
-                session.SessionState = EnumSessionState.SignupEmailDisplay;
-                session.InputBuffer.SetLength(0);
-                return;
-            }
-
-            if (_accountRepository.GetAccountByEmail(inputValue) != null)
-            {
-                EchoToClient(session,
-                    "\r\n|RED||B|This email address is already in use on another account. Please"
-                        .EncodeToANSIArray());
-                EchoToClient(session,
-                    "\r\n|RED||B|login using that account or choose another email address.\r\n|RESET|"
-                        .EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupEmailDisplay;
                 session.InputBuffer.SetLength(0);
                 return;

@@ -25,7 +25,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly DateTime _startDate;
 
-        private const ushort CHANNEL_NOT_DEFINED = ushort.MaxValue - 9;
+        private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
+        private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
 
         public Galgsbl(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
@@ -189,6 +190,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 44:
                     btuscr();
                     break;
+                case 26:
+                    btulok();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -232,26 +236,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btutrg()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var numBytes = GetParameter(1);
 
-            if (!ChannelDictionary.ContainsKey(channel))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
             if (numBytes == 0)
             {
                 //Default ASCII mode -- we don't need to do anything
-                ChannelDictionary[channel].TransparentMode = false;
+                channel.TransparentMode = false;
                 Registers.AX = 0;
                 return;
             }
 
             if (numBytes >= 1)
             {
-                ChannelDictionary[channel].TransparentMode = true;
+                channel.TransparentMode = true;
                 Registers.AX = 0;
                 return;
             }
@@ -268,18 +272,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btuinj()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var status = GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
 
             //Status Change
             //Set the Memory Value
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), status);
 
             //Notify the Session that a Status Change has occured
-            ChannelDictionary[channel].StatusChange = true;
+            channel.StatusChange = true;
 
 #if DEBUG
-            _logger.Info($"Injecting Stauts {status} on channel {channel}");
+            _logger.Info($"Injecting Stauts {status} on channel {channelNumber}");
 #endif
 
             Registers.AX = 0;
@@ -327,22 +337,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationSegment = GetParameter(2);
             var max = GetParameter(3);
 
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
             //Nothing to Input?
-            if (ChannelDictionary[channelNumber].InputBuffer.Length == 0)
+            if (channel.InputBuffer.Length == 0)
             {
                 Registers.AX = 0;
                 return;
             }
 
             int bytesToRead;
-            if (max > ChannelDictionary[channelNumber].InputBuffer.Length)
-                bytesToRead = (int) ChannelDictionary[channelNumber].InputBuffer.Length;
+            if (max > channel.InputBuffer.Length)
+                bytesToRead = (int) channel.InputBuffer.Length;
             else
                 bytesToRead = max;
 
             var bytesRead = new byte[bytesToRead];
-            ChannelDictionary[channelNumber].InputBuffer.Position = 0;
-            ChannelDictionary[channelNumber].InputBuffer.Read(bytesRead, 0, bytesToRead);
+            channel.InputBuffer.Position = 0;
+            channel.InputBuffer.Read(bytesRead, 0, bytesToRead);
 
             Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
             Registers.AX = (ushort) bytesToRead;
@@ -361,13 +377,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channelNumber = GetParameter(0);
 
-            if (!ChannelDictionary.ContainsKey(channelNumber))
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
-            ChannelDictionary[channelNumber].InputBuffer.SetLength(0);
+            channel.InputBuffer.SetLength(0);
 
             Registers.AX = 0;
         }
@@ -434,7 +450,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -453,7 +469,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -472,7 +488,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -532,7 +548,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -578,7 +594,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -597,7 +613,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Info($"Value {onoff} for Channel {channel}");
+            _logger.Info($"Value {onoff} for Channel {channelNumber}");
 #endif
 
             Registers.AX = 0;
@@ -615,12 +631,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
 #if DEBUG
-            _logger.Info($"Setting ECHO to: {mode == 0}");
+            _logger.Info($"Setting ECHO to: {mode} for channel {channelNumber}");
 #endif
             channel.TransparentMode = mode == 0;
             Registers.AX = 0;
@@ -650,7 +666,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -679,7 +695,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -716,7 +732,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -765,7 +781,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -786,7 +802,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = CHANNEL_NOT_DEFINED;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
@@ -884,6 +900,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var character = GetParameter(1);
             _logger.Info($"Set soft-CR character {character:X2} on Channel {channel} (Ignored -- only for ASCII mode)");
+        }
+
+        /// <summary>
+        ///     Set input lockout on/off
+        ///
+        ///     Signature: int btulok(int chan,int onoff);
+        /// </summary>
+        private void btulok()
+        {
+            var channelNumber = GetParameter(0);
+            var onoff = GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+#if DEBUG
+            _logger.Info($"Set InputLockout on channel {channelNumber} to {onoff == 1}");
+#endif
+
+            channel.InputLockout = onoff == 1;
+
         }
     }
 }

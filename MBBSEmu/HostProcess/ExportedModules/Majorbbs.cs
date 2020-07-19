@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -65,7 +66,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
             Module.Memory.SetVariable("OUTBSZ", (ushort)0x4000);
-            Module.Memory.AllocateVariable("INPUT", 0xFF); //256 Byte Maximum user Input
+            Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
@@ -302,9 +303,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
                 }
 
-                Module.Memory.SetArray(inputMemory, ChannelDictionary[channelNumber].InputCommand);
-                _inputCurrentPosition = 0;
+                //If the input buffer is > 255 bytes, truncate it so it'll fit in the allocated space for input[]
+                if (ChannelDictionary[channelNumber].InputCommand.Length <= 255)
+                {
+                    Module.Memory.SetArray(inputMemory, ChannelDictionary[channelNumber].InputCommand);
+                }
+                else
+                {
+                    var truncatedInput = new byte[0xFF];
+                    Array.Copy(ChannelDictionary[channelNumber].InputCommand, 0, truncatedInput, 0, 0xFE);
+                    Module.Memory.SetArray(inputMemory, truncatedInput);
+                }
 
+                _inputCurrentPosition = 0;
 
                 var margnPointer = Module.Memory.GetVariablePointer("MARGN");
                 var margvPointer = Module.Memory.GetVariablePointer("MARGV");
@@ -1078,7 +1089,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 554:
                     skpwrd();
                     break;
+                case 215:
+                    findtvar();
+                    break;
+                case 182:
+                    echonu();
+                    break;
                 default:
+
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
 
@@ -3070,7 +3088,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationSegment = GetParameter(1);
             var sourceOffset = GetParameter(2);
             var sourceSegment = GetParameter(3);
-
 
             var output = Module.Memory.GetString(sourceSegment, sourceOffset);
 
@@ -6750,6 +6767,56 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = 0;
             Registers.DX = 0;
+        }
+
+        /// <summary>
+        ///     Find text variable & return number
+        /// 
+        ///     Signature: int findtvar(char *name);
+        /// </summary>
+        private void findtvar()
+        {
+            var textVariableNamePointer = GetParameterPointer(0);
+
+            var textVariableName = Encoding.ASCII.GetString(Module.Memory.GetString(textVariableNamePointer, true));
+
+            for (var i = 0; i < Module.TextVariables.Count; i++)
+            {
+                if (Module.TextVariables.Keys.Select(x => x).ToList()[i] != textVariableName) continue;
+
+                Registers.AX = (ushort)i;
+                return;
+            }
+
+            Registers.AX = 0xFFFF;
+        }
+
+        /// <summary>
+        ///     Turns on echo utility for the specified user
+        ///
+        /// 
+        ///     Signature: void echonu(int usrnum);
+        /// </summary>
+        private void echonu()
+        {
+            var channelNumber = GetParameter(0);
+
+#if DEBUG
+            _logger.Info($"Disabling Character Interceptor & Enabling Echo on Channel {channelNumber}");
+#endif
+
+            ChannelDictionary[channelNumber].CharacterInterceptor = null;
+            ChannelDictionary[channelNumber].TransparentMode = false;
+        }
+
+        /// <summary>
+        ///     Inject a message to another user (implicit inputs othusn, prfbuf).
+        ///
+        ///     Signature: int gotIt=injoth();
+        /// </summary>
+        private void injoth()
+        {
+
         }
     }
 }

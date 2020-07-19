@@ -180,6 +180,11 @@ namespace MBBSEmu.Session
         public bool OutputEmptyStatus { get; set; }
 
         /// <summary>
+        ///     Specifies if a user is locked out from sending input (GSBL)
+        /// </summary>
+        public bool InputLockout { get; set; }
+
+        /// <summary>
         ///     Helper Method to enqueue data to be sent to the client Async
         /// </summary>
         /// <param name="dataToSend"></param>
@@ -216,7 +221,7 @@ namespace MBBSEmu.Session
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();
 
-            InputCommand = new byte[] {0x0};
+            InputCommand = new byte[] { 0x0 };
             mArgn = new List<int>();
             mArgv = new List<int>();
         }
