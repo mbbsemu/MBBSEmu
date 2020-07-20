@@ -32,8 +32,10 @@ namespace MBBSEmu.Memory
         byte GetByte(ushort segment, ushort offset);
         ushort GetWord(IntPtr16 pointer);
         ushort GetWord(ushort segment, ushort offset);
+        ushort GetWord(string variableName);
         IntPtr16 GetPointer(IntPtr16 pointer);
         IntPtr16 GetPointer(ushort segment, ushort offset);
+        IntPtr16 GetPointer(string variableName);
         ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count);
         ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count);
         ReadOnlySpan<byte> GetArray(string variableName, ushort count);

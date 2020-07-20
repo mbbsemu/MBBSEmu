@@ -229,6 +229,8 @@ namespace MBBSEmu.Memory
             return selectedSegment[offset];
         }
 
+        public ushort GetWord(string variableName) => GetWord(GetVariablePointer(variableName));
+
         public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         public ushort GetWord(ushort segment, ushort offset)
@@ -241,6 +243,7 @@ namespace MBBSEmu.Memory
 
         public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
 
+        public IntPtr16 GetPointer(string variableName) => new IntPtr16(GetArray(GetVariablePointer(variableName), 4));
 
         public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
 

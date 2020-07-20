@@ -1095,6 +1095,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 182:
                     echonu();
                     break;
+                case 348:
+                    injoth();
+                    break;
                 default:
 
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -1509,20 +1512,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!int.TryParse(stringToLong, out var outputValue))
             {
-                //If we couldn't parse the whole things at once, try and find the first value we CAN parse
-                for (var i = 0; i < stringToLong.Length; i++)
-                {
-                    if (char.IsNumber((char)stringToLongSpan[i]))
-                        continue;
-
-                    outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
-
-                    if (!int.TryParse(outputStringValue, out outputValue))
-                        break;
-                }
 
                 outputValue = 0;
                 outputStringValue = string.Empty;
+
+                //If we couldn't parse the whole things at once, try and find the first value we CAN parse
+                for (var i = 0; i < stringToLong.Length; i++)
+                {
+                    //Keep looping and incrementing the pointer until we find a non-number
+                    if (char.IsNumber((char)stringToLongSpan[i]))
+                        continue;
+
+                    if (i == 0)
+                        break;
+
+                    //Grab the portion of the string that's the number
+                    outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
+
+                    if (!int.TryParse(outputStringValue, out outputValue))
+                    {
+                        outputValue = 0;
+                        outputStringValue = string.Empty;
+                    }
+
+                    break;
+                }
             }
 
             Registers.DX = (ushort)(outputValue >> 16);
@@ -1742,6 +1756,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void outprf()
         {
             var userChannel = GetParameter(0);
+
             var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
             var currentPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
 
@@ -4757,9 +4772,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(btvStruct.data, record);
 
 #if DEBUG
-                _logger.Info($"Performed Btrieve Step - Record written to {btvDataPointer}");
+                _logger.Info($"Performed Btrieve Step - Btrieve Record Updated {btvDataPointer}, {record.Length} bytes written to {recordPointer}");
 #endif
                 Module.Memory.SetArray(recordPointer, record);
+
             }
         }
 
@@ -5489,7 +5505,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Performed Query {queryOption} on {BtrievePointerDictionaryNew[_currentBtrieveFile].LoadedFileName} ({_currentBtrieveFile}) with result {result}");
+                $"Performed Query {(EnumBtrieveOperationCodes)queryOption} on {BtrievePointerDictionaryNew[_currentBtrieveFile].LoadedFileName} ({_currentBtrieveFile}) with result {result}");
 #endif
 
             Registers.AX = (ushort)result;
@@ -6816,7 +6832,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void injoth()
         {
+            var userChannel = Module.Memory.GetWord("OTHUSN");
+            var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
+            var currentPointer = Module.Memory.GetPointer("PRFPTR");
 
+            var outputLength = (ushort)(currentPointer.Offset - basePointer.Offset);
+
+            var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
+
+            var outputBufferProcessed = ProcessIfANSI(outputBuffer);
+
+            if (Module.TextVariables.Count > 0)
+            {
+                var newBuffer = ProcessTextVariables(outputBufferProcessed);
+                ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
+
+#if DEBUG
+                _logger.Info($"Sent {newBuffer.Length} bytes to Channel {userChannel}");
+#endif
+            }
+            else
+            {
+                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
+#if DEBUG
+                _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
+#endif
+            }
+
+            Module.Memory.SetZero(basePointer, outputLength);
+
+            //Set prfptr to the base address of prfbuf
+            Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
         }
     }
 }
