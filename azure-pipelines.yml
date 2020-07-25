@@ -26,7 +26,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -34,7 +34,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -42,7 +42,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -50,7 +50,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -58,12 +58,12 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64\MBBSEmu'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x64-$(buildNumber).zip'
@@ -72,7 +72,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86\MBBSEmu'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x32-$(buildNumber).zip'
@@ -81,7 +81,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64\MBBSEmu'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-x64-$(buildNumber).zip'
@@ -90,7 +90,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm\MBBSEmu'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-arm-$(buildNumber).zip'
@@ -99,7 +99,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64\MBBSEmu'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-osx-x64-$(buildNumber).zip'
