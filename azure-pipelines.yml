@@ -21,12 +21,21 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**/MBBSEmu.csproj'
-    arguments: '--runtime win-x64'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity d'
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
+    replaceExistingArchive: true
+    verbose: true
 
 - task: AzureFileCopy@4
   inputs:
-    SourcePath: '$(Build.ArtifactStagingDirectory)'
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(Date:MMddyy)'
+    ContainerName: '$web\builds\'
