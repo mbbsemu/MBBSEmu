@@ -29,9 +29,6 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 10;
 
-        public byte[] Data = new byte[Size];
-
-        public ReadOnlySpan<byte> ToSpan() => Data;
-
+        public readonly byte[] Data = new byte[Size];
     }
 }

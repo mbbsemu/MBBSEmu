@@ -139,7 +139,6 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         Gcslon = 1 << 25, //0x02000000L
 
-
         /// <summary>
         ///     C/S signup acct info being recorded
         /// </summary>

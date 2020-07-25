@@ -44,19 +44,9 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value.ToArray(), 0, Data, 18, IntPtr16.Size);
         }
 
-        public byte[] Data;
+        public readonly byte[] Data;
 
         public const ushort Size = 22;
-
-        public FtgStruct()
-        {
-            Data = new byte[Size];
-        }
-
-        public FtgStruct(byte[] data)
-        {
-            Data = data;
-        }
 
         public FtgStruct(ReadOnlySpan<byte> data)
         {

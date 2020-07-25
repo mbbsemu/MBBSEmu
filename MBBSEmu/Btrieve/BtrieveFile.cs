@@ -96,14 +96,14 @@ namespace MBBSEmu.Btrieve
                 if (Data?.Length > 0)
                     return BitConverter.ToUInt16(Data, 0x14);
 
-                return _pageLength;
+                return _keyCount;
             }
             set
             {
                 if (Data?.Length > 0)
                     Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x14, sizeof(ushort));
 
-                _pageLength = value;
+                _keyCount = value;
             }
         }
 

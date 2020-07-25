@@ -107,19 +107,11 @@ namespace MBBSEmu.HostProcess
             if (!session.DataToProcess) return;
 
             session.DataToProcess = false;
-            switch (session.LastCharacterReceived)
-            {
-                case 0x8:
-                case 0x7F:
-                    EchoToClient(session, new byte[] { 0x08, 0x20, 0x08 });
-                    session.InputBuffer.SetLength(session.InputBuffer.Length -1);
-                    break;
-                default:
-                    EchoToClient(session, secure ? (byte)0x2A : session.LastCharacterReceived);
-                    break;
-            }
-            
-            HandleBackspace(session, session.LastCharacterReceived);
+
+            if (HandleBackspace(session, session.LastCharacterReceived))
+                return;
+
+            EchoToClient(session, secure ? (byte)0x2A : session.LastCharacterReceived);
         }
 
         private void EchoToClient(SessionBase session, ReadOnlySpan<byte> dataToEcho)
@@ -140,30 +132,38 @@ namespace MBBSEmu.HostProcess
             //Handle Backspace or Delete
             if (dataToEcho == 0x8 || dataToEcho == 0x7F)
             {
-                session.SendToClient(new byte[] {0x08, 0x20, 0x08});
+                session.SendToClient(new byte[] { 0x08, 0x20, 0x08 });
                 return;
             }
 
-            session.SendToClient(new[] {dataToEcho});
+            session.SendToClient(new[] { dataToEcho });
         }
 
         /// <summary>
-        ///     Applies Backspace from the Client to the Input Buffer
+        ///     Handles Backspace from the Client
         /// </summary>
         /// <param name="session"></param>
         /// <param name="inputFromUser"></param>
         /// <returns></returns>
-        private void HandleBackspace(SessionBase session, byte inputFromUser)
+        private bool HandleBackspace(SessionBase session, byte inputFromUser)
         {
+            //Not a backspace character
             if (inputFromUser != 0x8 && inputFromUser != 0x7F)
-                return;
+                return false;
 
-            //If its backspace and the buffer is already empty, do nothing
-            if (session.InputBuffer.Length <= 0)
-                return;
+            if (session.InputBuffer.Length <= 1)
+            {
+                //Only backspace is in the buffer (first character entered)
+                session.InputBuffer.SetLength(0);
+            }
+            else
+            {
+                //Remove backspace character and the preceding character
+                session.InputBuffer.SetLength(session.InputBuffer.Length -2);
+                EchoToClient(session, new byte[] { 0x08, 0x20, 0x08 });
+            }
 
-            //Because position starts at 0, it's an easy -1 on length
-            session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
+            return true;
         }
 
         /// <summary>
@@ -172,8 +172,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         private void WelcomeScreenDisplay(SessionBase session)
         {
-            EchoToClient(session, new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-            EchoToClient(session, new byte[] {0x1B, 0x5B, 0x48});
+            EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+            EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
             EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
             EchoToClient(session, Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
@@ -205,9 +205,9 @@ namespace MBBSEmu.HostProcess
             {
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
                 session.InputBuffer.SetLength(0);
-                EchoToClient(session, new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-                EchoToClient(session, new byte[] {0x1B, 0x5B, 0x48});
-                EchoToClient(session,_resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+                EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
+                EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 return;
             }
 
@@ -298,8 +298,8 @@ namespace MBBSEmu.HostProcess
             var selectedModule = modules.ElementAt(selectedMenuItem);
             session.CurrentModule = selectedModule.Value;
             session.SessionState = EnumSessionState.EnteringModule;
-            session.SendToClient(new byte[] {0x1B, 0x5B, 0x32, 0x4A});
-            session.SendToClient(new byte[] {0x1B, 0x5B, 0x48});
+            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x48 });
 
             //Clear the Input Buffer
             //session.InputBuffer.SetLength(0);

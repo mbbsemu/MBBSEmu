@@ -44,34 +44,34 @@ namespace MBBSEmu.HostProcess.Structs
         //fill/empty level of buffer [0-1]
         public ushort level
         {
-            get => BitConverter.ToUInt16(_fileStruct, 0);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 0, 2);
+            get => BitConverter.ToUInt16(Data, 0);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 0, 2);
         }
 
         //File status flags [2-3]
         public ushort flags
         {
-            get => BitConverter.ToUInt16(_fileStruct, 2);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 2, 2);
+            get => BitConverter.ToUInt16(Data, 2);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 2, 2);
         }
 
         //File descriptor [4]
         public byte fd
         {
-            get => _fileStruct[4];
-            set => _fileStruct[4] = value;
+            get => Data[4];
+            set => Data[4] = value;
         }
 
         //Ungetc char if no buffer [5]
         public byte hold {
-            get => _fileStruct[5];
-            set => _fileStruct[5] = value;
+            get => Data[5];
+            set => Data[5] = value;
         }
 
         //Buffer size [6-7]
         public ushort bsize {
-            get => BitConverter.ToUInt16(_fileStruct, 6);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 6, 2);
+            get => BitConverter.ToUInt16(Data, 6);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 6, 2);
         }
 
         //Data transfer buffer [8-11]
@@ -79,46 +79,42 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> fileSpan = _fileStruct;
+                ReadOnlySpan<byte> fileSpan = Data;
                 return new IntPtr16(fileSpan.Slice(8,4));
             }
-            set => Array.Copy(value.ToArray(), 0, _fileStruct, 8, 4);
+            set => Array.Copy(value.ToArray(), 0, Data, 8, 4);
         }
 
         //Current active pointer [12-15]
         public IntPtr16 curp {
             get
             {
-                ReadOnlySpan<byte> fileSpan = _fileStruct;
+                ReadOnlySpan<byte> fileSpan = Data;
                 return new IntPtr16(fileSpan.Slice(12, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, _fileStruct, 12, 4);
+            set => Array.Copy(value.ToArray(), 0, Data, 12, 4);
         }
 
         //Temporary file indicator [16]
         public byte istemp {
-            get => _fileStruct[16];
-            set => _fileStruct[16] = value;
+            get => Data[16];
+            set => Data[16] = value;
         }
 
         //Used for validity checking [17-18]
         public short token
         {
-            get => BitConverter.ToInt16(_fileStruct, 17);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _fileStruct, 17, 2);
+            get => BitConverter.ToInt16(Data, 17);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 17, 2);
         }
 
         public const ushort Size = 19;
 
-        private byte[] _fileStruct = new byte[Size];
+        public byte[] Data = new byte[Size];
 
         public FileStruct() { }
 
-        public FileStruct(ReadOnlySpan<byte> structData) => _fileStruct = structData.ToArray();
-
-        public ReadOnlySpan<byte> ToSpan() => _fileStruct;
-
-        public void FromSpan(ReadOnlySpan<byte> fileSpan) => _fileStruct = fileSpan.ToArray();
+        public FileStruct(ReadOnlySpan<byte> structData) => Data = structData.ToArray();
 
         /// <summary>
         ///     Sets the Initial FLAGS value on the FILE struct using the flags passed into FOPEN

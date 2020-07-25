@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Text;
 
 namespace MBBSEmu.HostProcess.Structs
 {
@@ -87,17 +84,8 @@ namespace MBBSEmu.HostProcess.Structs
             get => BitConverter.ToInt16(Data, 19);
         }
 
-        public byte[] Data;
+        public readonly byte[] Data = new byte[Size];
 
         public const ushort Size = 21;
-
-        public ExtUser()
-        {
-            Data = new byte[Size];
-        }
-
-        public ReadOnlySpan<byte> ToSpan() => new ReadOnlySpan<byte>(Data);
-
-        public void FromSpan(ReadOnlySpan<byte> data) => Data = data.ToArray();
     }
 }

@@ -46,7 +46,7 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Clears out the Memory Core and sets all values back to initial state
+        ///     Deletes all defined Segments from Memory
         /// </summary>
         public void Clear()
         {
@@ -58,6 +58,13 @@ namespace MBBSEmu.Memory
             _currentVariablePointer.Offset = 0;
         }
 
+        /// <summary>
+        ///     Allocates the specified variable name with the desired size
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="size"></param>
+        /// <param name="declarePointer"></param>
+        /// <returns></returns>
         public IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false)
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
@@ -104,6 +111,11 @@ namespace MBBSEmu.Memory
             return newPointer;
         }
 
+        /// <summary>
+        ///     Returns the pointer to a defined variable
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public IntPtr16 GetVariablePointer(string name)
         {
             if (!TryGetVariablePointer(name, out var result))
@@ -112,6 +124,14 @@ namespace MBBSEmu.Memory
             return result;
         }
 
+        /// <summary>
+        ///     Safe retrieval of a pointer to a defined variable
+        ///
+        ///     Returns false if the variable isn't defined
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
         public bool TryGetVariablePointer(string name, out IntPtr16 pointer)
         {
             if (!_variablePointerDictionary.TryGetValue(name, out var result))
@@ -124,19 +144,11 @@ namespace MBBSEmu.Memory
             return true;
         }
 
-        public void SetVariable(string name, byte value) => SetByte(GetVariablePointer(name), value);
-        public void SetVariable(string name, ushort value) => SetWord(GetVariablePointer(name), value);
-
-        public void SetVariable(string name, uint value) =>
-            SetArray(GetVariablePointer(name), BitConverter.GetBytes(value));
-
-        public void SetVariable(string name, ReadOnlySpan<byte> value) => SetArray(GetVariablePointer(name), value);
-        public void SetVariable(string name, IntPtr16 value) => SetArray(GetVariablePointer(name), value.ToSpan());
-
         /// <summary>
-        ///     Declares a new 16-bit Segment and allocates it to the defined Segment Number
+        ///     Adds a new Memory Segment containing 65536 bytes
         /// </summary>
         /// <param name="segmentNumber"></param>
+        /// <param name="size"></param>
         public void AddSegment(ushort segmentNumber, int size = 0x10000)
         {
             if (_memorySegments.ContainsKey(segmentNumber))
@@ -145,6 +157,10 @@ namespace MBBSEmu.Memory
             _memorySegments[segmentNumber] = new byte[size];
         }
 
+        /// <summary>
+        ///     Directly adds a raw segment from an NE file segment
+        /// </summary>
+        /// <param name="segment"></param>
         public void AddSegment(Segment segment)
         {
             //Get Address for this Segment
@@ -178,7 +194,7 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Adds the specified Segment with the specified InstructionList
+        ///     Adds a Decompiled code segment 
         /// </summary>
         /// <param name="segmentNumber"></param>
         /// <param name="segmentInstructionList"></param>
@@ -191,10 +207,26 @@ namespace MBBSEmu.Memory
             }
         }
 
+        /// <summary>
+        ///     Returns the Segment information for the desired Segment Number
+        /// </summary>
+        /// <param name="segmentNumber"></param>
+        /// <returns></returns>
         public Segment GetSegment(ushort segmentNumber) => _segments[segmentNumber];
 
+        /// <summary>
+        ///     Verifies the specified segment is defined
+        /// </summary>
+        /// <param name="segmentNumber"></param>
+        /// <returns></returns>
         public bool HasSegment(ushort segmentNumber) => _memorySegments.ContainsKey(segmentNumber);
 
+        /// <summary>
+        ///     Returns the decompiled instruction from the specified segment:pointer
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="instructionPointer"></param>
+        /// <returns></returns>
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
             //Prevents constant hash lookups for instructions from the same segment
@@ -219,8 +251,19 @@ namespace MBBSEmu.Memory
             return outputInstruction;
         }
 
+        /// <summary>
+        ///     Returns a single byte from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
         public byte GetByte(IntPtr16 pointer) => GetByte(pointer.Segment, pointer.Offset);
 
+        /// <summary>
+        ///     Returns a single byte from the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
         public byte GetByte(ushort segment, ushort offset)
         {
             if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
@@ -229,10 +272,26 @@ namespace MBBSEmu.Memory
             return selectedSegment[offset];
         }
 
+        /// <summary>
+        ///     Returns an unsigned byte from the specified defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns></returns>
         public ushort GetWord(string variableName) => GetWord(GetVariablePointer(variableName));
 
+        /// <summary>
+        ///     Returns an unsigned word from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
         public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
 
+        /// <summary>
+        ///     Returns an unsigned word from the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
         public ushort GetWord(ushort segment, ushort offset)
         {
             if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
@@ -241,18 +300,53 @@ namespace MBBSEmu.Memory
             return BitConverter.ToUInt16(selectedSegment, offset);
         }
 
+        /// <summary>
+        ///     Returns a pointer stored at the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
         public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
 
+        /// <summary>
+        ///     Returns a pointer stored at the specified defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns></returns>
         public IntPtr16 GetPointer(string variableName) => new IntPtr16(GetArray(GetVariablePointer(variableName), 4));
 
+        /// <summary>
+        ///     Returns a pointer stored at the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
         public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
 
+        /// <summary>
+        ///     Returns an array with desired count from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
             GetArray(pointer.Segment, pointer.Offset, count);
 
+        /// <summary>
+        ///     Returns an array with the desired count from the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetArray(string variableName, ushort count) =>
             GetArray(GetVariablePointer(variableName), count);
 
+        /// <summary>
+        ///     Returns an array with the desired count from the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
@@ -262,15 +356,26 @@ namespace MBBSEmu.Memory
             return segmentSpan.Slice(offset, count);
         }
 
+        /// <summary>
+        ///     Returns an array containing the cstring stored at the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="stripNull"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false) =>
             GetString(pointer.Segment, pointer.Offset, stripNull);
 
+        /// <summary>
+        ///     Returns an array containing cstring stored at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="stripNull"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) =>
             GetString(GetVariablePointer(variableName), stripNull);
 
         /// <summary>
-        ///     Reads an array of bytes from the specified segment:offset, stopping
-        ///     at the first null character denoting the end of the string.
+        ///     Returns an array containing the cstring stored at the specified segment:offset
         /// </summary>
         /// <param name="segment"></param>
         /// <param name="offset"></param>
@@ -295,40 +400,59 @@ namespace MBBSEmu.Memory
             throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
         }
 
-        public ReadOnlySpan<byte> GetStringDoubleNull(string variableName)
-        {
-            var variablePointer = GetVariablePointer(variableName);
+        /// <summary>
+        ///     Sets the specified byte at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="value"></param>
+        public void SetByte(string variableName, byte value) => SetByte(GetVariablePointer(variableName), value);
 
-            if (!_memorySegments.TryGetValue(variablePointer.Segment, out var selectedSegment))
-            {
-                _logger.Error($"Invalid Pointer -> {variablePointer}");
-                return Encoding.ASCII.GetBytes("Invalid Pointer");
-            }
-
-            ReadOnlySpan<byte> segmentSpan = selectedSegment;
-
-            for (var i = variablePointer.Offset; i < ushort.MaxValue; i++)
-            {
-                if (segmentSpan[i] == 0x0 && segmentSpan[i-1] == 0x0)
-                    return segmentSpan.Slice(i,  variablePointer.Offset - i);
-            }
-
-            throw new Exception($"Invalid Double Null Terminated String at {variablePointer}");
-        }
-
+        /// <summary>
+        ///     Sets the specified byte at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="value"></param>
         public void SetByte(IntPtr16 pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
 
+        /// <summary>
+        ///     Sets the specified byte at the desired segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
         public void SetByte(ushort segment, ushort offset, byte value)
         {
             _memorySegments[segment][offset] = value;
         }
 
+        /// <summary>
+        ///     Sets the specified word at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="value"></param>
         public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
+        /// <summary>
+        ///     Sets the specified word at the desired segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
         public void SetWord(ushort segment, ushort offset, ushort value) =>
             SetArray(segment, offset, BitConverter.GetBytes(value));
 
+        /// <summary>
+        ///     Sets the specified word at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="value"></param>
+        public void SetWord(string variableName, ushort value) => SetWord(GetVariablePointer(variableName), value);
 
+        /// <summary>
+        ///     Sets the specified array at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="array"></param>
         public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) =>
             SetArray(pointer.Segment, pointer.Offset, array);
 
@@ -338,20 +462,55 @@ namespace MBBSEmu.Memory
             array.CopyTo(destinationSpan);
         }
 
+        /// <summary>
+        ///     Sets the specified array at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="array"></param>
+        public void SetArray(string variableName, ReadOnlySpan<byte> value) =>
+            SetArray(GetVariablePointer(variableName), value);
+
+        /// <summary>
+        ///     Sets the specified pointer value at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="value"></param>
         public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.Data);
 
+        /// <summary>
+        ///     Sets the specified pointer value at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="value"></param>
         public void SetPointer(string variableName, IntPtr16 value) =>
             SetArray(GetVariablePointer(variableName), value.Data);
 
+        /// <summary>
+        ///     Sets the specified pointer value at the desired segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
         public void SetPointer(ushort segment, ushort offset, IntPtr16 value) => SetArray(segment, offset, value.Data);
 
+        /// <summary>
+        ///     Zeroes out the memory at the specified pointer for the desired number of bytes
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="length"></param>
         public void SetZero(IntPtr16 pointer, int length)
         {
             var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);
             destinationSpan.Fill(0);
         }
 
-    public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
+        /// <summary>
+        ///     Allocates the specific number of Big Memory Blocks with the desired size
+        /// </summary>
+        /// <param name="quantity"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
         {
             var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, IntPtr16>());
 
@@ -362,6 +521,12 @@ namespace MBBSEmu.Memory
             return new IntPtr16(0xFFFF, (ushort)newBlockOffset);
         }
 
+        /// <summary>
+        ///     Returns the specified block by index in the desired memory block
+        /// </summary>
+        /// <param name="block"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index) => _bigMemoryBlocks[block.Offset][index];
     }
 }

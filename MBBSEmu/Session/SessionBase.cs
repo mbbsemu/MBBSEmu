@@ -126,9 +126,9 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Queue to hold data to be sent async to Client
         /// </summary>
-        protected ConcurrentQueue<byte[]> DataToClient { get; set; }
+        public ConcurrentQueue<byte[]> DataToClient { get; set; }
 
-        protected ConcurrentQueue<byte> DataFromClient { get; set; }
+        public ConcurrentQueue<byte> DataFromClient { get; set; }
 
         /// <summary>
         ///     Specified that there is data to be processed from this channel
@@ -183,6 +183,18 @@ namespace MBBSEmu.Session
         ///     Specifies if a user is locked out from sending input (GSBL)
         /// </summary>
         public bool InputLockout { get; set; }
+
+        /// <summary>
+        ///     Specifies if btuchi() should be invoked in output buffer is empty (GSBL - btuche)
+        ///
+        ///     Gets set once the output buffer is empty
+        /// </summary>
+        public bool EchoEmptyInvoke { get; set; }
+
+        /// <summary>
+        ///     Specifies if btuchi() should be invoked in output buffer is empty (GSBL - btuche)
+        /// </summary>
+        public bool EchoEmptyInvokeEnabled { get; set; }
 
         /// <summary>
         ///     Helper Method to enqueue data to be sent to the client Async

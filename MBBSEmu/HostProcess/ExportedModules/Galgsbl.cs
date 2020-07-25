@@ -464,8 +464,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void chious()
         {
             var channelNumber = GetParameter(0);
-            var stringOffset = GetParameter(1);
-            var stringSegment = GetParameter(2);
+            var stringPointer = GetParameterPointer(1);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
@@ -473,7 +472,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            channel.SendToClient(Module.Memory.GetString(stringSegment, stringOffset).ToArray());
+            channel.SendToClient(Module.Memory.GetString(stringPointer).ToArray());
         }
 
         /// <summary>
@@ -533,8 +532,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuche()
         {
-            //TODO -- Ignoring this for now, need to better understand the effect
-            Registers.AX = 0;
+            var channelNumber = GetParameter(0);
+            var onoff = GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+#if DEBUG
+            _logger.Info($"EchoEmptyInvoke on Channel {channelNumber} == {onoff == 1}");
+#endif
+
+            channel.EchoEmptyInvokeEnabled = onoff == 1;
         }
 
         /// <summary>
@@ -871,7 +882,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[channel].Status = status;
             ChannelDictionary[channel].StatusChange = true;
 
-            Module.Memory.SetVariable("STATUS", status);
+            Module.Memory.SetWord("STATUS", status);
 
 #if DEBUG
             _logger.Info($"Injecting Status {status} on Channel {channel}");

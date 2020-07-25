@@ -13,7 +13,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -65,7 +64,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
-            Module.Memory.SetVariable("OUTBSZ", (ushort)0x4000);
+            Module.Memory.SetWord("OUTBSZ", 0x4000);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
@@ -93,7 +92,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
             Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
-            Module.Memory.SetVariable("NMODS", (ushort)0x1); //set this to 1 for now
+            Module.Memory.SetWord("NMODS", 0x1); //set this to 1 for now
             var modulePointer = Module.Memory.AllocateVariable("MODULE", 0x4); //Pointer to Registered Module
             var modulePointerPointer =
                 Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
@@ -110,11 +109,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("DATAPH", 0x20, true); // 32 bytes for phone #
             Module.Memory.AllocateVariable("LIVEPH", 0x20, true); // 32 bytes for phone #
             Module.Memory.AllocateVariable("MMUCCR", sizeof(ushort)); //Main Menu Credit Consumption Rate
-            Module.Memory.SetVariable("MMUCCR", (ushort)1);
+            Module.Memory.SetWord("MMUCCR", 1);
             Module.Memory.AllocateVariable("PFNLVL", sizeof(ushort));
-            Module.Memory.SetVariable("PFNLVL", (ushort)0);
+            Module.Memory.SetWord("PFNLVL", 0);
             Module.Memory.AllocateVariable("VERSION", 5);
-            Module.Memory.SetVariable("VERSION", Encoding.ASCII.GetBytes("2.00"));
+            Module.Memory.SetArray("VERSION", Encoding.ASCII.GetBytes("2.00"));
             Module.Memory.AllocateVariable("SYSCYC", sizeof(uint));
 
             Module.Memory.AllocateVariable("NUMBYTS", sizeof(uint));
@@ -124,13 +123,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("NGLOBS", sizeof(ushort));
             Module.Memory.AllocateVariable("FTG", FtgStruct.Size);
             Module.Memory.AllocateVariable("FTGPTR", IntPtr16.Size);
-            Module.Memory.SetVariable("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
+            Module.Memory.SetPointer("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
             Module.Memory.AllocateVariable("TSHMSG", 81); //universal global Tagspec Handler message
             Module.Memory.AllocateVariable("FTFSCB", FtfscbStruct.Size);
 
             Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
             Module.Memory.AllocateVariable("EURMSK", 1);
-            Module.Memory.SetVariable("EURMSK", (byte)0x7F);
+            Module.Memory.SetByte("EURMSK", (byte)0x7F);
             Module.Memory.AllocateVariable("FSDSCB", 82, true);
             Module.Memory.AllocateVariable("BB", 4); //pointer for current btrieve struct
             Module.Memory.AllocateVariable("FSDEMG", 80); //error message for FSD
@@ -201,7 +200,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
             BtrievePointerDictionaryNew.Add(btvFileStructPointer,
                 new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
-            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
 
             var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
             Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
@@ -248,13 +247,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userAccBasePointer = Module.Memory.GetVariablePointer("USRACC");
             var currentUserAccPointer = new IntPtr16(userAccBasePointer.ToSpan());
             currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
-            Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.ToSpan());
+            Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), currentUserAccPointer.ToSpan());
 
             var userExtAccBasePointer = Module.Memory.GetVariablePointer("EXTUSR");
             var currentExtUserAccPointer = new IntPtr16(userExtAccBasePointer.ToSpan());
             currentExtUserAccPointer.Offset += (ushort)(ExtUser.Size * channelNumber);
-            Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.ToSpan());
+            Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), currentExtUserAccPointer.ToSpan());
 
             //Write Blank Input
@@ -263,7 +262,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("NXTCMD"), inputMemory.ToSpan());
 
             //Reset PRFPTR
-            Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
             Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
 
             //Set FSDSCB Pointer for Current User
@@ -1599,20 +1598,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Copied {sourceString.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
 
-            //Because this is an ASM routine, we have to manually fix the stack
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
-
-            //Set stack back to entry state, minus parameters
-            Registers.SP += 14;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            RealignStack(8);
         }
 
         /// <summary>
@@ -1696,7 +1682,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(uacoffPointer, variablePointer.ToSpan());
 
             //Set User Array Value
-            Module.Memory.SetArray(variablePointer, userChannel.UsrAcc.ToSpan());
+            Module.Memory.SetArray(variablePointer, userChannel.UsrAcc.Data);
 
 
             Registers.AX = variablePointer.Offset;
@@ -1724,7 +1710,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Update prfptr value
             pointerPosition.Offset += (ushort)(formattedMessage.Length - 1);
-            Module.Memory.SetVariable("PRFPTR", pointerPosition);
+            Module.Memory.SetPointer("PRFPTR", pointerPosition);
 
 #if DEBUG
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer");
@@ -1740,7 +1726,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void clrprf()
         {
             //Set prfptr to the base address of prfbuf
-            Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
 
 #if DEBUG
             _logger.Info("Reset Output Buffer");
@@ -1764,7 +1750,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
 
-            var outputBufferProcessed = ProcessIfANSI(outputBuffer);
+            var outputBufferProcessed = FormatNewLineCarriageReturn(ProcessIfANSI(outputBuffer));
 
             if (Module.TextVariables.Count > 0)
             {
@@ -1786,7 +1772,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetZero(basePointer, outputLength);
 
             //Set prfptr to the base address of prfbuf
-            Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
         }
 
         /// <summary>
@@ -1849,7 +1835,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
 #endif
             //Update Pointer
-            Module.Memory.SetVariable("PRFPTR", currentPrfPositionPointer);
+            Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
         }
 
         /// <summary>
@@ -2212,9 +2198,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newBtvStruct = new BtvFileStruct
             { filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer };
             BtrievePointerDictionaryNew.Add(btvFileStructPointer, btrieveFile);
-            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.ToSpan());
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
             Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
-            Module.Memory.SetVariable("BB", btvFileStructPointer);
+            Module.Memory.SetPointer("BB", btvFileStructPointer);
             _currentBtrieveFile = btvFileStructPointer;
 
 #if DEBUG
@@ -2324,7 +2310,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
             var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
-            Module.Memory.SetVariable("BB", _currentBtrieveFile);
+            Module.Memory.SetPointer("BB", _currentBtrieveFile);
 
             _logger.Info($"Restoring Btreieve file to {btvFileName}");
 #endif
@@ -2477,7 +2463,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Input: Two long values on stack (arg1/arg2)
         ///     Output: DX:AX = quotient
-        ///             DI:SI = remainder
+        ///             DI:SI = remainder -- no remainder in early C++
         /// </summary>
         /// <returns></returns>
         private void f_ldiv()
@@ -2495,21 +2481,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(quotient >> 16);
             Registers.AX = (ushort)(quotient & 0xFFFF);
 
-            //Registers.DI = (ushort)(remainder >> 16);
-            //Registers.SI = (ushort)(remainder & 0xFFFF);
-
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
-            //Set stack back to entry state, minus parameters
-            Registers.SP += 14;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            RealignStack(8);
         }
 
         /// <summary>
@@ -2620,19 +2592,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
 
-
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
-            //Set stack back to entry state, minus parameters
-            Registers.SP += 14;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            RealignStack(8);
         }
 
         /// <summary>
@@ -3002,7 +2962,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Write New Blank Pointer
             var fileStruct = new FileStruct();
-            Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
             if (!File.Exists($"{Module.ModulePath}{fileName}"))
             {
@@ -3043,7 +3003,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileStruct.SetFlags(fileAccessMode);
             fileStruct.curp = new IntPtr16(ushort.MaxValue, (ushort)fileStreamPointer);
             fileStruct.fd = (byte)fileStreamPointer;
-            Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
 #if DEBUG
             _logger.Info($"{fileName} FILE struct written to {fileStructPointer}");
@@ -3177,7 +3137,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -3217,7 +3177,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -3542,7 +3502,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
 #endif
             //Update Pointer
-            Module.Memory.SetVariable("PRFPTR", currentPrfPositionPointer);
+            Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
         }
 
         /// <summary>
@@ -3628,7 +3588,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -3688,7 +3648,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -3729,7 +3689,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -4187,7 +4147,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 newans = newansPointer
             };
 
-            Module.Memory.SetVariable($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
+            Module.Memory.SetArray($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
         }
 
         /// <summary>
@@ -4872,7 +4832,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -4951,7 +4911,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -5060,7 +5020,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -5108,7 +5068,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
-                Module.Memory.SetArray(fileStructPointer, fileStruct.ToSpan());
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
 #if DEBUG
@@ -5186,7 +5146,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(extoffPointer, variablePointer.ToSpan());
 
             //Set User Array Value
-            Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.ToSpan());
+            Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.Data);
 
 
             Registers.AX = variablePointer.Offset;
@@ -5415,19 +5375,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(quotient >> 16);
             Registers.AX = (ushort)(quotient & 0xFFFF);
 
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
-
-            //Set stack back to entry state, minus parameters
-            Registers.SP += 14;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            RealignStack(8);
         }
 
 
@@ -5778,7 +5726,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dateStruct = new DateStruct(DateTime.Now);
 
-            Module.Memory.SetArray(datePointer, dateStruct.ToSpan());
+            Module.Memory.SetArray(datePointer, dateStruct.Data);
         }
 
         /// <summary>
@@ -5862,19 +5810,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
 
-
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
-            //Set stack back to entry state, minus parameters
-            Registers.SP += 14;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
-            Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
-            Registers.SP -= 2;
-            Registers.BP = Registers.SP;
+            RealignStack(8);
         }
 
         /// <summary>
@@ -5969,8 +5905,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 totalBytes += (uint)new FileInfo(f).Length;
             }
 
-            Module.Memory.SetVariable("NUMFILS", (uint)files.Length);
-            Module.Memory.SetVariable("NUMBYTS", totalBytes);
+            Module.Memory.SetArray("NUMFILS", BitConverter.GetBytes((uint)files.Length));
+            Module.Memory.SetArray("NUMBYTS", BitConverter.GetBytes(totalBytes));
 
         }
 
@@ -6624,7 +6560,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     case 27 when fsdscbStruct.chgcnt > 0: //Escape
                         {
-                            Module.Memory.SetVariable("FSDEMG", Encoding.ASCII.GetBytes("Are you sure? Enter QUIT to quit now\0"));
+                            Module.Memory.SetArray("FSDEMG", Encoding.ASCII.GetBytes("Are you sure? Enter QUIT to quit now\0"));
                             Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
                             break;
                         }
@@ -6862,7 +6798,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetZero(basePointer, outputLength);
 
             //Set prfptr to the base address of prfbuf
-            Module.Memory.SetVariable("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
         }
     }
 }

@@ -300,14 +300,6 @@ namespace MBBSEmu.HostProcess.Structs
         public readonly byte[] Data;
 
         /// <summary>
-        ///     Default Constructor
-        /// </summary>
-        public FsdscbStruct()
-        {
-            Data = new byte[Size];
-        }
-
-        /// <summary>
         ///     Constructor with initial value parameter
         /// </summary>
         /// <param name="structData"></param>

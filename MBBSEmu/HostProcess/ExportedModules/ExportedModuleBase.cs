@@ -145,8 +145,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringToParse.Length; i++)
             {
-                //Handle escaped %% as a single %
-                if (stringToParse[i] == '%' && stringToParse[i + 1] == '%')
+                //Handle escaped %% as a single % -- or if % is the last character in a string
+                if (stringToParse[i] == '%' && (stringToParse[i + 1] == '%' || stringToParse[i + 1] == '\0'))
                 {
                     i++;
                     msOutput.WriteByte((byte)'%');
@@ -344,8 +344,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     switch (variableLength)
                                     {
                                         case 4:
-                                        {
-                                            var longLow = Module.Memory.GetWord(vsPrintfBase);
+                                            {
+                                                var longLow = Module.Memory.GetWord(vsPrintfBase);
                                                 vsPrintfBase.Offset += 2;
                                                 var longHigh = Module.Memory.GetWord(vsPrintfBase);
                                                 vsPrintfBase.Offset += 2;
@@ -356,13 +356,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                             }
                                         case 0:
                                         default:
-                                        {
-                                            var parameterString =
-                                                ((short) Module.Memory.GetWord(vsPrintfBase)).ToString();
-                                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                            vsPrintfBase.Offset += 2;
-                                            break;
-                                        }
+                                            {
+                                                var parameterString =
+                                                    ((short)Module.Memory.GetWord(vsPrintfBase)).ToString();
+                                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                                vsPrintfBase.Offset += 2;
+                                                break;
+                                            }
                                     }
 
                                 }
@@ -593,39 +593,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 i++;
-                switch (inputSpan[i])
+                switch ((char)inputSpan[i])
                 {
-                    case (byte)'a': //alert (bell)
+                    case 'a': //alert (bell)
                         resultStream.WriteByte(0x7);
                         continue;
-                    case (byte)'b': //backspace
+                    case 'b': //backspace
                         resultStream.WriteByte(0x8);
                         continue;
-                    case (byte)'t': //tab
+                    case 't': //tab
                         resultStream.WriteByte(0x9);
                         continue;
-                    case (byte)'n': //newline
+                    case 'n': //newline
                         resultStream.WriteByte(0xA);
                         continue;
-                    case (byte)'v': //vertical tab
+                    case 'v': //vertical tab
                         resultStream.WriteByte(0xB);
                         continue;
-                    case (byte)'f': //form feed
+                    case 'f': //form feed
                         resultStream.WriteByte(0xC);
                         continue;
-                    case (byte)'r': //carriage return
+                    case 'r': //carriage return
                         resultStream.WriteByte(0xD);
                         continue;
-                    case (byte)'\\':
+                    case '\\':
                         resultStream.WriteByte((byte)'\\');
                         continue;
-                    case (byte)'"':
+                    case '"':
                         resultStream.WriteByte((byte)'"');
                         continue;
-                    case (byte)'?':
+                    case '?':
                         resultStream.WriteByte((byte)'?');
                         continue;
-                    case (byte)'x': //hex character
+                    case 'x': //hex character
                         {
                             resultStream.WriteByte(Convert.ToByte($"{inputSpan[i + 1]}{inputSpan[i + 2]}"));
                             i += 2;
@@ -716,15 +716,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     {
                         switch (substringSpan[j])
                         {
-                            case (byte) '|':
-                            case (byte) ']':
-                            case (byte) '~':
-                            {
-                                if (substringSpan[j - 1] == '~')
-                                    resultStream.WriteByte(substringSpan[j]);
+                            case (byte)'|':
+                            case (byte)']':
+                            case (byte)'~':
+                                {
+                                    if (substringSpan[j - 1] == '~')
+                                        resultStream.WriteByte(substringSpan[j]);
 
-                                break;
-                            }
+                                    break;
+                                }
                             default:
                                 resultStream.WriteByte(substringSpan[j]);
                                 break;
@@ -760,9 +760,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="bytesToRealign">Number of bytes pushed to stack prior to CALL</param>
         private protected void RealignStack(ushort bytesToRealign)
         {
+            //Get Previous State Values off the Stack
             var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
             var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
             var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+
             //Set stack back to entry state, minus parameters
             Registers.SP += (ushort)(bytesToRealign + 6); //6 bytes for the BP, IP, SP in addition to variables passed in
             Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
@@ -772,6 +774,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
             Registers.SP -= 2;
             Registers.BP = Registers.SP;
+        }
+
+        /// <summary>
+        ///     Telnet needs to handle \r as if it were \r\n, and any \n must be accompanied by a \r as well
+        ///
+        ///     This method will scan the specified array and generate a properly formatted output
+        /// </summary>
+        /// <param name="stringToFormat"></param>
+        /// <returns></returns>
+        private protected ReadOnlySpan<byte> FormatNewLineCarriageReturn(ReadOnlySpan<byte> stringToFormat)
+        {
+            using var result = new MemoryStream();
+            foreach (var c in stringToFormat)
+            {
+                switch (c)
+                {
+                    case 0xD: //carriage return on the input string is handled as a \r\n
+                        result.WriteByte(0xA); //new line
+                        break;
+                    case 0xA: //new line
+                        //always ensure new line is followed by carriage return -- as it's not always
+                        result.WriteByte(0xD);
+                        break;
+                }
+                result.WriteByte(c);
+            }
+
+            return result.ToArray();
         }
     }
 }

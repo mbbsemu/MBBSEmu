@@ -114,11 +114,6 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 23;
 
-        public FsdfldStruct()
-        {
-            Data = new byte[Size];
-        }
-
         public FsdfldStruct(ReadOnlySpan<byte> data)
         {
             Data = data.ToArray();

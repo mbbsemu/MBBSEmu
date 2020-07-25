@@ -23,7 +23,7 @@ namespace MBBSEmu.HostProcess.Structs
                 var result = new int[32];
                 for (var i = 0; i < 32; i++)
                 {
-                    result[i] = BitConverter.ToInt32(_btvFileStructData, (i * 4));
+                    result[i] = BitConverter.ToInt32(Data, (i * 4));
                 }
 
                 return result;
@@ -33,7 +33,7 @@ namespace MBBSEmu.HostProcess.Structs
             {
                 for (var i = 0; i < 32; i++)
                 {
-                    Array.Copy(BitConverter.GetBytes(value[i]), 0, _btvFileStructData, (i * 4), 4);
+                    Array.Copy(BitConverter.GetBytes(value[i]), 0, Data, (i * 4), 4);
                 }
 
             }
@@ -46,10 +46,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> _btvFileStructSpan = _btvFileStructData;
-                return new IntPtr16(_btvFileStructSpan.Slice(128, 4));
+                ReadOnlySpan<byte> btvFileStructSpan = Data;
+                return new IntPtr16(btvFileStructSpan.Slice(128, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, _btvFileStructData, 128, 4);
+            set => Array.Copy(value.ToArray(), 0, Data, 128, 4);
         }
 
         /// <summary>
@@ -57,8 +57,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public ushort reclen
         {
-            get => BitConverter.ToUInt16(_btvFileStructData, 132);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _btvFileStructData, 132, 2);
+            get => BitConverter.ToUInt16(Data, 132);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 132, 2);
         }
 
         /// <summary>
@@ -68,10 +68,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> _btvFileStructSpan = _btvFileStructData;
-                return new IntPtr16(_btvFileStructSpan.Slice(134, 4));
+                ReadOnlySpan<byte> btvFileStructSpan = Data;
+                return new IntPtr16(btvFileStructSpan.Slice(134, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, _btvFileStructData, 134, 4);
+            set => Array.Copy(value.ToArray(), 0, Data, 134, 4);
         }
 
         /// <summary>
@@ -81,29 +81,22 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> _btvFileStructSpan = _btvFileStructData;
-                return new IntPtr16(_btvFileStructSpan.Slice(138, 4));
+                ReadOnlySpan<byte> btvFileStructSpan = Data;
+                return new IntPtr16(btvFileStructSpan.Slice(138, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, _btvFileStructData, 138, 4);
+            set => Array.Copy(value.ToArray(), 0, Data, 138, 4);
         }
 
-        private byte[] _btvFileStructData = new byte[192];
+        public readonly byte[] Data = new byte[192];
 
         public const ushort Size = 192;
 
-        public BtvFileStruct()
+        public BtvFileStruct() {}
+
+        public BtvFileStruct(ReadOnlySpan<byte> btvFileStruct)
         {
-            
+            Data = btvFileStruct.ToArray();
         }
-
-        public BtvFileStruct(ReadOnlySpan<byte> _btvFileStruct)
-        {
-            _btvFileStructData = _btvFileStruct.ToArray();
-        }
-
-        public ReadOnlySpan<byte> ToSpan() => _btvFileStructData;
-
-        public void FromSpan(ReadOnlySpan<byte> btvFileSpan) => _btvFileStructData = btvFileSpan.ToArray();
 
     }
 }

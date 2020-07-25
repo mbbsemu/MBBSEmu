@@ -29,7 +29,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALMSG: {ordinal}");
             }
 
-            return null;
         }
 
         public void SetState(ushort channelNumber)

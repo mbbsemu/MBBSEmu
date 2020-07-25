@@ -1,7 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using MBBSEmu.Module;
+﻿using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System.Collections.Generic;
 
 namespace MBBSEmu.HostProcess
 {

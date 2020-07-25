@@ -91,32 +91,18 @@ namespace MBBSEmu.Session.Telnet
             try
             {
                 using var msOutputBuffer = new MemoryStream();
-                for (var i = 0; i < dataToSend.Length; i++)
+                foreach (var b in dataToSend)
                 {
-                    var b = dataToSend[i];
-
-                    //When we're in a module, since new lines are stripped from MCV's etc, and only
-                    //carriage returns remain, IF we're in a module and encounter a CR, add a NL
+                    //Special Character Escapes while in a Module
                     if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
                         SessionState == EnumSessionState.LoginRoutines || SessionState == EnumSessionState.ExitingFullScreenDisplay)
                     {
                         switch (b)
                         {
-                            case 0xD:
-                                if (i + 1 < dataToSend.Length && dataToSend[i + 1] == 0xA)
-                                    break;
-
-                                msOutputBuffer.WriteByte(0xA);
-                                break;
-                            case 0xA:
-                                if (i + 1 < dataToSend.Length && dataToSend[i + 1] == 0xD)
-                                    break;
-                                msOutputBuffer.WriteByte(0xD);
-                                break;
-                            case 0xFF:
+                            case 0xFF: //Escape 0xFF with two
                                 msOutputBuffer.WriteByte(0xFF);
                                 break;
-                            case 0x13:
+                            case 0x13: //ignore
                                 continue;
                         }
                     }
@@ -162,6 +148,9 @@ namespace MBBSEmu.Session.Telnet
                     SessionState = EnumSessionState.LoggedOff;
                     return;
                 }
+
+                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
+                    EchoEmptyInvoke = true;
 
                 Thread.Sleep(100);
             }

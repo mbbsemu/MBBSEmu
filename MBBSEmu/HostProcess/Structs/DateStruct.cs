@@ -33,8 +33,6 @@ namespace MBBSEmu.HostProcess.Structs
             Array.Copy(BitConverter.GetBytes((short) date.Year), 0, Data, 0, 2);
             Data[2] = (byte) date.Day;
             Data[3] = (byte) date.Month;
-        }
-
-        public ReadOnlySpan<byte> ToSpan() => Data;
+        } 
     }
 }

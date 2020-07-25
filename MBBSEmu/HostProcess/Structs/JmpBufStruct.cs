@@ -85,9 +85,5 @@ namespace MBBSEmu.HostProcess.Structs
 
             Data = data.ToArray();
         }
-
-        public ReadOnlySpan<byte> ToSpan => new ReadOnlySpan<byte>(Data);
-
-        public void FromSpan(ReadOnlySpan<byte> data) => Data = data.ToArray();
     }
 }

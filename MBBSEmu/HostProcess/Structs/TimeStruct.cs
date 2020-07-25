@@ -37,7 +37,5 @@ namespace MBBSEmu.HostProcess.Structs
             Data[2] = 0;
             Data[3] = (byte)date.Second;
         }
-
-        public ReadOnlySpan<byte> ToSpan => Data;
     }
 }

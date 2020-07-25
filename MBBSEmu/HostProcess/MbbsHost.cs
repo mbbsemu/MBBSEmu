@@ -4,6 +4,7 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Rlogin;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
@@ -11,8 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Session.Rlogin;
 
 namespace MBBSEmu.HostProcess
 {
@@ -33,8 +32,6 @@ namespace MBBSEmu.HostProcess
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
         private readonly IEnumerable<IMbbsRoutines> _mbbsRoutines;
-        private readonly IMbbsRoutines _fsdRoutines;
-        private readonly IConfiguration _configuration;
         private readonly Queue<SessionBase> _incomingSessions;
         private readonly bool _doLoginRoutine;
 
@@ -42,11 +39,10 @@ namespace MBBSEmu.HostProcess
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
-            _configuration = configuration;
 
             _logger.Info("Constructing MbbsEmu Host...");
 
-            bool.TryParse(_configuration["Module.DoLoginRoutine"], out _doLoginRoutine);
+            bool.TryParse(configuration["Module.DoLoginRoutine"], out _doLoginRoutine);
 
             _channelDictionary = new PointerDictionary<SessionBase>();
             _modules = new Dictionary<string, MbbsModule>();
@@ -219,6 +215,20 @@ namespace MBBSEmu.HostProcess
                                     //If the client is in transparent mode, don't echo
                                     if (!session.TransparentMode && session.Status == 1)
                                         session.SendToClient(new[] { session.LastCharacterReceived });
+                                }
+                                else if(session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+                                {
+                                    session.EchoEmptyInvoke = false;
+
+                                    //Call BTUCHI when Echo Buffer Is Empty
+                                    var initialStackValues = new Queue<ushort>(2);
+                                    initialStackValues.Enqueue(0xFFFF); //-1 is the keycode passed in
+                                    initialStackValues.Enqueue(session.Channel);
+
+                                    var result = Run(session.CurrentModule.ModuleIdentifier,
+                                        session.CharacterInterceptor,
+                                        session.Channel, true,
+                                        initialStackValues);
                                 }
 
                                 //Did the text change cause a status update

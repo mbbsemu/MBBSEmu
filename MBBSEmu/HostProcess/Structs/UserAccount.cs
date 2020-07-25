@@ -52,10 +52,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(0, UIDSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 0, UIDSIZ);
+            set => Array.Copy(value, 0, Data, 0, UIDSIZ);
         }
 
         /// <summary>
@@ -65,10 +65,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(30, PSWSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 30, PSWSIZ);
+            set => Array.Copy(value, 0, Data, 30, PSWSIZ);
         }
 
         /// <summary>
@@ -78,10 +78,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(40, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 40, NADSIZ);
+            set => Array.Copy(value, 0, Data, 40, NADSIZ);
         }
 
         /// <summary>
@@ -91,10 +91,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(70, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 70, NADSIZ);
+            set => Array.Copy(value, 0, Data, 70, NADSIZ);
         }
 
         /// <summary>
@@ -104,10 +104,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(100, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 100, NADSIZ);
+            set => Array.Copy(value, 0, Data, 100, NADSIZ);
         }
 
         /// <summary>
@@ -117,10 +117,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(130, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 130, NADSIZ);
+            set => Array.Copy(value, 0, Data, 130, NADSIZ);
         }
 
         /// <summary>
@@ -130,10 +130,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(160, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 160, NADSIZ);
+            set => Array.Copy(value, 0, Data, 160, NADSIZ);
         }
 
         /// <summary>
@@ -143,10 +143,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(190, PHOSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 190, PHOSIZ);
+            set => Array.Copy(value, 0, Data, 190, PHOSIZ);
         }
 
         /// <summary>
@@ -154,8 +154,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte systyp
         {
-            get => _usrAccStructBytes[206];
-            set => _usrAccStructBytes[206] = value;
+            get => Data[206];
+            set => Data[206] = value;
         }
 
         /// <summary>
@@ -163,8 +163,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte usrprf
         {
-            get => _usrAccStructBytes[207];
-            set => _usrAccStructBytes[207] = value;
+            get => Data[207];
+            set => Data[207] = value;
         }
 
         /// <summary>
@@ -172,8 +172,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte ansifl
         {
-            get => _usrAccStructBytes[208];
-            set => _usrAccStructBytes[208] = value;
+            get => Data[208];
+            set => Data[208] = value;
         }
 
         /// <summary>
@@ -181,8 +181,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte scnwid
         {
-            get => _usrAccStructBytes[209];
-            set => _usrAccStructBytes[209] = value;
+            get => Data[209];
+            set => Data[209] = value;
         }
 
         /// <summary>
@@ -190,8 +190,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte scnbrk
         {
-            get => _usrAccStructBytes[210];
-            set => _usrAccStructBytes[210] = value;
+            get => Data[210];
+            set => Data[210] = value;
         }
 
         /// <summary>
@@ -199,8 +199,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte scnfse
         {
-            get => _usrAccStructBytes[211];
-            set => _usrAccStructBytes[211] = value;
+            get => Data[211];
+            set => Data[211] = value;
         }
 
         /// <summary>
@@ -208,8 +208,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte age
         {
-            get => _usrAccStructBytes[212];
-            set => _usrAccStructBytes[212] = value;
+            get => Data[212];
+            set => Data[212] = value;
         }
 
         /// <summary>
@@ -217,8 +217,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte sex
         {
-            get => _usrAccStructBytes[213];
-            set => _usrAccStructBytes[213] = value;
+            get => Data[213];
+            set => Data[213] = value;
         }
 
         /// <summary>
@@ -226,8 +226,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public ushort credat
         {
-            get => BitConverter.ToUInt16(_usrAccStructBytes, 214);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 214, 2);
+            get => BitConverter.ToUInt16(Data, 214);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 214, 2);
         }
 
         /// <summary>
@@ -235,8 +235,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public ushort usedat
         {
-            get => BitConverter.ToUInt16(_usrAccStructBytes, 216);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 216, 2);
+            get => BitConverter.ToUInt16(Data, 216);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 216, 2);
         }
 
         /// <summary>
@@ -244,8 +244,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public short csicnt
         {
-            get => BitConverter.ToInt16(_usrAccStructBytes, 218);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 218, 2);
+            get => BitConverter.ToInt16(Data, 218);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 218, 2);
         }
 
         /// <summary>
@@ -253,8 +253,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public short flags
         {
-            get => BitConverter.ToInt16(_usrAccStructBytes, 220);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 220, 2);
+            get => BitConverter.ToInt16(Data, 220);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 220, 2);
         }
 
         /// <summary>
@@ -264,10 +264,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(222, AXSSIZ * 2).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 222, AXSSIZ * 2);
+            set => Array.Copy(value, 0, Data, 222, AXSSIZ * 2);
         }
 
         /// <summary>
@@ -275,8 +275,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int emllim
         {
-            get => BitConverter.ToInt32(_usrAccStructBytes, 236);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 236, 4);
+            get => BitConverter.ToInt32(Data, 236);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 236, 4);
         }
 
         /// <summary>
@@ -286,10 +286,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(240, KEYSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 240, KEYSIZ);
+            set => Array.Copy(value, 0, Data, 240, KEYSIZ);
         }
 
         /// <summary>
@@ -299,10 +299,10 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(256, KEYSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 256, KEYSIZ);
+            set => Array.Copy(value, 0, Data, 256, KEYSIZ);
         }
 
         /// <summary>
@@ -310,8 +310,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int timtdy
         {
-            get => BitConverter.ToInt32(_usrAccStructBytes, 272);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 272, 4);
+            get => BitConverter.ToInt32(Data, 272);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 272, 4);
         }
 
         /// <summary>
@@ -319,8 +319,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public ushort daystt
         {
-            get => BitConverter.ToUInt16(_usrAccStructBytes, 274);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 274, 2);
+            get => BitConverter.ToUInt16(Data, 274);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 274, 2);
         }
 
         /// <summary>
@@ -328,8 +328,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public ushort fgvdys
         {
-            get => BitConverter.ToUInt16(_usrAccStructBytes, 278);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 278, 2);
+            get => BitConverter.ToUInt16(Data, 278);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 278, 2);
         }
 
         /// <summary>
@@ -337,8 +337,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int creds
         {
-            get => BitConverter.ToInt32(_usrAccStructBytes, 280);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 280, 4);
+            get => BitConverter.ToInt32(Data, 280);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 280, 4);
         }
 
         /// <summary>
@@ -346,8 +346,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int totcreds
         {
-            get => BitConverter.ToInt32(_usrAccStructBytes, 284);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 284, 4);
+            get => BitConverter.ToInt32(Data, 284);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 284, 4);
         }
 
         /// <summary>
@@ -355,8 +355,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int totpaid
         {
-            get => BitConverter.ToInt32(_usrAccStructBytes, 288);
-            set => Array.Copy(BitConverter.GetBytes(value), 0, _usrAccStructBytes, 288, 4);
+            get => BitConverter.ToInt32(Data, 288);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 288, 4);
         }
 
         /// <summary>
@@ -366,19 +366,19 @@ namespace MBBSEmu.HostProcess.Structs
         {
             get
             {
-                ReadOnlySpan<byte> userAccSpan = _usrAccStructBytes;
+                ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(292, DATSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, _usrAccStructBytes, 292, DATSIZ);
+            set => Array.Copy(value, 0, Data, 292, DATSIZ);
         }
 
-        private readonly byte[] _usrAccStructBytes;
+        public readonly byte[] Data;
 
         public const ushort Size = 341;
 
         public UserAccount()
         {
-            _usrAccStructBytes = new byte[341];
+            Data = new byte[341];
             flags = 1; //Set everyone to having "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
             sex = (byte)'M';  //Set everyone to male for now
@@ -387,8 +387,6 @@ namespace MBBSEmu.HostProcess.Structs
             scnfse = 24; //Screen Height to 24 Lines
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }
-
-        public ReadOnlySpan<byte> ToSpan() => _usrAccStructBytes;
 
         /// <summary>
         ///     Takes the specified String Username and saves it to the userid field in the UsrAcc 'struct'
