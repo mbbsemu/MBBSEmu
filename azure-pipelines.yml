@@ -11,7 +11,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  currentDate: $(Date:MMddyy)
+  currentDate: '072520'
 
 steps:
 - script: dotnet build --configuration $(buildConfiguration)
@@ -33,7 +33,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: AzureFileCopy@4
+- task: AzureFileCopy@3
   inputs:
     SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
