@@ -24,6 +24,34 @@ steps:
     projects: '**\MBBSEmu.csproj'
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
 
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**\MBBSEmu.csproj'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x32\ --runtime win-x32 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**\MBBSEmu.csproj'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**\MBBSEmu.csproj'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: '**\MBBSEmu.csproj'
+    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+
 - task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
@@ -33,9 +61,78 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x32'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\win-x32\mbbsemu-win-x32-$(currentDate).zip'
+    replaceExistingArchive: true
+    verbose: true
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\linux-x64\mbbsemu-linux-x64-$(currentDate).zip'
+    replaceExistingArchive: true
+    verbose: true
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\linux-arm\mbbsemu-linux-arm-$(currentDate).zip'
+    replaceExistingArchive: true
+    verbose: true
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64'
+    includeRootFolder: true
+    archiveType: 'zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\osx-x64\mbbsemu-osx-x64-$(currentDate).zip'
+    replaceExistingArchive: true
+    verbose: true
+
+
 - task: AzureFileCopy@3
   inputs:
     SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
+    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
+    Destination: 'AzureBlob'
+    storage: 'mbbsemu'
+    ContainerName: '$web\builds\$(currentDate)'
+
+- task: AzureFileCopy@3
+  inputs:
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x32-$(currentDate).zip'
+    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
+    Destination: 'AzureBlob'
+    storage: 'mbbsemu'
+    ContainerName: '$web\builds\$(currentDate)'
+
+- task: AzureFileCopy@3
+  inputs:
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-linux-x64-$(currentDate).zip'
+    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
+    Destination: 'AzureBlob'
+    storage: 'mbbsemu'
+    ContainerName: '$web\builds\$(currentDate)'
+
+- task: AzureFileCopy@3
+  inputs:
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-linux-arm-$(currentDate).zip'
+    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
+    Destination: 'AzureBlob'
+    storage: 'mbbsemu'
+    ContainerName: '$web\builds\$(currentDate)'
+
+- task: AzureFileCopy@3
+  inputs:
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-osx-x64-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
