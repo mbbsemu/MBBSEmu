@@ -29,7 +29,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x32\ --runtime win-x32 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
 
 - task: DotNetCoreCLI@2
   inputs:
@@ -63,10 +63,10 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x32'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\win-x32\mbbsemu-win-x32-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\win-x86\mbbsemu-win-x32-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -108,7 +108,7 @@ steps:
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x32-$(currentDate).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x86\mbbsemu-win-x32-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
@@ -116,7 +116,7 @@ steps:
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-linux-x64-$(currentDate).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\linux-x64\mbbsemu-linux-x64-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
@@ -124,7 +124,7 @@ steps:
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-linux-arm-$(currentDate).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\linux-arm\mbbsemu-linux-arm-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
@@ -132,7 +132,7 @@ steps:
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-osx-x64-$(currentDate).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\osx-x64\mbbsemu-osx-x64-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
