@@ -12,6 +12,7 @@ pool:
 variables:
   buildConfiguration: 'Release'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
+  buildNumber: $(Build.BuildNumber)
 
 steps:
 - script: dotnet build --configuration $(buildConfiguration)
@@ -100,9 +101,8 @@ steps:
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\zipped\*'
+    SourcePath: '$(Build.BinariesDirectory)\publish\zipped'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
     ContainerName: '$web\builds\$(currentDate)'
-
