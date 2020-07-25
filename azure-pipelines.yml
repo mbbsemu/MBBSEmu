@@ -11,7 +11,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  currentDate: $[upper(format('{0:MMddyy}-{1}', pipeline.startTime, $(Rev:.r)))]
+  currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]-$(Rev:.r)
   buildNumber: $(Build.BuildNumber)
 
 steps:
