@@ -61,7 +61,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x64-$(buildNumber).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -70,7 +70,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x32-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x32-$(buildNumber).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -79,7 +79,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-x64-$(buildNumber).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -88,7 +88,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-arm-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-arm-$(buildNumber).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -97,7 +97,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-osx-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-osx-x64-$(buildNumber).zip'
     replaceExistingArchive: true
     verbose: true
 
