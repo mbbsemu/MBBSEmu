@@ -21,7 +21,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**/MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity d'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
 
 - task: ArchiveFiles@2
   inputs:
@@ -38,4 +38,4 @@ steps:
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
-    ContainerName: '$web\builds\'
+    ContainerName: '$web\builds\$(Date:MMddyy)'
