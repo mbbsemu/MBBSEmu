@@ -11,6 +11,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  currentDate: $(Date:MMddyy)
 
 steps:
 - script: dotnet build --configuration $(buildConfiguration)
@@ -28,14 +29,14 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
 - task: AzureFileCopy@4
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(Date:MMddyy)'
+    ContainerName: '$web\builds\$(currentDate)'
