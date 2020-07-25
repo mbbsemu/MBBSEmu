@@ -20,8 +20,8 @@ steps:
   inputs:
     command: 'publish'
     publishWebProjects: false
-    projects: 'MBBSEmu.csproj'
-    arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    projects: '**/MBBSEmu.csproj'
+    arguments: '--runtime win-x64'
 
 - task: AzureFileCopy@4
   inputs:
