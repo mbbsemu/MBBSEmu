@@ -57,7 +57,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x64-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -66,7 +66,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\win-x86\mbbsemu-win-x32-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-win-x32-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -75,7 +75,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\linux-x64\mbbsemu-linux-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-x64-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -84,7 +84,7 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\linux-arm\mbbsemu-linux-arm-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-linux-arm-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
@@ -93,47 +93,16 @@ steps:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)\publish\osx-x64\mbbsemu-osx-x64-$(currentDate).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\zipped\mbbsemu-osx-x64-$(currentDate).zip'
     replaceExistingArchive: true
     verbose: true
 
 
 - task: AzureFileCopy@3
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(currentDate).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\zipped\*'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
     ContainerName: '$web\builds\$(currentDate)'
 
-- task: AzureFileCopy@3
-  inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\win-x86\mbbsemu-win-x32-$(currentDate).zip'
-    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
-    Destination: 'AzureBlob'
-    storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(currentDate)'
-
-- task: AzureFileCopy@3
-  inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\linux-x64\mbbsemu-linux-x64-$(currentDate).zip'
-    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
-    Destination: 'AzureBlob'
-    storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(currentDate)'
-
-- task: AzureFileCopy@3
-  inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\linux-arm\mbbsemu-linux-arm-$(currentDate).zip'
-    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
-    Destination: 'AzureBlob'
-    storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(currentDate)'
-
-- task: AzureFileCopy@3
-  inputs:
-    SourcePath: '$(Build.BinariesDirectory)\publish\osx-x64\mbbsemu-osx-x64-$(currentDate).zip'
-    azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
-    Destination: 'AzureBlob'
-    storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(currentDate)'
