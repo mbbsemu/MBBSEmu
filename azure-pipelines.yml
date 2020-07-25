@@ -11,12 +11,14 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]-$(Rev:.r)
-  buildNumber: $(Build.BuildNumber)
+  currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
+  buildNumber: $(currentDate)-$(Rev:r)
 
 steps:
+- script: echo $(buildNumber)
 - script: dotnet build --configuration $(buildConfiguration)
   displayName: 'dotnet build $(buildConfiguration)'
+
 
 - task: DotNetCoreCLI@2
   inputs:
