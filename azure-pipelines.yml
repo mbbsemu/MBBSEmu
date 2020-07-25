@@ -11,7 +11,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  currentDate: '$[upper(format('{0:MMddyy}', pipeline.startTime))]'
+  currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
 
 steps:
 - script: dotnet build --configuration $(buildConfiguration)
