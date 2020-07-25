@@ -7,7 +7,7 @@ trigger:
 - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
@@ -20,21 +20,21 @@ steps:
   inputs:
     command: 'publish'
     publishWebProjects: false
-    projects: '**/MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)/publish/win-x64/ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
+    projects: '**\MBBSEmu.csproj'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true --verbosity n'
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.BinariesDirectory)/publish/win-x64'
+    rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64'
     includeRootFolder: true
     archiveType: 'zip'
-    archiveFile: '$(Build.BinariesDirectory)/publish/win-x64/mbbsemu-win-x64-$(Date:MMddyy).zip'
+    archiveFile: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
     replaceExistingArchive: true
     verbose: true
 
 - task: AzureFileCopy@4
   inputs:
-    SourcePath: '$(Build.BinariesDirectory)/publish/win-x64/mbbsemu-win-x64-$(Date:MMddyy).zip'
+    SourcePath: '$(Build.BinariesDirectory)\publish\win-x64\mbbsemu-win-x64-$(Date:MMddyy).zip'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
