@@ -12,7 +12,7 @@ pool:
 variables:
   buildConfiguration: 'Release'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
-  currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime))]
+  currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime), 1)]
   buildNumber: $(currentDate)-$(currentBuildCounter)
 
 steps:
