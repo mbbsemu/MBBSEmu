@@ -112,4 +112,4 @@ steps:
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
     Destination: 'AzureBlob'
     storage: 'mbbsemu'
-    ContainerName: '$web\builds\$(currentDate)'
+    ContainerName: '$web\builds\$(Build.SourceBranchName)\$(currentDate)'
