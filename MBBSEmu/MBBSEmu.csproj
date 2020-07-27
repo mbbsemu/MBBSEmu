@@ -27,6 +27,7 @@
     <None Remove="Database\Repositories\Account\Queries\GetAccounts.sql" />
     <None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
     <None Remove="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
+    <None Remove="MBBSEmu.pdb" />
   </ItemGroup>
 
   <ItemGroup>

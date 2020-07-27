@@ -171,8 +171,23 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
+                                if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+                                {
+                                    session.EchoEmptyInvoke = false;
+
+                                    //Call BTUCHI when Echo Buffer Is Empty
+                                    var initialStackValues = new Queue<ushort>(2);
+                                    initialStackValues.Enqueue(0xFFFF); //-1 is the keycode passed in
+                                    initialStackValues.Enqueue(session.Channel);
+
+                                    var result = Run(session.CurrentModule.ModuleIdentifier,
+                                        session.CharacterInterceptor,
+                                        session.Channel, true,
+                                        initialStackValues);
+                                }
+                                
                                 //Process Character Interceptor in GSBL
-                                if (session.DataToProcess)
+                                else if (session.DataToProcess)
                                 {
                                     session.DataToProcess = false;
                                     if (session.CharacterInterceptor != null)
@@ -215,20 +230,6 @@ namespace MBBSEmu.HostProcess
                                     //If the client is in transparent mode, don't echo
                                     if (!session.TransparentMode && session.Status == 1)
                                         session.SendToClient(new[] { session.LastCharacterReceived });
-                                }
-                                else if(session.EchoEmptyInvoke && session.CharacterInterceptor != null)
-                                {
-                                    session.EchoEmptyInvoke = false;
-
-                                    //Call BTUCHI when Echo Buffer Is Empty
-                                    var initialStackValues = new Queue<ushort>(2);
-                                    initialStackValues.Enqueue(0xFFFF); //-1 is the keycode passed in
-                                    initialStackValues.Enqueue(session.Channel);
-
-                                    var result = Run(session.CurrentModule.ModuleIdentifier,
-                                        session.CharacterInterceptor,
-                                        session.Channel, true,
-                                        initialStackValues);
                                 }
 
                                 //Did the text change cause a status update
