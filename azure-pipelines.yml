@@ -29,7 +29,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -37,7 +37,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --configuration $(buildConfiguration) --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -45,7 +45,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --configuration $(buildConfiguration) --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -53,7 +53,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --configuration $(buildConfiguration) --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -61,7 +61,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --configuration $(buildConfiguration) --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: ArchiveFiles@2
