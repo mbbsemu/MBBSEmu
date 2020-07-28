@@ -470,6 +470,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 msOutput.WriteByte(stringToParse[i]);
             }
+
+            msOutput.WriteByte(0); //always append null
             return ProcessEscapeCharacters(msOutput.ToArray());
         }
 
