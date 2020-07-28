@@ -3496,7 +3496,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
             Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
-            currentPrfPositionPointer.Offset += (ushort)formattedMessage.Length;
+            currentPrfPositionPointer.Offset += (ushort)(formattedMessage.Length - 1); //dont count the null terminator
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
