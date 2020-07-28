@@ -146,11 +146,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < stringToParse.Length; i++)
             {
                 //Handle escaped %% as a single % -- or if % is the last character in a string
-                if (stringToParse[i] == '%' && (stringToParse[i + 1] == '%' || stringToParse[i + 1] == '\0'))
+                if (stringToParse[i] == '%')
                 {
-                    i++;
-                    msOutput.WriteByte((byte)'%');
-                    continue;
+                    switch ((char)stringToParse[i + 1])
+                    {
+                        case '%': //escaped %
+                            msOutput.WriteByte((byte)'%');
+                            i++;
+                            continue;
+                        case '\0': //last character is an invalid single %, just print it and move on
+                            msOutput.WriteByte((byte)'%');
+                            msOutput.WriteByte(0);
+                            i++;
+                            continue;
+                    }
+
                 }
 
                 //Found a Control Character
@@ -471,7 +481,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 msOutput.WriteByte(stringToParse[i]);
             }
 
-            msOutput.WriteByte(0); //always append null
             return ProcessEscapeCharacters(msOutput.ToArray());
         }
 
