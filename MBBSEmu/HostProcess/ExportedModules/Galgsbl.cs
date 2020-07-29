@@ -31,8 +31,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public Galgsbl(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
         {
             _startDate = DateTime.Now;
-            var bturnoPointer = Module.Memory.AllocateVariable("BTURNO", 9);
-            Module.Memory.SetArray(bturnoPointer, Encoding.ASCII.GetBytes($"{_configuration["GSBL.Activation"]}\0"));
+            Module.Memory.AllocateVariable("BTURNO", 9);
+
+            //Check for Module Specific Activation #
+            var bturno = _configuration["GSBL.Activation"];
+            if (!string.IsNullOrEmpty(_configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"]))
+            {
+                bturno = _configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"];
+                _logger.Info($"Found Module Specific Activation # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
+            }
+
+            //Sanity Check
+            if (bturno.Length > 8)
+                bturno = bturno.Substring(0, 8);
+
+            Module.Memory.SetArray("BTURNO", Encoding.ASCII.GetBytes($"{bturno}\0"));
             Module.Memory.AllocateVariable("TICKER", 0x02); //ushort increments once per second
 
             MonitoredChannel2 = 0xFFFF;
@@ -87,7 +100,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
-                
+
                 case 36:
                     btuoba();
                     break;
@@ -352,7 +365,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             int bytesToRead;
             if (max > channel.InputBuffer.Length)
-                bytesToRead = (int) channel.InputBuffer.Length;
+                bytesToRead = (int)channel.InputBuffer.Length;
             else
                 bytesToRead = max;
 
@@ -361,7 +374,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             channel.InputBuffer.Read(bytesRead, 0, bytesToRead);
 
             Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
-            Registers.AX = (ushort) bytesToRead;
+            Registers.AX = (ushort)bytesToRead;
         }
 
         /// <summary>
@@ -454,7 +467,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            Registers.AX = (ushort) channel.InputBuffer.Length;
+            Registers.AX = (ushort)channel.InputBuffer.Length;
         }
 
         /// <summary>
@@ -563,7 +576,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            channel.InputCommand = new byte[] {0x0};
+            channel.InputCommand = new byte[] { 0x0 };
 
             Registers.AX = 0;
         }
@@ -614,7 +627,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 channel.OutputEmptyStatus = true;
                 channel.StatusChange = true;
-                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 5); 
+                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 5);
             }
             else
             {
@@ -725,8 +738,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (MonitoredChannel2 == 0xFFFF)
                 return;
 
-            ChannelDictionary[MonitoredChannel2].LastCharacterReceived = (byte) character;
-            ChannelDictionary[MonitoredChannel2].InputBuffer.WriteByte((byte) character);
+            ChannelDictionary[MonitoredChannel2].LastCharacterReceived = (byte)character;
+            ChannelDictionary[MonitoredChannel2].InputBuffer.WriteByte((byte)character);
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
 
@@ -796,7 +809,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            channel.PromptCharacter = (byte) character;
+            channel.PromptCharacter = (byte)character;
             Registers.AX = 0;
         }
 
@@ -819,7 +832,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var commandString = Encoding.ASCII.GetString(Module.Memory.GetString(command, true));
 
-            
+
 
             switch (commandString)
             {
@@ -866,7 +879,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var byteToSend = GetParameter(1);
 
-            ChannelDictionary[channel].SendToClient(new byte[] {(byte) byteToSend});
+            ChannelDictionary[channel].SendToClient(new byte[] { (byte)byteToSend });
         }
 
         /// <summary>
