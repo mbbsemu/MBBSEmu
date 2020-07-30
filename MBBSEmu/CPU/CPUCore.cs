@@ -173,16 +173,13 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 18 && Registers.IP == 0xB2)
+            if (Registers.CS == 0xFF && Registers.IP == 0xB2)
                 Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
 
-            _showDebug = (Registers.CS == 18 && Registers.IP > 0 && Registers.IP <= 0x0FDA) ||
-                         (Registers.CS == 4 && Registers.IP >= 0x45 && Registers.IP <= 0x105C) ||
-                         (Registers.CS == 23 && Registers.IP >= 0x89AA && Registers.IP <= 0x8C20) ||
-                         (Registers.CS == 3 && Registers.IP >= 0x214C && Registers.IP <= 0x23E1);
+            _showDebug = (Registers.CS == 0xFF && Registers.IP > 0 && Registers.IP <= 0x0FDA);
 
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
@@ -433,6 +430,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Pushf:
                     Op_Pushf();
+                    break;
+                case Mnemonic.Fadd:
+                    Op_Fadd();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -2756,6 +2756,27 @@ namespace MBBSEmu.CPU
         private void Op_Pushf()
         {
             Push(Registers.F.Flags);
+        }
+
+
+        /// <summary>
+        ///     Floating Point Addition (x87)
+        ///
+        ///     Add m32fp to ST(0) and store result in ST(0).
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Op_Fadd()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+
+            Registers.Fpu.PopStackTop();
+            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            var float2 = BitConverter.ToSingle(floatToMultiply);
+
+            var result = float1 + float2;
+            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            Registers.Fpu.PushStackTop();
         }
     }
 }

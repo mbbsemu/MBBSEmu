@@ -133,6 +133,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("FSDSCB", 82, true);
             Module.Memory.AllocateVariable("BB", 4); //pointer for current btrieve struct
             Module.Memory.AllocateVariable("FSDEMG", 80); //error message for FSD
+            Module.Memory.AllocateVariable("SYSKEY", 6, true);
+            Module.Memory.SetArray("SYSKEY", Encoding.ASCII.GetBytes("SYSOP\0"));
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -491,6 +493,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return bb;
                 case 242:
                     return fsdemg;
+                case 718:
+                    return syskey;
             }
 
             if (offsetsOnly)
@@ -1097,6 +1101,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 348:
                     injoth();
                     break;
+                case 577:
+                    stripb();
+                    break;
+                case 399:
+                    makhdl();
+                    break;
                 default:
 
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -1506,55 +1516,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-            ReadOnlySpan<byte> stringToLongSpan = Encoding.ASCII.GetBytes(stringToLong);
-            var outputStringValue = stringToLong;
-
-            if (!int.TryParse(stringToLong, out var outputValue))
-            {
-
-                outputValue = 0;
-                outputStringValue = string.Empty;
-
-                //If we couldn't parse the whole things at once, try and find the first value we CAN parse
-                for (var i = 0; i < stringToLong.Length; i++)
-                {
-                    //Keep looping and incrementing the pointer until we find a non-number
-                    if (char.IsNumber((char)stringToLongSpan[i]))
-                        continue;
-
-                    if (i == 0)
-                        break;
-
-                    //Grab the portion of the string that's the number
-                    outputStringValue = Encoding.ASCII.GetString(stringToLongSpan.Slice(0, i).ToArray());
-
-                    if (!int.TryParse(outputStringValue, out outputValue))
-                    {
-                        outputValue = 0;
-                        outputStringValue = string.Empty;
-                    }
-
-                    break;
-                }
-            }
+            
+            var outputValue = GetLeadingNumberFromString(stringToLong, out var success);
 
             Registers.DX = (ushort)(outputValue >> 16);
             Registers.AX = (ushort)(outputValue & 0xFFFF);
 
-            if (string.IsNullOrEmpty(outputStringValue))
+            if (success)
+            {
+                Registers.F.ClearFlag(EnumFlags.CF);
+#if DEBUG
+                _logger.Info($"Cast {stringToLong} ({sourcePointer}) to {outputValue} long");
+#endif
+            }
+            else
             {
                 Registers.F.SetFlag(EnumFlags.CF);
 
 #if DEBUG
                 _logger.Warn($"Unable to cast {stringToLong} ({sourcePointer}) to long");
-#endif
-
-            }
-            else
-            {
-                Registers.F.ClearFlag(EnumFlags.CF);
-#if DEBUG
-                _logger.Info($"Cast {outputStringValue} ({sourcePointer}) to long");
 #endif
             }
         }
@@ -3434,14 +3414,48 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputPointer = GetParameterPointer(0);
             var formatPointer = GetParameterPointer(2);
 
-            var inputString = Module.Memory.GetString(inputPointer);
-            var formatString = Module.Memory.GetString(formatPointer);
+            var inputString = Encoding.ASCII.GetString(Module.Memory.GetString(inputPointer));
+            var inputStringElements = inputString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
+            var formatString = Encoding.ASCII.GetString(Module.Memory.GetString(formatPointer));
+            var formatStringElements = formatString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
+            var startingParameterOrdinal = 4;
+            ushort matches = 0;
 
-            sscanf(inputString, formatString, 4);
+            for (var index = 0; index < formatStringElements.Length; index++)
+            {
+                var s = formatStringElements[index];
 
-
+                if (s[0] == '%' && s[1] != '*')
+                {
+                    switch (s[1])
+                    {
+                        case 'd':
+                            Module.Memory.SetWord(GetParameterPointer(startingParameterOrdinal), (ushort)GetLeadingNumberFromString(inputStringElements[index], out _));
 #if DEBUG
-            //_logger.Info($"Processed sscanf on {Encoding.ASCII.GetString(inputString)}-> {Encoding.ASCII.GetString(formatString)}");
+                             //_logger.Info($"Saved {GetLeadingNumberFromString(inputStringElements[index], out _)} to {startingParameterOrdinal}");
+#endif
+                            break;
+
+                        case 's':
+                            var stringValue = $"{inputString[index]}\0";
+                            Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+#if DEBUG
+                            //_logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {startingParameterOrdinal}");
+#endif
+                            break;
+                        default:
+                            throw new Exception($"Unsupported sscanf specifier: {s[1]}");
+                    }
+
+                    //Increment the pointer for the next destination parameter
+                    startingParameterOrdinal += 2;
+                    matches++;
+                }
+            }
+
+            Registers.AX = matches;
+#if DEBUG
+            //_logger.Info($"Processed sscanf on {inputString}-> {formatString}");
 #endif
         }
 
@@ -3570,19 +3584,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var startingPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
-            var charactersRead = 0;
+            using var valueFromFile = new MemoryStream();
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
-                charactersRead++;
+
                 if (inputValue == '\n' || fileStream.Position == fileStream.Length)
                     break;
 
-                Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset++, inputValue);
+                valueFromFile.WriteByte(inputValue);
             }
 
-            Module.Memory.SetByte(destinationPointer, 0x0);
+            valueFromFile.WriteByte(0);
+
+            Module.Memory.SetArray(destinationPointer, valueFromFile.ToArray());
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -3593,7 +3608,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Read string from {fileStructPointer}, {charactersRead} bytes (Stream: {fileStruct.curp}), saved starting at {startingPointer}->{destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+                $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
@@ -6799,6 +6814,51 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Set prfptr to the base address of prfbuf
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+        }
+
+        /// <summary>
+        ///     Defined "SYSOP KEY" in MajorBBS Config
+        ///
+        ///     This is "SYSOP" by default
+        /// </summary>
+        public ReadOnlySpan<byte> syskey => Module.Memory.GetVariablePointer("*SYSKEY").ToSpan();
+
+        /// <summary>
+        ///     "strip" blank spaces after input
+        ///
+        ///     Signature: void stripb(char *stg);
+        /// </summary>
+        public void stripb()
+        {
+            var stringToParsePointer = GetParameterPointer(0);
+
+            var stringToParse = Module.Memory.GetString(stringToParsePointer).ToArray();
+
+            for (var i = 2; i < stringToParse.Length; i++)
+            {
+                if (stringToParse[^i] == (byte) ' ')
+                    continue;
+
+                //String had no trailing spaces
+                if (i == 1)
+                    return;
+
+                stringToParse[^(i - 1)] = 0;
+
+                //Write the new terminated string back
+                Module.Memory.SetArray(stringToParsePointer, stringToParse);
+            }
+        }
+
+        /// <summary>
+        ///     Formats a String for use in btrieve (best I can tell)
+        ///
+        ///     Signature: void makhdl(char *stg);
+        /// </summary>
+        public void makhdl()
+        {
+            stripb();
+            zonkhl();
         }
     }
 }

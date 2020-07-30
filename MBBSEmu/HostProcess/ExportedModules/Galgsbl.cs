@@ -505,7 +505,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var stringToSend = Module.Memory.GetString(stringPointer);
-            var formattedString = ProcessIfANSI(stringToSend);
+            var formattedString = FormatNewLineCarriageReturn(ProcessIfANSI(stringToSend));
 
             channel.SendToClient(formattedString.ToArray());
 

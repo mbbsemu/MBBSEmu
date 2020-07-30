@@ -13,6 +13,7 @@ namespace MBBSEmu.Module
         public List<string> MSGFiles { get; set; }
         public MdfFile(string mdfFile)
         {
+            MSGFiles = new List<string>();
             _mdfFile = mdfFile;
             Parse();
         }
@@ -37,8 +38,14 @@ namespace MBBSEmu.Module
                     case "DLLS":
                         DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
+                    case "MSGS" when keyValuePair[1].Trim().Contains(' '):
+                        MSGFiles = keyValuePair[1].Trim().Split(' ').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
+                        break;
+                    case "MSGS" when keyValuePair[1].Trim().Contains(','):
+                        MSGFiles = keyValuePair[1].Trim().Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                        break;
                     case "MSGS":
-                        MSGFiles = keyValuePair[1].Split(' ').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
+                        MSGFiles.Add(keyValuePair[1].Trim());
                         break;
                 }
             }

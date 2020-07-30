@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -43,9 +44,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly IGlobalCache _globalCache;
 
         public CpuRegisters Registers;
+
         public MbbsModule Module;
 
+        /// <summary>
+        ///     Current Channel Number being serviced
+        /// </summary>
         private protected ushort ChannelNumber;
+
+        //Constants
+        private protected static readonly char[] SSCANF_SEPARATORS = { ' ', ',', '\r', '\n', '\0', ':' };
+        private protected static readonly char[] PRINTF_SPECIFIERS = { 'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%' };
+        private protected static readonly char[] PRINTF_FLAGS = { '-', '+', ' ', '#', '0' };
+        private protected static readonly char[] PRINTF_WIDTH = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private protected static readonly char[] PRINTF_PRECISION = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
+        private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
@@ -105,12 +118,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return (uint)(GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
         }
 
-        private static readonly char[] PrintfSpecifiers = { 'c', 'd', 's', 'e', 'E', 'f', 'g', 'G', 'o', 'x', 'X', 'u', 'i', 'P', 'N', '%' };
-        private static readonly char[] PrintfFlags = { '-', '+', ' ', '#', '0' };
-        private static readonly char[] PrintfWidth = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
-        private static readonly char[] PrintfPrecision = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
-        private static readonly char[] PrintfLength = { 'h', 'l', 'j', 'z', 't', 'L' };
-
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
             foreach (var c in spanToSearch)
@@ -122,7 +129,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return false;
         }
 
-        private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == PrintfPrecision[0];
+        private static bool IsPrintfPrecision(ReadOnlySpan<byte> c) => c[0] == PRINTF_PRECISION[0];
 
         /// <summary>
         ///     Printf Parsing and Encoding
@@ -189,7 +196,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                     //Process Flags
                     var stringFlags = EnumPrintfFlags.None;
-                    while (InSpan(PrintfFlags, stringToParse.Slice(i, 1)))
+                    while (InSpan(PRINTF_FLAGS, stringToParse.Slice(i, 1)))
                     {
                         switch ((char)stringToParse[i])
                         {
@@ -215,7 +222,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Process Width
                     var stringWidth = 0;
                     var stringWidthValue = string.Empty;
-                    while (InSpan(PrintfWidth, stringToParse.Slice(i, 1)))
+                    while (InSpan(PRINTF_WIDTH, stringToParse.Slice(i, 1)))
                     {
                         switch ((char)stringToParse[i])
                         {
@@ -251,7 +258,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Process Precision
                     var stringPrecision = 0;
                     var stringPrecisionValue = string.Empty;
-                    while (InSpan(PrintfPrecision, stringToParse.Slice(i, 1)))
+                    while (InSpan(PRINTF_PRECISION, stringToParse.Slice(i, 1)))
                     {
                         switch ((char)stringToParse[i])
                         {
@@ -273,7 +280,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Process Length
                     //TODO -- We'll process it but ignore it for now
                     var variableLength = 0;
-                    while (InSpan(PrintfLength, stringToParse.Slice(i, 1)))
+                    while (InSpan(PRINTF_LENGTH, stringToParse.Slice(i, 1)))
                     {
                         switch (stringToParse[i])
                         {
@@ -288,7 +295,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
 
                     //Finally i should be at the specifier 
-                    if (!InSpan(PrintfSpecifiers, stringToParse.Slice(i, 1)))
+                    if (!InSpan(PRINTF_SPECIFIERS, stringToParse.Slice(i, 1)))
                     {
                         _logger.Warn($"Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
                         continue;
@@ -484,45 +491,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return ProcessEscapeCharacters(msOutput.ToArray());
         }
 
+        
+
         /// <summary>
         ///     Implementation of sscanf C++ routine
         /// </summary>
         /// <param name="inputString"></param>
         /// <param name="formatString"></param>
         /// <param name="startingParameterOrdinal"></param>
-        private protected void sscanf(ReadOnlySpan<byte> inputString, ReadOnlySpan<byte> formatString, ushort startingParameterOrdinal)
+        private protected void sscanf(ReadOnlySpan<byte> input, ReadOnlySpan<byte> format,
+            ushort startingParameterOrdinal)
         {
-            //Take input value, spit into array
-            var stringValues = Encoding.ASCII.GetString(inputString).Split(' ');
-            var valueOrdinal = 0;
-            for (var i = 0; i < formatString.Length; i++)
-            {
-                if (formatString[i] == '%' && formatString[i + 1] != '*')
-                {
-                    i++;
-                    switch (formatString[i])
-                    {
-                        case 0x64: //d
-                            var numberValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
-                            startingParameterOrdinal += 2;
-                            var numberValue = short.Parse(stringValues[valueOrdinal++]);
-                            Module.Memory.SetWord(numberValueDestinationPointer, (ushort)numberValue);
-#if DEBUG
-                            // _logger.Info($"Saved {numberValue} to {numberValueDestinationPointer}");
-#endif
-                            continue;
-                        case 0x73: //s
-                            var stringValueDestinationPointer = GetParameterPointer(startingParameterOrdinal);
-                            startingParameterOrdinal += 2;
-                            var stringValue = stringValues[valueOrdinal++] + "\0";
-                            Module.Memory.SetArray(stringValueDestinationPointer, Encoding.ASCII.GetBytes(stringValue));
-#if DEBUG
-                            //_logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {stringValueDestinationPointer}");
-#endif
-                            continue;
-                    }
-                }
-            }
+           
         }
 
         private protected ReadOnlySpan<byte> StringFromArray(ReadOnlySpan<byte> inputArray, bool stripNull = false)
@@ -814,5 +794,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             return result.ToArray();
         }
+
+        /// <summary>
+        ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
+        ///     where a string "123test" should be converted to 123.
+        /// 
+        ///     This method extracts the valid number (if any) from the given string
+        /// </summary>
+        /// <param name="inputString"></param>
+        /// <param name="success"></param>
+        private protected int GetLeadingNumberFromString(ReadOnlySpan<byte> inputString, out bool success)
+        {
+            success = false;
+            for (var i = 0; i < inputString.Length; i++)
+            {
+                if (char.IsNumber((char) inputString[i]) || (char)inputString[i] == '-')
+                    continue;
+
+                if (i == 0)
+                {
+                    _logger.Warn($"Unable to find leading number in: {Encoding.ASCII.GetString(inputString)}");
+                    return 0;
+                }
+
+                success = true;
+                return int.Parse(inputString.ToCharSpan().Slice(0, i));
+            }
+
+            success = true;
+            return int.Parse(inputString.ToCharSpan());
+        }
+
+        private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
+            GetLeadingNumberFromString(Encoding.ASCII.GetBytes(inputString), out success);
     }
 }

@@ -6,7 +6,6 @@ using NLog;
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 
 namespace MBBSEmu.Btrieve
@@ -685,7 +684,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Greater Than the specified key
+        ///     Search for the next logical record after the current position with a Key value that is Greater Than or Equal To the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
@@ -819,7 +818,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
+        ///     Search for the next logical record after the current position with a Key value that is Less Than the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
@@ -863,7 +862,7 @@ namespace MBBSEmu.Btrieve
 
                 if (recordKeyValue < queryKeyValue)
                 {
-                    Position = (uint)r.Offset;
+                    Position = r.Offset;
                     return 1;
                 }
             }

@@ -42,6 +42,12 @@ namespace MBBSEmu.Memory
             Offset = offset;
         }
 
+        public IntPtr16(IntPtr16 pointer)
+        {
+            Segment = pointer.Segment;
+            Offset = pointer.Offset;
+        }
+
         public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
         {
             Array.Copy(intPtr16Span.ToArray(), 0, Data, 0, 4);
