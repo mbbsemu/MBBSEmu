@@ -59,7 +59,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly char[] PRINTF_WIDTH = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_PRECISION = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
-        private protected static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'}; //Just easier to read
+        private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
@@ -806,9 +806,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected int GetLeadingNumberFromString(ReadOnlySpan<byte> inputString, out bool success)
         {
             success = false;
+
+            if (inputString.Length == 0)
+                return 0;
+
             for (var i = 0; i < inputString.Length; i++)
             {
-                if (char.IsNumber((char) inputString[i]) || (char)inputString[i] == '-')
+                if (char.IsNumber((char)inputString[i]) || (char)inputString[i] == '-')
                     continue;
 
                 if (i == 0)
@@ -817,12 +821,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return 0;
                 }
 
-                success = true;
-                return int.Parse(inputString.ToCharSpan().Slice(0, i));
+                success = int.TryParse(inputString.ToCharSpan().Slice(0, i), out var result);
+
+                if (!success)
+                    _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.Slice(0, i).ToArray())}");
+
+                return result;
             }
 
-            success = true;
-            return int.Parse(inputString.ToCharSpan());
+            success = int.TryParse(inputString.ToCharSpan(), out var fullResult);
+
+            if (!success)
+                _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.ToArray())}");
+
+            return fullResult;
         }
 
         private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
