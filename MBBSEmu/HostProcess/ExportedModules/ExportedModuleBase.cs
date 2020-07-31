@@ -827,5 +827,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
             GetLeadingNumberFromString(Encoding.ASCII.GetBytes(inputString), out success);
+
+        /// <summary>
+        ///     Handles calling functions to format bytes to be sent to the client.
+        ///
+        ///     They are (in order):
+        ///     ProcessIfANSI() - Handles processing of IF-ANSI Sequences
+        ///     FormatNewLineCarriageReturn() - Ensures any \r or \n are converted to \r\n
+        ///     ProcessTextVariables() - Handles processing any Text Variables in the given string
+        /// </summary>
+        /// <param name="outputBytes"></param>
+        /// <returns></returns>
+        private protected ReadOnlySpan<byte> FormatOutput(ReadOnlySpan<byte> outputBytes)
+        {
+            using var output = new MemoryStream(outputBytes.Length * 2);
+            output.Write(ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBytes))));
+            return output.ToArray();
+        }
     }
 }

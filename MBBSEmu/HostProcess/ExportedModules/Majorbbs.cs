@@ -1735,7 +1735,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
 
-            var outputBufferProcessed = ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBuffer)));
+            var outputBufferProcessed = FormatOutput(outputBuffer);
 
             ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
@@ -4627,7 +4627,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringToProcess = Module.Memory.GetString(stringToProcessPointer);
 
-            var processedString = ProcessRegisteredTextVariables(stringToProcess);
+            var processedString = ProcessTextVariables(stringToProcess);
 
             if (!Module.Memory.TryGetVariablePointer("XLTTXV", out var resultPointer))
                 resultPointer = Module.Memory.AllocateVariable("XLTTXV", 0x800);
@@ -6803,24 +6803,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
 
-            var outputBufferProcessed = ProcessIfANSI(outputBuffer);
+            var outputBufferProcessed = FormatOutput(outputBuffer);
 
-            if (Module.TextVariables.Count > 0)
-            {
-                var newBuffer = ProcessRegisteredTextVariables(outputBufferProcessed);
-                ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
-
-#if DEBUG
-                _logger.Info($"Sent {newBuffer.Length} bytes to Channel {userChannel}");
-#endif
-            }
-            else
-            {
-                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
-#if DEBUG
-                _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
-#endif
-            }
+            ChannelDictionary[userChannel].SendToClient(outputBufferProcessed);
 
             Module.Memory.SetZero(basePointer, outputLength);
 
