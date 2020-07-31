@@ -18,10 +18,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 {
     /// <summary>
     ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
-    ///     MAJORBBS.H.
-    ///
-    ///     While a majority of these functions are specific to MajorBBS/WG, some are just proxies for
-    ///     Borland C++ macros and are noted as such.
+    ///     MAJORBBS.H
     /// </summary>
     public class Majorbbs : ExportedModuleBase, IExportedModule
     {
@@ -1107,8 +1104,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 399:
                     makhdl();
                     break;
+                case 362:
+                    issupc();
+                    break;
                 default:
-
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
 
@@ -3968,7 +3967,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void mdfgets()
         {
             var destinationPointer = GetParameterPointer(0);
-            var maxSize = GetParameter(2);
+            var maxCharactersToRead = GetParameter(2);
             var fileStructPointer = GetParameterPointer(3);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
@@ -3976,25 +3975,42 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
-            var startingDestinationPointer = new IntPtr16(destinationPointer.Segment, destinationPointer.Offset);
-
-            for (var i = 0; i < (maxSize - 1); i++)
+            if (fileStream.Position == fileStream.Length)
             {
-                var inputByte = (byte)fileStream.ReadByte();
-
-                //EOF or Line Terminator
-                if (inputByte == 0x13 || fileStream.Position == fileStream.Length)
-                    break;
-
-                Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset++, inputByte);
+                _logger.Warn("Attempting to read EOF file, returning null pointer");
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
             }
 
-            Module.Memory.SetByte(destinationPointer.Segment, destinationPointer.Offset, 0x0);
+            using var valueFromFile = new MemoryStream();
+            for (var i = 0; i < (maxCharactersToRead - 1); i++)
+            {
+                var inputValue = (byte)fileStream.ReadByte();
+
+                if (inputValue == '\r' || fileStream.Position == fileStream.Length)
+                    break;
+
+                valueFromFile.WriteByte(inputValue);
+            }
+
+            valueFromFile.WriteByte(0);
+
+            Module.Memory.SetArray(destinationPointer, valueFromFile.ToArray());
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
 
 #if DEBUG
             _logger.Info(
-                $"Read Line from {fileStructPointer} (Stream: {fileStruct.curp}) {startingDestinationPointer}->{destinationPointer}");
+                $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         private ReadOnlySpan<byte> genbb => Module.Memory.GetVariablePointer("GENBB").ToSpan();
@@ -6821,14 +6837,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This is "SYSOP" by default
         /// </summary>
-        public ReadOnlySpan<byte> syskey => Module.Memory.GetVariablePointer("*SYSKEY").ToSpan();
+        private ReadOnlySpan<byte> syskey => Module.Memory.GetVariablePointer("*SYSKEY").ToSpan();
 
         /// <summary>
         ///     "strip" blank spaces after input
         ///
         ///     Signature: void stripb(char *stg);
         /// </summary>
-        public void stripb()
+        private void stripb()
         {
             var stringToParsePointer = GetParameterPointer(0);
 
@@ -6855,10 +6871,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void makhdl(char *stg);
         /// </summary>
-        public void makhdl()
+        private void makhdl()
         {
             stripb();
             zonkhl();
+        }
+
+        /// <summary>
+        ///     char is a valid signup uid char
+        ///
+        ///     Signature: int issupc(int c);
+        /// </summary>
+        private void issupc()
+        {
+            var character = (char)GetParameter(0);
+
+            if (!char.IsLetterOrDigit(character) && !char.IsSeparator(character) && !char.IsSymbol(character))
+            {
+                Registers.AX = 0;
+            }
+            else
+            {
+                Registers.AX = 1;
+            }
         }
     }
 }
