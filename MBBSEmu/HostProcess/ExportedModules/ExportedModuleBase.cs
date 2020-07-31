@@ -59,6 +59,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly char[] PRINTF_WIDTH = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_PRECISION = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
+        private protected static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'}; //Just easier to read
 
         private protected ExportedModuleBase(MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
@@ -491,20 +492,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return ProcessEscapeCharacters(msOutput.ToArray());
         }
 
-        
-
-        /// <summary>
-        ///     Implementation of sscanf C++ routine
-        /// </summary>
-        /// <param name="inputString"></param>
-        /// <param name="formatString"></param>
-        /// <param name="startingParameterOrdinal"></param>
-        private protected void sscanf(ReadOnlySpan<byte> input, ReadOnlySpan<byte> format,
-            ushort startingParameterOrdinal)
-        {
-           
-        }
-
         private protected ReadOnlySpan<byte> StringFromArray(ReadOnlySpan<byte> inputArray, bool stripNull = false)
         {
             for (var i = 0; i < inputArray.Length; i++)
@@ -517,14 +504,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return inputArray;
         }
 
+
         /// <summary>
-        ///     Routine handles processing of text variables within an outprf string if they're present and registered
+        ///     Handles processing of text variables registered with REGISTER_VARIABLE() within an outprf string if they're present
         /// </summary>
         /// <param name="outputBuffer"></param>
         /// <returns></returns>
         private protected ReadOnlySpan<byte> ProcessTextVariables(ReadOnlySpan<byte> outputBuffer)
         {
-            using var newOutputBuffer = new MemoryStream(outputBuffer.Length * 2);
+            using var newOutputBuffer = new MemoryStream(outputBuffer.Length);
             for (var i = 0; i < outputBuffer.Length; i++)
             {
                 //Look for initial signature byte -- faster
@@ -545,23 +533,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //Increment 3 Bytes
                 i += 3;
 
-                using var variableName = new MemoryStream();
+                var variableNameStart = i;
+                var variableNameLength = 0;
                 //Get variable name
                 while (outputBuffer[i] != 0x1)
                 {
-                    variableName.WriteByte(outputBuffer[i]);
                     i++;
+                    variableNameLength++;
                 }
 
-                //Get Variable Entry Point
-                var variableEntryPoint = Module.TextVariables[Encoding.ASCII.GetString(variableName.ToArray())];
-                var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
-                var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
+                switch (Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength)))
+                {
+                    //Built in internal Text Variables
+                    case "USERID":
+                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
+                        break;
 
+                    //Registered Variables
+                    case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
+                        //Get Variable Entry Point
+                        var variableEntryPoint = Module.TextVariables[textVariableName];
+                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
+                        var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
-                _logger.Info($"Processing Text Variable {Encoding.ASCII.GetString(variableName.ToArray())} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
+                        _logger.Info($"Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
 #endif
-                newOutputBuffer.Write(variableData);
+                        newOutputBuffer.Write(variableData);
+                        break;
+
+                    default:
+                        _logger.Error($"Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
+                        break;
+                }
             }
 
             return newOutputBuffer.ToArray();
@@ -779,15 +782,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             using var result = new MemoryStream();
             foreach (var c in stringToFormat)
             {
-                switch (c)
+                switch ((char)c)
                 {
-                    case 0xD: //carriage return on the input string is handled as a \r\n
-                        result.WriteByte(0xA); //new line
-                        break;
-                    case 0xA: //new line
-                        //always ensure new line is followed by carriage return -- as it's not always
-                        result.WriteByte(0xD);
-                        break;
+                    case '\n':
+                    case '\r': //carriage return on the input string is handled as a \r\n
+                        result.Write(NEW_LINE); //new line
+                        continue;
                 }
                 result.WriteByte(c);
             }

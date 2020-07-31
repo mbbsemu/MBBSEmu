@@ -1,22 +1,25 @@
-﻿using MBBSEmu.Database.Repositories.Account;
-using MBBSEmu.Extensions;
-using MBBSEmu.Module;
-using MBBSEmu.Resources;
-using MBBSEmu.Session;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Extensions;
+using MBBSEmu.Module;
+using MBBSEmu.Resources;
+using MBBSEmu.Session;
 
-namespace MBBSEmu.HostProcess
+namespace MBBSEmu.HostProcess.HostRoutines
 {
-    public class MbbsRoutines : IMbbsRoutines
+    /// <summary>
+    ///     Menu Routines for MBBSEmu
+    /// </summary>
+    public class MenuRoutines : IHostRoutines
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
 
-        public MbbsRoutines(IResourceManager resourceManager, IAccountRepository accountRepository)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;

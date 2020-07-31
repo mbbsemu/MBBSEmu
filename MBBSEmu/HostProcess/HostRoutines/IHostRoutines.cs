@@ -2,9 +2,9 @@
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 
-namespace MBBSEmu.HostProcess
+namespace MBBSEmu.HostProcess.HostRoutines
 {
-    public interface IMbbsRoutines
+    public interface IHostRoutines
     {
         bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules);
     }

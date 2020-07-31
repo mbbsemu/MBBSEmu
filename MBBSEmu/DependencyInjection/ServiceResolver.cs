@@ -14,6 +14,7 @@ using NLog;
 using System;
 using System.IO;
 using MBBSEmu.HostProcess.Fsd;
+using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.DependencyInjection
@@ -47,8 +48,8 @@ namespace MBBSEmu.DependencyInjection
             ServiceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            ServiceCollection.AddSingleton<IMbbsRoutines, MbbsRoutines>();
-            ServiceCollection.AddSingleton<IMbbsRoutines, FsdRoutines>();
+            ServiceCollection.AddSingleton<IHostRoutines, MenuRoutines>();
+            ServiceCollection.AddSingleton<IHostRoutines, FsdRoutines>();
             ServiceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             ServiceCollection.AddTransient<ISocketServer, SocketServer>();
 

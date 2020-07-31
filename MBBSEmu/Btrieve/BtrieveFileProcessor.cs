@@ -444,6 +444,7 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetGreater => GetByKeyGreaterNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreaterOrEqualNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqualNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetLess => GetByKeyLessNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLessNumeric(currentQuery),
@@ -727,6 +728,59 @@ namespace MBBSEmu.Btrieve
                 }
 
                 if (recordKeyValue >= queryKeyValue)
+                {
+                    Position = r.Offset;
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private ushort GetByKeyLessOrEqualNumeric(BtrieveQuery query)
+        {
+            //Only searching Records AFTER the current one in logical order
+            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
+            uint queryKeyValue = 0;
+
+            //Get the Query Key Value
+            switch (query.KeyLength)
+            {
+                case 0: //null -- so just treat it as 16-bit
+                    queryKeyValue = 0;
+                    break;
+                case 2:
+                    queryKeyValue = BitConverter.ToUInt16(query.Key);
+                    break;
+                case 4:
+                    queryKeyValue = BitConverter.ToUInt32(query.Key);
+                    break;
+            }
+
+            foreach (var r in recordsToSearch)
+            {
+                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+                uint recordKeyValue = 0;
+
+                switch (query.KeyLength)
+                {
+                    case 0: //null -- so just treat it as 16-bit
+                        recordKeyValue = 0;
+                        break;
+                    case 2:
+                        recordKeyValue = BitConverter.ToUInt16(recordKey);
+                        break;
+                    case 4:
+                        recordKeyValue = BitConverter.ToUInt32(recordKey);
+                        break;
+                }
+
+                if (recordKeyValue <= queryKeyValue)
                 {
                     Position = r.Offset;
                     return 1;

@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using MBBSEmu.HostProcess.HostRoutines;
 
 namespace MBBSEmu.HostProcess
 {
@@ -31,11 +32,11 @@ namespace MBBSEmu.HostProcess
         private readonly CpuCore _cpu;
         private bool _isRunning;
         private readonly Stopwatch _realTimeStopwatch;
-        private readonly IEnumerable<IMbbsRoutines> _mbbsRoutines;
+        private readonly IEnumerable<IHostRoutines> _mbbsRoutines;
         private readonly Queue<SessionBase> _incomingSessions;
         private readonly bool _doLoginRoutine;
 
-        public MbbsHost(ILogger logger, IEnumerable<IMbbsRoutines> mbbsRoutines, IConfiguration configuration)
+        public MbbsHost(ILogger logger, IEnumerable<IHostRoutines> mbbsRoutines, IConfiguration configuration)
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
@@ -185,7 +186,7 @@ namespace MBBSEmu.HostProcess
                                         session.Channel, true,
                                         initialStackValues);
                                 }
-                                
+
                                 //Process Character Interceptor in GSBL
                                 else if (session.DataToProcess)
                                 {
@@ -271,7 +272,7 @@ namespace MBBSEmu.HostProcess
 
                                         //Is this an Rlogin session and its specific to a module, log them off
                                         if (session.SessionType == EnumSessionType.Rlogin &&
-                                            !string.IsNullOrEmpty(((RloginSession) session).ModuleIdentifier))
+                                            !string.IsNullOrEmpty(((RloginSession)session).ModuleIdentifier))
                                         {
                                             session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
                                         }
@@ -290,12 +291,12 @@ namespace MBBSEmu.HostProcess
                         //Check for any other session states, we handle these here as they are
                         //lower priority than handling "in-module" states
                         default:
-                        {
-                            foreach (var r in _mbbsRoutines)
-                                if (r.ProcessSessionState(session, _modules))
-                                    break;
-                            
-                        }
+                            {
+                                foreach (var r in _mbbsRoutines)
+                                    if (r.ProcessSessionState(session, _modules))
+                                        break;
+
+                            }
                             break;
                     }
                 }
@@ -336,7 +337,22 @@ namespace MBBSEmu.HostProcess
 
                     _realTimeStopwatch.Restart();
                 }
+
+                //Run task routines
+                foreach (var m in _modules.Values)
+                {
+                    if (m.TaskRoutines.Count == 0) continue;
+
+                    foreach (var r in m.TaskRoutines)
+                    {
+                        //Create Parameters for BTUCHI Routine
+                        var initialStackValues = new Queue<ushort>(1);
+                        initialStackValues.Enqueue((ushort)r.Key);
+                        Run(m.ModuleIdentifier, m.EntryPoints[$"TASK-{r.Key}"], ushort.MaxValue, false, initialStackValues);
+                    }
+                }
             }
+
         }
 
         /// <summary>
@@ -376,7 +392,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Module {module.ModuleIdentifier} added!");
         }
-        
+
         /// <summary>
         ///     Gets the Registered instance of the specified Module within the MBBS Host Process
         /// </summary>

@@ -59,6 +59,7 @@ namespace MBBSEmu.Module
         public Dictionary<string, IntPtr16> EntryPoints { get; set; }
         public PointerDictionary<RealTimeRoutine> RtkickRoutines { get; set; }
         public PointerDictionary<RealTimeRoutine> RtihdlrRoutines { get; set; }
+        public PointerDictionary<RealTimeRoutine> TaskRoutines { get; set; }
         public Dictionary<string, IntPtr16> TextVariables { get; set; }
         public List<IntPtr16> GlobalCommandHandlers { get; set; }
         public Queue<ExecutionUnit> ExecutionUnits { get; set; }
@@ -103,6 +104,7 @@ namespace MBBSEmu.Module
             EntryPoints = new Dictionary<string, IntPtr16>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
+            TaskRoutines = new PointerDictionary<RealTimeRoutine>();
             TextVariables = new Dictionary<string, IntPtr16>();
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);

@@ -1,18 +1,24 @@
-﻿using MBBSEmu.Extensions;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace MBBSEmu.HostProcess
+namespace MBBSEmu.HostProcess.HostRoutines
 {
-    public class FsdRoutines : IMbbsRoutines
+    /// <summary>
+    ///     FSD/FSE Routines for MBBSEmu
+    ///
+    ///     Handles all Full Screen Display/Full Screen Data Entry methods as this functionality yields control
+    ///     back to the host process before being passed back into the module.
+    /// </summary>
+    public class FsdRoutines : IHostRoutines
     {
         private readonly ILogger _logger;
         private readonly IGlobalCache _globalCache;

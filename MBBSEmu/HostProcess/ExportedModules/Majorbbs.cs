@@ -1107,6 +1107,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 362:
                     issupc();
                     break;
+                case 887:
+                    initask();
+                    break;
+                case 390:
+                    lngrnd();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1515,7 +1521,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-            
+
             var outputValue = GetLeadingNumberFromString(stringToLong, out var success);
 
             Registers.DX = (ushort)(outputValue >> 16);
@@ -1729,24 +1735,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
 
-            var outputBufferProcessed = FormatNewLineCarriageReturn(ProcessIfANSI(outputBuffer));
+            var outputBufferProcessed = ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBuffer)));
 
-            if (Module.TextVariables.Count > 0)
-            {
-                var newBuffer = ProcessTextVariables(outputBufferProcessed);
-                ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
+            ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
 #if DEBUG
-                _logger.Info($"Sent {newBuffer.Length} bytes to Channel {userChannel}");
+            _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif
-            }
-            else
-            {
-                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
-#if DEBUG
-                _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
-#endif
-            }
 
             Module.Memory.SetZero(basePointer, outputLength);
 
@@ -1770,7 +1765,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var creditsToDeduct = (highByte << 16 | lowByte);
 
 #if DEBUG
-            _logger.Info($"Deducted {creditsToDeduct} from the current users account (unlimited)");
+            _logger.Info($"Deducted {creditsToDeduct} from the current users account (Ignored)");
 #endif
 
             Registers.AX = 1;
@@ -2700,6 +2695,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
                 case EnumBtrieveOperationCodes.GetFirst:
                 case EnumBtrieveOperationCodes.GetGreaterOrEqual:
+                case EnumBtrieveOperationCodes.GetLessOrEqual:
                 case EnumBtrieveOperationCodes.GetGreater:
                 case EnumBtrieveOperationCodes.GetLess:
                     {
@@ -3431,7 +3427,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'd':
                             Module.Memory.SetWord(GetParameterPointer(startingParameterOrdinal), (ushort)GetLeadingNumberFromString(inputStringElements[index], out _));
 #if DEBUG
-                             //_logger.Info($"Saved {GetLeadingNumberFromString(inputStringElements[index], out _)} to {startingParameterOrdinal}");
+                            //_logger.Info($"Saved {GetLeadingNumberFromString(inputStringElements[index], out _)} to {startingParameterOrdinal}");
 #endif
                             break;
 
@@ -4631,7 +4627,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringToProcess = Module.Memory.GetString(stringToProcessPointer);
 
-            var processedString = ProcessTextVariables(stringToProcess);
+            var processedString = ProcessRegisteredTextVariables(stringToProcess);
 
             if (!Module.Memory.TryGetVariablePointer("XLTTXV", out var resultPointer))
                 resultPointer = Module.Memory.AllocateVariable("XLTTXV", 0x800);
@@ -6811,7 +6807,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (Module.TextVariables.Count > 0)
             {
-                var newBuffer = ProcessTextVariables(outputBufferProcessed);
+                var newBuffer = ProcessRegisteredTextVariables(outputBufferProcessed);
                 ChannelDictionary[userChannel].SendToClient(newBuffer.ToArray());
 
 #if DEBUG
@@ -6852,7 +6848,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 2; i < stringToParse.Length; i++)
             {
-                if (stringToParse[^i] == (byte) ' ')
+                if (stringToParse[^i] == (byte)' ')
                     continue;
 
                 //String had no trailing spaces
@@ -6894,6 +6890,42 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Registers.AX = 1;
             }
+        }
+
+        /// <summary>
+        ///     I believe, like RTIHDLR, that this routine is used to register a task that runs at a very
+        ///     quick interval. This might have been added to handle sub-second routines not running on DOS,
+        ///     and not having the DOS Interrupt ability that RTIHDLR used.
+        ///
+        ///     Signature: int initask(void (*tskaddr)(int taskid));
+        /// </summary>
+        private void initask()
+        {
+            var routinePointerOffset = GetParameter(0);
+            var routinePointerSegment = GetParameter(1);
+
+            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
+            var routineNumber = Module.TaskRoutines.Allocate(routine);
+            Module.EntryPoints.Add($"TASK-{routineNumber}", routine);
+#if DEBUG
+            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+#endif
+            Registers.AX = (ushort)routineNumber;
+        }
+
+        /// <summary>
+        ///     Generate a long random number
+        ///
+        ///     Signature: long lngrnd(long min,long max);
+        /// </summary>
+        private void lngrnd()
+        {
+            var min = GetParameterLong(0);
+            var max = GetParameterLong(2);
+            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(min, max);
+
+            Registers.DX = (ushort)(randomValue >> 16);
+            Registers.AX = (ushort)(randomValue & 0xFFFF);
         }
     }
 }
