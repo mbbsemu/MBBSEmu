@@ -806,10 +806,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected int GetLeadingNumberFromString(ReadOnlySpan<byte> inputString, out bool success)
         {
             success = false;
+            var result = 0;
 
-            if (inputString.Length == 0)
-                return 0;
+            if (inputString.Length == 0 || inputString[0] == '\0')
+                return result;
 
+            //Find the first string representing a numeric value in the provided input string
             for (var i = 0; i < inputString.Length; i++)
             {
                 if (char.IsNumber((char)inputString[i]) || (char)inputString[i] == '-')
@@ -821,7 +823,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return 0;
                 }
 
-                success = int.TryParse(inputString.ToCharSpan().Slice(0, i), out var result);
+                success = int.TryParse(inputString.ToCharSpan().Slice(0, i), out result);
 
                 if (!success)
                     _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.Slice(0, i).ToArray())}");
@@ -829,12 +831,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return result;
             }
 
-            success = int.TryParse(inputString.ToCharSpan(), out var fullResult);
+            //At this point, the entire string is assumed a numeric
+            success = int.TryParse(inputString.ToCharSpan(), out result);
 
             if (!success)
                 _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.ToArray())}");
 
-            return fullResult;
+            return result;
         }
 
         private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
