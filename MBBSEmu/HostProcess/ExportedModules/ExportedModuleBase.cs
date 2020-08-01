@@ -811,15 +811,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (inputString.Length == 0 || inputString[0] == '\0')
                 return result;
 
-            //Find the first string representing a numeric value in the provided input string
+            var characterStart = 0;
+            //Trim Leading Spaces/Tabs
             for (var i = 0; i < inputString.Length; i++)
             {
-                if (char.IsNumber((char)inputString[i]) || (char)inputString[i] == '-')
+                if (inputString[i] == ' ' || inputString[i] == '\t')
+                    continue;
+
+                characterStart = i;
+                break;
+            }
+
+            //Find the first string representing a numeric value in the provided input string
+            for (var i = characterStart; i < inputString.Length; i++)
+            {
+                if (char.IsNumber((char)inputString[i]) || inputString[i] == '-' || inputString[i] == '+')
                     continue;
 
                 if (i == 0)
                 {
-                    _logger.Warn($"Unable to find leading number in: {Encoding.ASCII.GetString(inputString)}");
+                    _logger.Warn($"Unable to find leading number: {Encoding.ASCII.GetString(inputString)}");
                     return 0;
                 }
 
