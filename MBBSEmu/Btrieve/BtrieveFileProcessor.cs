@@ -140,13 +140,21 @@ namespace MBBSEmu.Btrieve
             const ushort keyDefinitionLength = 0x1E;
             ReadOnlySpan<byte> btrieveFileContentSpan = LoadedFile.Data;
 
+            //Check for Log Key
+            if (btrieveFileContentSpan[0x10C] == 1)
+            {
+                _logger.Warn($"Btireve Log Key Present in {LoadedFile.FileName}");
+                LoadedFile.LogKeyPresent = true;
+            }
+
+            ushort totalKeys = LoadedFile.KeyCount;
             ushort currentKeyNumber = 0;
             ushort previousKeyNumber = 0;
-            while (currentKeyNumber < LoadedFile.KeyCount)
+            while (currentKeyNumber < totalKeys)
             {
                 var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
 
-                if (keyDefinition.Segment)
+                if (keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
                 {
                     keyDefinition.SegmentOf = previousKeyNumber;
                     keyDefinition.Number = previousKeyNumber;
@@ -190,11 +198,13 @@ namespace MBBSEmu.Btrieve
         private void LoadBtrieveRecords()
         {
             var recordsLoaded = 0;
+            var calculatedRecordLength = LoadedFile.RecordLength + (LoadedFile.LogKeyPresent ? 8 : 0);
+
             //Starting at 1, since the first page is the header
             for (var i = 1; i <= LoadedFile.PageCount; i++)
             {
                 var pageOffset = (LoadedFile.PageLength * i);
-                var recordsInPage = (LoadedFile.PageLength / LoadedFile.RecordLength);
+                var recordsInPage = (LoadedFile.PageLength / calculatedRecordLength);
 
                 //Key Page
                 if (BitConverter.ToUInt32(LoadedFile.Data, pageOffset + 0x8) == uint.MaxValue)
@@ -212,28 +222,29 @@ namespace MBBSEmu.Btrieve
                         break;
 
                     //TODO -- Need to figure out the source of this padding and if it's related to the key definition
-                    if (BitConverter.ToUInt64(LoadedFile.Data, pageOffset + (LoadedFile.RecordLength * j)) ==
+                    //TODO -- 8/2 - this MIIIIIIIGHT be Log Key
+                    if (!LoadedFile.LogKeyPresent && BitConverter.ToUInt64(LoadedFile.Data, pageOffset + (calculatedRecordLength * j)) ==
                         ulong.MaxValue)
                     {
                         _logger.Warn("Found Record Padding (8 bytes), adjusting Btrieve Values");
-                        LoadedFile.RecordPadding = 8;
-                        LoadedFile.RecordLength += 8;
-                        recordsInPage = (LoadedFile.PageLength / LoadedFile.RecordLength);
+                        LoadedFile.LogKeyPresent = true;
+                        calculatedRecordLength += 8;
+                        recordsInPage = (LoadedFile.PageLength / calculatedRecordLength);
                     }
 
                     var recordArray = new byte[LoadedFile.RecordLength];
-                    Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.RecordLength * j), recordArray, 0, LoadedFile.RecordLength);
+                    Array.Copy(LoadedFile.Data, pageOffset + (calculatedRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
 
                     //End of Page 0xFFFFFFFF
                     if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
                         continue;
 
-                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (LoadedFile.RecordLength * j)), recordArray));
+                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (calculatedRecordLength * j)), recordArray));
                     recordsLoaded++;
                 }
             }
 #if DEBUG
-            _logger.Info($"Loaded {recordsLoaded} records. Resetting cursor to 0");
+            _logger.Info($"Loaded {recordsLoaded} records from {LoadedFile.FileName}. Resetting cursor to 0");
 #endif
         }
 

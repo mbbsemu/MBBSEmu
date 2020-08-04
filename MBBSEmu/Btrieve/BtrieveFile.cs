@@ -130,6 +130,21 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public Dictionary<ushort, BtrieveKey> Keys { get; set; }
 
+        /// <summary>
+        ///     Log Key is an internal value used by the Btrieve engine to track unique
+        ///     records -- it adds 8 bytes to the end of the record that's not accounted for
+        ///     in the RecordLength definition. We need to know if it's present to properly
+        ///     offset records when loading
+        /// </summary>
+        public bool LogKeyPresent { get; set; }
+
+        /// <summary>
+        ///     For keys that overlap, Btrieve stores information at the end of the record
+        ///     to account for different values for these keys. For this reason, we need to
+        ///     account if they're present
+        /// </summary>
+        public bool KeyOverlap { get; set; }
+
         public BtrieveFile()
         {
             Records = new List<BtrieveRecord>();
