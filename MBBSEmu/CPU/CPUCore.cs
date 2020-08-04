@@ -56,7 +56,8 @@ namespace MBBSEmu.CPU
         /// </summary>
         public const ushort STACK_SEGMENT = 0x0;
 
-        public readonly List<byte[]> FpuStack = new List<byte[]>(8) { new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4] };
+        public readonly List<byte[]> FpuStack = new List<byte[]>(8)
+            {new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4]};
 
         private int _currentOperationSize = 0;
 
@@ -173,13 +174,13 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 0xFF && Registers.IP == 0xB2)
+            if (Registers.CS == 0x6 && Registers.IP == 0x3562)
                 Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
 
-            _showDebug = (Registers.CS == 0xFF && Registers.IP > 0 && Registers.IP <= 0x0FDA);
+            _showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");

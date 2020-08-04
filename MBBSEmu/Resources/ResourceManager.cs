@@ -6,6 +6,12 @@ using System.Text;
 
 namespace MBBSEmu.Resources
 {
+    /// <summary>
+    ///     Handles retrieval of embedded resources
+    ///
+    ///     This class is used for things like the command line help, text file assets, and the embedded
+    ///     SQL queries for Dapper
+    /// </summary>
     public class ResourceManager : IResourceManager
     {
         private readonly Assembly _assembly;

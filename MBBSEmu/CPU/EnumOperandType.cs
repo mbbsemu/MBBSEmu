@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MBBSEmu.CPU
+﻿namespace MBBSEmu.CPU
 {
+    /// <summary>
+    ///     Enumerator to specify if an Operand is the Source or Destination
+    /// </summary>
     public enum EnumOperandType
     {
         Destination,

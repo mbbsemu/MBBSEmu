@@ -1,5 +1,8 @@
 ﻿namespace MBBSEmu.Session.Telnet
 {
+    /// <summary>
+    ///     Enumerator for IAC Verbs and their values
+    /// </summary>
     public enum EnumIacVerbs : byte
     {
         WILL = 251,

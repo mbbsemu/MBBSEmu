@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using Decoder = Iced.Intel.Decoder;
 
@@ -458,8 +459,20 @@ namespace MBBSEmu.Memory
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
+
+#if DEBUG
+            if (segment == 16 && offset == 0x824)
+                Debugger.Break();
+
+            for (var i = 0; i < array.Length; i++)
+            {
+                _memorySegments[segment][offset + i] = array[i];
+            }
+#else
+
             var destinationSpan = new Span<byte>(_memorySegments[segment], offset, array.Length);
             array.CopyTo(destinationSpan);
+#endif
         }
 
         /// <summary>

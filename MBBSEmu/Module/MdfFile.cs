@@ -4,13 +4,36 @@ using System.Linq;
 
 namespace MBBSEmu.Module
 {
+    /// <summary>
+    ///     Defines a Modules given MDF File
+    /// </summary>
     public class MdfFile
     {
+        /// <summary>
+        ///     MDF File Name
+        /// </summary>
         private readonly string _mdfFile;
+        
+        /// <summary>
+        ///     Module Name defined in the MDF File
+        /// </summary>
         public string ModuleName { get; set; }
+
+        /// <summary>
+        ///     Developer Name defined in the MDF File
+        /// </summary>
         public string Developer { get; set; }
+
+        /// <summary>
+        ///     Module DLL files defined in the MDF File
+        /// </summary>
         public List<string> DLLFiles { get; set; }
+
+        /// <summary>
+        ///     Module MSG files defined in the MDF File
+        /// </summary>
         public List<string> MSGFiles { get; set; }
+
         public MdfFile(string mdfFile)
         {
             MSGFiles = new List<string>();
@@ -18,6 +41,9 @@ namespace MBBSEmu.Module
             Parse();
         }
 
+        /// <summary>
+        ///     Parses the specified MDF File
+        /// </summary>
         private void Parse()
         {
             foreach (var line in File.ReadAllLines(_mdfFile))
@@ -38,13 +64,13 @@ namespace MBBSEmu.Module
                     case "DLLS":
                         DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
-                    case "MSGS" when keyValuePair[1].Trim().Contains(' '):
+                    case "MSGS" when keyValuePair[1].Trim().Contains(' '): //MSG files separated by a space
                         MSGFiles = keyValuePair[1].Trim().Split(' ').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
-                    case "MSGS" when keyValuePair[1].Trim().Contains(','):
+                    case "MSGS" when keyValuePair[1].Trim().Contains(','): //MSG files separated by a comma
                         MSGFiles = keyValuePair[1].Trim().Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
-                    case "MSGS":
+                    case "MSGS": //only one MSG file defined
                         MSGFiles.Add(keyValuePair[1].Trim());
                         break;
                 }

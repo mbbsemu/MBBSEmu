@@ -109,6 +109,9 @@ namespace MBBSEmu.Session.Rlogin
                     return;
                 }
 
+                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
+                    EchoEmptyInvoke = true;
+
                 Thread.Sleep(100);
             }
 

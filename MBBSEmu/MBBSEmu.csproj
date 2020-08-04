@@ -55,14 +55,14 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.35" />
-    <PackageReference Include="Iced" Version="1.7.0" />
+    <PackageReference Include="Iced" Version="1.8.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="5.0.0-preview.5.20278.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0-preview.5.20278.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0-preview.5.20278.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0-preview.5.20278.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.0-preview.5.20278.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="NLog" Version="4.7.2" />
+    <PackageReference Include="NLog" Version="4.7.3" />
   </ItemGroup>
 
   <ItemGroup>

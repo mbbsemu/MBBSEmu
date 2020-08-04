@@ -9,6 +9,8 @@ namespace MBBSEmu.Database.Repositories
 {
     /// <summary>
     ///     Base Class for Repositories
+    ///
+    ///     Holds common Dapper Functionality for executing Queries
     /// </summary>
     public abstract class RepositoryBase : IRepositoryBase
     {

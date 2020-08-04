@@ -2,6 +2,12 @@
 
 namespace MBBSEmu.Session.Telnet
 {
+    /// <summary>
+    ///     Class used to assist with compiling IAC Responses
+    ///
+    ///     Takes enumerator inputs and returns a can return a byte array containing the
+    ///     actual IAC sequence
+    /// </summary>
     public class IacResponse
     {
         public EnumIacVerbs Verb;

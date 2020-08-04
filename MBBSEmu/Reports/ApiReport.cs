@@ -8,6 +8,10 @@ using System.Linq;
 
 namespace MBBSEmu.Reports
 {
+    /// <summary>
+    ///     Class used to generate API Report JSON files used for logging which imported
+    ///     libraries (MAJORBBS, GALGSBL, etc.) a module uses
+    /// </summary>
     public class ApiReport
     {
         private readonly ILogger _logger;

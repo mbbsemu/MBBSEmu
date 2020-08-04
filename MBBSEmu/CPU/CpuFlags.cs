@@ -8,27 +8,29 @@ namespace MBBSEmu.CPU
     /// </summary>
     public class CpuFlags
     {
+        /// <summary>
+        ///     Flags Register Value
+        /// </summary>
         public ushort Flags;
 
+        /// <summary>
+        ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, byte result = 0,
             byte destination = 0, byte source = 0)
         {
-            bool setFlag;
-            switch (arithmeticOperation)
+            var setFlag = arithmeticOperation switch
             {
-                case EnumArithmeticOperation.Addition:
-                    setFlag = (source + destination) > byte.MaxValue;
-                    break;
-                case EnumArithmeticOperation.Subtraction:
-                    setFlag = result > destination;
-                    break;
-                case EnumArithmeticOperation.ShiftLeft:
-                    setFlag = !result.IsNegative() && destination.IsNegative();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
-                        "Unsupported Carry Flag Operation for Evaluation");
-            }
+                EnumArithmeticOperation.Addition => (source + destination) > byte.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+"Unsupported Carry Flag Operation for Evaluation"),
+            };
 
             if (setFlag)
             {
@@ -40,25 +42,24 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 16-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
             ushort destination = 0, ushort source = 0)
         {
-            bool setFlag;
-            switch (arithmeticOperation)
+            bool setFlag = arithmeticOperation switch
             {
-                case EnumArithmeticOperation.Addition:
-                    setFlag = (source + destination) > ushort.MaxValue;
-                    break;
-                case EnumArithmeticOperation.Subtraction:
-                    setFlag = result > destination;
-                    break;
-                case EnumArithmeticOperation.ShiftLeft:
-                    setFlag = !result.IsNegative() && destination.IsNegative();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
-                        "Unsupported Carry Flag Operation for Evaluation");
-            }
+                EnumArithmeticOperation.Addition => (source + destination) > ushort.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                    "Unsupported Carry Flag Operation for Evaluation")
+            };
 
             if (setFlag)
             {
@@ -70,25 +71,24 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 32-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateCarry(EnumArithmeticOperation arithmeticOperation, uint result = 0,
             uint destination = 0, uint source = 0)
         {
-            bool setFlag;
-            switch (arithmeticOperation)
+            bool setFlag = arithmeticOperation switch
             {
-                case EnumArithmeticOperation.Addition:
-                    setFlag = ((ulong)source + destination) > uint.MaxValue;
-                    break;
-                case EnumArithmeticOperation.Subtraction:
-                    setFlag = result > destination;
-                    break;
-                case EnumArithmeticOperation.ShiftLeft:
-                    setFlag = !result.IsNegative() && destination.IsNegative();
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
-                        "Unsupported Carry Flag Operation for Evaluation");
-            }
+                EnumArithmeticOperation.Addition => ((ulong) source + destination) > uint.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                    "Unsupported Carry Flag Operation for Evaluation")
+            };
 
             if (setFlag)
             {
@@ -100,6 +100,13 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, byte result = 0,
             byte destination = 0, byte source = 0)
         {
@@ -107,42 +114,42 @@ namespace MBBSEmu.CPU
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                {
-                    //positive+positive==negative
-                    if (!destination.IsNegative() && !source.IsNegative() &&
-                        result.IsNegative())
                     {
-                        setFlag = true;
-                    }
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    //negative+negative==positive
-                    if (destination.IsNegative() && source.IsNegative() &&
-                        !result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case EnumArithmeticOperation.Subtraction:
-                {
-
-                    // negative-positive==positive
-                    if (destination.IsNegative() && !source.IsNegative() &&
-                        !result.IsNegative())
                     {
-                        setFlag = true;
-                    }
 
-                    // positive-negative==negative
-                    if (!destination.IsNegative() && source.IsNegative() &&
-                        result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -158,6 +165,13 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 16-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
             ushort destination = 0, ushort source = 0)
         {
@@ -165,42 +179,42 @@ namespace MBBSEmu.CPU
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                {
-                    //positive+positive==negative
-                    if (!destination.IsNegative() && !source.IsNegative() &&
-                        result.IsNegative())
                     {
-                        setFlag = true;
-                    }
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    //negative+negative==positive
-                    if (destination.IsNegative() && source.IsNegative() &&
-                        !result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case EnumArithmeticOperation.Subtraction:
-                {
-
-                    // negative-positive==positive
-                    if (destination.IsNegative() && !source.IsNegative() &&
-                        !result.IsNegative())
                     {
-                        setFlag = true;
-                    }
 
-                    // positive-negative==negative
-                    if (!destination.IsNegative() && source.IsNegative() &&
-                        result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -216,6 +230,13 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 32-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
         public void EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, uint result = 0,
             uint destination = 0, uint source = 0)
         {
@@ -223,42 +244,42 @@ namespace MBBSEmu.CPU
             switch (arithmeticOperation)
             {
                 case EnumArithmeticOperation.Addition:
-                {
-                    //positive+positive==negative
-                    if (!destination.IsNegative() && !source.IsNegative() &&
-                        result.IsNegative())
                     {
-                        setFlag = true;
-                    }
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    //negative+negative==positive
-                    if (destination.IsNegative() && source.IsNegative() &&
-                        !result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case EnumArithmeticOperation.Subtraction:
-                {
-
-                    // negative-positive==positive
-                    if (destination.IsNegative() && !source.IsNegative() &&
-                        !result.IsNegative())
                     {
-                        setFlag = true;
-                    }
 
-                    // positive-negative==negative
-                    if (!destination.IsNegative() && source.IsNegative() &&
-                        result.IsNegative())
-                    {
-                        setFlag = true;
-                    }
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
 
-                    break;
-                }
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -274,26 +295,31 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 8-bit result for Zero, Sign, and Parity Flags
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <param name="result"></param>
         public void Evaluate(EnumFlags flag, byte result = 0)
         {
             bool setFlag;
             switch (flag)
             {
                 case EnumFlags.ZF:
-                {
-                    setFlag = result == 0;
-                    break;
-                }
+                    {
+                        setFlag = result == 0;
+                        break;
+                    }
                 case EnumFlags.SF:
-                {
-                    setFlag =  result.IsNegative();
-                    break;
-                }
+                    {
+                        setFlag = result.IsNegative();
+                        break;
+                    }
                 case EnumFlags.PF:
-                {
-                    setFlag = result.Parity();
-                    break;
-                }
+                    {
+                        setFlag = result.Parity();
+                        break;
+                    }
 
                 //Unsupported Flags/Special Flags
                 case EnumFlags.CF:
@@ -317,26 +343,31 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 16-bit result for Zero, Sign, and Parity Flags
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <param name="result"></param>
         public void Evaluate(EnumFlags flag, ushort result = 0)
         {
             bool setFlag;
             switch (flag)
             {
                 case EnumFlags.ZF:
-                {
-                    setFlag = result == 0;
-                    break;
-                }
+                    {
+                        setFlag = result == 0;
+                        break;
+                    }
                 case EnumFlags.SF:
-                {
-                    setFlag = result.IsNegative();
-                    break;
-                }
+                    {
+                        setFlag = result.IsNegative();
+                        break;
+                    }
                 case EnumFlags.PF:
-                {
-                    setFlag = result.Parity();
-                    break;
-                }
+                    {
+                        setFlag = result.Parity();
+                        break;
+                    }
 
                 //Unsupported Flags/Special Flags
                 case EnumFlags.CF:
@@ -358,26 +389,31 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Evaluates the given 32-bit result for Zero, Sign, and Parity Flags
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <param name="result"></param>
         public void Evaluate(EnumFlags flag, uint result = 0)
         {
             var setFlag = false;
             switch (flag)
             {
                 case EnumFlags.ZF:
-                {
-                    setFlag = result == 0;
-                    break;
-                }
+                    {
+                        setFlag = result == 0;
+                        break;
+                    }
                 case EnumFlags.SF:
-                {
-                    setFlag = result.IsNegative();
-                    break;
-                }
+                    {
+                        setFlag = result.IsNegative();
+                        break;
+                    }
                 case EnumFlags.PF:
-                {
-                    setFlag = result.Parity();
-                    break;
-                }
+                    {
+                        setFlag = result.Parity();
+                        break;
+                    }
 
                 //Unsupported Flags/Special Flags
                 case EnumFlags.CF:
@@ -399,16 +435,29 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Sets the bit for the specified Flag
+        /// </summary>
+        /// <param name="flag"></param>
         public void SetFlag(EnumFlags flag)
         {
             Flags = Flags.SetFlag((ushort)flag);
         }
 
+        /// <summary>
+        ///     Clears the bit for the specified Flag
+        /// </summary>
+        /// <param name="flag"></param>
         public void ClearFlag(EnumFlags flag)
         {
             Flags = Flags.ClearFlag((ushort)flag);
         }
 
+        /// <summary>
+        ///     Returns if the bit for the specified Flag is set
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <returns></returns>
         public bool IsFlagSet(EnumFlags flag)
         {
             return Flags.IsFlagSet((ushort)flag);

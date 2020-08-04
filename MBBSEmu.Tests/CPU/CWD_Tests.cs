@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU

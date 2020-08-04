@@ -1521,7 +1521,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-
             var outputValue = GetLeadingNumberFromString(stringToLong, out var success);
 
             Registers.DX = (ushort)(outputValue >> 16);

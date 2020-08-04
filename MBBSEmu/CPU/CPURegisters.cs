@@ -3,6 +3,12 @@ using System;
 
 namespace MBBSEmu.CPU
 {
+    /// <summary>
+    ///     Holds the CPU Registers for the emulated x86 Core
+    ///
+    ///     While the majority of these are basic 16-bit values, several special
+    ///     registers are abstracted out into their own class (Flags, FPU)
+    /// </summary>
     public class CpuRegisters
     {
         /// <summary>
@@ -86,8 +92,9 @@ namespace MBBSEmu.CPU
             }
         }
 
-
-
+        /// <summary>
+        ///     Counter Register
+        /// </summary>
         public ushort CX { get; set; }
 
         /// <summary>
@@ -116,6 +123,9 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Data Register
+        /// </summary>
         public ushort DX { get; set; }
 
         /// <summary>
@@ -207,53 +217,31 @@ namespace MBBSEmu.CPU
         /// <returns></returns>
         public ushort GetValue(Register register)
         {
-            switch (register)
+            return register switch
             {
-                case Register.AX:
-                    return AX;
-                case Register.AL:
-                    return AL;
-                case Register.AH:
-                    return AH;
-                case Register.CL:
-                    return CL;
-                case Register.DL:
-                    return DL;
-                case Register.BL:
-                    return BL;
-                case Register.CH:
-                    return CH;
-                case Register.DH:
-                    return DH;
-                case Register.BH:
-                    return BH;
-                case Register.CX:
-                    return CX;
-                case Register.DX:
-                    return DX;
-                case Register.BX:
-                    return BX;
-                case Register.SP:
-                    return SP;
-                case Register.BP:
-                    return BP;
-                case Register.SI:
-                    return SI;
-                case Register.DI:
-                    return DI;
-                case Register.ES:
-                    return ES;
-                case Register.CS:
-                    return CS;
-                case Register.SS:
-                    return SS;
-                case Register.DS:
-                    return DS;
-                case Register.EIP:
-                    return IP;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
-            }
+                Register.AX => AX,
+                Register.AL => AL,
+                Register.AH => AH,
+                Register.CL => CL,
+                Register.DL => DL,
+                Register.BL => BL,
+                Register.CH => CH,
+                Register.DH => DH,
+                Register.BH => BH,
+                Register.CX => CX,
+                Register.DX => DX,
+                Register.BX => BX,
+                Register.SP => SP,
+                Register.BP => BP,
+                Register.SI => SI,
+                Register.DI => DI,
+                Register.ES => ES,
+                Register.CS => CS,
+                Register.SS => SS,
+                Register.DS => DS,
+                Register.EIP => IP,
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
         }
 
         public void SetValue(Register register, ushort value)
@@ -328,41 +316,46 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Returns the size of the given Register
+        /// </summary>
+        /// <param name="register"></param>
+        /// <returns></returns>
         public byte GetSize(Register register)
         {
-            switch (register)
+            return register switch
             {
-                
-                case Register.AL:
-                case Register.AH:
-                case Register.BL:
-                case Register.BH:
-                case Register.CL:
-                case Register.CH:
-                case Register.DL:
-                case Register.DH:
-                    return 8;
-
-                case Register.AX:
-                case Register.BX:
-                case Register.CX:
-                case Register.DX:
-                case Register.SP:
-                case Register.BP:
-                case Register.SI:
-                case Register.DI:
-                case Register.ES:
-                case Register.CS:
-                case Register.SS:
-                case Register.DS:
-                case Register.EIP:
-                    return 16;
-
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
-            }
+                Register.AL => 8,
+                Register.AH => 8,
+                Register.BL => 8,
+                Register.BH => 8,
+                Register.CL => 8,
+                Register.CH => 8,
+                Register.DL => 8,
+                Register.DH => 8,
+                Register.AX => 16,
+                Register.BX => 16,
+                Register.CX => 16,
+                Register.DX => 16,
+                Register.SP => 16,
+                Register.BP => 16,
+                Register.SI => 16,
+                Register.DI => 16,
+                Register.ES => 16,
+                Register.CS => 16,
+                Register.SS => 16,
+                Register.DS => 16,
+                Register.EIP => 16,
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
         }
 
+        /// <summary>
+        ///     Gets a Long (32-bit) value by combining the two specified Registers
+        /// </summary>
+        /// <param name="highBytes"></param>
+        /// <param name="lowBytes"></param>
+        /// <returns></returns>
         public int GetLong(Register highBytes, Register lowBytes)
         {
             return (GetValue(highBytes) << 16) | GetValue(lowBytes);

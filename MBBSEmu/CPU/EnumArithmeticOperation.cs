@@ -1,5 +1,8 @@
 ﻿namespace MBBSEmu.CPU
 {
+    /// <summary>
+    ///     Enumerator describing an Arithmetic Operation
+    /// </summary>
     public enum EnumArithmeticOperation
     {
         Addition,

@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Memory;
+﻿using MBBSEmu.Memory;
 
 namespace MBBSEmu.Module
 {
+    /// <summary>
+    ///     Class used to define a Text Variable that's created using the REGISTER_VARIABLE method
+    ///     in MAJORBBS.H
+    /// </summary>
     public class TextVariable
     {
         /// <summary>

@@ -11,6 +11,11 @@ using System.Threading;
 
 namespace MBBSEmu.Server.Socket
 {
+    /// <summary>
+    ///     Socket Server that handles setting up the TCP socket and accepting incoming connections
+    ///
+    ///     This class is used for both Telnet and Rlogin Listeners
+    /// </summary>
     public class SocketServer : ISocketServer
     {
         private readonly ILogger _logger;

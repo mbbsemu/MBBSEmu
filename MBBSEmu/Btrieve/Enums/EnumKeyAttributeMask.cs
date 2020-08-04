@@ -10,10 +10,10 @@ namespace MBBSEmu.Btrieve.Enums
     {
         Duplicates = 1,
         Modifiable = 1 << 1,
-        Unknown1 = 1 << 2,
+        OldStyleBinary = 1 << 2,
         Null0 = 1 << 3,
-        Unknown2 = 1 << 4,
-        TypeAlternativeCollatingSequence = 1 << 5,
+        SegmentedKey = 1 << 4,
+        NumberedACS = 1 << 5,
         DescendingKeySegment = 1 << 6,
         SupplementalKey = 1 << 7
     }

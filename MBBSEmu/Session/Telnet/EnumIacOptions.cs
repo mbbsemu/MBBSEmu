@@ -1,5 +1,8 @@
 ﻿namespace MBBSEmu.Session.Telnet
 {
+    /// <summary>
+    ///     Enumerator for IAC Options that MBBSEmu will handle
+    /// </summary>
     public enum EnumIacOptions : byte
     {
         BinaryTransmission = 0,

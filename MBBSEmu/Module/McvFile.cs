@@ -8,6 +8,9 @@ using System.IO;
 
 namespace MBBSEmu.Module
 {
+    /// <summary>
+    ///     Class for handling MCV file Parsing and loading of values
+    /// </summary>
     public class McvFile
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
@@ -41,6 +44,9 @@ namespace MBBSEmu.Module
             Parse();
         }
 
+        /// <summary>
+        ///     Parses the specified MCV File
+        /// </summary>
         private void Parse()
         {
             Span<byte> fileSpan = FileContent;
@@ -110,16 +116,31 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public bool GetBool(int ordinal) => GetMessageValue(ordinal)[1] == 'Y';
 
+        /// <summary>
+        ///     Gets the numeric value of the specified ordinal and returns it as a word
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
         public short GetNumeric(int ordinal)
         {
             return short.Parse(GetMessageValue(ordinal).ToCharSpan());
         }
 
+        /// <summary>
+        ///     Gets the numeric value of the specified ordinal and returns it as a double word
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
         public int GetLong(int ordinal)
         {
             return int.Parse(GetMessageValue(ordinal).ToCharSpan());
         }
 
+        /// <summary>
+        ///     Gets the string value of the specified ordinal
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
         public ReadOnlySpan<byte> GetString(int ordinal)
         {
             if (!Messages.TryGetValue(ordinal, out var result))
