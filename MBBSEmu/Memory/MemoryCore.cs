@@ -461,8 +461,8 @@ namespace MBBSEmu.Memory
         {
 
 #if DEBUG
-            if (segment == 16 && offset == 0x824)
-                Debugger.Break();
+            //if (segment == 16 && offset == 0x824)
+               // Debugger.Break();
 
             for (var i = 0; i < array.Length; i++)
             {

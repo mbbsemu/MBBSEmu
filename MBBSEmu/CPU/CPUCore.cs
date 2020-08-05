@@ -174,13 +174,13 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 0x6 && Registers.IP == 0x3562)
-                Debugger.Break();
+            //if (Registers.CS == 0x6 && Registers.IP == 0x3562)
+                //Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
 
-            _showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
+            //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
