@@ -6454,7 +6454,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var templatePointer = GetParameterPointer(0);
             ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
-            ChannelDictionary[ChannelNumber].SendToClient(Module.Memory.GetString(templatePointer));
+            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(Module.Memory.GetString(templatePointer)));
         }
 
         /// <summary>
