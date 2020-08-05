@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Extensions;
 
 namespace MBBSEmu.Btrieve
 {
@@ -25,6 +26,11 @@ namespace MBBSEmu.Btrieve
         ///     File Path of the Btrieve File currently loaded into the Processor
         /// </summary>
         public string LoadedFilePath { get; set; }
+
+        /// <summary>
+        ///     Total Size of the Loaded Btrieve File
+        /// </summary>
+        public int LoadedFileSize { get; set; }
 
         /// <summary>
         ///     Btrieve File Loaded into the Processor
@@ -101,7 +107,9 @@ namespace MBBSEmu.Btrieve
                 throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
             }
 
-            LoadedFile = new BtrieveFile(File.ReadAllBytes($"{path}{fileName}")) { FileName = LoadedFileName };
+            var fileData = File.ReadAllBytes($"{path}{fileName}");
+            LoadedFile = new BtrieveFile(fileData) { FileName = LoadedFileName };
+            LoadedFileSize = fileData.Length;
 #if DEBUG
             _logger.Info($"Opened {fileName} and read {LoadedFile.Data.Length} bytes");
 #endif
@@ -198,7 +206,7 @@ namespace MBBSEmu.Btrieve
         private void LoadBtrieveRecords()
         {
             var recordsLoaded = 0;
-            var calculatedRecordLength = LoadedFile.RecordLength + (LoadedFile.LogKeyPresent ? 8 : 0);
+            var calculatedRecordLength = LoadedFile.RecordLength + (LoadedFile.LogKeyPresent ? 8 : 0) + GetExtraRecordBytes(LoadedFileName, LoadedFileSize);
 
             //Starting at 1, since the first page is the header
             for (var i = 1; i <= LoadedFile.PageCount; i++)
@@ -214,6 +222,14 @@ namespace MBBSEmu.Btrieve
                 if (LoadedFile.Data[pageOffset + 0x6] == 0xAC)
                     continue;
 
+                //Verify Data Page
+                if (!LoadedFile.Data[pageOffset + 0x5].IsNegative())
+                {
+                    _logger.Warn(
+                        $"Skipping Non-Data Page, might have invalid data - Page Start: 0x{pageOffset + 0x5:X4}");
+                    continue;
+                }
+
                 //Page data starts 6 bytes in
                 pageOffset += 6;
                 for (var j = 0; j < recordsInPage; j++)
@@ -221,6 +237,7 @@ namespace MBBSEmu.Btrieve
                     if (recordsLoaded == LoadedFile.RecordCount)
                         break;
 
+                    /*
                     //TODO -- Need to figure out the source of this padding and if it's related to the key definition
                     //TODO -- 8/2 - this MIIIIIIIGHT be Log Key
                     if (!LoadedFile.LogKeyPresent && BitConverter.ToUInt64(LoadedFile.Data, pageOffset + (calculatedRecordLength * j)) ==
@@ -231,6 +248,7 @@ namespace MBBSEmu.Btrieve
                         calculatedRecordLength += 8;
                         recordsInPage = (LoadedFile.PageLength / calculatedRecordLength);
                     }
+                    */
 
                     var recordArray = new byte[LoadedFile.RecordLength];
                     Array.Copy(LoadedFile.Data, pageOffset + (calculatedRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
@@ -421,7 +439,7 @@ namespace MBBSEmu.Btrieve
                 if (key != null && key.Length != currentQuery.KeyLength)
                 {
                     _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyLength}");
-                    currentQuery.KeyLength = (ushort) key.Length;
+                    currentQuery.KeyLength = (ushort)key.Length;
                 }
 
                 /*
@@ -970,7 +988,7 @@ namespace MBBSEmu.Btrieve
 #if DEBUG
             _logger.Info($"Offset set to {lowestRecordOffset}");
 #endif
-            Position = (uint)lowestRecordOffset;
+            Position = lowestRecordOffset;
             return 1;
         }
 
@@ -1020,8 +1038,35 @@ namespace MBBSEmu.Btrieve
 #if DEBUG
             _logger.Info($"Offset set to {highestRecordOffset}");
 #endif
-            Position = (uint)highestRecordOffset;
+            Position = highestRecordOffset;
             return 1;
+        }
+
+        /// <summary>
+        ///     Specific Btrieve files have extra bytes appended by the Btrieve engine to the end of the record, while I've been able
+        ///     to loosely correlate these bytes to things like Log Key, Overlapping Segments, etc. the definition isn't clear
+        ///
+        ///     We'll use this method to manually set the extra bytes at the end of records in known btrieve files across modules until
+        ///     the correct flag/file format for Btrieve is understood enough to know how these are set.
+        /// </summary>
+        /// <returns></returns>
+        public static int GetExtraRecordBytes(string fileName, int fileSize)
+        {
+            var result = fileName.ToUpper() switch
+            {
+                //MJWMUT -- Mutants! 3.11
+                "MJWMUTR.DAT" when fileSize == 4993536 => 24,
+                "MJWMUTS.DAT" when fileSize == 515072 => 8,
+                "MJWMUTPL.DAT" when fileSize == 2560 => 8,
+                "MJWMUTI.DAT" when fileSize == 80384 => 8,
+                "MJWMUTM.DAT" when fileSize == 94720 => 8,
+                _ => 0
+            };
+
+            if (result > 0)
+                _logger.Info($"Extra Record Bytes for {fileName}: {result}");
+
+            return result;
         }
 
     }
