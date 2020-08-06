@@ -57,5 +57,10 @@ namespace MBBSEmu.Extensions
         {
             return Encoding.ASCII.GetBytes(EncodeToANSIString(s));
         }
+
+        public static byte[] GetNullTerminatedBytes(this string s)
+        {
+            return Encoding.ASCII.GetBytes(s + '\0');
+        }
     }
 }

@@ -198,8 +198,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.AllocateVariable("BBSGEN-POINTER", 8192); //GENSIZ -- Defined in MAJORBBS.H
 
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
-            BtrievePointerDictionaryNew.Add(btvFileStructPointer,
-                new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
+            if (module.ModuleDescription != null)
+            {
+                BtrievePointerDictionaryNew.Add(btvFileStructPointer,
+                    new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
+            }
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
 
             var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File

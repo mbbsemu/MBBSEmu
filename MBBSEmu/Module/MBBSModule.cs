@@ -69,9 +69,9 @@ namespace MBBSEmu.Module
         /// </summary>
         public string ModuleDescription { get; set; }
 
-        public MbbsModule(string module, string path = "")
+        public MbbsModule(string module, string path = "", MemoryCore memoryCore = null)
         {
-            ModuleIdentifier = module;
+            ModuleIdentifier = module == null ? "test" : module;
 
             _logger = ServiceResolver.GetService<ILogger>();
 
@@ -84,12 +84,17 @@ namespace MBBSEmu.Module
 
             ModulePath = path;
 
-            if (!System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
-                throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");
+            if (module != null)
+            {
+                if (!System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
+                {
+                    throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");
+                }
+            }
 
-            Mdf = new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF");
-            File = new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL");
 
+            Mdf = module != null ? new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF") : MdfFile.createForTest();
+            File = module != null ? new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL") : NEFile.createForTest();
             
             if (Mdf.MSGFiles.Count > 0)
             {
@@ -107,7 +112,13 @@ namespace MBBSEmu.Module
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);
             GlobalCommandHandlers = new List<IntPtr16>();
-            Memory = new MemoryCore();
+            Memory = memoryCore != null ? memoryCore : new MemoryCore();
+
+            if (module == null)
+            {
+                EntryPoints["_INIT_"] = null;
+                return;
+            }
 
             //Setup _INIT_ Entrypoint
             IntPtr16 initEntryPointPointer;

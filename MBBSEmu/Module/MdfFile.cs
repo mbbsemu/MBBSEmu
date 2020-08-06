@@ -17,6 +17,19 @@ namespace MBBSEmu.Module
             Parse();
         }
 
+        private MdfFile()
+        {
+            ModuleName = "test";
+            Developer = "test";
+            DLLFiles = new List<string>();
+            MSGFiles = new List<string>();
+        }
+
+        public static MdfFile createForTest()
+        {
+            return new MdfFile();
+        }
+
         private void Parse()
         {
             foreach (var line in File.ReadAllLines(_mdfFile))
