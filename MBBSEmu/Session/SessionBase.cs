@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -126,9 +126,9 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Queue to hold data to be sent async to Client
         /// </summary>
-        public ConcurrentQueue<byte[]> DataToClient { get; set; }
+        public BlockingCollection<byte[]> DataToClient { get; set; }
 
-        public ConcurrentQueue<byte> DataFromClient { get; set; }
+        public BlockingCollection<byte> DataFromClient { get; set; }
 
         /// <summary>
         ///     Specified that there is data to be processed from this channel
@@ -200,9 +200,9 @@ namespace MBBSEmu.Session
         ///     Helper Method to enqueue data to be sent to the client Async
         /// </summary>
         /// <param name="dataToSend"></param>
-        public void SendToClientAsync(byte[] dataToSend)
+        public bool SendToClientAsync(byte[] dataToSend)
         {
-            DataToClient.Enqueue(dataToSend);
+            return DataToClient.TryAdd(dataToSend);
         }
 
         /// <summary>
@@ -226,9 +226,8 @@ namespace MBBSEmu.Session
             ExtUsrAcc = new ExtUser();
             Status = 0;
             SessionTimer = new Stopwatch();
-            DataToClient = new ConcurrentQueue<byte[]>();
-            DataFromClient = new ConcurrentQueue<byte>();
-
+            DataToClient = new BlockingCollection<byte[]>();
+            DataFromClient = new BlockingCollection<byte>();
 
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();
@@ -290,9 +289,13 @@ namespace MBBSEmu.Session
             }
         }
 
+        private static bool isBackspace(byte b) {
+            return b == 0x8 || b == 127;
+        }
+
         public void ProcessDataFromClient()
         {
-            if (!DataFromClient.TryDequeue(out var clientData))
+            if (!DataFromClient.TryTake(out var clientData, TimeSpan.FromSeconds(0)))
                 return;
 
             LastCharacterReceived = clientData;
@@ -301,7 +304,7 @@ namespace MBBSEmu.Session
             switch (clientData)
             {
                 //Backspace
-                case 0x8 when SessionState == EnumSessionState.InModule:
+                case isBackspace(clientData) when SessionState == EnumSessionState.InModule:
                     {
                         if (InputBuffer.Length > 0)
                         {
