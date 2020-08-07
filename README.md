@@ -10,7 +10,7 @@ Thanks to MBBSEmu, casual users who do not want to go through the hassle of sett
 
 # How It Works
 
-MBBSEmu is very similar to DOSBox, in that it emulates the Galacticomm host environment (MajorBBS/Wordlgroup) as well as the host platform (x86_16).
+MBBSEmu is very similar to DOSBox, in that it emulates the Galacticomm host environment (MajorBBS/Worldgroup) as well as the host platform (x86_16).
 Modules that were written for The MajorBBS & Worldgroup were different from traditional Bulletin Board System Door games at the time. They were specially written DLL files in NE format which allowed
 multiple users to be within a single module at any given time. This is also why Modules written for The MajorBBS & Worldgroup cannot be run on any other Bulletin Board System platform.
 
