@@ -55,6 +55,16 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             return exportedModule.Invoke(functionOrdinal);
         }
 
+        /// <summary>
+        ///     Begins emulated x86 Execution at the given entry point
+        /// </summary>
+        /// <param name="entryPoint">Pointer to segment:offset emulation is to begin at</param>
+        /// <param name="channelNumber">Channel Number code is being executed for (used to Set State of Exported Modules)</param>
+        /// <param name="simulateCallFar">Simulating a CALL FAR pushes CS:IP to the stack and sets BP=SP</param>
+        /// <param name="bypassState">Some method pointers don't require the Exported Module to have a state set</param>
+        /// <param name="initialStackValues">Values to be on the stack at the start of emulation (arguments passed in)</param>
+        /// <param name="initialStackPointer">Initial SP offset (used to shift SP as to not overlap memory space on nested execution)</param>
+        /// <returns></returns>
         public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Reset Registers to Startup State for the CPU
