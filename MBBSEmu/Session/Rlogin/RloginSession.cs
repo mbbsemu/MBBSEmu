@@ -108,12 +108,9 @@ namespace MBBSEmu.Session.Rlogin
                     SessionState = EnumSessionState.LoggedOff;
                     return;
                 }
-<<<<<<< Updated upstream
 
                 if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
                     EchoEmptyInvoke = true;
-=======
->>>>>>> Stashed changes
             }
 
             //Cleanup if the connection was dropped

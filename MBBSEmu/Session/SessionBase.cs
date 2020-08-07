@@ -289,10 +289,6 @@ namespace MBBSEmu.Session
             }
         }
 
-        private static bool isBackspace(byte b) {
-            return b == 0x8 || b == 127;
-        }
-
         public void ProcessDataFromClient()
         {
             if (!DataFromClient.TryTake(out var clientData, TimeSpan.FromSeconds(0)))
@@ -304,7 +300,8 @@ namespace MBBSEmu.Session
             switch (clientData)
             {
                 //Backspace
-                case isBackspace(clientData) when SessionState == EnumSessionState.InModule:
+                case 127 when SessionState == EnumSessionState.InModule:
+                case 0x8 when SessionState == EnumSessionState.InModule:
                     {
                         if (InputBuffer.Length > 0)
                         {
