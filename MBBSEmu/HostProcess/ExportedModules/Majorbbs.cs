@@ -1690,7 +1690,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var prfptrPointer = Module.Memory.GetVariablePointer("PRFPTR");
             var pointerPosition = Module.Memory.GetPointer(prfptrPointer);
-            Module.Memory.SetArray(pointerPosition.Segment, pointerPosition.Offset, formattedMessage);
+            Module.Memory.SetArray(pointerPosition, formattedMessage);
 
             //Update prfptr value
             pointerPosition.Offset += (ushort)(formattedMessage.Length - 1);
@@ -2400,10 +2400,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 variablePointer = base.Module.Memory.AllocateVariable("SPR", 0x400);
             }
 
-            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, formattedMessage);
+            Module.Memory.SetArray(variablePointer, formattedMessage);
 
 #if DEBUG
-            _logger.Info($"Added {formattedMessage.Length} bytes to the buffer");
+            _logger.Info($"Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
 #endif
 
             Registers.AX = variablePointer.Offset;
@@ -3046,7 +3046,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationSegment, destinationOffset, formattedMessage);
 
 #if DEBUG
-            _logger.Info($"Added {output.Length} bytes to the buffer");
+            _logger.Info($"Added {output.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
 #endif
 
         }
@@ -4755,13 +4755,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (record != null)
             {
-                Module.Memory.SetArray(btvStruct.data, record);
-
+                //NULL record pointer saves it to the btvStruct data pointer
+                if (recordPointer == IntPtr16.Empty)
+                {
+                    Module.Memory.SetArray(btvStruct.data, record);
+                }
+                else
+                {
 #if DEBUG
-                _logger.Info($"Performed Btrieve Step - Btrieve Record Updated {btvDataPointer}, {record.Length} bytes written to {recordPointer}");
+                    _logger.Info($"Performed Btrieve Step - Btrieve Record Updated {btvDataPointer}, {record.Length} bytes written to {recordPointer}");
 #endif
-                Module.Memory.SetArray(recordPointer, record);
-
+                    Module.Memory.SetArray(recordPointer, record);
+                }
             }
         }
 
