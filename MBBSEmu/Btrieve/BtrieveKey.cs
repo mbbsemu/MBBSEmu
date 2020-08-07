@@ -2,6 +2,11 @@
 
 namespace MBBSEmu.Btrieve
 {
+    /// <summary>
+    ///     Represents a defined Btrieve Key entity
+    ///
+    ///     Btrieve Keys can contain N segments. By default Keys have one segment
+    /// </summary>
     public class BtrieveKey
     {
         public List<BtrieveKeyDefinition> Segments { get; set; }

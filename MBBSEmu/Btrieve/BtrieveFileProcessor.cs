@@ -12,6 +12,13 @@ using System.Text;
 
 namespace MBBSEmu.Btrieve
 {
+    /// <summary>
+    ///     The BtrieveFileProcessor class is used to handle Loading, Parsing, and Querying legacy Btrieve Files
+    ///
+    ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.EMU), which are JSON representations
+    ///     of the underlying Btrieve Data. This means the legacy .DAT files are only used once on initial load and are not
+    ///     modified. All Inserts & Updates happen within the new .EMU JSON files. 
+    /// </summary>
     public class BtrieveFileProcessor
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
@@ -133,6 +140,9 @@ namespace MBBSEmu.Btrieve
             LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText($"{path}{fileName}"));
         }
 
+        /// <summary>
+        ///     Saves the MBBSEmu representation of a Btrieve File to disk
+        /// </summary>
         private void SaveJson()
         {
             var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
@@ -361,12 +371,12 @@ namespace MBBSEmu.Btrieve
                 throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
 
             //Find the Record to Update
-            for (var i = 0; i < LoadedFile.Records.Count; i++)
+            foreach (var r in LoadedFile.Records)
             {
-                if (LoadedFile.Records[i].Offset != offset) continue;
+                if (r.Offset != offset) continue;
 
                 //Update It
-                LoadedFile.Records[i].Data = recordData;
+                r.Data = recordData;
                 break;
             }
 

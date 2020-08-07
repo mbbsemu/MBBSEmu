@@ -2,6 +2,13 @@
 
 namespace MBBSEmu.Btrieve
 {
+    /// <summary>
+    ///     Represents a Key Record within a Key Location Page
+    ///
+    ///     NOTE: This is no longer used as MBBSEmu is no longer parsing out Key Pages
+    ///           It is kept here as additional information for anyone doing research on the
+    ///           Btrieve file Format.
+    /// </summary>
     public class BtrieveKeyRecord
     {
         public byte[] Data { get; set; }

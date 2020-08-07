@@ -3,7 +3,7 @@
 namespace MBBSEmu.Btrieve.Enums
 {
     /// <summary>
-    ///     Btrieve Key Attribute BitMask
+    ///     Btrieve Key Attribute BitMask used on Key Definitions
     /// </summary>
     [Flags]
     public enum EnumKeyAttributeMask : byte

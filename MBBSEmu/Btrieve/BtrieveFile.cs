@@ -4,6 +4,9 @@ using Newtonsoft.Json;
 
 namespace MBBSEmu.Btrieve
 {
+    /// <summary>
+    ///     Represents an instance of a Btrieve File (both Legacy .DAT and new .EMU)
+    /// </summary>
     public class BtrieveFile
     {
         /// <summary>
@@ -137,13 +140,6 @@ namespace MBBSEmu.Btrieve
         ///     offset records when loading
         /// </summary>
         public bool LogKeyPresent { get; set; }
-
-        /// <summary>
-        ///     For keys that overlap, Btrieve stores information at the end of the record
-        ///     to account for different values for these keys. For this reason, we need to
-        ///     account if they're present
-        /// </summary>
-        public bool KeyOverlap { get; set; }
 
         public BtrieveFile()
         {
