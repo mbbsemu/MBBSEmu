@@ -26,7 +26,6 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuMemoryCore.Clear();
             mbbsEmuCpuRegisters.CS = 1;
             mbbsEmuCpuRegisters.IP = 0;
-
         }
 
 

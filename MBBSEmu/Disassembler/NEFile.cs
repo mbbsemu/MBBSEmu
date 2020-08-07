@@ -38,6 +38,24 @@ namespace MBBSEmu.Disassembler
             Load();
         }
 
+        private NEFile()
+        {
+            Path = "test";
+            FileName = "test";
+            FileContent = new byte[0];
+            SegmentTable = new List<Segment>();
+            ResidentNameTable = new List<ResidentName>();
+            ModuleReferenceTable = new List<ModuleReference>();
+            ImportedNameTable = new Dictionary<ushort, ImportedName>();
+            EntryTable = new List<Entry>();
+            NonResidentNameTable = new List<NonResidentName>();
+        }
+
+        public static NEFile createForTest()
+        {
+            return new NEFile();
+        }
+
         private void Load()
         {
             var data = new Span<byte>(FileContent);
