@@ -12,28 +12,50 @@ using System.Text;
 
 namespace MBBSEmu.CPU
 {
+    /// <summary>
+    ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
+    /// </summary>
     public class CpuCore : ICpuCore
     {
         protected static readonly ILogger _logger;
 
+        /// <summary>
+        ///     Definition for delegate that is invoked with a CALL FAR references an Imported Method
+        /// </summary>
+        /// <param name="importedNameTableOrdinal"></param>
+        /// <param name="functionOrdinal"></param>
+        /// <returns></returns>
         public delegate ReadOnlySpan<byte> InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
+        /// <summary>
+        ///     Delegate that is invoked with a CALL FAR references an Imported Method 
+        /// </summary>
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
+        /// <summary>
+        ///     x86 Registers
+        /// </summary>
         public CpuRegisters Registers { get; set; }
+
+        /// <summary>
+        ///     x86 Memory Core representing a full 16-bit Address Space
+        /// </summary>
         private IMemoryCore Memory { get; set; }
 
+        /// <summary>
+        ///     Current Instruction being Executed
+        /// </summary>
         private Instruction _currentInstruction { get; set; }
 
         //Debug Pointers
 
         /// <summary>
-        ///     Current Location of the Instruction Pointer
+        ///     Pointer to the current instruction CS:IP (for debugging)
         /// </summary>
         private IntPtr16 _currentInstructionPointer { get; set; }
 
         /// <summary>
-        ///     Previous Location of the Instruction Pointer
+        ///     Pointer to the previous instruction CS:IP (for debugging)
         /// </summary>
         private IntPtr16 _previousInstructionPointer { get; set; }
 
@@ -42,27 +64,52 @@ namespace MBBSEmu.CPU
         /// </summary>
         private IntPtr16 _previousCallPointer { get; set; }
 
-        private bool _showDebug;
-
-        private ushort EXTRA_SEGMENT;
+        /// <summary>
+        ///     Defines if additional debug (disassembly, registers, etc.) is to be displayed with
+        ///     each instruction being executed
+        /// </summary>
+        private bool _showDebug { get; set; }
 
         /// <summary>
-        ///     Default offset for the Stack Base
+        ///     Initial Value of the ES Register
+        /// </summary>
+        private ushort EXTRA_SEGMENT { get; set; }
+
+        /// <summary>
+        ///     Default Value for the SP Register (Stack Pointer)
         /// </summary>
         public const ushort STACK_BASE = 0xFFFF;
 
         /// <summary>
-        ///     Default segment for the Stack
+        ///     Default Segment for the Stack in Memory
         /// </summary>
         public const ushort STACK_SEGMENT = 0x0;
 
+        /// <summary>
+        ///     x87 FPU Stack
+        ///
+        ///     The x87 Stack contains eight slots for 32-bit (Single Precision) Floating Point values
+        /// </summary>
         public readonly List<byte[]> FpuStack = new List<byte[]>(8)
             {new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4]};
 
-        private int _currentOperationSize = 0;
+        /// <summary>
+        ///     Size of the current operation (in bytes)
+        ///
+        ///     1 == 8, 2 == 16, 4 == 32, etc.
+        /// </summary>
+        private int _currentOperationSize { get; set; }
 
-        public long InstructionCounter = 0;
+        /// <summary>
+        ///     Counter of the total number of Instructions executed since Entry
+        /// </summary>
+        public long InstructionCounter { get; set; }
 
+        /// <summary>
+        ///     INT 21h defined Disk Transfer Area
+        ///
+        ///     Buffer used to hold information on the current Disk / IO operation
+        /// </summary>
         private IntPtr16 DiskTransferArea;
 
         static CpuCore()
@@ -107,11 +154,15 @@ namespace MBBSEmu.CPU
             Push(ushort.MaxValue);
         }
 
+        /// <summary>
+        ///     Resets CPU to a default startup state (default Stack Pointer & Base Pointer)
+        /// </summary>
         public void Reset() => Reset(STACK_BASE);
 
         /// <summary>
-        ///     Only Resets Register Values
+        ///     Resets the CPU to a default startup state
         /// </summary>
+        /// <param name="stackBase">Offset of the Stack Pointer & Base Pointer after Reset</param>
         public void Reset(ushort stackBase)
         {
             EXTRA_SEGMENT = ushort.MaxValue;
@@ -131,6 +182,10 @@ namespace MBBSEmu.CPU
             InstructionCounter = 0;
         }
 
+        /// <summary>
+        ///     Pops a Word from the Stack and increments the Stack Pointer
+        /// </summary>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort Pop()
         {
@@ -143,6 +198,10 @@ namespace MBBSEmu.CPU
             return value;
         }
 
+        /// <summary>
+        ///     Pushes a Word to the Stack and decrements the Stack Pointer
+        /// </summary>
+        /// <param name="value"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(ushort value)
         {
@@ -155,6 +214,9 @@ namespace MBBSEmu.CPU
             Registers.SP -= 2;
         }
 
+        /// <summary>
+        ///     Ticks the emulated x86 Core one instruction from the current CS:IP
+        /// </summary>
         public void Tick()
         {
             //Check for segment end
@@ -588,7 +650,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Returns the OFFSET of Operand 0
         ///
-        ///     Only use this for instructions where Operand 0 is an OFFSET within a memory Segment
+        ///     Only use this for instructions where Operand 0 is an OFFSET within a Memory Segment
         /// </summary>
         /// <param name="opKind"></param>
         /// <returns></returns>
@@ -703,6 +765,12 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Saves the specified result of the current instruction into the current instructions source
+        ///
+        ///     This is only used by a couple specific opcodes
+        /// </summary>
+        /// <param name="result"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void WriteToSource(ushort result)
         {
