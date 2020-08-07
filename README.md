@@ -28,7 +28,7 @@ You too can help out The MajorBBS Emulation Project in many ways:
 * Fix an open [issue](./issues)
 * Help write more automated [tests](./tree/master/MBBSEmu.Tests)
 * Debug and fix known compatility issues with a Module
-* Add some aweome new features we haven't even thought of yet!
+* Add some awesome new features we haven't even thought of yet!
 
 # More Information
 
