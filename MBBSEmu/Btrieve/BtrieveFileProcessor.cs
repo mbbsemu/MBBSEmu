@@ -1,13 +1,14 @@
 ﻿using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using Newtonsoft.Json;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Extensions;
 
 namespace MBBSEmu.Btrieve
 {
@@ -494,7 +495,10 @@ namespace MBBSEmu.Btrieve
             foreach (var record in LoadedFile.Records)
             {
                 if (record.Offset == absolutePosition)
+                {
+                    Position = record.Offset;
                     return record.Data;
+                }
             }
 
             throw new Exception($"No Btrieve Record located at Offset {absolutePosition}");
@@ -1067,6 +1071,25 @@ namespace MBBSEmu.Btrieve
                 _logger.Info($"Extra Record Bytes for {fileName}: {result}");
 
             return result;
+        }
+
+        /// <summary>
+        ///     Writes a similar file as BUTIL -RECOVER to verify records loaded from recovery process match records loaded by MBBSEmu
+        /// </summary>
+        /// <param name="file"></param>
+        /// <param name="records"></param>
+        public static void WriteBtrieveRecoveryFile(string file, IEnumerable<BtrieveRecord> records)
+        {
+            using var outputFile = File.Open(file, FileMode.Create);
+
+            foreach (var r in records)
+            {
+                outputFile.Write(Encoding.ASCII.GetBytes($"{r.Data.Length},"));
+                outputFile.Write(r.Data);
+                outputFile.Write(new byte[] { 0xD, 0xA });
+            }
+            outputFile.WriteByte(0x1A);
+            outputFile.Close();
         }
 
     }
