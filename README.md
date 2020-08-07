@@ -2,6 +2,8 @@
 ![](http://forthebadge.com/images/badges/made-with-c-sharp.svg)
 ![](http://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)
 
+![The MajorBBS Emulation Project Screenshot](./images/mbbsemu.png)
+
 The MajorBBS Emulation Project (**MBBSEmu**) is an Open Source, Cross-Platform emulator for modules written for The MajorBBS and Worldgroup Bulletin Board Systems.
 MBBSEmu was created in order to lower the effort required to enjoy the many Games that were written for DOS versions of both The MajorBBS or Worldgroup on any modern operating system or platform including both x86 and ARM.
 Thanks to MBBSEmu, casual users who do not want to go through the hassle of setting up a Virtual Machine or configuring a whole Bulletin Board System just to play a game they remember and love can do so easily.
