@@ -5,8 +5,9 @@
 ![The MajorBBS Emulation Project Screenshot](./images/mbbsemu.png)
 
 The MajorBBS Emulation Project (**MBBSEmu**) is an Open Source, Cross-Platform emulator for modules written for The MajorBBS and Worldgroup Bulletin Board Systems.
-MBBSEmu was created in order to lower the effort required to enjoy the many Games that were written for DOS versions of both The MajorBBS or Worldgroup on any modern operating system or platform including both x86 and ARM.
-Thanks to MBBSEmu, casual users who do not want to go through the hassle of setting up a Virtual Machine or configuring a whole Bulletin Board System just to play a game they remember and love can do so easily.
+MBBSEmu was created in order to lower the effort required to enjoy the many Games that were written for DOS versions of both The MajorBBS or Worldgroup on any modern 64-bit Operating Systems including Linux, OSX, and Windows. MBBSEmu is flexible enough to run your favorite games in a [Docker Container](https://github.com/fletcherm/mbbsemu-docker), and fast enough to even run them on a Raspberry Pi!
+
+With MBBSEmu, casual users who do not want to go through the hassle of setting up a Virtual Machine or configuring an entire Bulletin Board System just to play a game they remember and love can do so easily.
 
 # How It Works
 
@@ -32,7 +33,9 @@ You too can help out The MajorBBS Emulation Project in many ways:
 
 # More Information
 
-You can find much more information on MBBSEmu, including documentation as well as Module downloads on the MBBSEmu website: [here](https://www.mbbsemu.com)
+You can find much more information on MBBSEmu, including documentation as well as Module downloads on the MBBSEmu website: 
+
+[https://www.mbbsemu.com](https://www.mbbsemu.com)
 
 # License / Copyright
 
