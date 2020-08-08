@@ -189,23 +189,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 Module.Memory.SetByte(ctypePointer.Segment, (ushort)(ctypePointer.Offset + i + 1), (byte)resultByte);
             }
-
-            //Setup Generic User Database
-            var btvFileStructPointer = Module.Memory.AllocateVariable("BBSGEN-STRUCT", BtvFileStruct.Size);
-            var btvFileName = Module.Memory.AllocateVariable("BBSGEN-NAME", 11); //BBSGEN.DAT\0
-            var btvDataPointer =
-                Module.Memory.AllocateVariable("BBSGEN-POINTER", 8192); //GENSIZ -- Defined in MAJORBBS.H
-
-            var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
-            if (module.ModuleDescription != null)
-            {
-                BtrievePointerDictionaryNew.Add(btvFileStructPointer,
-                    new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
-            }
-            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
-
-            var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
-            Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
         }
 
         public void SetRegisters(CpuRegisters registers)
@@ -422,6 +405,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 624:
                     return usaptr;
                 case 757:
+                    SetupGENBB();
                     return genbb;
                 case 459:
                     return othusn;
@@ -1121,6 +1105,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     Sets up the Generic MajorBBS Btrieve Database for Use
+        /// </summary>
+        private void SetupGENBB()
+        {
+            //If it's already setup, bail
+            if (Module.Memory.TryGetVariablePointer("GENBB", out _))
+                return;
+
+            var btvFileStructPointer = Module.Memory.AllocateVariable("BBSGEN-STRUCT", BtvFileStruct.Size);
+            var btvFileName = Module.Memory.AllocateVariable("BBSGEN-NAME", 11); //BBSGEN.DAT\0
+            Module.Memory.SetArray("BBSGEN-NAME", Encoding.ASCII.GetBytes($"BBSGEN.DAT\0"));
+            var btvDataPointer =
+                Module.Memory.AllocateVariable("BBSGEN-POINTER", 8192); //GENSIZ -- Defined in MAJORBBS.H
+
+            var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
+
+            BtrievePointerDictionaryNew.Add(btvFileStructPointer,
+                new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
+
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
+
+            var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
+            Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
         }
 
         /// <summary>
