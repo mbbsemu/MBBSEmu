@@ -21,6 +21,10 @@ code occur on the user channel.
 
 ![MBBSEmy System Diagram](./images/mbbsemuDiagram.png)
 
+# More Information
+
+You can find much more information on MBBSEmu, including documentation as well as Module downloads on the MBBSEmu website: 
+
 # Contribute
 
 Because much of this software is several decares old, and the numbers of those who remembers it is quite literally shrinking by the day, it's on us as a community to continue keeping the memory of this software alive and accessible.
@@ -31,11 +35,11 @@ You too can help out The MajorBBS Emulation Project in many ways:
 * Debug and fix known compatility issues with a Module
 * Add some awesome new features we haven't even thought of yet!
 
-# More Information
-
-You can find much more information on MBBSEmu, including documentation as well as Module downloads on the MBBSEmu website: 
-
 [https://www.mbbsemu.com](https://www.mbbsemu.com)
+
+# Development tips
+
+See [development tips](./documents/development-tips.md) for more information about building & developing MBBSEmu.
 
 # License / Copyright
 
