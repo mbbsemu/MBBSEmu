@@ -25,7 +25,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MbbsModule
     {
-        private protected readonly ILogger _logger;
+        private protected readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
 
         /// <summary>
         ///     State returned by REGISTER_MODULE
@@ -68,7 +68,7 @@ namespace MBBSEmu.Module
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
         public Dictionary<string, IntPtr16> EntryPoints { get; set; }
-        
+
         /// <summary>
         ///     Routine definitions for functions registered via RTKICK
         /// </summary>
@@ -124,13 +124,19 @@ namespace MBBSEmu.Module
         /// </summary>
         public string ModuleDescription { get; set; }
 
-        public MbbsModule(string module, string path = "", MemoryCore memoryCore = null)
+        /// <summary> 
+        ///     Constructor for MbbsModule
+        ///
+        ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
+        /// </summary>
+        /// <param name="moduleIdentifier"></param>
+        /// <param name="path"></param>
+        /// <param name="memoryCore"></param>
+        public MbbsModule(string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
-            ModuleIdentifier = module == null ? "test" : module;
+            ModuleIdentifier = moduleIdentifier;
 
-            _logger = ServiceResolver.GetService<ILogger>();
-
-            //Sanitize Path
+            //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
@@ -139,18 +145,15 @@ namespace MBBSEmu.Module
 
             ModulePath = path;
 
-            if (module != null)
+            //Verify MDF File Exists
+            if (!string.IsNullOrEmpty(ModuleIdentifier) && !System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
             {
-                if (!System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
-                {
-                    throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");
-                }
+                throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");
             }
 
+            Mdf = !string.IsNullOrEmpty(ModuleIdentifier) ? new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF") : MdfFile.createForTest();
+            File = !string.IsNullOrEmpty(ModuleIdentifier) ? new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL") : NEFile.createForTest();
 
-            Mdf = module != null ? new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF") : MdfFile.createForTest();
-            File = module != null ? new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL") : NEFile.createForTest();
-            
             if (Mdf.MSGFiles.Count > 0)
             {
                 Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
@@ -160,6 +163,7 @@ namespace MBBSEmu.Module
                 }
             }
 
+            //Set Initial Values
             EntryPoints = new Dictionary<string, IntPtr16>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
@@ -168,9 +172,10 @@ namespace MBBSEmu.Module
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);
             GlobalCommandHandlers = new List<IntPtr16>();
-            Memory = memoryCore != null ? memoryCore : new MemoryCore();
+            Memory = memoryCore ?? new MemoryCore();
 
-            if (module == null)
+            //If it's a Test, setup a fake _INIT_
+            if (string.IsNullOrEmpty(ModuleIdentifier))
             {
                 EntryPoints["_INIT_"] = null;
                 return;
@@ -186,7 +191,7 @@ namespace MBBSEmu.Module
 
                 var initNonResidentName = File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
 
-                if(initNonResidentName == null)
+                if (initNonResidentName == null)
                     throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
 
                 var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
@@ -198,7 +203,7 @@ namespace MBBSEmu.Module
                 initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
             }
 
-            
+
             _logger.Info($"Located _INIT__: {initEntryPointPointer}");
             EntryPoints["_INIT_"] = initEntryPointPointer;
         }

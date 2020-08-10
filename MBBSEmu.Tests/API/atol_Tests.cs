@@ -1,8 +1,4 @@
-﻿using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MBBSEmu.Extensions;
 using Xunit;
 
 namespace MBBSEmu.Tests.API
