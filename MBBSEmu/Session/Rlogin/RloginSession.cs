@@ -1,4 +1,4 @@
-﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using NLog;
@@ -98,7 +98,7 @@ namespace MBBSEmu.Session.Rlogin
         {
             while (SessionState != EnumSessionState.LoggedOff && _rloginConnection.IsConnected())
             {
-                while (DataToClient.TryDequeue(out var dataToSend))
+                while (DataToClient.TryTake(out var dataToSend))
                 {
                     Send(dataToSend);
                 }
@@ -111,8 +111,6 @@ namespace MBBSEmu.Session.Rlogin
 
                 if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
                     EchoEmptyInvoke = true;
-
-                Thread.Sleep(100);
             }
 
             //Cleanup if the connection was dropped
@@ -127,7 +125,6 @@ namespace MBBSEmu.Session.Rlogin
         {
             while (SessionState != EnumSessionState.LoggedOff && _rloginConnection.IsConnected())
             {
-                
                 var bytesReceived = _rloginConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
 
@@ -175,7 +172,7 @@ namespace MBBSEmu.Session.Rlogin
 
                 //Enqueue the incoming bytes for processing
                 for (var i = 0; i < bytesReceived; i++)
-                    DataFromClient.Enqueue(socketReceiveBuffer[i]);
+                    DataFromClient.Add(socketReceiveBuffer[i]);
 
                 Thread.Sleep(1);
             }

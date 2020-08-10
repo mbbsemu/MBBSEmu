@@ -1,4 +1,4 @@
-﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
 using NLog;
 using System;
@@ -90,7 +90,7 @@ namespace MBBSEmu.Session.Telnet
         {
             try
             {
-                using var msOutputBuffer = new MemoryStream();
+                using var msOutputBuffer = new MemoryStream(dataToSend.Length);
                 foreach (var b in dataToSend)
                 {
                     //Special Character Escapes while in a Module
@@ -119,29 +119,32 @@ namespace MBBSEmu.Session.Telnet
             }
         }
 
+        private static TimeSpan MINUTE_TIMESPAN = TimeSpan.FromMinutes(1);
+
         /// <summary>
         ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
         /// </summary>
         private void SendWorker()
         {
+            TimeSpan timeSpan = TimeSpan.FromSeconds(0.5);
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
-                if (!Heartbeat())
+                if (!DataToClient.TryTake(out var dataToSend, timeSpan))
+                {
+                    if (!Heartbeat()) {
+                        break;
+                    }
                     continue;
-
-                //If client didn't initiate IAC, initiate it from the server
-                if (_iacPhase == 0 && SessionTimer.ElapsedMilliseconds > 500)
-                {
-                    _logger.Warn("Client hasn't negotiated IAC -- Sending Minimum");
-                    _iacPhase = 1;
-                    Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
-
                 }
 
-                while (DataToClient.TryDequeue(out var dataToSend))
-                {
-                    Send(dataToSend);
+                if (SessionTimer.ElapsedMilliseconds >= 500) {
+                    if (_iacPhase == 0) {
+                        TriggerIACNegotation();
+                    }
+                    timeSpan = MINUTE_TIMESPAN;
                 }
+
+                Send(dataToSend);
 
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
                 {
@@ -151,8 +154,6 @@ namespace MBBSEmu.Session.Telnet
 
                 if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
                     EchoEmptyInvoke = true;
-
-                Thread.Sleep(100);
             }
 
             //Cleanup if the connection was dropped
@@ -183,7 +184,7 @@ namespace MBBSEmu.Session.Telnet
 
                 //Enqueue the incoming bytes for processing
                 for (var i = 0; i < bytesReceived; i++)
-                    DataFromClient.Enqueue(socketReceiveBuffer[i]);
+                    DataFromClient.Add(socketReceiveBuffer[i]);
             }
 
             //Cleanup if the connection was dropped
@@ -194,7 +195,15 @@ namespace MBBSEmu.Session.Telnet
         }
 
         /// <summary>
-        ///     Parses IAC Commands Received by 
+        ///     Initiates server side IAC negotation
+        /// </summary>
+        private void TriggerIACNegotation() {
+            _iacPhase = 1;
+            Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+        }
+
+        /// <summary>
+        ///     Parses IAC Commands Received by
         /// </summary>
         /// <param name="iacResponse"></param>
         private void ParseIAC(ReadOnlySpan<byte> iacResponse)
