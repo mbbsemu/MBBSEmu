@@ -70,13 +70,13 @@ namespace MBBSEmu.DependencyInjection
         /// <returns></returns>
         private static FileStream LoadAppSettings()
         {
-            if(!File.Exists("appsettings.json"))
+            if(!File.Exists($"{FileUtility.ExecutingPath}appsettings.json"))
                 throw new FileNotFoundException("Unable to locate appsettings.json file. Please ensure the file is in the same directory as the MBBSEmu executable file.");
 
-            if(!IsValidJson(File.ReadAllText("appsettings.json")))
+            if(!IsValidJson(File.ReadAllText($"{FileUtility.ExecutingPath}appsettings.json")))
                 throw new InvalidDataException("Invalid JSON detected in appsettings.json. Please verify the format & contents of the file are valid JSON.");
 
-            return File.Open("appsettings.json", FileMode.Open, FileAccess.Read);
+            return File.Open($"{FileUtility.ExecutingPath}appsettings.json", FileMode.Open, FileAccess.Read);
         }
 
         /// <summary>

@@ -12,6 +12,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.IO;
 
 namespace MBBSEmu
 {
@@ -100,13 +101,13 @@ namespace MBBSEmu
                     DatabaseReset();
 
                 //Setup Generic Database
-                if (!File.Exists("BBSGEN.DAT"))
+                if (!File.Exists($"{FileUtility.ExecutingPath}BBSGEN.DAT"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
                    
                     var resourceManager = ServiceResolver.GetService<IResourceManager>();
                     
-                    File.WriteAllBytes("BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
+                    File.WriteAllBytes($"{FileUtility.ExecutingPath}BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
                 }
 
                 //Setup Modules
@@ -153,7 +154,7 @@ namespace MBBSEmu
                     _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
                     return;
                 }
-                if (!File.Exists(databaseFile))
+                if (!File.Exists($"{FileUtility.ExecutingPath}{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
                     DatabaseReset();
