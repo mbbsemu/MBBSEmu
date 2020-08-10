@@ -226,8 +226,8 @@ namespace MBBSEmu.Session
             ExtUsrAcc = new ExtUser();
             Status = 0;
             SessionTimer = new Stopwatch();
-            DataToClient = new BlockingCollection<byte[]>();
-            DataFromClient = new BlockingCollection<byte>();
+            DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
+            DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
 
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();

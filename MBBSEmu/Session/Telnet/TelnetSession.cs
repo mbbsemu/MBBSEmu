@@ -119,21 +119,29 @@ namespace MBBSEmu.Session.Telnet
             }
         }
 
+        private static TimeSpan MINUTE_TIMESPAN = TimeSpan.FromMinutes(1);
+
         /// <summary>
         ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
         /// </summary>
         private void SendWorker()
         {
-            TimeSpan timeSpan = TimeSpan.FromMinutes(1);
+            TimeSpan timeSpan = TimeSpan.FromSeconds(0.5);
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
-                // TODO send IAC negotiation first
                 if (!DataToClient.TryTake(out var dataToSend, timeSpan))
                 {
                     if (!Heartbeat()) {
                         break;
                     }
                     continue;
+                }
+
+                if (SessionTimer.ElapsedMilliseconds >= 500) {
+                    if (_iacPhase == 0) {
+                        TriggerIACNegotation();
+                    }
+                    timeSpan = MINUTE_TIMESPAN;
                 }
 
                 Send(dataToSend);
@@ -187,7 +195,15 @@ namespace MBBSEmu.Session.Telnet
         }
 
         /// <summary>
-        ///     Parses IAC Commands Received by 
+        ///     Initiates server side IAC negotation
+        /// </summary>
+        private void TriggerIACNegotation() {
+            _iacPhase = 1;
+            Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+        }
+
+        /// <summary>
+        ///     Parses IAC Commands Received by
         /// </summary>
         /// <param name="iacResponse"></param>
         private void ParseIAC(ReadOnlySpan<byte> iacResponse)
