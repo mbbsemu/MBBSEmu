@@ -1,10 +1,12 @@
-﻿using Iced.Intel;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
-using Microsoft.VisualBasic.FileIO;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
 
 namespace MBBSEmu.Tests.API
 {
@@ -12,7 +14,6 @@ namespace MBBSEmu.Tests.API
     {
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
-        protected const ushort DATA_SEGMENT = 2;
 
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
@@ -24,7 +25,7 @@ namespace MBBSEmu.Tests.API
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            majorbbs = new Majorbbs(new MbbsModule(null, "", mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
+            majorbbs = new Majorbbs(new MbbsModule(null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, majorbbsFunctionDelegate);
         }
 
@@ -43,47 +44,41 @@ namespace MBBSEmu.Tests.API
             mbbsEmuCpuRegisters.IP = 0;
         }
 
-        protected void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
+        protected void executeAPITest(ushort librarySegment, ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
-            //Decode the Segment
-            var instructionList = new InstructionList();
-            var codeReader = new ByteArrayCodeReader(byteCode.ToArray());
-            var decoder = Decoder.Create(16, codeReader);
-            decoder.IP = 0x0;
-
-            while (decoder.IP < (ulong)byteCode.Length)
-            {
-                decoder.Decode(out instructionList.AllocUninitializedElement());
-            }
-
-            mbbsEmuMemoryCore.AddSegment(segmentOrdinal, instructionList);
-        }
-
-        
-        /// <summary>
-        /// Allows the test method to push any method arguments into core
-        /// </summary>
-        /// <param name="core">CPU Core where arguments should be pushed</param>
-        /// <returns>The data to be copied into the data segment, or null for none</returns>
-        protected delegate byte[] ArgumentPusher(ICpuCore core);
-        
-        protected void executeAPITest(ushort ordinal, ArgumentPusher argumentPusher)
-        {
-            Reset();
-
             mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
-            mbbsEmuMemoryCore.AddSegment(DATA_SEGMENT);
-            
-            CreateCodeSegment(new byte[] { 0x9A, (byte) (ordinal & 0xFF), (byte) (ordinal >> 8), 0xFF, 0xFF });
 
-            byte[] dataSegmentData = argumentPusher.Invoke(mbbsEmuCpuCore);
-            if (dataSegmentData != null)
+            //Create a new CODE Segment with a
+            //simple ASM call for CALL FAR librarySegment:apiOrdinal
+            var apiTestCodeSegment = new Segment
             {
-                mbbsEmuMemoryCore.SetArray(DATA_SEGMENT, 0, dataSegmentData);
-            }
+                Ordinal = CODE_SEGMENT,
+                Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(librarySegment & 0xFF), (byte)(librarySegment >> 8), },
+                Flag = (ushort)EnumSegmentFlags.Code
+            };
+
+            mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
+
+            //Push Arguments to Stack
+            foreach (var a in apiArguments.Reverse())
+                mbbsEmuCpuCore.Push(a);
+
 
             //Process Instruction, e.g. call the method
             mbbsEmuCpuCore.Tick();
+        }
+
+        protected void executeAPITest(ushort librarySegment, ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
+        {
+            var argumentsList = new List<ushort>(apiArguments.Count() * 2);
+
+            foreach (var a in apiArguments)
+            {
+                argumentsList.Add(a.Offset);
+                argumentsList.Add(a.Segment);
+            }
+
+            executeAPITest(librarySegment, apiOrdinal, argumentsList);
         }
     }
 }
