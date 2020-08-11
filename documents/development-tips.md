@@ -28,3 +28,8 @@ We expect the overall process to remain the same; however some steps may shift s
 * Release
   * `dotnet build --configuration Release`
   * Artifacts are dumped to `MBBSEmu\bin\Release\netcoreapp3.1`
+
+## Run the tests
+
+* `dotnet test`
+  * That should be it!
