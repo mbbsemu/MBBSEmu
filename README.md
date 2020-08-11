@@ -32,8 +32,8 @@ You can find much more information on MBBSEmu, including documentation as well a
 Because much of this software is several decares old, and the numbers of those who remembers it is quite literally shrinking by the day, it's on us as a community to continue keeping the memory of this software alive and accessible.
 
 You too can help out The MajorBBS Emulation Project in many ways:
-* Fix an open [issue](./issues)
-* Help write more automated [tests](./tree/master/MBBSEmu.Tests)
+* Fix an open [issue](https://github.com/enusbaum/MBBSEmu/issues)
+* Help write more automated tests
 * Debug and fix known compatility issues with a Module
 * Add some awesome new features we haven't even thought of yet!
 
