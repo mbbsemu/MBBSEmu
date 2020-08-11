@@ -12,7 +12,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
-        protected static readonly ushort LIBRARY_SEGMENT = HostProcess.ExportedModules.Majorbbs.Segment;
+        protected const ushort LIBRARY_SEGMENT = HostProcess.ExportedModules.Majorbbs.Segment;
 
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
