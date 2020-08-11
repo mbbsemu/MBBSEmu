@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Fsd;
@@ -1136,7 +1136,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Get the current calendar time as a value of type time_t
         ///     Epoch Time
-        /// 
+        ///
         ///     Signature: time_t time (time_t* timer);
         ///     Return: Value is 32-Bit TIME_T (DX:AX)
         /// </summary>
@@ -1155,7 +1155,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Allocate a new memory block and zeros it out on the host
-        /// 
+        ///
         ///     Signature: char *alczer(unsigned nbytes);
         ///     Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
@@ -1184,7 +1184,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Get's a module's name from the specified .MDF file
-        /// 
+        ///
         ///     Signature: char *gmdnam(char *mdfnam);
         ///     Return: AX = Offset in Segment
         ///             DX = Data Segment
@@ -1449,7 +1449,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *string=stgopt(int msgnum)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment     
+        ///             DX = Host Segment
         /// </summary>
         private void stgopt()
         {
@@ -1480,10 +1480,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Read value of CNF option (text blocks with ASCII compatible line terminators)
         ///
         ///     Functionally, as far as this helper method is concerned, there's no difference between this method and stgopt()
-        /// 
+        ///
         ///     Signature: char *bufadr=getasc(int msgnum)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment 
+        ///             DX = Host Segment
         /// </summary>
         private void getasc()
         {
@@ -1498,7 +1498,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *l2as(long longin)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment 
+        ///             DX = Host Segment
         /// </summary>
         private void l2as()
         {
@@ -1527,7 +1527,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: long int atol(const char *str)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment  
+        ///             DX = Host Segment
         /// </summary>
         private void atol()
         {
@@ -1653,10 +1653,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Gets the online user account info
-        /// 
+        ///
         ///     Signature: struct usracc *uaptr=uacoff(unum)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment  
+        ///             DX = Host Segment
         /// </summary>
         /// <returns></returns>
         private void uacoff()
@@ -1915,7 +1915,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Does the user have the specified key
-        /// 
+        ///
         ///     Signature: int haskey(char *lock)
         ///     Returns: AX = 1 == True
         /// </summary>
@@ -1966,7 +1966,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *ascdat=ncdate(int date)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment  
+        ///             DX = Host Segment
         /// </summary>
         /// <returns></returns>
         private void ncdate()
@@ -2004,7 +2004,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: char *ascdat=ncdate(int date)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment  
+        ///             DX = Host Segment
         /// </summary>
         /// <returns></returns>
         private void ncedat()
@@ -2035,7 +2035,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Default Status Handler for status conditions this module is not specifically expecting
         ///
         ///     Ignored for now
-        /// 
+        ///
         ///     Signature: void dfsthn()
         /// </summary>
         /// <returns></returns>
@@ -2066,7 +2066,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Register a real-time routine that needs to execute more than 1 time per second
         ///
         ///     Routines registered this way are executed at 18hz
-        /// 
+        ///
         ///     Signature: void rtihdlr(void (*rouptr)(void))
         /// </summary>
         private void rtihdlr()
@@ -2136,7 +2136,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Restore previous MCV file block ptr from before last setmbk() call
-        /// 
+        ///
         ///     Signature: void rstmbk()
         /// </summary>
         /// <returns></returns>
@@ -2163,7 +2163,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: BTVFILE *bbptr=opnbtv(char *filnae, int reclen)
         ///     Return: AX = Offset to File Pointer
-        ///             DX = Host Btrieve Segment  
+        ///             DX = Host Btrieve Segment
         /// </summary>
         /// <returns></returns>
         private void opnbtv()
@@ -2326,7 +2326,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Insert new fixed-length Btrieve record
-        /// 
+        ///
         ///     Signature: void insbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
@@ -2369,7 +2369,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Raw status from btusts, where appropriate
-        ///     
+        ///
         ///     Signature: int status
         ///     Returns: Segment holding the Users Status
         /// </summary>
@@ -2425,7 +2425,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Long Multiplication (Borland C++ Implicit Function)
-        /// 
+        ///
         /// </summary>
         /// <returns></returns>
         private void f_lxmul()
@@ -2496,7 +2496,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Scans the specified MDF file for a line prefix that matches the specified string
-        /// 
+        ///
         ///     Signature: char *scnmdf(char *mdfnam,char *linpfx);
         ///     Returns: AX = Offset of String
         ///              DX = Segment of String
@@ -2738,7 +2738,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Declare size of the Volatile Data Area (Maximum size the module will require)
         ///     Because this is just another memory block, we use the host memory
-        /// 
+        ///
         ///     Signature: void *dclvda(unsigned nbytes);
         /// </summary>
         private void dclvda()
@@ -3066,7 +3066,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Looks for the specified filename (filespec) in the BBS directory, returns 1 if the file is there
-        /// 
+        ///
         ///     Signature: int yes=fndlst(struct fndblk &fb, filespec, char attr)
         /// </summary>
         private void fnd1st()
@@ -3680,7 +3680,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Sets the position indicator associated with the stream to a new position.
-        /// 
+        ///
         ///     Signature: int fseek ( FILE * stream, long int offset, int origin )
         /// </summary>
         private void fseek()
@@ -3762,7 +3762,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns a pointer to the first occurence of character in the C string str
         ///
         ///     Signature: char * strchr ( const char * str, int character )
-        /// 
+        ///
         ///     More Info: http://www.cplusplus.com/reference/cstring/strchr/
         /// </summary>
         private void strchr()
@@ -4065,44 +4065,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToSearchPointer = GetParameterPointer(0);
             var stringToFindPointer = GetParameterPointer(2);
 
-            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true))
-                .ToUpper();
-            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true)).ToUpper();
+            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true));
+            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true));
 
-            //Won't find it if the substring is greater than the string to search
-            if (stringToFind.Length > stringToSearch.Length)
-            {
+            var offset = stringToSearch.IndexOf(stringToFind);
+            if (offset >= 0) {
+                Registers.AX = (ushort) offset;
+                Registers.DX = stringToSearchPointer.Segment;
+            } else {
+                // not found, return NULL
                 Registers.AX = 0;
-                return;
+                Registers.DX = 0;
             }
-
-            for (var i = 0; i < stringToSearch.Length; i++)
-            {
-                //are there not enough charaters left to match?
-                if (stringToFind.Length > (stringToSearch.Length - i))
-                    break;
-
-                var isMatch = true;
-                for (var j = 0; j < stringToFind.Length; j++)
-                {
-                    if (stringToSearch[i + j] == stringToFind[j])
-                        continue;
-
-                    isMatch = false;
-                    break;
-                }
-
-                //Found a match?
-                if (isMatch)
-                {
-                    Registers.AX = (ushort)(stringToSearchPointer.Offset + i);
-                    Registers.DX = stringToSearchPointer.Segment;
-                    return;
-                }
-            }
-
-            Registers.AX = 0;
-            Registers.DX = 0;
         }
 
         /// <summary>
@@ -4301,7 +4275,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     This is the pointer, to the pointer, for the MODULE struct because module is declared
         ///     **module in MAJORBBS.H
-        /// 
+        ///
         ///     Pointer -> Pointer -> Struct
         /// </summary>
         private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("MODULE-POINTER").ToSpan();
@@ -4434,7 +4408,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This will be called as fast as possible, as often as possible until
         ///     stop_polling() is called
-        /// 
+        ///
         ///     Signature: void begin_polling(int unum,void (*rouptr)())
         /// </summary>
         private void begin_polling()
@@ -5020,7 +4994,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Galacticomm's malloc() for debugging
-        /// 
+        ///
         ///     Signature: void * galmalloc(unsigned int size);
         ///     Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
@@ -5082,7 +5056,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void galfree()
         {
-            //Until we can refactor the memory controller, just return 
+            //Until we can refactor the memory controller, just return
 
             //TODO: Memory is going to be leaked, need to fix this
             return;
@@ -5164,10 +5138,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Gets the extended User Account Information
-        /// 
+        ///
         ///     Signature: struct extusr *exptr=extoff(unum)
         ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment  
+        ///             DX = Host Segment
         /// </summary>
         /// <returns></returns>
         private void extoff()
@@ -5202,7 +5176,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     We write this to a dummy address. This is usually used to show custom graphics
         ///     on the Sysop console
-        /// 
+        ///
         ///     Signature: char *frzseg(void)
         /// </summary>
         private void frzseg()
@@ -5219,7 +5193,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This macro with functional form fills env with information about the current state of the calling environment
         ///     in that point of code execution, so that it can be restored by a later call to longjmp.
-        /// 
+        ///
         ///     Signature: int setjmp(jmp_buf env)
         /// </summary>
         private void setjmp()
@@ -5276,7 +5250,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     longjmp - performs a non-local goto
         ///
-        ///     Signature: 
+        ///     Signature:
         /// </summary>
         private void longjmp()
         {
@@ -5505,7 +5479,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Counts the number of days since 1/1/80
-        /// 
+        ///
         ///     Signature: int count=cofdat(int date)
         /// </summary>
         private void cofdat()
@@ -5686,7 +5660,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Checks a type E CNF option for one of several possible values
-        /// 
+        ///
         ///     Signature: int index=tokopt(int msgnum, char *token1, chat *token2,....,NULL);
         /// </summary>
         private void tokopt()
@@ -6035,7 +6009,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     (File Transfer) Submit a tagspec for download
         ///
         ///     Always returns 0 to denote program now has control
-        /// 
+        ///
         ///     Signature: int ftgsbm(char *prot);
         /// </summary>
         private void ftgsbm()
@@ -6264,7 +6238,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This method differs from f_open in that it doesn't create a FILE struct, it only returns the handle
         ///
-        ///     Signature: int open(const char *path, int access [, unsigned mode]); 
+        ///     Signature: int open(const char *path, int access [, unsigned mode]);
         /// </summary>
         private void open()
         {
@@ -6465,7 +6439,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Display background for Full-Screen entry mode (Full-Screen Data Entry)
-        /// 
+        ///
         ///     Signature: void fsdbkg(char *templt);
         /// </summary>
         private void fsdbkg()
@@ -6767,7 +6741,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Find text variable & return number
-        /// 
+        ///
         ///     Signature: int findtvar(char *name);
         /// </summary>
         private void findtvar()
@@ -6790,7 +6764,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Turns on echo utility for the specified user
         ///
-        /// 
+        ///
         ///     Signature: void echonu(int usrnum);
         /// </summary>
         private void echonu()
