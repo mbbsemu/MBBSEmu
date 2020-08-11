@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -291,7 +291,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
 
             //If at this point, it's an unknown selection and it's NOT a module number, then re-display menu
-            if (!int.TryParse(inputValue.ToString(), out var selectedMenuItem))
+            if (!int.TryParse(inputValue.ToString(), out var selectedMenuItem) || selectedMenuItem >= modules.Count)
             {
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 session.InputBuffer.SetLength(0);
