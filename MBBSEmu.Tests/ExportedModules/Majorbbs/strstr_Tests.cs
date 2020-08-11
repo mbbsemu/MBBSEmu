@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using MBBSEmu.Memory;
 using Xunit;
@@ -12,6 +12,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Theory]
         [InlineData("test", "test", 0)]
         [InlineData("abctest", "test", 3)]
+        [InlineData("abctest", "not_found", -1)]
+        [InlineData("abctest", "Test", -1)]
+        [InlineData("abctesttest", "test", 3)]
         public void STRSTR_Test(string string1, string string2, long expectedOffset)
         {
             //Reset State
@@ -27,9 +30,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
 
             //Verify Results
-            Assert.Equal(string1Pointer.Offset + expectedOffset, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(string1Pointer.Segment, mbbsEmuCpuRegisters.DX);
-            
+            if (expectedOffset < 0) {
+                Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+                Assert.Equal(0, mbbsEmuCpuRegisters.DX);
+            } else {
+                Assert.Equal(string1Pointer.Offset + expectedOffset, mbbsEmuCpuRegisters.AX);
+                Assert.Equal(string1Pointer.Segment, mbbsEmuCpuRegisters.DX);
+            }
         }
     }
 }
