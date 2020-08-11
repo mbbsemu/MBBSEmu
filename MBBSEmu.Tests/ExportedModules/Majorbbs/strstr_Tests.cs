@@ -1,20 +1,18 @@
-﻿using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.Memory;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
+using MBBSEmu.Memory;
 using Xunit;
 
-namespace MBBSEmu.Tests.API
+namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strstr_Tests : APITestBase
+    public class strstr_Tests : MajorbbsTestBase
     {
-        private static readonly ushort LIBRARY_SEGMENT = Majorbbs.Segment;
         private const int STRSTR_ORDINAL = 584;
 
         [Theory]
         [InlineData("test", "test", 0)]
         [InlineData("abctest", "test", 3)]
-        public void STRSTR_Test(string string1, string string2, long expectedOrdinal)
+        public void STRSTR_Test(string string1, string string2, long expectedOffset)
         {
             //Reset State
             Reset();
@@ -26,10 +24,10 @@ namespace MBBSEmu.Tests.API
             mbbsEmuMemoryCore.SetArray("STRING2", Encoding.ASCII.GetBytes(string2));
 
             //Execute Test
-            executeAPITest(LIBRARY_SEGMENT, STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
+            ExecuteApiTest(STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
 
             //Verify Results
-            Assert.Equal(string1Pointer.Offset + expectedOrdinal, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(string1Pointer.Offset + expectedOffset, mbbsEmuCpuRegisters.AX);
             Assert.Equal(string1Pointer.Segment, mbbsEmuCpuRegisters.DX);
             
         }

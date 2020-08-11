@@ -1,35 +1,34 @@
-﻿using MBBSEmu.CPU;
-using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.Memory;
-using MBBSEmu.Module;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
+using MBBSEmu.CPU;
+using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Memory;
+using MBBSEmu.Module;
 
-namespace MBBSEmu.Tests.API
+namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public abstract class APITestBase
+    public abstract class MajorbbsTestBase
     {
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
+        protected static readonly ushort LIBRARY_SEGMENT = HostProcess.ExportedModules.Majorbbs.Segment;
 
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
-        protected Majorbbs majorbbs;
+        protected HostProcess.ExportedModules.Majorbbs majorbbs;
 
-        protected APITestBase()
+        protected MajorbbsTestBase()
         {
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            majorbbs = new Majorbbs(new MbbsModule(null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, majorbbsFunctionDelegate);
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
-        private ReadOnlySpan<byte> majorbbsFunctionDelegate(ushort ordinal, ushort functionOrdinal)
+        private ReadOnlySpan<byte> MajorbbsFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {
             majorbbs.SetRegisters(mbbsEmuCpuRegisters);
             return majorbbs.Invoke(functionOrdinal, /* offsetsOnly= */ false);
@@ -44,7 +43,12 @@ namespace MBBSEmu.Tests.API
             mbbsEmuCpuRegisters.IP = 0;
         }
 
-        protected void executeAPITest(ushort librarySegment, ushort apiOrdinal, IEnumerable<ushort> apiArguments)
+        /// <summary>
+        ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
+        /// </summary>
+        /// <param name="apiOrdinal"></param>
+        /// <param name="apiArguments"></param>
+        protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
             mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
 
@@ -53,7 +57,7 @@ namespace MBBSEmu.Tests.API
             var apiTestCodeSegment = new Segment
             {
                 Ordinal = CODE_SEGMENT,
-                Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(librarySegment & 0xFF), (byte)(librarySegment >> 8), },
+                Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(LIBRARY_SEGMENT & 0xFF), (byte)(LIBRARY_SEGMENT >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
 
@@ -68,7 +72,12 @@ namespace MBBSEmu.Tests.API
             mbbsEmuCpuCore.Tick();
         }
 
-        protected void executeAPITest(ushort librarySegment, ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
+        /// <summary>
+        ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
+        /// </summary>
+        /// <param name="apiOrdinal"></param>
+        /// <param name="apiArguments"></param>
+        protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
         {
             var argumentsList = new List<ushort>(apiArguments.Count() * 2);
 
@@ -78,7 +87,7 @@ namespace MBBSEmu.Tests.API
                 argumentsList.Add(a.Segment);
             }
 
-            executeAPITest(librarySegment, apiOrdinal, argumentsList);
+            ExecuteApiTest(apiOrdinal, argumentsList);
         }
     }
 }

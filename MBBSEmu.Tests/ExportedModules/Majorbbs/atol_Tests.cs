@@ -1,15 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using Xunit;
 
-namespace MBBSEmu.Tests.API
+namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class atol_Tests : APITestBase
+    public class atol_Tests : MajorbbsTestBase
     {
-        private static readonly ushort LIBRARY_SEGMENT = Majorbbs.Segment;
         private const int ATOL_ORDINAL = 77;
 
         [Theory]
@@ -33,10 +30,10 @@ namespace MBBSEmu.Tests.API
             Reset();
 
             //Allocate Variables to be Passed In
-            var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING1", (ushort) (input.Length + 1));
+            var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort) (input.Length + 1));
             mbbsEmuMemoryCore.SetArray(inputStringPointer, Encoding.ASCII.GetBytes(input));
 
-            executeAPITest(LIBRARY_SEGMENT, ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
+            ExecuteApiTest(ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
             
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
