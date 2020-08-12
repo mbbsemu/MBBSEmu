@@ -19,10 +19,10 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |AND|Logical AND|:white_check_mark:|
 |BOUND|Check array index against bounds|:red_circle:|
 |CALL|Call procedure|:large_orange_diamond:|
-|CBW|Convert byte to word|:red_circle:|
+|CBW|Convert byte to word|:white_check_mark:|
 |CLC|Clear carry flag|:white_check_mark:|
-|CLD|Clear direction flag|:red_circle:|
-|CLI|Clear interrupt flag|:red_circle:|
+|CLD|Clear direction flag|:white_check_mark:|
+|CLI|Clear interrupt flag|:white_check_mark:|
 |CMC|Complement carry flag|:red_circle:|
 |CMP|Compare operands|:white_check_mark:|
 |CMPSB|Compare bytes in memory|:red_circle:|
@@ -31,7 +31,7 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |DAA|Decimal adjust AL after addition|:red_circle:|
 |DAS|Decimal adjust AL after subtraction|:red_circle:|
 |DEC|Decrement by 1|:white_check_mark:|
-|DIV|Unsigned divide|:red_circle:|
+|DIV|Unsigned divide|:white_check_mark:|
 |ENTER|Enter stack frame|:white_check_mark:|
 |ESC|Used with floating-point unit|:red_circle:|
 |HLT|Enter halt state|:red_circle:|
@@ -43,8 +43,8 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |INT|Call interrupt|:large_orange_diamond:|
 |INTO|Call interrupt if overslow|:red_circle:|
 |IRET|Return from interrupt|:red_circle:|
-|Jcc|Jump if condition|:large_orange_diamond:|
-|JCXZ|Jump if CX is zero|:red_circle:|
+|Jcc|Jump if condition|:white_check_mark:|
+|JCXZ|Jump if CX is zero|:white_check_mark:|
 |JMP|Unconditional Jump|:white_check_mark:|
 |LAHF|Load FLAGS into AH register|:red_circle:|
 |LDS|Load pointer using DS|:white_check_mark:|
@@ -52,7 +52,7 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |LEAVE|Leave stack frame|:white_check_mark:|
 |LES|Lead ES with pointer|:white_check_mark:|
 |LOCK|Assert BUS LOCK# signal|:red_circle:|
-|LODSB|Load string byte|:red_circle:|
+|LODSB|Load string byte|:white_check_mark:|
 |LODSW|Load string word|:red_circle:|
 |LOOP|Loop control|:white_check_mark:|
 |MOV|Move|:white_check_mark:|
@@ -61,7 +61,7 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |MUL|Unsigned multiply|:red_circle:|
 |NEG|Two's complement negation|:white_check_mark:|
 |NOP|No operation|:white_check_mark:|
-|NOT|Negate the operand, logical NOT|:red_circle:|
+|NOT|Negate the operand, logical NOT|:white_check_mark:|
 |OR|Logical OR|:white_check_mark:|
 |OUT|Output to port|:red_circle:|
 |OUTS|Output string to port|:red_circle:|
@@ -70,8 +70,8 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |POPF|Pop FLAGS register from stack|:red_circle:|
 |PUSH|Push data onto stack|:white_check_mark:|
 |PUSHA|Push all general purpose registers onto stack|:red_circle:|
-|PUSHF|Push flags onto stack|:red_circle:|
-|RCL|Rorate left (with carry)|:red_circle:|
+|PUSHF|Push flags onto stack|:white_check_mark:|
+|RCL|Rotate left (with carry)|:white_check_mark:|
 |RCR|Rotate right (with carry)|:white_check_mark:|
 |REPxx|Repeat MOVS/STOS/CMPS/LODS/SCAS|:red_circle:|
 |RET|Return from procedure|:white_check_mark:|
@@ -79,7 +79,7 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |RETN|Return from near procedure|:red_circle:|
 |ROL|Rotate left|:red_circle:|
 |ROR|Rotate right|:red_circle:|
-|SAHF|Store AH into FLAGS|:red_circle:|
+|SAHF|Store AH into FLAGS|:white_check_mark:|
 |SAL|Shift Arithmetically left|:red_circle:|
 |SAR|Shift Arithmetically right|:white_check_mark:|
 |SBB|Subtract with borrow|:white_check_mark:|
@@ -90,11 +90,11 @@ Below are all supported 80286 Opcodes and their level of support in MBBSEmu:
 |STC|Set carry flag|:red_circle:|
 |STD|Set direction flag|:red_circle:|
 |STR|Set interrupt flag|:red_circle:|
-|STOSB|Store byte in string|:red_circle:|
+|STOSB|Store byte in string|:white_check_mark:|
 |STOSW|Store word in string|:white_check_mark:|
 |SUB|Subtraction|:white_check_mark:|
 |TEST|Logical compare (AND)|:white_check_mark:|
 |WAIT|Wait until not busy|:red_circle:|
-|XCHG|Exchange data|:red_circle:|
+|XCHG|Exchange data|:white_check_mark:|
 |XLAT|Table look-up translation|:red_circle:|
 |XOR|Exclusive OR|:white_check_mark:|
