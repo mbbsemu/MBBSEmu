@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using System;
+using NLog;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -101,6 +102,6 @@ namespace MBBSEmu.IO
         ///     String containing the executing path of MBBSEmu
         /// </summary>
         /// <returns></returns>
-        public static string ExecutingPath => $"{Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)}{Path.DirectorySeparatorChar}";
+        public static string ExecutingPath => $"{Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory)}{Path.DirectorySeparatorChar}";
     }
 }
