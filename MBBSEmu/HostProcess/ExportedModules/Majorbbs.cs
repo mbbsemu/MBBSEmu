@@ -6729,7 +6729,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase));
 
-            if (!Module.Memory.TryGetVariablePointer("laswd-buffer", out var lastwdBufferPointer))
+            if (!Module.Memory.TryGetVariablePointer("lastwd-buffer", out var lastwdBufferPointer))
                 lastwdBufferPointer = Module.Memory.AllocateVariable("lastwd-buffer", 0xFF);
 
             Module.Memory.SetArray(lastwdBufferPointer, Encoding.ASCII.GetBytes($"{stringToParse.Split(' ').Last()}\0"));
