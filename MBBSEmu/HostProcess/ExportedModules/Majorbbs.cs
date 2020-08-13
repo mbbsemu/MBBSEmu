@@ -4418,7 +4418,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routinePointer = GetParameterPointer(1);
 
             //Unset on the specified channel
-            if (routinePointer.Segment == 0 && routinePointer.Offset == 0)
+            if (routinePointer == IntPtr16.Empty)
             {
 
                 ChannelDictionary[channelNumber].PollingRoutine = null;
@@ -4430,7 +4430,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            ChannelDictionary[channelNumber].PollingRoutine = new IntPtr16(routinePointer.ToSpan());
+            ChannelDictionary[channelNumber].PollingRoutine = routinePointer;
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 192);
+            ChannelDictionary[channelNumber].StatusChange = true;
 
 #if DEBUG
             _logger.Info(

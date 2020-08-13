@@ -144,6 +144,7 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
+
                                 //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
                                 if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
                                 {
@@ -162,7 +163,7 @@ namespace MBBSEmu.HostProcess
                                     }
 
                                     //If the client is in transparent mode, don't echo
-                                    if (!session.TransparentMode && session.Status == 1)
+                                    if (!session.TransparentMode && (session.Status == 1 || session.Status == 192))
                                         session.SendToClient(new[] { session.LastCharacterReceived });
                                 }
 
@@ -183,7 +184,12 @@ namespace MBBSEmu.HostProcess
                                 if (session.PollingRoutine != null)
                                 {
                                     ProcessPollingRoutine(session);
+
+                                    //Keep the user in Polling Status if the polling routine is still there
+                                    if (session.PollingRoutine != IntPtr16.Empty)
+                                        session.Status = 192;
                                 }
+
                                 break;
                             }
 
