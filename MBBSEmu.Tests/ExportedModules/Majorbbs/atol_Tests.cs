@@ -1,9 +1,11 @@
-﻿using MBBSEmu.Extensions;
+﻿using System.Collections.Generic;
+using System.Text;
+using MBBSEmu.Memory;
 using Xunit;
 
-namespace MBBSEmu.Tests.API
+namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class atol_Tests : APITestBase
+    public class atol_Tests : MajorbbsTestBase
     {
         private const int ATOL_ORDINAL = 77;
 
@@ -24,13 +26,14 @@ namespace MBBSEmu.Tests.API
         [InlineData("-4000000000", 0)]
         public void ATOLTest(string input, long expectedValue)
         {
-            executeAPITest(ATOL_ORDINAL, core =>
-            {
-                core.Push(DATA_SEGMENT);
-                core.Push(0);
+            //Reset State
+            Reset();
 
-                return input.GetNullTerminatedBytes();
-            });
+            //Allocate Variables to be Passed In
+            var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort) (input.Length + 1));
+            mbbsEmuMemoryCore.SetArray(inputStringPointer, Encoding.ASCII.GetBytes(input));
+
+            ExecuteApiTest(ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
             
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
