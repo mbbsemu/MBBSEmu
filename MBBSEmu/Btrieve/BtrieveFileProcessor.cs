@@ -478,8 +478,8 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.AutoInc => GetByKeyNextAutoInc(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNextNumeric(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetGreater => GetByKeyGreaterNumeric(currentQuery),
@@ -620,7 +620,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     GetNext for Non-AutoInc Key Types
+        ///     GetNext for Non-Numeric Key Types
         ///
         ///     Search for the next logical record with a matching Key that comes after the current Position
         /// </summary>
@@ -637,7 +637,7 @@ namespace MBBSEmu.Btrieve
 
                 if (recordKey.SequenceEqual(query.Key))
                 {
-                    Position = (uint)r.Offset;
+                    Position = r.Offset;
                     return 1;
                 }
             }
@@ -647,13 +647,13 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     GetNext for AutoInc key types
+        ///     GetNext for Numeric key types
         ///
         ///     Key Value needs to be incremented, then the specific key needs to be found
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyNextAutoInc(BtrieveQuery query)
+        private ushort GetByKeyNextNumeric(BtrieveQuery query)
         {
             //Set Query Value to Current Value
             query.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
