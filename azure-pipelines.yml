@@ -7,7 +7,6 @@ trigger:
   branches:
     include: 
       - master
-      - Private*
 
 pool:
   vmImage: 'windows-latest'
@@ -23,6 +22,13 @@ steps:
 - script: dotnet build --configuration $(buildConfiguration)
   displayName: 'dotnet build $(buildConfiguration)'
 
+- task: VSTest@2
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: '**\MBBSEmu.Tests\**\MBBSEmu.Tests.dll'
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+    codeCoverageEnabled: true
+    publishRunAttachments: false
 
 - task: DotNetCoreCLI@2
   inputs:
