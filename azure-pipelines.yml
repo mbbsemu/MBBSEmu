@@ -25,8 +25,9 @@ steps:
 - task: VSTest@2
   inputs:
     testSelector: 'testAssemblies'
-    testAssemblyVer2: '**\MBBSEmu.Tests\**\MBBSEmu.Tests.dll'
+    testAssemblyVer2: '**\MBBSEmu.Tests\bin\**\MBBSEmu.Tests.dll'
     searchFolder: '$(System.DefaultWorkingDirectory)'
+    runTestsInIsolation: true
     codeCoverageEnabled: true
     publishRunAttachments: false
 
