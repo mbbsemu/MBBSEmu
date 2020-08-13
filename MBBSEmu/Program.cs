@@ -25,8 +25,7 @@ namespace MBBSEmu
         private static bool bApiReport = false;
         private static bool bConfigFile = false;
         private static string sConfigFile = string.Empty;
-        private static bool bSettingsFile = false;
-        private static string sSettingsFile = string.Empty;
+        private static string sSettingsFile;
         private static bool bResetDatabase = false;
         private static string sSysopPassword = string.Empty;
 
@@ -92,12 +91,11 @@ namespace MBBSEmu
                             }
                         case "-S":
                             {
-                                bSettingsFile = true;
                                 //Is there a following argument that doesn't start with '-'
                                 //If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    sSettingsFile = args[i + 1];
+                                    sSettingsFile =  $"{FileUtility.ExecutingPath}{args[i + 1]}";
 
                                     if (!File.Exists(sSettingsFile))
                                     {
@@ -118,6 +116,15 @@ namespace MBBSEmu
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
                     }
+                }
+
+                if (sSettingsFile == null)
+                {
+                    ServiceResolver.Create();
+                }
+                else
+                {
+                    ServiceResolver.Create(sSettingsFile);
                 }
 
                 _logger = ServiceResolver.GetService<ILogger>();
