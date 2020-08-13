@@ -96,12 +96,5 @@ namespace MBBSEmu.IO
         public string CorrectPathSeparator(string fileName) => RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? fileName
             : fileName.Replace(@"\", "/");
-
-
-        /// <summary>
-        ///     String containing the executing path of MBBSEmu
-        /// </summary>
-        /// <returns></returns>
-        public static string ExecutingPath => $"{Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory)}{Path.DirectorySeparatorChar}";
     }
 }
