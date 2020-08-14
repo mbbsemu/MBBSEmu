@@ -16,8 +16,10 @@ using MBBSEmu.IO;
 
 namespace MBBSEmu
 {
-    class Program
+    public class Program
     {
+        public const string DefaultEmuSettingsFilename = "appsettings.json";
+
         private static ILogger _logger;
 
         private static string sInputModule = string.Empty;
@@ -118,14 +120,8 @@ namespace MBBSEmu
                     }
                 }
 
-                if (sSettingsFile == null)
-                {
-                    ServiceResolver.Create();
-                }
-                else
-                {
-                    ServiceResolver.Create(sSettingsFile);
-                }
+                sSettingsFile ??= DefaultEmuSettingsFilename;
+                ServiceResolver.Create(sSettingsFile);
 
                 _logger = ServiceResolver.GetService<ILogger>();
                 var config = ServiceResolver.GetService<IConfiguration>();

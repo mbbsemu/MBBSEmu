@@ -24,14 +24,12 @@ namespace MBBSEmu.DependencyInjection
         private static ServiceProvider _provider;
         private static IServiceCollection ServiceCollection;
 
-        public const string DefaultAppSettingsFilename = "appsettings.json";
-
         // Following hack / workaround from [this Stack Overflow post](https://stackoverflow.com/questions/34219191/how-to-pass-parameter-to-static-class-constructor/34219280#34219280)
         // to move the guts of the Create() method from the static constructor they were in before.
         // Long term solution is probably to de-static this class :)
         private ServiceResolver() {}
 
-        public static void Create(string appSettingsFilename = DefaultAppSettingsFilename)
+        public static void Create(string appSettingsFilename)
         {
             //Prevent multiple creates
             if (_provider != null)

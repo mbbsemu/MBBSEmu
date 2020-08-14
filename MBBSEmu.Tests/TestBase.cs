@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MBBSEmu;
 
 namespace MBBSEmu.Tests
 {
@@ -8,7 +6,7 @@ namespace MBBSEmu.Tests
     {
         static TestBase()
         {
-            DependencyInjection.ServiceResolver.Create();
+            DependencyInjection.ServiceResolver.Create(Program.DefaultEmuSettingsFilename);
         }
     }
 }
