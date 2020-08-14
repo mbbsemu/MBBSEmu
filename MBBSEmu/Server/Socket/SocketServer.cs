@@ -1,4 +1,4 @@
-﻿using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
@@ -23,8 +23,6 @@ namespace MBBSEmu.Server.Socket
         private readonly IConfiguration _configuration;
 
         private System.Net.Sockets.Socket _listenerSocket;
-        private bool _isRunning;
-        private Thread _listenerThread;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
 
@@ -42,58 +40,50 @@ namespace MBBSEmu.Server.Socket
 
             //Setup Listener
             var ipEndPoint = new IPEndPoint(IPAddress.Any, port);
-            _listenerSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-            {
-                ReceiveBufferSize = 0x800,
-                DontFragment = true,
-                NoDelay = false
-            };
+            _listenerSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             _listenerSocket.Bind(ipEndPoint);
-            _listenerThread = new Thread(ListenerThread);
-
             _listenerSocket.Listen(10);
-            _isRunning = true;
-            _listenerThread.Start();
+            _listenerSocket.BeginAccept(OnNewConnection, this);
         }
 
         public void Stop()
         {
-            _isRunning = false;
+            _listenerSocket.Close();
             _listenerSocket.Dispose();
         }
 
-        private void ListenerThread()
-        {
-            while (_isRunning)
+        private void OnNewConnection(IAsyncResult asyncResult) {
+            System.Net.Sockets.Socket client = _listenerSocket.EndAccept(asyncResult);
+            client.NoDelay = true;
+
+            _listenerSocket.BeginAccept(OnNewConnection, this);
+
+            switch (_sessionType)
             {
-                var client = _listenerSocket.Accept();
-
-                switch (_sessionType)
-                {
-                    case EnumSessionType.Telent:
+                case EnumSessionType.Telnet:
+                    {
+                        _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
+                        var telnetSession = new TelnetSession(client);
+                        break;
+                    }
+                case EnumSessionType.Rlogin:
+                    {
+                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration["Rlogin.RemoteIP"])
                         {
-                            _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
-                            var telnetSession = new TelnetSession(client);
-                            break;
+                            _logger.Info(
+                                $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
+                            client.Close();
+                            client.Dispose();
+                            return;
                         }
-                    case EnumSessionType.Rlogin:
-                        {
-                            if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration["Rlogin.RemoteIP"])
-                            {
-                                _logger.Info(
-                                    $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
-                                client.Dispose();
-                                continue;
-                            }
 
-                            _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
-                            var rloginSession = new RloginSession(client, _moduleIdentifier);
-                            break;
-                        }
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                        _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
+                        var rloginSession = new RloginSession(client, _moduleIdentifier);
+                        break;
+                    }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }

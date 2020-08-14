@@ -20,9 +20,8 @@ namespace MBBSEmu.Session.Telnet
         private readonly IMbbsHost _host;
 
         private readonly Socket _telnetConnection;
-        private readonly Thread _sendThread;
-        private readonly Thread _receiveThread;
-        private readonly byte[] socketReceiveBuffer = new byte[256];
+        private readonly Thread _senderThread;
+        private readonly byte[] socketReceiveBuffer = new byte[9000];
 
         private int _iacPhase;
 
@@ -35,21 +34,20 @@ namespace MBBSEmu.Session.Telnet
 
         public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
         {
-            SessionType = EnumSessionType.Telent;
+            SessionType = EnumSessionType.Telnet;
             SendToClientMethod = Send;
             _host = ServiceResolver.GetService<IMbbsHost>();
             _logger = ServiceResolver.GetService<ILogger>();
+
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
-            _telnetConnection.ReceiveBufferSize = 256;
+            _telnetConnection.ReceiveBufferSize = socketReceiveBuffer.Length;
+            _telnetConnection.Blocking = true;
 
             SessionState = EnumSessionState.Negotiating;
 
-            //Start Listeners & Senders
-            _sendThread = new Thread(SendWorker);
-            _sendThread.Start();
-            _receiveThread = new Thread(ReceiveWorker);
-            _receiveThread.Start();
+            _senderThread = new Thread(SendWorker);
+            _senderThread.Start();
 
             //Add this Session to the Host
             _host.AddSession(this);
@@ -58,6 +56,8 @@ namespace MBBSEmu.Session.Telnet
             Send(ANSI_RESET_CURSOR);
 
             SessionState = EnumSessionState.Unauthenticated;
+
+            ListenForData();
         }
 
         /// <summary>
@@ -72,10 +72,9 @@ namespace MBBSEmu.Session.Telnet
                 _telnetConnection.Send(IAC_NOP, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _logger.Warn($"Detected Channel {Channel} disconnect -- cleaning up");
-                SessionState = EnumSessionState.LoggedOff;
+                CloseSocket($"failure sending heartbeat {ex.Message}");
                 return false;
             }
 
@@ -119,22 +118,22 @@ namespace MBBSEmu.Session.Telnet
             }
         }
 
-        private static TimeSpan MINUTE_TIMESPAN = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan HALF_SECOND_TIMESPAN = TimeSpan.FromSeconds(0.5);
+        private static readonly TimeSpan MINUTE_TIMESPAN = TimeSpan.FromMinutes(1);
 
         /// <summary>
         ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
         /// </summary>
         private void SendWorker()
         {
-            TimeSpan timeSpan = TimeSpan.FromSeconds(0.5);
+            TimeSpan timeSpan = HALF_SECOND_TIMESPAN;
+
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
-                if (!DataToClient.TryTake(out var dataToSend, timeSpan))
+                bool tookData = DataToClient.TryTake(out var dataToSend, timeSpan);
+                if (SessionState == EnumSessionState.LoggingOffProcessing)
                 {
-                    if (!Heartbeat()) {
-                        break;
-                    }
-                    continue;
+                    SessionState = EnumSessionState.LoggedOff;
                 }
 
                 if (SessionTimer.ElapsedMilliseconds >= 500) {
@@ -144,54 +143,63 @@ namespace MBBSEmu.Session.Telnet
                     timeSpan = MINUTE_TIMESPAN;
                 }
 
-                Send(dataToSend);
-
-                if (SessionState == EnumSessionState.LoggingOffProcessing)
+                if (!tookData)
                 {
-                    SessionState = EnumSessionState.LoggedOff;
-                    return;
+                    if (!Heartbeat()) {
+                        break;
+                    }
+                    continue;
                 }
+
+                Send(dataToSend);
 
                 if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
                     EchoEmptyInvoke = true;
             }
 
             //Cleanup if the connection was dropped
-            SessionState = EnumSessionState.LoggedOff;
+            CloseSocket("sending thread natural completion");
         }
 
         /// <summary>
         ///     Worker for Thread Responsible for Receiving Data from Client
         /// </summary>
-        private void ReceiveWorker()
+        private void OnReceiveData(IAsyncResult asyncResult)
         {
-            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
-            {
-                var bytesReceived =
-                    _telnetConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
-
-                ValidateSocketState(socketState);
-
-                if (bytesReceived == 0)
-                    continue;
-
-                //Process if it's an IAC command
-                if (socketReceiveBuffer[0] == 0xFF)
-                {
-                    ParseIAC(socketReceiveBuffer);
-                    continue;
+            int bytesReceived;
+            SocketError socketError;
+            try {
+                bytesReceived = _telnetConnection.EndReceive(asyncResult, out socketError);
+                if (bytesReceived == 0) {
+                    CloseSocket("Client disconnected");
+                    return;
                 }
-
-                //Enqueue the incoming bytes for processing
-                for (var i = 0; i < bytesReceived; i++)
-                    DataFromClient.Add(socketReceiveBuffer[i]);
+            } catch (ObjectDisposedException) {
+                SessionState = EnumSessionState.LoggedOff;
+                return;
             }
 
-            //Cleanup if the connection was dropped
-            SessionState = EnumSessionState.LoggedOff;
+            ValidateSocketState(socketError);
+            ProcessIncomingClientData(bytesReceived);
+            ListenForData();
+        }
 
-            //Dispose the socket connection
-            _telnetConnection.Dispose();
+        private void ProcessIncomingClientData(int bytesReceived)
+        {
+            if (bytesReceived == 0 || SessionState == EnumSessionState.LoggedOff) {
+                return;
+            }
+
+            //Process if it's an IAC command
+            if (socketReceiveBuffer[0] == 0xFF)
+            {
+                ParseIAC(socketReceiveBuffer);
+                return;
+            }
+
+            //Enqueue the incoming bytes for processing
+            for (var i = 0; i < bytesReceived; i++)
+                DataFromClient.Add(socketReceiveBuffer[i]);
         }
 
         /// <summary>
@@ -381,22 +389,24 @@ namespace MBBSEmu.Session.Telnet
         /// <param name="socketError"></param>
         private void ValidateSocketState(SocketError socketError)
         {
-            switch (socketError)
-            {
-                case SocketError.Success:
-                    return;
-                case SocketError.ConnectionReset:
-                case SocketError.ConnectionAborted:
-                case SocketError.TimedOut:
-                    {
-                        _logger.Warn($"Session {SessionId} (Channel: {Channel}) forcefully disconnected: {socketError}");
-                        SessionState = EnumSessionState.LoggedOff;
-                        return;
-                    }
-                default:
-                    throw new Exception($"Socket Error: {Enum.GetName(typeof(SocketError), socketError)}");
+            if (socketError != SocketError.Success) {
+                CloseSocket($"socket error: {socketError}");
+            }
+        }
+
+        private void ListenForData() {
+            if (_telnetConnection.Connected && SessionState != EnumSessionState.LoggedOff) {
+                _telnetConnection.BeginReceive(socketReceiveBuffer, 0, socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
+            }
+        }
+
+        private void CloseSocket(string reason) {
+            if (SessionState != EnumSessionState.LoggedOff) {
+                _logger.Warn($"Session {SessionId} (Channel: {Channel}) {reason}");
             }
 
+            _telnetConnection.Close();
+            SessionState = EnumSessionState.LoggedOff;
         }
     }
 }

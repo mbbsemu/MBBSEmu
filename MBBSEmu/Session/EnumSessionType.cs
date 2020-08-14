@@ -1,8 +1,8 @@
-﻿namespace MBBSEmu.Session
+namespace MBBSEmu.Session
 {
     public enum EnumSessionType
     {
-        Telent,
+        Telnet,
         Rlogin
     }
 }
