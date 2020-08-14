@@ -33,7 +33,7 @@ steps:
 
 - task: DotNetCoreCLI@2
   inputs:
-    command: 'publish'+
+    command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
