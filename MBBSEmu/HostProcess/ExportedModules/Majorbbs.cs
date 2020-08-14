@@ -1543,7 +1543,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Registers.F.ClearFlag(EnumFlags.CF);
 #if DEBUG
-                _logger.Info($"Cast {stringToLong} ({sourcePointer}) to {outputValue} long");
+                //_logger.Info($"Cast {stringToLong} ({sourcePointer}) to {outputValue} long");
 #endif
             }
             else
@@ -3060,6 +3060,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
+
 #endif
 
         }
@@ -4417,7 +4418,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routinePointer = GetParameterPointer(1);
 
             //Unset on the specified channel
-            if (routinePointer.Segment == 0 && routinePointer.Offset == 0)
+            if (routinePointer == IntPtr16.Empty)
             {
 
                 ChannelDictionary[channelNumber].PollingRoutine = null;
@@ -4429,7 +4430,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            ChannelDictionary[channelNumber].PollingRoutine = new IntPtr16(routinePointer.ToSpan());
+            ChannelDictionary[channelNumber].PollingRoutine = routinePointer;
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 192);
+            ChannelDictionary[channelNumber].StatusChange = true;
 
 #if DEBUG
             _logger.Info(
@@ -4673,15 +4676,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var keyNumber = GetParameter(2);
             var queryOption = GetParameter(3);
 
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
             var key = Module.Memory.GetArray(keyPointer,
-                    BtrievePointerDictionaryNew[_currentBtrieveFile].GetKeyLength(keyNumber));
+                currentBtrieveFile.GetKeyLength(keyNumber));
 
 
             if (queryOption <= 50)
                 throw new Exception($"Invalid Query Option: {queryOption}");
 
-            //if (keyNumber != 0)
-            //throw new Exception("No Support for Multiple Keys");
 
             var result = 0;
             switch ((EnumBtrieveOperationCodes)queryOption)
@@ -4700,9 +4703,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
             }
 
+            //Set Record Pointer to Result
+            if (result == 1)
+            {
+                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+                Module.Memory.SetArray(btvStruct.data,
+                    currentBtrieveFile.GetRecordByOffset(currentBtrieveFile.Position));
+            }
+
 #if DEBUG
             _logger.Info(
-                $"Performed Query {queryOption} on {BtrievePointerDictionaryNew[_currentBtrieveFile].LoadedFileName} ({_currentBtrieveFile}) with result {result}");
+                $"Performed Query {queryOption} on {currentBtrieveFile.LoadedFileName} ({_currentBtrieveFile}) with result {result}");
 #endif
 
             Registers.AX = (ushort)result;
@@ -5457,16 +5468,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (queryOption <= 50)
                 throw new Exception($"Invalid Query Option: {queryOption}");
 
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
             var result = 0;
             switch ((EnumBtrieveOperationCodes)queryOption)
             {
                 //Get Next -- repeating the same previous query
                 case EnumBtrieveOperationCodes.GetKeyNext:
-                    result = BtrievePointerDictionaryNew[_currentBtrieveFile]
+                    result = currentBtrieveFile
                         .SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyNext, false);
                     break;
                 default:
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
+            }
+
+            //Set Record Pointer to Result
+            if (result == 1)
+            {
+                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+                Module.Memory.SetArray(btvStruct.data,
+                    currentBtrieveFile.GetRecordByOffset(currentBtrieveFile.Position));
             }
 
 #if DEBUG
@@ -6708,7 +6729,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase));
 
-            if (!Module.Memory.TryGetVariablePointer("laswd-buffer", out var lastwdBufferPointer))
+            if (!Module.Memory.TryGetVariablePointer("lastwd-buffer", out var lastwdBufferPointer))
                 lastwdBufferPointer = Module.Memory.AllocateVariable("lastwd-buffer", 0xFF);
 
             Module.Memory.SetArray(lastwdBufferPointer, Encoding.ASCII.GetBytes($"{stringToParse.Split(' ').Last()}\0"));

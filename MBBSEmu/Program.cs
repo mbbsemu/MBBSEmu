@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
@@ -95,7 +95,7 @@ namespace MBBSEmu
                                 //If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    sSettingsFile =  $"{FileUtility.ExecutingPath}{args[i + 1]}";
+                                    sSettingsFile =  args[i + 1];
 
                                     if (!File.Exists(sSettingsFile))
                                     {
@@ -135,13 +135,13 @@ namespace MBBSEmu
                     DatabaseReset();
 
                 //Setup Generic Database
-                if (!File.Exists($"{FileUtility.ExecutingPath}BBSGEN.DAT"))
+                if (!File.Exists($"BBSGEN.DAT"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
-                   
+
                     var resourceManager = ServiceResolver.GetService<IResourceManager>();
-                    
-                    File.WriteAllBytes($"{FileUtility.ExecutingPath}BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
+
+                    File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
                 }
 
                 //Setup Modules
@@ -188,7 +188,7 @@ namespace MBBSEmu
                     _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
                     return;
                 }
-                if (!File.Exists($"{FileUtility.ExecutingPath}{databaseFile}"))
+                if (!File.Exists($"{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
                     DatabaseReset();
@@ -211,7 +211,7 @@ namespace MBBSEmu
                     }
 
                     ServiceResolver.GetService<ISocketServer>()
-                        .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
+                        .Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
                 }
