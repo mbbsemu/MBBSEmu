@@ -1,4 +1,3 @@
-using MBBSEmu.HostProcess;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
@@ -19,16 +18,14 @@ namespace MBBSEmu.Server.Socket
     public class SocketServer : ISocketServer
     {
         private readonly ILogger _logger;
-        private readonly IMbbsHost _host;
         private readonly IConfiguration _configuration;
 
         private System.Net.Sockets.Socket _listenerSocket;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
 
-        public SocketServer(IMbbsHost host, ILogger logger, IConfiguration configuration)
+        public SocketServer(ILogger logger, IConfiguration configuration)
         {
-            _host = host;
             _logger = logger;
             _configuration = configuration;
         }
