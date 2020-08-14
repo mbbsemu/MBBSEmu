@@ -12,19 +12,21 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.IO;
 
 namespace MBBSEmu
 {
-    class Program
+    public class Program
     {
-        private static readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
+        public const string DefaultEmuSettingsFilename = "appsettings.json";
+
+        private static ILogger _logger;
 
         private static string sInputModule = string.Empty;
         private static string sInputPath = string.Empty;
         private static bool bApiReport = false;
         private static bool bConfigFile = false;
         private static string sConfigFile = string.Empty;
+        private static string sSettingsFile;
         private static bool bResetDatabase = false;
         private static string sSysopPassword = string.Empty;
 
@@ -32,8 +34,6 @@ namespace MBBSEmu
         {
             try
             {
-                var config = ServiceResolver.GetService<IConfiguration>();
-
                 if (args.Length == 0)
                     args = new[] { "-?" };
 
@@ -91,11 +91,39 @@ namespace MBBSEmu
 
                                 break;
                             }
+                        case "-S":
+                            {
+                                //Is there a following argument that doesn't start with '-'
+                                //If so, it's the config file name
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    sSettingsFile =  args[i + 1];
+
+                                    if (!File.Exists(sSettingsFile))
+                                    {
+
+                                        Console.WriteLine($"Specified MBBSEmu settings not found: {sSettingsFile}");
+                                        return;
+                                    }
+                                    i++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Please specify an MBBSEmu configuration file when using the -S command line option");
+                                }
+
+                                break;
+                            }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
                     }
                 }
+
+                ServiceResolver.Create(sSettingsFile ?? DefaultEmuSettingsFilename);
+
+                _logger = ServiceResolver.GetService<ILogger>();
+                var config = ServiceResolver.GetService<IConfiguration>();
 
                 //Database Reset
                 if (bResetDatabase)
@@ -223,7 +251,7 @@ namespace MBBSEmu
                     _logger.Info("Rlogin Server Disabled (via appsettings.json)");
                 }
 
-                _logger.Info($"MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")} Started!");
+                _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
             }
             catch (Exception e)
             {

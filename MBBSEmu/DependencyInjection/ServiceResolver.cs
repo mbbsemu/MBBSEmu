@@ -2,8 +2,11 @@
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.Fsd;
+using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
 using Microsoft.Extensions.Configuration;
@@ -13,27 +16,33 @@ using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.IO;
-using MBBSEmu.HostProcess.Fsd;
-using MBBSEmu.HostProcess.HostRoutines;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu.DependencyInjection
 {
-    public static class ServiceResolver
+    public class ServiceResolver
     {
         private static ServiceProvider _provider;
-        private static readonly IServiceCollection ServiceCollection;
+        private static IServiceCollection ServiceCollection;
 
-        static ServiceResolver()
+        // Following hack / workaround from [this Stack Overflow post](https://stackoverflow.com/questions/34219191/how-to-pass-parameter-to-static-class-constructor/34219280#34219280)
+        // to move the guts of the Create() method from the static constructor they were in before.
+        // Long term solution is probably to de-static this class :)
+        private ServiceResolver() {}
+
+        public static void Create(string appSettingsFilename)
         {
+            //Prevent multiple creates
+            if (_provider != null)
+                return;
+
             ServiceCollection = new ServiceCollection();
 
-            var ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonStream(LoadAppSettings())
+            var configurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonStream(LoadAppSettings(appSettingsFilename))
                 .Build();
 
             //Base Configuration Items
-            ServiceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
+            ServiceCollection.AddSingleton<IConfiguration>(configurationRoot);
             ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();
             ServiceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             ServiceCollection.AddSingleton<IFileUtility, FileUtility>();
@@ -68,15 +77,15 @@ namespace MBBSEmu.DependencyInjection
         ///     Safe loading of appsettings.json for Configuration Builder
         /// </summary>
         /// <returns></returns>
-        private static FileStream LoadAppSettings()
+        private static FileStream LoadAppSettings(string filename)
         {
-            if(!File.Exists($"appsettings.json"))
-                throw new FileNotFoundException($"Unable to locate appsettings.json file. Please ensure the file is in the same directory as the MBBSEmu executable file.");
+            if(!File.Exists(filename))
+                throw new FileNotFoundException($"Unable to locate [{filename}] emulator settings file.");
 
-            if(!IsValidJson(File.ReadAllText($"appsettings.json")))
-                throw new InvalidDataException("Invalid JSON detected in appsettings.json. Please verify the format & contents of the file are valid JSON.");
+            if(!IsValidJson(File.ReadAllText(filename)))
+                throw new InvalidDataException($"Invalid JSON detected in [{filename}]. Please verify the format & contents of the file are valid JSON.");
 
-            return File.Open($"appsettings.json", FileMode.Open, FileAccess.Read);
+            return File.Open(filename, FileMode.Open, FileAccess.Read);
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ using MBBSEmu.Module;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public abstract class MajorbbsTestBase
+    public abstract class MajorbbsTestBase : TestBase
     {
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;

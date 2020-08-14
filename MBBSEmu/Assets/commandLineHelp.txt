@@ -5,6 +5,8 @@ https://github.com/enusbaum/MBBSEmu
 -----------------------------------------------------------
 Command Line Options:
 -?                  This Help Screen
+-S <emulatorConfig> Specify an emulator configuration file. The included appsettings.json
+                    is used by default.
 -C <moduleConfig>   A Module Configuration JSON File which allows for multiple modules to be
                     loaded and executed
 -M <identifier>     Module Identifier (Overrides -C)
@@ -20,7 +22,7 @@ Examples:
 ./MBBSEmu -C moduleConfig.json
 
 -----------------------------------------------------------
-appsettings.json Options:
+appsettings.json Emulator Options:
 
 BBS.Title               String         Title (name) of your Bulletin Board, used by MAJORBBS.H
 GSBL.Activation         Number         Activation Code for MajorBBS & Worldgroup (8-Digit)
