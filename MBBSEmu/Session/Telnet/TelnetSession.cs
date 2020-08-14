@@ -42,7 +42,7 @@ namespace MBBSEmu.Session.Telnet
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
             _telnetConnection.ReceiveBufferSize = socketReceiveBuffer.Length;
-            _telnetConnection.Blocking = true;
+            _telnetConnection.Blocking = false;
 
             SessionState = EnumSessionState.Negotiating;
 
