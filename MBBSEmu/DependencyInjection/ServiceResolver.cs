@@ -21,7 +21,6 @@ namespace MBBSEmu.DependencyInjection
 {
     public class ServiceResolver
     {
-        private static ServiceResolver serviceResolver;
         private static ServiceProvider _provider;
         private static IServiceCollection ServiceCollection;
 
@@ -31,9 +30,12 @@ namespace MBBSEmu.DependencyInjection
         // to move the guts of the Create() method from the static constructor they were in before.
         // Long term solution is probably to de-static this class :)
         private ServiceResolver() {}
-        public static ServiceResolver Create(string appSettingsFilename = DefaultAppSettingsFilename)
+
+        public static void Create(string appSettingsFilename = DefaultAppSettingsFilename)
         {
-            serviceResolver = new ServiceResolver();
+            //Prevent multiple creates
+            if (_provider != null)
+                return;
 
             ServiceCollection = new ServiceCollection();
 
@@ -63,8 +65,6 @@ namespace MBBSEmu.DependencyInjection
             ServiceCollection.AddTransient<ISocketServer, SocketServer>();
 
             _provider = ServiceCollection.BuildServiceProvider();
-
-            return serviceResolver;
         }
 
         public static void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;

@@ -5,7 +5,7 @@ using System;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public abstract class CpuTestBase : MBBSEmuTestBase
+    public abstract class CpuTestBase : TestBase
     {
         private protected CpuCore mbbsEmuCpuCore;
         private protected IMemoryCore mbbsEmuMemoryCore;
