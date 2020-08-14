@@ -1,4 +1,3 @@
-﻿using System;
 using NLog;
 using System.IO;
 using System.Runtime.InteropServices;

@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
@@ -104,9 +104,9 @@ namespace MBBSEmu
                 if (!File.Exists($"BBSGEN.DAT"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
-                   
+
                     var resourceManager = ServiceResolver.GetService<IResourceManager>();
-                    
+
                     File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
                 }
 
@@ -177,7 +177,7 @@ namespace MBBSEmu
                     }
 
                     ServiceResolver.GetService<ISocketServer>()
-                        .Start(EnumSessionType.Telent, int.Parse(config["Telnet.Port"]));
+                        .Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
                 }
