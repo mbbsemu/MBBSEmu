@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 ﻿using System;
+=======
+>>>>>>> 499a85239cb33880ca4801eff2a2bf1e9aeb2a76
 using NLog;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -96,5 +99,15 @@ namespace MBBSEmu.IO
         public string CorrectPathSeparator(string fileName) => RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             ? fileName
             : fileName.Replace(@"\", "/");
+<<<<<<< HEAD
+=======
+
+
+        /// <summary>
+        ///     String containing the executing path of MBBSEmu
+        /// </summary>
+        /// <returns></returns>
+        public static string ExecutingPath => $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}";
+>>>>>>> 499a85239cb33880ca4801eff2a2bf1e9aeb2a76
     }
 }
