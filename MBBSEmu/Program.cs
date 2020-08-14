@@ -65,6 +65,7 @@ namespace MBBSEmu
                             break;
                         case "-?":
                             Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
+                            Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
                             return;
                         case "-CONFIG":
                         case "-C":
@@ -221,6 +222,8 @@ namespace MBBSEmu
                 {
                     _logger.Info("Rlogin Server Disabled (via appsettings.json)");
                 }
+
+                _logger.Info($"MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")} Started!");
             }
             catch (Exception e)
             {

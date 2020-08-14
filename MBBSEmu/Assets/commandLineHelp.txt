@@ -57,3 +57,4 @@ Eample Module Configuration JSON File Structure:
 -----------------------------------------------------------
 Please consider supporting this project by joining our Patreon:
 https://www.patreon.com/mbbsemu
+-----------------------------------------------------------
