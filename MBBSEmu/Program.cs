@@ -12,7 +12,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.IO;
 
 namespace MBBSEmu
 {
@@ -121,8 +120,7 @@ namespace MBBSEmu
                     }
                 }
 
-                sSettingsFile ??= DefaultEmuSettingsFilename;
-                ServiceResolver.Create(sSettingsFile);
+                ServiceResolver.Create(sSettingsFile ?? DefaultEmuSettingsFilename);
 
                 _logger = ServiceResolver.GetService<ILogger>();
                 var config = ServiceResolver.GetService<IConfiguration>();
@@ -253,7 +251,7 @@ namespace MBBSEmu
                     _logger.Info("Rlogin Server Disabled (via appsettings.json)");
                 }
 
-                _logger.Info($"MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")} Started!");
+                _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
             }
             catch (Exception e)
             {

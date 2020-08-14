@@ -2,8 +2,11 @@
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.Fsd;
+using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
 using Microsoft.Extensions.Configuration;
@@ -13,9 +16,6 @@ using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.IO;
-using MBBSEmu.HostProcess.Fsd;
-using MBBSEmu.HostProcess.HostRoutines;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -37,12 +37,12 @@ namespace MBBSEmu.DependencyInjection
 
             ServiceCollection = new ServiceCollection();
 
-            var ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+            var configurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonStream(LoadAppSettings(appSettingsFilename))
                 .Build();
 
             //Base Configuration Items
-            ServiceCollection.AddSingleton<IConfiguration>(ConfigurationRoot);
+            ServiceCollection.AddSingleton<IConfiguration>(configurationRoot);
             ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();
             ServiceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             ServiceCollection.AddSingleton<IFileUtility, FileUtility>();
