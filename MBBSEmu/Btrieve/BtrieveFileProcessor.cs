@@ -349,8 +349,14 @@ namespace MBBSEmu.Btrieve
             var result = LoadedFile.Records.FirstOrDefault(x => x.Offset == offset);
 
             if (result == null)
+            {
                 _logger.Error($"No Record found at offset {offset}");
-
+            }
+            else
+            {
+                Position = offset;
+            }
+            
             return result;
         }
 

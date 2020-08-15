@@ -1100,6 +1100,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 390:
                     lngrnd();
                     break;
+                case 51:
+                    aabbtv();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -6923,6 +6926,40 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.DX = (ushort)(randomValue >> 16);
             Registers.AX = (ushort)(randomValue & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     'Acquire' a Btrieve record from a file position
+        ///
+        ///     Signature: int aabbtv (void *recptr, long abspos, int keynum);
+        /// </summary>
+        private void aabbtv()
+        {
+            var recordPointer = GetParameterPointer(0); 
+            var absolutePosition = GetParameterLong(2);
+            var keynum = GetParameter(6);
+
+            var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
+
+            var record = currentBtrieveFile.GetRecord((uint) absolutePosition);
+
+            if (record != null)
+            {
+                //Record Found
+                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(_currentBtrieveFile, BtvFileStruct.Size));
+                Module.Memory.SetArray(btvStruct.data, record.Data);
+
+                if (recordPointer != IntPtr16.Empty)
+                    Module.Memory.SetArray(recordPointer, record.Data);
+
+                Registers.AX = 1;
+            }
+            else
+            {
+                //Record Not Found
+                Registers.AX = 0;
+            }
+
         }
     }
 }
