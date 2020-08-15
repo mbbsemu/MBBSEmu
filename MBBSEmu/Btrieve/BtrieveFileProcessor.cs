@@ -481,22 +481,47 @@ namespace MBBSEmu.Btrieve
             {
                 EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
+                
                 EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyNext(currentQuery),
+
+                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
+
+                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyNextAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyNextAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNextNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreaterNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetGreater => GetByKeyGreaterNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreaterOrEqualNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqualNumeric(currentQuery),
+
+                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetLess => GetByKeyLessNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLessNumeric(currentQuery),
+
                 EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetLast => GetByKeyLastNumeric(currentQuery),
+
+                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),
+
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
         }
@@ -632,7 +657,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyNext(BtrieveQuery query)
+        private ushort GetByKeyNextAlphabetical(BtrieveQuery query)
         {
             //Searching All Records AFTER current for the given key
             var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
@@ -674,7 +699,7 @@ namespace MBBSEmu.Btrieve
                     query.Key = BitConverter.GetBytes(BitConverter.ToUInt32(query.Key) + 1);
                     break;
                 default:
-                    throw new Exception($"Unsupported Key Length: {query.KeyLength}");
+                    throw new Exception($"Unsupported Key Length: {query.KeyLength} ({LoadedFileName})");
             }
 
             return GetByKeyEqual(query);
