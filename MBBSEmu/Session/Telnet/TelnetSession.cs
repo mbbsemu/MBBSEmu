@@ -139,7 +139,7 @@ namespace MBBSEmu.Session.Telnet
                 byte[] dataToSend;
                 try
                 {
-                    tookData = DataToClient.TryTake(out dataToSend, timeSpan.Milliseconds, _cancellationTokenSource.Token);
+                    tookData = DataToClient.TryTake(out dataToSend, (int) timeSpan.TotalMilliseconds, _cancellationTokenSource.Token);
                 } catch (Exception) // either ObjectDisposedException | OperationCanceledException
                 {
                     return;
@@ -147,7 +147,8 @@ namespace MBBSEmu.Session.Telnet
 
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
                 {
-                    SessionState = EnumSessionState.LoggedOff;
+                    CloseSocket("User-initiated log off");
+                    return;
                 }
 
                 if (SessionTimer.ElapsedMilliseconds >= 500) {

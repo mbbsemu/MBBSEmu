@@ -225,10 +225,10 @@ namespace MBBSEmu.HostProcess
             }
 
             // let modules clean themselves up
-            callModuleRoutine("finrou");
+            CallModuleRoutine("finrou");
         }
 
-        private void callModuleRoutine(string routine, ushort channel = ushort.MaxValue) {
+        private void CallModuleRoutine(string routine, ushort channel = ushort.MaxValue) {
             foreach (var m in _modules.Values)
             {
                 if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
@@ -240,7 +240,7 @@ namespace MBBSEmu.HostProcess
                     _logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
 #endif
 
-                    Run(m.ModuleIdentifier, routineEntryPoint, ushort.MaxValue);
+                    Run(m.ModuleIdentifier, routineEntryPoint, channel);
                 }
             }
         }
@@ -359,7 +359,7 @@ namespace MBBSEmu.HostProcess
 
             if (doLoginRoutine)
             {
-                callModuleRoutine("lonrou", session.Channel);
+                CallModuleRoutine("lonrou", session.Channel);
             }
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
@@ -625,7 +625,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Removing Channel: {channel}");
 
-            callModuleRoutine("huprou", channel);
+            CallModuleRoutine("huprou", channel);
 
             _channelDictionary[channel].Stop();
             _channelDictionary.Remove(channel);

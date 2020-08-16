@@ -20,7 +20,7 @@ namespace MBBSEmu
     {
         public const string DefaultEmuSettingsFilename = "appsettings.json";
 
-        private static ILogger _logger;
+        private ILogger _logger;
 
         private string sInputModule = string.Empty;
         private string sInputPath = string.Empty;
@@ -279,10 +279,11 @@ namespace MBBSEmu
 
         private void cancelKeyPressHandler(object sender, ConsoleCancelEventArgs args)
         {
-            // so args.Cancel is a bit strange. Cancel means to cancel to the Ctrl-C processing, so
+            // so args.Cancel is a bit strange. Cancel means to cancel the Ctrl-C processing, so
             // setting it to true keeps the app alive. We want this at first to allow the shutdown
             // routines to process naturally. If we get a 2nd (or more) Ctrl-C, then we set
-            // args.Cancel to false which means the app will die a horrible death.
+            // args.Cancel to false which means the app will die a horrible death, and prevents the
+            // app from being unkillable by normal means.
             args.Cancel = cancellationRequests > 0 ? false : true;
 
             cancellationRequests++;
