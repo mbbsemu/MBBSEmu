@@ -214,7 +214,7 @@ namespace MBBSEmu
                         return;
                     }
 
-                    ISocketServer telnetService = ServiceResolver.GetService<ISocketServer>();
+                    var telnetService = ServiceResolver.GetService<ISocketServer>();
                     telnetService.Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
@@ -241,7 +241,7 @@ namespace MBBSEmu
                         return;
                     }
 
-                    ISocketServer rloginService = ServiceResolver.GetService<ISocketServer>();
+                    var rloginService = ServiceResolver.GetService<ISocketServer>();
                     rloginService.Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
 
                     _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
@@ -284,7 +284,7 @@ namespace MBBSEmu
             // routines to process naturally. If we get a 2nd (or more) Ctrl-C, then we set
             // args.Cancel to false which means the app will die a horrible death, and prevents the
             // app from being unkillable by normal means.
-            args.Cancel = cancellationRequests > 0 ? false : true;
+            args.Cancel = cancellationRequests <= 0;
 
             cancellationRequests++;
 
