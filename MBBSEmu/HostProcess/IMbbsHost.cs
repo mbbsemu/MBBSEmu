@@ -1,20 +1,16 @@
-﻿using MBBSEmu.Module;
+using MBBSEmu.Module;
+using MBBSEmu.Server;
 using MBBSEmu.Session;
 using System.Collections.Generic;
 
 namespace MBBSEmu.HostProcess
 {
-    public interface IMbbsHost
+    public interface IMbbsHost : IStoppable
     {
         /// <summary>
         ///     Starts the MbbsHost Worker Thread
         /// </summary>
         void Start();
-
-        /// <summary>
-        ///     Stops the MbbsHost worker thread
-        /// </summary>
-        void Stop();
 
         /// <summary>
         ///     Adds a Module to the MbbsHost Process and sets it up for use

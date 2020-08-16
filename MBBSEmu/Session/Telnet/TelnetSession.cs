@@ -21,8 +21,8 @@ namespace MBBSEmu.Session.Telnet
 
         private readonly Socket _telnetConnection;
         private readonly Thread _senderThread;
-        private readonly byte[] socketReceiveBuffer = new byte[9000];
-
+        private readonly byte[] _socketReceiveBuffer = new byte[9000];
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private int _iacPhase;
 
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
@@ -41,7 +41,7 @@ namespace MBBSEmu.Session.Telnet
 
             _telnetConnection = telnetConnection;
             _telnetConnection.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
-            _telnetConnection.ReceiveBufferSize = socketReceiveBuffer.Length;
+            _telnetConnection.ReceiveBufferSize = _socketReceiveBuffer.Length;
             _telnetConnection.Blocking = false;
 
             SessionState = EnumSessionState.Negotiating;
@@ -58,6 +58,11 @@ namespace MBBSEmu.Session.Telnet
             SessionState = EnumSessionState.Unauthenticated;
 
             ListenForData();
+        }
+
+        public override void Stop()
+        {
+            CloseSocket("Forced Stop");
         }
 
         /// <summary>
@@ -130,7 +135,16 @@ namespace MBBSEmu.Session.Telnet
 
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
-                bool tookData = DataToClient.TryTake(out var dataToSend, timeSpan);
+                bool tookData;
+                byte[] dataToSend;
+                try
+                {
+                    tookData = DataToClient.TryTake(out dataToSend, timeSpan.Milliseconds, _cancellationTokenSource.Token);
+                } catch (Exception) // either ObjectDisposedException | OperationCanceledException
+                {
+                    return;
+                }
+
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
                 {
                     SessionState = EnumSessionState.LoggedOff;
@@ -191,15 +205,15 @@ namespace MBBSEmu.Session.Telnet
             }
 
             //Process if it's an IAC command
-            if (socketReceiveBuffer[0] == 0xFF)
+            if (_socketReceiveBuffer[0] == 0xFF)
             {
-                ParseIAC(socketReceiveBuffer);
+                ParseIAC(_socketReceiveBuffer);
                 return;
             }
 
             //Enqueue the incoming bytes for processing
             for (var i = 0; i < bytesReceived; i++)
-                DataFromClient.Add(socketReceiveBuffer[i]);
+                DataFromClient.Add(_socketReceiveBuffer[i]);
         }
 
         /// <summary>
@@ -396,7 +410,7 @@ namespace MBBSEmu.Session.Telnet
 
         private void ListenForData() {
             if (_telnetConnection.Connected && SessionState != EnumSessionState.LoggedOff) {
-                _telnetConnection.BeginReceive(socketReceiveBuffer, 0, socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
+                _telnetConnection.BeginReceive(_socketReceiveBuffer, 0, _socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
             }
         }
 
@@ -407,6 +421,9 @@ namespace MBBSEmu.Session.Telnet
 
             _telnetConnection.Close();
             SessionState = EnumSessionState.LoggedOff;
+
+            // send signal to the send thread to abort
+            _cancellationTokenSource.Cancel();
         }
     }
 }

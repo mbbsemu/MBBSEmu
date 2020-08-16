@@ -2,6 +2,7 @@ using System;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Server;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,7 +18,7 @@ namespace MBBSEmu.Session
     ///     This holds the basics for any given user session, and different source
     ///     (web, telnet, console, etc.) can implement this base.
     /// </summary>
-    public abstract class SessionBase
+    public abstract class SessionBase : IStoppable
     {
         protected delegate void SendToClientDelegate(byte[] dataToSend);
 
@@ -217,6 +218,8 @@ namespace MBBSEmu.Session
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));
 
         public void SendToClient(ReadOnlySpan<byte> dataToSend) => SendToClient(dataToSend.ToArray());
+
+        public abstract void Stop();
 
         protected SessionBase(string sessionId)
         {

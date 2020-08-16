@@ -47,11 +47,18 @@ namespace MBBSEmu.Server.Socket
         public void Stop()
         {
             _listenerSocket.Close();
-            _listenerSocket.Dispose();
         }
 
         private void OnNewConnection(IAsyncResult asyncResult) {
-            System.Net.Sockets.Socket client = _listenerSocket.EndAccept(asyncResult);
+            System.Net.Sockets.Socket client;
+            try
+            {
+                client = _listenerSocket.EndAccept(asyncResult);
+            } catch (ObjectDisposedException) {
+                // ignore, happens during shutdown
+                return;
+            }
+
             client.NoDelay = true;
 
             _listenerSocket.BeginAccept(OnNewConnection, this);
@@ -71,7 +78,6 @@ namespace MBBSEmu.Server.Socket
                             _logger.Info(
                                 $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
                             client.Close();
-                            client.Dispose();
                             return;
                         }
 
