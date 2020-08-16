@@ -23,9 +23,9 @@ code occur on the user channel.
 
 # More Information
 
-You can find much more information on MBBSEmu, including documentation as well as Module downloads on the MBBSEmu website: 
+MBBSEmu Website - [https://www.mbbsemu.com](https://www.mbbsemu.com)
 
-[https://www.mbbsemu.com](https://www.mbbsemu.com)
+Project Wiki - [https://github.com/enusbaum/MBBSEmu/wiki](https://github.com/enusbaum/MBBSEmu/wiki)
 
 # Contribute
 
