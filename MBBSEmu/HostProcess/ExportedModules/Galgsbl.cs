@@ -1,6 +1,7 @@
-﻿using MBBSEmu.CPU;
+using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Server;
 using MBBSEmu.Session;
 using System;
 using System.Text;
@@ -10,9 +11,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 {
     /// <summary>
     ///     Class which defines functions &amp; properties that are part of the Galacticomm
-    ///     Global Software Breakout Library (GALGSBL.H). 
+    ///     Global Software Breakout Library (GALGSBL.H).
     /// </summary>
-    public class Galgsbl : ExportedModuleBase, IExportedModule
+    public class Galgsbl : ExportedModuleBase, IExportedModule, IStoppable
     {
         /// <summary>
         ///     Segment Identifier for Relocation
@@ -24,6 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ushort MonitoredChannel2 { get; set; }
 
         private readonly DateTime _startDate;
+        private readonly Timer _timer;
 
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
@@ -51,7 +53,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             MonitoredChannel2 = 0xFFFF;
             MonitoredChannel = 0xFFFF;
 
-            new Thread(Timer1Hz).Start();
+            TimeSpan timeSpan = TimeSpan.FromSeconds(1);
+            _timer = new Timer(OnTimerCallback, this, timeSpan, timeSpan);
+        }
+
+        public void Stop()
+        {
+            _timer.Dispose();
         }
 
         public void UpdateSession(ushort channel)
@@ -67,16 +75,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Internal timer for operations that need to happen every 1 seconds
         /// </summary>
-        private void Timer1Hz()
+        private void OnTimerCallback(object unused)
         {
-            while (true)
-            {
-                //Update TICKER
-                var tickerPointer = Module.Memory.GetVariablePointer("TICKER");
-                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
-                Module.Memory.SetWord(tickerPointer, seconds);
-                Thread.Sleep(999);
-            }
+            //Update TICKER
+            var tickerPointer = Module.Memory.GetVariablePointer("TICKER");
+            var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+            Module.Memory.SetWord(tickerPointer, seconds);
         }
 
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
@@ -278,7 +282,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Inject a status code into a channel
-        /// 
+        ///
         ///     Signature: int btuinj(int chan,int status)
         ///     Result: AX == 0 = OK
         /// </summary>
@@ -381,9 +385,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Clears the input buffer
         ///
         ///     Since our input buffer is a queue, we'll just clear it
-        /// 
+        ///
         ///     Signature: int btucli(int chan)
-        ///     Result: 
+        ///     Result:
         /// </summary>
         /// <returns></returns>
         public void btucli()
@@ -448,8 +452,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            //Always return that the echo buffer is empty, as 
-            //we send data immediately to the client when it's 
+            //Always return that the echo buffer is empty, as
+            //we send data immediately to the client when it's
             //written to the echo buffer (see chious())
             Registers.AX = 255;
         }
@@ -816,7 +820,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     This routine controls functions of the UART and (if used) the modem on a channel
-        /// 
+        ///
         ///     Signature: int btucmd(int chan,char *cmdstg);
         /// </summary>
         private void btucmd()

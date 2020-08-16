@@ -5,6 +5,7 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
+using MBBSEmu.Server;
 using MBBSEmu.Server.Socket;
 using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
@@ -19,19 +20,25 @@ namespace MBBSEmu
     {
         public const string DefaultEmuSettingsFilename = "appsettings.json";
 
-        private static ILogger _logger;
+        private ILogger _logger;
 
-        private static string sInputModule = string.Empty;
-        private static string sInputPath = string.Empty;
-        private static bool bApiReport = false;
-        private static bool bConfigFile = false;
-        private static string sConfigFile = string.Empty;
-        private static string sSettingsFile;
-        private static bool bResetDatabase = false;
-        private static string sSysopPassword = string.Empty;
+        private string sInputModule = string.Empty;
+        private string sInputPath = string.Empty;
+        private bool bApiReport = false;
+        private bool bConfigFile = false;
+        private string sConfigFile = string.Empty;
+        private string sSettingsFile;
+        private bool bResetDatabase = false;
+        private string sSysopPassword = string.Empty;
+        private List<IStoppable> runningServices = new List<IStoppable>();
+        private int cancellationRequests = 0;
 
         static void Main(string[] args)
         {
+            new Program().Run(args);
+        }
+
+        private void Run(String[] args) {
             try
             {
                 if (args.Length == 0)
@@ -196,6 +203,8 @@ namespace MBBSEmu
 
                 host.Start();
 
+                runningServices.Add(host);
+
                 //Setup and Run Telnet Server
                 if (bool.TryParse(config["Telnet.Enabled"], out var telnetEnabled) && telnetEnabled)
                 {
@@ -205,10 +214,12 @@ namespace MBBSEmu
                         return;
                     }
 
-                    ServiceResolver.GetService<ISocketServer>()
-                        .Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
+                    ISocketServer telnetService = ServiceResolver.GetService<ISocketServer>();
+                    telnetService.Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
+
+                    runningServices.Add(telnetService);
                 }
                 else
                 {
@@ -230,10 +241,12 @@ namespace MBBSEmu
                         return;
                     }
 
-                    ServiceResolver.GetService<ISocketServer>()
-                        .Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
+                    ISocketServer rloginService = ServiceResolver.GetService<ISocketServer>();
+                    rloginService.Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
 
                     _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
+
+                    runningServices.Add(rloginService);
 
                     if (bool.Parse(config["Rlogin.PortPerModule"]))
                     {
@@ -241,8 +254,9 @@ namespace MBBSEmu
                         foreach (var m in modules)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
-                            ServiceResolver.GetService<ISocketServer>()
-                                .Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                            rloginService = ServiceResolver.GetService<ISocketServer>();
+                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                            runningServices.Add(rloginService);
                         }
                     }
                 }
@@ -252,6 +266,8 @@ namespace MBBSEmu
                 }
 
                 _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+
+                Console.CancelKeyPress += cancelKeyPressHandler;
             }
             catch (Exception e)
             {
@@ -261,12 +277,31 @@ namespace MBBSEmu
             }
         }
 
+        private void cancelKeyPressHandler(object sender, ConsoleCancelEventArgs args)
+        {
+            // so args.Cancel is a bit strange. Cancel means to cancel the Ctrl-C processing, so
+            // setting it to true keeps the app alive. We want this at first to allow the shutdown
+            // routines to process naturally. If we get a 2nd (or more) Ctrl-C, then we set
+            // args.Cancel to false which means the app will die a horrible death, and prevents the
+            // app from being unkillable by normal means.
+            args.Cancel = cancellationRequests > 0 ? false : true;
+
+            cancellationRequests++;
+
+            _logger.Warn("BBS Shutting down");
+
+            foreach (var runningService in runningServices)
+            {
+                runningService.Stop();
+            }
+        }
+
         /// <summary>
         ///     Performs a Database Reset
         ///
         ///     Deletes the Accounts Table and sets up a new SYSOP and GUEST user
         /// </summary>
-        private static void DatabaseReset()
+        private void DatabaseReset()
         {
             _logger.Info("Resetting Database...");
             var acct = ServiceResolver.GetService<IAccountRepository>();

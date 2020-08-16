@@ -1,4 +1,4 @@
-﻿using MBBSEmu.CPU;
+using MBBSEmu.CPU;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.HostRoutines;
@@ -212,6 +212,37 @@ namespace MBBSEmu.HostProcess
                 ProcessTasks();
             }
 
+            Shutdown();
+        }
+
+        private void Shutdown()
+        {
+            _logger.Info("SHUTTING DOWN");
+
+            // kill all active sessions
+            foreach (SessionBase session in _channelDictionary.Values) {
+                session.Stop();
+            }
+
+            // let modules clean themselves up
+            CallModuleRoutine("finrou");
+        }
+
+        private void CallModuleRoutine(string routine, ushort channel = ushort.MaxValue) {
+            foreach (var m in _modules.Values)
+            {
+                if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
+
+                if (routineEntryPoint.Segment != 0 &&
+                    routineEntryPoint.Offset != 0)
+                {
+#if DEBUG
+                    _logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
+#endif
+
+                    Run(m.ModuleIdentifier, routineEntryPoint, channel);
+                }
+            }
         }
 
         /// <summary>
@@ -237,7 +268,10 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessDisconnects()
         {
-            //Any Disconnects
+            // for removing channels sequentially, starting with the highest index to not break
+            // _channelDictionary
+            Stack<ushort> channelsToRemove = new Stack<ushort>();
+
             for (ushort i = 0; i < _channelDictionary.Count; i++)
             {
                 //Because users might not be on sequential channels (0,1,3), we verify if the channel number
@@ -247,8 +281,12 @@ namespace MBBSEmu.HostProcess
                 //We only process channels that are logged off
                 if (_channelDictionary[i].SessionState != EnumSessionState.LoggedOff) continue;
 
-                _logger.Info($"Removing LoggedOff Channel: {i}");
-                _channelDictionary.Remove(i);
+                channelsToRemove.Push(i);
+            }
+
+            while (channelsToRemove.Count > 0)
+            {
+                RemoveSession(channelsToRemove.Pop());
             }
         }
 
@@ -321,17 +359,7 @@ namespace MBBSEmu.HostProcess
 
             if (doLoginRoutine)
             {
-                foreach (var m in _modules.Values)
-                {
-                    //No Login Routine for the Module? NEXT!
-                    if (!m.EntryPoints.TryGetValue("lonrou", out var logonRoutineEntryPoint)) continue;
-
-                    if (logonRoutineEntryPoint.Segment != 0 &&
-                        logonRoutineEntryPoint.Offset != 0)
-                    {
-                        Run(m.ModuleIdentifier, logonRoutineEntryPoint, session.Channel);
-                    }
-                }
+                CallModuleRoutine("lonrou", session.Channel);
             }
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
@@ -444,7 +472,7 @@ namespace MBBSEmu.HostProcess
         ///     Invokes routine registered during MAJORBBS->RTKICK()
         ///
         ///     Methods registered using RTKICK are automatically invoked after a specified delay (in seconds). Methods
-        ///     only execute once and are then discarded. 
+        ///     only execute once and are then discarded.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessRTKICK()
@@ -589,7 +617,21 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        public bool RemoveSession(ushort channel) => _channelDictionary.Remove(channel);
+        public bool RemoveSession(ushort channel) {
+            if (!_channelDictionary.ContainsKey(channel))
+            {
+                return false;
+            }
+
+            _logger.Info($"Removing Channel: {channel}");
+
+            CallModuleRoutine("huprou", channel);
+
+            _channelDictionary[channel].Stop();
+            _channelDictionary.Remove(channel);
+
+            return true;
+        }
 
         /// <summary>
         ///     Runs the specified routine in the specified module

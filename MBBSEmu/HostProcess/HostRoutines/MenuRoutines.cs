@@ -355,6 +355,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoggingOffProcessing;
+            session.Stop();
         }
 
         private void SignupUsernameDisplay(SessionBase session)

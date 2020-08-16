@@ -21,7 +21,9 @@ namespace MBBSEmu.Session.Rlogin
         private readonly Socket _rloginConnection;
         private readonly Thread _sendThread;
         private readonly Thread _receiveThread;
-        private readonly byte[] socketReceiveBuffer = new byte[256];
+        private readonly byte[] _socketReceiveBuffer = new byte[256];
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
         public readonly string ModuleIdentifier;
 
         public RloginSession(Socket rloginConnection, string moduleIdentifier = null) : base(rloginConnection.RemoteEndPoint.ToString())
@@ -32,6 +34,7 @@ namespace MBBSEmu.Session.Rlogin
             _host = ServiceResolver.GetService<IMbbsHost>();
             _logger = ServiceResolver.GetService<ILogger>();
             _rloginConnection = rloginConnection;
+            _rloginConnection.Blocking = true;
             _rloginConnection.ReceiveTimeout = (1000 * 60) * 5;
             _rloginConnection.ReceiveBufferSize = 128;
             SessionState = EnumSessionState.Negotiating;
@@ -44,6 +47,13 @@ namespace MBBSEmu.Session.Rlogin
 
             //Add this Session to the Host
             _host.AddSession(this);
+        }
+
+        public override void Stop() {
+            SessionState = EnumSessionState.LoggedOff;
+            _rloginConnection.Close();
+            _cancellationTokenSource.Cancel();
+            TransparentMode = false;
         }
 
         /// <summary>
@@ -98,9 +108,15 @@ namespace MBBSEmu.Session.Rlogin
         {
             while (SessionState != EnumSessionState.LoggedOff && _rloginConnection.IsConnected())
             {
-                while (DataToClient.TryTake(out var dataToSend))
+                try {
+                    while (DataToClient.TryTake(out var dataToSend, /* forever */ -1, _cancellationTokenSource.Token))
+                    {
+                        Send(dataToSend);
+                    }
+                }
+                catch (Exception) // either ObjectDisposedException | OperationCanceledException
                 {
-                    Send(dataToSend);
+                    break;
                 }
 
                 if (SessionState == EnumSessionState.LoggingOffProcessing)
@@ -114,8 +130,7 @@ namespace MBBSEmu.Session.Rlogin
             }
 
             //Cleanup if the connection was dropped
-            SessionState = EnumSessionState.LoggedOff;
-            TransparentMode = false;
+            Stop();
         }
 
         /// <summary>
@@ -125,7 +140,7 @@ namespace MBBSEmu.Session.Rlogin
         {
             while (SessionState != EnumSessionState.LoggedOff && _rloginConnection.IsConnected())
             {
-                var bytesReceived = _rloginConnection.Receive(socketReceiveBuffer, SocketFlags.None, out var socketState);
+                var bytesReceived = _rloginConnection.Receive(_socketReceiveBuffer, SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
 
                 if (bytesReceived == 0)
@@ -133,20 +148,20 @@ namespace MBBSEmu.Session.Rlogin
 
                 //Parse RLogin Information
                 if (SessionState == EnumSessionState.Negotiating && bytesReceived > 2 &&
-                    socketReceiveBuffer[0] == 0x0 )
+                    _socketReceiveBuffer[0] == 0x0 )
                 {
                     var usernameLength = 0;
                     var startingOrdinal = 1;
 
-                    if (socketReceiveBuffer[1] == 0)
+                    if (_socketReceiveBuffer[1] == 0)
                         startingOrdinal++;
 
-                    ReadOnlySpan<byte> bufferSpan = socketReceiveBuffer;
+                    ReadOnlySpan<byte> bufferSpan = _socketReceiveBuffer;
 
                     //Find End of Username
                     for (var i = startingOrdinal; i < bytesReceived; i++)
                     {
-                        if (socketReceiveBuffer[i] != 0x0) continue;
+                        if (_socketReceiveBuffer[i] != 0x0) continue;
                         usernameLength = i - startingOrdinal;
                         break;
                     }
@@ -172,16 +187,11 @@ namespace MBBSEmu.Session.Rlogin
 
                 //Enqueue the incoming bytes for processing
                 for (var i = 0; i < bytesReceived; i++)
-                    DataFromClient.Add(socketReceiveBuffer[i]);
-
-                Thread.Sleep(1);
+                    DataFromClient.Add(_socketReceiveBuffer[i]);
             }
 
             //Cleanup if the connection was dropped
-            SessionState = EnumSessionState.LoggedOff;
-
-            //Dispose the socket connection
-            _rloginConnection.Dispose();
+            Stop();
         }
 
 
@@ -199,8 +209,7 @@ namespace MBBSEmu.Session.Rlogin
                 case SocketError.TimedOut:
                     {
                         _logger.Warn($"Session {SessionId} (Channel: {Channel}) forcefully disconnected: {socketError}");
-                        SessionState = EnumSessionState.LoggedOff;
-                        _rloginConnection.Dispose();
+                        Stop();
                         return;
                     }
                 default:
