@@ -251,7 +251,7 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("finrou", module => _logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
         }
 
-        private void CallModuleRoutine(string routine, System.Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
             foreach (var m in _modules.Values)
             {
                 if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
