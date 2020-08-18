@@ -8,6 +8,7 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using NLog;
 
 namespace MBBSEmu.HostProcess.HostRoutines

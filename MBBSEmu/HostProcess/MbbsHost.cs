@@ -14,6 +14,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.Session.Attributes;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess
 {
@@ -124,6 +126,30 @@ namespace MBBSEmu.HostProcess
                 {
                     //Process a single incoming byte from the client session
                     session.ProcessDataFromClient();
+
+                    //Global Command Handler
+                    if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
+                    {
+                        //Transfer Input Buffer to Command Buffer, but don't clear it
+                        session.InputBuffer.WriteByte(0x0);
+                        session.InputCommand = session.InputBuffer.ToArray();
+
+                        //Only Enumerate Modules that have a Global Command Handler Registered
+                        foreach (var m in _modules.Values.Where(x => x.GlobalCommandHandlers.Any()))
+                        {   
+                            var result = Run(m.ModuleIdentifier,
+                                m.GlobalCommandHandlers.First(), session.Channel);
+
+                            //Because Status on Exit Sets to the Exit code of the module, we reset it back to 3
+                            session.Status = 3;
+
+                            //Command Not Recognized
+                            if (result == 0)
+                                continue;
+
+                            break;
+                        }
+                    }
 
                     switch (session.SessionState)
                     {

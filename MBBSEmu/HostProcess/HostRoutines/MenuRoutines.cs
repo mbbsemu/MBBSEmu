@@ -8,6 +8,7 @@ using MBBSEmu.Extensions;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {

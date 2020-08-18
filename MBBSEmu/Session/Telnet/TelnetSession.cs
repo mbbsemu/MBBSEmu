@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using MBBSEmu.Extensions;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session.Telnet
 {

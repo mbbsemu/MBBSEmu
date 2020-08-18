@@ -1,4 +1,4 @@
-namespace MBBSEmu.Session
+namespace MBBSEmu.Session.Enums
 {
     public enum EnumSessionType
     {
