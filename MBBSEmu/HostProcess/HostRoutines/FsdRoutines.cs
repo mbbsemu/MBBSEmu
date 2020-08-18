@@ -19,7 +19,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
     ///     Handles all Full Screen Display/Full Screen Data Entry methods as this functionality yields control
     ///     back to the host process before being passed back into the module.
     /// </summary>
-    public class FsdRoutines : IHostRoutines
+    public class FsdRoutines : IHostRoutine
     {
         private readonly ILogger _logger;
         private readonly IGlobalCache _globalCache;

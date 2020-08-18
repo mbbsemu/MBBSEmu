@@ -15,7 +15,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
     /// <summary>
     ///     Menu Routines for MBBSEmu
     /// </summary>
-    public class MenuRoutines : IHostRoutines
+    public class MenuRoutines : IHostRoutine
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
