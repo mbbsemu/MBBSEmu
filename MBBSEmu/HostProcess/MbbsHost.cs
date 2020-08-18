@@ -33,6 +33,9 @@ namespace MBBSEmu.HostProcess
     {
         private readonly ILogger _logger;
 
+        // 3 in the morning
+        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(/* hours= */ 3, /* minutes= */ 0, /* seconds= */ 0);
+
         /// <summary>
         ///     Dictionary containing all active Channels
         /// </summary>
@@ -78,6 +81,21 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private readonly IConfiguration _configuration;
 
+        /// <summary>
+        ///     Time of day that the cleanup routine will trigger
+        /// </summary>
+        private readonly TimeSpan _cleanupTime;
+
+        /// <summary>
+        ///     Timer that triggers when nightly cleanup should occur
+        /// </summary>
+        private readonly Timer _timer;
+
+        /// <summary>
+        ///     Flag that controls whether the main loop will perform a nightly cleanup
+        /// </summary>
+        private bool _performCleanup = false;
+
         public MbbsHost(ILogger logger, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
             _logger = logger;
@@ -92,6 +110,8 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
+            _cleanupTime = ParseCleanupTime();
+            _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
 
             _logger.Info("Constructed MBBSEmu Host!");
         }
@@ -112,6 +132,7 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
+            _timer.Dispose();
         }
 
         /// <summary>
@@ -124,6 +145,8 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
+                ProcessNightlyCleanup();
+
                 //Handle Channels
                 ProcessIncomingSessions();
                 ProcessDisconnects();
@@ -269,10 +292,10 @@ namespace MBBSEmu.HostProcess
             }
 
             // let modules clean themselves up
-            CallModuleRoutine("finrou");
+            CallModuleRoutine("finrou", module => _logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
         }
 
-        private void CallModuleRoutine(string routine, ushort channel = ushort.MaxValue) {
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
             foreach (var m in _modules.Values)
             {
                 if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
@@ -283,6 +306,8 @@ namespace MBBSEmu.HostProcess
 #if DEBUG
                     _logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
 #endif
+
+                    preRunCallback?.Invoke(m);
 
                     Run(m.ModuleIdentifier, routineEntryPoint, channel);
                 }
@@ -312,6 +337,13 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessDisconnects()
         {
+            // We only remove channels that are logged off
+            RemoveSessions(session =>
+                session.SessionState == EnumSessionState.LoggedOff);
+        }
+
+        private void RemoveSessions(Predicate<SessionBase> match)
+        {
             // for removing channels sequentially, starting with the highest index to not break
             // _channelDictionary
             Stack<ushort> channelsToRemove = new Stack<ushort>();
@@ -320,10 +352,7 @@ namespace MBBSEmu.HostProcess
             {
                 //Because users might not be on sequential channels (0,1,3), we verify if the channel number
                 //is even in use first.
-                if (!_channelDictionary.ContainsKey(i)) continue;
-
-                //We only process channels that are logged off
-                if (_channelDictionary[i].SessionState != EnumSessionState.LoggedOff) continue;
+                if (!_channelDictionary.ContainsKey(i) || !match(_channelDictionary[i])) continue;
 
                 channelsToRemove.Push(i);
             }
@@ -403,7 +432,7 @@ namespace MBBSEmu.HostProcess
 
             if (doLoginRoutine)
             {
-                CallModuleRoutine("lonrou", session.Channel);
+                CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
             }
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
@@ -669,7 +698,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Removing Channel: {channel}");
 
-            CallModuleRoutine("huprou", channel);
+            CallModuleRoutine("huprou", /* preRunCallback= */ null, channel);
 
             _channelDictionary[channel].Stop();
             _channelDictionary.Remove(channel);
@@ -873,6 +902,49 @@ namespace MBBSEmu.HostProcess
                     }
                 }
             }
+        }
+
+        private void ProcessNightlyCleanup()
+        {
+            if (_performCleanup)
+            {
+                _performCleanup = false;
+                DoNightlyCleanup();
+            }
+        }
+
+        private void DoNightlyCleanup()
+        {
+            _logger.Info("PERFORMING NIGHTLY CLEANUP");
+
+            // removes all sessions
+            RemoveSessions(session => true);
+
+            CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
+        }
+
+        private TimeSpan NowUntil(TimeSpan timeOfDay)
+        {
+            TimeSpan waitTime;
+            waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
+            if (waitTime < TimeSpan.Zero)
+            {
+                waitTime += TimeSpan.FromDays(1);
+            }
+
+            _logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
+            return waitTime;
+        }
+
+        private TimeSpan ParseCleanupTime()
+        {
+            TimeSpan cleanupTime;
+            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out cleanupTime))
+            {
+                cleanupTime = DEFAULT_CLEANUP_TIME;
+            }
+
+            return cleanupTime;
         }
     }
 }

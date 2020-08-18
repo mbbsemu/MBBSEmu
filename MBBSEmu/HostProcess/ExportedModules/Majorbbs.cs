@@ -1104,6 +1104,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 51:
                     aabbtv();
                     break;
+                case 609:
+                    uidkey();
+                    break;
+                case 457:
+                    othkey();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -6936,7 +6942,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void aabbtv()
         {
-            var recordPointer = GetParameterPointer(0); 
+            var recordPointer = GetParameterPointer(0);
             var absolutePosition = GetParameterLong(2);
             var keynum = GetParameter(6);
 
@@ -6961,6 +6967,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.AX = 0;
             }
 
+        }
+
+        /// <summary>
+        ///     Checks if an offline user has the specified key
+        ///
+        ///     Signature: int uidkey (char *uid, char *lock);
+        /// </summary>
+        private void uidkey()
+        {
+            // no key support for now, so everybody has the key
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Checks if the other user has the specified key, the one specified by othusn
+        ///     and othusp.
+        ///
+        ///     Signature: int othkey (char *lock);
+        /// </summary>
+        private void othkey()
+        {
+            // no key support for now, so everybody has the key
+            Registers.AX = 1;
         }
     }
 }
