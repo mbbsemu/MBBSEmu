@@ -328,7 +328,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (session.Status != 3) return;
             session.Status = 0;
 
-            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper();
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).TrimEnd('\0').ToUpper();
 
             switch (inputValue)
             {

@@ -146,6 +146,7 @@ namespace MBBSEmu.HostProcess
                             g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
                         {
                             session.Status = 1;
+                            session.InputBuffer.SetLength(0);
                             continue;
                         }
 
