@@ -372,6 +372,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTTROU_EnteringModule(SessionBase session)
         {
             session.StatusChange = false;
+            session.Status = 3;
             session.SessionState = EnumSessionState.InModule;
             session.UsrPtr.State = session.CurrentModule.StateCode;
             ProcessSTTROU(session);
@@ -387,7 +388,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTTROU(SessionBase session)
         {
             //Transfer Input Buffer to Command Buffer
-            session.InputBuffer.WriteByte(0x0);
+            //Null terminated already by Global Command Handler
             session.InputCommand = session.InputBuffer.ToArray();
             session.InputBuffer.SetLength(0);
 
@@ -712,6 +713,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="moduleName"></param>
         /// <param name="routine"></param>
         /// <param name="channelNumber"></param>
+        /// <param name="simulateCallFar"></param>
         /// <param name="initialStackValues"></param>
         private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
