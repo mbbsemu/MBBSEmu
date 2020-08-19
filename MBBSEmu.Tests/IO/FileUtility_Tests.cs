@@ -28,8 +28,8 @@ namespace MBBSEmu.Tests.IO
         [InlineData("file.txt", "FILE.txt", "file.txt")]
         [InlineData("file.txt", "FILE.TXT", "file.txt")]
         [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file.txt")]
-        [InlineData("dir1/dir2/dir3/file.txt", "Dir1/dIr2/diR3/fiLe.txt", "dir1/dir2/dir3/file.txt")]
-        [InlineData("Dir1/dIr2/diR3/File.txt", "dir1/dir2/dir3/file.txt", "Dir1/dIr2/diR3/File.txt")]
+        [InlineData("dir1/dir2/dir3/file.txt", "Dir1\\dIr2\\diR3\\fiLe.txt", "dir1/dir2/dir3/file.txt")]
+        [InlineData("Dir1/dIr2/diR3/File.txt", "dir1/dir2\\dir3/file.txt", "Dir1/dIr2/diR3/File.txt")]
         [InlineData("file.txt", "file1.TXT", null)]
         [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file1.txt", null)]
         [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir6/file.txt", null)]
@@ -45,6 +45,9 @@ namespace MBBSEmu.Tests.IO
 
         private void CreateFile(string file)
         {
+            // replace slashes with the system slash
+            file = file.Replace('/', Path.DirectorySeparatorChar);
+
             string path = Path.Join(_modulePath, file);
 
             Directory.CreateDirectory(Path.GetDirectoryName(path));

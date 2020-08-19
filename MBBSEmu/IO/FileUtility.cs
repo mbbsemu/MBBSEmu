@@ -16,6 +16,8 @@ namespace MBBSEmu.IO
     /// </summary>
     public class FileUtility : IFileUtility
     {
+        private static readonly Char[] PATH_SEPARATORS = new char[] {'\\', '/'};
+
         private static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions() {
             IgnoreInaccessible = true,
             MatchCasing = MatchCasing.CaseInsensitive,
@@ -49,7 +51,7 @@ namespace MBBSEmu.IO
                 fileName = fileName.Substring(2);
 
             Queue<string> pathComponents = new Queue<string>();
-            foreach (string pathComponent in fileName.Split(Path.DirectorySeparatorChar))
+            foreach (string pathComponent in fileName.Split(PATH_SEPARATORS))
             {
                 pathComponents.Enqueue(pathComponent);
             }
