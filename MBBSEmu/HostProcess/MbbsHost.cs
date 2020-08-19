@@ -350,12 +350,28 @@ namespace MBBSEmu.HostProcess
             var result = Run(session.CurrentModule.ModuleIdentifier,
                 session.CurrentModule.EntryPoints["sttrou"], session.Channel);
 
-            //stt returned an exit code -- we're done
-            if (result != 0) return;
+            //Finally, display prompt character if one is set
+            if (session.PromptCharacter > 0)
+                session.SendToClient(new[] { session.PromptCharacter });
 
+            //stt returned an exit code -- we're done
+            if (result == 0)
+                ExitModule(session);
+        }
+
+        /// <summary>
+        ///     Invoked when a users STTROU returns 0, which means they're exiting
+        ///
+        ///     This method handles session, input buffer, and status cleanup returning the
+        ///     user to the main menu with a clean session
+        /// </summary>
+        /// <param name="session"></param>
+        private void ExitModule(SessionBase session)
+        {
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
+            session.PromptCharacter = 0;
 
             //Reset States
             session.Status = 0;
