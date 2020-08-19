@@ -2,6 +2,7 @@ using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
+using MBBSEmu.IO;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
@@ -131,6 +132,7 @@ namespace MBBSEmu
 
                 _logger = ServiceResolver.GetService<ILogger>();
                 var config = ServiceResolver.GetService<IConfiguration>();
+                var fileUtility = ServiceResolver.GetService<IFileUtility>();
 
                 //Database Reset
                 if (bResetDatabase)
@@ -151,7 +153,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(sInputModule))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(sInputModule, sInputPath));
+                    modules.Add(new MbbsModule(fileUtility, sInputModule, sInputPath));
                 }
                 else if (bConfigFile)
                 {
@@ -162,7 +164,7 @@ namespace MBBSEmu
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(m["Identifier"], m["Path"]));
+                        modules.Add(new MbbsModule(fileUtility, m["Identifier"], m["Path"]));
                     }
                 }
                 else

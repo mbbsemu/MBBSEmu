@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
@@ -17,7 +17,7 @@ namespace MBBSEmu.Btrieve
     ///
     ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.EMU), which are JSON representations
     ///     of the underlying Btrieve Data. This means the legacy .DAT files are only used once on initial load and are not
-    ///     modified. All Inserts & Updates happen within the new .EMU JSON files. 
+    ///     modified. All Inserts & Updates happen within the new .EMU JSON files.
     /// </summary>
     public class BtrieveFileProcessor
     {
@@ -67,7 +67,7 @@ namespace MBBSEmu.Btrieve
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
-            if (!path.EndsWith(Path.DirectorySeparatorChar))
+            if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
             LoadedFilePath = path;
@@ -75,7 +75,7 @@ namespace MBBSEmu.Btrieve
 
             //If a .EMU version exists, load it over the .DAT file
             var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            if (File.Exists($"{LoadedFilePath}{jsonFileName}"))
+            if (File.Exists(Path.Combine(LoadedFilePath, jsonFileName)))
             {
                 LoadedFileName = jsonFileName;
                 LoadJson(LoadedFilePath, LoadedFileName);
@@ -102,20 +102,20 @@ namespace MBBSEmu.Btrieve
         {
             //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
             var virginFileName = fileName.Replace(".DAT", ".VIR");
-            if (!File.Exists($"{path}{fileName}") && File.Exists($"{path}{virginFileName}"))
+            if (!File.Exists(Path.Combine(path, fileName)) && File.Exists(Path.Combine(path, virginFileName)))
             {
-                File.Copy($"{path}{virginFileName}", $"{path}{fileName}");
+                File.Copy(Path.Combine(path, virginFileName), Path.Combine(path, fileName));
                 _logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
             }
 
             //If we're missing a DAT file, just bail. Because we don't know the file definition, we can't just create a "blank" one.
-            if (!File.Exists($"{path}{fileName}"))
+            if (!File.Exists(Path.Combine(path, fileName)))
             {
                 _logger.Error($"Unable to locate existing btrieve file {fileName}");
                 throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
             }
 
-            var fileData = File.ReadAllBytes($"{path}{fileName}");
+            var fileData = File.ReadAllBytes(Path.Combine(path, fileName));
             LoadedFile = new BtrieveFile(fileData) { FileName = LoadedFileName };
             LoadedFileSize = fileData.Length;
 #if DEBUG
@@ -137,7 +137,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="fileName"></param>
         private void LoadJson(string path, string fileName)
         {
-            LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText($"{path}{fileName}"));
+            LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText(Path.Combine(path, fileName)));
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace MBBSEmu.Btrieve
         private void SaveJson()
         {
             var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            File.WriteAllText($"{LoadedFilePath}{jsonFileName}",
+            File.WriteAllText(Path.Combine(LoadedFilePath, jsonFileName),
                 JsonConvert.SerializeObject(LoadedFile, Formatting.Indented));
         }
 
@@ -356,7 +356,7 @@ namespace MBBSEmu.Btrieve
             {
                 Position = offset;
             }
-            
+
             return result;
         }
 
@@ -481,7 +481,7 @@ namespace MBBSEmu.Btrieve
             {
                 EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
-                
+
                 EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),

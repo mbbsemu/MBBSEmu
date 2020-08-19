@@ -1,6 +1,8 @@
 using NLog;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System;
 
 namespace MBBSEmu.IO
 {
@@ -14,14 +16,23 @@ namespace MBBSEmu.IO
     /// </summary>
     public class FileUtility : IFileUtility
     {
-        private readonly ILogger _logger;
+        private static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions() {
+            IgnoreInaccessible = true,
+            MatchCasing = MatchCasing.CaseInsensitive,
+            RecurseSubdirectories = false,
+            ReturnSpecialDirectories = false,
+        };
 
-        private readonly string _directorySpecifier;
+        private readonly ILogger _logger;
 
         public FileUtility(ILogger logger)
         {
             _logger = logger;
-            _directorySpecifier = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? @"\" : "/";
+        }
+
+        public static FileUtility createForTest()
+        {
+            return new FileUtility(null);
         }
 
         public string FindFile(string modulePath, string fileName)
@@ -34,55 +45,45 @@ namespace MBBSEmu.IO
             }
 
             //Strip Relative Pathing, it'll always be relative to the module location
-            if (fileName.StartsWith($".{_directorySpecifier}"))
+            if (fileName.StartsWith(".\\") || fileName.StartsWith("./"))
                 fileName = fileName.Substring(2);
 
-            fileName = CorrectPathSeparator(fileName);
-
-            //Duh
-            if (File.Exists($"{modulePath}{fileName}"))
-                return fileName;
-
-            //Check all caps
-            if (File.Exists($"{modulePath}{fileName.ToUpper()}"))
-                return fileName.ToUpper();
-
-            //Check all lower case
-            if (File.Exists($"{modulePath}{fileName.ToLower()}"))
-                return fileName.ToLower();
-
-            if (fileName.Contains(_directorySpecifier))
+            Queue<string> pathComponents = new Queue<string>();
+            foreach (string pathComponent in fileName.Split(Path.DirectorySeparatorChar))
             {
-                var fileNameElements = fileName.Split(_directorySpecifier);
-
-                //We only support 1 directory deep.. for now
-                if (fileNameElements.Length > 2 || fileNameElements.Length == 0)
-                    return fileName;
-
-                fileNameElements[0] = fileNameElements[0].ToUpper();
-                fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(_directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToLower();
-                fileNameElements[1] = fileNameElements[1].ToUpper();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(_directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToUpper();
-                fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(_directorySpecifier, fileNameElements);
-
-                fileNameElements[0] = fileNameElements[0].ToLower();
-                fileNameElements[1] = fileNameElements[1].ToLower();
-                if (File.Exists($"{modulePath}{fileNameElements[0]}{_directorySpecifier}{fileNameElements[1]}"))
-                    return string.Join(_directorySpecifier, fileNameElements);
+                pathComponents.Enqueue(pathComponent);
             }
 
-            _logger.Warn($"Unable to locate file attempting multiple cases: {fileName}");
+            string fullPath = SearchPath(modulePath, pathComponents);
+            if (fullPath == null)
+            {
+                _logger?.Info($"Unable to find {fileName} under {modulePath}");
+                return null;
+            }
+            return Path.GetRelativePath(modulePath, fullPath);
+        }
 
-            return fileName;
+        private string SearchPath(string currentPath, Queue<string> pathComponents)
+        {
+            string component = pathComponents.Dequeue();
+            if (pathComponents.Count == 0)
+            {
+                return FindByEnumeration(currentPath, component, Directory.EnumerateFiles);
+            }
+
+            // recurse into the next directory
+            string found = FindByEnumeration(currentPath, component, Directory.EnumerateDirectories);
+            return found == null ? null : SearchPath(found, pathComponents);
+        }
+
+        private delegate IEnumerable<string> EnumerateFilesystemObjects(string path, string search, EnumerationOptions enumerationOptions);
+
+        private string FindByEnumeration(string root, string filename, EnumerateFilesystemObjects enumerateDelegate) {
+            foreach (string file in enumerateDelegate(root, filename, CASE_INSENSITIVE_ENUMERATION_OPTIONS))
+            {
+                return file;
+            }
+            return null;
         }
 
         /// <summary>
@@ -92,8 +93,9 @@ namespace MBBSEmu.IO
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public string CorrectPathSeparator(string fileName) => RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? fileName
-            : fileName.Replace(@"\", "/");
+        public string CorrectPathSeparator(string fileName)
+        {
+            return fileName.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        }
     }
 }
