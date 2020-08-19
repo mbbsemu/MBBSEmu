@@ -40,6 +40,12 @@ namespace MBBSEmu.Tests.IO
         {
             CreateFile(fileToCreate);
 
+            // replace slashes with the system slash
+            if (expected != null)
+            {
+                expected = expected.Replace('/', Path.DirectorySeparatorChar);
+            }
+
             Assert.Equal(expected, _fileUtility.FindFile(_modulePath, fileToSearchFor));
         }
 
