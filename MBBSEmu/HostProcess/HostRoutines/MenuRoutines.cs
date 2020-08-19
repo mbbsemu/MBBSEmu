@@ -8,13 +8,14 @@ using MBBSEmu.Extensions;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {
     /// <summary>
     ///     Menu Routines for MBBSEmu
     /// </summary>
-    public class MenuRoutines : IHostRoutines
+    public class MenuRoutines : IHostRoutine
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
@@ -327,7 +328,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (session.Status != 3) return;
             session.Status = 0;
 
-            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper();
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).TrimEnd('\0').ToUpper();
 
             switch (inputValue)
             {

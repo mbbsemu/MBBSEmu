@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using MBBSEmu.Extensions;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session.Telnet
 {
@@ -116,6 +117,7 @@ namespace MBBSEmu.Session.Telnet
 
                 _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
                 ValidateSocketState(socketState);
+
             }
             catch (ObjectDisposedException)
             {
@@ -123,15 +125,11 @@ namespace MBBSEmu.Session.Telnet
             }
         }
 
-        private static readonly TimeSpan HALF_SECOND_TIMESPAN = TimeSpan.FromSeconds(0.5);
-        private static readonly TimeSpan MINUTE_TIMESPAN = TimeSpan.FromMinutes(1);
-
         /// <summary>
         ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
         /// </summary>
         private void SendWorker()
         {
-            TimeSpan timeSpan = HALF_SECOND_TIMESPAN;
 
             while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
             {
@@ -139,7 +137,7 @@ namespace MBBSEmu.Session.Telnet
                 byte[] dataToSend;
                 try
                 {
-                    tookData = DataToClient.TryTake(out dataToSend, (int) timeSpan.TotalMilliseconds, _cancellationTokenSource.Token);
+                    tookData = DataToClient.TryTake(out dataToSend, 500, _cancellationTokenSource.Token);
                 } catch (Exception) // either ObjectDisposedException | OperationCanceledException
                 {
                     return;
@@ -155,8 +153,10 @@ namespace MBBSEmu.Session.Telnet
                     if (_iacPhase == 0) {
                         TriggerIACNegotation();
                     }
-                    timeSpan = MINUTE_TIMESPAN;
                 }
+
+                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
+                    EchoEmptyInvoke = true;
 
                 if (!tookData)
                 {
@@ -168,8 +168,6 @@ namespace MBBSEmu.Session.Telnet
 
                 Send(dataToSend);
 
-                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
-                    EchoEmptyInvoke = true;
             }
 
             //Cleanup if the connection was dropped

@@ -4,7 +4,7 @@ using MBBSEmu.Session;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {
-    public interface IHostRoutines
+    public interface IHostRoutine
     {
         bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules);
     }

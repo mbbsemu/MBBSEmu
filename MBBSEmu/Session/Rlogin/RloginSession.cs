@@ -7,6 +7,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session.Rlogin
 {

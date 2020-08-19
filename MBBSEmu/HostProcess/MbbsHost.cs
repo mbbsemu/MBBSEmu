@@ -14,6 +14,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.HostProcess.GlobalRoutines;
+using MBBSEmu.Session.Attributes;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess
 {
@@ -61,7 +64,12 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Host Routines for Non-Module Status (Menus, Signup, etc.)
         /// </summary>
-        private readonly IEnumerable<IHostRoutines> _mbbsRoutines;
+        private readonly IEnumerable<IHostRoutine> _mbbsRoutines;
+
+        /// <summary>
+        ///     Routines for Global Commands to be intercepted while logged in
+        /// </summary>
+        private readonly IEnumerable<IGlobalRoutine> _globalRoutines;
 
         /// <summary>
         ///     Queue of incoming sessions not added to a Channel yet
@@ -88,11 +96,12 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private bool _performCleanup = false;
 
-        public MbbsHost(ILogger logger, IEnumerable<IHostRoutines> mbbsRoutines, IConfiguration configuration)
+        public MbbsHost(ILogger logger, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
             _logger = logger;
             _mbbsRoutines = mbbsRoutines;
             _configuration = configuration;
+            _globalRoutines = globalRoutines;
 
             _logger.Info("Constructing MBBSEmu Host...");
 
@@ -147,6 +156,41 @@ namespace MBBSEmu.HostProcess
                 {
                     //Process a single incoming byte from the client session
                     session.ProcessDataFromClient();
+
+                    //Global Command Handler
+                    if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
+                    {
+                        //Transfer Input Buffer to Command Buffer, but don't clear it
+                        session.InputBuffer.WriteByte(0x0);
+                        session.InputCommand = session.InputBuffer.ToArray();
+
+                        //Check for Internal System Globals
+                        if (_globalRoutines.Any(g =>
+                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
+                        {
+                            session.Status = 1;
+                            session.InputBuffer.SetLength(0);
+                            continue;
+                        }
+
+                        //Check for Module Globals
+                        foreach (var m in _modules.Values.Where(x => x.GlobalCommandHandlers.Any()))
+                        {   
+                            var result = Run(m.ModuleIdentifier,
+                                m.GlobalCommandHandlers.First(), session.Channel);
+
+                            //Command Not Recognized
+                            if (result == 0)
+                            {
+                                //Because Status on Exit Sets to the Exit code of the module, we reset it back to 3
+                                session.Status = 3;
+
+                                continue;
+                            }
+
+                            break;
+                        }
+                    }
 
                     switch (session.SessionState)
                     {
@@ -328,6 +372,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTTROU_EnteringModule(SessionBase session)
         {
             session.StatusChange = false;
+            session.Status = 3;
             session.SessionState = EnumSessionState.InModule;
             session.UsrPtr.State = session.CurrentModule.StateCode;
             ProcessSTTROU(session);
@@ -343,7 +388,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTTROU(SessionBase session)
         {
             //Transfer Input Buffer to Command Buffer
-            session.InputBuffer.WriteByte(0x0);
+            //Null terminated already by Global Command Handler
             session.InputCommand = session.InputBuffer.ToArray();
             session.InputBuffer.SetLength(0);
 
@@ -668,6 +713,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="moduleName"></param>
         /// <param name="routine"></param>
         /// <param name="channelNumber"></param>
+        /// <param name="simulateCallFar"></param>
         /// <param name="initialStackValues"></param>
         private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
