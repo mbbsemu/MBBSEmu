@@ -157,8 +157,8 @@ namespace MBBSEmu.Module
             else
             {
                 //Verify MDF File Exists
-                string mdfFile = fileUtility.FindFile(ModulePath, $"{ModuleIdentifier}.MDF");
-                string fullMdfFilePath = Path.Combine(ModulePath, mdfFile);
+                var mdfFile = fileUtility.FindFile(ModulePath, $"{ModuleIdentifier}.MDF");
+                var fullMdfFilePath = Path.Combine(ModulePath, mdfFile);
                 if (!System.IO.File.Exists(fullMdfFilePath))
                 {
                     throw new FileNotFoundException($"Unable to locate Module: {fullMdfFilePath}");
@@ -166,9 +166,9 @@ namespace MBBSEmu.Module
 
                 Mdf = new MdfFile(fullMdfFilePath);
 
-                string trimmedDll = Mdf.DLLFiles[0].Trim();
-                string neFile = fileUtility.FindFile(ModulePath, $"{trimmedDll}.DLL");
-                string fullNeFilePath = Path.Combine(ModulePath, neFile);
+                var trimmedDll = Mdf.DLLFiles[0].Trim();
+                var neFile = fileUtility.FindFile(ModulePath, $"{trimmedDll}.DLL");
+                var fullNeFilePath = Path.Combine(ModulePath, neFile);
                 File = new NEFile(fullNeFilePath);
             }
 
