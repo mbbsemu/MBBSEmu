@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.IO
 {
     public class FileUtility_Tests : IDisposable
     {
-        private readonly FileUtility _fileUtility = FileUtility.createForTest();
+        private readonly FileUtility _fileUtility = FileUtility.CreateForTest();
         private readonly string _modulePath = Path.Join(Path.GetTempPath(), "testModule");
 
         public FileUtility_Tests()
@@ -23,6 +23,7 @@ namespace MBBSEmu.Tests.IO
         }
 
         [Theory]
+        // all found
         [InlineData("file.txt", "file.txt", "file.txt")]
         [InlineData("file.txt", "fiLe.txt", "file.txt")]
         [InlineData("file.txt", "FILE.txt", "file.txt")]
@@ -30,10 +31,12 @@ namespace MBBSEmu.Tests.IO
         [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file.txt")]
         [InlineData("dir1/dir2/dir3/file.txt", "Dir1\\dIr2\\diR3\\fiLe.txt", "dir1/dir2/dir3/file.txt")]
         [InlineData("Dir1/dIr2/diR3/File.txt", "dir1/dir2\\dir3/file.txt", "Dir1/dIr2/diR3/File.txt")]
-        [InlineData("file.txt", "file1.TXT", null)]
-        [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file1.txt", null)]
-        [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir6/file.txt", null)]
-        [InlineData("dir1/dir2/dir66/file.txt", "dir1/dir2/dir6/file.txt", null)]
+        // not found
+        [InlineData("file.txt", "file1.TXT", "file1.TXT")]
+        [InlineData("dir1/dir2/dir3/file.txt", "dir1/dir2/dir3/file1.txt", "dir1/dir2/dir3/file1.txt")]
+        [InlineData("dir1/dir2/dir3/file.txt", "dir1/dIr2/dir6/file.txt", "dir1/dir2/dir6/file.txt")]
+        [InlineData("dir1/Dir2/dir66/file.txt", "Dir1/dir2/dir6/file.txt", "dir1/Dir2/dir6/file.txt")]
+        // found, relative stripped
         [InlineData("file.txt", "./FILE.TXT", "file.txt")]
         [InlineData("file.txt", ".\\FILE.TXT", "file.txt")]
         public void FindFile_Test(string fileToCreate, string fileToSearchFor, string expected)
@@ -41,10 +44,7 @@ namespace MBBSEmu.Tests.IO
             CreateFile(fileToCreate);
 
             // replace slashes with the system slash
-            if (expected != null)
-            {
-                expected = expected.Replace('/', Path.DirectorySeparatorChar);
-            }
+            expected = expected.Replace('/', Path.DirectorySeparatorChar);
 
             Assert.Equal(expected, _fileUtility.FindFile(_modulePath, fileToSearchFor));
         }

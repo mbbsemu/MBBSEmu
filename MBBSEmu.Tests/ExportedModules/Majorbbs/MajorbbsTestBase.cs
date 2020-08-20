@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(FileUtility.createForTest(), null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
