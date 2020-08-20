@@ -1,4 +1,6 @@
-﻿namespace MBBSEmu.Session
+﻿using MBBSEmu.Session.Attributes;
+
+namespace MBBSEmu.Session.Enums
 {
     public enum EnumSessionState
     {
@@ -37,8 +39,10 @@
         /// <summary>
         ///     User is at the Main Menu
         /// </summary>
+        [DoGlobals]
         MainMenuDisplay,
 
+        [DoGlobals]
         MainMenuInput,
 
         /// <summary>
@@ -69,20 +73,25 @@
         /// <summary>
         ///     User is Entering Module (initial routines running)
         /// </summary>
+        [DoGlobals]
         EnteringModule,
 
         /// <summary>
         ///     User is In Module (waiting for input)
         /// </summary>
+        [DoGlobals]
         InModule,
 
         /// <summary>
         ///     User is Existing Module
         /// </summary>
+        [DoGlobals]
         ExitingModule,
 
+        [DoGlobals]
         ConfirmLogoffDisplay,
 
+        [DoGlobals]
         ConfirmLogoffInput,
 
         /// <summary>

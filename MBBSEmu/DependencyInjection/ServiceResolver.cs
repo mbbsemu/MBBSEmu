@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.IO;
+using MBBSEmu.HostProcess.GlobalRoutines;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -57,8 +58,9 @@ namespace MBBSEmu.DependencyInjection
             ServiceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
             //MajorBBS Host Objects
-            ServiceCollection.AddSingleton<IHostRoutines, MenuRoutines>();
-            ServiceCollection.AddSingleton<IHostRoutines, FsdRoutines>();
+            ServiceCollection.AddSingleton<IHostRoutine, MenuRoutines>();
+            ServiceCollection.AddSingleton<IHostRoutine, FsdRoutines>();
+            ServiceCollection.AddSingleton<IGlobalRoutine, UsersOnlineGlobal>();
             ServiceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             ServiceCollection.AddTransient<ISocketServer, SocketServer>();
 

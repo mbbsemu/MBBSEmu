@@ -14,6 +14,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu
 {
