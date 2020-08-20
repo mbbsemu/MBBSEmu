@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using MBBSEmu.CPU;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 
@@ -24,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 

@@ -1,4 +1,4 @@
-﻿MBBSEmu - A MajorBBS/Worldgroup Emulator
+MBBSEmu - A MajorBBS/Worldgroup Emulator
 By: Eric Nusbaum @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
 https://github.com/enusbaum/MBBSEmu
@@ -17,7 +17,7 @@ Command Line Options:
 -DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
                     is specified, you will be prompted to enter one
 
-Examples: 
+Examples:
 ./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset sysop
 ./MBBSEmu -C moduleConfig.json
 
@@ -34,6 +34,7 @@ Rlogin.Port             Number         Port Number for Rlogin to listn on
 Rlogin.RemoteIP         IP Address     Remote IP allowed to connect via Rlogin
 Rlogin.PortPerModule    True/False     Expose dedicated Rlogin Ports for each module
 Database.File           String         Filename for the MBBSEmu SQLite Database
+Cleanup.Time            String         Time to perform nightly cleanup, in HH:MM 24 hour time
 
 -----------------------------------------------------------
 Module Configuration JSON File Structure:

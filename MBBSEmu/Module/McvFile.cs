@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Extensions;
+using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using NLog;
@@ -28,7 +28,7 @@ namespace MBBSEmu.Module
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
-            if (!path.EndsWith(Path.DirectorySeparatorChar))
+            if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
             FileName = fileUtility.FindFile(path, fileName);
@@ -36,7 +36,7 @@ namespace MBBSEmu.Module
 #if DEBUG
             _logger.Info($"Loading MCV File: {FileName}");
 #endif
-            FileContent = File.ReadAllBytes($"{path}{FileName}");
+            FileContent = File.ReadAllBytes(Path.Combine(path, FileName));
 
 #if DEBUG
             _logger.Info($"Parsing MCV File: {FileName}");
@@ -50,7 +50,7 @@ namespace MBBSEmu.Module
         private void Parse()
         {
             Span<byte> fileSpan = FileContent;
-            
+
             //MSGUTL.H -- MCV File Info is always the last 16 bytes of a .MCV file
             var mcvInfo = fileSpan.Slice(fileSpan.Length - 16);
             var languagesOffset = BitConverter.ToInt32(mcvInfo.Slice(0, 4));

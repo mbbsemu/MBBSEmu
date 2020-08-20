@@ -1,8 +1,9 @@
-﻿using MBBSEmu.CPU;
+using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 using System;
@@ -26,6 +27,7 @@ namespace MBBSEmu.Module
     public class MbbsModule
     {
         private protected readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
+        private protected readonly IFileUtility _fileUtility;
 
         /// <summary>
         ///     State returned by REGISTER_MODULE
@@ -124,35 +126,51 @@ namespace MBBSEmu.Module
         /// </summary>
         public string ModuleDescription { get; set; }
 
-        /// <summary> 
+        /// <summary>
         ///     Constructor for MbbsModule
         ///
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
-        /// <param name="moduleIdentifier"></param>
+        /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
+            _fileUtility = fileUtility;
             ModuleIdentifier = moduleIdentifier;
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
-            if (!path.EndsWith(Path.DirectorySeparatorChar))
+            if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
             ModulePath = path;
 
-            //Verify MDF File Exists
-            if (!string.IsNullOrEmpty(ModuleIdentifier) && !System.IO.File.Exists($"{ModulePath}{ModuleIdentifier}.MDF"))
+            // will be null in tests
+            if (string.IsNullOrEmpty(ModuleIdentifier))
             {
-                throw new FileNotFoundException($"Unable to locate Module: {ModulePath}{ModuleIdentifier}.MDF");
+                Mdf = MdfFile.createForTest();
+                File = NEFile.createForTest();
             }
+            else
+            {
+                //Verify MDF File Exists
+                var mdfFile = fileUtility.FindFile(ModulePath, $"{ModuleIdentifier}.MDF");
+                var fullMdfFilePath = Path.Combine(ModulePath, mdfFile);
+                if (!System.IO.File.Exists(fullMdfFilePath))
+                {
+                    throw new FileNotFoundException($"Unable to locate Module: {fullMdfFilePath}");
+                }
 
-            Mdf = !string.IsNullOrEmpty(ModuleIdentifier) ? new MdfFile($"{ModulePath}{ModuleIdentifier}.MDF") : MdfFile.createForTest();
-            File = !string.IsNullOrEmpty(ModuleIdentifier) ? new NEFile($"{ModulePath}{Mdf.DLLFiles[0].Trim()}.DLL") : NEFile.createForTest();
+                Mdf = new MdfFile(fullMdfFilePath);
+
+                var trimmedDll = Mdf.DLLFiles[0].Trim();
+                var neFile = fileUtility.FindFile(ModulePath, $"{trimmedDll}.DLL");
+                var fullNeFilePath = Path.Combine(ModulePath, neFile);
+                File = new NEFile(fullNeFilePath);
+            }
 
             if (Mdf.MSGFiles.Count > 0)
             {
