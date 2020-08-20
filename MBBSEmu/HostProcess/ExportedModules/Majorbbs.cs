@@ -1110,6 +1110,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 457:
                     othkey();
                     break;
+                case 1040:
+                    ul2as();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -6990,6 +6993,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             // no key support for now, so everybody has the key
             Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Converts a ulong to an ASCII string
+        ///
+        ///     Signature: char *ul2as(long longin)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment
+        /// </summary>
+        private void ul2as()
+        {
+            var lowByte = GetParameter(0);
+            var highByte = GetParameter(1);
+
+            var outputValue = $"{(uint)(highByte << 16 | lowByte)}\0";
+
+            if (!Module.Memory.TryGetVariablePointer($"UL2AS", out var variablePointer))
+                //Pre-allocate space for the maximum number of characters for a ulong
+                variablePointer = Module.Memory.AllocateVariable("UL2AS", 0xFF);
+
+            Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(outputValue));
+
+#if DEBUG
+            _logger.Info(
+                $"Received value: {outputValue}, string saved to {variablePointer}");
+#endif
+
+            Registers.AX = variablePointer.Offset;
+            Registers.DX = variablePointer.Segment;
         }
     }
 }
