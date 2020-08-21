@@ -119,6 +119,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return (uint)(GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
         }
 
+        /// <summary>
+        ///     Gets a string Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        private protected string GetParameterString(int parameter)
+        {
+            var filenamePointer = GetParameterPointer(parameter);
+            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true));
+        }
+
+        /// <summary>
+        ///     Gets a Filename Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns>The filename parameter, uppercased like DOS expects.</returns>
+        private protected string GetParameterFilename(int parameter)
+        {
+            return GetParameterString(parameter).ToUpper();
+        }
+
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
         {
             foreach (var c in spanToSearch)

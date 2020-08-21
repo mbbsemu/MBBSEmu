@@ -2931,12 +2931,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private ReadOnlySpan<byte> prfptr => Module.Memory.GetVariablePointer("PRFPTR").ToSpan();
 
-        private string GetParameterFilename(int parameter)
-        {
-            var filenamePointer = GetParameterPointer(parameter);
-            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true)).ToUpper();
-        }
-
         private bool FileAlreadyOpen(string fullPath, out IntPtr16 fileStructPointer)
         {
             // let's see if this file has already been opened, and if so return the current handle
