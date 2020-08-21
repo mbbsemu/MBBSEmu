@@ -4,7 +4,6 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using Decoder = Iced.Intel.Decoder;
 
@@ -143,6 +142,24 @@ namespace MBBSEmu.Memory
 
             pointer = result;
             return true;
+        }
+
+        /// <summary>
+        ///     Safely try to retrieve a variable, or allocate it if it's not present
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="size"></param>
+        /// <param name="declarePointer">
+        ///     Some variables are pointers to an underlying value. Setting this value to TRUE declares not only the
+        ///     desired variable of NAME of SIZE, but also a 2 byte variable named "*NAME" which holds a pointer to NAME
+        /// </param>
+        /// <returns></returns>
+        public IntPtr16 GetOrAllocateVariablePointer(string name, ushort size = 0x0, bool declarePointer = false)
+        {
+            if (_variablePointerDictionary.TryGetValue(name, out var result))
+                return result;
+
+            return AllocateVariable(name, size, declarePointer);
         }
 
         /// <summary>
@@ -461,9 +478,6 @@ namespace MBBSEmu.Memory
         {
 
 #if DEBUG
-            //if (segment == 16 && offset == 0x824)
-               // Debugger.Break();
-
             for (var i = 0; i < array.Length; i++)
             {
                 _memorySegments[segment][offset + i] = array[i];
