@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
@@ -295,7 +295,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         i++;
                     }
 
-                    //Finally i should be at the specifier 
+                    //Finally i should be at the specifier
                     if (!InSpan(PRINTF_SPECIFIERS, stringToParse.Slice(i, 1)))
                     {
                         _logger.Warn($"Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
@@ -798,7 +798,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
-        /// 
+        ///
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString"></param>
@@ -869,6 +869,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             using var output = new MemoryStream(outputBytes.Length * 2);
             output.Write(ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBytes))));
             return output.ToArray();
+        }
+
+        private protected int GetOpenedFileStream(string filePath) {
+            foreach (var fileStreamEntry in FilePointerDictionary)
+            {
+                if (fileStreamEntry.Value.Name == filePath)
+                {
+                    return fileStreamEntry.Key;
+                }
+            }
+            return -1;
         }
     }
 }
