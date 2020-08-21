@@ -1353,17 +1353,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourcePointer = GetParameterPointer(0);
 
-            var msgFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
+            var mcvFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
 
             //If the MCV file doesn't exist, but the MSG does -- we need to build the MCV
-            if (!File.Exists($"{Module.ModulePath}{msgFileName}") &&
+            if (!File.Exists(Path.Combine(Module.ModulePath, mcvFileName)) &&
                 File.Exists(
-                    $"{Module.ModulePath}{msgFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase)}")
-            )
-                new MsgFile(Module.ModulePath,
-                    msgFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
+                    Path.Combine(Module.ModulePath, mcvFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase))
+            ))
+            {
+                // triggers MSG -> MCV compilation
+                _ = new MsgFile(Module.ModulePath,
+                    mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
+            }
 
-            var offset = McvPointerDictionary.Allocate(new McvFile(msgFileName, Module.ModulePath));
+            var offset = McvPointerDictionary.Allocate(new McvFile(mcvFileName, Module.ModulePath));
 
             if (_currentMcvFile != null)
                 _previousMcvFile.Push(_currentMcvFile);
@@ -1373,7 +1376,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Opened MSG file: {msgFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
+                $"Opened MCV file: {mcvFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
 #endif
             Registers.AX = (ushort)offset;
             Registers.DX = ushort.MaxValue;
@@ -2517,13 +2520,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void scnmdf()
         {
-            var mdfnameOffset = GetParameter(0);
-            var mdfnameSegment = GetParameter(1);
             var lineprefixOffset = GetParameter(2);
             var lineprefixSegment = GetParameter(3);
 
-            var mdfNameBytes = Module.Memory.GetString(mdfnameSegment, mdfnameOffset);
-            var mdfName = Encoding.ASCII.GetString(mdfNameBytes);
+            var mdfName = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
 
             var lineprefixBytes = Module.Memory.GetString(lineprefixSegment, lineprefixOffset);
             var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
@@ -2533,7 +2533,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 variablePointer = base.Module.Memory.AllocateVariable("SCNMDF", 0xFF);
 
             var recordFound = false;
-            foreach (var line in File.ReadAllLines($"{Module.ModulePath}{mdfName}"))
+            foreach (var line in File.ReadAllLines(Path.Combine(Module.ModulePath, mdfName)))
             {
                 if (line.StartsWith(lineprefix))
                 {
@@ -2934,6 +2934,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private ReadOnlySpan<byte> prfptr => Module.Memory.GetVariablePointer("PRFPTR").ToSpan();
 
+        private bool FileAlreadyOpen(string fullPath, out IntPtr16 fileStructPointer)
+        {
+            // let's see if this file has already been opened, and if so return the current handle
+            if (Module.Memory.TryGetVariablePointer($"FILE_{fullPath}", out fileStructPointer))
+            {
+                var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+                if (FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                {
+                    return true;
+                }
+            }
+
+            fileStructPointer = null;
+            return false;
+        }
+
         /// <summary>
         ///     Opens a new file for reading/writing
         ///
@@ -2941,42 +2957,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void f_open()
         {
-            var filenamePointer = GetParameterPointer(0);
+            var filenameInputValue = GetParameterFilename(0);
             var modePointer = GetParameterPointer(2);
 
-            var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
-            var filenameInputValue = Encoding.ASCII.GetString(filenameInputBuffer).ToUpper();
-
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
+            var fullPath = Path.Combine(Module.ModulePath, fileName);
+
+            if (FileAlreadyOpen(fullPath, out var fileStructPointer))
+            {
+                _logger.Warn($"Reopened File: {fullPath} - most likely a module bug.");
+
+                Registers.AX = fileStructPointer.Offset;
+                Registers.DX = fileStructPointer.Segment;
+                return;
+            }
 
 #if DEBUG
-            _logger.Debug($"Opening File: {Module.ModulePath}{fileName}");
+            _logger.Debug($"Opening File: {fullPath}");
 #endif
 
             var modeInputBuffer = Module.Memory.GetString(modePointer, true);
             var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
+            FileStream fileStream = null;
 
-            //Allocate Memory for FILE struct
-            if (!Module.Memory.TryGetVariablePointer($"FILE_{fileName}", out var fileStructPointer))
-                fileStructPointer = Module.Memory.AllocateVariable($"FILE_{fileName}", FileStruct.Size);
-
-            //Write New Blank Pointer
-            var fileStruct = new FileStruct();
-            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
-
-            if (!File.Exists($"{Module.ModulePath}{fileName}"))
+            if (!File.Exists(fullPath))
             {
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
                 {
-                    _logger.Warn($"Unable to find file {Module.ModulePath}{fileName}");
-                    Registers.AX = fileStruct.curp.Offset;
-                    Registers.DX = fileStruct.curp.Segment;
+                    _logger.Warn($"Unable to find file {fullPath}");
+                    Registers.AX = 0;
+                    Registers.DX = 0;
                     return;
                 }
 
                 //Create a new file for W or A
                 _logger.Info($"Creating new file {fileName}");
-                File.Create($"{Module.ModulePath}{fileName}").Dispose();
+
+                fileStream = File.Create(fullPath);
             }
             else
             {
@@ -2984,15 +3001,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Write))
                 {
 #if DEBUG
-                    _logger.Info($"Overwritting file {fileName}");
+                    _logger.Info($"Overwriting file {fileName}");
 #endif
-                    File.Create($"{Module.ModulePath}{fileName}").Dispose();
+                    fileStream = File.Create(fullPath);
                 }
             }
 
+            //Allocate Memory for FILE struct
+            fileStructPointer ??= Module.Memory.GetOrAllocateVariablePointer($"FILE_{fullPath}", FileStruct.Size);
+
+            //Write New Blank Pointer
+            var fileStruct = new FileStruct();
+            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
             //Setup the File Stream
-            var fileStream = File.Open($"{Module.ModulePath}{fileName}", FileMode.OpenOrCreate);
+            fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate);
 
             if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
                 fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
@@ -3006,9 +3029,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
 #if DEBUG
-            _logger.Info($"{fileName} FILE struct written to {fileStructPointer}");
+            _logger.Info($"{fullPath} FILE struct written to {fileStructPointer}");
 #endif
-
             Registers.AX = fileStructPointer.Offset;
             Registers.DX = fileStructPointer.Segment;
         }
@@ -3024,6 +3046,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
 
+            // clear the memory
+            Module.Memory.SetArray(filePointer, new FileStruct().Data);
+
             if (fileStruct.curp.Segment == 0 && fileStruct.curp.Offset == 0)
             {
 #if DEBUG
@@ -3037,18 +3062,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
             {
                 _logger.Warn(
-                    $"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Alredy Closed?)");
+                    $"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
                 Registers.AX = 0;
                 return;
             }
 
             //Clean Up File Stream Pointer
-            FilePointerDictionary[fileStruct.curp.Offset].Dispose();
-            FilePointerDictionary.Remove(fileStruct.curp.Offset);
+            var fileStream = FilePointerDictionary[fileStruct.curp.Offset];
 
 #if DEBUG
-            _logger.Info($"Closed File {filePointer} (Stream: {fileStruct.curp})");
+            _logger.Info($"Closed File {filePointer} {fileStream.Name} (Stream: {fileStruct.curp})");
 #endif
+
+            FilePointerDictionary[fileStruct.curp.Offset].Close();
+            FilePointerDictionary.Remove(fileStruct.curp.Offset);
+
             Registers.AX = 0;
         }
 
@@ -3090,8 +3118,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var attrChar = GetParameter(4);
 
             var fileName = Module.Memory.GetString(filespecPointer, true);
-            var fileNameString = Encoding.ASCII.GetString(fileName);
-            Registers.AX = (ushort)(File.Exists($"{Module.ModulePath}{fileNameString}") ? 1 : 0);
+            var fileNameString = _fileFinder.FindFile(Module.ModulePath, Encoding.ASCII.GetString(fileName));
+            Registers.AX = (ushort)(File.Exists(Path.Combine(Module.ModulePath, fileNameString)) ? 1 : 0);
         }
 
         /// <summary>
@@ -3193,19 +3221,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void unlink()
         {
-            var filenameOffset = GetParameter(0);
-            var filenameSegment = GetParameter(1);
-
-            using var filenameInputBuffer = new MemoryStream();
-            filenameInputBuffer.Write(Module.Memory.GetString(filenameSegment, filenameOffset, true));
-            var filenameInputValue = Encoding.Default.GetString(filenameInputBuffer.ToArray()).ToUpper();
-
+            var filename = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
+            var fullPath = Path.Combine(Module.ModulePath, filename);
 #if DEBUG
-            _logger.Info($"Deleting File: {Module.ModulePath}{filenameInputValue}");
+            _logger.Info($"Deleting File: {fullPath}");
 #endif
 
-            if (File.Exists($"{Module.ModulePath}{filenameInputValue}"))
-                File.Delete($"{Module.ModulePath}{filenameInputValue}");
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
 
             Registers.AX = 0;
         }
@@ -3296,11 +3319,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             oldFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, oldFilenameInputValue);
             newFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, newFilenameInputValue);
 
-            if (!File.Exists($"{Module.ModulePath}{oldFilenameInputValue}"))
+            if (!File.Exists(Path.Combine(Module.ModulePath, oldFilenameInputValue)))
                 throw new FileNotFoundException(
                     $"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
 
-            File.Move($"{Module.ModulePath}{oldFilenameInputValue}", $"{Module.ModulePath}{newFilenameInputValue}",
+            File.Move(Path.Combine(Module.ModulePath, oldFilenameInputValue), Path.Combine(Module.ModulePath, newFilenameInputValue),
                 true);
 
 #if DEBUG
@@ -5636,10 +5659,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void access()
         {
-            var fileNamePointer = GetParameterPointer(0);
             var mode = GetParameter(2);
 
-            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(fileNamePointer, true));
+            var fileName = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
 
             //Strip Relative Pathing, it'll always be relative to the module location
             if (fileName.StartsWith(@".\"))
@@ -5653,7 +5675,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (mode)
             {
                 case 0:
-                    if (File.Exists($"{Module.ModulePath}{fileName}"))
+                    if (File.Exists(Path.Combine(Module.ModulePath, fileName)))
                         result = 0;
                     break;
             }
@@ -5947,8 +5969,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var pathPointer = GetParameterPointer(0);
 
-            var pathString = Encoding.ASCII.GetString(Module.Memory.GetString(pathPointer, true));
-
+            var pathString = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
 
             var files = Directory.GetFiles(Module.ModulePath, pathString);
             uint totalBytes = 0;
@@ -5993,9 +6014,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void getenv()
         {
-            var namePointer = GetParameterPointer(0);
-
-            var name = Encoding.ASCII.GetString(Module.Memory.GetString(namePointer, true)).ToUpper();
+            var name = GetParameterFilename(0);
 
             if (!Module.Memory.TryGetVariablePointer("GETENV", out var resultPointer))
                 resultPointer = Module.Memory.AllocateVariable("GETENV", 0xFF);
@@ -6070,7 +6089,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Channel {ChannelNumber} downloding: {fileToSend}");
 #endif
 
-            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes($"{Module.ModulePath}{fileToSend}"));
+            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
 
             //Call TSHFIN to get file to send
             //Decrement the initial Stack Pointer enough to ensure it wont overwrite anything in the current stack space
@@ -6134,7 +6153,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Channel {ChannelNumber} listing: {fileToSend}");
 #endif
 
-            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes($"{Module.ModulePath}{fileToSend}"));
+            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
 
             Module.Execute(finishedFunctionPointer, ChannelNumber, true, true,
                 null, (ushort)(Registers.SP - 0x800));
@@ -6276,27 +6295,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void open()
         {
-            var filenamePointer = GetParameterPointer(0);
+            var filenameInputValue = GetParameterFilename(0);
             var mode = GetParameter(2);
-
-            var filenameInputBuffer = Module.Memory.GetString(filenamePointer, true);
-            var filenameInputValue = Encoding.ASCII.GetString(filenameInputBuffer).ToUpper();
 
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
             var fileMode = (EnumOpenFlags)mode;
 
+            var fullPath = Path.Combine(Module.ModulePath, fileName);
 #if DEBUG
-            _logger.Debug($"Opening File: {Module.ModulePath}{fileName}");
+            _logger.Debug($"Opening File: {fullPath}");
 #endif
-            if (!File.Exists($"{Module.ModulePath}{fileName}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
+            if (!File.Exists($"{fullPath}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
             {
-                _logger.Warn($"Unable to find file {Module.ModulePath}{fileName}");
+                _logger.Warn($"Unable to find file {fullPath}");
                 Registers.AX = 0xFFFF;
                 return;
             }
 
             //Setup the File Stream
-            var fileStream = File.Open($"{Module.ModulePath}{fileName}", FileMode.OpenOrCreate);
+            var fileStream = File.Open(fullPath, FileMode.OpenOrCreate);
 
             var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
@@ -6312,12 +6329,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var directoryNamePointer = GetParameterPointer(0);
 
-            var directoryName = Encoding.ASCII.GetString(Module.Memory.GetString(directoryNamePointer, true));
+            var directoryName = _fileFinder.FindFile(Module.ModulePath, Encoding.ASCII.GetString(Module.Memory.GetString(directoryNamePointer, true)));
+            var fullPath = Path.Combine(Module.ModulePath, directoryName);
 
-            if (!Directory.Exists($"{Module.ModulePath}{directoryName}"))
+            if (!Directory.Exists(fullPath))
             {
-                _logger.Info($"Created Directory: {Module.ModulePath}{directoryName}");
-                Directory.CreateDirectory($"{Module.ModulePath}{directoryName}");
+                Directory.CreateDirectory(fullPath);
+                _logger.Info($"Created Directory: {fullPath}");
             }
 
             Registers.AX = 0;
@@ -6358,7 +6376,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileHandle = GetParameter(0);
 
             //Clean Up File Stream Pointer
-            FilePointerDictionary[fileHandle].Dispose();
+            FilePointerDictionary[fileHandle].Close();
             FilePointerDictionary.Remove(fileHandle);
         }
 

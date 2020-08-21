@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
@@ -117,6 +117,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected uint GetParameterULong(int parameterOrdinal)
         {
             return (uint)(GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
+        }
+
+        /// <summary>
+        ///     Gets a string Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        private protected string GetParameterString(int parameter)
+        {
+            var filenamePointer = GetParameterPointer(parameter);
+            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true));
+        }
+
+        /// <summary>
+        ///     Gets a Filename Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns>The filename parameter, uppercased like DOS expects.</returns>
+        private protected string GetParameterFilename(int parameter)
+        {
+            return GetParameterString(parameter).ToUpper();
         }
 
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
@@ -295,7 +316,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         i++;
                     }
 
-                    //Finally i should be at the specifier 
+                    //Finally i should be at the specifier
                     if (!InSpan(PRINTF_SPECIFIERS, stringToParse.Slice(i, 1)))
                     {
                         _logger.Warn($"Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
@@ -798,7 +819,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
-        /// 
+        ///
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString"></param>
