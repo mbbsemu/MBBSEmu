@@ -1353,17 +1353,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourcePointer = GetParameterPointer(0);
 
-            var msgFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
+            var mcvFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
 
             //If the MCV file doesn't exist, but the MSG does -- we need to build the MCV
-            if (!File.Exists(Path.Combine(Module.ModulePath, msgFileName)) &&
+            if (!File.Exists(Path.Combine(Module.ModulePath, mcvFileName)) &&
                 File.Exists(
-                    Path.Combine(Module.ModulePath, msgFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase))
+                    Path.Combine(Module.ModulePath, mcvFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase))
             ))
-                new MsgFile(Module.ModulePath,
-                    msgFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
+            {
+                // triggers MSG -> MCV compilation
+                _ = new MsgFile(Module.ModulePath,
+                    mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
+            }
 
-            var offset = McvPointerDictionary.Allocate(new McvFile(msgFileName, Module.ModulePath));
+            var offset = McvPointerDictionary.Allocate(new McvFile(mcvFileName, Module.ModulePath));
 
             if (_currentMcvFile != null)
                 _previousMcvFile.Push(_currentMcvFile);
@@ -1373,7 +1376,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Opened MSG file: {msgFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
+                $"Opened MCV file: {mcvFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
 #endif
             Registers.AX = (ushort)offset;
             Registers.DX = ushort.MaxValue;
@@ -3012,10 +3015,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
             //Setup the File Stream
-            if (fileStream == null)
-            {
-                fileStream = File.Open(fullPath, FileMode.OpenOrCreate);
-            }
+            fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate);
 
             if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
                 fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
