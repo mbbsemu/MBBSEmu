@@ -6998,7 +6998,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Converts a ulong to an ASCII string
         ///
-        ///     Signature: char *ul2as(long longin)
+        ///     Signature: char *ul2as(ulong longin)
         ///     Return: AX = Offset in Segment
         ///             DX = Host Segment
         /// </summary>
@@ -7009,19 +7009,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputValue = $"{(uint)(highByte << 16 | lowByte)}\0";
 
-            if (!Module.Memory.TryGetVariablePointer($"UL2AS", out var variablePointer))
-                //Pre-allocate space for the maximum number of characters for a ulong
-                variablePointer = Module.Memory.AllocateVariable("UL2AS", 0xFF);
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer("UL2AS", 0xF);
 
-            Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(outputValue));
+            Module.Memory.SetArray(resultPointer, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
             _logger.Info(
-                $"Received value: {outputValue}, string saved to {variablePointer}");
+                $"Received value: {outputValue}, string saved to {resultPointer}");
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.AX = resultPointer.Offset;
+            Registers.DX = resultPointer.Segment;
         }
     }
 }
