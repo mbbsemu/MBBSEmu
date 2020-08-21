@@ -3068,13 +3068,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Clean Up File Stream Pointer
-            var t = FilePointerDictionary[fileStruct.curp.Offset];
+            var fileStream = FilePointerDictionary[fileStruct.curp.Offset];
+
+#if DEBUG
+            _logger.Info($"Closed File {filePointer} {fileStream.Name} (Stream: {fileStruct.curp})");
+#endif
+
             FilePointerDictionary[fileStruct.curp.Offset].Close();
             FilePointerDictionary.Remove(fileStruct.curp.Offset);
 
-#if DEBUG
-            _logger.Info($"Closed File {filePointer} {t.Name} (Stream: {fileStruct.curp})");
-#endif
             Registers.AX = 0;
         }
 

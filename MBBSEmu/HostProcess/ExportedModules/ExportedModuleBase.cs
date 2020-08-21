@@ -891,16 +891,5 @@ namespace MBBSEmu.HostProcess.ExportedModules
             output.Write(ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBytes))));
             return output.ToArray();
         }
-
-        private protected int GetOpenedFileStream(string filePath) {
-            foreach (var fileStreamEntry in FilePointerDictionary)
-            {
-                if (fileStreamEntry.Value.Name == filePath)
-                {
-                    return fileStreamEntry.Key;
-                }
-            }
-            return -1;
-        }
     }
 }
