@@ -29,6 +29,18 @@ namespace MBBSEmu.Memory
         bool TryGetVariablePointer(string name, out IntPtr16 pointer);
 
         /// <summary>
+        ///     Safely try to retrieve a variable, or allocate it if it's not present
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="size"></param>
+        /// <param name="declarePointer">
+        ///     Some variables are pointers to an underlying value. Setting this value to TRUE declares not only the
+        ///     desired variable of NAME of SIZE, but also a 2 byte variable named "*NAME" which holds a pointer to NAME
+        /// </param>
+        /// <returns></returns>
+        IntPtr16 GetOrAllocateVariablePointer(string name, ushort size = 0x0, bool declarePointer = false);
+
+        /// <summary>
         ///     Allocates the specified variable name with the desired size
         /// </summary>
         /// <param name="name"></param>
