@@ -4117,7 +4117,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var offset = stringToSearch.IndexOf(stringToFind);
             if (offset >= 0) {
-                Registers.AX = (ushort) offset;
+                Registers.AX = (ushort)(stringToSearchPointer.Offset + offset);
                 Registers.DX = stringToSearchPointer.Segment;
             } else {
                 // not found, return NULL
