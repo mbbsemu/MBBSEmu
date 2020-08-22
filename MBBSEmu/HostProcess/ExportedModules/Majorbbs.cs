@@ -133,6 +133,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("FSDEMG", 80); //error message for FSD
             Module.Memory.AllocateVariable("SYSKEY", 6, true);
             Module.Memory.SetArray("SYSKEY", Encoding.ASCII.GetBytes("SYSOP\0"));
+            Module.Memory.AllocateVariable("CLINGO", sizeof(ushort));
+            Module.Memory.AllocateVariable("LANGUAGES", LingoStruct.Size, true);
+            Module.Memory.SetArray("LANGUAGES", new LingoStruct().Data); //ever user will have the same lingo struct
+            Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
+            Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
+            
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -480,6 +486,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return fsdemg;
                 case 718:
                     return syskey;
+                case 761:
+                    return clingo;
+                case 762:
+                    return languages;
             }
 
             if (offsetsOnly)
@@ -7039,5 +7049,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = resultPointer.Offset;
             Registers.DX = resultPointer.Segment;
         }
+
+        /// <summary>
+        ///     Current Language
+        ///
+        ///     This will always be defaulted to 0 in MBBSEmu, which is ANSI
+        ///
+        ///     Signature: int clingo;  
+        /// </summary>
+        private ReadOnlySpan<byte> clingo => Module.Memory.GetVariablePointer("CLINGO").Data;
+
+        /// <summary>
+        ///     Array of pointers to the lingo Structures
+        ///
+        ///     Since clingo for MBBSEmu will always be 0, we only set one structure in the array
+        ///
+        ///     Signature: struct lingo **languages;
+        /// </summary>
+        private ReadOnlySpan<byte> languages => Module.Memory.GetVariablePointer("**LANGUAGES").Data;
     }
 }
