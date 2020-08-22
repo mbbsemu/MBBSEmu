@@ -6,7 +6,7 @@
 
 ![The MajorBBS Emulation Project Screenshot](./images/mbbsemu.png)
 
-MBBSEmu is an emulator for running MajorBBS and Worldrgoup Modules on Windows, Linux, and macOS. Additionally it supports both x86 and ARM platforms (such as the Raspberry Pi). It is licensed under the terms of the MIT License. 
+MBBSEmu is an emulator for running MajorBBS and Worldrgoup Modules on Windows, Linux, and macOS. Additionally it supports both x86 and ARM platforms, such as the Raspberry Pi. It is licensed under the terms of the MIT License. 
 
 # Getting Started
 
@@ -27,7 +27,7 @@ Reporting issues is a great way to help MBBSEmu get even better! If you're runni
 
 # Contribute
 
-Because much of this software is several decades old, and the numbers of those who remember it is literally shrinking by the day, it's on us as a community to continue keeping the memory of this software alive and accessible.
+Because much of this software is several decades old, and the number of people who remember it is literally shrinking by the day, it's on us as a community to continue keeping the memory of this software alive and accessible.
 
 You too can help out The MajorBBS Emulation Project in many ways:
 * Fix an open [issue](https://github.com/enusbaum/MBBSEmu/issues)
