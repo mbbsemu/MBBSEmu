@@ -30,9 +30,14 @@ namespace MBBSEmu.Session.Telnet
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;
+        }
 
-            Send(ANSI_ERASE_DISPLAY);
-            Send(ANSI_RESET_CURSOR);
+        public override void Start()
+        {
+            base.Start();
+
+            base.Send(ANSI_ERASE_DISPLAY);
+            base.Send(ANSI_RESET_CURSOR);
         }
 
         /// <summary>
@@ -87,7 +92,7 @@ namespace MBBSEmu.Session.Telnet
         {
             if (SessionTimer.ElapsedMilliseconds >= 500 && _iacPhase == 0)
             {
-                TriggerIACNegotation();
+                TriggerIACNegotiation();
             }
         }
 
@@ -106,7 +111,7 @@ namespace MBBSEmu.Session.Telnet
         /// <summary>
         ///     Initiates server side IAC negotation
         /// </summary>
-        private void TriggerIACNegotation() {
+        private void TriggerIACNegotiation() {
             _iacPhase = 1;
             base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
         }
