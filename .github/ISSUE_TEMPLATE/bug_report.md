@@ -1,6 +1,6 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: Issue Report
+about: Create a report to help us improve MBBSEmu!
 title: "[Module Identifier] Module Name - Issue Description"
 labels: ''
 assignees: ''
