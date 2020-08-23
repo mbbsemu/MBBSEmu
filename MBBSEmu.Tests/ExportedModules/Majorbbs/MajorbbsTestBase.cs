@@ -1,11 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MBBSEmu.CPU;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
@@ -18,6 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
+        protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
 
         protected MajorbbsTestBase()
@@ -25,7 +26,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore), new PointerDictionary<Session.SessionBase>());
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore);
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
@@ -42,6 +44,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.Clear();
             mbbsEmuCpuRegisters.CS = CODE_SEGMENT;
             mbbsEmuCpuRegisters.IP = 0;
+
+            //Redeclare to re-allocate memory values that have been cleared
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
+
         }
 
         /// <summary>
@@ -90,5 +96,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             ExecuteApiTest(apiOrdinal, argumentsList);
         }
+
+        /// <summary>
+        ///     Executes a test directly against the MajorBBS Exported Module to evaluate the return value of a given property
+        ///
+        ///     We invoke these directly as properties are handled at decompile time by applying the relocation information to the memory
+        ///     address for the property. Because Unit Tests aren't going through the same relocation process, we simulate it by getting the
+        ///     SEG:OFF of the Property as it would be returned during relocation. This allows us to evaluate the given value of the returned
+        ///     address.
+        /// </summary>
+        /// <param name="apiOrdinal"></param>
+        protected ReadOnlySpan<byte> ExecutePropertyTest(ushort apiOrdinal) => majorbbs.Invoke(apiOrdinal);
     }
 }
