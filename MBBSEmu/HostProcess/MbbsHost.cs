@@ -175,7 +175,7 @@ namespace MBBSEmu.HostProcess
 
                         //Check for Module Globals
                         foreach (var m in _modules.Values.Where(x => x.GlobalCommandHandlers.Any()))
-                        {   
+                        {
                             var result = Run(m.ModuleIdentifier,
                                 m.GlobalCommandHandlers.First(), session.Channel);
 

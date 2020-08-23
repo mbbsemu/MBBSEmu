@@ -1,3 +1,4 @@
+using MBBSEmu.HostProcess;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
@@ -19,15 +20,17 @@ namespace MBBSEmu.Server.Socket
     public class SocketServer : ISocketServer
     {
         private readonly ILogger _logger;
+        private readonly IMbbsHost _host;
         private readonly IConfiguration _configuration;
 
         private System.Net.Sockets.Socket _listenerSocket;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
 
-        public SocketServer(ILogger logger, IConfiguration configuration)
+        public SocketServer(ILogger logger, IMbbsHost host, IConfiguration configuration)
         {
             _logger = logger;
+            _host = host;
             _configuration = configuration;
         }
 
@@ -69,7 +72,9 @@ namespace MBBSEmu.Server.Socket
                 case EnumSessionType.Telnet:
                     {
                         _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
-                        var telnetSession = new TelnetSession(client);
+                        var session = new TelnetSession(client);
+                        _host.AddSession(session);
+                        session.Start();
                         break;
                     }
                 case EnumSessionType.Rlogin:
@@ -83,7 +88,9 @@ namespace MBBSEmu.Server.Socket
                         }
 
                         _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
-                        var rloginSession = new RloginSession(client, _moduleIdentifier);
+                        var session = new RloginSession(_host, client, _moduleIdentifier);
+                        _host.AddSession(session);
+                        session.Start();
                         break;
                     }
                 default:
