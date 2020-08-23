@@ -4,9 +4,9 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class clingo_Tests : MajorbbsTestBase
+    public class errcod_Tests : MajorbbsTestBase
     {
-        private const int CLINGO_ORDINAL = 761;
+        private const int ERRCOD_ORDINAL = 193;
 
         [Fact]
         public void ClingoTests()
@@ -14,10 +14,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(CLINGO_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(ERRCOD_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
-            var returnedPointer = ExecutePropertyTest(CLINGO_ORDINAL);
+            var returnedPointer = ExecutePropertyTest(ERRCOD_ORDINAL);
 
             var actualValue = mbbsEmuMemoryCore.GetWord(new IntPtr16(returnedPointer));
 

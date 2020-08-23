@@ -6,6 +6,7 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,7 +14,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -138,6 +138,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray("LANGUAGES", new LingoStruct().Data); //ever user will have the same lingo struct
             Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
+            Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
             
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
@@ -490,6 +491,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return clingo;
                 case 762:
                     return languages;
+                case 193:
+                    return errcod;
             }
 
             if (offsetsOnly)
@@ -7067,5 +7070,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct lingo **languages;
         /// </summary>
         private ReadOnlySpan<byte> languages => Module.Memory.GetVariablePointer("**LANGUAGES").Data;
+
+        /// <summary>
+        ///     MS-DOS exit code (for batch files)
+        ///
+        ///     Signature: int errcod;
+        /// </summary>
+        private ReadOnlySpan<byte> errcod => Module.Memory.GetVariablePointer("ERRCOD").Data;
     }
 }

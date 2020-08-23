@@ -9,9 +9,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         private const int LANGUAGES_ORDINAL = 762;
 
-        [Theory]
-        [InlineData("ansi")]
-        public void LanguagesTests(string expectedValue)
+        [Fact]
+        public void LanguagesTests()
         {
             //Reset State
             Reset();
@@ -25,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var actualLanguageValue = mbbsEmuMemoryCore.GetString(actualValue, true);
 
-            Assert.Equal(expectedValue, Encoding.ASCII.GetString(actualLanguageValue));
+            Assert.Equal("ansi", Encoding.ASCII.GetString(actualLanguageValue));
         }
     }
 }
