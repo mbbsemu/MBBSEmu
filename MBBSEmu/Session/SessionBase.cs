@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using MBBSEmu.Session.Enums;
 
@@ -204,7 +205,7 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public bool SendToClientAsync(byte[] dataToSend)
         {
-            return DataToClient.TryAdd(dataToSend);
+            return DataToClient.TryAdd(dataToSend.Where(c => shouldSendToClient(c)).ToArray());
         }
 
         /// <summary>
@@ -344,6 +345,26 @@ namespace MBBSEmu.Session
                         break;
                     }
             }
+        }
+
+        private static readonly bool[] IS_CHARACTER_PRINTABLE = CreatePrintableCharacterArray();
+
+        private static bool[] CreatePrintableCharacterArray()
+        {
+            bool[] printableCharacters = Enumerable.Repeat(true, 256).ToArray();
+
+            printableCharacters[0] = false; // \0
+            printableCharacters[17] = false; // DC1   used by T-LORD
+            printableCharacters[18] = false; // DC2
+            printableCharacters[19] = false; // DC3
+            printableCharacters[20] = false; // DC4
+            printableCharacters[255] = false; // 0xFF, make Telnet happier
+
+            return printableCharacters;
+        }
+
+        public static bool shouldSendToClient(byte b) {
+            return IS_CHARACTER_PRINTABLE[b];
         }
     }
 }

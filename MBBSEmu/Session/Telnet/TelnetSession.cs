@@ -15,15 +15,8 @@ namespace MBBSEmu.Session.Telnet
     /// <summary>
     ///     Class for handling inbound Telnet Connections
     /// </summary>
-    public class TelnetSession : SessionBase
+    public class TelnetSession : SocketSession
     {
-        private readonly ILogger _logger;
-        private readonly IMbbsHost _host;
-
-        private readonly Socket _telnetConnection;
-        private readonly Thread _senderThread;
-        private readonly byte[] _socketReceiveBuffer = new byte[9000];
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private int _iacPhase;
 
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
@@ -33,50 +26,29 @@ namespace MBBSEmu.Session.Telnet
         //Tracks Responses We've already sent -- prevents looping
         private readonly List<IacResponse> _iacSentResponses = new List<IacResponse>();
 
-        public TelnetSession(Socket telnetConnection) : base(telnetConnection.RemoteEndPoint.ToString())
+        public TelnetSession(Socket telnetConnection) : base(telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
-            SendToClientMethod = Send;
-            _host = ServiceResolver.GetService<IMbbsHost>();
-            _logger = ServiceResolver.GetService<ILogger>();
-
-            _telnetConnection = telnetConnection;
-            _telnetConnection.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
-            _telnetConnection.ReceiveBufferSize = _socketReceiveBuffer.Length;
-            _telnetConnection.Blocking = false;
-
-            SessionState = EnumSessionState.Negotiating;
-
-            _senderThread = new Thread(SendWorker);
-            _senderThread.Start();
-
-            //Add this Session to the Host
-            _host.AddSession(this);
-
-            Send(ANSI_ERASE_DISPLAY);
-            Send(ANSI_RESET_CURSOR);
-
             SessionState = EnumSessionState.Unauthenticated;
-
-            ListenForData();
         }
 
-        public override void Stop()
+        public override void Start()
         {
-            CloseSocket("Forced Stop");
+            base.Start();
+
+            base.Send(ANSI_ERASE_DISPLAY);
+            base.Send(ANSI_RESET_CURSOR);
         }
 
         /// <summary>
         ///     Sends a NOP IAC command to detect if the socket is still available
         /// </summary>
         /// <returns></returns>
-        public bool Heartbeat()
+        protected override bool Heartbeat()
         {
             try
             {
-                //Telnet IAC NOP
-                _telnetConnection.Send(IAC_NOP, SocketFlags.None, out var socketState);
-                ValidateSocketState(socketState);
+                base.Send(IAC_NOP);
             }
             catch (Exception ex)
             {
@@ -91,136 +63,57 @@ namespace MBBSEmu.Session.Telnet
         ///     Sends data to the connected session
         /// </summary>
         /// <param name="dataToSend"></param>
-        public void Send(byte[] dataToSend)
+        public override void Send(byte[] dataToSend)
         {
-            try
-            {
-                using var msOutputBuffer = new MemoryStream(dataToSend.Length);
-                foreach (var b in dataToSend)
-                {
-                    //Special Character Escapes while in a Module
-                    if (SessionState == EnumSessionState.EnteringModule || SessionState == EnumSessionState.InModule ||
-                        SessionState == EnumSessionState.LoginRoutines || SessionState == EnumSessionState.ExitingFullScreenDisplay)
-                    {
-                        switch (b)
-                        {
-                            case 0xFF: //Escape 0xFF with two
-                                msOutputBuffer.WriteByte(0xFF);
-                                break;
-                            case 0x13: //ignore
-                                continue;
-                        }
-                    }
-
-                    msOutputBuffer.WriteByte(b);
-                }
-
-                _telnetConnection.Send(msOutputBuffer.ToArray(), SocketFlags.None, out var socketState);
-                ValidateSocketState(socketState);
-
+            // we have to escape 0xFF , so see if we have any, and if not, just send the current
+            // buffer as is
+            if (!Array.Exists(dataToSend, b => b == 0xFF)) {
+                base.Send(dataToSend);
+                return;
             }
-            catch (ObjectDisposedException)
+
+            using var msOutputBuffer = new MemoryStream(dataToSend.Length);
+            foreach (var b in dataToSend)
             {
-                _logger.Warn($"Channel {Channel}: Attempted to write on a disposed socket");
-            }
-        }
-
-        /// <summary>
-        ///     Worker for Thread Responsible for Dequeuing data to be sent to the client
-        /// </summary>
-        private void SendWorker()
-        {
-
-            while (SessionState != EnumSessionState.LoggedOff && _telnetConnection.Connected)
-            {
-                bool tookData;
-                byte[] dataToSend;
-                try
+                switch (b)
                 {
-                    tookData = DataToClient.TryTake(out dataToSend, 500, _cancellationTokenSource.Token);
-                } catch (Exception) // either ObjectDisposedException | OperationCanceledException
-                {
-                    return;
-                }
-
-                if (SessionState == EnumSessionState.LoggingOffProcessing)
-                {
-                    CloseSocket("User-initiated log off");
-                    return;
-                }
-
-                if (SessionTimer.ElapsedMilliseconds >= 500) {
-                    if (_iacPhase == 0) {
-                        TriggerIACNegotation();
-                    }
-                }
-
-                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
-                    EchoEmptyInvoke = true;
-
-                if (!tookData)
-                {
-                    if (!Heartbeat()) {
+                    case 0xFF: //Escape 0xFF with two
+                        msOutputBuffer.WriteByte(0xFF);
                         break;
-                    }
-                    continue;
                 }
 
-                Send(dataToSend);
-
+                msOutputBuffer.WriteByte(b);
             }
 
-            //Cleanup if the connection was dropped
-            CloseSocket("sending thread natural completion");
+            base.Send(msOutputBuffer.ToArray());
         }
 
-        /// <summary>
-        ///     Worker for Thread Responsible for Receiving Data from Client
-        /// </summary>
-        private void OnReceiveData(IAsyncResult asyncResult)
+        protected override void PreSend()
         {
-            int bytesReceived;
-            SocketError socketError;
-            try {
-                bytesReceived = _telnetConnection.EndReceive(asyncResult, out socketError);
-                if (bytesReceived == 0) {
-                    CloseSocket("Client disconnected");
-                    return;
-                }
-            } catch (ObjectDisposedException) {
-                SessionState = EnumSessionState.LoggedOff;
-                return;
+            if (SessionTimer.ElapsedMilliseconds >= 500 && _iacPhase == 0)
+            {
+                TriggerIACNegotiation();
             }
-
-            ValidateSocketState(socketError);
-            ProcessIncomingClientData(bytesReceived);
-            ListenForData();
         }
 
-        private void ProcessIncomingClientData(int bytesReceived)
+        protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
-            if (bytesReceived == 0 || SessionState == EnumSessionState.LoggedOff) {
-                return;
-            }
-
             //Process if it's an IAC command
-            if (_socketReceiveBuffer[0] == 0xFF)
+            if (clientData[0] == 0xFF)
             {
                 ParseIAC(_socketReceiveBuffer);
-                return;
+                return (null, 0);
             }
 
-            //Enqueue the incoming bytes for processing
-            for (var i = 0; i < bytesReceived; i++)
-                DataFromClient.Add(_socketReceiveBuffer[i]);
+            return (clientData, bytesReceived);
         }
 
         /// <summary>
         ///     Initiates server side IAC negotation
         /// </summary>
-        private void TriggerIACNegotation() {
+        private void TriggerIACNegotiation() {
             _iacPhase = 1;
-            Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+            base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
         }
 
         /// <summary>
@@ -393,36 +286,7 @@ namespace MBBSEmu.Session.Telnet
             if (msIacToSend.Length == 0)
                 return;
 
-            Send(msIacToSend.ToArray());
-        }
-
-        /// <summary>
-        ///     Validates SocketError returned from an operation doesn't put the socket in an error state
-        /// </summary>
-        /// <param name="socketError"></param>
-        private void ValidateSocketState(SocketError socketError)
-        {
-            if (socketError != SocketError.Success) {
-                CloseSocket($"socket error: {socketError}");
-            }
-        }
-
-        private void ListenForData() {
-            if (_telnetConnection.Connected && SessionState != EnumSessionState.LoggedOff) {
-                _telnetConnection.BeginReceive(_socketReceiveBuffer, 0, _socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
-            }
-        }
-
-        private void CloseSocket(string reason) {
-            if (SessionState != EnumSessionState.LoggedOff) {
-                _logger.Warn($"Session {SessionId} (Channel: {Channel}) {reason}");
-            }
-
-            _telnetConnection.Close();
-            SessionState = EnumSessionState.LoggedOff;
-
-            // send signal to the send thread to abort
-            _cancellationTokenSource.Cancel();
+            base.Send(msIacToSend.ToArray());
         }
     }
 }
