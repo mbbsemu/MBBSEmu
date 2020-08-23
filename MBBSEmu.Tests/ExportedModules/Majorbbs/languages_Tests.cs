@@ -27,30 +27,5 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expectedValue, Encoding.ASCII.GetString(actualLanguageValue));
         }
-
-        /// <summary>
-        ///     Negative Tests
-        /// </summary>
-        /// <param name="unexpectedValue"></param>
-        [Theory]
-        [InlineData("")]
-        [InlineData("rip")]
-        [InlineData("english")]
-        public void LanguagesTests_Negative(string unexpectedValue)
-        {
-            //Reset State
-            Reset();
-
-            ExecuteApiTest(LANGUAGES_ORDINAL, new List<IntPtr16>());
-
-            //Verify Results
-            var returnedPointer = ExecutePropertyTest(LANGUAGES_ORDINAL);
-            var pointerToLanguages = mbbsEmuMemoryCore.GetPointer(new IntPtr16(returnedPointer));
-            var actualValue = mbbsEmuMemoryCore.GetPointer(pointerToLanguages);
-
-            var actualLanguageValue = mbbsEmuMemoryCore.GetString(actualValue, true);
-
-            Assert.NotEqual(unexpectedValue, Encoding.ASCII.GetString(actualLanguageValue));
-        }
     }
 }

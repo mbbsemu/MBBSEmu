@@ -24,24 +24,5 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expectedValue, actualValue);
         }
-
-        [Theory]
-        [InlineData(0xFFFF)]
-        [InlineData(0xFF)]
-        [InlineData(0x1)]
-        public void ClingoTests_Negative(ushort unexpectedValue)
-        {
-            //Reset State
-            Reset();
-
-            ExecuteApiTest(CLINGO_ORDINAL, new List<IntPtr16>());
-
-            //Verify Results
-            var returnedPointer = ExecutePropertyTest(CLINGO_ORDINAL);
-
-            var actualValue = mbbsEmuMemoryCore.GetWord(new IntPtr16(returnedPointer));
-
-            Assert.NotEqual(unexpectedValue, actualValue);
-        }
     }
 }

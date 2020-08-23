@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
