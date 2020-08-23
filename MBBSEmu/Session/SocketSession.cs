@@ -64,7 +64,10 @@ namespace MBBSEmu.Session
             }
         }
 
-        // TODO
+        /// <summary>
+        ///     Allows a derived class a chance to do something before the sending thread calls
+        ///     Send.
+        /// </summary>
         protected virtual void PreSend()
         {
 
@@ -113,6 +116,10 @@ namespace MBBSEmu.Session
             CloseSocket("sending thread natural completion");
         }
 
+        /// <summary>
+        ///     Allows a derived class a chance to send a heartbeat.
+        /// </summary>
+        /// <returns>false to close connection and disconnect, otherwise true to continue</returns>
         protected virtual bool Heartbeat()
         {
             return true;
@@ -121,7 +128,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Worker for Thread Responsible for Receiving Data from Client
         /// </summary>
-        protected void OnReceiveData(IAsyncResult asyncResult)
+        private void OnReceiveData(IAsyncResult asyncResult)
         {
             int bytesReceived;
             SocketError socketError;
@@ -141,9 +148,17 @@ namespace MBBSEmu.Session
             ListenForData();
         }
 
+        /// <summary>
+        ///     Allows a derived class to parse and alter incoming client data, such as stripping
+        ///     off any protocol related data, or performing line feed conversions.
+        /// </summary>
+        /// <returns>A tuple. The first result is the byte array to be entered into the client
+        ///     receive queue, the second argument is the length of this array (which can be less
+        ///     than the actual length of the array)
+        /// </returns>
         protected abstract (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived);
 
-        protected void ProcessIncomingClientData(int bytesReceived)
+        private void ProcessIncomingClientData(int bytesReceived)
         {
             if (bytesReceived == 0 || SessionState == EnumSessionState.LoggedOff) {
                 return;
@@ -160,14 +175,14 @@ namespace MBBSEmu.Session
         ///     Validates SocketError returned from an operation doesn't put the socket in an error state
         /// </summary>
         /// <param name="socketError"></param>
-        protected void ValidateSocketState(SocketError socketError)
+        private void ValidateSocketState(SocketError socketError)
         {
             if (socketError != SocketError.Success) {
                 CloseSocket($"socket error: {socketError}");
             }
         }
 
-        protected void ListenForData() {
+        private void ListenForData() {
             if (_socket.Connected && SessionState != EnumSessionState.LoggedOff) {
                 _socket.BeginReceive(_socketReceiveBuffer, 0, _socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
             }
