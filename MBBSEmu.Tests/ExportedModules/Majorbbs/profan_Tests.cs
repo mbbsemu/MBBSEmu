@@ -10,7 +10,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int PROFAN_ORDINAL = 480;
 
         [Fact]
-        public void ClingoTests()
+        public void profanTests()
         {
             //Reset State
             Reset();
@@ -18,11 +18,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(PROFAN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
-            var returnedPointer = ExecutePropertyTest(PROFAN_ORDINAL);
+            ExecutePropertyTest(PROFAN_ORDINAL);
 
-            var actualValue = mbbsEmuMemoryCore.GetWord(new IntPtr16(returnedPointer));
-
-            Assert.Equal(0, actualValue);
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
         }
     }
 }
