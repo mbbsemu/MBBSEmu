@@ -32,4 +32,4 @@ Screen shots of expected vs. actual between MBBSEmu and MajorBBS/Worldgroup help
 
 **Software Information:**
 - OS: [e.g. Ubuntu, macOS, etc.]
-- Telnnt Client [e.g. NetRunner, MegaMUD, Linux Telnet, etc.]
+- Telnet Client [e.g. NetRunner, MegaMUD, Linux Telnet, etc.]
