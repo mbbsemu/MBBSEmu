@@ -31,5 +31,5 @@ If applicable, add screenshots to help explain your problem.
 Screen shots of expected vs. actual between MBBSEmu and MajorBBS/Worldgroup help with understanding the expected difference between the two.
 
 **Software Information:**
- - OS: [e.g. Ubuntu, macOS, etc.]
-- Telent Client [e.g. NetRunner, MegaMUD, Linux Telnet, etc.]
+- OS: [e.g. Ubuntu, macOS, etc.]
+- Telnnt Client [e.g. NetRunner, MegaMUD, Linux Telnet, etc.]
