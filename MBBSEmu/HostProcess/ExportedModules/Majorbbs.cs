@@ -7108,9 +7108,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void cncyesno()
         {
             //Get Input
-            var inputLength = Module.Memory.GetWord("INPLEN");
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputString = Module.Memory.GetArray(inputPointer, inputLength);
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            if (remainingCharactersInCommand == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
             var inputStringComponents = Encoding.ASCII.GetString(inputString).ToUpper().Split('\0');
 
             if (inputStringComponents.Length == 0)
@@ -7130,7 +7140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Registers.AX = 'N';
                     break;
                 default:
-                    Registers.AX = 0;
+                    Registers.AX = inputStringComponents[0][0];
                     return;
             }
 
@@ -7152,7 +7162,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (inputString.Length > 0x400)
             {
                 _logger.Error("Input String is larger than the result buffer. String is being truncated to 1k");
-                inputString = inputString.Substring(0, 0x399) + '\0';
+                inputString = inputString.Substring(0, 0x3FF) + '\0';
             }
 
             var destinationPointer = Module.Memory.GetOrAllocateVariablePointer("STRLWR", 0x400);
