@@ -88,7 +88,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
-            Module.Memory.AllocateVariable("NXTCMD", 0x4); //Holds Pointer to the "next command"
+            Module.Memory.AllocateVariable("NXTCMD", IntPtr16.Size); //Holds Pointer to the "next command"
+            Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
             Module.Memory.SetWord("NMODS", 0x1); //set this to 1 for now
             var modulePointer = Module.Memory.AllocateVariable("MODULE", 0x4); //Pointer to Registered Module
@@ -1125,6 +1126,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 1040:
                     ul2as();
+                    break;
+                case 480:
+                    profan();
+                    break;
+                case 131:
+                    cncyesno();
+                    break;
+                case 579:
+                    strlwr();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -7077,5 +7087,90 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int errcod;
         /// </summary>
         private ReadOnlySpan<byte> errcod => Module.Memory.GetVariablePointer("ERRCOD").Data;
+
+        /// <summary>
+        ///     Determines the profanity level of a string
+        ///
+        ///     MBBSEmu doesn't support multiple profanity levels, so the default value of 0 is returned.
+        /// 
+        ///     Signature:  int profan(char *string);
+        /// </summary>
+        private void profan()
+        {
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Expect a YES or NO from the user
+        ///
+        ///     Signature: int yesno=cncyesno();
+        /// </summary>
+        private void cncyesno()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            if (remainingCharactersInCommand == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+            var inputStringComponents = Encoding.ASCII.GetString(inputString).ToUpper().Split('\0');
+
+            if (inputStringComponents.Length == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            switch (inputStringComponents[0])
+            {
+                case "YES":
+                case "Y":
+                    Registers.AX = 'Y';
+                    break;
+                case "NO":
+                case "N":
+                    Registers.AX = 'N';
+                    break;
+                default:
+                    Registers.AX = inputStringComponents[0][0];
+                    return;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + inputStringComponents[0].Length + 1)));
+        }
+
+
+        /// <summary>
+        ///     Converts all uppercase letters in the string to lowercase
+        ///
+        ///     Result buffer is 1k
+        ///
+        ///     Signature: char *lower=strlwr(char *string);
+        /// </summary>
+        private void strlwr()
+        {
+            var inputString = GetParameterString(0, false);
+
+            if (inputString.Length > 0x400)
+            {
+                _logger.Error("Input String is larger than the result buffer. String is being truncated to 1k");
+                inputString = inputString.Substring(0, 0x3FF) + '\0';
+            }
+
+            var destinationPointer = Module.Memory.GetOrAllocateVariablePointer("STRLWR", 0x400);
+
+            Module.Memory.SetArray(destinationPointer, Encoding.ASCII.GetBytes(inputString.ToLower()));
+
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
+        }
     }
 }

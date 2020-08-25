@@ -124,10 +124,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
-        private protected string GetParameterString(int parameter)
+        private protected string GetParameterString(int parameterOrdinal, bool stripNull = false)
         {
-            var filenamePointer = GetParameterPointer(parameter);
-            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true));
+            var filenamePointer = GetParameterPointer(parameterOrdinal);
+            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, stripNull));
         }
 
         /// <summary>
@@ -135,9 +135,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns>The filename parameter, uppercased like DOS expects.</returns>
-        private protected string GetParameterFilename(int parameter)
+        private protected string GetParameterFilename(int parameterOrdinal)
         {
-            return GetParameterString(parameter).ToUpper();
+            return GetParameterString(parameterOrdinal, true).ToUpper();
         }
 
         private static bool InSpan(ReadOnlySpan<char> spanToSearch, ReadOnlySpan<byte> character)
