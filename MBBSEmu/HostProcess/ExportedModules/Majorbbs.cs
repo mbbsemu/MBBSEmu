@@ -139,7 +139,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
             Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
-            
+
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -7058,7 +7058,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This will always be defaulted to 0 in MBBSEmu, which is ANSI
         ///
-        ///     Signature: int clingo;  
+        ///     Signature: int clingo;
         /// </summary>
         private ReadOnlySpan<byte> clingo => Module.Memory.GetVariablePointer("CLINGO").Data;
 
