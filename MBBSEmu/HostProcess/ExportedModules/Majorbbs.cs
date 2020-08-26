@@ -7119,7 +7119,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This will always be defaulted to 0 in MBBSEmu, which is ANSI
         ///
-        ///     Signature: int clingo;  
+        ///     Signature: int clingo;
         /// </summary>
         private ReadOnlySpan<byte> clingo => Module.Memory.GetVariablePointer("CLINGO").Data;
 

@@ -172,6 +172,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 currentParameter += 2;
             }
 
+            stringToParse = ProcessEscapeCharacters(stringToParse);
+
             for (var i = 0; i < stringToParse.Length; i++)
             {
                 //Handle escaped %% as a single % -- or if % is the last character in a string
@@ -510,7 +512,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 msOutput.WriteByte(stringToParse[i]);
             }
 
-            return ProcessEscapeCharacters(msOutput.ToArray());
+            return msOutput.ToArray();
         }
 
         private protected ReadOnlySpan<byte> StringFromArray(ReadOnlySpan<byte> inputArray, bool stripNull = false)
