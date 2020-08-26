@@ -53,14 +53,16 @@ namespace MBBSEmu.Session.Rlogin
 
             _logger.Info($"Rlogin For User: {Username}");
 
+            OutputEnabled = false;
+
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
                 CurrentModule = _host.GetModule(ModuleIdentifier);
-                SessionState = EnumSessionState.EnteringModule;
+                SessionState = EnumSessionState.RloginEnteringModule;
             }
             else
             {
-                SessionState = EnumSessionState.MainMenuDisplay;
+                SessionState = EnumSessionState.LoginRoutines;
             }
 
             //Send 0 byte to ACK
