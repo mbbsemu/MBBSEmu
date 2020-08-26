@@ -97,7 +97,8 @@ namespace MBBSEmu.Session.Rlogin
                 if (ProcessIncomingByte(clientData[i]))
                 {
                     // return whatever data we may have left in the packet as client data
-                    return (clientData.Take(i + 1).ToArray(), bytesReceived - i - 1);
+                    int remaining = bytesReceived - i - 1;
+                    return (clientData.TakeLast(remaining).ToArray(), remaining);
                 }
             }
 
