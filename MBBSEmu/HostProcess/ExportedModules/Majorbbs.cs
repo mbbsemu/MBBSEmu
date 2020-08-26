@@ -140,7 +140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
             Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
-            
+
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -3357,7 +3357,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = inputPointer.Offset; i < inputPointer.Offset + (inputLength - 1); i++)
             {
-                if(Module.Memory.GetByte(inputPointer.Segment, i) == 0)
+                if (Module.Memory.GetByte(inputPointer.Segment, i) == 0)
                     Module.Memory.SetByte(inputPointer.Segment, i, 0x20);
             }
         }
@@ -3836,7 +3836,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputLength = Module.Memory.GetWord("INPLEN");
 
             //If Length is 0, there's nothing to process
-            if(Module.Memory.GetByte(inputPointer) == 0)
+            if (Module.Memory.GetByte(inputPointer) == 0)
             {
                 Module.Memory.SetWord("INPLEN", 0);
                 Module.Memory.SetWord("MARGC", 0);
@@ -3859,7 +3859,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (currentInputByte != 0x20 && currentInputByte != 0x0) continue;
 
                 Module.Memory.SetByte(inputPointer.Segment, i, 0x0); //replace space with null
-                    
+
                 //Set Command End
                 var commandEndPointer = new IntPtr16(inputPointer.Segment, i);
                 Module.Memory.SetPointer(margnPointer, commandEndPointer);
@@ -4147,10 +4147,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true));
 
             var offset = stringToSearch.IndexOf(stringToFind);
-            if (offset >= 0) {
+            if (offset >= 0)
+            {
                 Registers.AX = (ushort)(stringToSearchPointer.Offset + offset);
                 Registers.DX = stringToSearchPointer.Segment;
-            } else {
+            }
+            else
+            {
                 // not found, return NULL
                 Registers.AX = 0;
                 Registers.DX = 0;
@@ -5326,7 +5329,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
-            Registers.AX = remainingCharactersInCommand == 0 ? (ushort) 1 : (ushort) 0;
+            //Check to see if nxtcmd is on a space, if so, increment it by 1
+            if (Module.Memory.GetByte(nxtcmdPointer) == 0x20)
+            {
+                remainingCharactersInCommand--;
+                nxtcmdPointer.Offset++;
+            }
+
+            //End of String
+            if (Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                remainingCharactersInCommand = 0;
+            }
+
+            //Get Remaining Characters & Save to Input
+            var remainingInput = Module.Memory.GetArray(nxtcmdPointer, (ushort)(remainingCharactersInCommand));
+            Module.Memory.SetArray(inputPointer, remainingInput);
+            Module.Memory.SetWord("INPLEN", (ushort)remainingCharactersInCommand);
+            Module.Memory.SetPointer("NXTCMD", inputPointer);
+            parsin();
+
+            Registers.AX = remainingCharactersInCommand == 0 ? (ushort)1 : (ushort)0;
         }
 
         /// <summary>
@@ -5367,7 +5390,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             rstrin();
 
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLength =  Module.Memory.GetWord("INPLEN");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
             var newNxtcmd = new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength));
 
@@ -7020,7 +7043,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrievePointerDictionaryNew[_currentBtrieveFile];
 
-            var record = currentBtrieveFile.GetRecord((uint) absolutePosition);
+            var record = currentBtrieveFile.GetRecord((uint)absolutePosition);
 
             if (record != null)
             {

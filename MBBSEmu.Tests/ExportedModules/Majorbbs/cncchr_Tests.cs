@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 inputLength = 0;
 
             mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString.Replace(' ', '\0')));
-            mbbsModule.Memory.SetWord("INPLEN", );
+            mbbsModule.Memory.SetWord("INPLEN", inputLength);
 
             //Set nxtcmd
             var currentNxtcmd = mbbsEmuMemoryCore.GetPointer("NXTCMD");
