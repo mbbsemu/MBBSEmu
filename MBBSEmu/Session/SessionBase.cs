@@ -112,21 +112,6 @@ namespace MBBSEmu.Session
         public byte PromptCharacter { get; set; }
 
         /// <summary>
-        ///     Total Number of Commands Passed in from user input by parsin()
-        /// </summary>
-        public int mArgCount { get; set; }
-
-        /// <summary>
-        ///     Pointers to the START of each command
-        /// </summary>
-        public List<int> mArgv { get; set; }
-
-        /// <summary>
-        ///     Pointers to the END of each command
-        /// </summary>
-        public List<int> mArgn { get; set; }
-
-        /// <summary>
         ///     Queue to hold data to be sent async to Client
         /// </summary>
         public BlockingCollection<byte[]> DataToClient { get; set; }
@@ -238,60 +223,6 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream();
 
             InputCommand = new byte[] { 0x0 };
-            mArgn = new List<int>();
-            mArgv = new List<int>();
-        }
-
-        /// <summary>
-        ///     Routine Parses the data in the input buffer, builds the command input string
-        ///     and assembles all the mArgs
-        /// </summary>
-        public void parsin()
-        {
-            mArgv.Clear();
-            mArgn.Clear();
-
-            if (InputCommand == null || InputCommand.Length == 0 || InputCommand[0] == 0x0)
-            {
-                mArgCount = 0;
-                return;
-            }
-
-            mArgv.Add(0);
-
-            //Input Command has spaces replaced by null characters
-            for (ushort i = 0; i < InputCommand.Length; i++)
-            {
-                //We only parse command character on space, otherwise just copy
-                if (InputCommand[i] != 0x20)
-                    continue;
-
-                //Replace the space with null
-                InputCommand[i] = 0x0;
-
-                mArgn.Add(i);
-
-                if (i + 1 < InputCommand.Length)
-                    mArgv.Add(i + 1);
-            }
-            mArgn.Add((int)(InputBuffer.Length - 1));
-            mArgCount = mArgn.Count;
-        }
-
-        /// <summary>
-        ///     Restores the Input Command back to it's unparsed date (NULL to spaces)
-        /// </summary>
-        public void rstrin()
-        {
-            //This usually hits on first entry if it's called
-            if (InputCommand == null)
-                return;
-
-            for (var i = 0; i < InputCommand.Length - 1; i++)
-            {
-                if (InputCommand[i] == 0x0)
-                    InputCommand[i] = 0x20;
-            }
         }
 
         public void ProcessDataFromClient()

@@ -68,10 +68,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
-            Module.Memory.AllocateVariable("MARGC", 0x2);
-            Module.Memory.AllocateVariable("MARGN", 0x3FC);
-            Module.Memory.AllocateVariable("MARGV", 0x3FC);
-            Module.Memory.AllocateVariable("INPLEN", 0x2);
+            Module.Memory.AllocateVariable("MARGC", sizeof(ushort));
+            Module.Memory.AllocateVariable("MARGN", 0x200); //max 128 pointers * 4 bytes each
+            Module.Memory.AllocateVariable("MARGV", 0x200); //max 128 pointers * 4 bytes each
+            Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
             Module.Memory.AllocateVariable("USERNUM", 0x2);
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
@@ -268,71 +268,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
-            {
-                ChannelDictionary[channelNumber].parsin();
+                ProcessChannelInput(channelNumber);
+        }
 
-                Module.Memory.SetWord(Module.Memory.GetVariablePointer("MARGC"),
-                    (ushort)ChannelDictionary[channelNumber].mArgCount);
+        /// <summary>
+        ///     Handles processing of Channel Input by setting the INPUT value of the dta in the channel InputCommand buffer
+        ///     and then calling parsin()
+        /// </summary>
+        /// <param name="channelNumber"></param>
+        public void ProcessChannelInput(ushort channelNumber)
+        {
+            //Take INPUT from Channel and save it to INPUT
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            Module.Memory.SetZero(inputPointer, 0xFF);
+            var inputFromChannel = ChannelDictionary[channelNumber].InputCommand;
+            Module.Memory.SetArray(inputPointer, inputFromChannel);
+            var inputLength = (ushort)ChannelDictionary[ChannelNumber].InputCommand.Length;
+            Module.Memory.SetWord("INPLEN", inputLength);
 
-                //If there's no command in the buffer, mark the length of 0
-                if (ChannelDictionary[channelNumber].InputCommand.Length == 1 &&
-                    ChannelDictionary[channelNumber].InputCommand[0] == 0x0)
-                {
-                    Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
-                        (ushort)0);
+            ChannelDictionary[channelNumber].UsrPtr.Flags = 0;
 
-                    ChannelDictionary[channelNumber].UsrPtr.Flags |= (uint)EnumRuntimeFlags.Concex;
-                }
-                else
-                {
-                    Module.Memory.SetWord(Module.Memory.GetVariablePointer("INPLEN"),
-                        (ushort)ChannelDictionary[channelNumber].InputCommand.Length);
+            parsin();
 
-                    ChannelDictionary[channelNumber].UsrPtr.Flags = 0;
+            //Set Concex flag on 0 input
+            //TODO -- Need to verify this is correct
+            if (Module.Memory.GetWord("INPLEN") == 0)
+                ChannelDictionary[channelNumber].UsrPtr.Flags |= (uint)EnumRuntimeFlags.Concex;
 
-#if DEBUG
-                    _logger.Info(
-                        $"Input Length {ChannelDictionary[channelNumber].InputCommand.Length} written to {inputMemory}");
-#endif
-                }
-
-                //If the input buffer is > 255 bytes, truncate it so it'll fit in the allocated space for input[]
-                if (ChannelDictionary[channelNumber].InputCommand.Length <= 255)
-                {
-                    Module.Memory.SetArray(inputMemory, ChannelDictionary[channelNumber].InputCommand);
-                }
-                else
-                {
-                    var truncatedInput = new byte[0xFF];
-                    Array.Copy(ChannelDictionary[channelNumber].InputCommand, 0, truncatedInput, 0, 0xFE);
-                    Module.Memory.SetArray(inputMemory, truncatedInput);
-                }
-
-                _inputCurrentPosition = 0;
-
-                var margnPointer = Module.Memory.GetVariablePointer("MARGN");
-                var margvPointer = Module.Memory.GetVariablePointer("MARGV");
-
-                //Build Command Word Pointers
-                for (var i = 0; i < ChannelDictionary[channelNumber].mArgCount; i++)
-                {
-                    var currentMargnPointer = new IntPtr16(inputMemory.Segment,
-                        (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgn[i]));
-                    var currentMargVPointer = new IntPtr16(inputMemory.Segment,
-                        (ushort)(inputMemory.Offset + ChannelDictionary[channelNumber].mArgv[i]));
-
-                    Module.Memory.SetArray(margnPointer.Segment, (ushort)(margnPointer.Offset + (i * 4)),
-                        currentMargnPointer.ToSpan());
-
-                    Module.Memory.SetArray(margvPointer.Segment, (ushort)(margvPointer.Offset + (i * 4)),
-                        currentMargVPointer.ToSpan());
-
-#if DEBUG
-                    _logger.Info(
-                        $"Command {i} {currentMargVPointer}->{currentMargnPointer}: {Encoding.ASCII.GetString(Module.Memory.GetString(currentMargnPointer))}");
-#endif
-                }
-            }
         }
 
         /// <summary>
@@ -2923,31 +2885,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cncchr()
         {
+            //Get Input
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
-            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
-            if (inputLength == 0)
+            if (remainingCharactersInCommand == 0)
             {
+#if DEBUG
+                _logger.Info($"End of Input");
+#endif
+
                 Registers.AX = 0;
                 return;
             }
 
-            var input = Module.Memory.GetArray(inputPointer, inputLength);
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
 
-            var result = input[_inputCurrentPosition];
+            Registers.AX = (char)inputString[0];
 
-            //Convert to Caps
-            if (result > 91)
-                result -= 32;
+            //Ensure CAPS
+            if (Registers.AX > 91)
+                Registers.AX -= 32;
 
 #if DEBUG
-            _logger.Info($"Returned Character: {(char)result}, Position: {_inputCurrentPosition}");
+            _logger.Info($"Returned char: {(char)Registers.AX}");
 #endif
+            //Modify the Counters
+            remainingCharactersInCommand--;
+            nxtcmdPointer.Offset++;
 
-            _inputCurrentPosition++;
-            Registers.AX = result;
+            //We're not at the end of the string, AND it's a NULL, increment again to find the start of the next command
+            if (remainingCharactersInCommand > 0 && Module.Memory.GetByte(nxtcmdPointer) == 0x0)
+                nxtcmdPointer.Offset++;
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
         }
 
         /// <summary>
@@ -3375,16 +3349,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rstrin()
         {
-            ChannelDictionary[ChannelNumber].rstrin();
+            var inputLength = Module.Memory.GetWord("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
 
-            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
-            Module.Memory.SetZero(inputMemory, 0xFF);
-            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset,
-                ChannelDictionary[ChannelNumber].InputCommand);
+            if (inputLength == 0)
+                return;
 
-#if DEBUG
-            _logger.Info("Restored Input");
-#endif
+            for (var i = inputPointer.Offset; i < inputPointer.Offset + (inputLength - 1); i++)
+            {
+                if(Module.Memory.GetByte(inputPointer.Segment, i) == 0)
+                    Module.Memory.SetByte(inputPointer.Segment, i, 0x20);
+            }
         }
 
         private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
@@ -3857,12 +3832,55 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void parsin()
         {
-            ChannelDictionary[ChannelNumber].parsin();
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
-            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
-            Module.Memory.SetZero(inputMemory, 0xFF);
-            Module.Memory.SetArray(inputMemory.Segment, inputMemory.Offset,
-                ChannelDictionary[ChannelNumber].InputCommand);
+            //If Length is 0, there's nothing to process
+            if(Module.Memory.GetByte(inputPointer) == 0)
+            {
+                Module.Memory.SetWord("INPLEN", 0);
+                Module.Memory.SetWord("MARGC", 0);
+                return;
+            }
+
+
+            //Setup MARGV & MARGN
+            var margvPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGV"));
+            var margnPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGN"));
+            ushort margCount = 0;
+            Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
+            margvPointer.Offset += IntPtr16.Size;
+
+            for (var i = inputPointer.Offset; i < inputPointer.Offset + inputLength; i++)
+            {
+                var currentInputByte = Module.Memory.GetByte(inputPointer.Segment, i);
+
+                //only process on SPACE and NULL characters
+                if (currentInputByte != 0x20 && currentInputByte != 0x0) continue;
+
+                Module.Memory.SetByte(inputPointer.Segment, i, 0x0); //replace space with null
+                    
+                //Set Command End
+                var commandEndPointer = new IntPtr16(inputPointer.Segment, i);
+                Module.Memory.SetPointer(margnPointer, commandEndPointer);
+                margnPointer.Offset += IntPtr16.Size;
+
+                margCount++;
+
+                //Are we at the end of the INPUT? If so, we're done here.
+                if (currentInputByte == 0x0)
+                    break;
+
+                i++;
+
+                //If not, set the next command start
+                var commandStartPointer = new IntPtr16(inputPointer.Segment, i);
+                Module.Memory.SetPointer(margvPointer, commandStartPointer);
+                margvPointer.Offset += IntPtr16.Size;
+
+            }
+
+            Module.Memory.SetWord("MARGC", margCount);
         }
 
         /// <summary>
@@ -5301,20 +5319,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void endcnc()
         {
-            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
-            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
-            if (inputLength == 0)
-            {
-                Registers.AX = 1;
-                return;
-            }
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
-#if DEBUG
-            _logger.Info($"Input Length: {inputLength}, Input Current Position: {_inputCurrentPosition}");
-#endif
-
-            Registers.AX = _inputCurrentPosition < inputLength - 1 ? (ushort)0 : (ushort)1;
+            Registers.AX = remainingCharactersInCommand == 0 ? (ushort) 1 : (ushort) 0;
         }
 
         /// <summary>
@@ -5355,12 +5367,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             rstrin();
 
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
-            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+            var inputLength =  Module.Memory.GetWord("INPLEN");
 
-            Registers.AX = (ushort)(inputPointer.Offset + _inputCurrentPosition);
-            Registers.DX = inputPointer.Segment;
-            _inputCurrentPosition = inputLength;
+            var newNxtcmd = new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength));
+
+            Module.Memory.SetPointer("NXTCMD", newNxtcmd);
+
+            Registers.AX = newNxtcmd.Offset;
+            Registers.DX = newNxtcmd.Segment;
         }
 
         /// <summary>
@@ -5371,23 +5385,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void morcnc()
         {
+            //Get Input
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
-            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
-            if (inputLength == 0 || _inputCurrentPosition >= inputLength)
+            if (remainingCharactersInCommand == 0)
             {
+#if DEBUG
+                _logger.Info($"End of Command");
+#endif
                 Registers.AX = 0;
                 return;
             }
 
-            var inputCommand = Module.Memory.GetArray(inputPointer, inputLength);
+            var inputCommand = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
 
-            var result = inputCommand[_inputCurrentPosition];
+            for (var i = 0; i < remainingCharactersInCommand; i++)
+            {
+                if (inputCommand[i] == 0)
+                    continue;
 
-            Registers.AX = result;
+#if DEBUG
+                _logger.Info($"Returning char: {(char)inputCommand[i]}");
+#endif
 
+                Registers.AX = inputCommand[i];
+                Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset + i)));
+                break;
+            }
         }
 
         /// <summary>
@@ -7140,7 +7168,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Registers.AX = 'N';
                     break;
                 default:
-                    Registers.AX = inputStringComponents[0][0];
+                    Registers.AX = string.IsNullOrEmpty(inputStringComponents[0]) ? (ushort)0 : inputStringComponents[0][0];
                     return;
             }
 
