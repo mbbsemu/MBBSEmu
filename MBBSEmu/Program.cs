@@ -14,8 +14,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.Session.Console;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Session.LocalConsole;
 
 namespace MBBSEmu
 {
@@ -281,7 +281,7 @@ namespace MBBSEmu
                 Console.CancelKeyPress += cancelKeyPressHandler;
 
                 if(bConsoleSession)
-                    _ = new ConsoleSession("CONSOLE", host);
+                    _ = new LocalConsoleSession("CONSOLE", host);
             }
             catch (Exception e)
             {
