@@ -15,6 +15,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("123 ABC\0", 1, 0, "23\0ABC\0", 2)]
         [InlineData("123 ABC\0", 3, 0, "ABC\0", 1)]
         [InlineData("123 ABC\0", 4, 0, "ABC\0", 1)]
+        [InlineData("123 ABC\0", 5, 0, "BC\0", 1)]
         [InlineData("\0", 0, 1, "", 0)]
         public void endcnc_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, string expectedInputString, ushort expectedMargc)
         {

@@ -2882,6 +2882,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Expect a Character from the user (character from the current command)
+        ///
+        ///     cncchr() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     in the string with spaces once again.
         /// </summary>
         private void cncchr()
         {
@@ -2892,6 +2895,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == 0x20 && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            //Verify we're not at the end of the input
             if (remainingCharactersInCommand == 0)
             {
 #if DEBUG
@@ -2904,22 +2915,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
 
-            Registers.AX = (char)inputString[0];
-
-            //Ensure CAPS
-            if (Registers.AX > 91)
-                Registers.AX -= 32;
+            Registers.AX = char.ToUpper((char)inputString[0]);
 
 #if DEBUG
             _logger.Info($"Returned char: {(char)Registers.AX}");
 #endif
+            //End of String
+            if (Registers.AX == 0)
+                return;
+
             //Modify the Counters
             remainingCharactersInCommand--;
             nxtcmdPointer.Offset++;
 
-            //We're not at the end of the string, AND it's a NULL, increment again to find the start of the next command
-            if (remainingCharactersInCommand > 0 && Module.Memory.GetByte(nxtcmdPointer) == 0x0)
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == 0x20 && remainingCharactersInCommand > 0)
+            {
                 nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
 
             Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
         }
@@ -3358,7 +3372,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = inputPointer.Offset; i < inputPointer.Offset + (inputLength - 1); i++)
             {
                 if (Module.Memory.GetByte(inputPointer.Segment, i) == 0)
-                    Module.Memory.SetByte(inputPointer.Segment, i, 0x20);
+                    Module.Memory.SetByte(inputPointer.Segment, i, (byte)' ');
             }
         }
 
@@ -3843,43 +3857,44 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
+            //Parse out the Input, eliminating excess spaces and separating words by null
+            var inputComponents  = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var parsedInput = string.Join('\0', inputComponents);
 
             //Setup MARGV & MARGN
             var margvPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGV"));
             var margnPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGN"));
-            ushort margCount = 0;
+
+            var margCount = (ushort) inputComponents.Length;
+
             Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
             margvPointer.Offset += IntPtr16.Size;
 
-            for (var i = inputPointer.Offset; i < inputPointer.Offset + inputLength; i++)
+            for (var i = 0; i < parsedInput.Length; i++)
             {
-                var currentInputByte = Module.Memory.GetByte(inputPointer.Segment, i);
-
-                //only process on SPACE and NULL characters
-                if (currentInputByte != 0x20 && currentInputByte != 0x0) continue;
-
-                Module.Memory.SetByte(inputPointer.Segment, i, 0x0); //replace space with null
+                if(parsedInput[i] != 0)
+                    continue;
 
                 //Set Command End
-                var commandEndPointer = new IntPtr16(inputPointer.Segment, i);
+                var commandEndPointer = new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
                 Module.Memory.SetPointer(margnPointer, commandEndPointer);
                 margnPointer.Offset += IntPtr16.Size;
 
-                margCount++;
-
-                //Are we at the end of the INPUT? If so, we're done here.
-                if (currentInputByte == 0x0)
-                    break;
-
                 i++;
 
+                //Are we at the end of the INPUT? If so, we're done here.
+                if (i == parsedInput.Length)
+                    break;
+
                 //If not, set the next command start
-                var commandStartPointer = new IntPtr16(inputPointer.Segment, i);
+                var commandStartPointer = new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
                 Module.Memory.SetPointer(margvPointer, commandStartPointer);
                 margvPointer.Offset += IntPtr16.Size;
 
             }
-
+            Module.Memory.SetWord("INPLEN", (ushort)parsedInput.Length);
+            Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
             Module.Memory.SetWord("MARGC", margCount);
         }
 

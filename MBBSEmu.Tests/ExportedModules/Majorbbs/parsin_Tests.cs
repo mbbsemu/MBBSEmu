@@ -16,6 +16,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("\0", 0, 0)]
         [InlineData("A B\0", 2, 4)]
         [InlineData("A TEST B\0", 3, 9)]
+        [InlineData("A      TEST       B\0", 3, 9)]
+        [InlineData("A   TEST                        B\0", 3, 9)]
         public void parsin_Test(string inputCommand, int expectedMargc, int expectedInputLength)
         {
             //Reset State
@@ -28,15 +30,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(PARSIN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
+            var expectedParsedInput = Encoding.ASCII.GetBytes(string.Join('\0', inputCommand.Split(' ', StringSplitOptions.RemoveEmptyEntries)));
             var actualInputLength = mbbsEmuMemoryCore.GetWord("INPLEN");
             var actualMargc = mbbsEmuMemoryCore.GetWord("MARGC");
 
+            //Just NULL returns a length of 0, but we'll grab & verify the null at that position if the length is zero
+            var actualInput = mbbsEmuMemoryCore.GetArray("INPUT", actualInputLength == 0 ? (ushort)1 : actualInputLength).ToArray();
+
             Assert.Equal(expectedMargc, actualMargc); //Verify Correct Number of Commands Parsed
             Assert.Equal(expectedInputLength, actualInputLength); //Verify Length is Correct
-            Assert.True(Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0'))
-                .SequenceEqual(mbbsEmuMemoryCore.GetArray("INPUT", (ushort) inputCommand.Length).ToArray())); //Verify spaces replaced with nulls
+            Assert.True(expectedParsedInput
+                .SequenceEqual(actualInput)); //Verify spaces replaced with nulls
 
-            //Verify Argument Addresses
 
             //Replicate parsin() by replacing space with nulls, then get string components
             var inputComponents = inputCommand.Replace(' ', '\0').Split('\0', StringSplitOptions.RemoveEmptyEntries);

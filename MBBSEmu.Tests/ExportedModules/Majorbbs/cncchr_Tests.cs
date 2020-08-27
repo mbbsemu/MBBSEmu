@@ -11,12 +11,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int CNCCHR_ORDINAL = 122;
 
         [Theory]
-
-        //Simple commands with nxtcmd == input
-        [InlineData("123", 1, '2', 2)]
-        [InlineData("1 2", 0, '1', 2)]
-        [InlineData("2 1", 2, '1', 3)]
-        [InlineData("123 456", 4, '4', 5)]
+        [InlineData(" 123\0", 0, '1', 2)]
+        [InlineData("123\0", 1, '2', 2)]
+        [InlineData("1 2\0", 0, '1', 2)]
+        [InlineData("2 1\0", 2, '1', 3)]
+        [InlineData("123 456\0", 4, '4', 5)]
+        [InlineData("123    456\0", 3, '4', 8)]
+        [InlineData("123\0", 3, '\0', 3)]
         [InlineData("\0", 0, '\0', 0)]
         public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
         {
@@ -26,11 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Set Input Values
             var inputLength = (ushort) inputString.Length;
 
-            //parsin() does this check
-            if (inputLength == 1 && inputString[0] == '\0')
-                inputLength = 0;
-
-            mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString.Replace(' ', '\0')));
+            mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString));
             mbbsModule.Memory.SetWord("INPLEN", inputLength);
 
             //Set nxtcmd
