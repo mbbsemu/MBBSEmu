@@ -14,6 +14,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.Session.Console;
 using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu
@@ -32,6 +33,8 @@ namespace MBBSEmu
         private string sSettingsFile;
         private bool bResetDatabase = false;
         private string sSysopPassword = string.Empty;
+        private bool bConsoleSession = false;
+
         private List<IStoppable> runningServices = new List<IStoppable>();
         private int cancellationRequests = 0;
 
@@ -123,6 +126,11 @@ namespace MBBSEmu
 
                                 break;
                             }
+                        case "-CONSOLE":
+                        {
+                            bConsoleSession = true;
+                            break;
+                        }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
@@ -271,6 +279,9 @@ namespace MBBSEmu
                 _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
 
                 Console.CancelKeyPress += cancelKeyPressHandler;
+
+                if(bConsoleSession)
+                    _ = new ConsoleSession("CONSOLE", host);
             }
             catch (Exception e)
             {

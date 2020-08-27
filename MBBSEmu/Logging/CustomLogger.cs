@@ -2,6 +2,7 @@
 using NLog.Conditions;
 using NLog.Layouts;
 using NLog.Targets;
+using SQLitePCL;
 
 namespace MBBSEmu.Logging
 {
@@ -10,7 +11,6 @@ namespace MBBSEmu.Logging
     /// </summary>
     public class CustomLogger : Logger
     {
-
         static CustomLogger()
         {
             var config = new NLog.Config.LoggingConfiguration();
@@ -58,6 +58,14 @@ namespace MBBSEmu.Logging
             config.AddRuleForAllLevels(consoleLogger);
             //config.AddRuleForAllLevels(fileLogger);
             LogManager.Configuration = config;
+        }
+
+        /// <summary>
+        ///     Disables the Console Logger for NLog
+        /// </summary>
+        public void DisableConsoleLogging()
+        {
+            LogManager.Configuration.RemoveTarget("consoleLogger");
         }
     }
 }
