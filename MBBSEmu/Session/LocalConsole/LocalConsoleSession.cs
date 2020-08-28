@@ -16,6 +16,28 @@ namespace MBBSEmu.Session.LocalConsole
     {
         private ILogger _logger;
         private readonly Thread _consoleInputThread;
+        private bool _consoleInputThreadIsRunning;
+        private readonly ushort[] _extendedASCIItoUnicode = {
+                //Standard ASCII
+                0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+                0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001A, 0x001B, 0x001C, 0x001D, 0x001E, 0x001F,
+                0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
+                0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A, 0x003B, 0x003C, 0x003D, 0x003E, 0x003F,
+                0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F,
+                0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x005B, 0x005C, 0x005D, 0x005E, 0x005F,
+                0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F,
+                0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x007B, 0x007C, 0x007D, 0x007E, 0x007F,
+
+                //Extended ASCII
+                0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008A, 0x008B, 0x008C, 0x008D, 0x008E, 0x008F,
+                0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009A, 0x009B, 0x009C, 0x009D, 0x009E, 0x009F,
+                0x00A0, 0x00A1, 0x00A2, 0x00A3, 0x00A4, 0x00A5, 0x00A6, 0x00A7, 0x00A8, 0x00A9, 0x00AA, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x00AF,
+                0x2591, 0x2592, 0x2593, 0x2503, 0x251C, 0x2561, 0x2562, 0x2556, 0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
+                0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F, 0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x6725,
+                0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B, 0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
+                0x03B1, 0x04F1, 0x03C0, 0x06A3, 0x00E4, 0x00E5, 0x00E6, 0x00E7, 0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF,
+                0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF
+        };
 
         public LocalConsoleSession(string sessionId, IMbbsHost host) : base(sessionId)
         {
@@ -27,6 +49,7 @@ namespace MBBSEmu.Session.LocalConsole
 
             (_logger as CustomLogger)?.DisableConsoleLogging();
 
+            _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
             _consoleInputThread.Start();
             host.AddSession(this);
@@ -34,7 +57,7 @@ namespace MBBSEmu.Session.LocalConsole
 
         private void InputThread()
         {
-            while (SessionState != EnumSessionState.LoggedOff)
+            while (SessionState != EnumSessionState.LoggedOff && _consoleInputThreadIsRunning)
             {
                 DataFromClient.Add((byte)Console.ReadKey(true).KeyChar);
                 ProcessDataFromClient();
@@ -50,7 +73,7 @@ namespace MBBSEmu.Session.LocalConsole
         {
             foreach (var c in inputString)
             {
-                
+
                 //Standard ASCII Characters are written as-is
                 if (c <= 127)
                 {
@@ -59,180 +82,14 @@ namespace MBBSEmu.Session.LocalConsole
                 }
 
                 //Extended ASCII Characters are converted to their Unicode Counterparts
-                var unicodeOutput = Array.Empty<byte>();
-                switch (c)
-                {
-                    case 176:
-                        unicodeOutput = new byte[] { 0x91, 0x25 };
-                        break;
-                    case 177:
-                        unicodeOutput = new byte[] { 0x92, 0x25 };
-                        break;
-                    case 178:
-                        unicodeOutput = new byte[] { 0x93, 0x25 };
-                        break;
-                    case 179:
-                        unicodeOutput = new byte[] { 0x03, 0x25 };
-                        break;
-                    case 180:
-                        unicodeOutput = new byte[] { 0x1C, 0x25 };
-                        break;
-                    case 181:
-                        unicodeOutput = new byte[] { 0x61, 0x25 };
-                        break;
-                    case 182:
-                        unicodeOutput = new byte[] { 0x62, 0x25 };
-                        break;
-                    case 183:
-                        unicodeOutput = new byte[] { 0x56, 0x25 };
-                        break;
-                    case 184:
-                        unicodeOutput = new byte[] { 0x55, 0x25 };
-                        break;
-                    case 185:
-                        unicodeOutput = new byte[] { 0x63, 0x25 };
-                        break;
-                    case 186:
-                        unicodeOutput = new byte[] { 0x51, 0x25};
-                        break;
-                    case 187:
-                        unicodeOutput = new byte[] { 0x57, 0x25 };
-                        break;
-                    case 188:
-                        unicodeOutput = new byte[] { 0x5D, 0x25 };
-                        break;
-                    case 189:
-                        unicodeOutput = new byte[] { 0x5C, 0x25 };
-                        break;
-                    case 190:
-                        unicodeOutput = new byte[] { 0x5B, 0x25 };
-                        break;
-                    case 191:
-                        unicodeOutput = new byte[] { 0x10, 0x25 };
-                        break;
-                    case 192:
-                        unicodeOutput = new byte[] { 0x14, 0x25 };
-                        break;
-                    case 193:
-                        unicodeOutput = new byte[] { 0x34, 0x25 };
-                        break;
-                    case 194:
-                        unicodeOutput = new byte[] { 0x2C, 0x25 };
-                        break;
-                    case 195:
-                        unicodeOutput = new byte[] { 0x1C, 0x25 };
-                        break;
-                    case 196:
-                        unicodeOutput = new byte[] { 0x00, 0x25 };
-                        break;
-                    case 197:
-                        unicodeOutput = new byte[] { 0x3C, 0x25 };
-                        break;
-                    case 198:
-                        unicodeOutput = new byte[] { 0x5E, 0x25 };
-                        break;
-                    case 199:
-                        unicodeOutput = new byte[] { 0x5F, 0x25 };
-                        break;
-                    case 200:
-                        unicodeOutput = new byte[] { 0x5A, 0x25 };
-                        break;
-                    case 201:
-                        unicodeOutput = new byte[] { 0x54, 0x25 };
-                        break;
-                    case 202:
-                        unicodeOutput = new byte[] { 0x69, 0x25 };
-                        break;
-                    case 203:
-                        unicodeOutput = new byte[] { 0x66, 0x25 };
-                        break;
-                    case 204:
-                        unicodeOutput = new byte[] { 0x60, 0x25 };
-                        break;
-                    case 205:
-                        unicodeOutput = new byte[] { 0x50, 0x25 };
-                        break;
-                    case 206:
-                        unicodeOutput = new byte[] { 0x6C, 0x25 };
-                        break;
-                    case 207:
-                        unicodeOutput = new byte[] { 0x67, 0x25 };
-                        break;
-                    case 208:
-                        unicodeOutput = new byte[] { 0x68, 0x25 };
-                        break;
-                    case 209:
-                        unicodeOutput = new byte[] { 0x64, 0x25 };
-                        break;
-                    case 210:
-                        unicodeOutput = new byte[] { 0x65, 0x25 };
-                        break;
-                    case 211:
-                        unicodeOutput = new byte[] { 0x59, 0x25 };
-                        break;
-                    case 212:
-                        unicodeOutput = new byte[] { 0x58, 0x25 };
-                        break;
-                    case 213:
-                        unicodeOutput = new byte[] { 0x52, 0x25 };
-                        break;
-                    case 214:
-                        unicodeOutput = new byte[] { 0x53, 0x25 };
-                        break;
-                    case 215:
-                        unicodeOutput = new byte[] { 0x6B, 0x25 };
-                        break;
-                    case 216:
-                        unicodeOutput = new byte[] { 0x6A, 0x25 };
-                        break;
-                    case 217:
-                        unicodeOutput = new byte[] { 0x18, 0x25 };
-                        break;
-                    case 218:
-                        unicodeOutput = new byte[] { 0x0C, 0x25 };
-                        break;
-                    case 219:
-                        unicodeOutput = new byte[] { 0x88, 0x25 };
-                        break;
-                    case 220:
-                        unicodeOutput = new byte[] { 0x84, 0x25 };
-                        break;
-                    case 221:
-                        unicodeOutput = new byte[] { 0x8C, 0x25 };
-                        break;
-                    case 222:
-                        unicodeOutput = new byte[] { 0x90, 0x25 };
-                        break;
-                    case 223:
-                        unicodeOutput = new byte[] { 0x80, 0x25 };
-                        break;
-                    case 224:
-                        unicodeOutput = new byte[] { 0xB1, 0x03 };
-                        break;
-                    case 225:
-                        unicodeOutput = new byte[] { 0xB2, 0x03 };
-                        break;
-                    case 226:
-                        unicodeOutput = new byte[] { 0xF6, 0x04 };
-                        break;
-                    case 227:
-                        unicodeOutput = new byte[] { 0xC0, 0x03 };
-                        break;
-                    case 228:
-                        unicodeOutput = new byte[] { 0xA3, 0x06 };
-                        break;
-                    default:
-                        break;
-                }
-                Console.Write(Encoding.Unicode.GetString(unicodeOutput));
+                Console.Write(Encoding.Unicode.GetString(BitConverter.GetBytes(_extendedASCIItoUnicode[c])));
             }
-
-
         }
 
         public override void Stop()
         {
-            _consoleInputThread.Abort();
+            _consoleInputThreadIsRunning = false;
+            Environment.Exit(0);
         }
     }
 }
