@@ -67,8 +67,6 @@ namespace MBBSEmu.Session.Rlogin
 
             _logger.Info($"Rlogin For User: {Username}");
 
-            OutputEnabled = false;
-
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
                 CurrentModule = _host.GetModule(ModuleIdentifier);
@@ -92,12 +90,12 @@ namespace MBBSEmu.Session.Rlogin
                 return (clientData, bytesReceived);
             }
 
-            for (int i = 0; i < bytesReceived; ++i)
+            for (var i = 0; i < bytesReceived; ++i)
             {
                 if (ProcessIncomingByte(clientData[i]))
                 {
                     // return whatever data we may have left in the packet as client data
-                    int remaining = bytesReceived - i - 1;
+                    var remaining = bytesReceived - i - 1;
                     return (clientData.TakeLast(remaining).ToArray(), remaining);
                 }
             }

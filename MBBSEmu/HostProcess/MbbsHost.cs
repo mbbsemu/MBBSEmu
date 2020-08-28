@@ -448,13 +448,10 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void ProcessLONROU_FromRlogin(SessionBase session)
         {
-            bool.TryParse(_configuration["Module.DoLoginRoutine"], out var doLoginRoutine);
+            session.OutputEnabled = false; // always disabled for RLogin
 
-            if (doLoginRoutine)
-            {
-                Run(session.CurrentModule.ModuleIdentifier,
-                    session.CurrentModule.EntryPoints["lonrou"], session.Channel);
-            }
+            Run(session.CurrentModule.ModuleIdentifier,
+                session.CurrentModule.EntryPoints["lonrou"], session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
             session.OutputEnabled = true;
@@ -471,10 +468,9 @@ namespace MBBSEmu.HostProcess
         {
             bool.TryParse(_configuration["Module.DoLoginRoutine"], out var doLoginRoutine);
 
-            if (doLoginRoutine)
-            {
-                CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
-            }
+            session.OutputEnabled = doLoginRoutine;
+
+            CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.OutputEnabled = true;
