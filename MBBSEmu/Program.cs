@@ -8,14 +8,13 @@ using MBBSEmu.Reports;
 using MBBSEmu.Resources;
 using MBBSEmu.Server;
 using MBBSEmu.Server.Socket;
-using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
+using MBBSEmu.Session.LocalConsole;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.Session.Enums;
-using MBBSEmu.Session.LocalConsole;
 
 namespace MBBSEmu
 {
@@ -25,25 +24,60 @@ namespace MBBSEmu
 
         private ILogger _logger;
 
-        private string sInputModule = string.Empty;
-        private string sInputPath = string.Empty;
-        private bool bApiReport = false;
-        private bool bConfigFile = false;
-        private string sConfigFile = string.Empty;
-        private string sSettingsFile;
-        private bool bResetDatabase = false;
-        private string sSysopPassword = string.Empty;
-        private bool bConsoleSession = false;
+        /// <summary>
+        ///     Module Identifier specified by the -M Command Line Argument
+        /// </summary>
+        private string _moduleIdentifier;
 
-        private List<IStoppable> runningServices = new List<IStoppable>();
-        private int cancellationRequests = 0;
+        /// <summary>
+        ///     Module Path specified by the -P Command Line Argument
+        /// </summary>
+        private string _modulePath;
+
+        /// <summary>
+        ///     Specified if -APIREPORT Command Line Argument was passed
+        /// </summary>
+        private bool _doApiReport;
+
+        /// <summary>
+        ///     Specified if -C Command Line Argument want passed
+        /// </summary>
+        private bool _isModuleConfigFile;
+
+        /// <summary>
+        ///     Custom modules json file specified by the -C Command Line Argument
+        /// </summary>
+        private string _moduleConfigFileName;
+
+        /// <summary>
+        ///     Custom appsettings.json File specified by the -S Command Line Argument 
+        /// </summary>
+        private string _settingsFileName;
+
+        /// <summary>
+        ///     Specified if -DBRESET Command Line Argument was Passed
+        /// </summary>
+        private bool _doResetDatabase;
+
+        /// <summary>
+        ///     New Sysop Password specified by the -DBRESET Command Line Argument
+        /// </summary>
+        private string _newSysopPassword;
+
+        /// <summary>
+        ///     Specified if the -CONSOLE Command Line Argument was passed
+        /// </summary>
+        private bool _isConsoleSession;
+
+        private readonly List<IStoppable> _runningServices = new List<IStoppable>();
+        private int _cancellationRequests = 0;
 
         static void Main(string[] args)
         {
             new Program().Run(args);
         }
 
-        private void Run(String[] args) {
+        private void Run(string[] args) {
             try
             {
                 if (args.Length == 0)
@@ -55,24 +89,24 @@ namespace MBBSEmu
                     {
                         case "-DBRESET":
                             {
-                                bResetDatabase = true;
+                                _doResetDatabase = true;
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    sSysopPassword = args[i + 1];
+                                    _newSysopPassword = args[i + 1];
                                     i++;
                                 }
 
                                 break;
                             }
                         case "-APIREPORT":
-                            bApiReport = true;
+                            _doApiReport = true;
                             break;
                         case "-M":
-                            sInputModule = args[i + 1];
+                            _moduleIdentifier = args[i + 1];
                             i++;
                             break;
                         case "-P":
-                            sInputPath = args[i + 1];
+                            _modulePath = args[i + 1];
                             i++;
                             break;
                         case "-?":
@@ -82,16 +116,16 @@ namespace MBBSEmu
                         case "-CONFIG":
                         case "-C":
                             {
-                                bConfigFile = true;
+                                _isModuleConfigFile = true;
                                 //Is there a following argument that doesn't start with '-'
                                 //If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    sConfigFile = args[i + 1];
+                                    _moduleConfigFileName = args[i + 1];
 
-                                    if (!File.Exists(sConfigFile))
+                                    if (!File.Exists(_moduleConfigFileName))
                                     {
-                                        Console.Write($"Specified Module Configuration File not found: {sConfigFile}");
+                                        Console.Write($"Specified Module Configuration File not found: {_moduleConfigFileName}");
                                         return;
                                     }
                                     i++;
@@ -109,12 +143,12 @@ namespace MBBSEmu
                                 //If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    sSettingsFile =  args[i + 1];
+                                    _settingsFileName =  args[i + 1];
 
-                                    if (!File.Exists(sSettingsFile))
+                                    if (!File.Exists(_settingsFileName))
                                     {
 
-                                        Console.WriteLine($"Specified MBBSEmu settings not found: {sSettingsFile}");
+                                        Console.WriteLine($"Specified MBBSEmu settings not found: {_settingsFileName}");
                                         return;
                                     }
                                     i++;
@@ -128,7 +162,7 @@ namespace MBBSEmu
                             }
                         case "-CONSOLE":
                         {
-                            bConsoleSession = true;
+                            _isConsoleSession = true;
                             break;
                         }
                         default:
@@ -137,14 +171,14 @@ namespace MBBSEmu
                     }
                 }
 
-                ServiceResolver.Create(sSettingsFile ?? DefaultEmuSettingsFilename);
+                ServiceResolver.Create(_settingsFileName ?? DefaultEmuSettingsFilename);
 
                 _logger = ServiceResolver.GetService<ILogger>();
                 var config = ServiceResolver.GetService<IConfiguration>();
                 var fileUtility = ServiceResolver.GetService<IFileUtility>();
 
                 //Database Reset
-                if (bResetDatabase)
+                if (_doResetDatabase)
                     DatabaseReset();
 
                 //Setup Generic Database
@@ -159,16 +193,16 @@ namespace MBBSEmu
 
                 //Setup Modules
                 var modules = new List<MbbsModule>();
-                if (!string.IsNullOrEmpty(sInputModule))
+                if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, sInputModule, sInputPath));
+                    modules.Add(new MbbsModule(fileUtility, _moduleIdentifier, _modulePath));
                 }
-                else if (bConfigFile)
+                else if (_isModuleConfigFile)
                 {
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                        .AddJsonFile(sConfigFile, optional: false, reloadOnChange: true).Build();
+                        .AddJsonFile(_moduleConfigFileName, optional: false, reloadOnChange: true).Build();
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
@@ -184,7 +218,7 @@ namespace MBBSEmu
                 }
 
                 //API Report
-                if (bApiReport)
+                if (_doApiReport)
                 {
                     foreach (var m in modules)
                     {
@@ -214,7 +248,7 @@ namespace MBBSEmu
 
                 host.Start();
 
-                runningServices.Add(host);
+                _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
                 if (bool.TryParse(config["Telnet.Enabled"], out var telnetEnabled) && telnetEnabled)
@@ -230,7 +264,7 @@ namespace MBBSEmu
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
 
-                    runningServices.Add(telnetService);
+                    _runningServices.Add(telnetService);
                 }
                 else
                 {
@@ -257,7 +291,7 @@ namespace MBBSEmu
 
                     _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
 
-                    runningServices.Add(rloginService);
+                    _runningServices.Add(rloginService);
 
                     if (bool.Parse(config["Rlogin.PortPerModule"]))
                     {
@@ -267,7 +301,7 @@ namespace MBBSEmu
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = ServiceResolver.GetService<ISocketServer>();
                             rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
-                            runningServices.Add(rloginService);
+                            _runningServices.Add(rloginService);
                         }
                     }
                 }
@@ -278,9 +312,9 @@ namespace MBBSEmu
 
                 _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
 
-                Console.CancelKeyPress += cancelKeyPressHandler;
+                Console.CancelKeyPress += CancelKeyPressHandler;
 
-                if(bConsoleSession)
+                if(_isConsoleSession)
                     _ = new LocalConsoleSession("CONSOLE", host);
             }
             catch (Exception e)
@@ -291,20 +325,20 @@ namespace MBBSEmu
             }
         }
 
-        private void cancelKeyPressHandler(object sender, ConsoleCancelEventArgs args)
+        private void CancelKeyPressHandler(object sender, ConsoleCancelEventArgs args)
         {
             // so args.Cancel is a bit strange. Cancel means to cancel the Ctrl-C processing, so
             // setting it to true keeps the app alive. We want this at first to allow the shutdown
             // routines to process naturally. If we get a 2nd (or more) Ctrl-C, then we set
             // args.Cancel to false which means the app will die a horrible death, and prevents the
             // app from being unkillable by normal means.
-            args.Cancel = cancellationRequests <= 0;
+            args.Cancel = _cancellationRequests <= 0;
 
-            cancellationRequests++;
+            _cancellationRequests++;
 
             _logger.Warn("BBS Shutting down");
 
-            foreach (var runningService in runningServices)
+            foreach (var runningService in _runningServices)
             {
                 runningService.Stop();
             }
@@ -323,7 +357,7 @@ namespace MBBSEmu
                 acct.DropTable();
             acct.CreateTable();
 
-            if (string.IsNullOrEmpty(sSysopPassword))
+            if (string.IsNullOrEmpty(_newSysopPassword))
             {
                 var bPasswordMatch = false;
                 while (!bPasswordMatch)
@@ -335,7 +369,7 @@ namespace MBBSEmu
                     if (password1 == password2)
                     {
                         bPasswordMatch = true;
-                        sSysopPassword = password1;
+                        _newSysopPassword = password1;
                     }
                     else
                     {
@@ -344,7 +378,7 @@ namespace MBBSEmu
                 }
             }
 
-            var sysopUserId = acct.InsertAccount("sysop", sSysopPassword, "sysop@mbbsemu.com");
+            var sysopUserId = acct.InsertAccount("sysop", _newSysopPassword, "sysop@mbbsemu.com");
             var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
 
             var keys = ServiceResolver.GetService<IAccountKeyRepository>();
