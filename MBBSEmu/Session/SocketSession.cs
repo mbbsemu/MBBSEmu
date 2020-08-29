@@ -1,9 +1,9 @@
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Session.Enums;
 using NLog;
 using System;
 using System.Net.Sockets;
 using System.Threading;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session
 {

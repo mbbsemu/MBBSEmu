@@ -1,7 +1,8 @@
-﻿using NLog;
+using NLog;
 using NLog.Conditions;
 using NLog.Layouts;
 using NLog.Targets;
+using SQLitePCL;
 
 namespace MBBSEmu.Logging
 {
@@ -10,12 +11,27 @@ namespace MBBSEmu.Logging
     /// </summary>
     public class CustomLogger : Logger
     {
-
         static CustomLogger()
         {
             var config = new NLog.Config.LoggingConfiguration();
 
-            //Setup Console Logging
+            var consoleLogger = CreateConsoleTarget();
+            config.AddTarget(consoleLogger);
+
+            var fileLogger = new FileTarget("fileLogger")
+            {
+                FileName = @"c:\dos\log\log.txt",
+                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
+                DeleteOldFileOnStartup = true
+            };
+            //config.AddTarget(fileLogger);
+            config.AddRuleForAllLevels(consoleLogger);
+            //config.AddRuleForAllLevels(fileLogger);
+            LogManager.Configuration = config;
+        }
+
+        static ColoredConsoleTarget CreateConsoleTarget()
+        {
             var consoleLogger = new ColoredConsoleTarget("consoleLogger")
             {
                 Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
@@ -46,18 +62,23 @@ namespace MBBSEmu.Logging
                 ForegroundColor = ConsoleOutputColor.Red
             });
 
-            config.AddTarget(consoleLogger);
+            return consoleLogger;
+        }
 
-            var fileLogger = new FileTarget("fileLogger")
-            {
-                FileName = @"c:\dos\log\log.txt",
-                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
-                DeleteOldFileOnStartup = true
-            };
-            //config.AddTarget(fileLogger);
-            config.AddRuleForAllLevels(consoleLogger);
-            //config.AddRuleForAllLevels(fileLogger);
-            LogManager.Configuration = config;
+        /// <summary>
+        ///     Disables the Console Logger for NLog
+        /// </summary>
+        public void DisableConsoleLogging()
+        {
+            LogManager.Configuration.RemoveTarget("consoleLogger");
+        }
+
+        /// <summary>
+        ///     Enables the Console Logger for NLog
+        /// </summary>
+        public void EnableConsoleLogging()
+        {
+            LogManager.Configuration.AddTarget("consoleLogger", CreateConsoleTarget());
         }
     }
 }
