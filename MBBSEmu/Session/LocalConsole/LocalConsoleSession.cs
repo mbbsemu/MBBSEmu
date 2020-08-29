@@ -15,6 +15,7 @@ namespace MBBSEmu.Session.LocalConsole
     public class LocalConsoleSession : SessionBase
     {
         private ILogger _logger;
+        private IMbbsHost _host;
         private readonly Thread _consoleInputThread;
         private bool _consoleInputThreadIsRunning;
         private readonly ushort[] _extendedASCIItoUnicode = {
@@ -42,6 +43,7 @@ namespace MBBSEmu.Session.LocalConsole
         public LocalConsoleSession(string sessionId, IMbbsHost host) : base(sessionId)
         {
             _logger = ServiceResolver.GetService<ILogger>();
+            _host = host;
             SendToClientMethod = dataToSend => UnicodeANSIOutput(dataToSend);
             Console.Clear();
             Console.OutputEncoding = Encoding.Unicode;
@@ -52,7 +54,7 @@ namespace MBBSEmu.Session.LocalConsole
             _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
             _consoleInputThread.Start();
-            host.AddSession(this);
+            _host.AddSession(this);
         }
 
         private void InputThread()
@@ -89,6 +91,7 @@ namespace MBBSEmu.Session.LocalConsole
         public override void Stop()
         {
             _consoleInputThreadIsRunning = false;
+            _host.Stop();
             Environment.Exit(0);
         }
     }
