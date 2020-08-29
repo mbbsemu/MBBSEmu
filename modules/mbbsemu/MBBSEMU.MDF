@@ -1,0 +1,27 @@
+; Example MDF
+
+Module Name: MBBSEmu
+
+Developer: Todd Jeffreys
+
+Requires:
+Replaces:
+
+Install:
+
+Online user manual: 
+
+DLLs: MBBSEMU
+MSGs: MBBSEMU
+
+Btrieve page size:    2048
+Btrieve files:        0
+
+Cleanup:
+
+Event-1:
+Event-2:
+Event-3:
+Event-4:
+
+Add-On Utility:
