@@ -19,6 +19,9 @@ namespace MBBSEmu.Session.Rlogin
     public class RloginSession : SocketSession
     {
         private readonly IMbbsHost _host;
+        private readonly List<string> rloginStrings = new List<string>();
+        private readonly MemoryStream memoryStream = new MemoryStream();
+
         public readonly string ModuleIdentifier;
 
         public RloginSession(IMbbsHost host, Socket rloginConnection, string moduleIdentifier = null) : base(rloginConnection)
@@ -35,6 +38,51 @@ namespace MBBSEmu.Session.Rlogin
             TransparentMode = false;
         }
 
+        /// <summary>
+        ///     Scans incoming Rlogin bytes looking for the first three nulls, accumulating them
+        ///     in the rloginStrings collection. Once found, picks out the first non-empty string
+        ///     as the UserName and sets the proper Session states.
+        /// </summary>
+        /// <returns>Returns true when rlogin analysis has completed</returns>
+        private bool ProcessIncomingByte(byte b)
+        {
+            if (b != 0)
+            {
+                memoryStream.WriteByte(b);
+                return false;
+            }
+
+            rloginStrings.Add(Encoding.ASCII.GetString(memoryStream.ToArray()));
+            memoryStream.SetLength(0);
+
+            if (rloginStrings.Count != 3)
+            {
+                return false;
+            }
+
+            // we have 3 strings, pick out username and launch appropriately
+            Username = rloginStrings.First(s => !string.IsNullOrEmpty(s));
+
+            rloginStrings.Clear();
+
+            _logger.Info($"Rlogin For User: {Username}");
+
+            if (!string.IsNullOrEmpty(ModuleIdentifier))
+            {
+                CurrentModule = _host.GetModule(ModuleIdentifier);
+                SessionState = EnumSessionState.RloginEnteringModule;
+            }
+            else
+            {
+                SessionState = EnumSessionState.LoginRoutines;
+            }
+
+            //Send 0 byte to ACK
+            Send(new byte[] {0x0});
+
+            return true;
+        }
+
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
             if (SessionState != EnumSessionState.Negotiating)
@@ -42,32 +90,16 @@ namespace MBBSEmu.Session.Rlogin
                 return (clientData, bytesReceived);
             }
 
-            var rloginStrings = Encoding.ASCII.GetString(clientData, 0, bytesReceived).Split('\0', StringSplitOptions.RemoveEmptyEntries);
-            if (rloginStrings.Length == 0)
+            for (var i = 0; i < bytesReceived; ++i)
             {
-                CloseSocket($"Invalid rlogin negotiation, didn't receive null terminated strings");
-                return (null, 0);
-            }
-            // all we care about is the username, ignore the other fields
-            Username = rloginStrings[0];
-
-            _logger.Info($"Rlogin For User: {Username}");
-
-            if (!string.IsNullOrEmpty(ModuleIdentifier))
-            {
-                CurrentModule = _host.GetModule(ModuleIdentifier);
-                SessionState = EnumSessionState.EnteringModule;
-            }
-            else
-            {
-                SessionState = EnumSessionState.MainMenuDisplay;
+                if (ProcessIncomingByte(clientData[i]))
+                {
+                    // return whatever data we may have left in the packet as client data
+                    var remaining = bytesReceived - i - 1;
+                    return (clientData.TakeLast(remaining).ToArray(), remaining);
+                }
             }
 
-            //Send 0 byte to ACK
-            Send(new byte[] {0x0});
-
-            // ignore any extraneous data, since the client should wait until we ack back with
-            // the zero byte
             return (null, 0);
         }
     }

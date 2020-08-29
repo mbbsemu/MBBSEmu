@@ -194,6 +194,11 @@ namespace MBBSEmu.HostProcess
 
                     switch (session.SessionState)
                     {
+                        case EnumSessionState.RloginEnteringModule:
+                            {
+                                ProcessLONROU_FromRlogin(session);
+                                continue;
+                            }
                         //Initial call to STTROU when a User is Entering a Module
                         case EnumSessionState.EnteringModule:
                             {
@@ -211,7 +216,6 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-
                                 //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
                                 if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
                                 {
@@ -437,6 +441,23 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call on only
+        ///     the selected Rlogin module, specified by ModuleIdentifier.
+        ///
+        ///     Executes on the given channel once after a user successfully logs in.
+        /// </summary>
+        private void ProcessLONROU_FromRlogin(SessionBase session)
+        {
+            session.OutputEnabled = false; // always disabled for RLogin
+
+            Run(session.CurrentModule.ModuleIdentifier,
+                session.CurrentModule.EntryPoints["lonrou"], session.Channel);
+
+            session.SessionState = EnumSessionState.EnteringModule;
+            session.OutputEnabled = true;
+        }
+
+        /// <summary>
         ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call
         ///
         ///     Executes on the given channel once after a user successfully logs in.
@@ -447,12 +468,12 @@ namespace MBBSEmu.HostProcess
         {
             bool.TryParse(_configuration["Module.DoLoginRoutine"], out var doLoginRoutine);
 
-            if (doLoginRoutine)
-            {
-                CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
-            }
+            session.OutputEnabled = doLoginRoutine;
+
+            CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
+            session.OutputEnabled = true;
         }
 
         /// <summary>

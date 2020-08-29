@@ -163,6 +163,11 @@ namespace MBBSEmu.Session
         public Stopwatch SessionTimer { get; set; }
 
         /// <summary>
+        ///     If enabled, allows data to be sent to the client
+        /// </summary>
+        public bool OutputEnabled { get; set; }
+
+        /// <summary>
         ///     If enabled, Status 5 is generated after output has completed
         /// </summary>
         public bool OutputEmptyStatus { get; set; }
@@ -190,7 +195,11 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public bool SendToClientAsync(byte[] dataToSend)
         {
-            return DataToClient.TryAdd(dataToSend.Where(c => shouldSendToClient(c)).ToArray());
+            if (OutputEnabled)
+            {
+                return DataToClient.TryAdd(dataToSend.Where(c => shouldSendToClient(c)).ToArray());
+            }
+            return true;
         }
 
         /// <summary>
@@ -199,7 +208,10 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
-            SendToClientMethod(dataToSend);
+            if (OutputEnabled)
+            {
+                SendToClientMethod(dataToSend);
+            }
         }
 
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));
