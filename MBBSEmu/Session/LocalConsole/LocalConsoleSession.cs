@@ -1,4 +1,4 @@
-﻿using MBBSEmu.DependencyInjection;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;
@@ -105,10 +105,16 @@ namespace MBBSEmu.Session.LocalConsole
 
         public override void Stop()
         {
+            (_logger as CustomLogger)?.EnableConsoleLogging();
+
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();
             _host.Stop();
-            Environment.Exit(0);
+
+            Console.Clear();
+            // the thread is stuck in ReadKey, the user needs to free that thread to end the
+            // program cleanly
+            Console.WriteLine("Press a key to quit");
         }
     }
 }
