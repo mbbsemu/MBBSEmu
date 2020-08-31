@@ -11,6 +11,10 @@
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\crashDetailsAPI.txt" />
     <None Remove="Assets\login.ans" />
+    <None Remove="Assets\MBBSEMU.DLL" />
+    <None Remove="Assets\MBBSEMU.MCV" />
+    <None Remove="Assets\MBBSEMU.MDF" />
+    <None Remove="Assets\MBBSEMU.MSG" />
     <None Remove="Assets\signup.ans" />
     <None Remove="Assets\version.txt" />
     <None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
@@ -36,6 +40,10 @@
     <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
+    <EmbeddedResource Include="Assets\MBBSEMU.DLL" />
+    <EmbeddedResource Include="Assets\MBBSEMU.MCV" />
+    <EmbeddedResource Include="Assets\MBBSEMU.MDF" />
+    <EmbeddedResource Include="Assets\MBBSEMU.MSG" />
     <EmbeddedResource Include="Assets\signup.ans" />
     <EmbeddedResource Include="Assets\version.txt" />
     <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
