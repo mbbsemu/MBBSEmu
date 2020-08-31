@@ -1235,6 +1235,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             else
             {
+                Module.Memory.SetByte(destinationPointer, 0);
 #if DEBUG
                 _logger.Warn($"Ignoring, source ({sourcePointer}) is NULL");
 #endif
@@ -1725,6 +1726,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //Set prfptr to the base address of prfbuf
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            Module.Memory.SetByte(Module.Memory.GetVariablePointer("PRFBUF"), 0);
 
 #if DEBUG
             _logger.Info("Reset Output Buffer");
@@ -3645,10 +3647,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 var inputValue = (byte)fileStream.ReadByte();
 
+                valueFromFile.WriteByte(inputValue);
+
                 if (inputValue == '\n' || fileStream.Position == fileStream.Length)
                     break;
-
-                valueFromFile.WriteByte(inputValue);
             }
 
             valueFromFile.WriteByte(0);
