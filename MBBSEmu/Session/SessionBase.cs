@@ -197,7 +197,7 @@ namespace MBBSEmu.Session
         {
             if (OutputEnabled)
             {
-                return DataToClient.TryAdd(dataToSend.Where(c => shouldSendToClient(c)).ToArray());
+                return DataToClient.TryAdd(dataToSend.Where(shouldSendToClient).ToArray());
             }
             return true;
         }
@@ -210,7 +210,7 @@ namespace MBBSEmu.Session
         {
             if (OutputEnabled)
             {
-                SendToClientMethod(dataToSend);
+                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
             }
         }
 
@@ -230,7 +230,7 @@ namespace MBBSEmu.Session
             SessionTimer = new Stopwatch();
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
-
+            OutputEnabled = true;
             EchoBuffer = new MemoryStream();
             InputBuffer = new MemoryStream();
 
