@@ -1224,20 +1224,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputBuffer = Module.Memory.GetString(sourcePointer);
 
-            if (inputBuffer[0] != 0x0)
+            if (inputBuffer[0] == 0x0 || sourcePointer == IntPtr16.Empty)
             {
-                Module.Memory.SetArray(destinationPointer, inputBuffer);
-
+                Module.Memory.SetByte(destinationPointer, 0);
 #if DEBUG
-                _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
-                // _logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer}");
+                _logger.Warn($"Source ({sourcePointer}) is NULL");
 #endif
             }
             else
             {
-                Module.Memory.SetByte(destinationPointer, 0);
+                Module.Memory.SetArray(destinationPointer, inputBuffer);
 #if DEBUG
-                _logger.Warn($"Ignoring, source ({sourcePointer}) is NULL");
+                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
             }
 
@@ -3860,7 +3858,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Parse out the Input, eliminating excess spaces and separating words by null
-            var inputComponents  = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
+            var inputComponents = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var parsedInput = string.Join('\0', inputComponents);
 
@@ -3868,14 +3866,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var margvPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGV"));
             var margnPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGN"));
 
-            var margCount = (ushort) inputComponents.Length;
+            var margCount = (ushort)inputComponents.Length;
 
             Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
             margvPointer.Offset += IntPtr16.Size;
 
             for (var i = 0; i < parsedInput.Length; i++)
             {
-                if(parsedInput[i] != 0)
+                if (parsedInput[i] != 0)
                     continue;
 
                 //Set Command End
