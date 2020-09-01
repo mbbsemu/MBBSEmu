@@ -5673,8 +5673,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void memcpy()
         {
-            var sourcePointer = GetParameterPointer(0);
-            var destinationPointer = GetParameterPointer(2);
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
             //Verify the Destination will not overlap with the Source
