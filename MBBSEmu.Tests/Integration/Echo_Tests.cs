@@ -1,8 +1,10 @@
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.HostProcess;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
+using MBBSEmu.Session;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -14,6 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     public class Echo_Tests : IDisposable
     {
         private readonly string _modulePath = Path.Join(Path.GetTempPath(), "mbbsemu");
+        private TestSession _session;
 
         public Echo_Tests()
         {
@@ -36,13 +39,26 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             }
         }
 
+        private string WaitUntil(char endingCharacter, string message)
+        {
+            string line;
+            while (true)
+            {
+                line = _session.GetLine(endingCharacter);
+                if (line.Contains(message))
+                {
+                    return line;
+                }
+            }
+        }
+
         [Theory]
         [InlineData("x\r\n", "Hahahah")]
         public void test(string clientToSend, string expected)
         {
-            //"Rlogin.Enabled": "True",
             var list = new List<KeyValuePair<string, string>>();
             list.Add(new KeyValuePair<string, string>("BBS.Title", "Test"));
+            list.Add(new KeyValuePair<string, string>("GSBL.Activation", "123456789"));
             list.Add(new KeyValuePair<string, string>("Telnet.Enabled", "False"));
             list.Add(new KeyValuePair<string, string>("Rlogin.Enabled", "False"));
             list.Add(new KeyValuePair<string, string>("Database.File", "mbbsemu.db"));
@@ -55,60 +71,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             CopyModuleToTempPath(resourceManager);
 
-            var fileUtility = ServiceResolver.GetService<IFileUtility>();
-
             var modules = new List<MbbsModule>();
-            modules.Add(new MbbsModule(fileUtility, "MBBSEMU", _modulePath));
-
-            /*Setup Modules
-            var modules = new List<MbbsModule>();
-            if (!string.IsNullOrEmpty(_moduleIdentifier))
-            {
-                //Load Command Line
-                modules.Add(new MbbsModule(fileUtility, _moduleIdentifier, _modulePath));
-            }
-            else if (_isModuleConfigFile)
-            {
-                //Load Config File
-                var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile(_moduleConfigFileName, optional: false, reloadOnChange: true).Build();
-
-                foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
-                {
-                    _logger.Info($"Loading {m["Identifier"]}");
-                    modules.Add(new MbbsModule(fileUtility, m["Identifier"], m["Path"]));
-                }
-            }
-            else
-            {
-                _logger.Warn($"You must specify a module to load either via Command Line or Config File");
-                _logger.Warn($"View help documentation using -? for more information");
-                return;
-            }
-
-            //API Report
-            if (_doApiReport)
-            {
-                foreach (var m in modules)
-                {
-                    var apiReport = new ApiReport(m);
-                    apiReport.GenerateReport();
-                }
-                return;
-            }
-
-            //Database Sanity Checks
-            var databaseFile = ServiceResolver.GetService<IConfiguration>()["Database.File"];
-            if (string.IsNullOrEmpty(databaseFile))
-            {
-                _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
-                return;
-            }
-            if (!File.Exists($"{databaseFile}"))
-            {
-                _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
-                DatabaseReset();
-            }
+            modules.Add(new MbbsModule(ServiceResolver.GetService<IFileUtility>(), "MBBSEMU", _modulePath));
 
             //Setup and Run Host
             var host = ServiceResolver.GetService<IMbbsHost>();
@@ -117,7 +81,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             host.Start();
 
-            _runningServices.Add(host);*/
+            _session = new TestSession(host);
+            host.AddSession(_session);
+
+            WaitUntil(':', "Make your selection");
+            _session.SendToModule(Encoding.ASCII.GetBytes("E\r\n"));
+            WaitUntil(':', "Type something");
+            _session.SendToModule(Encoding.ASCII.GetBytes("This is really cool!\r\n"));
+            WaitUntil(':', "You entered");
+            WaitUntil('\n', "This is really cool!");
+
+            host.Stop();
+
+            host.WaitForShutdown();
         }
     }
 }

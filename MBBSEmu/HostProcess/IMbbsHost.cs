@@ -43,5 +43,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="uniqueIdentifier"></param>
         /// <returns></returns>
         public MbbsModule GetModule(string uniqueIdentifier);
+
+        // TODO
+        public void WaitForShutdown();
     }
 }
