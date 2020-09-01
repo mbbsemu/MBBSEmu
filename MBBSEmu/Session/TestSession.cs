@@ -1,13 +1,11 @@
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Enums;
 using NLog;
-using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
+using System;
 
 namespace MBBSEmu.Session
 {
@@ -28,17 +26,20 @@ namespace MBBSEmu.Session
 
         public override void Stop() {}
 
-        public string GetLine()
+        public string GetLine(TimeSpan timeout)
         {
-            return GetLine('\n').Trim('\r', '\n');
+            return GetLine('\n', timeout).Trim('\r', '\n');
         }
 
-        public string GetLine(char endingCharacter)
+        public string GetLine(char endingCharacter, TimeSpan timeout)
         {
             var line = new MemoryStream();
             while (true)
             {
-                var b = _data.Take();
+                if (!_data.TryTake(out var b, timeout))
+                {
+                    throw new TimeoutException("Timeout, module likely didn't output expected text");
+                }
 
                 line.WriteByte(b);
 

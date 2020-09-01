@@ -44,7 +44,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             string line;
             while (true)
             {
-                line = _session.GetLine(endingCharacter);
+                line = _session.GetLine(endingCharacter, TimeSpan.FromSeconds(2));
                 if (line.Contains(message))
                 {
                     return line;
