@@ -209,7 +209,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (inputValue.Length > 29 )
             {
                 EchoToClient(session,
-                    "\r\n|RED||B|Please enter a Username with less than 29 characters.\r\n|RESET|"
+                    "\r\n|RED||B|Please enter a Username with less than 30 characters.\r\n|RESET|"
                         .EncodeToANSIArray());
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 session.InputBuffer.SetLength(0);
@@ -398,7 +398,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (inputValue.Length > 29 )
             {
                 EchoToClient(session,
-                    "\r\n|RED||B|Please enter a Username with less than 29 characters.\r\n|RESET|"
+                    "\r\n|RED||B|Please enter a Username with less than 30 characters.\r\n|RESET|"
                         .EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
                 session.InputBuffer.SetLength(0);
