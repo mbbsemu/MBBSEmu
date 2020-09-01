@@ -205,6 +205,17 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
+            //Validation for username > 29 characters
+            if (inputValue.Length > 29 )
+            {
+                EchoToClient(session,
+                    "\r\n|RED||B|Please enter a Username with less than 30 characters.\r\n|RESET|"
+                        .EncodeToANSIArray());
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
             if (inputValue.ToUpper() == "NEW")
             {
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
@@ -361,7 +372,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupUsernameDisplay(SessionBase session)
         {
-            EchoToClient(session, "\r\n|CYAN||B|Please enter a unique Username (Max. 30 Characters):|RESET||WHITE||B|\r\n".EncodeToANSIArray());
+            EchoToClient(session, "\r\n|CYAN||B|Please enter a unique Username (Max. 29 Characters):|RESET||WHITE||B|\r\n".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupUsernameInput;
         }
 
@@ -377,6 +388,17 @@ namespace MBBSEmu.HostProcess.HostRoutines
             {
                 EchoToClient(session,
                     "\r\n|RED||B|Please enter a valid Username.\r\n|RESET|"
+                        .EncodeToANSIArray());
+                session.SessionState = EnumSessionState.SignupUsernameDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
+            //Validation for username > 29 characters
+            if (inputValue.Length > 29 )
+            {
+                EchoToClient(session,
+                    "\r\n|RED||B|Please enter a Username with less than 30 characters.\r\n|RESET|"
                         .EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupUsernameDisplay;
                 session.InputBuffer.SetLength(0);
