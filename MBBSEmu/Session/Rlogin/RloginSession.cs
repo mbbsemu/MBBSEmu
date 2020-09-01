@@ -55,7 +55,7 @@ namespace MBBSEmu.Session.Rlogin
             rloginStrings.Add(Encoding.ASCII.GetString(memoryStream.ToArray()));
             memoryStream.SetLength(0);
 
-            if (rloginStrings.Count != 3)
+            if (rloginStrings.Count < 3 || rloginStrings.Count(s => !string.IsNullOrEmpty(s)) < 2 )
             {
                 return false;
             }
