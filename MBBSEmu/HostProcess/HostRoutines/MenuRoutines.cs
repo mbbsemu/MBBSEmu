@@ -507,7 +507,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (!emailRegEx.IsMatch(inputValue))
             {
                 EchoToClient(session,
-                    "\r\n|RED|B|Please enter a valid e-Mail address.\r\n|RESET|".EncodeToANSIArray());
+                    "\r\n|RED||B|Please enter a valid e-Mail address.\r\n|RESET|".EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupEmailDisplay;
                 session.InputBuffer.SetLength(0);
                 return;
