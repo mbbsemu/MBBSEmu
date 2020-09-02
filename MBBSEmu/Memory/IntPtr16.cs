@@ -95,7 +95,7 @@ namespace MBBSEmu.Memory
 
         public override int GetHashCode()
         {
-            return Offset.GetHashCode() ^ Segment.GetHashCode();
+            return (Segment << 16) | Offset;
         }
 
         public static bool operator ==(IntPtr16 left, IntPtr16 right)
@@ -133,5 +133,8 @@ namespace MBBSEmu.Memory
         }
 
         public static IntPtr16 Empty => new IntPtr16(0, 0);
+
+        public static IntPtr16 operator +(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset + v));
+        public static IntPtr16 operator -(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset - v));
     }
 }

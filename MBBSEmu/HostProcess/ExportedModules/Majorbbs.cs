@@ -5696,6 +5696,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Copied {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
 #endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -5715,20 +5717,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var ptr1Data = Module.Memory.GetArray(ptr1, num);
             var ptr2Data = Module.Memory.GetArray(ptr2, num);
 
-            for (var i = 0; i < num; i++)
-            {
-                if (ptr1Data[i] == ptr2Data[i])
-                    continue;
-
-                if (ptr1Data[i] > ptr2Data[i])
-                    Registers.AX = 0x1;
-                else
-                    Registers.AX = 0xFFFF;
-
-                return;
-            }
-
             Registers.AX = 0;
+            for (var i = 0; Registers.AX == 0 && i < num; i++)
+            {
+                Registers.AX = (ushort)(short)(ptr1Data[i] - ptr2Data[i]);
+            }
         }
 
         /// <summary>
