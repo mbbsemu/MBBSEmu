@@ -4324,28 +4324,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void strcmp()
         {
 
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
 
-            var string1 = Module.Memory.GetString(string1Pointer);
-            var string2 = Module.Memory.GetString(string2Pointer);
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
-#endif
-
-            for (var i = 0; i < string1.Length; i++)
-            {
-                if (string1[i] == string2[i]) continue;
-
-                //1 < 2 == -1 (0xFFFF)
-                //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
-                return;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort)(short)string1.CompareTo(string2);
         }
 
         /// <summary>

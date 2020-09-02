@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -13,6 +12,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(new byte[] {(byte)0x1, (byte) 0x2}, new byte[] {(byte) 0x3, (byte) 0x4}, 2, 0xFFFE)]
         [InlineData(new byte[] {(byte)0x4, (byte) 0x4}, new byte[] {(byte) 0x2, (byte) 0x2}, 2, 2)]
         [InlineData(new byte[] {(byte)0x4, (byte) 0x4}, new byte[] {(byte) 0x4, (byte) 0x2}, 1, 0)]
+        [InlineData(new byte[] {(byte)0x4, (byte) 0x4}, new byte[] {(byte) 0x4, (byte) 0x4}, 2, 0)]
         public void compareTest(byte[] buf1, byte[] buf2, ushort length, ushort expected)
         {
             //Reset State
