@@ -2,6 +2,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Tests.CPU
 {
@@ -28,6 +29,15 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.IP = 0;
         }
 
+        protected void CreateCodeSegment(IReadOnlyList<Instruction> instructions, ushort segmentOrdinal = 1)
+        {
+            var instructionList = new InstructionList(instructions.Count);
+
+            foreach(var i in instructions)
+                instructionList.Add(i);
+
+            CreateCodeSegment(instructionList, segmentOrdinal);
+        }
 
         protected void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
         {
@@ -43,6 +53,11 @@ namespace MBBSEmu.Tests.CPU
                 decoder.Decode(out instructionList.AllocUninitializedElement());
             }
 
+            CreateCodeSegment(instructionList, segmentOrdinal);
+        }
+
+        protected void CreateCodeSegment(InstructionList instructionList, ushort segmentOrdinal = 1)
+        {
             mbbsEmuMemoryCore.AddSegment(segmentOrdinal, instructionList);
         }
 
