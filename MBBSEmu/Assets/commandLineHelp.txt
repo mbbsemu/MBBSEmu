@@ -16,10 +16,13 @@ Command Line Options:
                     module, assisting in development of MBBSEmu
 -DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
                     is specified, you will be prompted to enter one
+-CONSOLE            Login to local CONSOLE after MBBSEmu initialization (system will shutdown when you logoff)
 
 Examples:
-./MBBSEmu -M MyModule -P c:\bbsv6\ -dbreset sysop
-./MBBSEmu -C moduleConfig.json
+./MBBSEmu -M MyModule -P c:\bbsv6\ -DBRESET sysop
+./MBBSEmu -S Myappsettings.json -C moduleConfig.json
+./MBBSEmu -C moduleConfig.json -CONSOLE
+./MBBSEmu -M MyModule -P c:\bbsv6\MyModule -APIREPORT
 
 -----------------------------------------------------------
 appsettings.json Emulator Options:
