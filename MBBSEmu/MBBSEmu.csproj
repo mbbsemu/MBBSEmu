@@ -71,7 +71,7 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile> 
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Update="modules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

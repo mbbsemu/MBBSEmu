@@ -1,1 +1,3 @@
 *.ans       text eol=crlf
+*.msg       text eol=crlf
+*.MSG       text eol=crlf

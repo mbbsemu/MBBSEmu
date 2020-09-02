@@ -3908,8 +3908,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void movemem()
         {
-            var sourcePointer = GetParameterPointer(0);
-            var destinationPointer = GetParameterPointer(2);
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
             //Cast to array as the write can overlap and overwrite, mucking up the span read
@@ -4479,8 +4479,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < limit; i++)
             {
                 if (potentialString[i] == 0x0)
-
                     break;
+
                 inputBuffer.WriteByte(potentialString[i]);
             }
 
@@ -5673,8 +5673,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void memcpy()
         {
-            var sourcePointer = GetParameterPointer(0);
-            var destinationPointer = GetParameterPointer(2);
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
             //Verify the Destination will not overlap with the Source
@@ -5722,11 +5722,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 if (ptr1Data[i] > ptr2Data[i])
                     Registers.AX = 0x1;
-
-                Registers.AX = 0xFFFF;
+                else
+                    Registers.AX = 0xFFFF;
 
                 return;
             }
+
+            Registers.AX = 0;
         }
 
         /// <summary>
@@ -7158,7 +7160,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Determines the profanity level of a string
         ///
         ///     MBBSEmu doesn't support multiple profanity levels, so the default value of 0 is returned.
-        /// 
+        ///
         ///     Signature:  int profan(char *string);
         /// </summary>
         private void profan()

@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
@@ -15,6 +15,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using MBBSEmu.HostProcess.GlobalRoutines;
 
@@ -30,6 +33,21 @@ namespace MBBSEmu.DependencyInjection
         // Long term solution is probably to de-static this class :)
         private ServiceResolver() {}
 
+        public static void Create(IEnumerable<KeyValuePair<string,string>> data)
+        {
+            //Prevent multiple creates
+            if (_provider != null)
+                return;
+
+            ServiceCollection = new ServiceCollection();
+
+            var configurationRoot = new ConfigurationBuilder()
+                .AddInMemoryCollection(data)
+                .Build();
+
+            BuildServiceProvider(configurationRoot);
+        }
+
         public static void Create(string appSettingsFilename)
         {
             //Prevent multiple creates
@@ -42,6 +60,11 @@ namespace MBBSEmu.DependencyInjection
                 .AddJsonStream(LoadAppSettings(appSettingsFilename))
                 .Build();
 
+            BuildServiceProvider(configurationRoot);
+        }
+
+        private static void BuildServiceProvider(IConfigurationRoot configurationRoot)
+        {
             //Base Configuration Items
             ServiceCollection.AddSingleton<IConfiguration>(configurationRoot);
             ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();

@@ -15,13 +15,19 @@ namespace MBBSEmu.Resources
     public class ResourceManager : IResourceManager
     {
         private readonly Assembly _assembly;
-        private readonly Dictionary<string, byte[]> _resourceCache;
+        private readonly Dictionary<string, byte[]> _resourceCache = new Dictionary<string, byte[]>();
         private static readonly byte[] utf8bom = {0xEF, 0xBB, 0xBF};
 
-        public ResourceManager()
+        public ResourceManager() : this(Assembly.GetExecutingAssembly()) {}
+
+        private ResourceManager(Assembly assembly)
         {
-            _resourceCache = new Dictionary<string, byte[]>();
-            _assembly = Assembly.GetExecutingAssembly();
+            _assembly = assembly;
+        }
+
+        public static ResourceManager GetTestResourceManager()
+        {
+            return new ResourceManager(Assembly.GetCallingAssembly());
         }
 
         public ReadOnlySpan<byte> GetResource(string key)

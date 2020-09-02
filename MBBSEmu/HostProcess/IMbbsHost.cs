@@ -43,5 +43,10 @@ namespace MBBSEmu.HostProcess
         /// <param name="uniqueIdentifier"></param>
         /// <returns></returns>
         public MbbsModule GetModule(string uniqueIdentifier);
+
+        /// <summary>
+        ///     Waits until the processing thread exits. Useful for tests
+        /// </summary>
+        public void WaitForShutdown();
     }
 }

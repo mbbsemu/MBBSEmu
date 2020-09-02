@@ -96,6 +96,8 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private bool _performCleanup = false;
 
+        private Thread _workerThread;
+
         public MbbsHost(ILogger logger, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
             _logger = logger;
@@ -122,8 +124,8 @@ namespace MBBSEmu.HostProcess
         public void Start()
         {
             _isRunning = true;
-            var workerThread = new Thread(WorkerThread);
-            workerThread.Start();
+            _workerThread = new Thread(WorkerThread);
+            _workerThread.Start();
         }
 
         /// <summary>
@@ -133,6 +135,11 @@ namespace MBBSEmu.HostProcess
         {
             _isRunning = false;
             _timer.Dispose();
+        }
+
+        public void WaitForShutdown()
+        {
+            _workerThread.Join();
         }
 
         /// <summary>

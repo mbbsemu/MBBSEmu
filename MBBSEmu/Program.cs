@@ -50,7 +50,7 @@ namespace MBBSEmu
         private string _moduleConfigFileName;
 
         /// <summary>
-        ///     Custom appsettings.json File specified by the -S Command Line Argument 
+        ///     Custom appsettings.json File specified by the -S Command Line Argument
         /// </summary>
         private string _settingsFileName;
 
@@ -319,7 +319,7 @@ namespace MBBSEmu
             }
             catch (Exception e)
             {
-                Console.WriteLine("Critical Exception has occured:");
+                Console.WriteLine("Critical Exception has occurred:");
                 Console.WriteLine(e);
                 Environment.Exit(0);
             }
