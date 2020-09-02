@@ -695,6 +695,9 @@ namespace MBBSEmu.CPU
                             case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
                                 result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
                                 break;
+                            case Register.BX when _currentInstruction.MemoryIndex == Register.DI:
+                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.DI);
+                                break;
                             case Register.SI when _currentInstruction.MemoryIndex == Register.None:
                                 result = (ushort)(Registers.SI + _currentInstruction.MemoryDisplacement);
                                 break;
@@ -702,7 +705,7 @@ namespace MBBSEmu.CPU
                                 result = (ushort)(Registers.DI + _currentInstruction.MemoryDisplacement);
                                 break;
                             default:
-                                throw new Exception("Unknown GetOperandOffset MemoryBase");
+                                throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
                         }
                     }
                     break;
