@@ -67,7 +67,7 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public virtual void Send(byte[] dataToSend)
         {
-            foreach(byte b in dataToSend)
+            foreach(var b in dataToSend)
             {
               _data.Add(b);
             }
@@ -79,7 +79,7 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToModule(byte[] dataToSend)
         {
-            foreach(byte b in dataToSend)
+            foreach(var b in dataToSend)
             {
                 DataFromClient.Add(b);
             }
