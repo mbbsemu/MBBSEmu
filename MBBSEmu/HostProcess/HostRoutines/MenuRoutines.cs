@@ -315,9 +315,6 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SessionState = EnumSessionState.EnteringModule;
             session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             session.SendToClient(new byte[] { 0x1B, 0x5B, 0x48 });
-
-            //Clear the Input Buffer
-            //session.InputBuffer.SetLength(0);
         }
 
         private void LogoffConfirmationDisplay(SessionBase session)
