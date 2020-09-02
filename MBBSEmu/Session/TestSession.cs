@@ -27,6 +27,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Reads data from the module until a new line is received, and returns the line with
         ///     the line endings removed.
+        /// </summary>
         /// <param name="timeout">Maximum time to wait before throwing a TimeoutException</param>
         public string GetLine(TimeSpan timeout)
         {
@@ -37,7 +38,7 @@ namespace MBBSEmu.Session
         ///     Reads data from the module until endingCharacter is received, and returns all data
         ///     accumulated including endingCharacter
         /// </summary>
-        /// <param name-"endingCharacter">Character which aborts reading</param>
+        /// <param name="endingCharacter">Character which aborts reading</param>
         /// <param name="timeout">Maximum time to wait before throwing a TimeoutException</param>
         public string GetLine(char endingCharacter, TimeSpan timeout)
         {

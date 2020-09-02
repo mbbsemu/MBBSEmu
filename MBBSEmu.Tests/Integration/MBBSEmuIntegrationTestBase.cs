@@ -8,9 +8,8 @@ using System.Collections.Generic;
 using System.IO;
 using System;
 
-namespace MBBSEmu.Tests.ExportedModules.Majorbbs
+namespace MBBSEmu.Tests.Integration
 {
-
     public class MBBSEmuIntegrationTestBase : IDisposable
     {
         private readonly string[] _moduleFiles = {"MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG"};
@@ -32,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             foreach (var file in _moduleFiles)
             {
-                File.WriteAllBytes(Path.Combine(_modulePath, file), resourceManager.GetResource($"MBBSEmu.Assets.{file}").ToArray());
+                File.WriteAllBytes(Path.Combine(_modulePath, file), resourceManager.GetResource($"MBBSEmu.Tests.Assets.{file}").ToArray());
             }
         }
 
@@ -57,12 +56,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         protected void ExecuteTest(TestLogic testLogic)
         {
-            var list = new List<KeyValuePair<string, string>>();
-            list.Add(new KeyValuePair<string, string>("BBS.Title", "Test"));
-            list.Add(new KeyValuePair<string, string>("GSBL.Activation", "123456789"));
-            list.Add(new KeyValuePair<string, string>("Telnet.Enabled", "False"));
-            list.Add(new KeyValuePair<string, string>("Rlogin.Enabled", "False"));
-            list.Add(new KeyValuePair<string, string>("Database.File", "mbbsemu.db"));
+            var list = new List<KeyValuePair<string, string>>() {
+                new KeyValuePair<string, string>("BBS.Title", "Test"),
+                new KeyValuePair<string, string>("GSBL.Activation", "123456789"),
+                new KeyValuePair<string, string>("Telnet.Enabled", "False"),
+                new KeyValuePair<string, string>("Rlogin.Enabled", "False"),
+                new KeyValuePair<string, string>("Database.File", "mbbsemu.db")
+            };
 
             ServiceResolver.Create(list);
 
@@ -70,7 +70,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var resourceManager = ServiceResolver.GetService<IResourceManager>();
             File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
 
-            CopyModuleToTempPath(resourceManager);
+            CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
             var modules = new List<MbbsModule>();
             modules.Add(new MbbsModule(ServiceResolver.GetService<IFileUtility>(), "MBBSEMU", _modulePath));

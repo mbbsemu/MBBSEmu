@@ -1,7 +1,7 @@
 using System.Text;
 using Xunit;
 
-namespace MBBSEmu.Tests.ExportedModules.Majorbbs
+namespace MBBSEmu.Tests.Integration
 {
     public class Echo_Tests : MBBSEmuIntegrationTestBase
     {

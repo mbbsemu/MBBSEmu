@@ -33,7 +33,7 @@ namespace MBBSEmu.DependencyInjection
         // Long term solution is probably to de-static this class :)
         private ServiceResolver() {}
 
-        public static void Create(IEnumerable<KeyValuePair<String,String>> data)
+        public static void Create(IEnumerable<KeyValuePair<string,string>> data)
         {
             //Prevent multiple creates
             if (_provider != null)
