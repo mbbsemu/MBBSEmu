@@ -1,9 +1,7 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Enums;
-using NLog;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Net.Sockets;
 using System.Text;
 using System;
 
@@ -26,11 +24,21 @@ namespace MBBSEmu.Session
 
         public override void Stop() {}
 
+        /// <summary>
+        ///     Reads data from the module until a new line is received, and returns the line with
+        ///     the line endings removed.
+        /// <param name="timeout">Maximum time to wait before throwing a TimeoutException</param>
         public string GetLine(TimeSpan timeout)
         {
             return GetLine('\n', timeout).Trim('\r', '\n');
         }
 
+        /// <summary>
+        ///     Reads data from the module until endingCharacter is received, and returns all data
+        ///     accumulated including endingCharacter
+        /// </summary>
+        /// <param name-"endingCharacter">Character which aborts reading</param>
+        /// <param name="timeout">Maximum time to wait before throwing a TimeoutException</param>
         public string GetLine(char endingCharacter, TimeSpan timeout)
         {
             var line = new MemoryStream();
@@ -53,19 +61,22 @@ namespace MBBSEmu.Session
         }
 
         /// <summary>
-        ///     Sends data to the connected session
+        ///     Sends data originating from the module to the connected session, for consumption by
+        ///     the test.
         /// </summary>
         /// <param name="dataToSend"></param>
         public virtual void Send(byte[] dataToSend)
         {
-            Console.Write(Encoding.ASCII.GetString(dataToSend));
-
             foreach(byte b in dataToSend)
             {
               _data.Add(b);
             }
         }
 
+        /// <summary>
+        ///     Sends client data to the module.
+        /// </summary>
+        /// <param name="dataToSend"></param>
         public void SendToModule(byte[] dataToSend)
         {
             foreach(byte b in dataToSend)
