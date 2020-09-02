@@ -44,7 +44,9 @@ namespace MBBSEmu.HostProcess
         /// <returns></returns>
         public MbbsModule GetModule(string uniqueIdentifier);
 
-        // TODO
+        /// <summary>
+        ///     Waits until the processing thread exits. Useful for tests
+        /// </summary>
         public void WaitForShutdown();
     }
 }

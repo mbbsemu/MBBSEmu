@@ -21,7 +21,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         public MBBSEmuIntegrationTestBase()
         {
             Directory.CreateDirectory(_modulePath);
-            Directory.SetCurrentDirectory(_modulePath);
         }
 
         public void Dispose()
@@ -33,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             foreach (var file in _moduleFiles)
             {
-                File.WriteAllBytes(file, resourceManager.GetResource($"MBBSEmu.Assets.{file}").ToArray());
+                File.WriteAllBytes(Path.Combine(_modulePath, file), resourceManager.GetResource($"MBBSEmu.Assets.{file}").ToArray());
             }
         }
 
