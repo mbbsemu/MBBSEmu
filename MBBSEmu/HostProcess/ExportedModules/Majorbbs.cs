@@ -4317,11 +4317,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strcmp()
         {
-
             var string1 = GetParameterString(0);
             var string2 = GetParameterString(2);
 
-            Registers.AX = (ushort)(short)string1.CompareTo(string2);
+            Registers.AX = (ushort)(short)String.Compare(string1, string2);
         }
 
         /// <summary>
@@ -5028,50 +5027,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stricmp()
         {
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
 
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1 = Module.Memory.GetString(string1Pointer, true);
-            var string2 = Module.Memory.GetString(string2Pointer, true);
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
-#endif
-
-            if (string1.Length == 0)
-            {
-                Registers.AX = 0xFFFF;
-                return;
-            }
-
-            if (string2.Length == 0)
-            {
-                Registers.AX = 1;
-                return;
-            }
-
-            for (var i = 0; i < string1.Length; i++)
-            {
-                //We're at the end of string 2, string 1 is longer
-                if (i == string2.Length)
-                {
-                    Registers.AX = 1;
-                    return;
-                }
-
-                if (string1[i] == string2[i]) continue;
-                if (string1[i] == string2[i] + 32) continue;
-                if (string1[i] == string2[i] - 32) continue;
-
-                //1 < 2 == -1 (0xFFFF)
-                //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
-                return;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort)(short)String.Compare(string1, string2, /* ignoreCase= */ true);
         }
 
         /// <summary>
@@ -6282,17 +6241,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strnicmp()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
             var maxLength = GetParameter(4);
-
-            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
-#endif
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
         }
