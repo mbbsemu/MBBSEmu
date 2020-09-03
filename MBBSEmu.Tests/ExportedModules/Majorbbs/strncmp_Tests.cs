@@ -4,9 +4,9 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strnicmp_Tests : MajorbbsTestBase
+    public class strncmp_Tests : MajorbbsTestBase
     {
-        private const int STRNICMP_ORDINAL = 754;
+        private const int STRNCMP_ORDINAL = 581;
 
         [Theory]
         [InlineData("", "", 32, 0)]
@@ -14,9 +14,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("a", "", 1, 1)]
         [InlineData("abc", "cbc", 3, 0xFFFF)]
         [InlineData("cbc", "Abc", 4, 1)]
-        [InlineData("This is great!", "this is great!", 32, 0)]
+        [InlineData("This is great!", "this is great!", 32, 1)]
         [InlineData("This is great!", "This is great!", 32, 0)]
-        [InlineData("super", "sUpe", 4, 0)]
+        [InlineData("sUper", "supe", 4, 1)]
         [InlineData("super", "supe", 4, 0)]
         [InlineData("supe", "Super", 5, 0xFFFF)]
         public void compareTest(string a, string b, ushort length, ushort expected)
@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(str2Pointer, Encoding.ASCII.GetBytes(b));
 
             //Execute Test
-            ExecuteApiTest(STRNICMP_ORDINAL, new List<ushort> {str1Pointer.Offset, str1Pointer.Segment, str2Pointer.Offset, str2Pointer.Segment, length});
+            ExecuteApiTest(STRNCMP_ORDINAL, new List<ushort> {str1Pointer.Offset, str1Pointer.Segment, str2Pointer.Offset, str2Pointer.Segment, length});
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }

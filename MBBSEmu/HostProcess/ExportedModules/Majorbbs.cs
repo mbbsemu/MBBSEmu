@@ -6268,18 +6268,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strncmp()
         {
-
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
             var maxLength = GetParameter(4);
-
-            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
-#endif
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);
         }
