@@ -182,7 +182,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
-            string LoginFileName = _configuration["Welcome.File"];
+            string LoginFileName = _configuration["Login.File"];
             //Check if file is specified in appsettings.json and if it exists, else display default
             if (File.Exists(LoginFileName)) {
                 byte[] LoginFileContents = File.ReadAllBytes(LoginFileName);
