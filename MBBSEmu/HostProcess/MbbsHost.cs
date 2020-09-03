@@ -298,12 +298,21 @@ namespace MBBSEmu.HostProcess
             _logger.Info("SHUTTING DOWN");
 
             // kill all active sessions
-            foreach (SessionBase session in _channelDictionary.Values) {
+            foreach (var session in _channelDictionary.Values) {
                 session.Stop();
             }
 
             // let modules clean themselves up
             CallModuleRoutine("finrou", module => _logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
+
+            //clean up modules
+            foreach (var m in _modules.Keys)
+            {
+                _modules.Remove(m);
+
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m)))
+                    _exportedFunctions.Remove(e);
+            }
         }
 
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
