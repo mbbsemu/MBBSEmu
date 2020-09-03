@@ -3908,8 +3908,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void movemem()
         {
-            var destinationPointer = GetParameterPointer(0);
-            var sourcePointer = GetParameterPointer(2);
+            var sourcePointer = GetParameterPointer(0);
+            var destinationPointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
             //Cast to array as the write can overlap and overwrite, mucking up the span read
