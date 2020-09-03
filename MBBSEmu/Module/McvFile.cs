@@ -5,6 +5,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace MBBSEmu.Module
 {
@@ -123,7 +124,7 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public short GetNumeric(int ordinal)
         {
-            return short.Parse(GetMessageValue(ordinal).ToCharSpan());
+            return short.Parse(GetNumericMessageValue(ordinal).ToCharSpan());
         }
 
         /// <summary>
@@ -133,7 +134,7 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public int GetLong(int ordinal)
         {
-            return int.Parse(GetMessageValue(ordinal).ToCharSpan());
+            return int.Parse(GetNumericMessageValue(ordinal).ToCharSpan());
         }
 
         /// <summary>
@@ -176,15 +177,35 @@ namespace MBBSEmu.Module
             }
 
             //If no terminating characters were found, treat it as if it were a cstring and find the first null
-            for (int i = 0; i < message.Length; i++)
+            for (var i = 0; i < message.Length; i++)
             {
                 if (message[i] == 0x0)
                     return message.Slice(0, i + 1);
             }
 
             return message;
+        }
 
-            throw new Exception("Unable to find specified value");
+        /// <summary>
+        ///     Handles logic of parsing out numeric values from the specified MCV field
+        ///
+        ///     Numeric fields retrieved by numopt(), lngopt(), etc. ignore any leading ascii text prior to
+        ///     the number.
+        ///
+        ///     This method splits the message and assumes the last value in the field is the number
+        /// </summary>
+        /// <param name="ordinal"></param>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> GetNumericMessageValue(int ordinal)
+        {
+            var message = Encoding.ASCII.GetString(Messages[ordinal]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if(message.Length == 0)
+                throw new Exception($"Unable to locate value in field {FileName}:{ordinal}");
+
+            //Return the last word which will contain the number
+            //This specific issue was found in Infinity Complex
+            return Encoding.ASCII.GetBytes(message[^1]);
         }
     }
 }
