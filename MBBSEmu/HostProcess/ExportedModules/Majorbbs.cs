@@ -3387,21 +3387,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var bytesToCopy = GetParameter(4);
 
-            var stringDestination = Module.Memory.GetString(destinationPointer);
-            var stringSource = Module.Memory.GetString(sourcePointer, true);
+            var destinationString = Module.Memory.GetString(destinationPointer, true);
+            var sourceString = Module.Memory.GetString(sourcePointer, true);
 
-            if (stringSource.Length < bytesToCopy)
-                bytesToCopy = (ushort)stringSource.Length;
+            bytesToCopy = Math.Min(bytesToCopy, (ushort) sourceString.Length);
 
-            var newString = new byte[stringDestination.Length + bytesToCopy];
-            Array.Copy(stringSource.Slice(0, bytesToCopy).ToArray(), 0, newString, 0, bytesToCopy);
-            Array.Copy(stringDestination.ToArray(), 0, newString, bytesToCopy, stringDestination.Length);
+            Module.Memory.SetArray(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length),
+                sourceString.Slice(0, bytesToCopy));
+            // null terminate always
+            Module.Memory.SetByte(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length + bytesToCopy), 0x0);
 
-#if DEBUG
-            _logger.Info(
-                $"Concatenated String 1 (Length:{stringSource.Length}b. Copied {bytesToCopy}b) with String 2 (Length: {stringDestination.Length}) to new String (Length: {newString.Length}b)");
-#endif
-            Module.Memory.SetArray(destinationPointer, newString);
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -3681,10 +3680,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 (ushort)(destinationPointer.Offset + destinationString.Length),
                 sourceString);
 
-#if DEBUG
-            _logger.Info(
-                $"Concatenated strings {Encoding.ASCII.GetString(destinationString)} and {Encoding.ASCII.GetString(sourceString)} to {destinationPointer}");
-#endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
