@@ -3818,10 +3818,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 Registers.AX = (ushort)(stringPointer.Offset + i);
                 Registers.DX = stringPointer.Segment;
-
-#if DEBUG
-                _logger.Info($"Found character {(char)characterToFind} at position {i} in string {stringPointer}");
-#endif
                 return;
             }
 
