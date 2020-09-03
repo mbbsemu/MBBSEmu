@@ -3859,14 +3859,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Parse out the Input, eliminating excess spaces and separating words by null
             var inputComponents = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                .Split(' ');
             var parsedInput = string.Join('\0', inputComponents);
 
             //Setup MARGV & MARGN
             var margvPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGV"));
             var margnPointer = new IntPtr16(Module.Memory.GetVariablePointer("MARGN"));
 
-            var margCount = (ushort)inputComponents.Length;
+            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x));
 
             Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
             margvPointer.Offset += IntPtr16.Size;
@@ -3882,6 +3882,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 margnPointer.Offset += IntPtr16.Size;
 
                 i++;
+
+                //Skip any white spaces after the current command
+                while (i < parsedInput.Length && parsedInput[i] == 0)
+                    i++;
 
                 //Are we at the end of the INPUT? If so, we're done here.
                 if (i == parsedInput.Length)

@@ -16,8 +16,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("\0", 0, 0)]
         [InlineData("A B\0", 2, 4)]
         [InlineData("A TEST B\0", 3, 9)]
-        [InlineData("A      TEST       B\0", 3, 9)]
-        [InlineData("A   TEST                        B\0", 3, 9)]
+        [InlineData("A      TEST       B\0", 3, 20)]
+        [InlineData("A   TEST                        B\0", 3, 34)]
         public void parsin_Test(string inputCommand, int expectedMargc, int expectedInputLength)
         {
             //Reset State
@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(PARSIN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
-            var expectedParsedInput = Encoding.ASCII.GetBytes(string.Join('\0', inputCommand.Split(' ', StringSplitOptions.RemoveEmptyEntries)));
+            var expectedParsedInput = Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0'));
             var actualInputLength = mbbsEmuMemoryCore.GetWord("INPLEN");
             var actualMargc = mbbsEmuMemoryCore.GetWord("MARGC");
 

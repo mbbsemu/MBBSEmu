@@ -16,6 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("\0")]
         [InlineData("A\0B\0")]
         [InlineData("A\0TEST\0B\0")]
+        [InlineData("A\0\0\0TEST\0\0\0B\0")]
         public void rstrin_Test(string inputCommand)
         {
             //Reset State
