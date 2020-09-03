@@ -4116,7 +4116,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Converts all lowercase characters in a string to uppercase
         ///
-        ///     Signature: char *upper=strlwr(char *string)
+        ///     Signature: char *upper=strupr(char *string)
         /// </summary>
         private void strupr()
         {
@@ -4126,15 +4126,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringData.Length; i++)
             {
-                if (stringData[i] >= 97 && stringData[i] <= 122)
-                    stringData[i] -= 32;
+                stringData[i] = (byte) Char.ToUpper((char) stringData[i]);
             }
 
-#if DEBUG
-            _logger.Info($"Converted string to {Encoding.ASCII.GetString(stringData)}");
-#endif
-
             Module.Memory.SetArray(stringToConvertPointer, stringData);
+
+            Registers.AX = stringToConvertPointer.Offset;
+            Registers.DX = stringToConvertPointer.Segment;
         }
 
         /// <summary>
