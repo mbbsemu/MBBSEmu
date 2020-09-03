@@ -13,6 +13,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("FIRST SECOND\0", 0, "FIRST", 6)]
         [InlineData("FIRST SECOND\0", 6, "SECOND", 13)]
         [InlineData("FIRST SECOND THIRD\0", 1, "IRST", 6)]
+        [InlineData("FIRST SECOND THIRD\0", 13, "THIRD", 19)]
         [InlineData("123456789012345678901234567890\0", 0, "12345678901234567890123456789", 30)] //Test Truncation
         [InlineData("\0", 0, "", 0)]
         public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)

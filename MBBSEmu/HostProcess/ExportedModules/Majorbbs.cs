@@ -7306,16 +7306,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 nxtcmdPointer.Offset++;
                 remainingCharactersInCommand--;
             }
-            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCWORD", 0x1E); //max length is 30 characters
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCWRD", 0x1E); //max length is 30 characters
             Registers.DX = returnPointer.Segment;
             Registers.AX = returnPointer.Offset;
 
             //Verify we're not at the end of the input
             if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
             {
-#if DEBUG
-                _logger.Info($"End of Input");
-#endif
                 //Write null to output
                 Module.Memory.SetByte(returnPointer, 0);
                 return;
@@ -7340,10 +7337,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             returnedWord.WriteByte(0);
             
             Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
-
-#if DEBUG
-            _logger.Info($"Returned char: {(char)Registers.AX}");
-#endif
 
             //Modify the Counters
             remainingCharactersInCommand -= (int)returnedWord.Length;
