@@ -136,5 +136,9 @@ namespace MBBSEmu.Memory
 
         public static IntPtr16 operator +(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset + v));
         public static IntPtr16 operator -(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset - v));
+
+        public static IntPtr16 operator ++(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset + 1));
+        public static IntPtr16 operator --(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset - 1));
+
     }
 }

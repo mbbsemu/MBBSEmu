@@ -2620,32 +2620,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void strncpy()
         {
-            var destinationOffset = GetParameter(0);
-            var destinationSegment = GetParameter(1);
-            var sourceOffset = GetParameter(2);
-            var sourceSegment = GetParameter(3);
+            var destinationPointer = GetParameterPointer(0);
+            var source = GetParameterString(2);
             var numberOfBytesToCopy = GetParameter(4);
 
-            var sourceString = Module.Memory.GetString(sourceSegment, sourceOffset);
+            Registers.DX = destinationPointer.Segment;
+            Registers.AX = destinationPointer.Offset;
 
-            for (var i = 0; i < numberOfBytesToCopy; i++)
+            for (var i = 0; i < numberOfBytesToCopy; i++, destinationPointer++)
             {
-                if (sourceString[i] == 0x0)
+                if (source[i] == 0x0)
                 {
                     //Write remaining nulls
-                    for (var j = i; j < numberOfBytesToCopy; j++)
-                        Module.Memory.SetByte(destinationSegment, (ushort)(destinationOffset + j), 0x0);
+                    for (var j = i; j < numberOfBytesToCopy; j++, destinationPointer++)
+                        Module.Memory.SetByte(destinationPointer, 0x0);
 
                     break;
                 }
 
-                Module.Memory.SetByte(destinationSegment, (ushort)(destinationOffset + i), sourceString[i]);
+                Module.Memory.SetByte(destinationPointer, (byte) source[i]);
             }
-
-#if DEBUG
-            _logger.Info(
-                $"Copied {numberOfBytesToCopy} from {sourceSegment:X4}:{sourceOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
-#endif
         }
 
         private void register_textvar()
