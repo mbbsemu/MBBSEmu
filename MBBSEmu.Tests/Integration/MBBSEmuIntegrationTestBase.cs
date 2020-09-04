@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.Integration
 
         public void Dispose()
         {
-            Directory.Delete(_modulePath, /* recursive= */ true);
+            Directory.Delete(_modulePath,  recursive: true);
         }
 
         private void CopyModuleToTempPath(IResourceManager resourceManager)
@@ -72,8 +72,10 @@ namespace MBBSEmu.Tests.Integration
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
-            var modules = new List<MbbsModule>();
-            modules.Add(new MbbsModule(ServiceResolver.GetService<IFileUtility>(), "MBBSEMU", _modulePath));
+            var modules = new List<MbbsModule>
+            {
+                new MbbsModule(ServiceResolver.GetService<IFileUtility>(), "MBBSEMU", _modulePath)
+            };
 
             //Setup and Run Host
             var host = ServiceResolver.GetService<IMbbsHost>();
