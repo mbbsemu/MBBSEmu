@@ -4850,44 +4850,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private ReadOnlySpan<byte> othuap => Module.Memory.GetVariablePointer("*OTHUAP").ToSpan();
 
-        /*
-        static int contains(const char *buf, char c) {
-            for (; *buf; ++buf) {
-                if (*buf == c) {
-                return 1;
-                }
-            }
-            return 0;
-        }
-
-        char *my_strtok(char *buf, const char *delims) {
-            static char *wrk;
-            static char *end;
-
-            if (buf) {
-                wrk = buf;
-                end = buf + strlen(buf);
-            }
-
-            // skip starting delims
-            while (wrk < end && contains(delims, *wrk)) {
-                *(wrk++) = 0;
-            }
-
-            if (wrk >= end) {
-                return NULL;
-            }
-
-            char *token = wrk;
-            // now scan until we find another one
-            while (wrk < end && !contains(delims, *wrk)) {
-                ++wrk;
-            }
-            *(wrk++) = 0;
-
-            return token;
-        }
-*/
         /// <summary>
         ///     Splits the specified string into tokens based on the delimiters
         /// </summary>
