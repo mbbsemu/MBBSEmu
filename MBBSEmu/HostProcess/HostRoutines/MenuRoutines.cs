@@ -182,11 +182,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
-            string LoginFileName = _configuration["Login.File"];
-            //Check if file is specified in appsettings.json and if it exists, else display default
-            if (File.Exists(LoginFileName)) {
-                byte[] LoginFileContents = File.ReadAllBytes(LoginFileName);
-                EchoToClient(session, LoginFileContents.ToArray());
+            //Load File if specified in appsettings.json and display if it exists, else display default
+            var ANSILoginFileName = _configuration["ANSI.Login"];
+            if (File.Exists(ANSILoginFileName)) {
+                EchoToClient(session, File.ReadAllBytes(ANSILoginFileName).ToArray());
             } else {
                 EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());           
             }
@@ -233,7 +232,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 session.InputBuffer.SetLength(0);
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
-                EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                
+                //Load File if specified in appsettings.json and display if it exists, else display default
+                var ANSISignupFileName = _configuration["ANSI.Signup"];
+                if (File.Exists(ANSISignupFileName)) {
+                    EchoToClient(session, File.ReadAllBytes(ANSISignupFileName).ToArray());
+                } else {              
+                    EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                }
                 return;
             }
 
@@ -309,6 +315,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (inputValue == 'X')
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
+                //Load File if specified in appsettings.json and display if it exists, else display default
+                var ANSILogoffFileName = _configuration["ANSI.Logoff"];
+                if (File.Exists(ANSILogoffFileName)) {
+                    EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
+                }
                 session.InputBuffer.SetLength(0);
                 return;
             }
