@@ -24,7 +24,7 @@ namespace MBBSEmu.DependencyInjection
     public class ServiceResolver
     {
         private ServiceProvider _provider;
-        private ServiceCollection _serviceCollection = new ServiceCollection();
+        private readonly ServiceCollection _serviceCollection = new ServiceCollection();
 
         public ServiceResolver(IEnumerable<KeyValuePair<string,string>> data) {
             var configurationRoot = new ConfigurationBuilder()
