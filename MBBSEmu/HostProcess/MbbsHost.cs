@@ -246,7 +246,7 @@ namespace MBBSEmu.HostProcess
                                 }
 
                                 //Did BTUCHI or a previous command cause a status change?
-                                if (session.StatusChange && (session.Status == 192 || session.Status == 240 || session.Status == 5))
+                                if (session.StatusChange && (session.Status == 240 || session.Status == 5))
                                 {
                                     ProcessSTSROU(session);
                                     continue;
