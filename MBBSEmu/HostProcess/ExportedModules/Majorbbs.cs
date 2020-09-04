@@ -4315,7 +4315,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1 = GetParameterString(0);
             var string2 = GetParameterString(2);
 
-            Registers.AX = (ushort)(short)String.Compare(string1, string2);
+            Registers.AX = (ushort)string.Compare(string1, string2);
         }
 
         /// <summary>
@@ -4862,7 +4862,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToSplitPointer = GetParameterPointer(0);
             var stringDelimitersPointer = GetParameterPointer(2);
 
-            var workPointerPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-WRK", 4);
+            var workPointerPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-WRK", IntPtr16.Size);
             var lengthPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-END", 2);
 
             //If it's the first call, reset the values in memory
@@ -4892,8 +4892,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            // save return value
-            var returnPointer = workPointer;
+            Registers.DX = workPointer.Segment;
+            Registers.AX = workPointer.Offset;
+
             // scan until we find the next deliminater and then null it out for the return
             while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
             {
@@ -4901,10 +4902,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetByte(workPointer++, 0x0);
-
             Module.Memory.SetPointer(workPointerPointer, workPointer);
-            Registers.DX = returnPointer.Segment;
-            Registers.AX = returnPointer.Offset;
         }
 
         /// <summary>
@@ -5030,7 +5028,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1 = GetParameterString(0);
             var string2 = GetParameterString(2);
 
-            Registers.AX = (ushort)(short)String.Compare(string1, string2, /* ignoreCase= */ true);
+            Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
         }
 
         /// <summary>
@@ -5655,7 +5653,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 0;
             for (var i = 0; Registers.AX == 0 && i < num; i++)
             {
-                Registers.AX = (ushort)(short)(ptr1Data[i] - ptr2Data[i]);
+                Registers.AX = (ushort)(ptr1Data[i] - ptr2Data[i]);
             }
         }
 
