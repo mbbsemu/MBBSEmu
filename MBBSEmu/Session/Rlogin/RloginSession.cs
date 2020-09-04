@@ -1,14 +1,10 @@
-using MBBSEmu.DependencyInjection;
-using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using NLog;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session.Rlogin
@@ -24,7 +20,7 @@ namespace MBBSEmu.Session.Rlogin
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, Socket rloginConnection, string moduleIdentifier = null) : base(rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, string moduleIdentifier = null) : base(logger, rloginConnection)
         {
             _host = host;
             ModuleIdentifier = moduleIdentifier;

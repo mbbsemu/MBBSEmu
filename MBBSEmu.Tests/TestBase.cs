@@ -6,7 +6,7 @@ namespace MBBSEmu.Tests
     {
         static TestBase()
         {
-            DependencyInjection.ServiceResolver.Create(Program.DefaultEmuSettingsFilename);
+
         }
     }
 }

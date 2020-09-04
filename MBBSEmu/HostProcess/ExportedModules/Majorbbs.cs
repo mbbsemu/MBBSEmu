@@ -3,10 +3,13 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -48,7 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
-        public Majorbbs(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        public Majorbbs(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
@@ -1137,7 +1141,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
 
             BtrievePointerDictionaryNew.Add(btvFileStructPointer,
-                new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                new BtrieveFileProcessor(_fileFinder, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
 
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
 
@@ -1364,7 +1368,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
             }
 
-            var offset = McvPointerDictionary.Allocate(new McvFile(mcvFileName, Module.ModulePath));
+            var offset = McvPointerDictionary.Allocate(new McvFile(_fileFinder, mcvFileName, Module.ModulePath));
 
             if (_currentMcvFile != null)
                 _previousMcvFile.Push(_currentMcvFile);
@@ -2188,7 +2192,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath);
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
@@ -7229,7 +7233,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var returnedWord = new MemoryStream();
             var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
-            
+
             //Build Return Word stopping when a space is encountered
             foreach (var b in inputString)
             {
@@ -7238,13 +7242,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 returnedWord.WriteByte(b);
             }
-            
+
             //Truncate to 29 bytes
             if(returnedWord.Length > 29)
                 returnedWord.SetLength(29);
 
             returnedWord.WriteByte(0);
-            
+
             Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
 
             //Modify the Counters

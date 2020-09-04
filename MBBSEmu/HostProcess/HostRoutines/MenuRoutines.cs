@@ -187,7 +187,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (File.Exists(ANSILoginFileName)) {
                 EchoToClient(session, File.ReadAllBytes(ANSILoginFileName).ToArray());
             } else {
-                EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());           
+                EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
             }
             EchoToClient(session, Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
@@ -232,12 +232,12 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 session.InputBuffer.SetLength(0);
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
-                
+
                 //Load File if specified in appsettings.json and display if it exists, else display default
                 var ANSISignupFileName = _configuration["ANSI.Signup"];
                 if (File.Exists(ANSISignupFileName)) {
                     EchoToClient(session, File.ReadAllBytes(ANSISignupFileName).ToArray());
-                } else {              
+                } else {
                     EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 }
                 return;
@@ -266,8 +266,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SessionState = EnumSessionState.LoginPasswordDisplay;
 
             //See if the Account exists
-            var accountRepo = DependencyInjection.ServiceResolver.GetService<IAccountRepository>();
-            var account = accountRepo.GetAccountByUsernameAndPassword(session.Username, session.Password);
+            var account = _accountRepository.GetAccountByUsernameAndPassword(session.Username, session.Password);
 
             if (account == null)
             {
@@ -383,7 +382,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var ANSILogoffFileName = _configuration["ANSI.Logoff"];
             if (File.Exists(ANSILogoffFileName)) {
                 EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
-                } else {            
+                } else {
                 EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
                 }
             session.SessionState = EnumSessionState.LoggingOffProcessing;

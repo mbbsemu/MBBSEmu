@@ -1,8 +1,11 @@
 using MBBSEmu.CPU;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +24,21 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
 
+        protected ServiceResolver _serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+
         protected MajorbbsTestBase()
         {
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore);
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, string.Empty, mbbsEmuMemoryCore);
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
@@ -46,7 +57,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuCpuRegisters.IP = 0;
 
             //Redeclare to re-allocate memory values that have been cleared
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                new PointerDictionary<Session.SessionBase>());
         }
 
         /// <summary>

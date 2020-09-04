@@ -15,9 +15,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using MBBSEmu.HostProcess.GlobalRoutines;
 
@@ -25,22 +23,10 @@ namespace MBBSEmu.DependencyInjection
 {
     public class ServiceResolver
     {
-        private static ServiceProvider _provider;
-        private static IServiceCollection ServiceCollection;
+        private ServiceProvider _provider;
+        private ServiceCollection _serviceCollection = new ServiceCollection();
 
-        // Following hack / workaround from [this Stack Overflow post](https://stackoverflow.com/questions/34219191/how-to-pass-parameter-to-static-class-constructor/34219280#34219280)
-        // to move the guts of the Create() method from the static constructor they were in before.
-        // Long term solution is probably to de-static this class :)
-        private ServiceResolver() {}
-
-        public static void Create(IEnumerable<KeyValuePair<string,string>> data)
-        {
-            //Prevent multiple creates
-            if (_provider != null)
-                return;
-
-            ServiceCollection = new ServiceCollection();
-
+        public ServiceResolver(IEnumerable<KeyValuePair<string,string>> data) {
             var configurationRoot = new ConfigurationBuilder()
                 .AddInMemoryCollection(data)
                 .Build();
@@ -48,14 +34,8 @@ namespace MBBSEmu.DependencyInjection
             BuildServiceProvider(configurationRoot);
         }
 
-        public static void Create(string appSettingsFilename)
+        public ServiceResolver(string appSettingsFilename)
         {
-            //Prevent multiple creates
-            if (_provider != null)
-                return;
-
-            ServiceCollection = new ServiceCollection();
-
             var configurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonStream(LoadAppSettings(appSettingsFilename))
                 .Build();
@@ -63,40 +43,51 @@ namespace MBBSEmu.DependencyInjection
             BuildServiceProvider(configurationRoot);
         }
 
-        private static void BuildServiceProvider(IConfigurationRoot configurationRoot)
+        public static List<KeyValuePair<string, string>> GetTestDefaults()
         {
-            //Base Configuration Items
-            ServiceCollection.AddSingleton<IConfiguration>(configurationRoot);
-            ServiceCollection.AddSingleton<IResourceManager, ResourceManager>();
-            ServiceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
-            ServiceCollection.AddSingleton<IFileUtility, FileUtility>();
-
-            //FSD Items
-            ServiceCollection.AddSingleton<IGlobalCache, GlobalCache>();
-            ServiceCollection.AddTransient<IFsdUtility, FsdUtility>();
-
-            //Database Repositories
-            ServiceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
-            ServiceCollection.AddSingleton<IAccountRepository, AccountRepository>();
-            ServiceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
-
-            //MajorBBS Host Objects
-            ServiceCollection.AddSingleton<IHostRoutine, MenuRoutines>();
-            ServiceCollection.AddSingleton<IHostRoutine, FsdRoutines>();
-            ServiceCollection.AddSingleton<IGlobalRoutine, UsersOnlineGlobal>();
-            ServiceCollection.AddSingleton<IMbbsHost, MbbsHost>();
-            ServiceCollection.AddTransient<ISocketServer, SocketServer>();
-
-            _provider = ServiceCollection.BuildServiceProvider();
+            return new List<KeyValuePair<string, string>>() {
+                new KeyValuePair<string, string>("BBS.Title", "Test"),
+                new KeyValuePair<string, string>("GSBL.Activation", "123456789"),
+                new KeyValuePair<string, string>("Telnet.Enabled", "False"),
+                new KeyValuePair<string, string>("Rlogin.Enabled", "False"),
+                new KeyValuePair<string, string>("Database.File", "mbbsemu.db")
+            };
         }
 
-        public static void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;
+        private void BuildServiceProvider(IConfigurationRoot configurationRoot)
+        {
+            //Base Configuration Items
+            _serviceCollection.AddSingleton<IConfiguration>(configurationRoot);
+            _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
+            _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
 
-        public static ServiceProvider GetServiceProvider() => _provider;
+            //FSD Items
+            _serviceCollection.AddSingleton<IGlobalCache, GlobalCache>();
+            _serviceCollection.AddTransient<IFsdUtility, FsdUtility>();
 
-        public static IServiceCollection GetServiceCollection() => ServiceCollection;
+            //Database Repositories
+            _serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
+            _serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
+            _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
 
-        public static T GetService<T>() => _provider.GetService<T>();
+            //MajorBBS Host Objects
+            _serviceCollection.AddSingleton<IHostRoutine, MenuRoutines>();
+            _serviceCollection.AddSingleton<IHostRoutine, FsdRoutines>();
+            _serviceCollection.AddSingleton<IGlobalRoutine, UsersOnlineGlobal>();
+            _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
+            _serviceCollection.AddTransient<ISocketServer, SocketServer>();
+
+            _provider = _serviceCollection.BuildServiceProvider();
+        }
+
+        public void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;
+
+        public ServiceProvider GetServiceProvider() => _provider;
+
+        public ServiceCollection GetServiceCollection() => _serviceCollection;
+
+        public T GetService<T>() => _provider.GetService<T>();
 
         /// <summary>
         ///     Safe loading of appsettings.json for Configuration Builder

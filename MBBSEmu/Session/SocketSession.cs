@@ -1,4 +1,3 @@
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Session.Enums;
 using NLog;
 using System;
@@ -16,9 +15,9 @@ namespace MBBSEmu.Session
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        protected SocketSession(Socket socket) : base(socket.RemoteEndPoint.ToString())
+        protected SocketSession(ILogger logger, Socket socket) : base(socket.RemoteEndPoint.ToString())
         {
-            _logger = ServiceResolver.GetService<ILogger>();
+            _logger = logger;
 
             _socket = socket;
             _socket.ReceiveTimeout = (1000 * 60) * 5; //5 Minutes
