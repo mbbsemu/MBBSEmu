@@ -4850,52 +4850,95 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private ReadOnlySpan<byte> othuap => Module.Memory.GetVariablePointer("*OTHUAP").ToSpan();
 
+        /*
+        static int contains(const char *buf, char c) {
+            for (; *buf; ++buf) {
+                if (*buf == c) {
+                return 1;
+                }
+            }
+            return 0;
+        }
+
+        char *my_strtok(char *buf, const char *delims) {
+            static char *wrk;
+            static char *end;
+
+            if (buf) {
+                wrk = buf;
+                end = buf + strlen(buf);
+            }
+
+            // skip starting delims
+            while (wrk < end && contains(delims, *wrk)) {
+                *(wrk++) = 0;
+            }
+
+            if (wrk >= end) {
+                return NULL;
+            }
+
+            char *token = wrk;
+            // now scan until we find another one
+            while (wrk < end && !contains(delims, *wrk)) {
+                ++wrk;
+            }
+            *(wrk++) = 0;
+
+            return token;
+        }
+*/
         /// <summary>
         ///     Splits the specified string into tokens based on the delimiters
         /// </summary>
         private void strtok()
         {
-            var string2SplitPointer = GetParameterPointer(0);
+            var stringToSplitPointer = GetParameterPointer(0);
             var stringDelimitersPointer = GetParameterPointer(2);
 
-            if (!Module.Memory.TryGetVariablePointer("STROK-RESULT", out var resultPointer))
-                resultPointer = Module.Memory.AllocateVariable("STROK-RESULT", 0x400);
-
-            if (!Module.Memory.TryGetVariablePointer("STROK-ORIGINAL", out var originalPointer))
-                originalPointer = Module.Memory.AllocateVariable("STROK-ORIGINAL", 0x400);
-
-            if (!Module.Memory.TryGetVariablePointer("STROK-ORDINAL", out var ordinalPointer))
-                ordinalPointer = Module.Memory.AllocateVariable("STROK-ORDINAL", 0x2);
+            var workPointerPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-WRK", 4);
+            var lengthPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-END", 2);
 
             //If it's the first call, reset the values in memory
-            if (!string2SplitPointer.Equals(IntPtr16.Empty))
+            if (!stringToSplitPointer.Equals(IntPtr16.Empty))
             {
-                Module.Memory.SetArray(originalPointer, Module.Memory.GetString(string2SplitPointer));
-                Module.Memory.SetWord(ordinalPointer, 0);
+                Module.Memory.SetPointer(workPointerPointer, stringToSplitPointer);
+                Module.Memory.SetWord(lengthPointer, (ushort)(stringToSplitPointer.Offset + Module.Memory.GetString(stringToSplitPointer, true).Length));
             }
 
-            var ordinal = Module.Memory.GetWord(ordinalPointer);
-            var string2Split = Encoding.ASCII.GetString(Module.Memory.GetString(originalPointer, true));
+            var workPointer = Module.Memory.GetPointer(workPointerPointer);
+            var endOffset = Module.Memory.GetWord(lengthPointer);
+
             var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, true));
 
-            var splitString = string2Split.Split(stringDelimiter, StringSplitOptions.RemoveEmptyEntries);
-
-            if (ordinal >= splitString.Length)
+            // skip starting delims
+            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
             {
+                Module.Memory.SetByte(workPointer++, 0x0);
+            }
+
+            // are we at the end of the string with no more to tokenize?
+            if (workPointer.Offset >= endOffset)
+            {
+                Module.Memory.SetPointer(workPointerPointer, workPointer);
                 Registers.DX = 0;
                 Registers.AX = 0;
                 return;
             }
 
-            //Save Result
-            Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes(splitString[ordinal]));
+            // save return value
+            var returnPointer = workPointer;
+            // scan until we find the next deliminater and then null it out for the return
+            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
+            {
+                workPointer++;
+            }
 
-            //Increment Ordinal for Next Call and save
-            ordinal++;
-            Module.Memory.SetWord(ordinalPointer, ordinal);
+            Module.Memory.SetByte(workPointer++, 0x0);
 
-            Registers.DX = resultPointer.Segment;
-            Registers.AX = resultPointer.Offset;
+            Module.Memory.SetPointer(workPointerPointer, workPointer);
+            Registers.DX = returnPointer.Segment;
+            Registers.AX = returnPointer.Offset;
         }
 
         /// <summary>
