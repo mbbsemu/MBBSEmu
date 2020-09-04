@@ -478,6 +478,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 114: //CLSXRF
                 case 340: //HOWBUY -- emits how to buy credits, ignored for MBBSEmu
                 case 564: //STANSI -- sets ANSI to user default, ignoring as ANSI is always on
+                case 526: //SCBLANK -- set video buffer to blank
+                case 563: //SSTATR -- set video attribute
+                case 548: //SETWIN -- set window parameters when drawing to video (Screen)
+                case 392: //LOCATE -- moves cursor (local screen, not telnet session)
+                case 513: //RSTWIN -- restore window parameters (local screen)
                     break;
                 case 599:
                     time();
@@ -1097,6 +1102,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 579:
                     strlwr();
+                    break;
+                case 701:
+                    printf();
+                    break;
+                case 314:
+                    gen_haskey();
+                    break;
+                case 130:
+                    cncwrd();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -7149,5 +7163,103 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
         }
+
+        /// <summary>
+        ///     Sends formatted output to stdout
+        ///
+        ///     Some modules used this to print to the main console
+        /// </summary>
+        private void printf()
+        {
+            var formatStringPointer = GetParameterPointer(0);
+
+            _logger.Info(Encoding.ASCII.GetString(FormatPrintf(Module.Memory.GetString(formatStringPointer), 2)));
+        }
+
+        /// <summary>
+        ///     Generic "Has Key" routine which takes in the USER struct vs. the current channel
+        ///
+        ///     Signature: int ok=gen_haskey(char *lock, int unum, struct user *uptr);
+        ///     Returns: AX = 1 == True
+        /// </summary>
+        /// <returns></returns>
+        private void gen_haskey()
+        {
+            var lockNamePointer = GetParameterPointer(0);
+            var lockNameBytes = Module.Memory.GetString(lockNamePointer, true);
+
+#if DEBUG
+            _logger.Info($"Returning TRUE for Haskey({Encoding.ASCII.GetString(lockNameBytes)})");
+#endif
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Expect a Word from the user (character from the current command)
+        ///
+        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     in the string with spaces once again.
+        /// </summary>
+        private void cncwrd()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCWRD", 0x1E); //max length is 30 characters
+            Registers.DX = returnPointer.Segment;
+            Registers.AX = returnPointer.Offset;
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                //Write null to output
+                Module.Memory.SetByte(returnPointer, 0);
+                return;
+            }
+
+            var returnedWord = new MemoryStream();
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+            
+            //Build Return Word stopping when a space is encountered
+            foreach (var b in inputString)
+            {
+                if (b == ' ' || b == 0)
+                    break;
+
+                returnedWord.WriteByte(b);
+            }
+            
+            //Truncate to 29 bytes
+            if(returnedWord.Length > 29)
+                returnedWord.SetLength(29);
+
+            returnedWord.WriteByte(0);
+            
+            Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
+
+            //Modify the Counters
+            remainingCharactersInCommand -= (int)returnedWord.Length;
+            nxtcmdPointer.Offset += (ushort) returnedWord.Length;
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
     }
 }

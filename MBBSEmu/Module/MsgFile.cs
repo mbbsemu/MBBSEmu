@@ -3,6 +3,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace MBBSEmu.Module
@@ -141,6 +143,10 @@ namespace MBBSEmu.Module
                     msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
                     msMessages.Write(msCurrentValue.ToArray());
                     msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
+
+                    //If it's a duplicate variable name, append with _X where X is the number of duplicate names so far
+                    if (MsgValues.ContainsKey(variableName))
+                        variableName += $"_{MsgValues.Count(x=> x.Key.StartsWith(variableName))}";
 
                     //Write to Variable Dictionary
                     MsgValues.Add(variableName, msCurrentValue.ToArray());
