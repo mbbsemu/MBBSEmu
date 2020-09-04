@@ -315,11 +315,6 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (inputValue == 'X')
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
-                //Load File if specified in appsettings.json and display if it exists
-                var ANSILogoffFileName = _configuration["ANSI.Logoff"];
-                if (File.Exists(ANSILogoffFileName)) {
-                    EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
-                }
                 session.InputBuffer.SetLength(0);
                 return;
             }
@@ -384,7 +379,13 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LoggingOffDisplay(SessionBase session)
         {
-            EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
+            //Load File if specified in appsettings.json and display if it exists
+            var ANSILogoffFileName = _configuration["ANSI.Logoff"];
+            if (File.Exists(ANSILogoffFileName)) {
+                EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
+                } else {            
+                EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
+                }
             session.SessionState = EnumSessionState.LoggingOffProcessing;
             session.Stop();
         }
