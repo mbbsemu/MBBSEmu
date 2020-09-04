@@ -47,7 +47,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
-
         }
 
         /// <summary>
@@ -57,26 +56,36 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         /// <param name="apiArguments"></param>
         protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
-            mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
+            if (!mbbsEmuMemoryCore.HasSegment(STACK_SEGMENT))
+            {
+                mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
+            }
 
-            //Create a new CODE Segment with a
-            //simple ASM call for CALL FAR librarySegment:apiOrdinal
+            if (mbbsEmuMemoryCore.HasSegment(CODE_SEGMENT))
+            {
+                mbbsEmuMemoryCore.RemoveSegment(CODE_SEGMENT);
+            }
+
             var apiTestCodeSegment = new Segment
             {
                 Ordinal = CODE_SEGMENT,
+                //Create a new CODE Segment with a
+                //simple ASM call for CALL FAR librarySegment:apiOrdinal
                 Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(LIBRARY_SEGMENT & 0xFF), (byte)(LIBRARY_SEGMENT >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
-
             mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
+            mbbsEmuCpuRegisters.IP = 0;
 
             //Push Arguments to Stack
             foreach (var a in apiArguments.Reverse())
                 mbbsEmuCpuCore.Push(a);
 
-
             //Process Instruction, e.g. call the method
             mbbsEmuCpuCore.Tick();
+
+            foreach (var a in apiArguments)
+                mbbsEmuCpuCore.Pop();
         }
 
         /// <summary>

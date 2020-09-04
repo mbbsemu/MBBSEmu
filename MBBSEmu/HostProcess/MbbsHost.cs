@@ -34,7 +34,7 @@ namespace MBBSEmu.HostProcess
         private readonly ILogger _logger;
 
         // 3 in the morning
-        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(/* hours= */ 3, /* minutes= */ 0, /* seconds= */ 0);
+        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(hours: 3, minutes: 0, seconds: 0);
 
         /// <summary>
         ///     Dictionary containing all active Channels
@@ -486,7 +486,7 @@ namespace MBBSEmu.HostProcess
 
             session.OutputEnabled = doLoginRoutine;
 
-            CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
+            CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.OutputEnabled = true;
@@ -752,7 +752,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Removing Channel: {channel}");
 
-            CallModuleRoutine("huprou", /* preRunCallback= */ null, channel);
+            CallModuleRoutine("huprou", preRunCallback: null, channel);
 
             _channelDictionary[channel].Stop();
             _channelDictionary.Remove(channel);
