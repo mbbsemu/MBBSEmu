@@ -315,7 +315,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (inputValue == 'X')
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
-                //Load File if specified in appsettings.json and display if it exists, else display default
+                //Load File if specified in appsettings.json and display if it exists
                 var ANSILogoffFileName = _configuration["ANSI.Logoff"];
                 if (File.Exists(ANSILogoffFileName)) {
                     EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
