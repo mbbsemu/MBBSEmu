@@ -38,6 +38,9 @@ Rlogin.RemoteIP         IP Address     Remote IP allowed to connect via Rlogin
 Rlogin.PortPerModule    True/False     Expose dedicated Rlogin Ports for each module
 Database.File           String         Filename for the MBBSEmu SQLite Database
 Cleanup.Time            String         Time to perform nightly cleanup, in HH:MM 24 hour time
+ANSI.Login              String         Filename for a custom Login ANSI file (Displayed before sign in)
+ANSI.Logoff             String         Filename for a custom Logoff ANSI file (DIsplayed while logging off)
+ANSI.Signup             String         Filename for a custom Signup ANSI file (Displayed when creating an account)
 
 -----------------------------------------------------------
 Module Configuration JSON File Structure:
