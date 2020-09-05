@@ -4,6 +4,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
+using NLog;
 using System.Collections.Generic;
 using System.IO;
 using System;
@@ -56,29 +57,21 @@ namespace MBBSEmu.Tests.Integration
 
         protected void ExecuteTest(TestLogic testLogic)
         {
-            var list = new List<KeyValuePair<string, string>>() {
-                new KeyValuePair<string, string>("BBS.Title", "Test"),
-                new KeyValuePair<string, string>("GSBL.Activation", "123456789"),
-                new KeyValuePair<string, string>("Telnet.Enabled", "False"),
-                new KeyValuePair<string, string>("Rlogin.Enabled", "False"),
-                new KeyValuePair<string, string>("Database.File", "mbbsemu.db")
-            };
-
-            ServiceResolver.Create(list);
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
             //Setup Generic Database
-            var resourceManager = ServiceResolver.GetService<IResourceManager>();
+            var resourceManager = serviceResolver.GetService<IResourceManager>();
             File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
             var modules = new List<MbbsModule>
             {
-                new MbbsModule(ServiceResolver.GetService<IFileUtility>(), "MBBSEMU", _modulePath)
+                new MbbsModule(serviceResolver.GetService<IFileUtility>(), serviceResolver.GetService<ILogger>(), "MBBSEMU", _modulePath)
             };
 
             //Setup and Run Host
-            var host = ServiceResolver.GetService<IMbbsHost>();
+            var host = serviceResolver.GetService<IMbbsHost>();
             foreach (var m in modules)
                 host.AddModule(m);
 

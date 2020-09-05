@@ -1,7 +1,10 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using NLog;
+using Microsoft.Extensions.Configuration;
 using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -14,8 +17,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFC;
 
-        internal Galme(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module,
-            channelDictionary)
+        internal Galme(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             var txtlenPointer = Module.Memory.AllocateVariable("TXTLEN", 0x2);
             Module.Memory.SetWord(txtlenPointer, 0x400);
@@ -41,7 +44,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
-                case 30: 
+                case 30:
                     oldsend();
                     break;
                 case 123:

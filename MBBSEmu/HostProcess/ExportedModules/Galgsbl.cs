@@ -1,8 +1,11 @@
 using MBBSEmu.CPU;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Text;
 using System.Threading;
@@ -30,7 +33,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
 
-        public Galgsbl(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        public Galgsbl(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _startDate = DateTime.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);

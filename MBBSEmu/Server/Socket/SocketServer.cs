@@ -70,7 +70,7 @@ namespace MBBSEmu.Server.Socket
                 case EnumSessionType.Telnet:
                     {
                         _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
-                        var session = new TelnetSession(client);
+                        var session = new TelnetSession(_logger, client);
                         _host.AddSession(session);
                         session.Start();
                         break;
@@ -86,7 +86,7 @@ namespace MBBSEmu.Server.Socket
                         }
 
                         _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
-                        var session = new RloginSession(_host, client, _moduleIdentifier);
+                        var session = new RloginSession(_host, _logger, client, _moduleIdentifier);
                         _host.AddSession(session);
                         session.Start();
                         break;

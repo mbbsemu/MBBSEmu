@@ -1,4 +1,5 @@
 using MBBSEmu.Session.Enums;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +22,7 @@ namespace MBBSEmu.Session.Telnet
         //Tracks Responses We've already sent -- prevents looping
         private readonly List<IacResponse> _iacSentResponses = new List<IacResponse>();
 
-        public TelnetSession(Socket telnetConnection) : base(telnetConnection)
+        public TelnetSession(ILogger logger, Socket telnetConnection) : base(logger, telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;

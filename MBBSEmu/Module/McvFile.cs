@@ -21,10 +21,9 @@ namespace MBBSEmu.Module
         public readonly Dictionary<int, byte[]> Messages;
         private bool _dynamicLength = false;
 
-        public McvFile(string fileName, string path = "")
+        public McvFile(IFileUtility fileUtility, string fileName, string path = "")
         {
             Messages = new Dictionary<int, byte[]>();
-            var fileUtility = DependencyInjection.ServiceResolver.GetService<IFileUtility>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
