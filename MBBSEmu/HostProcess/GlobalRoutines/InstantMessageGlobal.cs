@@ -37,7 +37,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                     case 1:
                         var matchingSessionNumber = matchingUsers[0];
                         var matchingUserName = matchingSessionNumber.Username;
-                        //var currentUserModule = matchingSessionNumber.CurrentModule.ModuleDescription;
                         sessions[channelNumber].SendToClient($"|RESET|\r\n|B||YELLOW|... Paging {matchingUserName} ...|RESET|\r\n".EncodeToANSIArray());
                         // TO DO: Need to pull module name, currently says "InModule" -- i think that might be the only condition, the rest wouldn't apply for messaging a signed in user
                         sessions[matchingSessionNumber.Channel].SendToClient($"|RESET|\r\n|B||YELLOW|{pageMessageSourceUser} is paging you from {sessions[channelNumber].SessionState}: {pageMessageText}|RESET|\r\n".EncodeToANSIArray());
