@@ -1,3 +1,4 @@
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,8 +30,12 @@ namespace MBBSEmu.Disassembler
         public List<Entry> EntryTable;
         public List<NonResidentName> NonResidentNameTable;
 
-        public NEFile(string file)
+        private ILogger _logger;
+
+        public NEFile(ILogger logger, string file)
         {
+            _logger = logger;
+
             FileContent = File.ReadAllBytes(file);
             var f = new FileInfo(file);
             Path = f.DirectoryName + System.IO.Path.DirectorySeparatorChar;
@@ -112,7 +117,7 @@ namespace MBBSEmu.Disassembler
                     var records = new Dictionary<ushort, RelocationRecord>();
                     for (var j = 0; j < relocationRecordEntries; j++)
                     {
-                        var relocationRecord = new RelocationRecord
+                        var relocationRecord = new RelocationRecord(_logger)
                             {Data = data.Slice(relocationInfoCursor + j * 8, 8).ToArray()};
 
                         records.Add(relocationRecord.Offset, relocationRecord);

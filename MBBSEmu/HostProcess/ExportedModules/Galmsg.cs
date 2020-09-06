@@ -1,14 +1,18 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
     public class Galmsg : ExportedModuleBase, IExportedModule
     {
-        internal Galmsg(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        internal Galmsg(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
         }
 

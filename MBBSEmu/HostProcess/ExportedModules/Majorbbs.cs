@@ -3,10 +3,13 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -48,7 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
-        public Majorbbs(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        public Majorbbs(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
@@ -478,6 +482,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 114: //CLSXRF
                 case 340: //HOWBUY -- emits how to buy credits, ignored for MBBSEmu
                 case 564: //STANSI -- sets ANSI to user default, ignoring as ANSI is always on
+                case 526: //SCBLANK -- set video buffer to blank
+                case 563: //SSTATR -- set video attribute
+                case 548: //SETWIN -- set window parameters when drawing to video (Screen)
+                case 392: //LOCATE -- moves cursor (local screen, not telnet session)
+                case 513: //RSTWIN -- restore window parameters (local screen)
                     break;
                 case 599:
                     time();
@@ -1098,6 +1107,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 579:
                     strlwr();
                     break;
+                case 701:
+                    printf();
+                    break;
+                case 314:
+                    gen_haskey();
+                    break;
+                case 130:
+                    cncwrd();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -1123,7 +1141,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
 
             BtrievePointerDictionaryNew.Add(btvFileStructPointer,
-                new BtrieveFileProcessor("BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                new BtrieveFileProcessor(_fileFinder, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
 
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
 
@@ -1350,7 +1368,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
             }
 
-            var offset = McvPointerDictionary.Allocate(new McvFile(mcvFileName, Module.ModulePath));
+            var offset = McvPointerDictionary.Allocate(new McvFile(_fileFinder, mcvFileName, Module.ModulePath));
 
             if (_currentMcvFile != null)
                 _previousMcvFile.Push(_currentMcvFile);
@@ -2174,7 +2192,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFileProcessor(fileName, Module.ModulePath);
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
@@ -2620,32 +2638,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void strncpy()
         {
-            var destinationOffset = GetParameter(0);
-            var destinationSegment = GetParameter(1);
-            var sourceOffset = GetParameter(2);
-            var sourceSegment = GetParameter(3);
+            var destinationPointer = GetParameterPointer(0);
+            var source = GetParameterString(2);
             var numberOfBytesToCopy = GetParameter(4);
 
-            var sourceString = Module.Memory.GetString(sourceSegment, sourceOffset);
+            Registers.DX = destinationPointer.Segment;
+            Registers.AX = destinationPointer.Offset;
 
-            for (var i = 0; i < numberOfBytesToCopy; i++)
+            for (var i = 0; i < numberOfBytesToCopy; i++, destinationPointer++)
             {
-                if (sourceString[i] == 0x0)
+                if (source[i] == 0x0)
                 {
                     //Write remaining nulls
-                    for (var j = i; j < numberOfBytesToCopy; j++)
-                        Module.Memory.SetByte(destinationSegment, (ushort)(destinationOffset + j), 0x0);
+                    for (var j = i; j < numberOfBytesToCopy; j++, destinationPointer++)
+                        Module.Memory.SetByte(destinationPointer, 0x0);
 
                     break;
                 }
 
-                Module.Memory.SetByte(destinationSegment, (ushort)(destinationOffset + i), sourceString[i]);
+                Module.Memory.SetByte(destinationPointer, (byte) source[i]);
             }
-
-#if DEBUG
-            _logger.Info(
-                $"Copied {numberOfBytesToCopy} from {sourceSegment:X4}:{sourceOffset:X4} to {destinationSegment:X4}:{destinationOffset:X4}");
-#endif
         }
 
         private void register_textvar()
@@ -3393,21 +3405,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var bytesToCopy = GetParameter(4);
 
-            var stringDestination = Module.Memory.GetString(destinationPointer);
-            var stringSource = Module.Memory.GetString(sourcePointer, true);
+            var destinationString = Module.Memory.GetString(destinationPointer, true);
+            var sourceString = Module.Memory.GetString(sourcePointer, true);
 
-            if (stringSource.Length < bytesToCopy)
-                bytesToCopy = (ushort)stringSource.Length;
+            bytesToCopy = Math.Min(bytesToCopy, (ushort) sourceString.Length);
 
-            var newString = new byte[stringDestination.Length + bytesToCopy];
-            Array.Copy(stringSource.Slice(0, bytesToCopy).ToArray(), 0, newString, 0, bytesToCopy);
-            Array.Copy(stringDestination.ToArray(), 0, newString, bytesToCopy, stringDestination.Length);
+            Module.Memory.SetArray(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length),
+                sourceString.Slice(0, bytesToCopy));
+            // null terminate always
+            Module.Memory.SetByte(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length + bytesToCopy), 0x0);
 
-#if DEBUG
-            _logger.Info(
-                $"Concatenated String 1 (Length:{stringSource.Length}b. Copied {bytesToCopy}b) with String 2 (Length: {stringDestination.Length}) to new String (Length: {newString.Length}b)");
-#endif
-            Module.Memory.SetArray(destinationPointer, newString);
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -3687,10 +3698,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 (ushort)(destinationPointer.Offset + destinationString.Length),
                 sourceString);
 
-#if DEBUG
-            _logger.Info(
-                $"Concatenated strings {Encoding.ASCII.GetString(destinationString)} and {Encoding.ASCII.GetString(sourceString)} to {destinationPointer}");
-#endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -3827,10 +3836,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 Registers.AX = (ushort)(stringPointer.Offset + i);
                 Registers.DX = stringPointer.Segment;
-
-#if DEBUG
-                _logger.Info($"Found character {(char)characterToFind} at position {i} in string {stringPointer}");
-#endif
                 return;
             }
 
@@ -4133,7 +4138,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Converts all lowercase characters in a string to uppercase
         ///
-        ///     Signature: char *upper=strlwr(char *string)
+        ///     Signature: char *upper=strupr(char *string)
         /// </summary>
         private void strupr()
         {
@@ -4143,15 +4148,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringData.Length; i++)
             {
-                if (stringData[i] >= 97 && stringData[i] <= 122)
-                    stringData[i] -= 32;
+                stringData[i] = (byte) Char.ToUpper((char) stringData[i]);
             }
 
-#if DEBUG
-            _logger.Info($"Converted string to {Encoding.ASCII.GetString(stringData)}");
-#endif
-
             Module.Memory.SetArray(stringToConvertPointer, stringData);
+
+            Registers.AX = stringToConvertPointer.Offset;
+            Registers.DX = stringToConvertPointer.Segment;
         }
 
         /// <summary>
@@ -4327,29 +4330,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strcmp()
         {
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
 
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1 = Module.Memory.GetString(string1Pointer);
-            var string2 = Module.Memory.GetString(string2Pointer);
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
-#endif
-
-            for (var i = 0; i < string1.Length; i++)
-            {
-                if (string1[i] == string2[i]) continue;
-
-                //1 < 2 == -1 (0xFFFF)
-                //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
-                return;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort)string.Compare(string1, string2);
         }
 
         /// <summary>
@@ -4893,47 +4877,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strtok()
         {
-            var string2SplitPointer = GetParameterPointer(0);
+            var stringToSplitPointer = GetParameterPointer(0);
             var stringDelimitersPointer = GetParameterPointer(2);
 
-            if (!Module.Memory.TryGetVariablePointer("STROK-RESULT", out var resultPointer))
-                resultPointer = Module.Memory.AllocateVariable("STROK-RESULT", 0x400);
-
-            if (!Module.Memory.TryGetVariablePointer("STROK-ORIGINAL", out var originalPointer))
-                originalPointer = Module.Memory.AllocateVariable("STROK-ORIGINAL", 0x400);
-
-            if (!Module.Memory.TryGetVariablePointer("STROK-ORDINAL", out var ordinalPointer))
-                ordinalPointer = Module.Memory.AllocateVariable("STROK-ORDINAL", 0x2);
+            var workPointerPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-WRK", IntPtr16.Size);
+            var lengthPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-END", 2);
 
             //If it's the first call, reset the values in memory
-            if (!string2SplitPointer.Equals(IntPtr16.Empty))
+            if (!stringToSplitPointer.Equals(IntPtr16.Empty))
             {
-                Module.Memory.SetArray(originalPointer, Module.Memory.GetString(string2SplitPointer));
-                Module.Memory.SetWord(ordinalPointer, 0);
+                Module.Memory.SetPointer(workPointerPointer, stringToSplitPointer);
+                Module.Memory.SetWord(lengthPointer, (ushort)(stringToSplitPointer.Offset + Module.Memory.GetString(stringToSplitPointer, true).Length));
             }
 
-            var ordinal = Module.Memory.GetWord(ordinalPointer);
-            var string2Split = Encoding.ASCII.GetString(Module.Memory.GetString(originalPointer, true));
+            var workPointer = Module.Memory.GetPointer(workPointerPointer);
+            var endOffset = Module.Memory.GetWord(lengthPointer);
+
             var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, true));
 
-            var splitString = string2Split.Split(stringDelimiter, StringSplitOptions.RemoveEmptyEntries);
-
-            if (ordinal >= splitString.Length)
+            // skip starting delims
+            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
             {
+                Module.Memory.SetByte(workPointer++, 0x0);
+            }
+
+            // are we at the end of the string with no more to tokenize?
+            if (workPointer.Offset >= endOffset)
+            {
+                Module.Memory.SetPointer(workPointerPointer, workPointer);
                 Registers.DX = 0;
                 Registers.AX = 0;
                 return;
             }
 
-            //Save Result
-            Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes(splitString[ordinal]));
+            Registers.DX = workPointer.Segment;
+            Registers.AX = workPointer.Offset;
 
-            //Increment Ordinal for Next Call and save
-            ordinal++;
-            Module.Memory.SetWord(ordinalPointer, ordinal);
+            // scan until we find the next deliminater and then null it out for the return
+            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
+            {
+                workPointer++;
+            }
 
-            Registers.DX = resultPointer.Segment;
-            Registers.AX = resultPointer.Offset;
+            Module.Memory.SetByte(workPointer++, 0x0);
+            Module.Memory.SetPointer(workPointerPointer, workPointer);
         }
 
         /// <summary>
@@ -5056,50 +5043,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stricmp()
         {
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
 
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1 = Module.Memory.GetString(string1Pointer, true);
-            var string2 = Module.Memory.GetString(string2Pointer, true);
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){Encoding.ASCII.GetString(string1)} to ({string2Pointer}){Encoding.ASCII.GetString(string2)}");
-#endif
-
-            if (string1.Length == 0)
-            {
-                Registers.AX = 0xFFFF;
-                return;
-            }
-
-            if (string2.Length == 0)
-            {
-                Registers.AX = 1;
-                return;
-            }
-
-            for (var i = 0; i < string1.Length; i++)
-            {
-                //We're at the end of string 2, string 1 is longer
-                if (i == string2.Length)
-                {
-                    Registers.AX = 1;
-                    return;
-                }
-
-                if (string1[i] == string2[i]) continue;
-                if (string1[i] == string2[i] + 32) continue;
-                if (string1[i] == string2[i] - 32) continue;
-
-                //1 < 2 == -1 (0xFFFF)
-                //1 > 2 == 1 (0x0001)
-                Registers.AX = (ushort)(string1[i] < string2[i] ? 0xFFFF : 1);
-                return;
-            }
-
-            Registers.AX = 0;
+            Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
         }
 
         /// <summary>
@@ -5700,6 +5647,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Copied {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
 #endif
+            Registers.AX = destinationPointer.Offset;
+            Registers.DX = destinationPointer.Segment;
         }
 
         /// <summary>
@@ -5719,20 +5668,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var ptr1Data = Module.Memory.GetArray(ptr1, num);
             var ptr2Data = Module.Memory.GetArray(ptr2, num);
 
-            for (var i = 0; i < num; i++)
-            {
-                if (ptr1Data[i] == ptr2Data[i])
-                    continue;
-
-                if (ptr1Data[i] > ptr2Data[i])
-                    Registers.AX = 0x1;
-                else
-                    Registers.AX = 0xFFFF;
-
-                return;
-            }
-
             Registers.AX = 0;
+            for (var i = 0; Registers.AX == 0 && i < num; i++)
+            {
+                Registers.AX = (ushort)(ptr1Data[i] - ptr2Data[i]);
+            }
         }
 
         /// <summary>
@@ -6317,17 +6257,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strnicmp()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
             var maxLength = GetParameter(4);
-
-            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
-#endif
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
         }
@@ -6352,18 +6284,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strncmp()
         {
-
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            var string1 = GetParameterString(0);
+            var string2 = GetParameterString(2);
             var maxLength = GetParameter(4);
-
-            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
-
-#if DEBUG
-            _logger.Info(
-                $"Comparing ({string1Pointer}){string1} to ({string2Pointer}){string2}");
-#endif
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);
         }
@@ -7244,5 +7167,103 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = destinationPointer.Offset;
             Registers.DX = destinationPointer.Segment;
         }
+
+        /// <summary>
+        ///     Sends formatted output to stdout
+        ///
+        ///     Some modules used this to print to the main console
+        /// </summary>
+        private void printf()
+        {
+            var formatStringPointer = GetParameterPointer(0);
+
+            _logger.Info(Encoding.ASCII.GetString(FormatPrintf(Module.Memory.GetString(formatStringPointer), 2)));
+        }
+
+        /// <summary>
+        ///     Generic "Has Key" routine which takes in the USER struct vs. the current channel
+        ///
+        ///     Signature: int ok=gen_haskey(char *lock, int unum, struct user *uptr);
+        ///     Returns: AX = 1 == True
+        /// </summary>
+        /// <returns></returns>
+        private void gen_haskey()
+        {
+            var lockNamePointer = GetParameterPointer(0);
+            var lockNameBytes = Module.Memory.GetString(lockNamePointer, true);
+
+#if DEBUG
+            _logger.Info($"Returning TRUE for Haskey({Encoding.ASCII.GetString(lockNameBytes)})");
+#endif
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Expect a Word from the user (character from the current command)
+        ///
+        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     in the string with spaces once again.
+        /// </summary>
+        private void cncwrd()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCWRD", 0x1E); //max length is 30 characters
+            Registers.DX = returnPointer.Segment;
+            Registers.AX = returnPointer.Offset;
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                //Write null to output
+                Module.Memory.SetByte(returnPointer, 0);
+                return;
+            }
+
+            var returnedWord = new MemoryStream();
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+
+            //Build Return Word stopping when a space is encountered
+            foreach (var b in inputString)
+            {
+                if (b == ' ' || b == 0)
+                    break;
+
+                returnedWord.WriteByte(b);
+            }
+
+            //Truncate to 29 bytes
+            if(returnedWord.Length > 29)
+                returnedWord.SetLength(29);
+
+            returnedWord.WriteByte(0);
+
+            Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
+
+            //Modify the Counters
+            remainingCharactersInCommand -= (int)returnedWord.Length;
+            nxtcmdPointer.Offset += (ushort) returnedWord.Length;
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
     }
 }

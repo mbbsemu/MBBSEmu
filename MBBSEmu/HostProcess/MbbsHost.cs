@@ -1,7 +1,7 @@
-using MBBSEmu.CPU;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.HostRoutines;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -34,7 +34,7 @@ namespace MBBSEmu.HostProcess
         private readonly ILogger _logger;
 
         // 3 in the morning
-        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(/* hours= */ 3, /* minutes= */ 0, /* seconds= */ 0);
+        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(hours: 3, minutes: 0, seconds: 0);
 
         /// <summary>
         ///     Dictionary containing all active Channels
@@ -96,11 +96,16 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private bool _performCleanup = false;
 
+        private readonly IGlobalCache _globalCache;
+        private readonly IFileUtility _fileUtility;
+
         private Thread _workerThread;
 
-        public MbbsHost(ILogger logger, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
+        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
             _logger = logger;
+            _globalCache = globalCache;
+            _fileUtility = fileUtility;
             _mbbsRoutines = mbbsRoutines;
             _configuration = configuration;
             _globalRoutines = globalRoutines;
@@ -486,7 +491,7 @@ namespace MBBSEmu.HostProcess
 
             session.OutputEnabled = doLoginRoutine;
 
-            CallModuleRoutine("lonrou", /* preRunCallback= */ null, session.Channel);
+            CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.OutputEnabled = true;
@@ -752,7 +757,7 @@ namespace MBBSEmu.HostProcess
 
             _logger.Info($"Removing Channel: {channel}");
 
-            CallModuleRoutine("huprou", /* preRunCallback= */ null, channel);
+            CallModuleRoutine("huprou", preRunCallback: null, channel);
 
             _channelDictionary[channel].Stop();
             _channelDictionary.Remove(channel);
@@ -791,12 +796,12 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(module, _channelDictionary),
-                    "GALGSBL" => new Galgsbl(module, _channelDictionary),
-                    "DOSCALLS" => new Doscalls(module, _channelDictionary),
-                    "GALME" => new Galme(module, _channelDictionary),
-                    "PHAPI" => new Phapi(module, _channelDictionary),
-                    "GALMSG" => new Galmsg(module, _channelDictionary),
+                    "MAJORBBS" => new Majorbbs(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALGSBL" => new Galgsbl(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "DOSCALLS" => new Doscalls(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALME" => new Galme(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "PHAPI" => new Phapi(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALMSG" => new Galmsg(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 

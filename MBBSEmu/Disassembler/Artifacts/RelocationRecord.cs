@@ -1,5 +1,4 @@
 ﻿using System;
-using MBBSEmu.DependencyInjection;
 using NLog;
 
 namespace MBBSEmu.Disassembler.Artifacts
@@ -9,11 +8,11 @@ namespace MBBSEmu.Disassembler.Artifacts
     /// </summary>
     public class RelocationRecord
     {
-        protected static readonly ILogger _logger;
+        protected readonly ILogger _logger;
 
-        static RelocationRecord()
+        public RelocationRecord(ILogger logger)
         {
-            _logger = ServiceResolver.GetService<ILogger>();
+            _logger = logger;
         }
 
         public byte[] Data;

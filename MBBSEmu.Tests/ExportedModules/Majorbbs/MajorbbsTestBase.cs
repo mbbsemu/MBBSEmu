@@ -1,8 +1,11 @@
 using MBBSEmu.CPU;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,13 +24,21 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
 
+        protected ServiceResolver _serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+
         protected MajorbbsTestBase()
         {
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), null, string.Empty, mbbsEmuMemoryCore);
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, string.Empty, mbbsEmuMemoryCore);
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                new PointerDictionary<Session.SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
@@ -46,8 +57,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuCpuRegisters.IP = 0;
 
             //Redeclare to re-allocate memory values that have been cleared
-            majorbbs = new HostProcess.ExportedModules.Majorbbs(mbbsModule, new PointerDictionary<Session.SessionBase>());
-
+            majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                new PointerDictionary<Session.SessionBase>());
         }
 
         /// <summary>
@@ -57,26 +73,36 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         /// <param name="apiArguments"></param>
         protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
-            mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
+            if (!mbbsEmuMemoryCore.HasSegment(STACK_SEGMENT))
+            {
+                mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
+            }
 
-            //Create a new CODE Segment with a
-            //simple ASM call for CALL FAR librarySegment:apiOrdinal
+            if (mbbsEmuMemoryCore.HasSegment(CODE_SEGMENT))
+            {
+                mbbsEmuMemoryCore.RemoveSegment(CODE_SEGMENT);
+            }
+
             var apiTestCodeSegment = new Segment
             {
                 Ordinal = CODE_SEGMENT,
+                //Create a new CODE Segment with a
+                //simple ASM call for CALL FAR librarySegment:apiOrdinal
                 Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(LIBRARY_SEGMENT & 0xFF), (byte)(LIBRARY_SEGMENT >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
-
             mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
+            mbbsEmuCpuRegisters.IP = 0;
 
             //Push Arguments to Stack
             foreach (var a in apiArguments.Reverse())
                 mbbsEmuCpuCore.Push(a);
 
-
             //Process Instruction, e.g. call the method
             mbbsEmuCpuCore.Tick();
+
+            foreach (var a in apiArguments)
+                mbbsEmuCpuCore.Pop();
         }
 
         /// <summary>

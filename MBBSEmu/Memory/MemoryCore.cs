@@ -176,6 +176,16 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
+        ///     Removes the specified segment. Typically only used by a test.
+        /// </summary>
+        /// <param name="segment"></param>
+        public void RemoveSegment(ushort segment)
+        {
+            _memorySegments.Remove(segment);
+            _decompiledSegments.Remove(segment);
+        }
+
+        /// <summary>
         ///     Directly adds a raw segment from an NE file segment
         /// </summary>
         /// <param name="segment"></param>
@@ -212,7 +222,7 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Adds a Decompiled code segment 
+        ///     Adds a Decompiled code segment
         /// </summary>
         /// <param name="segmentNumber"></param>
         /// <param name="segmentInstructionList"></param>

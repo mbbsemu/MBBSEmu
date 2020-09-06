@@ -1,5 +1,4 @@
-﻿using MBBSEmu.DependencyInjection;
-using MBBSEmu.Disassembler.Artifacts;
+﻿using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Module;
 using NLog;
 using System.Collections.Generic;
@@ -26,10 +25,10 @@ namespace MBBSEmu.Reports
         private readonly MbbsModule _module;
         private ApiReportRecord _record;
 
-        public ApiReport(MbbsModule module)
+        public ApiReport(ILogger logger, MbbsModule module)
         {
             _module = module;
-            _logger = ServiceResolver.GetService<ILogger>();
+            _logger = logger;
         }
 
         public void GenerateReport()
