@@ -84,7 +84,6 @@ namespace MBBSEmu.DependencyInjection
             ServiceCollection.AddSingleton<IHostRoutine, MenuRoutines>();
             ServiceCollection.AddSingleton<IHostRoutine, FsdRoutines>();
             ServiceCollection.AddSingleton<IGlobalRoutine, UsersOnlineGlobal>();
-            ServiceCollection.AddSingleton<IGlobalRoutine, InstantMessageGlobal>();
             ServiceCollection.AddSingleton<IMbbsHost, MbbsHost>();
             ServiceCollection.AddTransient<ISocketServer, SocketServer>();
 
