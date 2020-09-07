@@ -6,6 +6,7 @@ using MBBSEmu.Session;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
@@ -20,6 +21,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             {
                 //Create array of all elements between spaces
                 var pageUserInput = commandString.Split(' ');
+                
                 //Define source username, target username, and message
                 var pageMessageSourceUser = sessions[channelNumber].Username;
                 var pageMessageTargetUser = pageUserInput[1];
@@ -27,6 +29,16 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
                 //Check to see if the target user matches or matches part of any logged in users
                 var matchingUsers = sessions.Values.Where(u => u.Username.StartsWith(pageMessageTargetUser)).ToList();
+                
+                //Check for exact match -- fixes MajorBBS bug!
+                var exactMatch = matchingUsers.FirstOrDefault(u => u.Username.Equals(pageMessageTargetUser, StringComparison.InvariantCultureIgnoreCase));
+                if (exactMatch != null)
+                {
+                    matchingUsers.Clear();
+                    matchingUsers.Add(exactMatch);
+                }
+                
+                //# of possible matches
                 var numberMatchingUsers = matchingUsers.Count();
                 
                 switch (numberMatchingUsers)
@@ -37,12 +49,15 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                     case 1:
                         var matchingSessionNumber = matchingUsers[0];
                         var matchingUserName = matchingSessionNumber.Username;
+                        
+                        //if inModule -- change to module name
+                        string currentUserOptionSelected;
+                        currentUserOptionSelected = sessions[channelNumber].SessionState == EnumSessionState.InModule ? sessions[channelNumber].CurrentModule.ModuleDescription : sessions[channelNumber].SessionState.ToString();
+                        
                         sessions[channelNumber].SendToClient($"|RESET|\r\n|B||YELLOW|... Paging {matchingUserName} ...|RESET|\r\n".EncodeToANSIArray());
-                        // TO DO: Need to pull module name, currently says "InModule" -- i think that might be the only condition, the rest wouldn't apply for messaging a signed in user
-                        sessions[matchingSessionNumber.Channel].SendToClient($"|RESET|\r\n|B||YELLOW|{pageMessageSourceUser} is paging you from {sessions[channelNumber].SessionState}: {pageMessageText}|RESET|\r\n".EncodeToANSIArray());
+                        sessions[matchingSessionNumber.Channel].SendToClient($"|RESET|\r\n|B||YELLOW|{pageMessageSourceUser} is paging you from {currentUserOptionSelected}: {pageMessageText}|RESET|\r\n".EncodeToANSIArray());
                         break;
                     default:
-                        //TO DO: Need to add an "IF" statement to check for exact matches, example: "themaniac" & "themaniac2" -- currently no way to message "themaniac" -- or is there another way?
                         sessions[channelNumber].SendToClient($"|RESET|\r\n|B||MAGENTA|Sorry, more then 1 user matches your input, please be more specific.|RESET|\r\n".EncodeToANSIArray());
                         break;
                 }
