@@ -1112,6 +1112,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 130:
                     cncwrd();
                     break;
+                case 133:
+                    cntrbtv();
+                    break;
+                case 469:
+                    pltile();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -7259,6 +7265,51 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
+        /// <summary>
+        ///     Returns the number of records within the current Btrieve file 
+        /// </summary>
+        private void cntrbtv()
+        {
+            var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
+            var currentBtrieve = BtrievePointerDictionaryNew[currentBtrieveFilePointer];
+
+            Registers.DX = (ushort)(currentBtrieve.LoadedFile.RecordLength >> 16);
+            Registers.AX = (ushort)(currentBtrieve.LoadedFile.RecordLength & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Phar-Lap Tiled Memory Allocation
+        ///
+        ///     Signature: int pltile(ULONG size, INT bsel, UINT stride, UINT tsize) 
+        /// </summary>
+        private void pltile()
+        {
+            var size = GetParameterLong(0);
+            var bsel = GetParameter(2);
+            var stride = GetParameter(3);
+            var tsize = GetParameter(4);
+
+            if(size > ushort.MaxValue)
+                throw new Exception("Allocation Exceeds Segment Size");
+
+            var realSegmentBase = Module.Memory.AllocateRealModeSegment();
+
+            /*
+             * There is some magic in PHAPI for mapping of protected-mode segments to real-mode
+             * memory addresses. It translates back that each tile is 8 segments apart.
+             * Because of this, we'll go ahead and reserve the # of tiles * 8. While this is technically
+             * an over allocation, it shouldn't hurt.
+            */
+            var numberOfSegments = (size / tsize) * 8;
+
+            for(var i = 0; i < numberOfSegments; i++)
+                Module.Memory.AllocateRealModeSegment(tsize);
+
+            _logger.Debug($"Allocated base {realSegmentBase} for {size} bytes ({numberOfSegments} segments)");
+
+            Registers.AX = realSegmentBase.Segment;
         }
 
     }
