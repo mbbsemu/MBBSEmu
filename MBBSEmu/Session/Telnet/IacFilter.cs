@@ -5,7 +5,8 @@ using System;
 namespace MBBSEmu.Session.Telnet
 {
     /// <summary>
-    ///     TODO
+    ///     Parses incoming client Telnet data and invokes the IacVerbReceived
+    ///     event when a verb is received.
     /// </summary>
     public class IacFilter
     {
