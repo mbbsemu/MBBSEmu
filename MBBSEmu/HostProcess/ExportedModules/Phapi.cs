@@ -84,7 +84,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     
+        ///     Because MajorBBS and Worldgroup run in Protected-Mode, this method allows modules to
+        ///     allocate memory in Real-Mode to be used by destination of Interrupt calls.
+        ///
+        ///     MBBSEmu exposes the entire 16-bit (4GB) address space to the module, so there is no difference
+        ///     between Real-Mode and Protected-Mode
         ///     
         ///     Signature: USHORT DosAllocRealSeg(ULONG size, PUSHORT parap, PSEL selp);
         ///                 typedef unsigned short _far *PSEL;
@@ -104,7 +108,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Allocating {segmentSize} in Real-Mode memory at {allocatedMemorySegment}");
 
             RealignStack(12);
-
 
             Registers.AX = 0;
 
@@ -178,6 +181,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     BtrievePointerDictionaryNew.Add(btvFileStructPointer, btvFile);
                                     Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
                                     Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName + '\0'));
+
+                                    //Set the active Btrieve file (BB) to the now open file
                                     Module.Memory.SetPointer("BB", btvFileStructPointer);
 
 #if DEBUG

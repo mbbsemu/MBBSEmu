@@ -7268,7 +7268,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Returns the number of records within the current Btrieve file 
+        ///     Returns the number of records within the current Btrieve file
+        ///
+        ///     Signature: long cntrbtv (void);
         /// </summary>
         private void cntrbtv()
         {

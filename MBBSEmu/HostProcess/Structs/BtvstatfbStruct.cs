@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 namespace MBBSEmu.HostProcess.Structs
 {
+    /// <summary>
+    ///     Struct for the buffer response from Btrieve STAT command
+    /// </summary>
     public class BtvstatfbStruct
     {
         /// <summary>
