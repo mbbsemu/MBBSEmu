@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Structs;
@@ -8,6 +8,9 @@ using MBBSEmu.Session;
 using System;
 using System.Linq;
 using System.Text;
+using Microsoft.Extensions.Configuration;
+using NLog;
+using MBBSEmu.IO;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -19,7 +22,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
-        internal Phapi(MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(module, channelDictionary)
+        internal Phapi(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
         }
 

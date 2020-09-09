@@ -1,6 +1,5 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -61,12 +60,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
 
-        private protected ExportedModuleBase(MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
+        private protected ExportedModuleBase(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
-            _logger = ServiceResolver.GetService<ILogger>();
-            _configuration = ServiceResolver.GetService<IConfiguration>();
-            _fileFinder = ServiceResolver.GetService<IFileUtility>();
-            _globalCache = ServiceResolver.GetService<IGlobalCache>();
+            _logger = logger;
+            _configuration = configuration;
+            _fileFinder = fileUtility;
+            _globalCache = globalCache;
 
             Module = module;
             ChannelDictionary = channelDictionary;

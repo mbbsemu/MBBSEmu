@@ -1,12 +1,10 @@
 ﻿using Iced.Intel;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -17,7 +15,7 @@ namespace MBBSEmu.CPU
     /// </summary>
     public class CpuCore : ICpuCore
     {
-        protected static readonly ILogger _logger;
+        protected readonly ILogger _logger;
 
         /// <summary>
         ///     Definition for delegate that is invoked with a CALL FAR references an Imported Method
@@ -28,7 +26,7 @@ namespace MBBSEmu.CPU
         public delegate ReadOnlySpan<byte> InvokeExternalFunctionDelegate(ushort importedNameTableOrdinal, ushort functionOrdinal);
 
         /// <summary>
-        ///     Delegate that is invoked with a CALL FAR references an Imported Method 
+        ///     Delegate that is invoked with a CALL FAR references an Imported Method
         /// </summary>
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
 
@@ -112,9 +110,9 @@ namespace MBBSEmu.CPU
         /// </summary>
         private IntPtr16 DiskTransferArea;
 
-        static CpuCore()
+        public CpuCore(ILogger logger)
         {
-            _logger = ServiceResolver.GetService<ILogger>();
+            _logger = logger;
         }
 
         public CpuCore() { }
@@ -133,7 +131,7 @@ namespace MBBSEmu.CPU
             _previousInstructionPointer = IntPtr16.Empty;
             _previousCallPointer = IntPtr16.Empty;
 
-            //Setup Delegate Call   
+            //Setup Delegate Call
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
             //Setup Memory Space

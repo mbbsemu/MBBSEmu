@@ -26,7 +26,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MbbsModule
     {
-        private protected readonly ILogger _logger = ServiceResolver.GetService<ILogger>();
+        private protected readonly ILogger _logger;
         private protected readonly IFileUtility _fileUtility;
 
         /// <summary>
@@ -134,9 +134,10 @@ namespace MBBSEmu.Module
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
+            _logger = logger;
             ModuleIdentifier = moduleIdentifier;
 
             //Sanitize and setup Path
@@ -169,7 +170,7 @@ namespace MBBSEmu.Module
                 var trimmedDll = Mdf.DLLFiles[0].Trim();
                 var neFile = fileUtility.FindFile(ModulePath, $"{trimmedDll}.DLL");
                 var fullNeFilePath = Path.Combine(ModulePath, neFile);
-                File = new NEFile(fullNeFilePath);
+                File = new NEFile(_logger, fullNeFilePath);
             }
 
             if (Mdf.MSGFiles.Count > 0)

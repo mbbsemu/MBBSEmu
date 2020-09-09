@@ -60,9 +60,9 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="fileName"></param>
         /// <param name="path"></param>
-        public BtrieveFileProcessor(string fileName, string path)
+        public BtrieveFileProcessor(IFileUtility fileUtility, string fileName, string path)
         {
-            _fileFinder = DependencyInjection.ServiceResolver.GetService<IFileUtility>();
+            _fileFinder = fileUtility;
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();

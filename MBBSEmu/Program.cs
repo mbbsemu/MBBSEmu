@@ -72,6 +72,8 @@ namespace MBBSEmu
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
 
+        private ServiceResolver _serviceResolver;
+
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -171,11 +173,11 @@ namespace MBBSEmu
                     }
                 }
 
-                ServiceResolver.Create(_settingsFileName ?? DefaultEmuSettingsFilename);
+                _serviceResolver = new ServiceResolver(_settingsFileName ?? DefaultEmuSettingsFilename);
 
-                _logger = ServiceResolver.GetService<ILogger>();
-                var config = ServiceResolver.GetService<IConfiguration>();
-                var fileUtility = ServiceResolver.GetService<IFileUtility>();
+                _logger = _serviceResolver.GetService<ILogger>();
+                var config = _serviceResolver.GetService<IConfiguration>();
+                var fileUtility = _serviceResolver.GetService<IFileUtility>();
 
                 //Database Reset
                 if (_doResetDatabase)
@@ -186,7 +188,7 @@ namespace MBBSEmu
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
 
-                    var resourceManager = ServiceResolver.GetService<IResourceManager>();
+                    var resourceManager = _serviceResolver.GetService<IResourceManager>();
 
                     File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
                 }
@@ -196,7 +198,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _moduleIdentifier, _modulePath));
+                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath));
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -207,7 +209,7 @@ namespace MBBSEmu
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, m["Identifier"], m["Path"]));
+                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]));
                     }
                 }
                 else
@@ -222,14 +224,14 @@ namespace MBBSEmu
                 {
                     foreach (var m in modules)
                     {
-                        var apiReport = new ApiReport(m);
+                        var apiReport = new ApiReport(_logger, m);
                         apiReport.GenerateReport();
                     }
                     return;
                 }
 
                 //Database Sanity Checks
-                var databaseFile = ServiceResolver.GetService<IConfiguration>()["Database.File"];
+                var databaseFile = _serviceResolver.GetService<IConfiguration>()["Database.File"];
                 if (string.IsNullOrEmpty(databaseFile))
                 {
                     _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
@@ -242,7 +244,7 @@ namespace MBBSEmu
                 }
 
                 //Setup and Run Host
-                var host = ServiceResolver.GetService<IMbbsHost>();
+                var host = _serviceResolver.GetService<IMbbsHost>();
                 foreach (var m in modules)
                     host.AddModule(m);
 
@@ -259,7 +261,7 @@ namespace MBBSEmu
                         return;
                     }
 
-                    var telnetService = ServiceResolver.GetService<ISocketServer>();
+                    var telnetService = _serviceResolver.GetService<ISocketServer>();
                     telnetService.Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
 
                     _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
@@ -286,7 +288,7 @@ namespace MBBSEmu
                         return;
                     }
 
-                    var rloginService = ServiceResolver.GetService<ISocketServer>();
+                    var rloginService = _serviceResolver.GetService<ISocketServer>();
                     rloginService.Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
 
                     _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
@@ -299,7 +301,7 @@ namespace MBBSEmu
                         foreach (var m in modules)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
-                            rloginService = ServiceResolver.GetService<ISocketServer>();
+                            rloginService = _serviceResolver.GetService<ISocketServer>();
                             rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
@@ -315,7 +317,7 @@ namespace MBBSEmu
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
                 if(_isConsoleSession)
-                    _ = new LocalConsoleSession("CONSOLE", host);
+                    _ = new LocalConsoleSession(_logger, "CONSOLE", host);
             }
             catch (Exception e)
             {
@@ -352,7 +354,7 @@ namespace MBBSEmu
         private void DatabaseReset()
         {
             _logger.Info("Resetting Database...");
-            var acct = ServiceResolver.GetService<IAccountRepository>();
+            var acct = _serviceResolver.GetService<IAccountRepository>();
             if (acct.TableExists())
                 acct.DropTable();
             acct.CreateTable();
@@ -381,7 +383,7 @@ namespace MBBSEmu
             var sysopUserId = acct.InsertAccount("sysop", _newSysopPassword, "sysop@mbbsemu.com");
             var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
 
-            var keys = ServiceResolver.GetService<IAccountKeyRepository>();
+            var keys = _serviceResolver.GetService<IAccountKeyRepository>();
 
             if (keys.TableExists())
                 keys.DropTable();
