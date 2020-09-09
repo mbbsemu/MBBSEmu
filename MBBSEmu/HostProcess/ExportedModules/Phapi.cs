@@ -2,15 +2,15 @@ using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using Microsoft.Extensions.Configuration;
+using NLog;
 using System;
 using System.Linq;
 using System.Text;
-using Microsoft.Extensions.Configuration;
-using NLog;
-using MBBSEmu.IO;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -168,7 +168,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 {
                                     //Get the File Name to oPen
                                     var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvda.keyseg, 0, true));
-                                    var btvFile = new BtrieveFileProcessor(fileName, Module.ModulePath);
+                                    var btvFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
 
                                     //Setup Pointers
                                     var btvFileStructPointer = new IntPtr16(btvda.posblkseg, btvda.posblkoff);
