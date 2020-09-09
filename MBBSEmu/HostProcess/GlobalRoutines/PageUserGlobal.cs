@@ -54,7 +54,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                     var pageMatchingSessionNumber = pageMatchingUsers[0];
                     var pageMatchingUserName = pageMatchingSessionNumber.Username;
                         
-                    //if inModule -- change to module name or friendly main menu
+                    //if inModule -- change to module name
                     string currentUserOptionSelected;
                     currentUserOptionSelected = sessions[channelNumber].SessionState == EnumSessionState.InModule ? sessions[channelNumber].CurrentModule.ModuleDescription : sessions[channelNumber].SessionState.ToString();
                         
