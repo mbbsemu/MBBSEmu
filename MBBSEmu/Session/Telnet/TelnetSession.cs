@@ -20,12 +20,40 @@ namespace MBBSEmu.Session.Telnet
         private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
 
         //Tracks Responses We've already sent -- prevents looping
-        private readonly List<IacResponse> _iacSentResponses = new List<IacResponse>();
+        private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
+
+        private class TelnetOptionsValue {
+            public bool Local { get; set; }
+            public bool Remote { get; set; }
+
+            public EnumIacVerbs GetLocalStatusVerb()
+            {
+                return Local ? EnumIacVerbs.WILL : EnumIacVerbs.WONT;
+            }
+
+            public EnumIacVerbs GetRemoteCommandVerb()
+            {
+                return Remote ? EnumIacVerbs.DO : EnumIacVerbs.DONT;
+            }
+        }
+
+        private readonly Dictionary<EnumIacOptions, TelnetOptionsValue> _localOptions =
+            new Dictionary<EnumIacOptions, TelnetOptionsValue>()
+            {
+                {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue() { Local = true, Remote = true}},
+                {EnumIacOptions.Echo, new TelnetOptionsValue() { Local = true, Remote = false}},
+                {EnumIacOptions.SuppressGoAhead, new TelnetOptionsValue() { Local = true, Remote = true}},
+            };
+
+        private readonly IacFilter _iacFilter;
 
         public TelnetSession(ILogger logger, Socket telnetConnection) : base(logger, telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;
+
+            _iacFilter = new IacFilter(logger);
+            _iacFilter.IacVerbReceived += OnIacVerbReceived;
         }
 
         public override void Start()
@@ -94,14 +122,7 @@ namespace MBBSEmu.Session.Telnet
 
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
-            //Process if it's an IAC command
-            if (clientData[0] == 0xFF)
-            {
-                ParseIAC(_socketReceiveBuffer);
-                return (null, 0);
-            }
-
-            return (clientData, bytesReceived);
+            return _iacFilter.ProcessIncomingClientData(clientData, bytesReceived);
         }
 
         /// <summary>
@@ -112,177 +133,64 @@ namespace MBBSEmu.Session.Telnet
             base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
         }
 
-        /// <summary>
-        ///     Parses IAC Commands Received by
-        /// </summary>
-        /// <param name="iacResponse"></param>
-        private void ParseIAC(ReadOnlySpan<byte> iacResponse)
+        private void AddInitialNegotations(HashSet<IacResponse> responses)
         {
-            var _iacResponses = new List<IacResponse>();
-
-            for (var i = 0; i < iacResponse.Length; i += 3)
+            foreach(KeyValuePair<EnumIacOptions, TelnetOptionsValue> entry in _localOptions)
             {
-                if (iacResponse[i] == 0)
-                    break;
+                responses.Add(new IacResponse(entry.Value.GetLocalStatusVerb(), entry.Key));
+                responses.Add(new IacResponse(entry.Value.GetRemoteCommandVerb(), entry.Key));
+            }
+        }
 
-                if (iacResponse[i] != 0xFF)
-                    throw new Exception("Invalid IAC?");
+        private void OnIacVerbReceived(object sender, IacFilter.IacVerbReceivedEventArgs args)
+        {
+            var iacResponses = new HashSet<IacResponse>();
 
-                var iacVerb = (EnumIacVerbs)iacResponse[i + 1];
-                var iacOption = (EnumIacOptions)iacResponse[i + 2];
+            _logger.Debug($">> Channel {Channel}: IAC {args.Verb} {args.Option}");
 
-                _logger.Info($">> Channel {Channel}: IAC {iacVerb} {iacOption}");
-
-                switch (iacOption)
+            if (_localOptions.TryGetValue(args.Option, out var localOptionsValue))
+            {
+                // we support this, and we're hard coded, so tell client to back off and listen to
+                // us
+                iacResponses.Add(new IacResponse(localOptionsValue.GetLocalStatusVerb(), args.Option));
+                if (args.Verb == EnumIacVerbs.WILL || args.Verb == EnumIacVerbs.WONT)
                 {
-                    case EnumIacOptions.BinaryTransmission:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
-                                    break;
-                                case EnumIacVerbs.DO:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.Echo:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.DO:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.NegotiateAboutWindowSize:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT,
-                                        EnumIacOptions.NegotiateAboutWindowSize));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.TerminalSpeed:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalSpeed));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.TerminalType:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.TerminalType));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.EnvironmentOption:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, EnumIacOptions.EnvironmentOption));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
-                    case EnumIacOptions.SuppressGoAhead:
-                        {
-                            switch (iacVerb)
-                            {
-                                case EnumIacVerbs.WILL:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.SuppressGoAhead));
-                                    break;
-                                case EnumIacVerbs.DO:
-                                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.SuppressGoAhead));
-                                    break;
-                                default:
-                                    _logger.Warn($"Unhandled IAC Verb fpr {iacOption}: {iacVerb}");
-                                    break;
-                            }
-
-                            break;
-                        }
+                    iacResponses.Add(new IacResponse(localOptionsValue.GetRemoteCommandVerb(), args.Option));
                 }
+            }
+            else
+            {
+                // not supported, just return that we WONT do this
+                iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, args.Option));
             }
 
             //In the 1st phase of IAC negotiation, ensure the required items are being negotiated
             if (_iacPhase == 0)
             {
-                if (_iacResponses.All(x => x.Option != EnumIacOptions.BinaryTransmission))
-                {
-                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission));
-                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.BinaryTransmission));
-                }
-
-                if (_iacResponses.All(x => x.Option != EnumIacOptions.Echo))
-                {
-                    _iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, EnumIacOptions.Echo));
-                    _iacResponses.Add(new IacResponse(EnumIacVerbs.WILL, EnumIacOptions.Echo));
-                }
-
+                AddInitialNegotations(iacResponses);
             }
 
             _iacPhase++;
 
-            using var msIacToSend = new MemoryStream();
-            foreach (var resp in _iacResponses)
+            if (iacResponses.Count == 0)
             {
-                //Prevent Duplicate Responses
-                if (!_iacSentResponses.Any(x => x.Verb == resp.Verb && x.Option == resp.Option))
+                return;
+            }
+
+            using var msIacToSend = new MemoryStream();
+            foreach (var resp in iacResponses)
+            {
+                if (_iacSentResponses.Add(resp))
                 {
-                    _iacSentResponses.Add(resp);
-                    _logger.Info($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option}");
+                    _logger.Debug($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option}");
                     msIacToSend.Write(resp.ToArray());
-                }
-                else
-                {
-                    _logger.Info($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option} (Ignored, Duplicate)");
                 }
             }
 
-            if (msIacToSend.Length == 0)
-                return;
-
-            base.Send(msIacToSend.ToArray());
+            if (msIacToSend.Length > 0)
+            {
+                base.Send(msIacToSend.ToArray());
+            }
         }
     }
 }
