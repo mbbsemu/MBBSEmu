@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class errcod_Tests : MajorbbsTestBase
+    public class errcod_Tests : ExportedModuleTestBase
     {
         private const int ERRCOD_ORDINAL = 193;
 
@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(ERRCOD_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ERRCOD_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var returnedPointer = ExecutePropertyTest(ERRCOD_ORDINAL);

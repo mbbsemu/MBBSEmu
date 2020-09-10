@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class atol_Tests : MajorbbsTestBase
+    public class atol_Tests : ExportedModuleTestBase
     {
         private const int ATOL_ORDINAL = 77;
 
@@ -33,7 +33,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort) (input.Length + 1));
             mbbsEmuMemoryCore.SetArray(inputStringPointer, Encoding.ASCII.GetBytes(input));
 
-            ExecuteApiTest(ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
             
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);

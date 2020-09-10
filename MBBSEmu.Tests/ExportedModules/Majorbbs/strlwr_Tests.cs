@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strlwr_Tests : MajorbbsTestBase
+    public class strlwr_Tests : ExportedModuleTestBase
     {
         private const int STRLWR_ORDINAL = 579;
 
@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(STRLWR_ORDINAL, new List<IntPtr16> { string1Pointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRLWR_ORDINAL, new List<IntPtr16> { string1Pointer });
 
             //Verify Results
             Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("STRLWR", true)));
@@ -47,7 +47,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(STRLWR_ORDINAL, new List<IntPtr16> { string1Pointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRLWR_ORDINAL, new List<IntPtr16> { string1Pointer });
 
             //Verify Results
             Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("STRLWR", true)));

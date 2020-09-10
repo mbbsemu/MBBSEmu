@@ -9,14 +9,14 @@ namespace MBBSEmu.Session
 {
     public class TestSession : SessionBase
     {
-        private BlockingCollection<byte> _data = new BlockingCollection<byte>();
+        private readonly BlockingCollection<byte> _data = new BlockingCollection<byte>();
 
         public TestSession(IMbbsHost host) : base("test")
         {
             SendToClientMethod = Send;
             OutputEnabled = true;
 
-            CurrentModule = host.GetModule("MBBSEMU");
+            CurrentModule = host?.GetModule("MBBSEMU");
 
             SessionType = EnumSessionType.Test;
             SessionState = EnumSessionState.EnteringModule;

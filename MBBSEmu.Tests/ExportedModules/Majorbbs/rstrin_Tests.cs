@@ -7,7 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class rstrin_Tests : MajorbbsTestBase
+    public class rstrin_Tests : ExportedModuleTestBase
     {
         private const ushort RSTRIN_ORDINAL = 511;
 
@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
             mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
 
-            ExecuteApiTest(RSTRIN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RSTRIN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             //Simulate rstrin by replacing nulls with spaces, ensuring last character is null
