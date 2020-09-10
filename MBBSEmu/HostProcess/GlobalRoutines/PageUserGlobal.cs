@@ -14,11 +14,11 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
     {
         public bool ProcessCommand(byte[] command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
         {
-            var commandString = Encoding.ASCII.GetString(command).TrimEnd('\0');
-            
             //Check minimum length for a /p command else exit
-            if(commandString.Length < 6) return false;
+            if(command.Length < 6) return false;
             
+            var commandString = Encoding.ASCII.GetString(command).TrimEnd('\0');
+
             //Check if command begins with "/p" and make sure there are at least 2 spaces
             if (!commandString.StartsWith("/P", StringComparison.InvariantCultureIgnoreCase) ||
                 commandString.Count(c => c == ' ') <= 1) return false;
