@@ -40,10 +40,10 @@ namespace MBBSEmu.Tests.Session.Telnet
         public void BasicTelnetStripping()
         {
             byte[] iac = {
-                (byte) 0xFF, (byte) 0xFB, 0x01,
-                (byte) 0xFF, (byte) 0xFC, 0x01,
-                (byte) 0xFF, (byte) 0xFD, 0x01,
-                (byte) 0xFF, (byte) 0xFE, 0x01,
+                0xFF, 0xFB, 0x01,
+                0xFF, 0xFC, 0x01,
+                0xFF, 0xFD, 0x01,
+                0xFF, 0xFE, 0x01,
             };
             var expectedString = "This is a test of the emergency system";
 
@@ -62,18 +62,8 @@ namespace MBBSEmu.Tests.Session.Telnet
         public void BasicTelnetOptionsStripping()
         {
             byte[] iacWithOptions = {
-                0xFF,
-                0xFB,
-                0x01,
-                0xFF,
-                0xFA,
-                0x1F,
-                0x00,
-                0x50,
-                0x00,
-                0x18,
-                0xFF,
-                0xF0
+                0xFF, 0xFB, 0x01,
+                0xFF, 0xFA, 0x1F, 0x00, 0x50, 0x00, 0x18, 0xFF, 0xF0
             };
             var expectedString = "This is a test of the emergency system";
 
