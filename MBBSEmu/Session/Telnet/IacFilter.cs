@@ -12,10 +12,10 @@ namespace MBBSEmu.Session.Telnet
     {
         private readonly ILogger _logger;
 
-        private const byte IAC = (byte) 0xFF;
+        private const byte IAC = 0xFF;
 
-        private const byte SB = (byte) 0xFA;
-        private const byte SE = (byte) 0xF0;
+        private const byte SB = 0xFA;
+        private const byte SE = 0xF0;
 
         private enum ParseState {
             Normal,
@@ -48,46 +48,39 @@ namespace MBBSEmu.Session.Telnet
         {
             _memoryStream.SetLength(0);
 
-            for (int i = 0; i < bytesReceived; ++i)
+            for (var i = 0; i < bytesReceived; ++i)
             {
-                process(clientData[i]);
+                Process(clientData[i]);
             }
 
             return (_memoryStream.GetBuffer(), (int)_memoryStream.Length);
         }
 
-        private void process(byte b)
+        private void Process(byte b)
         {
         switch (_parseState) {
+            case ParseState.Normal when b == IAC:
+                _parseState = ParseState.FoundIAC;
+                break;
             case ParseState.Normal:
-                if (b == IAC)
-                {
-                    _parseState = ParseState.FoundIAC;
-                }
-                else
-                {
-                    _memoryStream.WriteByte(b);
-                }
+                _memoryStream.WriteByte(b);
+                break;
+            case ParseState.FoundIAC when b == SB:
+                _parseState = ParseState.SBStart;
+                break;
+            case ParseState.FoundIAC when b == (byte)EnumIacVerbs.WILL:
+            case ParseState.FoundIAC when b == (byte)EnumIacVerbs.WONT:
+            case ParseState.FoundIAC when b == (byte)EnumIacVerbs.DO:
+            case ParseState.FoundIAC when b == (byte)EnumIacVerbs.DONT:
+                _currentVerb = (EnumIacVerbs) b;
+                _parseState = ParseState.IACCommand;
+                break;
+            case ParseState.FoundIAC when b == IAC:
+                // special escape sequence
+                _memoryStream.WriteByte(b);
                 break;
             case ParseState.FoundIAC:
-                if (b == SB)
-                {
-                    _parseState = ParseState.SBStart;
-                }
-                else if (b == (byte)EnumIacVerbs.WILL || b == (byte)EnumIacVerbs.WONT || b == (byte)EnumIacVerbs.DO || b == (byte)EnumIacVerbs.DONT)
-                {
-                    _currentVerb = (EnumIacVerbs) b;
-                    _parseState = ParseState.IACCommand;
-                }
-                else if (b == IAC)
-                {
-                     // special escape sequence
-                    _memoryStream.WriteByte(b);
-                }
-                else
-                {
-                    _parseState = ParseState.Normal;
-                }
+                _parseState = ParseState.Normal;
                 break;
             case ParseState.IACCommand:
                 IacVerbReceived?.Invoke(this, new IacVerbReceivedEventArgs()
@@ -100,21 +93,14 @@ namespace MBBSEmu.Session.Telnet
             case ParseState.SBStart:
                 _parseState = ParseState.SBValue;
                 break;
-            case ParseState.SBValue:
-                if (b == IAC)
-                {
-                    _parseState = ParseState.SBIAC;
-                }
+            case ParseState.SBValue when b == IAC:
+                _parseState = ParseState.SBIAC;
+                break;
+            case ParseState.SBIAC when b == SE:
+                _parseState = ParseState.Normal;
                 break;
             case ParseState.SBIAC:
-                if (b == SE)
-                {
-                    _parseState = ParseState.Normal;
-                }
-                else
-                {
-                    _parseState = ParseState.SBValue;
-                }
+                _parseState = ParseState.SBValue;
                 break;
             }
         }

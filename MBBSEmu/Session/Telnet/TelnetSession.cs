@@ -26,23 +26,17 @@ namespace MBBSEmu.Session.Telnet
             public bool Local { get; set; }
             public bool Remote { get; set; }
 
-            public EnumIacVerbs GetLocalStatusVerb()
-            {
-                return Local ? EnumIacVerbs.WILL : EnumIacVerbs.WONT;
-            }
+            public EnumIacVerbs GetLocalStatusVerb() => Local ? EnumIacVerbs.WILL : EnumIacVerbs.WONT;
 
-            public EnumIacVerbs GetRemoteCommandVerb()
-            {
-                return Remote ? EnumIacVerbs.DO : EnumIacVerbs.DONT;
-            }
+            public EnumIacVerbs GetRemoteCommandVerb() => Remote ? EnumIacVerbs.DO : EnumIacVerbs.DONT;
         }
 
         private readonly Dictionary<EnumIacOptions, TelnetOptionsValue> _localOptions =
             new Dictionary<EnumIacOptions, TelnetOptionsValue>()
             {
-                {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue() { Local = true, Remote = true}},
-                {EnumIacOptions.Echo, new TelnetOptionsValue() { Local = true, Remote = false}},
-                {EnumIacOptions.SuppressGoAhead, new TelnetOptionsValue() { Local = true, Remote = true}},
+                {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue { Local = true, Remote = true}},
+                {EnumIacOptions.Echo, new TelnetOptionsValue { Local = true, Remote = false}},
+                {EnumIacOptions.SuppressGoAhead, new TelnetOptionsValue { Local = true, Remote = true}},
             };
 
         private readonly IacFilter _iacFilter;
@@ -133,9 +127,9 @@ namespace MBBSEmu.Session.Telnet
             base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
         }
 
-        private void AddInitialNegotations(HashSet<IacResponse> responses)
+        private void AddInitialNegotiations(HashSet<IacResponse> responses)
         {
-            foreach(KeyValuePair<EnumIacOptions, TelnetOptionsValue> entry in _localOptions)
+            foreach(var entry in _localOptions)
             {
                 responses.Add(new IacResponse(entry.Value.GetLocalStatusVerb(), entry.Key));
                 responses.Add(new IacResponse(entry.Value.GetRemoteCommandVerb(), entry.Key));
@@ -167,7 +161,7 @@ namespace MBBSEmu.Session.Telnet
             //In the 1st phase of IAC negotiation, ensure the required items are being negotiated
             if (_iacPhase == 0)
             {
-                AddInitialNegotations(iacResponses);
+                AddInitialNegotiations(iacResponses);
             }
 
             _iacPhase++;
