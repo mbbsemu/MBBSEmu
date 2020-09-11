@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strlen_Tests : MajorbbsTestBase
+    public class strlen_Tests : ExportedModuleTestBase
     {
         private const int STRLEN_ORDINAL = 578;
 
@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(STRLEN_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRLEN_ORDINAL, new List<IntPtr16> { stringPointer });
 
             //Verify Results
             Assert.Equal(mbbsEmuCpuRegisters.AX, expectedLength);

@@ -214,6 +214,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 26:
                     btulok();
                     break;
+                case 22:
+                    btuinp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -956,6 +959,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             channel.InputLockout = onoff == 1;
 
+        }
+
+        /// <summary>
+        ///     Input from a channel (ASCIIZ string)
+        ///
+        ///     Copies the entire input command from the input buffer to the specified destination pointer.
+        ///     The information in the Input Buffer is then cleared.
+        ///
+        ///     The line terminator for the command is replaced by a NULL (\0), but since we don't write the newline
+        ///     in SessionBase, we just NULL terminate the input.
+        ///
+        ///     Signature: void chiinp(int chan,char c);
+        /// </summary>
+        private void btuinp()
+        {
+            var channelNumber  = GetParameter(0);
+            var destinationPointer = GetParameterPointer(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            //Write to Destination
+            Registers.AX = (ushort)channel.InputBuffer.Length;
+            channel.InputBuffer.WriteByte(0); //NULL Terminate
+            Module.Memory.SetArray(destinationPointer, channel.InputBuffer.ToArray());
+
+            //Clear the Buffer
+            channel.InputBuffer.SetLength(0);
         }
     }
 }

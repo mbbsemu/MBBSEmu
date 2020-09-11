@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class cncyesno_Tests : MajorbbsTestBase
+    public class cncyesno_Tests : ExportedModuleTestBase
     {
 
         private const int CNCYESNO_ORDINAL = 131;
@@ -44,7 +44,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(CNCYESNO_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCYESNO_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var expectedResultPointer = mbbsEmuMemoryCore.GetVariablePointer("INPUT");

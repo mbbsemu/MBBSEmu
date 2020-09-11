@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class stricmp_Tests : MajorbbsTestBase
+    public class stricmp_Tests : ExportedModuleTestBase
     {
         private const int STRICMP_ORDINAL = 576;
 
@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(str2Pointer, Encoding.ASCII.GetBytes(b));
 
             //Execute Test
-            ExecuteApiTest(STRICMP_ORDINAL, new List<IntPtr16> {str1Pointer, str2Pointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRICMP_ORDINAL, new List<IntPtr16> {str1Pointer, str2Pointer});
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }

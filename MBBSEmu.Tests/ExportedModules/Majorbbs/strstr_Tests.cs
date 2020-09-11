@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strstr_Tests : MajorbbsTestBase
+    public class strstr_Tests : ExportedModuleTestBase
     {
         private const int STRSTR_ORDINAL = 584;
 
@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("STRING2", Encoding.ASCII.GetBytes(string2));
 
             //Execute Test
-            ExecuteApiTest(STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
 
             //Verify Results
             if (expectedOffset < 0) {

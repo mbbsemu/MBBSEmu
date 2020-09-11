@@ -7,7 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class parsin_Tests : MajorbbsTestBase
+    public class parsin_Tests : ExportedModuleTestBase
     {
         private const ushort PARSIN_ORDINAL = 467;
 
@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
             mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
 
-            ExecuteApiTest(PARSIN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PARSIN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var expectedParsedInput = Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0'));

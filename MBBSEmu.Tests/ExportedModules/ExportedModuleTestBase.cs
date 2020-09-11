@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
@@ -7,46 +10,69 @@ using MBBSEmu.Module;
 using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace MBBSEmu.Tests.ExportedModules.Majorbbs
+namespace MBBSEmu.Tests.ExportedModules
 {
-    public abstract class MajorbbsTestBase : TestBase
+    public abstract class ExportedModuleTestBase : TestBase
     {
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
-        protected const ushort LIBRARY_SEGMENT = HostProcess.ExportedModules.Majorbbs.Segment;
 
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
-
+        protected HostProcess.ExportedModules.Galgsbl galgsbl;
+        protected PointerDictionary<SessionBase> testSessions;
         protected ServiceResolver _serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
-        protected MajorbbsTestBase()
+        protected ExportedModuleTestBase()
         {
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, string.Empty, mbbsEmuMemoryCore);
+
+            testSessions = new PointerDictionary<SessionBase>();
+            testSessions.Allocate(new TestSession(null));
+
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<IConfiguration>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                new PointerDictionary<SessionBase>());
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
+                testSessions);
+
+            galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                testSessions);
+
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate);
         }
 
-        private ReadOnlySpan<byte> MajorbbsFunctionDelegate(ushort ordinal, ushort functionOrdinal)
+        private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {
-            majorbbs.SetRegisters(mbbsEmuCpuRegisters);
-            return majorbbs.Invoke(functionOrdinal, /* offsetsOnly= */ false);
+            switch (ordinal)
+            {
+                case HostProcess.ExportedModules.Majorbbs.Segment:
+                    {
+                        majorbbs.SetRegisters(mbbsEmuCpuRegisters);
+                        return majorbbs.Invoke(functionOrdinal, offsetsOnly: false);
+                    }
+                case HostProcess.ExportedModules.Galgsbl.Segment:
+                    {
+                        galgsbl.SetRegisters(mbbsEmuCpuRegisters);
+                        return galgsbl.Invoke(functionOrdinal, offsetsOnly: false);
+                    }
+                default:
+                    throw new Exception($"Unsupported Exported Module Segment: {ordinal}");
+            }
         }
 
         protected void Reset()
@@ -57,6 +83,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuCpuRegisters.CS = CODE_SEGMENT;
             mbbsEmuCpuRegisters.IP = 0;
 
+            testSessions = new PointerDictionary<SessionBase>();
+            testSessions.Allocate(new TestSession(null));
+
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<ILogger>(),
@@ -64,15 +93,24 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                new PointerDictionary<SessionBase>());
+                testSessions);
+
+            galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<IFileUtility>(),
+                _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule,
+                testSessions);
         }
 
         /// <summary>
         ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
         /// </summary>
+        /// <param name="exportedModuleSegment"></param>
         /// <param name="apiOrdinal"></param>
         /// <param name="apiArguments"></param>
-        protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<ushort> apiArguments)
+        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
             if (!mbbsEmuMemoryCore.HasSegment(STACK_SEGMENT))
             {
@@ -89,7 +127,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 Ordinal = CODE_SEGMENT,
                 //Create a new CODE Segment with a
                 //simple ASM call for CALL FAR librarySegment:apiOrdinal
-                Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(LIBRARY_SEGMENT & 0xFF), (byte)(LIBRARY_SEGMENT >> 8), },
+                Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(exportedModuleSegment & 0xFF), (byte)(exportedModuleSegment >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
             mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
@@ -109,9 +147,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         /// <summary>
         ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
         /// </summary>
+        /// <param name="exportedModuleSegment"></param>
         /// <param name="apiOrdinal"></param>
         /// <param name="apiArguments"></param>
-        protected void ExecuteApiTest(ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
+        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
         {
             var argumentsList = new List<ushort>(apiArguments.Count() * 2);
 
@@ -121,7 +160,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 argumentsList.Add(a.Segment);
             }
 
-            ExecuteApiTest(apiOrdinal, argumentsList);
+            ExecuteApiTest(exportedModuleSegment, apiOrdinal, argumentsList);
         }
 
         /// <summary>
