@@ -354,15 +354,3 @@ MigrationBackup/
 
 # VSCode working folder
 .vscode/
-.idea/.idea.MBBSEmu/.idea/.name
-.idea/.idea.MBBSEmu/.idea/contentModel.xml
-.idea/.idea.MBBSEmu/.idea/encodings.xml
-.idea/.idea.MBBSEmu/.idea/indexLayout.xml
-.idea/.idea.MBBSEmu/.idea/modules.xml
-.idea/.idea.MBBSEmu/.idea/projectSettingsUpdater.xml
-.idea/.idea.MBBSEmu/.idea/vcs.xml
-.idea/.idea.MBBSEmu/.idea/workspace.xml
-.idea/.idea.MBBSEmu/riderModule.iml
-MBBSEmu/BBSGEN.DAT
-MBBSEmu/BBSGEN.EMU
-MBBSEmu/mbbsemu.db
