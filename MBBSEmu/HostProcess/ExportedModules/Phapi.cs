@@ -1,11 +1,16 @@
-﻿using System;
+using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
+using System;
+using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -36,8 +41,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
+                case 49:
+                    DosRealIntr();
+                    break;
                 case 16:
-                    DosCreatedAlias();
+                    DosAllocRealSeg();
                     break;
 
                 default:
@@ -77,6 +85,159 @@ namespace MBBSEmu.HostProcess.ExportedModules
             RealignStack(6);
 
             Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Because MajorBBS and Worldgroup run in Protected-Mode, this method allows modules to
+        ///     allocate memory in Real-Mode to be used by destination of Interrupt calls.
+        ///
+        ///     MBBSEmu exposes the entire 16-bit (4GB) address space to the module, so there is no difference
+        ///     between Real-Mode and Protected-Mode
+        ///     
+        ///     Signature: USHORT DosAllocRealSeg(ULONG size, PUSHORT parap, PSEL selp);
+        ///                 typedef unsigned short _far *PSEL;
+        ///                 typedef unsigned short _far *PUSHORT;
+        /// </summary>
+        private void DosAllocRealSeg()
+        {
+            var selector = GetParameterPointer(0);
+            var segment = GetParameterPointer(2);
+            var segmentSize = GetParameterLong(4);
+
+            var allocatedMemorySegment = Module.Memory.AllocateRealModeSegment();
+
+            Module.Memory.SetWord(selector, allocatedMemorySegment.Segment);
+            Module.Memory.SetWord(segment, allocatedMemorySegment.Segment);
+
+            _logger.Info($"Allocating {segmentSize} in Real-Mode memory at {allocatedMemorySegment}");
+
+            RealignStack(12);
+
+            Registers.AX = 0;
+
+        }
+
+        /// <summary>
+        ///     Generates a Real Mode Interrupt from Protected Mode
+        ///
+        ///     Allows for calling/passing information to TSR's running in real mode. This is used by some MajorBBS modules
+        ///     for directly accessing the Btrieve Driver
+        /// </summary>
+        private void DosRealIntr()
+        {
+            var interruptNumber = GetParameter(0);
+            var registerPointer = GetParameterPointer(1);
+            var reserved = GetParameter(3); //Must Be Zero
+            var wordCount = GetParameter(4); //Count of word arguments on stack
+
+            var regs = new Regs16Struct(Module.Memory.GetArray(registerPointer, Regs16Struct.Size).ToArray());
+
+            switch (interruptNumber)
+            {
+                case 0x21: //INT 21h Call
+
+                    switch (regs.AX >> 8) //INT 21h Function
+                    {
+                        case 0x35: //Get Interrupt Vector
+                            {
+                                switch ((byte)(regs.AX & 0xFF))
+                                {
+                                    case 0x7B: //Btrieve Vector
+                                        {
+                                            //Modules will use this vector to see if Btrieve is running
+                                            regs.BX = 0x33;
+                                            break;
+                                        }
+                                    default:
+                                        throw new Exception($"Unknown Interrupt Vector: {(byte)(regs.AX & 0xFF):X2}h");
+                                }
+
+                                break;
+                            }
+                        default:
+                            throw new Exception($"Unknown INT 21h Function: {regs.AX >> 8:X2}h");
+                    }
+                    break;
+                case 0x7B: //Btrieve Interrupt
+                    {
+                        var btvda = new BtvdatStruct(Module.Memory.GetArray(regs.DS, 0, BtvdatStruct.Size));
+
+                        switch ((EnumBtrieveOperationCodes)btvda.funcno)
+                        {
+                            case EnumBtrieveOperationCodes.Open:
+                                {
+                                    //Get the File Name to oPen
+                                    var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvda.keyseg, 0, true));
+                                    var btvFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
+
+                                    //Setup Pointers
+                                    var btvFileStructPointer = new IntPtr16(btvda.posblkseg, btvda.posblkoff);
+                                    var btvFileNamePointer =
+                                        Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
+                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", btvFile.LoadedFile.RecordLength);
+
+                                    var newBtvStruct = new BtvFileStruct
+                                    {
+                                        filenam = btvFileNamePointer,
+                                        reclen = btvFile.LoadedFile.RecordLength,
+                                        data = btvDataPointer
+                                    };
+                                    BtrievePointerDictionaryNew.Add(btvFileStructPointer, btvFile);
+                                    Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
+                                    Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName + '\0'));
+
+                                    //Set the active Btrieve file (BB) to the now open file
+                                    Module.Memory.SetPointer("BB", btvFileStructPointer);
+
+#if DEBUG
+                                    _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
+#endif
+
+                                    Registers.AX = 0;
+                                    break;
+                                }
+                            case EnumBtrieveOperationCodes.Stat:
+                                {
+                                    var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
+                                    var btvStats = new BtvstatfbStruct
+                                    {
+                                        fs = new BtvfilespecStruct()
+                                        {
+                                            numofr = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.RecordCount,
+                                            numofx = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.KeyCount,
+                                            pagsiz = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.PageLength,
+                                            reclen = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.RecordLength
+                                        }
+                                    };
+
+                                    var definedKeys = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.Keys.Values.Select(k =>
+                                        new BtvkeyspecStruct()
+                                        {
+                                            flags = (ushort)k.Segments[0].Attributes,
+                                            keylen = k.Segments[0].Length,
+                                            keypos = k.Segments[0].Position,
+                                            numofk = k.Segments[0].Number
+                                        }).ToList();
+                                    btvStats.keyspec = definedKeys.ToArray();
+
+                                    Module.Memory.SetArray(btvda.databufsegment, btvda.databufoffset, btvStats.Data);
+                                    Registers.AX = 0;
+                                    break;
+                                }
+                            case EnumBtrieveOperationCodes.SetOwner: //Ignore
+                                Registers.AX = 0;
+                                break;
+                            default:
+                                throw new Exception($"Unknown Btrieve Operation: {(EnumBtrieveOperationCodes)btvda.funcno}");
+                        }
+
+                        break;
+                    }
+                default:
+                    throw new Exception($"Unhandled Interrupt: {interruptNumber:X2}h");
+            }
+
+            Module.Memory.SetArray(registerPointer, regs.Data);
         }
 
     }

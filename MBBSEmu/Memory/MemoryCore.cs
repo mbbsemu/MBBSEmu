@@ -23,8 +23,10 @@ namespace MBBSEmu.Memory
         private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
 
         private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
-        private readonly IntPtr16 _currentVariablePointer;
-        private const ushort VARIABLE_BASE = 0x100;
+        private IntPtr16 _currentVariablePointer;
+        private const ushort VARIABLE_BASE_SEGMENT = 0x100; //0x100*0xFFFF == 16MB memory space for variables
+        private IntPtr16 _currentRealModePointer;
+        private const ushort REALMODE_BASE_SEGMENT = 0x200;
 
         private ushort _currentCodeSegment;
         private Dictionary<ushort, Instruction> _currentCodeSegmentInstructions;
@@ -37,8 +39,8 @@ namespace MBBSEmu.Memory
             _segments = new Dictionary<ushort, Segment>();
             _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
             _variablePointerDictionary = new Dictionary<string, IntPtr16>();
-            _currentVariablePointer = new IntPtr16(VARIABLE_BASE, 0);
-
+            _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
+            _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
             _bigMemoryBlocks = new PointerDictionary<Dictionary<ushort, IntPtr16>>();
 
             //Add Segment 0 by default, stack segment
@@ -54,8 +56,8 @@ namespace MBBSEmu.Memory
             _segments.Clear();
             _decompiledSegments.Clear();
             _variablePointerDictionary.Clear();
-            _currentVariablePointer.Segment = VARIABLE_BASE;
-            _currentVariablePointer.Offset = 0;
+            _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
+            _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
         }
 
         /// <summary>
@@ -565,5 +567,17 @@ namespace MBBSEmu.Memory
         /// <param name="index"></param>
         /// <returns></returns>
         public IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index) => _bigMemoryBlocks[block.Offset][index];
+
+        /// <summary>
+        ///     Returns a newly allocated Segment in "Real Mode" memory
+        /// </summary>
+        /// <returns></returns>
+        public IntPtr16 AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue)
+        {
+            _currentRealModePointer.Segment++;
+            var realModeSegment = new IntPtr16(_currentRealModePointer);
+            AddSegment(realModeSegment.Segment, segmentSize);
+            return realModeSegment;
+        }
     }
 }

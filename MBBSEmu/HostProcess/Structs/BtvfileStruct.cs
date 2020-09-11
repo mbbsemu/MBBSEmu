@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.Memory;
 using System;
-using System.Net.NetworkInformation;
 
 namespace MBBSEmu.HostProcess.Structs
 {

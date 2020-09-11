@@ -304,6 +304,11 @@ namespace MBBSEmu.CPU
                     return;
 
                 //Instructions that do not set IP -- we'll just increment
+                case Mnemonic.Wait:
+                case Mnemonic.Nop:
+                case Mnemonic.In:
+                case Mnemonic.Out:
+                    break;
                 case Mnemonic.Clc:
                     Op_Clc();
                     break;
@@ -357,9 +362,6 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Stosw:
                     Op_Stosw();
-                    break;
-                case Mnemonic.Wait:
-                case Mnemonic.Nop:
                     break;
                 case Mnemonic.Enter:
                     Op_Enter();

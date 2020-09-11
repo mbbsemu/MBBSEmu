@@ -321,5 +321,12 @@ namespace MBBSEmu.Memory
         ///     Deletes all defined Segments from Memory
         /// </summary>
         void Clear();
+
+        /// <summary>
+        ///     Returns a newly allocated Segment in "Real Mode" memory
+        /// </summary>
+        /// <returns></returns>
+        IntPtr16 AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue);
+
     }
 }
