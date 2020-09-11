@@ -4,6 +4,7 @@ using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
@@ -38,7 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                new PointerDictionary<Session.SessionBase>());
+                new PointerDictionary<SessionBase>());
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, MajorbbsFunctionDelegate);
         }
 
@@ -63,7 +64,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                new PointerDictionary<Session.SessionBase>());
+                new PointerDictionary<SessionBase>());
         }
 
         /// <summary>
