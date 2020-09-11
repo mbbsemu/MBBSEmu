@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class endcnc_Tests : MajorbbsTestBase
+    public class endcnc_Tests : ExportedModuleTestBase
     {
         private const int ENDCNC_ORDINAL = 191;
 
@@ -34,7 +34,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(ENDCNC_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ENDCNC_ORDINAL, new List<IntPtr16>());
 
             //Gather Results
             var actualResult = mbbsEmuCpuCore.Registers.AX;

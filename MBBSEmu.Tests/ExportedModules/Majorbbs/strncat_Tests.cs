@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strncat_Tests : MajorbbsTestBase
+    public class strncat_Tests : ExportedModuleTestBase
     {
         private const int STRCAT_ORDINAL = 580;
 
@@ -32,7 +32,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(src));
 
             //Execute Test
-            ExecuteApiTest(STRCAT_ORDINAL, new List<ushort> { destinationStringPointer.Offset, destinationStringPointer.Segment, sourceStringPointer.Offset, sourceStringPointer.Segment, length });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCAT_ORDINAL,
+                new List<ushort>
+                {
+                    destinationStringPointer.Offset,
+                    destinationStringPointer.Segment,
+                    sourceStringPointer.Offset,
+                    sourceStringPointer.Segment, length
+                });
 
             //Verify Results
             Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);

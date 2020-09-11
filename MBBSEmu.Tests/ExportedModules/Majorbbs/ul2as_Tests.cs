@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class ul2as_Tests : MajorbbsTestBase
+    public class ul2as_Tests : ExportedModuleTestBase
     {
         private const int UL2AS_ORDINAL = 1040;
 
@@ -20,7 +20,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(UL2AS_ORDINAL, new List<ushort> { inputLow, inputHigh });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UL2AS_ORDINAL, new List<ushort> { inputLow, inputHigh });
 
             //Verify Results
             var resultString = mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true);

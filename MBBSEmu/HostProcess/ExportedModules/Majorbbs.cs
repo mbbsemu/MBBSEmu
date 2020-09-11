@@ -1122,6 +1122,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 469:
                     pltile();
                     break;
+                case 155:
+                    daytoday();
+                    break;
+                case 169:
+                    digalw();
+                    break;
+                case 127:
+                    cncnum();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -7316,6 +7325,99 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Allocated base {realSegmentBase} for {size} bytes ({numberOfSegments} segments)");
 
             Registers.AX = realSegmentBase.Segment;
+        }
+
+        ///     Returns the day of the week 0->6 Sunday->Saturday
+        ///
+        ///     Signature: int daytoday(void);
+        /// </summary>
+        public void daytoday()
+        {
+            Registers.AX = (ushort)DateTime.Now.DayOfWeek;
+        }
+
+        /// <summary>
+        ///     Digits allowed in User-IDs. We default this to TRUE
+        ///
+        ///     Signature: int digalw;
+        /// </summary>
+        public void digalw() => Registers.AX = 1;
+
+        /// <summary>
+        ///     Expect a Decimal from the user (character from the current command)
+        ///     Allows for a leading '-' to support negative numbers, and stops at the first
+        ///     non-numeric character.
+        ///
+        ///     cncnum() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     in the string with spaces once again.
+        /// </summary>
+        private void cncnum()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 12); //max length is 12 characters
+            Registers.DX = returnPointer.Segment;
+            Registers.AX = returnPointer.Offset;
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                //Write null to output
+                Module.Memory.SetByte(returnPointer, 0);
+                return;
+            }
+
+            var returnedWord = new MemoryStream();
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+
+            //Build Return Decimal stopping when a space/non-digit is encountered
+            for (var i = 0; i < 12; i++)
+            {
+                var b = inputString[i];
+
+                //Allow the 1st character to be a negative sign
+                if (i == 0 && b == '-')
+                {
+                    returnedWord.WriteByte(b);
+                    continue;
+                }
+
+                if (b == ' ' || b == 0 || !char.IsDigit((char) b))
+                    break;
+
+                returnedWord.WriteByte(b);
+            }
+
+            returnedWord.WriteByte(0);
+
+            Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
+
+            //Modify the Counters -- if there's more than just the null terminator
+            if (returnedWord.Length > 1)
+            {
+                remainingCharactersInCommand -= (int) returnedWord.Length;
+                nxtcmdPointer.Offset += (ushort) returnedWord.Length;
+            }
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
         }
 
     }

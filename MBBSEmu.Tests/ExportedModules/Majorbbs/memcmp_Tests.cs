@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class memcmp_Tests : MajorbbsTestBase
+    public class memcmp_Tests : ExportedModuleTestBase
     {
         private const int MEMCMP_ORDINAL = 408;
 
@@ -26,7 +26,15 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(buf2Pointer, buf2);
 
             //Execute Test
-            ExecuteApiTest(MEMCMP_ORDINAL, new List<ushort> { buf1Pointer.Offset, buf1Pointer.Segment, buf2Pointer.Offset, buf2Pointer.Segment, length });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, 
+                MEMCMP_ORDINAL,
+                new List<ushort>
+                {
+                    buf1Pointer.Offset, 
+                    buf1Pointer.Segment, 
+                    buf2Pointer.Offset, 
+                    buf2Pointer.Segment, length
+                });
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }

@@ -27,5 +27,23 @@ namespace MBBSEmu.Session.Telnet
             msOutput.WriteByte((byte)Option);
             return msOutput.ToArray();
         }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as IacResponse);
+        }
+
+        public bool Equals(IacResponse other)
+        {
+            if (other == null)
+                return false;
+
+            return (Verb == other.Verb && Option == other.Option);
+        }
+
+        public override int GetHashCode()
+        {
+            return Verb.GetHashCode() ^ Option.GetHashCode();
+        }
     }
 }

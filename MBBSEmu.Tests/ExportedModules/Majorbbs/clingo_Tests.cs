@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class clingo_Tests : MajorbbsTestBase
+    public class clingo_Tests : ExportedModuleTestBase
     {
         private const int CLINGO_ORDINAL = 761;
 
@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(CLINGO_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLINGO_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var returnedPointer = ExecutePropertyTest(CLINGO_ORDINAL);

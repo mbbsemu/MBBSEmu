@@ -5,18 +5,22 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class cncwrd_Tests : ExportedModuleTestBase
+    public class cncnum_Tests : ExportedModuleTestBase
     {
-        private const int CNCWORD_ORDINAL = 130;
+        private const int CNCNUM_ORDINAL = 127;
 
         [Theory]
-        [InlineData("FIRST SECOND\0", 0, "FIRST", 6)]
-        [InlineData("FIRST SECOND\0", 6, "SECOND", 13)]
-        [InlineData("FIRST SECOND THIRD\0", 1, "IRST", 6)]
-        [InlineData("FIRST SECOND THIRD\0", 13, "THIRD", 19)]
-        [InlineData("123456789012345678901234567890\0", 0, "12345678901234567890123456789", 30)] //Test Truncation
+        [InlineData("100\0", 0, "100", 4)]
+        [InlineData("-100\0", 0, "-100", 5)]
+        [InlineData("-100abc000\0", 0, "-100", 5)]
+        [InlineData("1234567890123\0", 0, "123456789012", 13)] //test truncation
+        [InlineData("abc123\0", 0, "", 0)]
+        [InlineData("abc123\0", 3, "123", 7)]
+        [InlineData("abc123\0", 2, "", 2)]
+        [InlineData("abc 123\0", 3, "123", 8)]
+        [InlineData("abc -123\0", 3, "-123", 9)]
         [InlineData("\0", 0, "", 0)]
-        public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
+        public void cncnum_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State
             Reset();
@@ -33,7 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCWORD_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCNUM_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var expectedResultPointer = mbbsEmuMemoryCore.GetVariablePointer("INPUT");

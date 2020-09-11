@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class memcpy_Tests : MajorbbsTestBase
+    public class memcpy_Tests : ExportedModuleTestBase
     {
         private const int MEMCPY_ORDINAL = 409;
 
@@ -27,7 +27,15 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("SRC", data);
 
             //Execute Test
-            ExecuteApiTest(MEMCPY_ORDINAL, new List<ushort> { dstPointer.Offset, dstPointer.Segment, srcPointer.Offset, srcPointer.Segment, copiedLength });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, MEMCPY_ORDINAL,
+                new List<ushort>
+                {
+                    dstPointer.Offset, 
+                    dstPointer.Segment, 
+                    srcPointer.Offset, 
+                    srcPointer.Segment, 
+                    copiedLength
+                });
 
             //Verify Results
             var dstArray = mbbsEmuMemoryCore.GetArray("DST", copiedLength);

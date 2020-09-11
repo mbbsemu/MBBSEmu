@@ -4,9 +4,8 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class profan_Tests : MajorbbsTestBase
+    public class profan_Tests : ExportedModuleTestBase
     {
-
         private const int PROFAN_ORDINAL = 480;
 
         [Fact]
@@ -15,7 +14,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(PROFAN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PROFAN_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             ExecutePropertyTest(PROFAN_ORDINAL);
