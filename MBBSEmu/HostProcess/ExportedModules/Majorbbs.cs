@@ -76,7 +76,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("MARGN", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("MARGV", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
-            Module.Memory.AllocateVariable("USERNUM", 0x2);
+            Module.Memory.AllocateVariable("USRNUM", 0x2);
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
@@ -229,7 +229,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.ToSpan());
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
             ChannelDictionary[channelNumber].StatusChange = false;
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].Status);
@@ -344,7 +344,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (ordinal)
             {
                 case 628:
-                    return usernum;
+                    return usrnum;
                 case 629:
                     return usrptr;
                 case 97:
@@ -1682,7 +1682,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usernum => base.Module.Memory.GetVariablePointer("USERNUM").ToSpan();
+        private ReadOnlySpan<byte> usrnum => base.Module.Memory.GetVariablePointer("USRNUM").ToSpan();
 
         /// <summary>
         ///     Gets the online user account info
@@ -1783,10 +1783,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBufferProcessed = FormatOutput(outputBuffer);
 
-            ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
+            if(ChannelDictionary.ContainsKey(userChannel))
+                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
 #if DEBUG
-            _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
+            _logger.Debug($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif
 
             Module.Memory.SetZero(basePointer, outputLength);
