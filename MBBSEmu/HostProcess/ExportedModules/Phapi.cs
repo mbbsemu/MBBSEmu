@@ -182,7 +182,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                         reclen = btvFile.LoadedFile.RecordLength,
                                         data = btvDataPointer
                                     };
-                                    BtrievePointerDictionaryNew.Add(btvFileStructPointer, btvFile);
+                                    BtrievePointerDictionary.Add(btvFileStructPointer, btvFile);
                                     Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
                                     Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName + '\0'));
 
@@ -203,14 +203,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     {
                                         fs = new BtvfilespecStruct()
                                         {
-                                            numofr = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.RecordCount,
-                                            numofx = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.KeyCount,
-                                            pagsiz = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.PageLength,
-                                            reclen = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.RecordLength
+                                            numofr = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.RecordCount,
+                                            numofx = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.KeyCount,
+                                            pagsiz = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.PageLength,
+                                            reclen = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.RecordLength
                                         }
                                     };
 
-                                    var definedKeys = BtrievePointerDictionaryNew[currentBtrieveFilePointer].LoadedFile.Keys.Values.Select(k =>
+                                    var definedKeys = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.Keys.Values.Select(k =>
                                         new BtvkeyspecStruct()
                                         {
                                             flags = (ushort)k.Segments[0].Attributes,
