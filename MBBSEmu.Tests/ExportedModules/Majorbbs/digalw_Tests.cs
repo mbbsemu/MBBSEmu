@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int DIGALW_ORDINAL = 169;
 
         [Fact]
-        public void daytoday_Test()
+        public void digalw_Test()
         {
             //Reset State
             Reset();

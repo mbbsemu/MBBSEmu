@@ -16,6 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("1234567890123\0", 0, "123456789012", 13)] //test truncation
         [InlineData("abc123\0", 0, "", 0)]
         [InlineData("abc123\0", 3, "123", 7)]
+        [InlineData("abc123\0", 2, "", 2)]
         [InlineData("abc 123\0", 3, "123", 8)]
         [InlineData("abc -123\0", 3, "-123", 9)]
         [InlineData("\0", 0, "", 0)]

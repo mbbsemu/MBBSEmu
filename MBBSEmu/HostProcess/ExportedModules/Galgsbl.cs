@@ -984,9 +984,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Write to Destination
+            Registers.AX = (ushort)channel.InputBuffer.Length;
             channel.InputBuffer.WriteByte(0); //NULL Terminate
             Module.Memory.SetArray(destinationPointer, channel.InputBuffer.ToArray());
-            Registers.AX = (ushort)channel.InputBuffer.Length;
 
             //Clear the Buffer
             channel.InputBuffer.SetLength(0);

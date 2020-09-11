@@ -11,7 +11,6 @@ namespace MBBSEmu.Tests.ExportedModules.Galgsbl
         [Fact]
         public void btuimp_Test()
         {
-            //Reset State
             Reset();
 
             //Allocate Variables to be Passed In
@@ -23,7 +22,9 @@ namespace MBBSEmu.Tests.ExportedModules.Galgsbl
             ExecuteApiTest(HostProcess.ExportedModules.Galgsbl.Segment, BTUIMP_ORDINAL, new List<ushort> { 0, outputStringPointer.Offset, outputStringPointer.Segment});
 
             //Verify Results
-            Assert.Equal("Test Input String\0", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(outputStringPointer)));
+            var resultString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(outputStringPointer, true));
+            Assert.Equal("Test Input String", resultString);
+            Assert.Equal(resultString.Length, mbbsEmuCpuRegisters.AX);
             Assert.Equal(0, testSessions[0].InputBuffer.Length);
         }
     }
