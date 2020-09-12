@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -17,7 +15,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             //Load Value1 into the x87 Stack
-            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()] = BitConverter.GetBytes(value1);
+            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()] = value1;
             mbbsEmuCpuRegisters.Fpu.PushStackTop();
 
             //Load Value2 into Memory & Setup DS
@@ -31,7 +29,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             mbbsEmuCpuRegisters.Fpu.PopStackTop();
-            var result = BitConverter.ToSingle(mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
 
             Assert.Equal(expectedResult, result);
         }

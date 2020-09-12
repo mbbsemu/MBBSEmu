@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             instructions.add(__word_ptr[bx + di], valueToAdd);
 
-            CreateCodeSegment(instructions.Instructions);
+            CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();
 

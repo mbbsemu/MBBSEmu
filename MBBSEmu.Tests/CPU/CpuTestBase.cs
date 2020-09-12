@@ -3,7 +3,9 @@ using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
-
+using System.IO;
+using System.Linq;
+using static Iced.Intel.AssemblerRegisters;
 namespace MBBSEmu.Tests.CPU
 {
     public abstract class CpuTestBase : TestBase
@@ -29,14 +31,12 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.IP = 0;
         }
 
-        protected void CreateCodeSegment(IReadOnlyList<Instruction> instructions, ushort segmentOrdinal = 1)
+        protected void CreateCodeSegment(Assembler instructions, ushort segmentOrdinal = 1)
         {
-            var instructionList = new InstructionList(instructions.Count);
+            var stream = new MemoryStream();
+            instructions.Assemble(new StreamCodeWriter(stream), 0);
 
-            foreach(var i in instructions)
-                instructionList.Add(i);
-
-            CreateCodeSegment(instructionList, segmentOrdinal);
+            CreateCodeSegment(stream.ToArray(), segmentOrdinal);
         }
 
         protected void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
