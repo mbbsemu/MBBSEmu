@@ -182,7 +182,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                         reclen = btvFile.LoadedFile.RecordLength,
                                         data = btvDataPointer
                                     };
-                                    BtrievePointerDictionary.Add(btvFileStructPointer, btvFile);
+                                    BtrieveSaveProcessor(btvFileStructPointer, btvFile);
                                     Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
                                     Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName + '\0'));
 
@@ -198,19 +198,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 }
                             case EnumBtrieveOperationCodes.Stat:
                                 {
-                                    var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
+                                    var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
                                     var btvStats = new BtvstatfbStruct
                                     {
                                         fs = new BtvfilespecStruct()
                                         {
-                                            numofr = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.RecordCount,
-                                            numofx = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.KeyCount,
-                                            pagsiz = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.PageLength,
-                                            reclen = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.RecordLength
+                                            numofr = currentBtrieveFile.LoadedFile.RecordCount,
+                                            numofx = currentBtrieveFile.LoadedFile.KeyCount,
+                                            pagsiz = currentBtrieveFile.LoadedFile.PageLength,
+                                            reclen = currentBtrieveFile.LoadedFile.RecordLength
                                         }
                                     };
 
-                                    var definedKeys = BtrievePointerDictionary[currentBtrieveFilePointer].LoadedFile.Keys.Values.Select(k =>
+                                    var definedKeys = currentBtrieveFile.LoadedFile.Keys.Values.Select(k =>
                                         new BtvkeyspecStruct()
                                         {
                                             flags = (ushort)k.Segments[0].Attributes,

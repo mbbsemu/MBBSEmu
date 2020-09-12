@@ -38,5 +38,7 @@ namespace MBBSEmu.Memory
 
             return true;
         }
+
+        public bool Remove(string key) => _cacheDictionary.Remove(key);
     }
 }
