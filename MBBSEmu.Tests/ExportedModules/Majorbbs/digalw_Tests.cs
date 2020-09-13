@@ -14,12 +14,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DIGALW_ORDINAL, new List<IntPtr16>());
+            var actual = mbbsEmuMemoryCore.GetWord("DIGALW");
 
-            //Verify Results
-            ExecutePropertyTest(DIGALW_ORDINAL);
-
-            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(1, actual);
         }
     }
 }

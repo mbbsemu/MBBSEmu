@@ -143,7 +143,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
             Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
-
+            Module.Memory.AllocateVariable("DIGALW", sizeof(ushort));
+            Module.Memory.SetWord("DIGALW", 1);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -459,6 +460,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return languages;
                 case 193:
                     return errcod;
+                case 169:
+                    return digalw;
             }
 
             if (offsetsOnly)
@@ -1124,11 +1127,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 155:
                     daytoday();
                     break;
-                case 169:
-                    digalw();
-                    break;
                 case 127:
                     cncnum();
+                    break;
+                case 449:
+                    onsys();
+                    break;
+                case 517:
+                    rtstcrd();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -7328,7 +7334,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int digalw;
         /// </summary>
-        public void digalw() => Registers.AX = 1;
+        public ReadOnlySpan<byte> digalw => Module.Memory.GetVariablePointer("DIGALW").Data;
 
         /// <summary>
         ///     Expect a Decimal from the user (character from the current command)
@@ -7407,5 +7413,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
         }
 
+        /// <summary>
+        ///     Determines if the specified user is online
+        ///
+        ///     Signature: int ison=onsys(char *usrid);
+        /// </summary>
+        private void onsys()
+        {
+            var usernamePointer = GetParameterPointer(0);
+
+            var username = Encoding.ASCII.GetString(Module.Memory.GetString(usernamePointer, true));
+
+            //Scan the current channels for any usernames that match the specified one
+            Registers.AX = ChannelDictionary.Any(x =>
+                string.Equals(x.Value.Username, username, StringComparison.CurrentCultureIgnoreCase)) ? (ushort) 1 : (ushort) 0;
+        }
+
+        /// <summary>
+        ///     Test if the user has enough real credits
+        ///
+        ///     We always return TRUE since MBBSEmu doesn't use/consume credits
+        ///
+        ///     Signature: int enuf=rtstcrd(long amount);
+        /// </summary>
+        private void rtstcrd()
+        {
+            Registers.AX = 1;
+        }
     }
 }
