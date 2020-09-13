@@ -28,7 +28,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = unchecked(initialST0Value + valueToAdd);
+            var expectedValue = initialST0Value + valueToAdd;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }

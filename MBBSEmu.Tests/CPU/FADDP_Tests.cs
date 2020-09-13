@@ -11,6 +11,9 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(float.MaxValue, 1)]
         [InlineData(float.MinValue, float.MaxValue)]
         [InlineData(0, 0)]
+        [InlineData(float.NaN, 1)]
+        [InlineData(-2.5, 3.5)]
+        [InlineData(-2.5, -1.0)]
         public void FADDP_Test(float ST0Value, float ST1Value)
         {
             Reset();
@@ -25,7 +28,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = unchecked(ST0Value + ST1Value);
+            var expectedValue = ST0Value + ST1Value;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }

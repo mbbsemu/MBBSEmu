@@ -2,10 +2,8 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Memory;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using static Iced.Intel.AssemblerRegisters;
+
 namespace MBBSEmu.Tests.CPU
 {
     public abstract class CpuTestBase : TestBase
