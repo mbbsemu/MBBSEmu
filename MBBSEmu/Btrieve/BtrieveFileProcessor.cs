@@ -168,21 +168,15 @@ namespace MBBSEmu.Btrieve
 
             ushort totalKeys = LoadedFile.KeyCount;
             ushort currentKeyNumber = 0;
-            ushort previousKeyNumber = 0;
             while (currentKeyNumber < totalKeys)
             {
                 var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
 
-                if (keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
-                {
-                    keyDefinition.SegmentOf = previousKeyNumber;
-                    keyDefinition.Number = previousKeyNumber;
-                }
-                else
-                {
-                    keyDefinition.Number = currentKeyNumber;
+                keyDefinition.Number = currentKeyNumber;
+
+                //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
+                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
                     currentKeyNumber++;
-                }
 
 #if DEBUG
                 _logger.Info("----------------");
