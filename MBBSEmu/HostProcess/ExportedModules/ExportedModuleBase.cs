@@ -34,7 +34,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
-        private protected static readonly Dictionary<IntPtr16, BtrieveFileProcessor> BtrievePointerDictionaryNew = new Dictionary<IntPtr16, BtrieveFileProcessor>();
         private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
@@ -892,5 +891,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
             output.Write(ProcessTextVariables(FormatNewLineCarriageReturn(ProcessIfANSI(outputBytes))));
             return output.ToArray();
         }
+
+        /// <summary>
+        ///     Saves a BtrieveFileProcessor for the given pointer to the Global Cache
+        /// </summary>
+        /// <param name="btrievePointer"></param>
+        /// <param name="btrieveFileProcessor"></param>
+        private protected void BtrieveSaveProcessor(IntPtr16 btrievePointer, BtrieveFileProcessor btrieveFileProcessor) =>
+            _globalCache.Set(BtrieveCacheKey(btrievePointer),
+                btrieveFileProcessor);
+
+        /// <summary>
+        ///     Gets a BtrieveFileProcessor for the given pointer to the Global Cache
+        /// </summary>
+        /// <param name="btrievePointer"></param>
+        /// <returns></returns>
+        private protected BtrieveFileProcessor BtrieveGetProcessor(IntPtr16 btrievePointer) =>
+            _globalCache.Get<BtrieveFileProcessor>(BtrieveCacheKey(btrievePointer));
+
+        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer) =>
+            _globalCache.Remove(BtrieveCacheKey(btrievePointer));
+
+        /// <summary>
+        ///     Generates a Unique Key to be used for saving a BtrieveFileProcessor mapped to its pointer
+        ///     Unique to the module.
+        /// </summary>
+        /// <param name="btrievePointer"></param>
+        /// <returns></returns>
+        private string BtrieveCacheKey(IntPtr16 btrievePointer) =>
+            $"{Module.ModuleIdentifier}-Btrieve-{btrievePointer}";
+
+
+
     }
 }
