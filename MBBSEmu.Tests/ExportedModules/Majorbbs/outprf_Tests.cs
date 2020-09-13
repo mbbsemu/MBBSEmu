@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int OUTPRF_ORDINAL = 463;
 
         [Fact]
-        public void outprf_rtkick_Test()
+        public void outprf_InvalidChannel_Test()
         {
             Reset();
 
