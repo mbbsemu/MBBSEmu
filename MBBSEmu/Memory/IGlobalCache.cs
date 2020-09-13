@@ -5,5 +5,6 @@
         T Get<T>(string key);
         object Get(string key);
         bool Set(string key, object value);
+        bool Remove(string key);
     }
 }
