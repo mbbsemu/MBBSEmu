@@ -285,7 +285,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var currentMenuItem = 0;
             foreach (var m in modules)
             {
-                EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
+                EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3,' ').EncodeToANSIArray());
                 currentMenuItem++;
             }
 
@@ -311,14 +311,6 @@ namespace MBBSEmu.HostProcess.HostRoutines
             //convert to uppercase, trim
             var inputCommand = inputValue.ToUpper().TrimEnd('\0');
 
-            //Exit if command longer then 2 characters (up to 99 modules) or a negative number
-            if (inputCommand.Length > 2 || inputCommand.Contains('-'))
-            {
-                session.SessionState = EnumSessionState.MainMenuDisplay;
-                session.InputBuffer.SetLength(0);
-                return;
-            }
-            
             //User is Logging Off
             if (Equals(inputCommand, "X"))
             {
@@ -328,7 +320,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
 
             //If at this point, it's an unknown selection and it's NOT a module number, then re-display menu
-            if (!int.TryParse(inputCommand, out var selectedMenuItem) || selectedMenuItem >= modules.Count)
+            if (!int.TryParse(inputCommand, out var selectedMenuItem) || selectedMenuItem >= modules.Count || selectedMenuItem < 0)
             {
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 session.InputBuffer.SetLength(0);
