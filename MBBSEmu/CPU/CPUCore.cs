@@ -509,6 +509,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fadd:
                     Op_Fadd();
                     break;
+                case Mnemonic.Fdivp:
+                    Op_fdivp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -2891,6 +2894,24 @@ namespace MBBSEmu.CPU
 
             var result = floatOnFpuStack + floatToAdd;
             FpuStack[Registers.Fpu.GetStackTop()] = result;
+        }
+
+        /// <summary>
+        ///     Floating Point Divide ST1 by ST0 saving the result to ST(1) and Popping the FPU stack
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_fdivp()
+        {
+            var STdestination = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueFloat(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = STdestination / STsource;
+
+            //Store result at ST1
+            WriteToDestination(result);
+
+            //ST(1) becomes ST(0)
+            Registers.Fpu.PopStackTop();
         }
     }
 }
