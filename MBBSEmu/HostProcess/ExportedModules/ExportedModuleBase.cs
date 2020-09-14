@@ -8,7 +8,6 @@ using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -34,7 +33,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
-        private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
+        public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
         private protected readonly IConfiguration _configuration;

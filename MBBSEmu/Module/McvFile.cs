@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -19,7 +20,7 @@ namespace MBBSEmu.Module
         public readonly string FileName;
         public readonly byte[] FileContent;
         public readonly Dictionary<int, byte[]> Messages;
-        private bool _dynamicLength = false;
+        private bool _dynamicLength;
 
         public McvFile(IFileUtility fileUtility, string fileName, string path = "")
         {
@@ -42,6 +43,17 @@ namespace MBBSEmu.Module
             _logger.Info($"Parsing MCV File: {FileName}");
 #endif
             Parse();
+        }
+
+        /// <summary>
+        ///     Constructor Used for Testing, where the keys are manually passed in
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="messages"></param>
+        public McvFile(string fileName, Dictionary<int, byte[]> messages)
+        {
+            FileName = fileName;
+            Messages = messages;
         }
 
         /// <summary>
@@ -134,6 +146,13 @@ namespace MBBSEmu.Module
         public int GetLong(int ordinal)
         {
             return int.Parse(GetNumericMessageValue(ordinal).ToCharSpan());
+        }
+
+        public ushort GetHex(int ordinal)
+        {
+            var hexValue = Encoding.ASCII.GetString(GetMessageValue(ordinal));
+
+            return ushort.Parse(hexValue, NumberStyles.HexNumber);
         }
 
         /// <summary>
