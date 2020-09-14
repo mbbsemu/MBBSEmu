@@ -183,12 +183,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
             //Load File if specified in appsettings.json and display if it exists, else display default
-            var ANSILoginFileName = _configuration["ANSI.Login"];
-            if (File.Exists(ANSILoginFileName)) {
-                EchoToClient(session, File.ReadAllBytes(ANSILoginFileName).ToArray());
-            } else {
-                EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
-            }
+            var ansiLoginFileName = _configuration["ANSI.Login"];
+            EchoToClient(session,
+                File.Exists(ansiLoginFileName)
+                    ? File.ReadAllBytes(ansiLoginFileName).ToArray()
+                    : _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
             EchoToClient(session, Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
         }
@@ -234,12 +233,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
 
                 //Load File if specified in appsettings.json and display if it exists, else display default
-                var ANSISignupFileName = _configuration["ANSI.Signup"];
-                if (File.Exists(ANSISignupFileName)) {
-                    EchoToClient(session, File.ReadAllBytes(ANSISignupFileName).ToArray());
-                } else {
-                    EchoToClient(session, _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
-                }
+                var ansiSignupFileName = _configuration["ANSI.Signup"];
+                EchoToClient(session,
+                    File.Exists(ansiSignupFileName)
+                        ? File.ReadAllBytes(ansiSignupFileName).ToArray()
+                        : _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 return;
             }
 
@@ -287,7 +285,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var currentMenuItem = 0;
             foreach (var m in modules)
             {
-                EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
+                EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3,' ').EncodeToANSIArray());
                 currentMenuItem++;
             }
 
@@ -308,10 +306,13 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper()[0];
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
+            
+            //convert to uppercase, trim
+            var inputCommand = inputValue.ToUpper().TrimEnd('\0');
 
             //User is Logging Off
-            if (inputValue == 'X')
+            if (Equals(inputCommand, "X"))
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
                 session.InputBuffer.SetLength(0);
@@ -319,7 +320,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
 
             //If at this point, it's an unknown selection and it's NOT a module number, then re-display menu
-            if (!int.TryParse(inputValue.ToString(), out var selectedMenuItem) || selectedMenuItem >= modules.Count)
+            if (!int.TryParse(inputCommand, out var selectedMenuItem) || selectedMenuItem >= modules.Count || selectedMenuItem < 0)
             {
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 session.InputBuffer.SetLength(0);
@@ -379,12 +380,12 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoggingOffDisplay(SessionBase session)
         {
             //Load File if specified in appsettings.json and display if it exists
-            var ANSILogoffFileName = _configuration["ANSI.Logoff"];
-            if (File.Exists(ANSILogoffFileName)) {
-                EchoToClient(session, File.ReadAllBytes(ANSILogoffFileName).ToArray());
-                } else {
-                EchoToClient(session, "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n".EncodeToANSIArray());
-                }
+            var ansiLogoffFileName = _configuration["ANSI.Logoff"];
+            EchoToClient(session,
+                File.Exists(ansiLogoffFileName)
+                    ? File.ReadAllBytes(ansiLogoffFileName).ToArray()
+                    : "\r\n\r\n|GREEN||B|Ok, thanks for calling!\r\n\r\nHave a nice day...\r\n\r\n"
+                        .EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoggingOffProcessing;
             session.Stop();
         }
