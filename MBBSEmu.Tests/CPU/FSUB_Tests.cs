@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using Iced.Intel;
 using Xunit;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.Tests.CPU
 {
@@ -17,21 +17,22 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             //Load Value1 into the x87 Stack
-            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()] = BitConverter.GetBytes(value1);
-            mbbsEmuCpuRegisters.Fpu.PushStackTop();
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
+            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()] = value1;
 
             //Load Value2 into Memory & Setup DS
             CreateDataSegment(BitConverter.GetBytes(value2));
             mbbsEmuCpuRegisters.DS = 2;
 
             //Setup CPU & CODE Segment
-            CreateCodeSegment(new byte[] { 0x3E, 0xD8, 0x26, 0x00, 0x00 });
-            
+            var instructions = new Assembler(16);
+            instructions.fsub(__dword_ptr[0]);
+            CreateCodeSegment(instructions);
+
             //Process Instruction
             mbbsEmuCpuCore.Tick();
 
-            mbbsEmuCpuRegisters.Fpu.PopStackTop();
-            var result = BitConverter.ToSingle(mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
 
             Assert.Equal(expectedResult, result);
         }

@@ -80,7 +80,7 @@ namespace MBBSEmu.Module
                     case "MSGS" when keyValuePair[1].Trim().Contains(','): //MSG files separated by a comma
                         MSGFiles = keyValuePair[1].Trim().Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
-                    case "MSGS": //only one MSG file defined
+                    case "MSGS" when !string.IsNullOrWhiteSpace(keyValuePair[1]): //only one MSG file defined
                         MSGFiles.Add(keyValuePair[1].Trim());
                         break;
                 }
