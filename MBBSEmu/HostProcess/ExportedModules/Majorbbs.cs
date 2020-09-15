@@ -1136,6 +1136,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 517:
                     rtstcrd();
                     break;
+                case 660:
+                    f_lxrsh();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
             }
@@ -4374,14 +4377,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("MODULE-POINTER").ToSpan();
 
         /// <summary>
-        ///     Long Shift Left (Borland C++ Implicit Function)
+        ///     Long Arithmatic Shift Left (Borland C++ Implicit Function)
         ///
         ///     DX:AX == Long Value
         ///     CL == How many to move
         /// </summary>
         private void f_lxlsh()
         {
-            var inputValue = (Registers.DX << 16) | Registers.AX;
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
 
             var result = inputValue << Registers.CL;
 
@@ -4390,14 +4393,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Long Shift Right (Borland C++ Implicit Function)
+        ///     Long Logical Shift Right (Borland C++ Implicit Function)
         ///
-        ///     DX:AX == Long Value
+        ///     DX:AX == Unsigned Long Value
         ///     CL == How many to move
         /// </summary>
         private void f_lxursh()
         {
-            var inputValue = (Registers.DX << 16) | Registers.AX;
+            var inputValue = (uint)((Registers.DX << 16) | Registers.AX);
+
+            var result = inputValue >> Registers.CL;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Long Arithmatic Shift Right (Borland C++ Implicit Function)
+        ///
+        ///     DX:AX == Long Value
+        ///     CL == How many to move
+        /// </summary>
+        private void f_lxrsh()
+        {
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
 
             var result = inputValue >> Registers.CL;
 
@@ -7291,7 +7310,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Phar-Lap Tiled Memory Allocation
         ///
-        ///     Signature: int pltile(ULONG size, INT bsel, UINT stride, UINT tsize) 
+        ///     Signature: int pltile(ULONG size, INT bsel, UINT stride, UINT tsize)
         /// </summary>
         private void pltile()
         {
