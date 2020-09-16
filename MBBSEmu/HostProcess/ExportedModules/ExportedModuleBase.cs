@@ -8,7 +8,6 @@ using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -34,7 +33,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Pointers to files opened using FOPEN
         /// </summary>
         private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
-        private protected readonly PointerDictionary<McvFile> McvPointerDictionary;
+        public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
         private protected readonly IConfiguration _configuration;
@@ -574,7 +573,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
                         //Get Variable Entry Point
                         var variableEntryPoint = Module.TextVariables[textVariableName];
-                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
+                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
                         var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
                         _logger.Info($"Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");

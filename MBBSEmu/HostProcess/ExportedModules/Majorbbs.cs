@@ -28,7 +28,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
     {
         public IntPtr16 GlobalCommandHandler;
 
-        private IntPtr16 _currentMcvFile;
+        private IntPtr16 _currentMcvFile
+        {
+            get => Module.Memory.GetPointer("CURRENT-MCV");
+            set => Module.Memory.SetPointer("CURRENT-MCV", value ?? IntPtr16.Empty);
+        }
         private readonly Stack<IntPtr16> _previousMcvFile;
 
         private readonly Stack<IntPtr16> _previousBtrieveFile;
@@ -143,6 +147,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("**LANGUAGES", IntPtr16.Size);
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
             Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
+            Module.Memory.AllocateVariable("CURRENT-MCV", IntPtr16.Size);
             Module.Memory.AllocateVariable("DIGALW", sizeof(ushort));
             Module.Memory.SetWord("DIGALW", 1);
 
@@ -1129,6 +1134,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 127:
                     cncnum();
+                    break;
+                case 339:
+                    hexopt();
                     break;
                 case 449:
                     onsys();
@@ -7431,6 +7439,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
+
+        /// <summary>
+        ///     Retrieves a Hex value as Numeric option from MCV file
+        ///
+        ///     Signature: unsigned hexopt(int msgnum,unsigned floor,unsigned ceiling);
+        ///     Return: AX = Value retrieved
+        /// </summary>
+        private void hexopt()
+        {
+            var msgnum = GetParameter(0);
+            var floor = (short)GetParameter(1);
+            var ceiling = GetParameter(2);
+
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetHex(msgnum);
+
+            //Validate
+            if (outputValue < floor || outputValue > ceiling)
+                throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
+
+#if DEBUG
+            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
+#endif
+
+            Registers.AX = outputValue;
         }
 
         /// <summary>
