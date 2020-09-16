@@ -1137,6 +1137,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 339:
                     hexopt();
+                    break;
                 case 449:
                     onsys();
                     break;
