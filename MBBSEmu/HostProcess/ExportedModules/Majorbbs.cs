@@ -31,7 +31,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private IntPtr16 _currentMcvFile
         {
             get => Module.Memory.GetPointer("CURRENT-MCV");
-            set => Module.Memory.SetPointer("CURRENT-MCV", value);
+            set => Module.Memory.SetPointer("CURRENT-MCV", value ?? IntPtr16.Empty);
         }
         private readonly Stack<IntPtr16> _previousMcvFile;
 
