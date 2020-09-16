@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using MBBSEmu.CPU;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
+using NLog;
 
 namespace MBBSEmu.HostProcess.ExecutionUnits
 {
@@ -32,9 +33,9 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         /// </summary>
         public readonly Dictionary<ushort, IExportedModule> ExportedModuleDictionary;
 
-        public ExecutionUnit(IMemoryCore moduleMemory, Dictionary<ushort, IExportedModule> exportedModuleDictionary)
+        public ExecutionUnit(IMemoryCore moduleMemory, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger)
         {
-            ModuleCpu = new CpuCore();
+            ModuleCpu = new CpuCore(logger);
             ModuleCpuRegisters = new CpuRegisters();
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
