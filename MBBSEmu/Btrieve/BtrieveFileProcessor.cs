@@ -101,7 +101,7 @@ namespace MBBSEmu.Btrieve
         private void LoadBtrieve(string path, string fileName)
         {
             //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
-            var virginFileName = fileName.Replace(".DAT", ".VIR");
+            var virginFileName = fileName.ToUpper().Replace(".DAT", ".VIR");
             if (!File.Exists(Path.Combine(path, fileName)) && File.Exists(Path.Combine(path, virginFileName)))
             {
                 File.Copy(Path.Combine(path, virginFileName), Path.Combine(path, fileName));

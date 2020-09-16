@@ -4,7 +4,6 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -88,8 +87,7 @@ namespace MBBSEmu.CPU
         ///
         ///     The x87 Stack contains eight slots for 32-bit (Single Precision) Floating Point values
         /// </summary>
-        public readonly List<byte[]> FpuStack = new List<byte[]>(8)
-            {new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4], new byte[4]};
+        public readonly float[] FpuStack = new float[8];
 
         /// <summary>
         ///     Size of the current operation (in bytes)
@@ -109,6 +107,19 @@ namespace MBBSEmu.CPU
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
         private IntPtr16 DiskTransferArea;
+
+        /// <summary>
+        ///     Default Compiler Hints for use on methods within the CPU
+        ///
+        ///     AggressiveInlining == The method should be inlined if possible
+        ///     AggressiveOptimization == The method contains a hot path and should be optimized
+        ///
+        ///     Because the majority of methods within the CPU are internal to the CPU with a single calling point,
+        ///     they should be inlined as much as possible.
+        ///
+        ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
+        /// </summary>
+        private const MethodImplOptions CompilerOptimizations = (MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization);
 
         public CpuCore(ILogger logger)
         {
@@ -215,6 +226,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Ticks the emulated x86 Core one instruction from the current CS:IP
         /// </summary>
+        [MethodImpl(CompilerOptimizations)]
         public void Tick()
         {
             //Check for segment end
@@ -497,6 +509,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fadd:
                     Op_Fadd();
                     break;
+                case Mnemonic.Fdivp:
+                    Op_fdivp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -520,6 +535,7 @@ namespace MBBSEmu.CPU
         /// <param name="opKind"></param>
         /// <param name="operandType"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         private byte GetOperandValueUInt8(OpKind opKind, EnumOperandType operandType)
         {
             switch (opKind)
@@ -565,6 +581,7 @@ namespace MBBSEmu.CPU
         /// <param name="opKind"></param>
         /// <param name="operandType"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         private ushort GetOperandValueUInt16(OpKind opKind, EnumOperandType operandType)
         {
             switch (opKind)
@@ -616,6 +633,7 @@ namespace MBBSEmu.CPU
         /// <param name="opKind"></param>
         /// <param name="operandType"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         private uint GetOperandValueUInt32(OpKind opKind, EnumOperandType operandType)
         {
             switch (opKind)
@@ -646,6 +664,31 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Gets the Float Value of the specified Operand
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <param name="operandType"></param>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        private float GetOperandValueFloat(OpKind opKind, EnumOperandType operandType)
+        {
+            switch (opKind)
+            {
+                case OpKind.Memory:
+                {
+                        return BitConverter.ToSingle(Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(opKind), 4));
+                }
+                case OpKind.Register when operandType == EnumOperandType.Destination:
+                    return FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)];
+                case OpKind.Register when operandType == EnumOperandType.Source:
+                    return FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)];
+                default:
+                    throw new Exception($"Unknown Float Operand: {opKind}");
+            }
+
+        }
 
         /// <summary>
         ///     Returns the OFFSET of Operand 0
@@ -654,6 +697,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         /// <param name="opKind"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         private ushort GetOperandOffset(OpKind opKind)
         {
             ushort result;
@@ -723,7 +767,7 @@ namespace MBBSEmu.CPU
         ///     Returns if the Current Instruction is an 8-bit or 16-bit operation
         /// </summary>
         /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private int GetCurrentOperationSize()
         {
             return _currentInstruction.Op0Kind switch
@@ -740,8 +784,7 @@ namespace MBBSEmu.CPU
         ///     Saves the specified result of the current instruction into the current instructions destination
         /// </summary>
         /// <param name="result"></param>
-        /// <param name="operationSize"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void WriteToDestination(ushort result)
         {
             switch (_currentInstruction.Op0Kind)
@@ -769,12 +812,31 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Writes the specified result of the instruction into the specified destination
+        /// </summary>
+        /// <param name="result"></param>
+        [MethodImpl(CompilerOptimizations)]
+        private void WriteToDestination(float result)
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Memory:
+                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(result));
+                    break;
+                case OpKind.Register:
+                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
+                    break;
+            }
+        }
+
+        /// <summary>
         ///     Saves the specified result of the current instruction into the current instructions source
         ///
         ///     This is only used by a couple specific opcodes
         /// </summary>
         /// <param name="result"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void WriteToSource(ushort result)
         {
             switch (_currentInstruction.Op1Kind)
@@ -802,7 +864,7 @@ namespace MBBSEmu.CPU
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Loop()
         {
             Registers.CX--;
@@ -817,7 +879,7 @@ namespace MBBSEmu.CPU
             Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Int()
         {
             switch (_currentInstruction.Immediate8)
@@ -830,6 +892,7 @@ namespace MBBSEmu.CPU
             }
         }
 
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Int_21h()
         {
             switch (Registers.AH)
@@ -908,14 +971,14 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Cwd()
         {
             Registers.DX = Registers.AX.IsBitSet(15) ? (ushort)0xFFFF : (ushort)0x0000;
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Neg()
         {
             var result = _currentOperationSize switch
@@ -928,7 +991,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Neg_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -943,7 +1006,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Neg_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -958,7 +1021,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Sbb()
         {
             var result = _currentOperationSize switch
@@ -971,7 +1034,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Sbb_8()
         {
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
@@ -990,7 +1053,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Sbb_16()
         {
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
@@ -1010,7 +1073,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Clc() => Registers.F.ClearFlag(EnumFlags.CF);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1030,7 +1093,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Or_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1041,7 +1104,7 @@ namespace MBBSEmu.CPU
             return destination;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Or_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1052,7 +1115,7 @@ namespace MBBSEmu.CPU
             return destination;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Rcr()
         {
             var result = _currentOperationSize switch
@@ -1065,7 +1128,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Rcr_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1100,7 +1163,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Rcr_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1135,7 +1198,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Rcl()
         {
             var result = _currentOperationSize switch
@@ -1148,7 +1211,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Rcl_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1184,7 +1247,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Rcl_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1220,7 +1283,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Sar()
         {
             var result = _currentOperationSize switch
@@ -1233,7 +1296,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Sar_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1255,7 +1318,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Sar_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1277,7 +1340,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Shr()
         {
             var result = _currentOperationSize switch
@@ -1290,7 +1353,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Shr_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1307,7 +1370,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Shr_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1324,7 +1387,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Shl()
         {
             var result = _currentOperationSize switch
@@ -1337,7 +1400,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Shl_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1354,7 +1417,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Shl_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1371,7 +1434,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Les()
         {
             var offset = GetOperandOffset(_currentInstruction.Op1Kind);
@@ -1383,7 +1446,7 @@ namespace MBBSEmu.CPU
             Registers.ES = dataPointer.Segment;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Lds()
         {
             var offset = GetOperandOffset(_currentInstruction.Op1Kind);
@@ -1396,7 +1459,7 @@ namespace MBBSEmu.CPU
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Lea()
         {
             var sourceOffset = GetOperandOffset(_currentInstruction.Op1Kind);
@@ -1411,7 +1474,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Enter()
         {
             switch (_currentInstruction.Op0Kind)
@@ -1426,27 +1489,27 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Leave()
         {
             Registers.SP = Registers.BP;
             Registers.BP = Pop();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Retf()
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Ret()
         {
             Registers.IP = Pop();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Stosw()
         {
             while (Registers.CX > 0)
@@ -1457,7 +1520,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Inc()
         {
             var result = _currentOperationSize switch
@@ -1470,7 +1533,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Inc_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1486,7 +1549,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Inc_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1502,7 +1565,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Dec()
         {
             var result = _currentOperationSize switch
@@ -1515,7 +1578,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Dec_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1531,7 +1594,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Dec_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1547,7 +1610,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_And()
         {
             var result = _currentOperationSize switch
@@ -1564,7 +1627,7 @@ namespace MBBSEmu.CPU
             Registers.F.ClearFlag(EnumFlags.OF);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_And_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1576,7 +1639,7 @@ namespace MBBSEmu.CPU
             return destination;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_And_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1588,7 +1651,7 @@ namespace MBBSEmu.CPU
             return destination;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Xor()
         {
             var result = _currentOperationSize switch
@@ -1605,7 +1668,7 @@ namespace MBBSEmu.CPU
             Registers.F.ClearFlag(EnumFlags.OF);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Xor_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1617,7 +1680,7 @@ namespace MBBSEmu.CPU
             return result;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Xor_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1629,7 +1692,7 @@ namespace MBBSEmu.CPU
             return result;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Ja()
         {
             if (!Registers.F.IsFlagSet(EnumFlags.CF) && !Registers.F.IsFlagSet(EnumFlags.ZF))
@@ -1642,7 +1705,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jae()
         {
             if (!Registers.F.IsFlagSet(EnumFlags.CF))
@@ -1655,7 +1718,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jbe()
         {
             if (Registers.F.IsFlagSet(EnumFlags.ZF) || Registers.F.IsFlagSet(EnumFlags.CF))
@@ -1668,7 +1731,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jmp()
         {
             if (_currentInstruction.FlowControl == FlowControl.IndirectBranch)
@@ -1707,7 +1770,7 @@ namespace MBBSEmu.CPU
 
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
@@ -1722,7 +1785,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jge()
         {
             // SF == OF
@@ -1736,7 +1799,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jne()
         {
             //ZF == 0
@@ -1750,7 +1813,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jg()
         {
             //ZF == 0 & SF == OF
@@ -1765,7 +1828,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Je()
         {
             // ZF == 1
@@ -1779,7 +1842,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jl()
         {
             //SF <> OF
@@ -1793,7 +1856,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jb()
         {
             //CF == 1
@@ -1807,7 +1870,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Test()
         {
             switch (_currentOperationSize)
@@ -1828,7 +1891,7 @@ namespace MBBSEmu.CPU
 
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Test_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1839,7 +1902,7 @@ namespace MBBSEmu.CPU
             Registers.F.Evaluate(EnumFlags.SF, destination);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Test_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1853,7 +1916,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Identical to SUB, just doesn't save result of subtraction
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Cmp()
         {
             switch (_currentOperationSize)
@@ -1872,7 +1935,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Sub()
         {
             var result = _currentOperationSize switch
@@ -1885,7 +1948,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Sub_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1902,7 +1965,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Sub_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1920,7 +1983,7 @@ namespace MBBSEmu.CPU
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private uint Op_Sub_32()
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1941,7 +2004,7 @@ namespace MBBSEmu.CPU
         ///     ADD and ADC are exactly the same, except that ADC also adds 1 if the carry flag is set
         ///     So we don't repeat the function, we just pass the ADC flag
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Add(bool addCarry = false)
         {
             var result = _currentOperationSize switch
@@ -1954,7 +2017,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private byte Op_Add_8(bool addCarry)
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1974,7 +2037,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private ushort Op_Add_16(bool addCarry)
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1994,7 +2057,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Imul()
         {
             switch (_currentInstruction.OpCount)
@@ -2010,7 +2073,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Imul_1operand()
         {
             var operand2 = Registers.AX;
@@ -2029,7 +2092,7 @@ namespace MBBSEmu.CPU
             Registers.AX = result;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Imul_3operand()
         {
             var operand2 = _currentOperationSize switch
@@ -2054,7 +2117,7 @@ namespace MBBSEmu.CPU
             Registers.SetValue(_currentInstruction.Op0Register, result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv()
         {
 
@@ -2069,7 +2132,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -2082,7 +2145,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -2095,7 +2158,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Pop()
         {
             var popValue = Pop();
@@ -2112,7 +2175,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Push Op Code
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Push()
         {
             switch (_currentInstruction.StackPointerIncrement)
@@ -2142,7 +2205,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     MOV Op Code
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Mov()
         {
             switch (_currentInstruction.Op0Kind)
@@ -2186,7 +2249,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Call()
         {
             _previousCallPointer.Segment = Registers.CS;
@@ -2260,68 +2323,63 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Load Operation (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fld()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var floatToLoad = Memory.GetArray(Registers.DS, offset, 4);
-            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad.ToArray();
+            var floatToLoad = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+
+            //Set Value as new ST(0)
             Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
         }
 
         /// <summary>
         ///     Integer Load Operation (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fild()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var intToLoad = Memory.GetArray(Registers.DS, offset, 2);
+            var intToLoad = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source);
 
-            var convertedInt = Convert.ToSingle(BitConverter.ToInt16(intToLoad));
+            var convertedInt = Convert.ToSingle(intToLoad);
 
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(convertedInt);
             Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = convertedInt;
+
         }
 
         /// <summary>
         ///     Floating Point Multiplication (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fmul()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
 
-            Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            var float2 = BitConverter.ToSingle(floatToMultiply);
-
-            var result = float1 * float2;
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
-            Registers.Fpu.PushStackTop();
+            var result = ST0 * source;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
         /// <summary>
         ///     Floating Point Store & Pop (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fstp()
         {
-
-            Registers.Fpu.PopStackTop();
-            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
+            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()]; //Save off ST(0)
+            Registers.Fpu.PopStackTop(); //Pop the stack setting ST(1)->ST(0)
 
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory:
                     {
                         var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, valueToSave);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, BitConverter.GetBytes(valueToSave));
                         break;
                     }
-                case OpKind.Register when _currentInstruction.Op0Register == Register.ST0:
-                    FpuStack[7] = valueToSave;
+                case OpKind.Register:
+                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = valueToSave;
                     break;
                 default:
                     throw new Exception($"Unsupported Destination: {_currentInstruction.Op0Kind}:{_currentInstruction.Op0Register}");
@@ -2332,13 +2390,14 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Compare (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fcompp()
         {
+            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
+            var float2 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
             Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
             Registers.Fpu.PopStackTop();
-            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
 
             if (float1 > float2)
             {
@@ -2364,7 +2423,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Store Status Word to Memory or AX Register
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fstsw()
         {
             switch (_currentInstruction.Op0Kind)
@@ -2379,7 +2438,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Sahf()
         {
 
@@ -2429,7 +2488,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Not()
         {
             var destination = _currentOperationSize switch
@@ -2444,7 +2503,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Xchg()
         {
             var destination = _currentOperationSize switch
@@ -2465,7 +2524,7 @@ namespace MBBSEmu.CPU
             WriteToSource(destination);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Div()
         {
             var source = _currentOperationSize switch
@@ -2497,35 +2556,30 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Subtraction (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fsub()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+            var floatToSubtract = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            var float2 = BitConverter.ToSingle(floatToMultiply);
-
-            var result = float1 - float2;
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
-            Registers.Fpu.PushStackTop();
+            var result = ST0 - floatToSubtract;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
         /// <summary>
         ///     Floating Point Load Zero
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fldz()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(0.0f);
             Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 0.0f; //set ST(0) to 0.0
         }
 
         /// <summary>
         ///     Floating Point Load Control Word
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fldcw()
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
@@ -2537,7 +2591,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Store Control Word
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fstcw()
         {
             switch (_currentInstruction.Op0Kind)
@@ -2555,40 +2609,38 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Store Integer & Pop
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fistp()
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PopStackTop();
-            var valueToSave = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
             Memory.SetWord(Registers.DS, offset, (ushort)valueToSave);
         }
 
         /// <summary>
         ///     Floating Point Add ST0 to ST1
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Faddp()
         {
-            Registers.Fpu.PopStackTop(); //ST1
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            Registers.Fpu.PopStackTop(); //ST0
-            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            Registers.Fpu.PushStackTop(); //ST1
+            var STdestination = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueFloat(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
-            var result = float1 + float2;
+            var result = STdestination + STsource;
 
             //Store result at ST1
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            WriteToDestination(result);
 
-            Registers.Fpu.PushStackTop();
+            //ST(1) becomes ST(0)
+            Registers.Fpu.PopStackTop();
         }
 
         /// <summary>
         ///     Clear Interrupt Flag
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Cli()
         {
             Registers.F.ClearFlag(EnumFlags.IF);
@@ -2597,7 +2649,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Set Interrupt Flag
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Sti()
         {
             Registers.F.SetFlag(EnumFlags.IF);
@@ -2606,19 +2658,19 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Store (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fst()
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
-            Memory.SetArray(Registers.DS, offset, valueToSave);
+            Memory.SetArray(Registers.DS, offset, BitConverter.GetBytes(valueToSave));
         }
 
         /// <summary>
         ///     Covert Byte to Word
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Cbw()
         {
             Registers.AH = Registers.AL.IsNegative() ? (byte)0xFF : (byte)0x0;
@@ -2627,7 +2679,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Clears Direction Flag
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Cld()
         {
             Registers.F.ClearFlag(EnumFlags.DF);
@@ -2636,7 +2688,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Load byte at address DS:(E)SI into AL.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Lodsb()
         {
             Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
@@ -2655,7 +2707,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Store AL at address ES:(E)DI.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Stosb()
         {
             Memory.SetByte(Registers.DS, Registers.SI, Registers.AL);
@@ -2672,7 +2724,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Jcxz()
         {
             // CX == 0
@@ -2686,7 +2738,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Scasb()
         {
             var destination = Registers.AL;
@@ -2715,7 +2767,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Loope()
         {
             Registers.CX--;
@@ -2732,13 +2784,14 @@ namespace MBBSEmu.CPU
 
         /// <summary>
         ///     Floating Point Load Operation (x87)
+        ///
+        ///     Pushes the value of "1" to ST(0)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fld1()
         {
-            var floatToLoad = BitConverter.GetBytes((float)1);
-            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
             Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 1f;
         }
 
         /// <summary>
@@ -2746,68 +2799,64 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes square root of ST(0) and stores the result in ST(0).
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fsqrt()
         {
-            var floatToLoad = (float)Math.Sqrt(BitConverter.ToSingle(FpuStack[7]));
-            FpuStack[7] = BitConverter.GetBytes(floatToLoad);
+            var floatToLoad = (float)Math.Sqrt(FpuStack[Registers.Fpu.GetStackTop()]);
+            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
         }
 
         /// <summary>
         ///     Floating Point Division (x87)
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fdiv()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            var float2 = BitConverter.ToSingle(floatToMultiply);
-
-            var result = float1 / float2;
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
-            Registers.Fpu.PushStackTop();
+            var result = ST0 / source;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
         /// <summary>
         ///     Floating Point Multiply ST0 to ST1
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fmulp()
         {
-            Registers.Fpu.PopStackTop(); //ST1
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            Registers.Fpu.PopStackTop(); //ST0
-            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            Registers.Fpu.PushStackTop(); //ST1
+            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
+            var float2 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
             var result = float1 * float2;
 
             //Store result at ST1
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
 
-            Registers.Fpu.PushStackTop();
+            //Pop the Stack making ST(1)->ST(0)
+            Registers.Fpu.PopStackTop();
         }
 
         /// <summary>
-        ///     Floating Point Compare (x87)
+        ///     Compares the contents of register ST(0) and source value and sets condition code flags C0, C2, and C3 in the FPU status word
+        ///     according to the results. The source operand can be a data register or a memory location. If no source operand is given,
+        ///     the value in ST(0) is compared with the value in ST(1). The sign of zero is ignored, so that –0.0 is equal to +0.0.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fcomp()
         {
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            Registers.Fpu.PopStackTop();
-            var float2 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
+            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            if (float1 > float2)
+            Registers.Fpu.PopStackTop();
+
+            if (ST0 > source)
             {
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
             }
-            else if (float1 < float2)
+            else if (ST0 < source)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
@@ -2825,6 +2874,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Push Flags Register to Stack
         /// </summary>
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Pushf()
         {
             Push(Registers.F.Flags);
@@ -2836,19 +2886,32 @@ namespace MBBSEmu.CPU
         ///
         ///     Add m32fp to ST(0) and store result in ST(0).
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(CompilerOptimizations)]
         private void Op_Fadd()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var floatToMultiply = Memory.GetArray(Registers.DS, offset, 4);
+            var floatToAdd = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var floatOnFpuStack = FpuStack[Registers.Fpu.GetStackTop()];
 
+            var result = floatOnFpuStack + floatToAdd;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
+        }
+
+        /// <summary>
+        ///     Floating Point Divide ST1 by ST0 saving the result to ST(1) and Popping the FPU stack
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_fdivp()
+        {
+            var STdestination = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueFloat(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = STdestination / STsource;
+
+            //Store result at ST1
+            WriteToDestination(result);
+
+            //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
-            var float1 = BitConverter.ToSingle(FpuStack[Registers.Fpu.GetStackTop()]);
-            var float2 = BitConverter.ToSingle(floatToMultiply);
-
-            var result = float1 + float2;
-            FpuStack[Registers.Fpu.GetStackTop()] = BitConverter.GetBytes(result);
-            Registers.Fpu.PushStackTop();
         }
     }
 }

@@ -79,7 +79,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("MARGN", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("MARGV", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
-            Module.Memory.AllocateVariable("USERNUM", 0x2);
+            Module.Memory.AllocateVariable("USRNUM", 0x2);
             var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.ToSpan());
@@ -148,6 +148,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("**LANGUAGES", Module.Memory.GetVariablePointer("*LANGUAGES"));
             Module.Memory.AllocateVariable("ERRCOD", sizeof(ushort));
             Module.Memory.AllocateVariable("CURRENT-MCV", IntPtr16.Size);
+            Module.Memory.AllocateVariable("DIGALW", sizeof(ushort));
+            Module.Memory.SetWord("DIGALW", 1);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -232,7 +234,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.ToSpan());
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
             ChannelDictionary[channelNumber].StatusChange = false;
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].Status);
@@ -347,7 +349,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (ordinal)
             {
                 case 628:
-                    return usernum;
+                    return usrnum;
                 case 629:
                     return usrptr;
                 case 97:
@@ -463,6 +465,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return languages;
                 case 193:
                     return errcod;
+                case 169:
+                    return digalw;
             }
 
             if (offsetsOnly)
@@ -1128,14 +1132,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 155:
                     daytoday();
                     break;
-                case 169:
-                    digalw();
-                    break;
                 case 127:
                     cncnum();
                     break;
                 case 339:
                     hexopt();
+                case 449:
+                    onsys();
+                    break;
+                case 517:
+                    rtstcrd();
+                    break;
+                case 660:
+                    f_lxrsh();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -1688,7 +1697,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Retrurns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> usernum => base.Module.Memory.GetVariablePointer("USERNUM").ToSpan();
+        private ReadOnlySpan<byte> usrnum => base.Module.Memory.GetVariablePointer("USRNUM").ToSpan();
 
         /// <summary>
         ///     Gets the online user account info
@@ -1789,10 +1798,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBufferProcessed = FormatOutput(outputBuffer);
 
-            ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
+            if(ChannelDictionary.ContainsKey(userChannel))
+                ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
 #if DEBUG
-            _logger.Info($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
+            _logger.Debug($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif
 
             Module.Memory.SetZero(basePointer, outputLength);
@@ -4374,14 +4384,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("MODULE-POINTER").ToSpan();
 
         /// <summary>
-        ///     Long Shift Left (Borland C++ Implicit Function)
+        ///     Long Arithmatic Shift Left (Borland C++ Implicit Function)
         ///
         ///     DX:AX == Long Value
         ///     CL == How many to move
         /// </summary>
         private void f_lxlsh()
         {
-            var inputValue = (Registers.DX << 16) | Registers.AX;
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
 
             var result = inputValue << Registers.CL;
 
@@ -4390,14 +4400,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Long Shift Right (Borland C++ Implicit Function)
+        ///     Long Logical Shift Right (Borland C++ Implicit Function)
         ///
-        ///     DX:AX == Long Value
+        ///     DX:AX == Unsigned Long Value
         ///     CL == How many to move
         /// </summary>
         private void f_lxursh()
         {
-            var inputValue = (Registers.DX << 16) | Registers.AX;
+            var inputValue = (uint)((Registers.DX << 16) | Registers.AX);
+
+            var result = inputValue >> Registers.CL;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Long Arithmatic Shift Right (Borland C++ Implicit Function)
+        ///
+        ///     DX:AX == Long Value
+        ///     CL == How many to move
+        /// </summary>
+        private void f_lxrsh()
+        {
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
 
             var result = inputValue >> Registers.CL;
 
@@ -7291,7 +7317,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Phar-Lap Tiled Memory Allocation
         ///
-        ///     Signature: int pltile(ULONG size, INT bsel, UINT stride, UINT tsize) 
+        ///     Signature: int pltile(ULONG size, INT bsel, UINT stride, UINT tsize)
         /// </summary>
         private void pltile()
         {
@@ -7335,7 +7361,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int digalw;
         /// </summary>
-        public void digalw() => Registers.AX = 1;
+        public ReadOnlySpan<byte> digalw => Module.Memory.GetVariablePointer("DIGALW").Data;
 
         /// <summary>
         ///     Expect a Decimal from the user (character from the current command)
@@ -7440,5 +7466,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = outputValue;
         }
 
+        /// <summary>
+        ///     Determines if the specified user is online
+        ///
+        ///     Signature: int ison=onsys(char *usrid);
+        /// </summary>
+        private void onsys()
+        {
+            var usernamePointer = GetParameterPointer(0);
+
+            var username = Encoding.ASCII.GetString(Module.Memory.GetString(usernamePointer, true));
+
+            //Scan the current channels for any usernames that match the specified one
+            Registers.AX = ChannelDictionary.Any(x =>
+                string.Equals(x.Value.Username, username, StringComparison.CurrentCultureIgnoreCase)) ? (ushort) 1 : (ushort) 0;
+        }
+
+        /// <summary>
+        ///     Test if the user has enough real credits
+        ///
+        ///     We always return TRUE since MBBSEmu doesn't use/consume credits
+        ///
+        ///     Signature: int enuf=rtstcrd(long amount);
+        /// </summary>
+        private void rtstcrd()
+        {
+            Registers.AX = 1;
+        }
     }
 }

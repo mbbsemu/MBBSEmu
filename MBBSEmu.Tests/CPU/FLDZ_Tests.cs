@@ -18,7 +18,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             mbbsEmuCpuRegisters.Fpu.PopStackTop();
-            var result = BitConverter.ToSingle(mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
 
             Assert.Equal(0.0f, result);
             Assert.Equal(7, mbbsEmuCpuRegisters.Fpu.GetStackTop());

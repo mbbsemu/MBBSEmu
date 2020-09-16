@@ -226,7 +226,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(ushort channelNumber)
         {
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USERNUM"), channelNumber);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
         }
 
         /// <summary>
