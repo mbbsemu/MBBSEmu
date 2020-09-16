@@ -573,7 +573,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
                         //Get Variable Entry Point
                         var variableEntryPoint = Module.TextVariables[textVariableName];
-                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true);
+                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
                         var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
                         _logger.Info($"Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
