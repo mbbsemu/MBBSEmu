@@ -248,7 +248,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btuoba()
         {
-            Registers.AX = (ushort)short.MaxValue;
+            Registers.AX = (ushort)short.MaxValue - 1;
         }
 
         /// <summary>
@@ -974,7 +974,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuinp()
         {
-            var channelNumber  = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var destinationPointer = GetParameterPointer(1);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))

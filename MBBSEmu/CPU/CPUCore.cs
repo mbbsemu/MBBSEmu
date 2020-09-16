@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -246,7 +247,7 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x6 && Registers.IP == 0x3562)
+            //if (Registers.CS == 0x2 && Registers.IP == 0x3352)
                 //Debugger.Break();
 
             //Show Debugging
@@ -511,6 +512,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fdivp:
                     Op_fdivp();
+                    break;
+                case Mnemonic.Fsubr:
+                    Op_Fsubr();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -2563,6 +2567,19 @@ namespace MBBSEmu.CPU
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
             var result = ST0 - floatToSubtract;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
+        }
+
+        /// <summary>
+        ///     Floating Point Reverse Subtraction (x87)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fsubr()
+        {
+            var floatToSubtract = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+
+            var result = floatToSubtract - ST0;
             FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
