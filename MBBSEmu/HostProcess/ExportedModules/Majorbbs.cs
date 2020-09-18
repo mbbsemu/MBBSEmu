@@ -274,7 +274,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
-
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
                 ProcessChannelInput(channelNumber);
@@ -1146,6 +1145,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 660:
                     f_lxrsh();
+                    break;
+                case 157:
+                    dcdate();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -7493,6 +7495,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void rtstcrd()
         {
             Registers.AX = 1;
+        }
+
+
+        /// <summary>
+        ///     Decode string date formatted 'MM/DD/YY' to int format YYYYYYYMMMMDDDDD
+        ///
+        ///     Signature: int date=dcdate(char *ascdat);
+        /// </summary>
+        private void dcdate()
+        {
+            var inputDate = GetParameterString(0, true);
+
+            var inputDatetime = DateTime.Parse(inputDate);
+
+            Registers.AX = (ushort)((inputDatetime.Month << 5) + inputDatetime.Day + ((inputDatetime.Year - 1980) << 9));
         }
     }
 }
