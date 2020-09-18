@@ -405,6 +405,16 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Deletes all records within the current Btrieve File
+        /// </summary>
+        public void DeleteAll()
+        {
+            _logger.Warn($"Deleting all Records from {LoadedFileName} ({LoadedFile.RecordCount} records)");
+            LoadedFile.Records.Clear();
+            SaveJson();
+        }
+
+        /// <summary>
         ///     Performs a Step based Seek on the loaded Btrieve File
         /// </summary>
         /// <param name="operationCode"></param>

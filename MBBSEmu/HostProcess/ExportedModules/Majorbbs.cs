@@ -467,6 +467,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return errcod;
                 case 169:
                     return digalw;
+                case 55:
+                    SetupACCBB();
+                    return accbb;
             }
 
             if (offsetsOnly)
@@ -480,7 +483,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
-                //Ignored Ones
+                //Ignored Ordinals
                 case 561: //srand() handled internally
                 case 614: //unfrez -- unlocks video memory, ignored
                 case 174: //DSAIRP
@@ -1155,29 +1158,78 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Sets up the Generic MajorBBS Btrieve Database for Use
+        ///     Sets up the Generic MajorBBS Btrieve Database for use
         /// </summary>
         private void SetupGENBB()
         {
-            //If it's already setup, bail
-            if (Module.Memory.TryGetVariablePointer("GENBB", out _))
-                return;
+            //Setup the Pointer to the Global GENBB Address -- ensuring each module is referencing the same GENBB Pointer & GENBB Processor
+            if (!_globalCache.TryGet<IntPtr16>("GENBB-POINTER", out var genbbPointer))
+            {
+                //Declare Pointers and Locations for GENBB Data
+                Module.Memory.AddSegment(0x1000);
+                genbbPointer = new IntPtr16(0x1000, 0x0); //GENBB Btrieve Struct
+                var genbbNamePointer = new IntPtr16(0x1000, 0x100); //GENBB File Name Pointer
+                var genbbDataPointer = new IntPtr16(0x1000, 0x200); //GENBB Record Pointer
 
-            var btvFileStructPointer = Module.Memory.AllocateVariable("BBSGEN-STRUCT", BtvFileStruct.Size);
-            var btvFileName = Module.Memory.AllocateVariable("BBSGEN-NAME", 11); //BBSGEN.DAT\0
-            Module.Memory.SetArray("BBSGEN-NAME", Encoding.ASCII.GetBytes($"BBSGEN.DAT\0"));
-            var btvDataPointer =
-                Module.Memory.AllocateVariable("BBSGEN-POINTER", 8192); //GENSIZ -- Defined in MAJORBBS.H
+                //Set Struct Value
+                var newBtvStruct = new BtvFileStruct { filenam = genbbNamePointer, reclen = 8192, data = genbbDataPointer };
+                Module.Memory.SetArray(genbbPointer, newBtvStruct.Data);
 
-            var newBtvStruct = new BtvFileStruct { filenam = btvFileName, reclen = 8192, data = btvDataPointer };
+                //Set Filename Value
+                Module.Memory.SetArray(genbbNamePointer, Encoding.ASCII.GetBytes($"BBSGEN.DAT\0"));
 
-            BtrieveSaveProcessor(btvFileStructPointer,
-                new BtrieveFileProcessor(_fileFinder, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                //Set Global Cache Values
+                _globalCache.Set("GENBB-POINTER", genbbPointer);
+                _globalCache.Set("GENBB-PROCESSOR",
+                    new BtrieveFileProcessor(_fileFinder, "BBSGEN.DAT", Directory.GetCurrentDirectory( )));
+            }
 
-            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
+            //If we've already setup the local reference, bail
+            if (Module.Memory.TryGetVariablePointer("GENBB", out _)) return;
 
-            var genBBPointer = Module.Memory.AllocateVariable("GENBB", 0x4); //Pointer to GENBB BTRIEVE File
-            Module.Memory.SetArray(genBBPointer, btvFileStructPointer.ToSpan());
+            //Save a local reference to the shared Processor
+            BtrieveSaveProcessor(genbbPointer, _globalCache.Get<BtrieveFileProcessor>("GENBB-PROCESSOR"));
+            
+            //Local Variable that will hold the pointer to the GENBB-POINTER
+            var localGENBB = Module.Memory.GetOrAllocateVariablePointer("GENBB", IntPtr16.Size);
+            Module.Memory.SetPointer(localGENBB, genbbPointer);
+
+        }
+
+        /// <summary>
+        ///     Sets up the MajorBBS Btrieve User Database for use
+        /// </summary>
+        private void SetupACCBB()
+        {
+            //Setup the Pointer to the Global GENBB Address -- ensuring each module is referencing the same GENBB Pointer & GENBB Processor
+            if (!_globalCache.TryGet<IntPtr16>("ACCBB-POINTER", out var accbbPointer))
+            {
+                //Declare Pointers and Locations for GENBB Data
+                Module.Memory.AddSegment(0x1000);
+                accbbPointer = new IntPtr16(0x1000, 0x0); //GENBB Btrieve Struct
+                var accbbNamePointer = new IntPtr16(0x1000, 0x100); //GENBB File Name Pointer
+                var accbbDataPointer = new IntPtr16(0x1000, 0x200); //GENBB Record Pointer
+
+                //Set Struct Value
+                var newBtvStruct = new BtvFileStruct { filenam = accbbNamePointer, reclen = 8192, data = accbbDataPointer };
+                Module.Memory.SetArray(accbbPointer, newBtvStruct.Data);
+
+                //Set Filename Value
+                Module.Memory.SetArray(accbbNamePointer, Encoding.ASCII.GetBytes($"BBSUSR.DAT\0"));
+
+                //Set Global Cache Values
+                _globalCache.Set("ACCBB-POINTER", accbbPointer);
+            }
+
+            //If we've already setup the local reference, bail
+            if (Module.Memory.TryGetVariablePointer("ACCBB", out _)) return;
+
+            //Save a local reference to the shared Processor
+            BtrieveSaveProcessor(accbbPointer, _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR"));
+
+            //Local Variable that will hold the pointer to the GENBB-POINTER
+            var localACCBB = Module.Memory.GetOrAllocateVariablePointer("ACCBB", IntPtr16.Size);
+            Module.Memory.SetPointer(localACCBB, accbbPointer);
         }
 
         /// <summary>
@@ -4145,7 +4197,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = destinationPointer.Segment;
         }
 
-        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariablePointer("GENBB").ToSpan();
+        /// <summary>
+        ///     Pointer to the Generic BBS Database (BBSGEN.DAT)
+        /// </summary>
+        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariablePointer("GENBB").Data;
+
+        /// <summary>
+        ///     Pointer to the BBS Accounts Database (BBSUSR.DAT)
+        /// </summary>
+        private ReadOnlySpan<byte> accbb => Module.Memory.GetVariablePointer("ACCBB").Data;
 
         /// <summary>
         ///     Turns echo on for this channel

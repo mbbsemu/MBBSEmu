@@ -15,6 +15,10 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using MBBSEmu.Btrieve;
+using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.Memory;
 
 namespace MBBSEmu
 {
@@ -179,18 +183,40 @@ namespace MBBSEmu
                 var config = _serviceResolver.GetService<IConfiguration>();
                 var fileUtility = _serviceResolver.GetService<IFileUtility>();
 
+                //Setup Generic Database
+                var resourceManager = _serviceResolver.GetService<IResourceManager>();
+                var globalCache = _serviceResolver.GetService<IGlobalCache>();
+                var fileHandler = _serviceResolver.GetService<IFileUtility>();
+                if (!File.Exists($"BBSGEN.EMU"))
+                {
+                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.EMU");
+                    File.WriteAllBytes($"BBSGEN.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.EMU").ToArray());
+                }
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
+
+                //Setup User Database
+                if (!File.Exists($"BBSUSR.EMU"))
+                {
+                    _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.EMU");
+                    File.WriteAllBytes($"BBSUSR.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.EMU").ToArray());
+                }
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSUSR.DAT", Directory.GetCurrentDirectory()));
+
                 //Database Reset
                 if (_doResetDatabase)
                     DatabaseReset();
 
-                //Setup Generic Database
-                if (!File.Exists($"BBSGEN.DAT"))
+                //Database Sanity Checks
+                var databaseFile = _serviceResolver.GetService<IConfiguration>()["Database.File"];
+                if (string.IsNullOrEmpty(databaseFile))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG Generic User Database, creating new copy of BBSGEN.VIR to BBSGEN.DAT");
-
-                    var resourceManager = _serviceResolver.GetService<IResourceManager>();
-
-                    File.WriteAllBytes($"BBSGEN.DAT", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.VIR").ToArray());
+                    _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
+                    return;
+                }
+                if (!File.Exists($"{databaseFile}"))
+                {
+                    _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
+                    DatabaseReset();
                 }
 
                 //Setup Modules
@@ -228,19 +254,6 @@ namespace MBBSEmu
                         apiReport.GenerateReport();
                     }
                     return;
-                }
-
-                //Database Sanity Checks
-                var databaseFile = _serviceResolver.GetService<IConfiguration>()["Database.File"];
-                if (string.IsNullOrEmpty(databaseFile))
-                {
-                    _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
-                    return;
-                }
-                if (!File.Exists($"{databaseFile}"))
-                {
-                    _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
-                    DatabaseReset();
                 }
 
                 //Setup and Run Host
@@ -327,6 +340,11 @@ namespace MBBSEmu
             }
         }
 
+        /// <summary>
+        ///     Event Handler to handle Ctrl-C from the Console
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
         private void CancelKeyPressHandler(object sender, ConsoleCancelEventArgs args)
         {
             // so args.Cancel is a bit strange. Cancel means to cancel the Ctrl-C processing, so
@@ -399,6 +417,13 @@ namespace MBBSEmu
             //Keys for GUEST
             keys.InsertAccountKey(guestUserId, "DEMO");
             keys.InsertAccountKey(guestUserId, "NORMAL");
+
+
+            //Insert Into BBS Account Btrieve File
+            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            _accountBtrieve.DeleteAll();
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
 
             _logger.Info("Database Reset!");
         }
