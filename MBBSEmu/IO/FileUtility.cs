@@ -79,7 +79,7 @@ namespace MBBSEmu.IO
             string found;
             if (pathComponents.Count == 0)
             {
-                found = FindByEnumeration(currentPath, component, Directory.EnumerateFiles);
+                found = FindByEnumeration(currentPath, component, Directory.EnumerateFileSystemEntries);
                 return String.IsNullOrEmpty(found) ? Path.Combine(currentPath, component) : found;
             }
 
@@ -115,7 +115,7 @@ namespace MBBSEmu.IO
         ///     filename, or null if not found</returns>
         private string FindByEnumeration(string root, string filename, EnumerateFilesystemObjects enumerateDelegate)
         {
-            _logger.Info($"Searching {root} for {filename}");
+            _logger?.Info($"Searching {root} for {filename}");
 
             return enumerateDelegate(root, filename, CASE_INSENSITIVE_ENUMERATION_OPTIONS).DefaultIfEmpty(null).First();
         }
