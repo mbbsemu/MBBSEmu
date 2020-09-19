@@ -35,6 +35,11 @@ namespace MBBSEmu
         private string _modulePath;
 
         /// <summary>
+        ///     Module Hotkey specified by the -K Command Line Argument
+        /// </summary>
+        private string _moduleHotkey;
+        
+        /// <summary>
         ///     Specified if -APIREPORT Command Line Argument was passed
         /// </summary>
         private bool _doApiReport;
@@ -105,6 +110,10 @@ namespace MBBSEmu
                             break;
                         case "-M":
                             _moduleIdentifier = args[i + 1];
+                            i++;
+                            break;
+                        case "-K":
+                            _moduleHotkey = args[i + 1];
                             i++;
                             break;
                         case "-P":
@@ -197,8 +206,11 @@ namespace MBBSEmu
                 var modules = new List<MbbsModule>();
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
+                    //if no module hotkey defined, set to 0
+                    _moduleHotkey ??= "0";
+
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath));
+                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _moduleHotkey, _modulePath));
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -208,8 +220,15 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]));
+                        if (!string.IsNullOrEmpty(m["Hotkey"]) && !string.Equals(m["Hotkey"], "X") && m["Hotkey"].Length < 2)
+                        {
+                            _logger.Info($"Loading {m["Identifier"]}");
+                            modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Hotkey"], m["Path"]));
+                        }
+                        else
+                        {
+                            _logger.Error($"Invalid hotkey for {m["Identifier"]}, module not loaded");
+                        }
                     }
                 }
                 else
