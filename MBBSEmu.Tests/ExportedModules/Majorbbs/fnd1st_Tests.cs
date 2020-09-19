@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         public void Dispose()
         {
-            Directory.Delete(mbbsModule.ModulePath, /* recursive=*/ true);
+            Directory.Delete(mbbsModule.ModulePath, recursive: true);
         }
 
         [Fact]

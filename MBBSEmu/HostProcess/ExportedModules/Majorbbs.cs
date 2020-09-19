@@ -50,6 +50,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private AgentStruct _galacticommClientServerAgent;
 
         /// <summary>
+        ///     Stores all active searches created via fnd1st
+        /// </summary>
+        private Dictionary<Guid, IEnumerator<string>> _activeSearches =
+            new Dictionary<Guid, IEnumerator<string>>();
+
+        /// <summary>
         ///     Segment Identifier for Relocation
         /// </summary>
         /// <returns></returns>
@@ -3155,8 +3161,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         }
 
-        private Dictionary<Guid, IEnumerator<string>> _activeSearches = new Dictionary<Guid, IEnumerator<string>>();
-
         /// <summary>
         ///     Looks for the specified filename (filespec) in the BBS directory, returns 1 if the file is there
         ///
@@ -3178,13 +3182,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (components.Length > 1)
             {
-                //_logger.Info($"fnd1st {fileName} {attrChar}");
                 path = _fileFinder.FindFile(Module.ModulePath, path);
             }
 
             path = Path.Combine(Module.ModulePath, path);
 
-            //_logger.Info($"Searching {path} for {search}");
             try {
                 var fileEnumerator = Directory.EnumerateFileSystemEntries(path, search, FileUtility.CASE_INSENSITIVE_ENUMERATION_OPTIONS);
                 var guid = Guid.NewGuid();

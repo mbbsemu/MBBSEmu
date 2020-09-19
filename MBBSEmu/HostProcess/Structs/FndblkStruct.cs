@@ -60,8 +60,8 @@ namespace MBBSEmu.HostProcess.Structs
         public DateTime DateTime
         {
           get {
-            ushort time = BitConverter.ToUInt16(Data, 22);
-            ushort date = BitConverter.ToUInt16(Data, 24);
+            var time = BitConverter.ToUInt16(Data, 22);
+            var date = BitConverter.ToUInt16(Data, 24);
 
             var year = ((date >> 9) & 0x7F) + 1980;
             var month = (date >> 5) & 0xF;
@@ -74,8 +74,8 @@ namespace MBBSEmu.HostProcess.Structs
             return new DateTime(year, month, day, hours, minutes, seconds);
           }
           set {
-            ushort time = (ushort)((value.Hour << 11) | (value.Minute << 5 ) | (value.Second >> 1));
-            ushort date = (ushort)(((value.Year - 1980) << 9) | (value.Month << 5) | value.Day);
+            var time = (ushort)((value.Hour << 11) | (value.Minute << 5 ) | (value.Second >> 1));
+            var date = (ushort)(((value.Year - 1980) << 9) | (value.Month << 5) | value.Day);
 
             Array.Copy(BitConverter.GetBytes(time), 0, Data, 22, 2);
             Array.Copy(BitConverter.GetBytes(date), 0, Data, 24, 2);
