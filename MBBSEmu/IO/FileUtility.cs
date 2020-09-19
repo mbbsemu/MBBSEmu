@@ -19,7 +19,7 @@ namespace MBBSEmu.IO
     {
         private static readonly char[] PATH_SEPARATORS = {'\\', '/'};
 
-        private static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions() {
+        public static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions() {
             IgnoreInaccessible = true,
             MatchCasing = MatchCasing.CaseInsensitive,
             RecurseSubdirectories = false,
@@ -36,6 +36,10 @@ namespace MBBSEmu.IO
         public static FileUtility CreateForTest()
         {
             return new FileUtility(null);
+        }
+
+        public static string[] SplitIntoComponents(string path) {
+            return path.Split(PATH_SEPARATORS);
         }
 
         public string FindFile(string modulePath, string fileName)
@@ -110,8 +114,11 @@ namespace MBBSEmu.IO
         /// <returns>The FULL PATH of the matching filename, which may be differently cased than
         ///     filename, or null if not found</returns>
         private string FindByEnumeration(string root, string filename, EnumerateFilesystemObjects enumerateDelegate)
-            => enumerateDelegate(root, filename, CASE_INSENSITIVE_ENUMERATION_OPTIONS).DefaultIfEmpty(null).First();
+        {
+            _logger.Info($"Searching {root} for {filename}");
 
+            return enumerateDelegate(root, filename, CASE_INSENSITIVE_ENUMERATION_OPTIONS).DefaultIfEmpty(null).First();
+        }
 
         /// <summary>
         ///     Because all files/paths used by Modules are assumed DOS, if we're running on a modern

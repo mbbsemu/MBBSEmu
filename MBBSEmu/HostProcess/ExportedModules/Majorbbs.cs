@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
@@ -1146,6 +1147,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 660:
                     f_lxrsh();
+                    break;
+                case 695:
+                    fndnxt();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
@@ -3151,6 +3155,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         }
 
+        private Dictionary<Guid, IEnumerator<string>> _activeSearches = new Dictionary<Guid, IEnumerator<string>>();
+
         /// <summary>
         ///     Looks for the specified filename (filespec) in the BBS directory, returns 1 if the file is there
         ///
@@ -3159,12 +3165,85 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fnd1st()
         {
             var findBlockPointer = GetParameterPointer(0);
-            var filespecPointer = GetParameterPointer(2);
+            var fileName = GetParameterString(2, stripNull: true);
             var attrChar = GetParameter(4);
 
-            var fileName = Module.Memory.GetString(filespecPointer, true);
-            var fileNameString = _fileFinder.FindFile(Module.ModulePath, Encoding.ASCII.GetString(fileName));
-            Registers.AX = (ushort)(File.Exists(Path.Combine(Module.ModulePath, fileNameString)) ? 1 : 0);
+            var components = FileUtility.SplitIntoComponents(fileName);
+            var path = "";
+            var search = components[^1];
+            for (var i = 0; i < components.Length - 1; ++i)
+            {
+                path = Path.Combine(path, components[i]);
+            }
+
+            if (components.Length > 1)
+            {
+                //_logger.Info($"fnd1st {fileName} {attrChar}");
+                path = _fileFinder.FindFile(Module.ModulePath, path);
+            }
+
+            path = Path.Combine(Module.ModulePath, path);
+
+            //_logger.Info($"Searching {path} for {search}");
+            try {
+                var fileEnumerator = Directory.EnumerateFileSystemEntries(path, search, FileUtility.CASE_INSENSITIVE_ENUMERATION_OPTIONS);
+                var guid = Guid.NewGuid();
+
+                _activeSearches.Add(guid, fileEnumerator.GetEnumerator());
+
+                var fndblk = new FndblkStruct() { Guid = guid };
+                Module.Memory.SetArray(findBlockPointer,fndblk.Data);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                _logger.Warn($"Can't find directory {path}");
+                Registers.AX = 0;
+                return;
+            }
+
+            fndnxt();
+        }
+
+        /// <summary>
+        ///     Finds the next file from the original fnd1st call, returns 1 if the file is there
+        ///
+        ///     Signature: int yes=fndnxt(struct fndblk &fb);
+        /// </summary>
+        private void fndnxt()
+        {
+            Registers.AX = 0;
+
+            var fndblkPointer = GetParameterPointer(0);
+            var fndblk = new FndblkStruct(Module.Memory.GetArray(fndblkPointer, FndblkStruct.StructSize));
+            if (!_activeSearches.TryGetValue(fndblk.Guid, out var enumerator))
+            {
+                _logger.Warn($"Called fndnxt but the GUID wasn't found {fndblk.Guid}");
+                return;
+            }
+
+            while (true)
+            {
+                if (!enumerator.MoveNext())
+                {
+                    _activeSearches.Remove(fndblk.Guid);
+                    return;
+                }
+
+                var fileInfo = new FileInfo(enumerator.Current);
+                fndblk.DateTime = fileInfo.LastWriteTime;
+                fndblk.Size = (int) fileInfo.Length;
+                fndblk.SetAttributes(fileInfo.Attributes);
+
+                // DOS doesn't support long file names, so filter those out from the result set
+                var name = FileUtility.SplitIntoComponents(enumerator.Current)[^1];
+                if (name.Length >= FndblkStruct.FilenameSize)
+                    continue;
+
+                fndblk.Name = name;
+                Module.Memory.SetArray(fndblkPointer,fndblk.Data);
+                Registers.AX = 1;
+                return;
+            }
         }
 
         /// <summary>
