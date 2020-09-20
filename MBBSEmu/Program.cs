@@ -15,6 +15,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace MBBSEmu
 {
@@ -206,11 +207,8 @@ namespace MBBSEmu
                 var modules = new List<MbbsModule>();
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
-                    //if no module hotkey defined, set to 0
-                    _moduleHotkey ??= "0";
-
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _moduleHotkey, _modulePath));
+                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { ModuleHotkey = _moduleHotkey });
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -220,15 +218,15 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        if (!string.IsNullOrEmpty(m["Hotkey"]) && !string.Equals(m["Hotkey"], "X") && m["Hotkey"].Length < 2)
-                        {
-                            _logger.Info($"Loading {m["Identifier"]}");
-                            modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Hotkey"], m["Path"]));
-                        }
-                        else
+                        if (!string.IsNullOrEmpty(m["Hotkey"]) && (!char.IsLetter(m["Hotkey"][0]) && modules.Any(x => x.ModuleHotkey == m["Hotkey"])))
                         {
                             _logger.Error($"Invalid hotkey for {m["Identifier"]}, module not loaded");
+                            continue;
                         }
+                        
+                        //Load Modules
+                        _logger.Info($"Loading {m["Identifier"]}");
+                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { ModuleHotkey = m["Hotkey"] });
                     }
                 }
                 else

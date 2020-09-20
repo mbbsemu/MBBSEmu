@@ -49,7 +49,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Menu Hotkey of Module
         /// </summary>
-        public readonly string ModuleHotkey;
+        public string ModuleHotkey;
 
         /// <summary>
         ///     Module DLL
@@ -138,14 +138,12 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
-        /// <param name="moduleHotkey">Will be null in a test</param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string moduleHotkey, string path = "",  MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "",  MemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;
             ModuleIdentifier = moduleIdentifier;
-            ModuleHotkey = moduleHotkey;
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))

@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, null, string.Empty, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, string.Empty, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
