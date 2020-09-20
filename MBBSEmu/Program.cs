@@ -36,9 +36,9 @@ namespace MBBSEmu
         private string _modulePath;
 
         /// <summary>
-        ///     Module Hotkey specified by the -K Command Line Argument
+        ///     Module Option Key specified by the -K Command Line Argument
         /// </summary>
-        private string _moduleHotkey;
+        private string _menuOptionKey;
         
         /// <summary>
         ///     Specified if -APIREPORT Command Line Argument was passed
@@ -114,7 +114,7 @@ namespace MBBSEmu
                             i++;
                             break;
                         case "-K":
-                            _moduleHotkey = args[i + 1];
+                            _menuOptionKey = args[i + 1];
                             i++;
                             break;
                         case "-P":
@@ -208,7 +208,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { ModuleHotkey = _moduleHotkey });
+                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { MenuOptionKey = _menuOptionKey });
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -218,15 +218,15 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        if (!string.IsNullOrEmpty(m["Hotkey"]) && (!char.IsLetter(m["Hotkey"][0]) && modules.Any(x => x.ModuleHotkey == m["Hotkey"])))
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && modules.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
                         {
-                            _logger.Error($"Invalid hotkey for {m["Identifier"]}, module not loaded");
+                            _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
                         }
                         
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { ModuleHotkey = m["Hotkey"] });
+                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { MenuOptionKey = m["MenuOptionKey"] });
                     }
                 }
                 else

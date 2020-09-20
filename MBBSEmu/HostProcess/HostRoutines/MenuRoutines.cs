@@ -291,7 +291,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 foreach (var m in modules)
                 {
                     EchoToClient(session,
-                        $"   |CYAN||B|{m.Value.ModuleHotkey}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3, ' ')
+                        $"   |CYAN||B|{m.Value.MenuOptionKey}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3, ' ')
                             .EncodeToANSIArray());
                     currentMenuItem++;
                 }
@@ -331,7 +331,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            var selectedMenuItem = modules.Values.FirstOrDefault(m => m.ModuleHotkey.Equals(inputCommand, StringComparison.InvariantCultureIgnoreCase));
+            var selectedMenuItem = modules.Values.FirstOrDefault(m => m.MenuOptionKey.Equals(inputCommand, StringComparison.InvariantCultureIgnoreCase));
 
             //Check to see if input matched a module, if not redisplay menu
             if (selectedMenuItem == null)

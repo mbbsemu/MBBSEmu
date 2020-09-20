@@ -3,12 +3,11 @@
     {
       "Identifier": "MJWWHL",
       "Path": "D:\\BBS\\Mbbsemu\\modules\\WEELFAME\\",
-      "Hotkey": "A"
     },
     {
       "Identifier": "ELWCHT",
       "Path": "D:\\BBS\\Mbbsemu\\modules\\elwchtd\\",
-      "Hotkey": "B"
+      "MenuOptionKey": "C"
     }
   ]
 }

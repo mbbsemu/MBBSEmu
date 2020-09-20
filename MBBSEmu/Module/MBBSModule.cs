@@ -49,7 +49,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Menu Hotkey of Module
         /// </summary>
-        public string ModuleHotkey;
+        public string MenuOptionKey;
 
         /// <summary>
         ///     Module DLL

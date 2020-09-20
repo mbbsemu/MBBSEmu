@@ -11,7 +11,7 @@ Command Line Options:
                     loaded and executed
 -M <identifier>     Module Identifier (Overrides -C)
 -P <path>           Path To Module (Overrides -C)
--K <hotkey>         Menu Hotkey (Overrides -C) 
+-K <menukey>        Menu Option Key (Overrides -C) 
 -APIREPORT          Generate API Report
                     This generates a JSON file which details the imported APIs used by the
                     module, assisting in development of MBBSEmu
