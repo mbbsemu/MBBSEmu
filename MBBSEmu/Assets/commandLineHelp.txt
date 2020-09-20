@@ -11,6 +11,7 @@ Command Line Options:
                     loaded and executed
 -M <identifier>     Module Identifier (Overrides -C)
 -P <path>           Path To Module (Overrides -C)
+-K <menukey>        Menu Option Key (A-Z, Overrides -C) 
 -APIREPORT          Generate API Report
                     This generates a JSON file which details the imported APIs used by the
                     module, assisting in development of MBBSEmu
@@ -31,15 +32,16 @@ BBS.Title               String         Title (name) of your Bulletin Board, used
 GSBL.Activation         Number         Activation Code for MajorBBS & Worldgroup (8-Digit)
 Module.DoLoginRoutine   True/False     Display Module Post-Login Messages
 Telnet.Enabled          True/False     Enable Telnet Service
-Telnet.Port             Number         Port Number for Telnet to listn on
+Telnet.Port             Number         Port Number for Telnet to listen on
 Rlogin.Enabled          True/False     Enable Rlogin Service
-Rlogin.Port             Number         Port Number for Rlogin to listn on
+Rlogin.Port             Number         Port Number for Rlogin to listen on
 Rlogin.RemoteIP         IP Address     Remote IP allowed to connect via Rlogin
 Rlogin.PortPerModule    True/False     Expose dedicated Rlogin Ports for each module
 Database.File           String         Filename for the MBBSEmu SQLite Database
 Cleanup.Time            String         Time to perform nightly cleanup, in HH:MM 24 hour time
 ANSI.Login              String         Filename for a custom Login ANSI file (Displayed before sign in)
-ANSI.Logoff             String         Filename for a custom Logoff ANSI file (DIsplayed while logging off)
+ANSI.Logoff             String         Filename for a custom Logoff ANSI file (Displayed while logging off)
+ANSI.Menu               String         Filename for a custom Main Menu ANSI file (Replaces default menu)
 ANSI.Signup             String         Filename for a custom Signup ANSI file (Displayed when creating an account)
 
 -----------------------------------------------------------
@@ -48,7 +50,7 @@ Modules (array)
 ... Identifier          String         Module Identifier
 ... Path                String         Path to given Module
 
-Eample Module Configuration JSON File Structure:
+Example Module Configuration JSON File Structure:
 
 {
   "Modules": [
@@ -58,7 +60,8 @@ Eample Module Configuration JSON File Structure:
     },
     {
       "Identifier": "EXAMPLE2",
-      "Path": "c:\\bbsv6\\"
+      "Path": "c:\\bbsv6\\",
+      "MenuOptionKey": "E"
     }
   ]
 }

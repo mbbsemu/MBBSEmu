@@ -1373,6 +1373,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
+            if(string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = Module.StateCode.ToString();
         }
 
         /// <summary>

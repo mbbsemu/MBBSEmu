@@ -1,8 +1,13 @@
 {
   "Modules": [
     {
-      "Identifier": "TSGARN",
-      "Path": "c:\\dos\\modules\\telearena\\"
+      "Identifier": "MJWWHL",
+      "Path": "D:\\BBS\\Mbbsemu\\modules\\WEELFAME\\",
+    },
+    {
+      "Identifier": "ELWCHT",
+      "Path": "D:\\BBS\\Mbbsemu\\modules\\elwchtd\\",
+      "MenuOptionKey": "C"
     }
   ]
 }

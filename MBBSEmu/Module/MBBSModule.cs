@@ -45,6 +45,11 @@ namespace MBBSEmu.Module
         ///     Directory Path of Module
         /// </summary>
         public readonly string ModulePath;
+        
+        /// <summary>
+        ///     Menu Option Key of Module
+        /// </summary>
+        public string MenuOptionKey;
 
         /// <summary>
         ///     Module DLL
