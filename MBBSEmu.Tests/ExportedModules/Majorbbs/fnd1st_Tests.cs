@@ -117,7 +117,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             var fbs = new FndblkStruct(mbbsEmuMemoryCore.GetArray(fndblkPointer, FndblkStruct.StructSize));
             Assert.Equal(9, fbs.Size);
-            Assert.Equal(0, fbs.Attributes);
+            Assert.Equal(0, (byte) fbs.Attributes & (byte) ~FndblkStruct.AttributeFlags.Archive);
             Assert.True(Math.Abs(ticksNow - fbs.DateTime.Ticks) <= FIVE_SECOND_TICKS);
 
             return fbs.Name;
