@@ -139,7 +139,7 @@ namespace MBBSEmu.Module
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "",  MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;
