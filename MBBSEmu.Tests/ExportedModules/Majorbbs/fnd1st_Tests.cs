@@ -116,7 +116,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private string GetFileFromFndblk(IntPtr16 fndblkPointer)
         {
             var fbs = new FndblkStruct(mbbsEmuMemoryCore.GetArray(fndblkPointer, FndblkStruct.StructSize));
-            Assert.Equal(10, fbs.Size);
+            Assert.Equal(9, fbs.Size);
             Assert.Equal(0, fbs.Attributes);
             Assert.True(Math.Abs(ticksNow - fbs.DateTime.Ticks) <= FIVE_SECOND_TICKS);
 
@@ -134,7 +134,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             using (StreamWriter writer = new System.IO.StreamWriter(path))
             {
-                writer.WriteLine("Testing\r\n");
+                writer.Write("Testing\r\n");
             }
         }
     }
