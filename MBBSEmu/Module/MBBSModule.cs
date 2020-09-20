@@ -47,7 +47,7 @@ namespace MBBSEmu.Module
         public readonly string ModulePath;
         
         /// <summary>
-        ///     Menu Hotkey of Module
+        ///     Menu Option Key of Module
         /// </summary>
         public string MenuOptionKey;
 
