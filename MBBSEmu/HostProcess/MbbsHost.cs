@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
@@ -977,10 +978,20 @@ namespace MBBSEmu.HostProcess
         {
             _logger.Info("PERFORMING NIGHTLY CLEANUP");
 
+            // Notify Users of Nightly Cleanup
+            foreach (var c in _channelDictionary)
+                _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
+            
             // removes all sessions
             RemoveSessions(session => true);
 
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
+            CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
+            foreach (var m in _modules)
+            {
+                Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
+                _logger.Info($"Calling initialization routine on module {m.Value.ModuleIdentifier}");
+            }
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
