@@ -1,8 +1,11 @@
+using MBBSEmu.Btrieve;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
+using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
 using MBBSEmu.Resources;
@@ -15,10 +18,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
-using MBBSEmu.Btrieve;
-using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu
 {
@@ -38,6 +39,11 @@ namespace MBBSEmu
         /// </summary>
         private string _modulePath;
 
+        /// <summary>
+        ///     Module Option Key specified by the -K Command Line Argument
+        /// </summary>
+        private string _menuOptionKey;
+        
         /// <summary>
         ///     Specified if -APIREPORT Command Line Argument was passed
         /// </summary>
@@ -109,6 +115,10 @@ namespace MBBSEmu
                             break;
                         case "-M":
                             _moduleIdentifier = args[i + 1];
+                            i++;
+                            break;
+                        case "-K":
+                            _menuOptionKey = args[i + 1];
                             i++;
                             break;
                         case "-P":
@@ -224,7 +234,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath));
+                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { MenuOptionKey = _menuOptionKey });
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -234,8 +244,15 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && modules.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
+                        {
+                            _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
+                            continue;
+                        }
+                        
+                        //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]));
+                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { MenuOptionKey = m["MenuOptionKey"] });
                     }
                 }
                 else

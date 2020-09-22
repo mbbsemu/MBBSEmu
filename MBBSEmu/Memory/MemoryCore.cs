@@ -184,7 +184,14 @@ namespace MBBSEmu.Memory
         public void RemoveSegment(ushort segment)
         {
             _memorySegments.Remove(segment);
+            _segments.Remove(segment);
             _decompiledSegments.Remove(segment);
+
+            if (_currentCodeSegment == segment)
+            {
+                _currentCodeSegment = 0;
+                _currentCodeSegmentInstructions.Clear();
+            }
         }
 
         /// <summary>

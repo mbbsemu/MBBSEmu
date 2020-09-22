@@ -718,8 +718,8 @@ namespace MBBSEmu.HostProcess
             module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
 
             //Add it to the Module Dictionary
-            _modules[module.ModuleIdentifier] = module;
             module.StateCode = (short)(_modules.Count + 1);
+            _modules[module.ModuleIdentifier] = module;
 
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
