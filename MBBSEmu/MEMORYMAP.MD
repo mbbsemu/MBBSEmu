@@ -1,5 +1,12 @@
 ﻿# MBBSEmu Memory Map
-Each Module in MBBSEmu is provided a dedicated, full 16-bit address space. Meaning each module is capable of addressing up to 16GB of Memory per module. 
+Each Module in MBBSEmu is provided a dedicated, full 16-bit address space. Meaning each module is capable of addressing up to 4GB of Memory per module.
+
+On a tradidional 16-bit system, there are a maximum of 65,535 (0xFFFF) memory segments containing 65,535 (0xFFFF). Modern Operating Sytems handle memory management, 
+moving data for multiple programs between segments and allocating the memory a program needs. Because MBBSEmu is running in a virtual environment, modules do not need to 
+share their memory space with other modules running on the same system. 
+
+Additionally, memory in MBBSEmu is only allocated when it's needed. Meaning while two modules have 8GB of total memory available to them (4GB * 2), the total memory used by MBBSEmu
+might be as low as 100MB as that's all that was required by the modules to operate.
 
 This markdown file is to map how the memory is allocated within MBBSEmu.
 
