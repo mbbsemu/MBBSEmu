@@ -280,16 +280,28 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void MainMenuDisplay(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
-            EchoToClient(session, "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
-
-            var currentMenuItem = 0;
-            foreach (var m in modules)
+            //Load File if specified in appsettings.json and display if it exists, else display default
+            var ansiMenuFileName = _configuration["ANSI.Menu"];
+            if (!File.Exists(ansiMenuFileName))
             {
-                EchoToClient(session, $"   |CYAN||B|{currentMenuItem}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3,' ').EncodeToANSIArray());
-                currentMenuItem++;
+                EchoToClient(session,
+                    "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
+
+                var currentMenuItem = 0;
+                foreach (var m in modules)
+                {
+                    EchoToClient(session,
+                        $"   |CYAN||B|{m.Value.MenuOptionKey}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3, ' ')
+                            .EncodeToANSIArray());
+                    currentMenuItem++;
+                }
+            }
+            else
+            {
+                EchoToClient(session, File.ReadAllBytes(ansiMenuFileName).ToArray());
             }
 
-            EchoToClient(session, "\r\n|GREEN|Main Menu|RESET|\r\n".EncodeToANSIArray());
+            EchoToClient(session, "\r\n|YELLOW||B|Main Menu\r\n".EncodeToANSIArray());
             EchoToClient(session, "|CYAN||B|Make your selection (X to exit): ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.MainMenuInput;
         }
@@ -319,19 +331,21 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            //If at this point, it's an unknown selection and it's NOT a module number, then re-display menu
-            if (!int.TryParse(inputCommand, out var selectedMenuItem) || selectedMenuItem >= modules.Count || selectedMenuItem < 0)
+            var selectedMenuItem = modules.Values.FirstOrDefault(m => m.MenuOptionKey.Equals(inputCommand, StringComparison.InvariantCultureIgnoreCase));
+
+            //Check to see if input matched a module, if not redisplay menu
+            if (selectedMenuItem == null)
             {
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 session.InputBuffer.SetLength(0);
-                return;
             }
-
-            var selectedModule = modules.ElementAt(selectedMenuItem);
-            session.CurrentModule = selectedModule.Value;
-            session.SessionState = EnumSessionState.EnteringModule;
-            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
-            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x48 });
+            else
+            {
+                session.CurrentModule = selectedMenuItem;
+                session.SessionState = EnumSessionState.EnteringModule;
+                session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
+                session.SendToClient(new byte[] { 0x1B, 0x5B, 0x48 });
+            }
         }
 
         private void LogoffConfirmationDisplay(SessionBase session)
