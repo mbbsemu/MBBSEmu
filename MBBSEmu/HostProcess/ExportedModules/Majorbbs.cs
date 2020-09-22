@@ -281,7 +281,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
-
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].Status == 3)
                 ProcessChannelInput(channelNumber);
@@ -1153,6 +1152,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 660:
                     f_lxrsh();
+                    break;
+                case 157:
+                    dcdate();
                     break;
                 case 695:
                     fndnxt();
@@ -7575,6 +7577,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void rtstcrd()
         {
             Registers.AX = 1;
+        }
+
+
+        /// <summary>
+        ///     Decode string date formatted 'MM/DD/YY' to int format YYYYYYYMMMMDDDDD
+        ///
+        ///     Signature: int date=dcdate(char *ascdat);
+        /// </summary>
+        private void dcdate()
+        {
+            var inputDate = GetParameterString(0, true);
+
+            if (!DateTime.TryParse(inputDate, out var inputDateTime))
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            Registers.AX = (ushort)((inputDateTime.Month << 5) + inputDateTime.Day + ((inputDateTime.Year - 1980) << 9));
         }
     }
 }
