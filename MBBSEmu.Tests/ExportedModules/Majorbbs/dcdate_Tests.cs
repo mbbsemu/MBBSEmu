@@ -13,6 +13,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("09/17/20", 20785)]
         [InlineData("12/31/90", 5535)]
         [InlineData("1/1/80", 33)]
+        [InlineData("13/32/00", ushort.MaxValue)] //Invalid Date String
+        [InlineData("test", ushort.MaxValue)] //Invalid Date String
         public void DCDATE_Test(string inputString, ushort expectedValue)
         {
             //Reset State

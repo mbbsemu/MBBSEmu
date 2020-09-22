@@ -7589,9 +7589,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var inputDate = GetParameterString(0, true);
 
-            var inputDatetime = DateTime.Parse(inputDate);
+            if (!DateTime.TryParse(inputDate, out var inputDateTime))
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
 
-            Registers.AX = (ushort)((inputDatetime.Month << 5) + inputDatetime.Day + ((inputDatetime.Year - 1980) << 9));
+            Registers.AX = (ushort)((inputDateTime.Month << 5) + inputDateTime.Day + ((inputDateTime.Year - 1980) << 9));
         }
     }
 }

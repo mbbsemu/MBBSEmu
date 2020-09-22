@@ -12,6 +12,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(20785, "09/17/20")]
         [InlineData(5535, "12/31/90")]
         [InlineData(33, "01/01/80")]
+        [InlineData(0, "00/00/80")]
+        [InlineData(ushort.MaxValue, "15/31/7")]
         public void NCDATE_Test(ushort inputValue, string expectedString)
         {
             //Reset State
