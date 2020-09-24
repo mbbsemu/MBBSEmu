@@ -55,7 +55,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(0, UIDSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 0, UIDSIZ);
+            set => Array.Copy(value, 0, Data, 0, value.Length);
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(30, PSWSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 30, PSWSIZ);
+            set => Array.Copy(value, 0, Data, 30, value.Length);
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(40, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 40, NADSIZ);
+            set => Array.Copy(value, 0, Data, 40, value.Length);
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(70, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 70, NADSIZ);
+            set => Array.Copy(value, 0, Data, 70, value.Length);
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(100, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 100, NADSIZ);
+            set => Array.Copy(value, 0, Data, 100, value.Length);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(130, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 130, NADSIZ);
+            set => Array.Copy(value, 0, Data, 130, value.Length);
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(160, NADSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 160, NADSIZ);
+            set => Array.Copy(value, 0, Data, 160, value.Length);
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> userAccSpan = Data;
                 return userAccSpan.Slice(190, PHOSIZ).ToArray();
             }
-            set => Array.Copy(value, 0, Data, 190, PHOSIZ);
+            set => Array.Copy(value, 0, Data, 190, value.Length);
         }
 
         /// <summary>
@@ -372,13 +372,12 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value, 0, Data, 292, DATSIZ);
         }
 
-        public readonly byte[] Data;
+        public readonly byte[] Data = new byte[Size];
 
-        public const ushort Size = 341;
+        public const ushort Size = 338;
 
         public UserAccount()
         {
-            Data = new byte[341];
             flags = 1; //Set everyone to having "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
             sex = (byte)'M';  //Set everyone to male for now
