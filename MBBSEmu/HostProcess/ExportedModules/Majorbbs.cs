@@ -76,7 +76,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
-            Module.Memory.SetWord("OUTBSZ", (ushort)8192);
+            Module.Memory.SetWord("OUTBSZ", Galgsbl.OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
