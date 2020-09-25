@@ -98,7 +98,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, 128); //128 channels for now
+            Module.Memory.SetWord(ntermsPointer, 4); // TODO(make this configurable)
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
