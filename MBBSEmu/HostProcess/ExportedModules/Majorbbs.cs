@@ -7548,6 +7548,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Because the CpuCore in MBBSEmu supports x87, we'll return 3 which denotes its presence.
         ///
+        ///     Values and their Definitions are:
+        ///      0 - no coprocessor, or ignored because of SET 87=N.
+        ///      1 - 8087 or 80187, or using coprocessor because of SET 87=Y.
+        ///      2 - 80287
+        ///      3 - 80387
+        ///
         ///     Signature: int _RTLENTRY _EXPDATA  _8087 = 3;
         /// </summary>
         private void _8087()
