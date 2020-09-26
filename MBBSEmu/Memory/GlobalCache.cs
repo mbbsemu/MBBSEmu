@@ -40,5 +40,13 @@ namespace MBBSEmu.Memory
         }
 
         public bool Remove(string key) => _cacheDictionary.Remove(key);
+        public bool ContainsKey(string key) => _cacheDictionary.ContainsKey(key);
+
+        public bool TryGet<T>(string key, out T result)
+        {
+            var output = _cacheDictionary.TryGetValue(key, out var outputResult);
+            result = (T) outputResult;
+            return output;
+        }
     }
 }

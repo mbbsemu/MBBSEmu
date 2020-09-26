@@ -4,8 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using MBBSEmu.Btrieve;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
@@ -21,13 +24,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
-        /// Configuration Class giving access to the appsettings.json file
         private readonly IConfiguration _configuration;
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, IConfiguration configuration)
+        private readonly IGlobalCache _globalCache;
+
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, IConfiguration configuration, IGlobalCache globalCache)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
             _configuration = configuration;
+            _globalCache = globalCache;
         }
 
         /// <summary>
@@ -551,6 +556,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Create the user in the database
             _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
+            
+            //Add The User to the BBS Btrieve User Database
+            var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

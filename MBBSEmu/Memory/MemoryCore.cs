@@ -24,9 +24,9 @@ namespace MBBSEmu.Memory
 
         private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
         private IntPtr16 _currentVariablePointer;
-        private const ushort VARIABLE_BASE_SEGMENT = 0x100; //0x100*0xFFFF == 16MB memory space for variables
+        private const ushort VARIABLE_BASE_SEGMENT = 0x100; //0x100->0x1FF == 16MB
         private IntPtr16 _currentRealModePointer;
-        private const ushort REALMODE_BASE_SEGMENT = 0x200;
+        private const ushort REALMODE_BASE_SEGMENT = 0x200; //0x200->0x2FF == 16MB
 
         private ushort _currentCodeSegment;
         private Dictionary<ushort, Instruction> _currentCodeSegmentInstructions;
