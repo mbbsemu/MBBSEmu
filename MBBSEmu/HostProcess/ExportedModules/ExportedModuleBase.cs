@@ -20,6 +20,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public abstract class ExportedModuleBase
     {
+        public const ushort OUTBUF_SIZE = 8192;
+
         /// <summary>
         ///     Internal Variables are stored inside the system (module name, etc.)
         ///

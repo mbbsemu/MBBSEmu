@@ -27,7 +27,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRUPR_ORDINAL, new List<IntPtr16> { stringPointer });
 
             //Verify Results
-            Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(stringPointer, true)));
+            Assert.Equal(stringPointer.Offset, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(stringPointer.Segment, mbbsEmuCpuRegisters.DX);
             Assert.Equal(expectedString,
                 Encoding.ASCII.GetString(
                     mbbsEmuMemoryCore.GetString(new IntPtr16(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX), true)));

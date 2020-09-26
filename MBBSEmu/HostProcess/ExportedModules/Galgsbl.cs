@@ -25,6 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort Segment = 0xFFFE;
 
         private ushort MonitoredChannel { get; set; }
+
         private ushort MonitoredChannel2 { get; set; }
 
         private readonly DateTime _startDate;
@@ -81,10 +82,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void OnTimerCallback(object unused)
         {
-            //Update TICKER
-            var tickerPointer = Module.Memory.GetVariablePointer("TICKER");
-            var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
-            Module.Memory.SetWord(tickerPointer, seconds);
+            // Update TICKER. Wrapped in TryGetVariablePointer since debug tests might take too long
+            // and trigger a race condition where the timer callback fires even though the test has
+            // completed. This crashes the test.
+            if (Module.Memory.TryGetVariablePointer("TICKER", out var tickerPointer))
+            {
+                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+                Module.Memory.SetWord(tickerPointer, seconds);
+            }
         }
 
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
@@ -240,7 +245,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Report the amount of space (number of bytes) available in the output buffer
-        ///     Since we're not using a dialup terminal or any of that, we'll just set it to ushort.MaxValue
+        ///     Since we're not using a dialup terminal or any of that, we'll just set it to OUTBUF_SIZE
         ///
         ///     Signature: int btuoba(int chan)
         ///     Result: AX == bytes available
@@ -248,7 +253,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btuoba()
         {
-            Registers.AX = (ushort)short.MaxValue - 1;
+            Registers.AX = OUTBUF_SIZE - 1;
         }
 
         /// <summary>

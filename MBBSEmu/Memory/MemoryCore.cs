@@ -88,8 +88,8 @@ namespace MBBSEmu.Memory
                 AddSegment(_currentVariablePointer.Segment);
 
 #if DEBUG
-            _logger.Debug(
-                $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
+            //_logger.Debug(
+            //    $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
             _currentVariablePointer.Offset += (ushort) (size + 1);

@@ -76,7 +76,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
             Module.Memory.AllocateVariable("PRFPTR", 0x4);
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
-            Module.Memory.SetWord("OUTBSZ", (ushort)short.MaxValue);
+            Module.Memory.SetWord("OUTBSZ", OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
@@ -98,7 +98,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, 0x04); //4 channels for now
+            Module.Memory.SetWord(ntermsPointer, 4); // TODO(make this configurable)
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
@@ -352,6 +352,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="offsetsOnly"></param>
         public ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false)
         {
+            //_logger.Info($"Invoking MAJORBBS.DLL:{Ordinals.MAJORBBS[ordinal]}");
+
             switch (ordinal)
             {
                 case 628:
@@ -480,11 +482,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (offsetsOnly)
             {
-                var methodPointer = new IntPtr16(Segment, ordinal);
-#if DEBUG
-                //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
-#endif
-                return methodPointer.ToSpan();
+                return new IntPtr16(Segment, ordinal).ToSpan();
             }
 
             switch (ordinal)
@@ -1163,7 +1161,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     fndnxt();
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}");
+                    _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
+                    throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
             }
 
             return null;
@@ -1645,40 +1644,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sameas()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
+            stricmp();
 
-            var string1 = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true)).ToUpper();
-            var string2 = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true)).ToUpper();
-
-            //Quick Check
-            if (string1.Length != string2.Length)
-            {
-                Registers.AX = 0;
-
-#if DEBUG
-                _logger.Info(
-                    $"Returned FALSE comparing {string1} ({string1Pointer}) to {string2} ({string2Pointer}) (Length mismatch)");
-#endif
-                return;
-            }
-
-            var result = true;
-            //Deep Check -- at this point we know they're the same length
-            for (var i = 0; i < string1.Length; i++)
-            {
-                if (string1[i] == string2[i])
-                    continue;
-
-                result = false;
-                break;
-            }
-
-#if DEBUG
-            _logger.Info($"Returned {result} comparing {string1} ({string1Pointer}) to {string2} ({string2Pointer})");
-#endif
-
-            Registers.AX = (ushort)(result ? 1 : 0);
+            Registers.AX = (Registers.AX == 0 ? (ushort) 1 : (ushort) 0);
         }
 
         /// <summary>
@@ -2474,10 +2442,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var result = value1 * value2;
 
-#if DEBUG
-            //_logger.Info($"Performed Long Multiplication {value1}*{value2}={result}");
-#endif
-
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
         }
@@ -2493,17 +2457,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void f_ldiv()
         {
 
-            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
-            var arg2 = (GetParameter(3) << 16) | GetParameter(2);
+            int arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            int arg2 = (GetParameter(3) << 16) | GetParameter(2);
 
             var quotient = Math.DivRem(arg1, arg2, out var remainder);
 
-#if DEBUG
-            //_logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
-#endif
-
             Registers.DX = (ushort)(quotient >> 16);
             Registers.AX = (ushort)(quotient & 0xFFFF);
+            //Registers.DI = (ushort)(remainder >> 16);
+            //Registers.SI = (ushort)(remainder & 0xFFFF);
 
             RealignStack(8);
         }
@@ -2605,8 +2567,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void f_lumod()
         {
-            var arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
-            var arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
+            uint arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
+            uint arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
 
             var result = arg1 % arg2;
 
@@ -3348,7 +3310,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringPointer = GetParameterPointer(0);
 
-            var stringValue = Module.Memory.GetString(stringPointer, true);
+            var stringValue = Module.Memory.GetString(stringPointer, stripNull: true);
 
 #if DEBUG
             _logger.Info($"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue)}");
@@ -3488,8 +3450,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var bytesToCopy = GetParameter(4);
 
-            var destinationString = Module.Memory.GetString(destinationPointer, true);
-            var sourceString = Module.Memory.GetString(sourcePointer, true);
+            var destinationString = Module.Memory.GetString(destinationPointer, stripNull: true);
+            var sourceString = Module.Memory.GetString(sourcePointer, stripNull: true);
 
             bytesToCopy = Math.Min(bytesToCopy, (ushort) sourceString.Length);
 
@@ -3774,7 +3736,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var sourcePointer = GetParameterPointer(2);
 
-            var destinationString = Module.Memory.GetString(destinationPointer, true);
+            var destinationString = Module.Memory.GetString(destinationPointer, stripNull: true);
             var sourceString = Module.Memory.GetString(sourcePointer);
 
             Module.Memory.SetArray(destinationPointer.Segment,
@@ -3911,7 +3873,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringPointer = GetParameterPointer(0);
             var characterToFind = GetParameter(2);
 
-            var stringToSearch = Module.Memory.GetString(stringPointer, true);
+            var stringToSearch = Module.Memory.GetString(stringPointer, stripNull: true);
 
             for (var i = 0; i < stringToSearch.Length; i++)
             {
@@ -4233,13 +4195,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strupr()
         {
+            strmod(Char.ToUpper);
+        }
+
+        private void strmod(Func<char, char> modifier)
+        {
             var stringToConvertPointer = GetParameterPointer(0);
 
-            var stringData = Module.Memory.GetString(stringToConvertPointer).ToArray();
+            var stringData = Module.Memory.GetString(stringToConvertPointer, stripNull: true).ToArray();
 
             for (var i = 0; i < stringData.Length; i++)
             {
-                stringData[i] = (byte) Char.ToUpper((char) stringData[i]);
+                stringData[i] = (byte) modifier.Invoke((char) stringData[i]);
             }
 
             Module.Memory.SetArray(stringToConvertPointer, stringData);
@@ -4256,8 +4223,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToSearchPointer = GetParameterPointer(0);
             var stringToFindPointer = GetParameterPointer(2);
 
-            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true));
-            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true));
+            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, stripNull: true));
+            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, stripNull: true));
 
             var offset = stringToSearch.IndexOf(stringToFind);
             if (offset >= 0)
@@ -4419,8 +4386,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strcmp()
         {
-            var string1 = GetParameterString(0);
-            var string2 = GetParameterString(2);
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
 
             Registers.AX = (ushort)string.Compare(string1, string2);
         }
@@ -4994,13 +4961,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!stringToSplitPointer.Equals(IntPtr16.Empty))
             {
                 Module.Memory.SetPointer(workPointerPointer, stringToSplitPointer);
-                Module.Memory.SetWord(lengthPointer, (ushort)(stringToSplitPointer.Offset + Module.Memory.GetString(stringToSplitPointer, true).Length));
+                Module.Memory.SetWord(lengthPointer, (ushort)(stringToSplitPointer.Offset + Module.Memory.GetString(stringToSplitPointer, stripNull: true).Length));
             }
 
             var workPointer = Module.Memory.GetPointer(workPointerPointer);
             var endOffset = Module.Memory.GetWord(lengthPointer);
 
-            var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, true));
+            var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, stripNull: true));
 
             // skip starting delims
             while (workPointer.Offset < endOffset && stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
@@ -5150,8 +5117,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stricmp()
         {
-            var string1 = GetParameterString(0);
-            var string2 = GetParameterString(2);
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
 
             Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
         }
@@ -5575,14 +5542,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void f_ludiv()
         {
-            var arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
-            var arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
+            uint arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
+            uint arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
 
-            var quotient = Math.DivRem(arg1, arg2, out var remainder);
-
-#if DEBUG
-            //_logger.Info($"Performed Long Division {arg1}/{arg2}={quotient} (Remainder: {remainder})");
-#endif
+            var quotient = arg1 / arg2;
 
             Registers.DX = (ushort)(quotient >> 16);
             Registers.AX = (ushort)(quotient & 0xFFFF);
@@ -6015,8 +5978,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void f_lmod()
         {
-            var arg1 = (GetParameter(1) << 16) | GetParameter(0);
-            var arg2 = (GetParameter(3) << 16) | GetParameter(2);
+            int arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            int arg2 = (GetParameter(3) << 16) | GetParameter(2);
 
             var result = arg1 % arg2;
 
@@ -6362,8 +6325,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strnicmp()
         {
-            var string1 = GetParameterString(0);
-            var string2 = GetParameterString(2);
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
             var maxLength = GetParameter(4);
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
@@ -6389,8 +6352,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strncmp()
         {
-            var string1 = GetParameterString(0);
-            var string2 = GetParameterString(2);
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
             var maxLength = GetParameter(4);
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);
@@ -6551,7 +6514,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var suffixPointer = GetParameterPointer(2);
             var radix = GetParameter(4);
 
-            var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, true));
+            var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull: true));
 
             var longToParse = stringContainingLongs.Split(' ')[0];
             var longToParseLength = longToParse.Length; //We do this as length might change with logic below
@@ -7257,20 +7220,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strlwr()
         {
-            var inputString = GetParameterString(0, false);
-
-            if (inputString.Length > 0x400)
-            {
-                _logger.Error("Input String is larger than the result buffer. String is being truncated to 1k");
-                inputString = inputString.Substring(0, 0x3FF) + '\0';
-            }
-
-            var destinationPointer = Module.Memory.GetOrAllocateVariablePointer("STRLWR", 0x400);
-
-            Module.Memory.SetArray(destinationPointer, Encoding.ASCII.GetBytes(inputString.ToLower()));
-
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            strmod(Char.ToLower);
         }
 
         /// <summary>
