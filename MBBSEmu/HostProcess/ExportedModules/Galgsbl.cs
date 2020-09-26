@@ -24,9 +24,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFE;
 
-        public const ushort OUTBUF_SIZE = 8192;
-
         private ushort MonitoredChannel { get; set; }
+
         private ushort MonitoredChannel2 { get; set; }
 
         private readonly DateTime _startDate;
