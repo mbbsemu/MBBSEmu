@@ -696,8 +696,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            if (_isRunning)
-                throw new Exception("Unable to Add Module after host is running");
+            //if (_isRunning)
+            //    throw new Exception("Unable to Add Module after host is running");
 
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
@@ -712,11 +712,11 @@ namespace MBBSEmu.HostProcess
             }
 
             //Setup Exported Modules
-            module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
-            module.ExportedModuleDictionary.Add(Galgsbl.Segment, GetFunctions(module, "GALGSBL"));
-            module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
-            module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
-            module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
+            module.ExportedModuleDictionary[Majorbbs.Segment] = GetFunctions(module, "MAJORBBS");
+            module.ExportedModuleDictionary[Galgsbl.Segment] = GetFunctions(module, "GALGSBL");
+            module.ExportedModuleDictionary[Phapi.Segment] = GetFunctions(module, "PHAPI");
+            module.ExportedModuleDictionary[Galme.Segment] = GetFunctions(module, "GALME");
+            module.ExportedModuleDictionary[Doscalls.Segment] = GetFunctions(module, "DOSCALLS");
 
             //Add it to the Module Dictionary
             module.StateCode = (short)(_modules.Count + 1);
@@ -987,9 +987,15 @@ namespace MBBSEmu.HostProcess
 
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
             CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
-            foreach (var m in _modules)
+
+            foreach (var m in _modules.ToList())
             {
-                Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
+                _modules.Remove(m.Value.ModuleIdentifier);
+                m.Value.Memory.Clear();
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                    _exportedFunctions.Remove(e);
+                AddModule(m.Value);
+                //Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
                 _logger.Info($"Calling initialization routine on module {m.Value.ModuleIdentifier}");
             }
         }
