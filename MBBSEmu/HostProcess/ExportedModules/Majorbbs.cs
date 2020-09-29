@@ -922,8 +922,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 656:
                     f_ludiv();
                     break;
-                case 317:
-                    getbtv();
+                case 996: //getbtvl()
+                case 317: //getbtv() calls getbtvl() which shares the same signature with ignored lock type
+                    getbtvl();
                     break;
                 case 484:
                     qnpbtv();
@@ -1159,6 +1160,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 695:
                     fndnxt();
+                    break;
+                case 162:
+                    delbtv();
+                    break;
+                case 737:
+                    _8087();
+                    break;
+                case 364:
+                    isuidc();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -5557,10 +5567,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Get a Btrieve record (bomb if not there)
         ///
-        ///     Signature: void getbtv(char *recptr, char *key, int keynum, int getopt)
+        ///     Signature: void getbtvl(char *recptr, char *key, int keynum, int getopt, int loktyp)
         /// </summary>
         /// <returns></returns>
-        private void getbtv()
+        private void getbtvl()
         {
             var btrieveRecordPointer = GetParameterPointer(0);
             var keyPointer = GetParameterPointer(2);
@@ -7531,6 +7541,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Registers.AX = (ushort)((inputDateTime.Month << 5) + inputDateTime.Day + ((inputDateTime.Year - 1980) << 9));
+        }
+
+        /// <summary>
+        ///     Determines if a Floating Point Co-Processor is present to handle x87 Instructions
+        ///
+        ///     Because the CpuCore in MBBSEmu supports x87, we'll return 3 which denotes its presence.
+        ///
+        ///     Values and their Definitions are:
+        ///      0 - no coprocessor, or ignored because of SET 87=N.
+        ///      1 - 8087 or 80187, or using coprocessor because of SET 87=Y.
+        ///      2 - 80287
+        ///      3 - 80387
+        ///
+        ///     Signature: int _RTLENTRY _EXPDATA  _8087 = 3;
+        /// </summary>
+        private void _8087()
+        {
+            Registers.AX = 3;
+        }
+
+        /// <summary>
+        ///     Determines if the specified char is a valid User-ID Character
+        ///
+        ///     Because MBBSEmu doesn't put restrictions on User-ID Characters, we'll verify it's a standard,
+        ///     printable ASCII value (between 32 & 126)
+        ///
+        ///     Signature: int isuidc(int c);
+        /// </summary>
+        private void isuidc()
+        {
+            var characterToCheck = GetParameter(0);
+            Registers.AX = (ushort)(characterToCheck >= 32 && characterToCheck <= 126 ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Deletes the Btrieve Record at the current Btrieve File Position
+        ///
+        ///     Signature: void delbtv();
+        /// </summary>
+        private void delbtv()
+        {
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            currentBtrieveFile.Delete();
         }
     }
 }
