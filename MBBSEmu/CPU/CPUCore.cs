@@ -252,7 +252,6 @@ namespace MBBSEmu.CPU
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
-
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -811,7 +810,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown Destination: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Destination: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -863,7 +862,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown Source: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -892,7 +891,7 @@ namespace MBBSEmu.CPU
                     Op_Int_21h();
                     return;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown INT: {_currentInstruction.Immediate8:X2}");
+                    throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
             }
         }
 
@@ -1486,10 +1485,10 @@ namespace MBBSEmu.CPU
                 case OpKind.Immediate16:
                     Push(Registers.BP);
                     Registers.BP = Registers.SP;
-                    Registers.SP -= (ushort)(_currentInstruction.Immediate16 + 1);
+                    Registers.SP -= _currentInstruction.Immediate16;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown ENTER: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown ENTER: {_currentInstruction.Op0Kind}");
             }
         }
 
