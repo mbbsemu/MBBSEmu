@@ -18,6 +18,7 @@ using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Server;
 
 namespace MBBSEmu.HostProcess
 {
@@ -991,12 +992,14 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-                m.Value.Memory.Clear();
+                m.Value.Reset();
+                //foreach (var em in m.Value.ExportedModuleDictionary.Values)
+                //    (em as IStoppable)?.Stop();
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
                 AddModule(m.Value);
-                //Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
-                _logger.Info($"Calling initialization routine on module {m.Value.ModuleIdentifier}");
+                //Don't need anymore -- Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
+                //_logger.Info($"Calling initialization routine on module {m.Value.ModuleIdentifier}");
             }
         }
 
@@ -1021,7 +1024,8 @@ namespace MBBSEmu.HostProcess
                 cleanupTime = DEFAULT_CLEANUP_TIME;
             }
 
-            return cleanupTime;
+            return DateTime.Now.AddSeconds(5).TimeOfDay;
+            //return cleanupTime;
         }
     }
 }

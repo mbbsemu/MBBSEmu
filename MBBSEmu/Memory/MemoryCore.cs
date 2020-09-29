@@ -58,6 +58,7 @@ namespace MBBSEmu.Memory
             _variablePointerDictionary.Clear();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
             _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
+            _bigMemoryBlocks.Clear();
         }
 
         /// <summary>
@@ -71,7 +72,7 @@ namespace MBBSEmu.Memory
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
             {
-                _logger.Warn($"Attmped to re-allocate variable: {name}");
+                _logger.Warn($"Attempted to re-allocate variable: {name}");
                 return _variablePointerDictionary[name];
             }
 

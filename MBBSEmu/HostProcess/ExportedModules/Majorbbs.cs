@@ -6,6 +6,7 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Server;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
     ///     MAJORBBS.H
     /// </summary>
-    public class Majorbbs : ExportedModuleBase, IExportedModule
+    public class Majorbbs : ExportedModuleBase, IExportedModule, IStoppable
     {
         public IntPtr16 GlobalCommandHandler;
 
@@ -7495,6 +7496,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void rtstcrd()
         {
             Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Stop and clear text variables, MCV pointers, btrieve pointers
+        /// </summary>
+        public void Stop()
+        {
+            _logger.Info($"Running Stop()");
+            McvPointerDictionary.Clear();
+            FilePointerDictionary.Clear();
+            ChannelDictionary.Clear();
+            _previousMcvFile.Clear();
+            _previousBtrieveFile.Clear();
         }
     }
 }

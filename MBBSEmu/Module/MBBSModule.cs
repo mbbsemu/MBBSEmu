@@ -5,6 +5,7 @@ using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
+using MBBSEmu.Server;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -258,6 +259,27 @@ namespace MBBSEmu.Module
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
             ExecutionUnits.Enqueue(executionUnit);
             return resultRegisters;
+        }
+
+        public void Reset()
+        {
+            ///Reset Module
+            _logger.Info($"Resetting {ModuleDescription}");
+            CpuCore.Reset();
+            Memory.Clear();
+            Memory.AddSegment(0); //Stack Segment
+            foreach (var em in ExportedModuleDictionary.Values)
+                (em as IStoppable)?.Stop();
+            ExportedModuleDictionary.Clear();
+            TextVariables.Clear();
+            //Msgs.Clear();
+            ExecutionUnits.Clear();
+            TaskRoutines.Clear();
+            Mdf.MSGFiles.Clear();
+            Mdf.DLLFiles.Clear();
+            GlobalCommandHandlers.Clear();
+            RtkickRoutines.Clear();
+            RtihdlrRoutines.Clear();
         }
     }
 }
