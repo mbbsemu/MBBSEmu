@@ -3094,17 +3094,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sprintf()
         {
-            var destinationOffset = GetParameter(0);
-            var destinationSegment = GetParameter(1);
-            var sourceOffset = GetParameter(2);
-            var sourceSegment = GetParameter(3);
+            var destination = GetParameterPointer(0);
+            var source = GetParameterPointer(2);
 
-            var output = Module.Memory.GetString(sourceSegment, sourceOffset);
+            var output = Module.Memory.GetString(source);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 4);
 
-            Module.Memory.SetArray(destinationSegment, destinationOffset, formattedMessage);
+            Module.Memory.SetArray(destination, formattedMessage);
 
 #if DEBUG
             _logger.Info($"Added {output.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
