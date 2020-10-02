@@ -60,8 +60,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly char[] PRINTF_PRECISION = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
-        private protected const ushort GENBB_BASE_SEGMENT = 0x1000;
-        private protected const ushort ACCBB_BASE_SEGMENT = 0x1001;
+        private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
+        private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
 
 
         private protected ExportedModuleBase(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
