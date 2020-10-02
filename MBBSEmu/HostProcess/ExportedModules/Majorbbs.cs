@@ -887,12 +887,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 227:
                     f_putc();
                     break;
-                case 879:
                 case 832:
+                    alctile();
+                    break;
+                case 833:
+                    ptrtile();
+                    break;
+                case 879:
                     alcblok();
                     break;
                 case 880:
-                case 833:
                     ptrblok();
                     break;
                 case 827:
@@ -1941,13 +1945,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void haskey()
         {
-            var lockNamePointer = GetParameterPointer(0);
-            var lockNameBytes = Module.Memory.GetString(lockNamePointer, true);
-
-#if DEBUG
-            _logger.Info($"Returning TRUE for Haskey({Encoding.ASCII.GetString(lockNameBytes)})");
-#endif
             Registers.AX = 1;
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Info($"Returning {Registers.AX} for Haskey({lockName})");
+#endif
         }
 
         /// <summary>
@@ -2596,19 +2598,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void setmem()
         {
-            var destinationOffset = GetParameter(0);
-            var destinationSegment = GetParameter(1);
+            var destination = GetParameterPointer(0);
             var numberOfBytesToWrite = GetParameter(2);
             var byteToWrite = GetParameter(3);
 
             for (var i = 0; i < numberOfBytesToWrite; i++)
             {
-                Module.Memory.SetByte(destinationSegment, (ushort)(destinationOffset + i), (byte)byteToWrite);
+                Module.Memory.SetByte(destination.Segment, (ushort)(destination.Offset + i), (byte)byteToWrite);
             }
 
 #if DEBUG
             _logger.Info(
-                $"Set {numberOfBytesToWrite} bytes to {byteToWrite:X2} starting at {destinationSegment:X4}:{destinationOffset:X4}");
+                $"Set {numberOfBytesToWrite} bytes to {byteToWrite:X2} starting at {destination.Segment:X4}:{destination.Offset:X4}");
 #endif
         }
 
@@ -4583,7 +4584,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Unset on the specified channel
             if (routinePointer == IntPtr16.Empty)
             {
-
                 ChannelDictionary[channelNumber].PollingRoutine = null;
                 Registers.AX = 0;
 
@@ -5235,6 +5235,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Allocate a very large memory region, qty by size bytes.
+        ///     Each tile gets its own segment at offset 0, though we
+        ///     internally allocate a buffer of the appropriate size to
+        ///     ensure we don't waste memory.
+        ///
+        ///     Signature: void *alctile(unsigned qty,unsigned size);
+        /// </summary>
+        public void alctile()
+        {
+            var qty = GetParameter(0);
+            var size = GetParameter(1);
+
+            if (qty == 0 || size == 0)
+            {
+                throw new ArgumentException("qty and size must be non-zero");
+            }
+
+            Registers.SetPointer(Module.Memory.AllocateRealModeSegment(size));
+            for (var i = 1; i < qty; ++i)
+            {
+                Module.Memory.AllocateRealModeSegment(size);
+            }
+        }
+
+        /// <summary>
         ///     Allocate a very large memory region, qty by sizblock bytes
         ///
         ///     Signature: void *alcblok(unsigned qty,unsigned size);
@@ -5244,6 +5269,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var qty = GetParameter(0);
             var size = GetParameter(1);
 
+            if (qty == 0 || size == 0)
+            {
+                throw new ArgumentException("qty and size must be non-zero");
+            }
+
             var bigRegion = Module.Memory.AllocateBigMemoryBlock(qty, size);
 
 #if DEBUG
@@ -5252,6 +5282,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.AX = bigRegion.Offset;
             Registers.DX = bigRegion.Segment;
+        }
+
+        /// <summary>
+        ///     Dereference an alctile()'d region
+        ///
+        ///     Signature: void *ptrtile(void *bigptr,unsigned index);
+        /// </summary>
+        public void ptrtile()
+        {
+            var firstSegment = GetParameterPointer(0);
+            var index = GetParameter(2);
+
+            Registers.DX = (ushort)(firstSegment.Segment + index);
+            Registers.AX = 0;
         }
 
         /// <summary>

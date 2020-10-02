@@ -17,7 +17,6 @@ namespace MBBSEmu.Memory
         {
             get => BitConverter.ToUInt16(Data, 0);
             set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 0, 2);
-
         }
 
         public readonly byte[] Data = new byte[Size];
@@ -140,5 +139,10 @@ namespace MBBSEmu.Memory
         public static IntPtr16 operator ++(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset + 1));
         public static IntPtr16 operator --(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset - 1));
 
+        public static bool operator > (IntPtr16 l, IntPtr16 r) => l.ToInt32() > r.ToInt32();
+        public static bool operator >= (IntPtr16 l, IntPtr16 r) => l.ToInt32() >= r.ToInt32();
+
+        public static bool operator < (IntPtr16 l, IntPtr16 r) => l.ToInt32() < r.ToInt32();
+        public static bool operator <= (IntPtr16 l, IntPtr16 r) => l.ToInt32() <= r.ToInt32();
     }
 }
