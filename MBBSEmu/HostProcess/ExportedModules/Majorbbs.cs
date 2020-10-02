@@ -1219,8 +1219,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
 #endif
 
-            Registers.AX = allocatedMemory.Offset;
-            Registers.DX = allocatedMemory.Segment;
+            Registers.SetPointer(allocatedMemory);
         }
 
         /// <summary>
@@ -1257,8 +1256,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {variablePointer}");
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -1290,8 +1288,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             }
 
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -1328,8 +1325,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -1524,8 +1520,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
             }
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -1570,8 +1565,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Received value: {outputValue}, string saved to {variablePointer}");
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -1703,8 +1697,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(variablePointer, userChannel.UsrAcc.Data);
 
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -2016,8 +2009,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -2048,8 +2040,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -2212,8 +2203,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
 #endif
-            Registers.AX = btvFileStructPointer.Offset;
-            Registers.DX = btvFileStructPointer.Segment;
+            Registers.SetPointer(btvFileStructPointer);
         }
 
         /// <summary>
@@ -2437,8 +2427,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -2634,8 +2623,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var source = GetParameterString(2);
             var numberOfBytesToCopy = GetParameter(4);
 
-            Registers.DX = destinationPointer.Segment;
-            Registers.AX = destinationPointer.Offset;
+            Registers.SetPointer(destinationPointer);
 
             for (var i = 0; i < numberOfBytesToCopy; i++, destinationPointer++)
             {
@@ -2773,8 +2761,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Returned VDAOFF {volatileMemoryAddress} for Channel {channel}");
 #endif
 
-            Registers.AX = volatileMemoryAddress.Offset;
-            Registers.DX = volatileMemoryAddress.Segment;
+            Registers.SetPointer(volatileMemoryAddress);
         }
 
         /// <summary>
@@ -2975,8 +2962,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 _logger.Warn($"Reopened File: {fullPath} - most likely a module bug.");
 
-                Registers.AX = fileStructPointer.Offset;
-                Registers.DX = fileStructPointer.Segment;
+                Registers.SetPointer(fileStructPointer);
                 return;
             }
 
@@ -3039,8 +3025,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"{fullPath} FILE struct written to {fileStructPointer}");
 #endif
-            Registers.AX = fileStructPointer.Offset;
-            Registers.DX = fileStructPointer.Segment;
+            Registers.SetPointer(fileStructPointer);
         }
 
         /// <summary>
@@ -3471,8 +3456,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetByte(destinationPointer.Segment,
                 (ushort)(destinationPointer.Offset + destinationString.Length + bytesToCopy), 0x0);
 
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -3521,8 +3505,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 variablePointer);
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -3731,8 +3714,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -3752,8 +3734,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 (ushort)(destinationPointer.Offset + destinationString.Length),
                 sourceString);
 
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -3866,8 +3847,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Received value: {packedTime}, decoded string {timeString} saved to {variablePointer}");
 #endif
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -3888,8 +3868,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 if (stringToSearch[i] != (byte)characterToFind) continue;
 
-                Registers.AX = (ushort)(stringPointer.Offset + i);
-                Registers.DX = stringPointer.Segment;
+                Registers.SetPointer(stringPointer + i);
                 return;
             }
 
@@ -4113,13 +4092,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 if (stringToSearch[i] == 0x0 || stringToSearch[i] == 0x20) continue;
 
-                Registers.AX = (ushort)(stringToSearchPointer.Offset + i);
-                Registers.DX = stringToSearchPointer.Segment;
+                Registers.SetPointer(stringToSearchPointer + i);
                 return;
             }
 
-            Registers.AX = stringToSearchPointer.Offset;
-            Registers.DX = stringToSearchPointer.Segment;
+            Registers.SetPointer(stringToSearchPointer);
         }
 
         /// <summary>
@@ -4173,8 +4150,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -4220,8 +4196,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(stringToConvertPointer, stringData);
 
-            Registers.AX = stringToConvertPointer.Offset;
-            Registers.DX = stringToConvertPointer.Segment;
+            Registers.SetPointer(stringToConvertPointer);
         }
 
         /// <summary>
@@ -4238,14 +4213,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var offset = stringToSearch.IndexOf(stringToFind);
             if (offset >= 0)
             {
-                Registers.AX = (ushort)(stringToSearchPointer.Offset + offset);
-                Registers.DX = stringToSearchPointer.Segment;
+                Registers.SetPointer(stringToSearchPointer + offset);
             }
             else
             {
                 // not found, return NULL
-                Registers.AX = 0;
-                Registers.DX = 0;
+                Registers.SetPointer(IntPtr16.Empty);
             }
         }
 
@@ -4564,8 +4537,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -4786,8 +4758,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(resultPointer, processedString);
 
-            Registers.AX = resultPointer.Offset;
-            Registers.DX = resultPointer.Segment;
+            Registers.SetPointer(resultPointer);
         }
 
         /// <summary>
@@ -4814,8 +4785,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info("Ignoring, not stripping ANSI");
 #endif
 
-            Registers.AX = stringToStripPointer.Offset;
-            Registers.DX = stringToStripPointer.Segment;
+            Registers.SetPointer(stringToStripPointer);
 
         }
 
@@ -4992,8 +4962,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            Registers.DX = workPointer.Segment;
-            Registers.AX = workPointer.Offset;
+            Registers.SetPointer(workPointer);
 
             // scan until we find the next deliminater and then null it out for the return
             while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
@@ -5063,8 +5032,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 variablePointer);
 #endif
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
 
@@ -5148,8 +5116,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
 #endif
 
-            Registers.AX = allocatedMemory.Offset;
-            Registers.DX = allocatedMemory.Segment;
+            Registers.SetPointer(allocatedMemory);
         }
 
 
@@ -5280,8 +5247,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Created Big Memory Region that is {qty} records of {size} bytes in length at {bigRegion}");
 #endif
 
-            Registers.AX = bigRegion.Offset;
-            Registers.DX = bigRegion.Segment;
+            Registers.SetPointer(bigRegion);
         }
 
         /// <summary>
@@ -5315,8 +5281,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Retrieved Big Memory block {bigRegionPointer}, returned pointer to index {index}: {indexPointer}");
 #endif
 
-            Registers.AX = indexPointer.Offset;
-            Registers.DX = indexPointer.Segment;
+            Registers.SetPointer(indexPointer);
         }
 
         /// <summary>
@@ -5350,8 +5315,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.Data);
 
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -5488,8 +5452,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetPointer("NXTCMD", newNxtcmd);
 
-            Registers.AX = newNxtcmd.Offset;
-            Registers.DX = newNxtcmd.Segment;
+            Registers.SetPointer(newNxtcmd);
         }
 
         /// <summary>
@@ -5766,8 +5729,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Copied {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
 #endif
-            Registers.AX = destinationPointer.Offset;
-            Registers.DX = destinationPointer.Segment;
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
@@ -6086,8 +6048,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(msgScanResultPointer, new byte[0x1000]); //Zero it out
             Module.Memory.SetArray(msgScanResultPointer, msgVariableValue); //Write
 
-            Registers.AX = msgScanResultPointer.Offset;
-            Registers.DX = msgScanResultPointer.Segment;
+            Registers.SetPointer(msgScanResultPointer);
 
         }
 
@@ -6180,8 +6141,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
             }
 
-            Registers.AX = resultPointer.Offset;
-            Registers.DX = resultPointer.Segment;
+            Registers.SetPointer(resultPointer);
         }
 
         /// <summary>
@@ -6623,8 +6583,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var templatePointer = Module.Memory.GetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}");
 
-            Registers.AX = templatePointer.Offset;
-            Registers.DX = templatePointer.Segment;
+            Registers.SetPointer(templatePointer);
         }
 
         /// <summary>
@@ -6804,8 +6763,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Retrieved Field {fieldNo}: {fsdStatus.Fields[fieldNo].Value} ({fsdnanPointer})");
 #endif
 
-            Registers.AX = fsdnanPointer.Offset;
-            Registers.DX = fsdnanPointer.Segment;
+            Registers.SetPointer(fsdnanPointer);
         }
 
         /// <summary>
@@ -6849,8 +6807,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetZero(fsdxanPointer, 0xFF);
             Module.Memory.SetArray(fsdxanPointer, Encoding.ASCII.GetBytes($"{answerComponents[1]}"));
 
-            Registers.AX = fsdxanPointer.Offset;
-            Registers.DX = fsdxanPointer.Segment;
+            Registers.SetPointer(fsdxanPointer);
         }
 
         /// <summary>
@@ -6903,8 +6860,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(lastwdBufferPointer, Encoding.ASCII.GetBytes($"{stringToParse.Split(' ').Last()}\0"));
 
-            Registers.AX = lastwdBufferPointer.Offset;
-            Registers.DX = lastwdBufferPointer.Segment;
+            Registers.SetPointer(lastwdBufferPointer);
         }
 
         /// <summary>
@@ -6920,13 +6876,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 var currentCharacter = Module.Memory.GetByte(stringPointerBase.Segment, i);
                 if (currentCharacter != 0 && currentCharacter != ' ') continue;
-                Registers.AX = i;
-                Registers.DX = stringPointerBase.Segment;
+                Registers.SetPointer(stringPointerBase + i);
                 return;
             }
 
-            Registers.AX = 0;
-            Registers.DX = 0;
+            Registers.SetPointer(IntPtr16.Empty);
         }
 
         /// <summary>
@@ -7174,8 +7128,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Received value: {outputValue}, string saved to {resultPointer}");
 #endif
 
-            Registers.AX = resultPointer.Offset;
-            Registers.DX = resultPointer.Segment;
+            Registers.SetPointer(resultPointer);
         }
 
         /// <summary>
@@ -7327,8 +7280,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 remainingCharactersInCommand--;
             }
             var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCWRD", 0x1E); //max length is 30 characters
-            Registers.DX = returnPointer.Segment;
-            Registers.AX = returnPointer.Offset;
+            Registers.SetPointer(returnPointer);
 
             //Verify we're not at the end of the input
             if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
@@ -7459,8 +7411,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 remainingCharactersInCommand--;
             }
             var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 12); //max length is 12 characters
-            Registers.DX = returnPointer.Segment;
-            Registers.AX = returnPointer.Offset;
+            Registers.SetPointer(returnPointer);
 
             //Verify we're not at the end of the input
             if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
