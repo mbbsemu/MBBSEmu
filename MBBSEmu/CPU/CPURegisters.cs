@@ -411,11 +411,17 @@ namespace MBBSEmu.CPU
             SS = 0;
         }
 
+        /// <summary>
+        ///     Returns an IntPtr16 populated from DX:AX
+        /// </summary>
         public IntPtr16 GetPointer()
         {
             return new IntPtr16(segment: DX, offset: AX);
         }
 
+        /// <summary>
+        ///     Sets DX:AX to the value from ptr
+        /// </summary>
         public void SetPointer(IntPtr16 ptr)
         {
             DX = ptr.Segment;

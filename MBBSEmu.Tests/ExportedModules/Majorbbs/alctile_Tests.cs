@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.NotEqual(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(0, mbbsEmuCpuRegisters.AX);
 
-            var allocatedPointer = new IntPtr16(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX);
+            var allocatedPointer = mbbsEmuCpuRegisters.GetPointer();
             // Get pointers
             for (ushort i = 0; i < quantity; ++i)
             {

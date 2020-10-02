@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.NotEqual(0, mbbsEmuCpuRegisters.DX);
 
-            var allocatedPointer = new IntPtr16(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX);
+            var allocatedPointer = mbbsEmuCpuRegisters.GetPointer();
 
             // Get pointers
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PTRBLOK_ORDINAL, new List<ushort> { allocatedPointer.Offset, allocatedPointer.Segment, 0 });
