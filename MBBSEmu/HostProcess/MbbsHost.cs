@@ -1000,7 +1000,7 @@ namespace MBBSEmu.HostProcess
             
             // removes all sessions and stops worker thread
             RemoveSessions(session => true);
-            
+
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
             CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
 
