@@ -10,7 +10,8 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Starts the MbbsHost Worker Thread
         /// </summary>
-        void Start();
+        /// <param name="moduleConfigurations"></param>
+        void Start(List<ModuleConfiguration> moduleConfigurations);
 
         /// <summary>
         ///     Adds a Module to the MbbsHost Process and sets it up for use

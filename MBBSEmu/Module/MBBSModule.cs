@@ -265,21 +265,21 @@ namespace MBBSEmu.Module
         {
             ///Reset Module
             _logger.Info($"Resetting {ModuleDescription}");
-            CpuCore.Reset();
-            Memory.Clear();
-            Memory.AddSegment(0); //Stack Segment
             foreach (var em in ExportedModuleDictionary.Values)
                 (em as IStoppable)?.Stop();
-            ExportedModuleDictionary.Clear();
-            TextVariables.Clear();
+            Memory.Clear();
+            Memory.AddSegment(0); //Stack Segment
+            //ExportedModuleDictionary.Clear();
+            //TextVariables.Clear();
             //Msgs.Clear();
-            ExecutionUnits.Clear();
-            TaskRoutines.Clear();
-            Mdf.MSGFiles.Clear();
-            Mdf.DLLFiles.Clear();
-            GlobalCommandHandlers.Clear();
-            RtkickRoutines.Clear();
-            RtihdlrRoutines.Clear();
+            //ExecutionUnits.Clear();
+            //TaskRoutines.Clear();
+            //Mdf.MSGFiles.Clear();
+            //Mdf.DLLFiles.Clear();
+            //GlobalCommandHandlers.Clear();
+            //RtkickRoutines.Clear();
+            //RtihdlrRoutines.Clear();
+            //EntryPoints.Clear();
         }
     }
 }

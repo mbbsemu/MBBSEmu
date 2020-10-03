@@ -9,11 +9,13 @@ using MBBSEmu.Session.Rlogin;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.Session.Attributes;
@@ -100,6 +102,9 @@ namespace MBBSEmu.HostProcess
 
         private readonly IGlobalCache _globalCache;
         private readonly IFileUtility _fileUtility;
+        private ServiceResolver _serviceResolver;
+        private string _settingsFileName;
+        private List<ModuleConfiguration> _moduleConfigurations;
 
         private Thread _workerThread;
 
@@ -128,8 +133,24 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Starts the MbbsHost Worker Thread
         /// </summary>
-        public void Start()
+        public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
+            //Save module configurations for cleanup
+            _moduleConfigurations = moduleConfigurations;
+            
+            //Service Resolver - don't need file names, need to dig in here -- won't let me remove
+            _serviceResolver = new ServiceResolver(_settingsFileName ?? "appsettings.json");
+            var fileUtility = _serviceResolver.GetService<IFileUtility>();
+            
+            var modules = new List<MbbsModule>();
+            //Load Modules
+            foreach (var m in moduleConfigurations)
+            {
+                modules.Add(new MbbsModule(fileUtility, _logger, m.ModIdentifier, m.ModPath) { MenuOptionKey = m.ModMenuOptionKey });
+            }
+            foreach (var m in modules)
+                AddModule(m);
+            
             _isRunning = true;
             _workerThread = new Thread(WorkerThread);
             _workerThread.Start();
@@ -978,29 +999,28 @@ namespace MBBSEmu.HostProcess
         private void DoNightlyCleanup()
         {
             _logger.Info("PERFORMING NIGHTLY CLEANUP");
-
+            
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
             
-            // removes all sessions
+            // removes all sessions and stops worker thread
             RemoveSessions(session => true);
-
+            Stop(); //Do i need to recreate timer?
+            
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
             CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
 
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-                m.Value.Reset();
-                //foreach (var em in m.Value.ExportedModuleDictionary.Values)
-                //    (em as IStoppable)?.Stop();
+               foreach (var em in m.Value.ExportedModuleDictionary.Values)
+                   (em as IStoppable)?.Stop();
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
-                AddModule(m.Value);
-                //Don't need anymore -- Run(m.Value.ModuleIdentifier, m.Value.EntryPoints["_INIT_"], ushort.MaxValue);
-                //_logger.Info($"Calling initialization routine on module {m.Value.ModuleIdentifier}");
+                m.Value.Reset();
             }
+            Start(_moduleConfigurations);
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)

@@ -7505,10 +7505,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _logger.Info($"Running Stop()");
             McvPointerDictionary.Clear();
-            FilePointerDictionary.Clear();
-            ChannelDictionary.Clear();
+            //FilePointerDictionary.Clear();
+            //ChannelDictionary.Clear();
             _previousMcvFile.Clear();
             _previousBtrieveFile.Clear();
+            //_margvPointers.Clear();
+            //_margnPointers.Clear();
+            //_highResolutionTimer.Stop();
         }
     }
 }

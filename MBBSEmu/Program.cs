@@ -75,6 +75,11 @@ namespace MBBSEmu
         /// </summary>
         private bool _isConsoleSession;
 
+        /// <summary>
+        ///     Module Configuration
+        /// </summary>
+        private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
+        
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
 
@@ -208,7 +213,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { MenuOptionKey = _menuOptionKey });
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModIdentifier = _moduleIdentifier, ModPath = _modulePath, ModMenuOptionKey = _menuOptionKey});
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -226,7 +231,7 @@ namespace MBBSEmu
                         
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { MenuOptionKey = m["MenuOptionKey"] });
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModIdentifier = m["Identifier"], ModPath = m["Path"], ModMenuOptionKey = m["MenuOptionKey"]});
                     }
                 }
                 else
@@ -262,10 +267,7 @@ namespace MBBSEmu
 
                 //Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
-                foreach (var m in modules)
-                    host.AddModule(m);
-
-                host.Start();
+                host.Start(_moduleConfigurations);
 
                 _runningServices.Add(host);
 
