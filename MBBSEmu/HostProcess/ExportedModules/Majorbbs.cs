@@ -7533,6 +7533,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //_margvPointers.Clear();
             //_margnPointers.Clear();
             //_highResolutionTimer.Stop();
+        }
 
         /// <summary>
         ///     Decode string date formatted 'MM/DD/YY' to int format YYYYYYYMMMMDDDDD
