@@ -5,7 +5,6 @@ using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
-using MBBSEmu.Server;
 using NLog;
 using System;
 using System.Collections.Generic;

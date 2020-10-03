@@ -2647,8 +2647,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var textBytes = Module.Memory.GetString(textPointer, true);
 
-            //Module.TextVariables.Add(Encoding.ASCII.GetString(textBytes), functionPointer);
-            Module.TextVariables[Encoding.ASCII.GetString(textBytes)] = functionPointer;
+            Module.TextVariables.Add(Encoding.ASCII.GetString(textBytes), functionPointer);
 
 #if DEBUG
             _logger.Info($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
@@ -7518,6 +7517,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 1;
         }
 
+        
         /// <summary>
         ///     Decode string date formatted 'MM/DD/YY' to int format YYYYYYYMMMMDDDDD
         ///

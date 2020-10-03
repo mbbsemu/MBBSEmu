@@ -9,18 +9,15 @@ using MBBSEmu.Session.Rlogin;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
-using MBBSEmu.Server;
 
 namespace MBBSEmu.HostProcess
 {
@@ -716,9 +713,6 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            //if (_isRunning)
-            //    throw new Exception("Unable to Add Module after host is running");
-
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
             //Patch Relocation Information to Bytecode
@@ -732,11 +726,11 @@ namespace MBBSEmu.HostProcess
             }
 
             //Setup Exported Modules
-            module.ExportedModuleDictionary[Majorbbs.Segment] = GetFunctions(module, "MAJORBBS");
-            module.ExportedModuleDictionary[Galgsbl.Segment] = GetFunctions(module, "GALGSBL");
-            module.ExportedModuleDictionary[Phapi.Segment] = GetFunctions(module, "PHAPI");
-            module.ExportedModuleDictionary[Galme.Segment] = GetFunctions(module, "GALME");
-            module.ExportedModuleDictionary[Doscalls.Segment] = GetFunctions(module, "DOSCALLS");
+            module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
+            module.ExportedModuleDictionary.Add(Galgsbl.Segment, GetFunctions(module, "GALGSBL"));
+            module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
+            module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
+            module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
 
             //Add it to the Module Dictionary
             module.StateCode = (short)(_modules.Count + 1);
