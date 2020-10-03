@@ -16,6 +16,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
+using MBBSEmu.Reports;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 
@@ -1036,6 +1037,15 @@ namespace MBBSEmu.HostProcess
 
             return DateTime.Now.AddSeconds(5).TimeOfDay;
             //return cleanupTime;
+        }
+
+        public void GenerateAPIReport()
+        {
+            foreach (var m in _modules)
+            {
+                var apiReport = new ApiReport(_logger, m.Value);
+                apiReport.GenerateReport();
+            }
         }
     }
 }

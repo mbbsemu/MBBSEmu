@@ -49,5 +49,10 @@ namespace MBBSEmu.HostProcess
         ///     Waits until the processing thread exits. Useful for tests
         /// </summary>
         public void WaitForShutdown();
+
+        /// <summary>
+        ///     Generates API Report
+        /// </summary>
+        void GenerateAPIReport();
     }
 }

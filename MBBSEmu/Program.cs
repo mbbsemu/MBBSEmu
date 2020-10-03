@@ -265,22 +265,17 @@ namespace MBBSEmu
                     return;
                 }
 
-                //API Report
-                if (_doApiReport)
-                {
-                    foreach (var m in _moduleConfigurations)
-                    {
-                        //Need to fix -- 
-                        var apiReport = new ApiReport(_logger, null);
-                        apiReport.GenerateReport();
-                    }
-                    return;
-                }
-
                 //Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
                 host.Start(_moduleConfigurations);
 
+                //API Report
+                if (_doApiReport)
+                {
+                    host.GenerateAPIReport();
+                    return;
+                }
+                
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server

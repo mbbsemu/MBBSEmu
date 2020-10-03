@@ -7517,7 +7517,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 1;
         }
 
-        
+
         /// <summary>
         ///     Decode string date formatted 'MM/DD/YY' to int format YYYYYYYMMMMDDDDD
         ///
