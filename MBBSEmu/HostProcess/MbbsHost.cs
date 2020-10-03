@@ -1045,6 +1045,7 @@ namespace MBBSEmu.HostProcess
                 var apiReport = new ApiReport(_logger, m.Value);
                 apiReport.GenerateReport();
             }
+            Stop();
         }
     }
 }
