@@ -1012,11 +1012,8 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-               foreach (var em in m.Value.ExportedModuleDictionary.Values)
-                   (em as IStoppable)?.Stop();
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+               foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
-                m.Value.Reset();
             }
             Start(_moduleConfigurations);
             _performingNightlyCleanup = false;

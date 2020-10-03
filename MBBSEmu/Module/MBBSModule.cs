@@ -260,21 +260,5 @@ namespace MBBSEmu.Module
             ExecutionUnits.Enqueue(executionUnit);
             return resultRegisters;
         }
-
-        public void Reset()
-        {
-            ///Reset Module
-            _logger.Info($"Resetting {ModuleDescription}");
-            foreach (var em in ExportedModuleDictionary.Values)
-                (em as IStoppable)?.Stop();
-            Memory.Clear();
-            Memory.AddSegment(0); //Stack Segment
-            ExportedModuleDictionary.Clear();
-            TextVariables.Clear();
-            ExecutionUnits.Clear();
-            TaskRoutines.Clear();
-            RtkickRoutines.Clear();
-            RtihdlrRoutines.Clear();
-        }
     }
 }
