@@ -1035,8 +1035,7 @@ namespace MBBSEmu.HostProcess
                 cleanupTime = DEFAULT_CLEANUP_TIME;
             }
 
-            return DateTime.Now.AddSeconds(5).TimeOfDay;
-            //return cleanupTime;
+            return cleanupTime;
         }
 
         public void GenerateAPIReport()
