@@ -78,9 +78,6 @@ namespace MBBSEmu.Tests.Integration
                 new ModuleConfiguration {ModIdentifier = "MBBSEMU", ModPath = _modulePath, ModMenuOptionKey = null}
             };
 
-            //foreach (var m in modules)
-            //    host.AddModule(m);
-
             host.Start(moduleConfigurations);
 
             _session = new TestSession(host);
