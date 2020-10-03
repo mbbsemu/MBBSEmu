@@ -196,7 +196,6 @@ namespace MBBSEmu
 
                 _logger = _serviceResolver.GetService<ILogger>();
                 var config = _serviceResolver.GetService<IConfiguration>();
-                var fileUtility = _serviceResolver.GetService<IFileUtility>();
 
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
@@ -235,7 +234,6 @@ namespace MBBSEmu
                 }
 
                 //Setup Modules
-                var modules = new List<MbbsModule>();
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
@@ -270,9 +268,10 @@ namespace MBBSEmu
                 //API Report
                 if (_doApiReport)
                 {
-                    foreach (var m in modules)
+                    foreach (var m in _moduleConfigurations)
                     {
-                        var apiReport = new ApiReport(_logger, m);
+                        //Need to fix -- 
+                        var apiReport = new ApiReport(_logger, null);
                         apiReport.GenerateReport();
                     }
                     return;
@@ -330,11 +329,11 @@ namespace MBBSEmu
                     if (bool.Parse(config["Rlogin.PortPerModule"]))
                     {
                         var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
-                        foreach (var m in modules)
+                        foreach (var m in _moduleConfigurations)
                         {
-                            _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
+                            _logger.Info($"Rlogin {m.ModIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }

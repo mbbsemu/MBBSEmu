@@ -140,15 +140,10 @@ namespace MBBSEmu.HostProcess
             //Save module configurations for cleanup
             _moduleConfigurations = moduleConfigurations;
             
-            var modules = new List<MbbsModule>();
             //Load Modules
             foreach (var m in moduleConfigurations)
-            {
-                modules.Add(new MbbsModule(_fileUtility, _logger, m.ModIdentifier, m.ModPath) { MenuOptionKey = m.ModMenuOptionKey });
-            }
-            foreach (var m in modules)
-                AddModule(m);
-            
+                AddModule(new MbbsModule(_fileUtility, _logger, m.ModIdentifier, m.ModPath) {MenuOptionKey = m.ModMenuOptionKey});
+
             _isRunning = true;
 
             if (_workerThread == null)
