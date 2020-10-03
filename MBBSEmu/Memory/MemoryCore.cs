@@ -24,9 +24,9 @@ namespace MBBSEmu.Memory
 
         private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
         private IntPtr16 _currentVariablePointer;
-        private const ushort VARIABLE_BASE_SEGMENT = 0x100; //0x100*0xFFFF == 16MB memory space for variables
+        private const ushort VARIABLE_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
         private IntPtr16 _currentRealModePointer;
-        private const ushort REALMODE_BASE_SEGMENT = 0x200;
+        private const ushort REALMODE_BASE_SEGMENT = 0x2000; //0x2000->0x2FFF == 256MB
 
         private ushort _currentCodeSegment;
         private Dictionary<ushort, Instruction> _currentCodeSegmentInstructions;
@@ -89,8 +89,8 @@ namespace MBBSEmu.Memory
                 AddSegment(_currentVariablePointer.Segment);
 
 #if DEBUG
-            _logger.Debug(
-                $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
+            //_logger.Debug(
+            //    $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
             _currentVariablePointer.Offset += (ushort) (size + 1);
@@ -185,7 +185,14 @@ namespace MBBSEmu.Memory
         public void RemoveSegment(ushort segment)
         {
             _memorySegments.Remove(segment);
+            _segments.Remove(segment);
             _decompiledSegments.Remove(segment);
+
+            if (_currentCodeSegment == segment)
+            {
+                _currentCodeSegment = 0;
+                _currentCodeSegmentInstructions.Clear();
+            }
         }
 
         /// <summary>

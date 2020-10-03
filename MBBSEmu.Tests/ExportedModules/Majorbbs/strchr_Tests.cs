@@ -39,7 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
               Assert.Equal(strPointer.Segment, mbbsEmuCpuRegisters.DX);
               Assert.Equal(strPointer.Offset + a.IndexOf(toFind), mbbsEmuCpuRegisters.AX);
 
-              var returnString = mbbsEmuMemoryCore.GetString(new IntPtr16(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX), /* stripNull= */ true);
+              var returnString = mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.GetPointer(), /* stripNull= */ true);
               Assert.Equal(expected, Encoding.ASCII.GetString(returnString));
             }
         }

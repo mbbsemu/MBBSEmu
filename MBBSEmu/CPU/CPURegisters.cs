@@ -1,4 +1,5 @@
-﻿using Iced.Intel;
+﻿using MBBSEmu.Memory;
+using Iced.Intel;
 using System;
 
 namespace MBBSEmu.CPU
@@ -408,6 +409,23 @@ namespace MBBSEmu.CPU
             DS = 0;
             ES = 0;
             SS = 0;
+        }
+
+        /// <summary>
+        ///     Returns an IntPtr16 populated from DX:AX
+        /// </summary>
+        public IntPtr16 GetPointer()
+        {
+            return new IntPtr16(segment: DX, offset: AX);
+        }
+
+        /// <summary>
+        ///     Sets DX:AX to the value from ptr
+        /// </summary>
+        public void SetPointer(IntPtr16 ptr)
+        {
+            DX = ptr.Segment;
+            AX = ptr.Offset;
         }
     }
 }

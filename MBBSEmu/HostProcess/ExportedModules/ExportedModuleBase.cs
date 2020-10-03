@@ -11,6 +11,7 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -19,6 +20,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public abstract class ExportedModuleBase
     {
+        public const ushort OUTBUF_SIZE = 8192;
+
         /// <summary>
         ///     Internal Variables are stored inside the system (module name, etc.)
         ///
@@ -57,6 +60,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly char[] PRINTF_PRECISION = { '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*' };
         private protected static readonly char[] PRINTF_LENGTH = { 'h', 'l', 'j', 'z', 't', 'L' };
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
+        private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
+        private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
+
 
         private protected ExportedModuleBase(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
@@ -920,7 +926,52 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private string BtrieveCacheKey(IntPtr16 btrievePointer) =>
             $"{Module.ModuleIdentifier}-Btrieve-{btrievePointer}";
 
+        /// <summary>
+        ///     Sets up a Global Btrieve Pointer for Btrieve files that need to share context between multiple modules
+        ///     This is mainly used for system Btrieve files, such as GENBB, ACCBB, etc.
+        /// </summary>
+        /// <param name="variableName">Variable Name to use for Key (Example: "GENBB")</param>
+        /// <param name="fileName">Btrieve Filename to be opened (Example: "BBSGEN.DAT")</param>
+        /// <param name="baseSegment">Dedicated Memory Segment in the local Module for this Global Btrieve Struct</param>
+        private protected void BtrieveSetupGlobalPointer(string variableName, string fileName, ushort baseSegment)
+        {
+            //Construct Pointer for Btrieve Struct and Name/Data pointers
+            var btrievePointer = new IntPtr16(baseSegment, 0x0); //Btrieve Struct
+            var btrieveNamePointer = new IntPtr16(baseSegment, 0x100); //File Name Pointer
+            var btrieveDataPointer = new IntPtr16(baseSegment, 0x200); //Record Data Pointer
 
+            //Some Btrieve Processors can be declared elsewhere in the system, so verify the processor doesn't already exist before creating
+            if (!_globalCache.ContainsKey($"{variableName}-PROCESSOR"))
+                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, fileName, Directory.GetCurrentDirectory()));
+
+            //Setup the Pointer to the Global Address -- ensuring each module is referencing the same Pointer & Processor
+            if (!_globalCache.ContainsKey($"{variableName}-POINTER"))
+                _globalCache.Set($"{variableName}-POINTER", btrievePointer);
+
+            //If the Module doesn't already have this Global Btrieve Pointer setup in memory, set it up
+            if (!Module.Memory.HasSegment(baseSegment))
+            {
+                //Declare Pointers and Locations for Struct Data
+                Module.Memory.AddSegment(baseSegment);
+
+                //Set Struct Value
+                var newBtvStruct = new BtvFileStruct { filenam = btrieveNamePointer, reclen = 8192, data = btrieveDataPointer };
+                Module.Memory.SetArray(btrievePointer, newBtvStruct.Data);
+
+                //Set Filename Value
+                Module.Memory.SetArray(btrieveNamePointer, Encoding.ASCII.GetBytes($"{fileName}\0"));
+            }
+
+            //If we've already setup the local reference, bail
+            if (Module.Memory.TryGetVariablePointer(variableName, out _)) return;
+
+            //Save a local reference to the shared Processor
+            BtrieveSaveProcessor(btrievePointer, _globalCache.Get<BtrieveFileProcessor>($"{variableName}-PROCESSOR"));
+
+            //Local Variable that will hold the pointer to the GENBB-POINTER
+            var localPointer = Module.Memory.GetOrAllocateVariablePointer(variableName, IntPtr16.Size);
+            Module.Memory.SetPointer(localPointer, btrievePointer);
+        }
 
     }
 }

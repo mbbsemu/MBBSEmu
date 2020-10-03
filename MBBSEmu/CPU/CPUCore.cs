@@ -88,7 +88,7 @@ namespace MBBSEmu.CPU
         ///
         ///     The x87 Stack contains eight slots for 32-bit (Single Precision) Floating Point values
         /// </summary>
-        public readonly float[] FpuStack = new float[8];
+        public readonly double[] FpuStack = new double[8];
 
         /// <summary>
         ///     Size of the current operation (in bytes)
@@ -248,11 +248,10 @@ namespace MBBSEmu.CPU
 
             //Breakpoint
             //if (Registers.CS == 0x2 && Registers.IP == 0x3352)
-                //Debugger.Break();
+            //Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
-
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -533,8 +532,9 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Returns the VALUE of Operand 0
-        ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
+        ///     Returns the Operand Value as a 8-bit Integer
+        ///
+        ///     Operand Sizes Equal to or Less than 8-Bit are Supported and returned as a 8-bit Integer
         /// </summary>
         /// <param name="opKind"></param>
         /// <param name="operandType"></param>
@@ -564,23 +564,23 @@ namespace MBBSEmu.CPU
 
                         switch (_currentInstruction.MemorySize)
                         {
-                            //gets byte at the specified memory location
+                            case MemorySize.Int8:
                             case MemorySize.UInt8:
                                 return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             default:
-                                throw new Exception("Type Requested not UInt8");
+                                throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
-
                     }
 
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown UInt8 Operand: {opKind}");
+                    throw new Exception($"Unsupported OpKind: {opKind}");
             }
         }
 
         /// <summary>
-        ///     Returns the VALUE of Operand 0
-        ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
+        ///     Returns the Operand Value as a 16-bit Integer
+        ///
+        ///     Operand Sizes Equal to or Less than 16-Bit are Supported and returned as a 16-bit Integer
         /// </summary>
         /// <param name="opKind"></param>
         /// <param name="operandType"></param>
@@ -610,61 +610,127 @@ namespace MBBSEmu.CPU
                     return (ushort)_currentInstruction.Immediate8to16;
                 case OpKind.Memory:
                     {
-                        //Relocation Record is applied to the offset of the value
-                        //Because of this, we return out
                         var offset = GetOperandOffset(opKind);
 
                         switch (_currentInstruction.MemorySize)
                         {
+                            case MemorySize.Int8:
+                            case MemorySize.UInt8:
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             case MemorySize.Int16:
                             case MemorySize.UInt16:
                                 return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             default:
-                                throw new Exception("Type Requested not UInt16");
+                                throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
-
                     }
 
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown UInt16 Operand: {opKind}");
+                    throw new Exception($"Unsupported OpKind: {opKind}");
             }
         }
 
         /// <summary>
-        ///     Returns the VALUE of Operand 0
-        ///     Only use this for instructions where Operand 0 is a VALUE, not an address target
+        ///     Returns the Operand Value as a 32-bit Integer
+        ///
+        ///     Operand Sizes Equal to or Less than 32-Bit are Supported and returned as a 32-bit Integer
         /// </summary>
         /// <param name="opKind"></param>
-        /// <param name="operandType"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        private uint GetOperandValueUInt32(OpKind opKind, EnumOperandType operandType)
+        private uint GetOperandValueUInt32(OpKind opKind)
         {
             switch (opKind)
             {
-                case OpKind.Immediate8to32:
-                    return (ushort)_currentInstruction.Immediate8to32;
+                case OpKind.Immediate8:
+                    return _currentInstruction.Immediate8;
+                case OpKind.Immediate16:
+                    return _currentInstruction.Immediate16;
+                case OpKind.Immediate8to16:
+                    return (ushort)_currentInstruction.Immediate8to16;
                 case OpKind.Immediate32:
                     return _currentInstruction.Immediate32;
+                case OpKind.Immediate8to32:
+                    return (uint)_currentInstruction.Immediate8to32;
                 case OpKind.Memory:
                     {
-                        //Relocation Record is applied to the offset of the value
-                        //Because of this, we return out
                         var offset = GetOperandOffset(opKind);
 
                         switch (_currentInstruction.MemorySize)
                         {
+                            case MemorySize.Int8:
+                            case MemorySize.UInt8:
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                            case MemorySize.Int16:
+                            case MemorySize.UInt16:
+                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                            case MemorySize.Int32:
                             case MemorySize.UInt32:
                                 return BitConverter.ToUInt32(
                                     Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
                             default:
-                                throw new Exception("Type Requested not UInt32");
+                                throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
-
                     }
 
                 default:
-                    throw new Exception("Type Requested not UInt32");
+                    throw new Exception($"Unsupported OpKind: {opKind}");
+            }
+        }
+
+        /// <summary>
+        ///     Returns the Operand Value as a 64-bit Integer
+        ///
+        ///     Operand Sizes Equal to or Less than 64-Bit are Supported and returned as a 64-bit Integer
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        private ulong GetOperandValueUInt64(OpKind opKind)
+        {
+            switch (opKind)
+            {
+                case OpKind.Immediate8:
+                    return _currentInstruction.Immediate8;
+                case OpKind.Immediate16:
+                    return _currentInstruction.Immediate16;
+                case OpKind.Immediate8to16:
+                    return (ushort)_currentInstruction.Immediate8to16;
+                case OpKind.Immediate32:
+                    return _currentInstruction.Immediate32;
+                case OpKind.Immediate8to32:
+                    return (uint)_currentInstruction.Immediate8to32;
+                case OpKind.Immediate64:
+                    return _currentInstruction.Immediate64;
+                case OpKind.Immediate8to64:
+                    return (ulong)_currentInstruction.Immediate8to64;
+                case OpKind.Memory:
+                    {
+                        var offset = GetOperandOffset(opKind);
+
+                        switch (_currentInstruction.MemorySize)
+                        {
+                            case MemorySize.Int8:
+                            case MemorySize.UInt8:
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                            case MemorySize.Int16:
+                            case MemorySize.UInt16:
+                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                            case MemorySize.Int32:
+                            case MemorySize.UInt32:
+                                return BitConverter.ToUInt32(
+                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
+                            case MemorySize.Int64:
+                            case MemorySize.UInt64:
+                                return BitConverter.ToUInt64(
+                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 8));
+                            default:
+                                throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
+                        }
+                    }
+
+                default:
+                    throw new Exception($"Unsupported OpKind: {opKind}");
             }
         }
 
@@ -677,21 +743,44 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private float GetOperandValueFloat(OpKind opKind, EnumOperandType operandType)
         {
-            switch (opKind)
+            return opKind switch
             {
-                case OpKind.Memory:
-                {
-                        return BitConverter.ToSingle(Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                            GetOperandOffset(opKind), 4));
-                }
-                case OpKind.Register when operandType == EnumOperandType.Destination:
-                    return FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)];
-                case OpKind.Register when operandType == EnumOperandType.Source:
-                    return FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)];
-                default:
-                    throw new Exception($"Unknown Float Operand: {opKind}");
-            }
+                OpKind.Memory => BitConverter.ToSingle(
+                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
+                        4)),
+                OpKind.Register when operandType == EnumOperandType.Destination => (float) FpuStack[
+                    Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
+                OpKind.Register when operandType == EnumOperandType.Source => (float) FpuStack[
+                    Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
+                _ => throw new Exception($"Unknown Float Operand: {opKind}")
+            };
+        }
 
+        /// <summary>
+        ///     Returns the Operand Value as a 64-bit Double
+        ///
+        ///     Operand Sizes Equal to or Less than 64-Bit are Supported and returned as a 64-bit Double
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <param name="operandType"></param>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        private double GetOperandValueDouble(OpKind opKind, EnumOperandType operandType)
+        {
+            return opKind switch
+            {
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32 => BitConverter.ToSingle(
+                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
+                        4)),
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64 => BitConverter.ToDouble(
+                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
+                        8)),
+                OpKind.Register when operandType == EnumOperandType.Destination => FpuStack[
+                    Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
+                OpKind.Register when operandType == EnumOperandType.Source => FpuStack[
+                    Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
+                _ => throw new Exception($"Unknown Double Operand: {opKind}")
+            };
         }
 
         /// <summary>
@@ -811,7 +900,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown Destination: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Destination: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -825,6 +914,29 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory:
+                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(result));
+                    break;
+                case OpKind.Register:
+                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Writes the specified result of the instruction into the specified destination
+        /// </summary>
+        /// <param name="result"></param>
+        [MethodImpl(CompilerOptimizations)]
+        private void WriteToDestination(double result)
+        {
+            switch (_currentInstruction.Op0Kind)
+            {
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
+                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes((float)result));
+                    break;
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
                     Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
                         GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(result));
                     break;
@@ -863,7 +975,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown Source: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -892,7 +1004,7 @@ namespace MBBSEmu.CPU
                     Op_Int_21h();
                     return;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown INT: {_currentInstruction.Immediate8:X2}");
+                    throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
             }
         }
 
@@ -958,18 +1070,18 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 case 0x62:
-                {
+                    {
                         /*
                             INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
                             Return: BX = segment address of PSP
                             We allocate 0xFFFF to ensure it has it's own segment in memory
                          */
-                        if(!Memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
+                        if (!Memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
                             pspPointer = Memory.AllocateVariable("Int21h-PSP", 0xFFFF);
 
                         Registers.BX = pspPointer.Segment;
                         return;
-                }
+                    }
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
             }
@@ -1486,10 +1598,10 @@ namespace MBBSEmu.CPU
                 case OpKind.Immediate16:
                     Push(Registers.BP);
                     Registers.BP = Registers.SP;
-                    Registers.SP -= (ushort)(_currentInstruction.Immediate16 + 1);
+                    Registers.SP -= _currentInstruction.Immediate16;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException($"Uknown ENTER: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown ENTER: {_currentInstruction.Op0Kind}");
             }
         }
 
@@ -1990,8 +2102,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private uint Op_Sub_32()
         {
-            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind);
 
             unchecked
             {
@@ -2244,7 +2356,7 @@ namespace MBBSEmu.CPU
                     {
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
                             GetOperandOffset(_currentInstruction.Op0Kind),
-                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
+                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind)));
                         return;
                     }
 
@@ -2330,7 +2442,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fld()
         {
-            var floatToLoad = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var floatToLoad = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
 
             //Set Value as new ST(0)
             Registers.Fpu.PushStackTop();
@@ -2343,12 +2455,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fild()
         {
-            var intToLoad = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source);
-
-            var convertedInt = Convert.ToSingle(intToLoad);
+            var valueToLoad = GetOperandValueUInt64(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = convertedInt;
+            FpuStack[Registers.Fpu.GetStackTop()] = valueToLoad;
 
         }
 
@@ -2359,7 +2469,7 @@ namespace MBBSEmu.CPU
         private void Op_Fmul()
         {
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
 
             var result = ST0 * source;
             FpuStack[Registers.Fpu.GetStackTop()] = result;
@@ -2563,7 +2673,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fsub()
         {
-            var floatToSubtract = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var floatToSubtract = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
             var result = ST0 - floatToSubtract;
@@ -2576,10 +2686,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fsubr()
         {
-            var floatToSubtract = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            var result = floatToSubtract - ST0;
+            var result = valueToSubtractFrom - ST0;
             FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
@@ -2590,7 +2700,7 @@ namespace MBBSEmu.CPU
         private void Op_Fldz()
         {
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 0.0f; //set ST(0) to 0.0
+            FpuStack[Registers.Fpu.GetStackTop()] = 0d; //set ST(0) to 0.0
         }
 
         /// <summary>
@@ -2642,8 +2752,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Faddp()
         {
-            var STdestination = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueFloat(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = STdestination + STsource;
 
@@ -2829,7 +2939,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fdiv()
         {
-            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
             var result = ST0 / source;
@@ -2842,10 +2952,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fmulp()
         {
-            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
-            var float2 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            var result = float1 * float2;
+            var result = ST0 * ST1;
 
             //Store result at ST1
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
@@ -2862,7 +2972,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fcomp()
         {
-            var source = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
             Registers.Fpu.PopStackTop();
@@ -2906,7 +3016,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fadd()
         {
-            var floatToAdd = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var floatToAdd = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var floatOnFpuStack = FpuStack[Registers.Fpu.GetStackTop()];
 
             var result = floatOnFpuStack + floatToAdd;
@@ -2919,8 +3029,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_fdivp()
         {
-            var STdestination = GetOperandValueFloat(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueFloat(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = STdestination / STsource;
 

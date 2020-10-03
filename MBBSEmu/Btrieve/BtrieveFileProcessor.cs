@@ -405,6 +405,33 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Deletes the Btrieve Record at the Current Position within the File
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            if (LoadedFile.Records.Count == 0)
+                return false;
+
+            var recordsDeleted = LoadedFile.Records.RemoveAll(x => x.Offset == Position);
+
+            if(recordsDeleted > 1)
+                _logger.Warn($"{recordsDeleted} Records found at Offset {Position} were deleted");
+
+            return recordsDeleted > 0;
+        }
+
+        /// <summary>
+        ///     Deletes all records within the current Btrieve File
+        /// </summary>
+        public void DeleteAll()
+        {
+            _logger.Warn($"Deleting all Records from {LoadedFileName} ({LoadedFile.RecordCount} records)");
+            LoadedFile.Records.Clear();
+            SaveJson();
+        }
+
+        /// <summary>
         ///     Performs a Step based Seek on the loaded Btrieve File
         /// </summary>
         /// <param name="operationCode"></param>

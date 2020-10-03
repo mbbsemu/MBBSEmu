@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MBBSEmu.CPU;
 using MBBSEmu.DependencyInjection;
@@ -27,12 +28,14 @@ namespace MBBSEmu.Tests.ExportedModules
         protected PointerDictionary<SessionBase> testSessions;
         protected ServiceResolver _serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
-        protected ExportedModuleTestBase()
+        protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
+
+        protected ExportedModuleTestBase(string modulePath)
         {
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, string.Empty, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
@@ -131,6 +134,8 @@ namespace MBBSEmu.Tests.ExportedModules
                 Flag = (ushort)EnumSegmentFlags.Code
             };
             mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
+
+            mbbsEmuCpuRegisters.CS = CODE_SEGMENT;
             mbbsEmuCpuRegisters.IP = 0;
 
             //Push Arguments to Stack
