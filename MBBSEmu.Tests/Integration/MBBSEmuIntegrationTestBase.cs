@@ -73,10 +73,13 @@ namespace MBBSEmu.Tests.Integration
 
             //Setup and Run Host
             var host = serviceResolver.GetService<IMbbsHost>();
+            var moduleConfigurations = new List<ModuleConfiguration>();
+            moduleConfigurations.Add(new ModuleConfiguration { ModIdentifier = "MBBSEMU", ModPath = _modulePath, ModMenuOptionKey = "Y"});
+            
             foreach (var m in modules)
                 host.AddModule(m);
 
-            host.Start();
+            host.Start(moduleConfigurations);
 
             _session = new TestSession(host);
             host.AddSession(_session);

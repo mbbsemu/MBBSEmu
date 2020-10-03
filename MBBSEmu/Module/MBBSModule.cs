@@ -269,17 +269,12 @@ namespace MBBSEmu.Module
                 (em as IStoppable)?.Stop();
             Memory.Clear();
             Memory.AddSegment(0); //Stack Segment
-            //ExportedModuleDictionary.Clear();
-            //TextVariables.Clear();
-            //Msgs.Clear();
-            //ExecutionUnits.Clear();
-            //TaskRoutines.Clear();
-            //Mdf.MSGFiles.Clear();
-            //Mdf.DLLFiles.Clear();
-            //GlobalCommandHandlers.Clear();
-            //RtkickRoutines.Clear();
-            //RtihdlrRoutines.Clear();
-            //EntryPoints.Clear();
+            ExportedModuleDictionary.Clear();
+            TextVariables.Clear();
+            ExecutionUnits.Clear();
+            TaskRoutines.Clear();
+            RtkickRoutines.Clear();
+            RtihdlrRoutines.Clear();
         }
     }
 }

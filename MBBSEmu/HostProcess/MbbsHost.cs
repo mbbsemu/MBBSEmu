@@ -95,6 +95,10 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private readonly Timer _timer;
 
+        // Timer to prevent main loop from executing while cleanup is running
+        private readonly Timer _nightlyCleanupTimer;
+
+        private bool _performingNightlyCleanup;
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
@@ -102,8 +106,6 @@ namespace MBBSEmu.HostProcess
 
         private readonly IGlobalCache _globalCache;
         private readonly IFileUtility _fileUtility;
-        private ServiceResolver _serviceResolver;
-        private string _settingsFileName;
         private List<ModuleConfiguration> _moduleConfigurations;
 
         private Thread _workerThread;
@@ -126,7 +128,7 @@ namespace MBBSEmu.HostProcess
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = ParseCleanupTime();
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
-
+            _nightlyCleanupTimer = new Timer(ProcessNightlyCleanup, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
             _logger.Info("Constructed MBBSEmu Host!");
         }
 
@@ -138,22 +140,22 @@ namespace MBBSEmu.HostProcess
             //Save module configurations for cleanup
             _moduleConfigurations = moduleConfigurations;
             
-            //Service Resolver - don't need file names, need to dig in here -- won't let me remove
-            _serviceResolver = new ServiceResolver(_settingsFileName ?? "appsettings.json");
-            var fileUtility = _serviceResolver.GetService<IFileUtility>();
-            
             var modules = new List<MbbsModule>();
             //Load Modules
             foreach (var m in moduleConfigurations)
             {
-                modules.Add(new MbbsModule(fileUtility, _logger, m.ModIdentifier, m.ModPath) { MenuOptionKey = m.ModMenuOptionKey });
+                modules.Add(new MbbsModule(_fileUtility, _logger, m.ModIdentifier, m.ModPath) { MenuOptionKey = m.ModMenuOptionKey });
             }
             foreach (var m in modules)
                 AddModule(m);
             
             _isRunning = true;
-            _workerThread = new Thread(WorkerThread);
-            _workerThread.Start();
+
+            if (_workerThread == null)
+            {
+                _workerThread = new Thread(WorkerThread);
+                _workerThread.Start();
+            }
         }
 
         /// <summary>
@@ -180,7 +182,8 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                ProcessNightlyCleanup();
+                if (_performingNightlyCleanup)
+                    continue;
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -987,7 +990,7 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessNightlyCleanup()
+        private void ProcessNightlyCleanup(object ignored)
         {
             if (_performCleanup)
             {
@@ -999,6 +1002,7 @@ namespace MBBSEmu.HostProcess
         private void DoNightlyCleanup()
         {
             _logger.Info("PERFORMING NIGHTLY CLEANUP");
+            _performingNightlyCleanup = true;
             
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
@@ -1006,7 +1010,6 @@ namespace MBBSEmu.HostProcess
             
             // removes all sessions and stops worker thread
             RemoveSessions(session => true);
-            Stop(); //Do i need to recreate timer?
             
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
             CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
@@ -1021,6 +1024,7 @@ namespace MBBSEmu.HostProcess
                 m.Value.Reset();
             }
             Start(_moduleConfigurations);
+            _performingNightlyCleanup = false;
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
