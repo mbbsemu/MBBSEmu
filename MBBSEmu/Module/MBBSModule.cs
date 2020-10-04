@@ -1,5 +1,4 @@
 using MBBSEmu.CPU;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;

@@ -982,11 +982,9 @@ namespace MBBSEmu.HostProcess
 
         private void ProcessNightlyCleanup(object ignored)
         {
-            if (_performCleanup)
-            {
-                _performCleanup = false;
-                DoNightlyCleanup();
-            }
+            if (!_performCleanup) return;
+            _performCleanup = false;
+            DoNightlyCleanup();
         }
 
         private void DoNightlyCleanup()
@@ -1010,14 +1008,14 @@ namespace MBBSEmu.HostProcess
                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
+            _logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
             Start(_moduleConfigurations);
             _performingNightlyCleanup = false;
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            TimeSpan waitTime;
-            waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
+            var waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
@@ -1029,8 +1027,7 @@ namespace MBBSEmu.HostProcess
 
         private TimeSpan ParseCleanupTime()
         {
-            TimeSpan cleanupTime;
-            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out cleanupTime))
+            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out var cleanupTime))
             {
                 cleanupTime = DEFAULT_CLEANUP_TIME;
             }
@@ -1040,11 +1037,11 @@ namespace MBBSEmu.HostProcess
 
         public void GenerateAPIReport()
         {
-            foreach (var m in _modules)
+            foreach (var apiReport in _modules.Select(m => new ApiReport(_logger, m.Value)))
             {
-                var apiReport = new ApiReport(_logger, m.Value);
                 apiReport.GenerateReport();
             }
+            //APIREPORT done -- Stop Host
             Stop();
         }
     }

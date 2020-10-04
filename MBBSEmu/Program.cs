@@ -7,7 +7,6 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
-using MBBSEmu.Reports;
 using MBBSEmu.Resources;
 using MBBSEmu.Server;
 using MBBSEmu.Server.Socket;
