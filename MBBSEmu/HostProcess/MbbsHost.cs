@@ -135,12 +135,22 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
-            //Save module configurations for cleanup
-            _moduleConfigurations = moduleConfigurations;
-            
             //Load Modules
             foreach (var m in moduleConfigurations)
                 AddModule(new MbbsModule(_fileUtility, _logger, m.ModIdentifier, m.ModPath) {MenuOptionKey = m.ModMenuOptionKey});
+
+            //Remove any modules that did not properly initialize
+            foreach (var m in _modules.Where(m => m.Value.EntryPoints.Count < 2))
+            {
+                _logger.Warn($"{m.Value.ModuleIdentifier} not propery initialized, Removing");
+                moduleConfigurations.RemoveAll(x => x.ModIdentifier == m.Value.ModuleIdentifier);
+                _modules.Remove(m.Value.ModuleIdentifier);
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                    _exportedFunctions.Remove(e);
+            }
+
+            //Save module configurations for cleanup
+            _moduleConfigurations = moduleConfigurations;
 
             _isRunning = true;
 
