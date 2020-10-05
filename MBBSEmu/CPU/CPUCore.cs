@@ -3084,7 +3084,6 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Ror()
         {
-
             var result = _currentOperationSize switch
             {
                 1 => Op_Ror_8(),
@@ -3093,9 +3092,7 @@ namespace MBBSEmu.CPU
             };
 
             WriteToDestination(result);
-
         }
-
 
         /// <summary>
         ///     8-bit Rotate Right
@@ -3109,7 +3106,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte) ((destination >> (sbyte) source) | (destination >> (8 - (sbyte) source)));
+                var result = (byte) ((destination >> (sbyte) source) | (destination << (8 - (sbyte) source)));
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
@@ -3139,7 +3136,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte)((destination >> (sbyte)source) | (destination >> (16 - (sbyte)source)));
+                var result = (ushort)((destination >> (sbyte)source) | (destination << (16 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
@@ -3158,24 +3155,20 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Compare ST(0) against 0.0 (x87)
+        ///     Floating Point Compare ST(0) to 0.0 (x87)
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Ftst()
         {
             var float1 = FpuStack[Registers.Fpu.GetStackTop()];
-            var float2 = 0.0d;
 
-            Registers.Fpu.PopStackTop();
-            Registers.Fpu.PopStackTop();
-
-            if (float1 > float2)
+            if (float1 > 0.0d)
             {
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
             }
-            else if (float1 < float2)
+            else if (float1 < 0.0d)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
