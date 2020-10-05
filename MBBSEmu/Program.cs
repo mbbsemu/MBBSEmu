@@ -272,6 +272,9 @@ namespace MBBSEmu
                 if (_doApiReport)
                 {
                     host.GenerateAPIReport();
+                    
+                    //APIREPORT done -- Stop Host
+                    host.Stop();
                     return;
                 }
                 

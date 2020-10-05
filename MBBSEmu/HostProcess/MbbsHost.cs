@@ -1057,8 +1057,6 @@ namespace MBBSEmu.HostProcess
             {
                 apiReport.GenerateReport();
             }
-            //APIREPORT done -- Stop Host
-            Stop();
         }
     }
 }
