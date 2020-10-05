@@ -247,8 +247,8 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 0x1 && Registers.IP == 0xBE2)
-                Debugger.Break();
+            //if (Registers.CS == 0x1 && Registers.IP == 0xc93)
+            //    Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
@@ -320,6 +320,7 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Nop:
                 case Mnemonic.In:
                 case Mnemonic.Out:
+                case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
                     break;
                 case Mnemonic.Clc:
                     Op_Clc();
@@ -788,6 +789,9 @@ namespace MBBSEmu.CPU
                 OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64 => BitConverter.ToDouble(
                     Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
                         8)),
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80 => BitConverter.ToDouble(
+                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
+                        8)),
                 OpKind.Register when operandType == EnumOperandType.Destination => FpuStack[
                     Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
                 OpKind.Register when operandType == EnumOperandType.Source => FpuStack[
@@ -1016,6 +1020,8 @@ namespace MBBSEmu.CPU
                 case 0x21:
                     Op_Int_21h();
                     return;
+                case 0x3E:
+                    //Borland Interrupt -- ignored
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
             }
@@ -2495,8 +2501,7 @@ namespace MBBSEmu.CPU
         private void Op_Fstp()
         {
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()]; //Save off ST(0)
-            Registers.Fpu.PopStackTop(); //Pop the stack setting ST(1)->ST(0)
-
+            
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory:
@@ -2512,6 +2517,7 @@ namespace MBBSEmu.CPU
                     throw new Exception($"Unsupported Destination: {_currentInstruction.Op0Kind}:{_currentInstruction.Op0Register}");
             }
 
+            Registers.Fpu.PopStackTop(); //Pop the stack setting ST(1)->ST(0)
         }
 
         /// <summary>
@@ -2565,6 +2571,9 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Set Status Flag Values from Flags Saved in AH
+        /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Sahf()
         {
@@ -3062,6 +3071,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_fclex()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.InvalidOperationException);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.DenormalizedOperandException);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.ZeroDivideException);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.OverflowException);
@@ -3161,6 +3171,8 @@ namespace MBBSEmu.CPU
         private void Op_Ftst()
         {
             var float1 = FpuStack[Registers.Fpu.GetStackTop()];
+
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
 
             if (float1 > 0.0d)
             {
