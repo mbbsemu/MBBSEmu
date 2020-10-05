@@ -8,12 +8,12 @@ namespace MBBSEmu.CPU
     [Flags]
     public enum EnumFpuStatusFlags : ushort
     {
-        InvalidOperation = 1,
-        DenormalizedOperand = 1 << 1,
-        ZeroDivide = 1 << 2,
-        Overflow = 1 << 3,
-        Underflow = 1 << 4,
-        Precision = 1 << 5,
+        InvalidOperationException = 1,
+        DenormalizedOperandException = 1 << 1,
+        ZeroDivideException = 1 << 2,
+        OverflowException = 1 << 3,
+        UnderflowException = 1 << 4,
+        PrecisionException = 1 << 5,
         StackFault = 1 << 6,
         ErrorSummaryStatus = 1 << 7,
         Code0 = 1 << 8,

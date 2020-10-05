@@ -247,8 +247,8 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x2 && Registers.IP == 0x3352)
-            //Debugger.Break();
+            if (Registers.CS == 0x1 && Registers.IP == 0xBE2)
+                Debugger.Break();
 
             //Show Debugging
             //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
@@ -514,6 +514,19 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fsubr:
                     Op_Fsubr();
+                    break;
+                case Mnemonic.Fclex:
+                case Mnemonic.Fnclex:
+                    Op_fclex();
+                    break;
+                case Mnemonic.Frndint:
+                    Op_frndint();
+                    break;
+                case Mnemonic.Ror:
+                    Op_Ror();
+                    break;
+                case Mnemonic.Ftst:
+                    Op_Ftst();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -3039,6 +3052,142 @@ namespace MBBSEmu.CPU
 
             //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Clears Exception Flags from the x87 FPU Status Register
+        ///
+        ///     FCLEX is similar to FNCLEX, except it is preceded by a WAIT which is ignored
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_fclex()
+        {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.DenormalizedOperandException);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.ZeroDivideException);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.OverflowException);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.UnderflowException);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.PrecisionException);
+        }
+
+        /// <summary>
+        ///     Rounds the value at ST(0) to the nearest Integral Value and stores it in ST(0)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_frndint()
+        {
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Round(FpuStack[Registers.Fpu.GetStackTop()], MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        ///     Rotate Right
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Ror()
+        {
+
+            var result = _currentOperationSize switch
+            {
+                1 => Op_Ror_8(),
+                2 => Op_Ror_16(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+
+        }
+
+
+        /// <summary>
+        ///     8-bit Rotate Right
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        private byte Op_Ror_8()
+        {
+            var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            unchecked
+            {
+                var result = (byte) ((destination >> (sbyte) source) | (destination >> (8 - (sbyte) source)));
+
+                //CF Set if Most Significant Bit set to 1
+                if (result.IsNegative())
+                    Registers.F.SetFlag(EnumFlags.CF);
+                else
+                    Registers.F.ClearFlag(EnumFlags.CF);
+
+                //If Bits 7 & 6 are not the same, then we overflowed
+                if (result.IsBitSet(7) != result.IsBitSet(6))
+                    Registers.F.SetFlag(EnumFlags.OF);
+                else
+                    Registers.F.ClearFlag(EnumFlags.OF);
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        ///     16-bit Rotate Right
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        private ushort Op_Ror_16()
+        {
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            unchecked
+            {
+                var result = (byte)((destination >> (sbyte)source) | (destination >> (16 - (sbyte)source)));
+
+                //CF Set if Most Significant Bit set to 1
+                if (result.IsNegative())
+                    Registers.F.SetFlag(EnumFlags.CF);
+                else
+                    Registers.F.ClearFlag(EnumFlags.CF);
+
+                //If Bits 15 & 14 are not the same, then we overflowed
+                if (result.IsBitSet(15) != result.IsBitSet(14))
+                    Registers.F.SetFlag(EnumFlags.OF);
+                else
+                    Registers.F.ClearFlag(EnumFlags.OF);
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        ///     Floating Point Compare ST(0) against 0.0 (x87)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Ftst()
+        {
+            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
+            var float2 = 0.0d;
+
+            Registers.Fpu.PopStackTop();
+            Registers.Fpu.PopStackTop();
+
+            if (float1 > float2)
+            {
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+            }
+            else if (float1 < float2)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+            }
+            else
+            {
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+            }
+
         }
     }
 }

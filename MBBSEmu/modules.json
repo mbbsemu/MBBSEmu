@@ -1,13 +1,8 @@
 {
   "Modules": [
     {
-      "Identifier": "MJWWHL",
-      "Path": "D:\\BBS\\Mbbsemu\\modules\\WEELFAME\\",
-    },
-    {
-      "Identifier": "ELWCHT",
-      "Path": "D:\\BBS\\Mbbsemu\\modules\\elwchtd\\",
-      "MenuOptionKey": "C"
+      "Identifier": "ELWSAFE",
+      "Path": "c:\\dos\\modules\\elwsafe\\"
     }
   ]
 }
