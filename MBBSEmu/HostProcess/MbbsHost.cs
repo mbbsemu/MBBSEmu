@@ -93,10 +93,16 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private readonly Timer _timer;
 
-        // Timer to prevent main loop from executing while cleanup is running
+        /// <summary>
+        ///     Timer to prevent main loop from executing while cleanup is running
+        /// </summary>
         private readonly Timer _nightlyCleanupTimer;
 
+        /// <summary>
+        ///     Flag to prevent main loop from executing while cleanup is running
+        /// </summary>
         private bool _performingNightlyCleanup;
+        
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
@@ -137,15 +143,15 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, _logger, m.ModIdentifier, m.ModPath) {MenuOptionKey = m.ModMenuOptionKey});
+                AddModule(new MbbsModule(_fileUtility, _logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
 
             //Remove any modules that did not properly initialize
-            foreach (var m in _modules.Where(m => m.Value.EntryPoints.Count < 2))
+            foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
             {
-                _logger.Warn($"{m.Value.ModuleIdentifier} not propery initialized, Removing");
-                moduleConfigurations.RemoveAll(x => x.ModIdentifier == m.Value.ModuleIdentifier);
-                _modules.Remove(m.Value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                _logger.Warn($"{value.ModuleIdentifier} not propery initialized, Removing");
+                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
+                _modules.Remove(value.ModuleIdentifier);
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
 

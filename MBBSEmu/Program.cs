@@ -236,7 +236,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    _moduleConfigurations.Add(new ModuleConfiguration { ModIdentifier = _moduleIdentifier, ModPath = _modulePath, ModMenuOptionKey = _menuOptionKey});
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey});
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -246,7 +246,7 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && _moduleConfigurations.Any(x => x.ModMenuOptionKey == m["MenuOptionKey"])))
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
                         {
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
@@ -254,7 +254,7 @@ namespace MBBSEmu
                         
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModIdentifier = m["Identifier"], ModPath = m["Path"], ModMenuOptionKey = m["MenuOptionKey"]});
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"]});
                     }
                 }
                 else
@@ -325,9 +325,9 @@ namespace MBBSEmu
                         var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
                         foreach (var m in _moduleConfigurations)
                         {
-                            _logger.Info($"Rlogin {m.ModIdentifier} listening on port {rloginPort}");
+                            _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }

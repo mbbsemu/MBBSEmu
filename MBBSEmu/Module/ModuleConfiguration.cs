@@ -9,16 +9,16 @@
         /// <summary>
         ///     Module "Identifier" from moduleConfig.json or commandline
         /// </summary>
-        public string ModIdentifier { get; set; }
+        public string ModuleIdentifier { get; set; }
         
         /// <summary>
         ///     Module "Path" from moduleConfig.json or commandline
         /// </summary>
-        public string ModPath { get; set; }
+        public string ModulePath { get; set; }
 
         /// <summary>
         ///     Module "MenuOptionKey" from moduleConfig.json or commandline
         /// </summary>
-        public string ModMenuOptionKey { get; set; }
+        public string MenuOptionKey { get; set; }
     }
 }
