@@ -42,7 +42,6 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-
         private ushort _recordLength;
         /// <summary>
         ///     Defined Length of the records within the Btrieve File
@@ -62,6 +61,28 @@ namespace MBBSEmu.Btrieve
                     Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x16, sizeof(ushort));
 
                 _recordLength = value;
+            }
+        }
+
+        private ushort _physicalRecordLength;
+        /// <summary>
+        ///     Actual Length of the records within the Btrieve File, including additional padding.
+        /// </summary>
+        public ushort PhysicalRecordLength
+        {
+            get
+            {
+                if (Data?.Length > 0)
+                    return BitConverter.ToUInt16(Data, 0x18);
+
+                return _physicalRecordLength;
+            }
+            set
+            {
+                if (Data?.Length > 0)
+                    Array.Copy(BitConverter.GetBytes(value), 0, Data, 0x18, sizeof(ushort));
+
+                _physicalRecordLength = value;
             }
         }
 
@@ -120,7 +141,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
-        [JsonIgnore] 
+        [JsonIgnore]
         public byte[] Data { get; }
 
         /// <summary>

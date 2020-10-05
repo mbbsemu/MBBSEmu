@@ -211,13 +211,12 @@ namespace MBBSEmu.Btrieve
         private void LoadBtrieveRecords()
         {
             var recordsLoaded = 0;
-            var calculatedRecordLength = LoadedFile.RecordLength + (LoadedFile.LogKeyPresent ? 8 : 0) + GetExtraRecordBytes(LoadedFileName, LoadedFileSize);
 
             //Starting at 1, since the first page is the header
             for (var i = 1; i <= LoadedFile.PageCount; i++)
             {
                 var pageOffset = (LoadedFile.PageLength * i);
-                var recordsInPage = (LoadedFile.PageLength / calculatedRecordLength);
+                var recordsInPage = (LoadedFile.PageLength / LoadedFile.PhysicalRecordLength);
 
                 //Key Page
                 if (BitConverter.ToUInt32(LoadedFile.Data, pageOffset + 0x8) == uint.MaxValue)
@@ -242,27 +241,14 @@ namespace MBBSEmu.Btrieve
                     if (recordsLoaded == LoadedFile.RecordCount)
                         break;
 
-                    /*
-                    //TODO -- Need to figure out the source of this padding and if it's related to the key definition
-                    //TODO -- 8/2 - this MIIIIIIIGHT be Log Key
-                    if (!LoadedFile.LogKeyPresent && BitConverter.ToUInt64(LoadedFile.Data, pageOffset + (calculatedRecordLength * j)) ==
-                        ulong.MaxValue)
-                    {
-                        _logger.Warn("Found Record Padding (8 bytes), adjusting Btrieve Values");
-                        LoadedFile.LogKeyPresent = true;
-                        calculatedRecordLength += 8;
-                        recordsInPage = (LoadedFile.PageLength / calculatedRecordLength);
-                    }
-                    */
-
                     var recordArray = new byte[LoadedFile.RecordLength];
-                    Array.Copy(LoadedFile.Data, pageOffset + (calculatedRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
+                    Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.PhysicalRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
 
                     //End of Page 0xFFFFFFFF
                     if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
                         continue;
 
-                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (calculatedRecordLength * j)), recordArray));
+                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (LoadedFile.PhysicalRecordLength * j)), recordArray));
                     recordsLoaded++;
                 }
             }
@@ -278,7 +264,7 @@ namespace MBBSEmu.Btrieve
         public ushort StepFirst()
         {
             Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
-            return 0;
+            return Position > 0 ? (ushort) 1 : (ushort) 0;
         }
 
         /// <summary>
@@ -1106,33 +1092,6 @@ namespace MBBSEmu.Btrieve
 #endif
             Position = highestRecordOffset;
             return 1;
-        }
-
-        /// <summary>
-        ///     Specific Btrieve files have extra bytes appended by the Btrieve engine to the end of the record, while I've been able
-        ///     to loosely correlate these bytes to things like Log Key, Overlapping Segments, etc. the definition isn't clear
-        ///
-        ///     We'll use this method to manually set the extra bytes at the end of records in known btrieve files across modules until
-        ///     the correct flag/file format for Btrieve is understood enough to know how these are set.
-        /// </summary>
-        /// <returns></returns>
-        public static int GetExtraRecordBytes(string fileName, int fileSize)
-        {
-            var result = fileName.ToUpper() switch
-            {
-                //MJWMUT -- Mutants! 3.11
-                "MJWMUTR.DAT" when fileSize == 4993536 => 24,
-                "MJWMUTS.DAT" when fileSize == 515072 => 8,
-                "MJWMUTPL.DAT" when fileSize == 2560 => 8,
-                "MJWMUTI.DAT" when fileSize == 80384 => 8,
-                "MJWMUTM.DAT" when fileSize == 94720 => 8,
-                _ => 0
-            };
-
-            if (result > 0)
-                _logger.Info($"Extra Record Bytes for {fileName}: {result}");
-
-            return result;
         }
 
         /// <summary>
