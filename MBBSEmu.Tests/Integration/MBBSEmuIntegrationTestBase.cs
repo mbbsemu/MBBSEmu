@@ -66,11 +66,9 @@ namespace MBBSEmu.Tests.Integration
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
-            var modules = new List<MbbsModule>
-            {
-                new MbbsModule(serviceResolver.GetService<IFileUtility>(), serviceResolver.GetService<ILogger>(), "MBBSEMU", _modulePath)
-            };
-
+            new MbbsModule(serviceResolver.GetService<IFileUtility>(), serviceResolver.GetService<ILogger>(), "MBBSEMU",
+                _modulePath);
+            
             //Setup and Run Host
             var host = serviceResolver.GetService<IMbbsHost>();
             var moduleConfigurations = new List<ModuleConfiguration>
