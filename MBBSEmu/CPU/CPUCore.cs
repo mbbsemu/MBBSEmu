@@ -3170,17 +3170,25 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Ftst()
         {
-            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0Value = FpuStack[Registers.Fpu.GetStackTop()];
 
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
 
-            if (float1 > 0.0d)
+            if(double.IsNaN(ST0Value))
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                return;
+            }
+
+            if (ST0Value > 0.0d)
             {
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
             }
-            else if (float1 < 0.0d)
+            else if (ST0Value < 0.0d)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);

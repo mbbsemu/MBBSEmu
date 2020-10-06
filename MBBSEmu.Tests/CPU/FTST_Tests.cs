@@ -12,6 +12,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(-1.0d, (ushort)(0 | EnumFpuStatusFlags.Code0))]
         [InlineData(double.MinValue, (ushort)(0 | EnumFpuStatusFlags.Code0))]
         [InlineData(0.0d, (ushort)(0 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.NaN, (ushort)(0 | EnumFpuStatusFlags.Code3 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code0))]
         public void FTST_Test(double ST0Value, ushort expectedFlags)
         {
             Reset();
