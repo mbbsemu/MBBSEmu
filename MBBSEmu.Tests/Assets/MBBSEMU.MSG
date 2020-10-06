@@ -16,51 +16,10 @@ MENU {[1;32mPlease select one of the following:
    [1;36mE [1;33m... Echo
    [1;36mT [1;33m... Timing
    [1;36mS [1;33m... FPU Tests
-   [1;36mB [1;33m... btrieve playground 
    [1;36mF [1;33m... Full Screen Editor
    [1;36mD [1;33m... Full Screen Data Editor
    
-[1;36mMake your selection (E, T, S, B, F, D, or X to exit): } T Menu
-
-BMENU {[1;32mPlease select one of the following: 
-
-   [1;36mA [1;33m... Add item
-   [1;36mD [1;33m... Delete item
-   [1;36mP [1;33m... Print all items
-   [1;36mX [1;33m... eXit 
-   
-[1;36mMake your selection (A, D, P, X to exit): } T Menu
-
-BADDMENU {[1;32mPlease select one of the following: 
-
-   [1;36mI [1;33m... Add by id
-   [1;36mS [1;33m... Add by string
-   [1;36mX [1;33m... eXit 
-   
-[1;36mMake your selection (I, S, X to exit): } T Menu
-
-BID {[1;32mPlease enter an id: } T Menu
-BSTR {[1;32mPlease enter a string: } T Menu 
-
-BDELMENU {[1;32mPlease select one of the following: 
-
-   [1;36mI [1;33m... Delete by id
-   [1;36mS [1;33m... Delete by string
-   [1;36mX [1;33m... eXit 
-   
-[1;36mMake your selection (I, S, X to exit): } T Menu
-
-DBPRINT {Printing all the btrieve rows...
-} T Btrieve Print
-
-DBPRINTE {Press X to exit...
-} T Btrieve Print
-
-DBVPRINT {uid: %s lvalue: %s svalue: %s
-} T Btrieve Print
-
-INSFAIL {Failed to insert record
-} T Btrieve
+[1;36mMake your selection (E, T, S, F, D, or X to exit): } T Menu
 
 TMRINT {Initiating the timers, x to exit module...
 } T Timer Intro
