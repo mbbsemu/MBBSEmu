@@ -13,7 +13,7 @@ namespace MBBSEmu.Tests.Integration
 {
     public class MBBSEmuIntegrationTestBase : IDisposable
     {
-        private static readonly Random RANDOM = new Random();
+        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
         private readonly string[] _moduleFiles = {"MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG"};
 
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
