@@ -10,6 +10,8 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0.1d, 0d)]
         [InlineData(1.9d, 2d)]
         [InlineData(-1.9d, -2d)]
+        [InlineData(0.5d, 1d)]
+        [InlineData(0.49999999d, 0d)]
         public void FRNDINT_Test(double ST0Value, double expectedValue)
         {
             Reset();
