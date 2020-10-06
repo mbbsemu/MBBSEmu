@@ -13,10 +13,9 @@ namespace MBBSEmu.Tests.Integration
 {
     public class MBBSEmuIntegrationTestBase : IDisposable
     {
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
-        private readonly string[] _moduleFiles = {"MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG"};
+        private readonly string[] _moduleFiles = {"MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG"};
 
-        protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
+        protected readonly string _modulePath = Path.Join(Path.GetTempPath(), "mbbsemu");
         protected TestSession _session;
 
         public MBBSEmuIntegrationTestBase()
@@ -40,19 +39,16 @@ namespace MBBSEmu.Tests.Integration
         /// <summary>
         ///     Reads data from MBBSEMU until endingCharacter is received, and also verifies the
         ///     last data read contains message.
-        /// <returns>All the lines delineated by endingCharacter until message is found</returns>
         /// </summary>
-        protected List<string> WaitUntil(char endingCharacter, string message)
+        protected string WaitUntil(char endingCharacter, string message)
         {
-            List<string> lines = new List<string>();
+            string line;
             while (true)
             {
-                var line = _session.GetLine(endingCharacter, TimeSpan.FromSeconds(2));
-                lines.Add(line);
-
+                line = _session.GetLine(endingCharacter, TimeSpan.FromSeconds(2));
                 if (line.Contains(message))
                 {
-                    return lines;
+                    return line;
                 }
             }
         }
