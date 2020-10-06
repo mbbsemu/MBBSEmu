@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+*.ans       text eol=crlf
+*.msg       text eol=crlf
+*.MSG       text eol=crlf
