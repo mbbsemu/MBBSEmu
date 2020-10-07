@@ -7,7 +7,6 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
-using MBBSEmu.Reports;
 using MBBSEmu.Resources;
 using MBBSEmu.Server;
 using MBBSEmu.Server.Socket;
@@ -79,6 +78,11 @@ namespace MBBSEmu
         /// </summary>
         private bool _isConsoleSession;
 
+        /// <summary>
+        ///     Module Configuration
+        /// </summary>
+        private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
+        
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
 
@@ -191,7 +195,6 @@ namespace MBBSEmu
 
                 _logger = _serviceResolver.GetService<ILogger>();
                 var config = _serviceResolver.GetService<IConfiguration>();
-                var fileUtility = _serviceResolver.GetService<IFileUtility>();
 
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
@@ -230,11 +233,10 @@ namespace MBBSEmu
                 }
 
                 //Setup Modules
-                var modules = new List<MbbsModule>();
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    modules.Add(new MbbsModule(fileUtility, _logger, _moduleIdentifier, _modulePath) { MenuOptionKey = _menuOptionKey });
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey});
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -244,15 +246,23 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && modules.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
+                        //Check for Non Character MenuOptionKey or duplicate MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) || _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
                         {
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
                         }
                         
+                        //Check for duplicate module in moduleConfig
+                        if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m["Identifier"]))
+                        {
+                            _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
+                            continue;
+                        }
+                        
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        modules.Add(new MbbsModule(fileUtility, _logger, m["Identifier"], m["Path"]) { MenuOptionKey = m["MenuOptionKey"] });
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"]});
                     }
                 }
                 else
@@ -262,24 +272,19 @@ namespace MBBSEmu
                     return;
                 }
 
+                //Setup and Run Host
+                var host = _serviceResolver.GetService<IMbbsHost>();
+                host.Start(_moduleConfigurations);
+
                 //API Report
                 if (_doApiReport)
                 {
-                    foreach (var m in modules)
-                    {
-                        var apiReport = new ApiReport(_logger, m);
-                        apiReport.GenerateReport();
-                    }
+                    host.GenerateAPIReport();
+                    
+                    host.Stop();
                     return;
                 }
-
-                //Setup and Run Host
-                var host = _serviceResolver.GetService<IMbbsHost>();
-                foreach (var m in modules)
-                    host.AddModule(m);
-
-                host.Start();
-
+                
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
@@ -328,7 +333,7 @@ namespace MBBSEmu
                     if (bool.Parse(config["Rlogin.PortPerModule"]))
                     {
                         var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
-                        foreach (var m in modules)
+                        foreach (var m in _moduleConfigurations)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();

@@ -10,7 +10,8 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Starts the MbbsHost Worker Thread
         /// </summary>
-        void Start();
+        /// <param name="moduleConfigurations"></param>
+        void Start(List<ModuleConfiguration> moduleConfigurations);
 
         /// <summary>
         ///     Adds a Module to the MbbsHost Process and sets it up for use
@@ -48,5 +49,10 @@ namespace MBBSEmu.HostProcess
         ///     Waits until the processing thread exits. Useful for tests
         /// </summary>
         public void WaitForShutdown();
+
+        /// <summary>
+        ///     Generates API Report
+        /// </summary>
+        void GenerateAPIReport();
     }
 }

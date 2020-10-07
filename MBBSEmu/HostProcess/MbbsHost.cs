@@ -14,7 +14,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.GlobalRoutines;
+using MBBSEmu.Reports;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 
@@ -92,12 +94,23 @@ namespace MBBSEmu.HostProcess
         private readonly Timer _timer;
 
         /// <summary>
+        ///     Timer to prevent main loop from executing while cleanup is running
+        /// </summary>
+        private readonly Timer _nightlyCleanupTimer;
+
+        /// <summary>
+        ///     Flag to prevent main loop from executing while cleanup is running
+        /// </summary>
+        private bool _performingNightlyCleanup;
+        
+        /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
         private bool _performCleanup = false;
 
         private readonly IGlobalCache _globalCache;
         private readonly IFileUtility _fileUtility;
+        private List<ModuleConfiguration> _moduleConfigurations;
 
         private Thread _workerThread;
 
@@ -119,18 +132,39 @@ namespace MBBSEmu.HostProcess
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = ParseCleanupTime();
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
-
+            _nightlyCleanupTimer = new Timer(ProcessNightlyCleanup, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
             _logger.Info("Constructed MBBSEmu Host!");
         }
 
         /// <summary>
         ///     Starts the MbbsHost Worker Thread
         /// </summary>
-        public void Start()
+        public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
+            //Load Modules
+            foreach (var m in moduleConfigurations)
+                AddModule(new MbbsModule(_fileUtility, _logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
+
+            //Remove any modules that did not properly initialize
+            foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
+            {
+                _logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
+                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
+                _modules.Remove(value.ModuleIdentifier);
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
+                    _exportedFunctions.Remove(e);
+            }
+
+            //Save module configurations for cleanup
+            _moduleConfigurations = moduleConfigurations;
+
             _isRunning = true;
-            _workerThread = new Thread(WorkerThread);
-            _workerThread.Start();
+
+            if (_workerThread == null)
+            {
+                _workerThread = new Thread(WorkerThread);
+                _workerThread.Start();
+            }
         }
 
         /// <summary>
@@ -157,7 +191,8 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                ProcessNightlyCleanup();
+                if (_performingNightlyCleanup)
+                    continue;
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -695,9 +730,6 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            if (_isRunning)
-                throw new Exception("Unable to Add Module after host is running");
-
             _logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
             //Patch Relocation Information to Bytecode
@@ -964,29 +996,42 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessNightlyCleanup()
+        private void ProcessNightlyCleanup(object ignored)
         {
-            if (_performCleanup)
-            {
-                _performCleanup = false;
-                DoNightlyCleanup();
-            }
+            if (!_performCleanup) return;
+            _performCleanup = false;
+            DoNightlyCleanup();
         }
 
         private void DoNightlyCleanup()
         {
             _logger.Info("PERFORMING NIGHTLY CLEANUP");
-
-            // removes all sessions
+            _performingNightlyCleanup = true;
+            
+            // Notify Users of Nightly Cleanup
+            foreach (var c in _channelDictionary)
+                _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
+            
+            // removes all sessions and stops worker thread
             RemoveSessions(session => true);
 
             CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
+            CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
+
+            foreach (var m in _modules.ToList())
+            {
+                _modules.Remove(m.Value.ModuleIdentifier);
+               foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                    _exportedFunctions.Remove(e);
+            }
+            _logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
+            Start(_moduleConfigurations);
+            _performingNightlyCleanup = false;
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            TimeSpan waitTime;
-            waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
+            var waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
@@ -998,13 +1043,20 @@ namespace MBBSEmu.HostProcess
 
         private TimeSpan ParseCleanupTime()
         {
-            TimeSpan cleanupTime;
-            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out cleanupTime))
+            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out var cleanupTime))
             {
                 cleanupTime = DEFAULT_CLEANUP_TIME;
             }
 
             return cleanupTime;
+        }
+
+        public void GenerateAPIReport()
+        {
+            foreach (var apiReport in _modules.Select(m => new ApiReport(_logger, m.Value)))
+            {
+                apiReport.GenerateReport();
+            }
         }
     }
 }

@@ -292,13 +292,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session,
                     "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
-                var currentMenuItem = 0;
                 foreach (var m in modules)
                 {
                     EchoToClient(session,
                         $"   |CYAN||B|{m.Value.MenuOptionKey}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3, ' ')
                             .EncodeToANSIArray());
-                    currentMenuItem++;
                 }
             }
             else

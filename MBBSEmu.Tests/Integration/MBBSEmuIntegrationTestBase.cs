@@ -70,17 +70,17 @@ namespace MBBSEmu.Tests.Integration
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
-            var modules = new List<MbbsModule>
-            {
-                new MbbsModule(serviceResolver.GetService<IFileUtility>(), serviceResolver.GetService<ILogger>(), "MBBSEMU", _modulePath)
-            };
-
+            new MbbsModule(serviceResolver.GetService<IFileUtility>(), serviceResolver.GetService<ILogger>(), "MBBSEMU",
+                _modulePath);
+            
             //Setup and Run Host
             var host = serviceResolver.GetService<IMbbsHost>();
-            foreach (var m in modules)
-                host.AddModule(m);
+            var moduleConfigurations = new List<ModuleConfiguration>
+            {
+                new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = null}
+            };
 
-            host.Start();
+            host.Start(moduleConfigurations);
 
             _session = new TestSession(host);
             host.AddSession(_session);
