@@ -246,7 +246,7 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) || _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
                         {
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
