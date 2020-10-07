@@ -246,9 +246,17 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
+                        //Check for Non Character MenuOptionKey or duplicate MenuOptionKey
                         if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) || _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
                         {
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
+                            continue;
+                        }
+                        
+                        //Check for duplicate module in moduleConfig
+                        if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m["Identifier"]))
+                        {
+                            _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
                             continue;
                         }
                         

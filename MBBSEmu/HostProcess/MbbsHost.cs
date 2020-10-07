@@ -148,7 +148,7 @@ namespace MBBSEmu.HostProcess
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
             {
-                _logger.Warn($"{value.ModuleIdentifier} not properly initialized, Removing");
+                _logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
                 _modules.Remove(value.ModuleIdentifier);
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
