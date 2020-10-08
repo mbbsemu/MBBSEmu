@@ -18,7 +18,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -158,8 +157,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("CURRENT-MCV", IntPtr16.Size);
             Module.Memory.AllocateVariable("DIGALW", sizeof(ushort));
             Module.Memory.SetWord("DIGALW", 1);
-            Module.Memory.AllocateVariable("_8087", sizeof(ushort));
-            Module.Memory.SetWord("_8087", 3);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -481,8 +478,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 55:
                     BtrieveSetupGlobalPointer("ACCBB", "BBSUSR.DAT", ACCBB_BASE_SEGMENT);
                     return accbb;
-                case 737:
-                    return _8087;
             }
 
             if (offsetsOnly)
@@ -1173,11 +1168,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 162:
                     delbtv();
                     break;
+                case 737:
+                    _8087();
+                    break;
                 case 364:
                     isuidc();
-                    break;
-                case 960:
-                    stp4cs();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -4035,22 +4030,51 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Searches the string for any occurrence of the substring
+        ///     Searches the string for any occurence of the substring
         ///
         ///     Signature: int found=samein(char *subs, char *string)
         /// </summary>
         private void samein()
         {
-            var stringToFind = GetParameterString(0, true);
-            var stringToSearch = GetParameterString(2, true);
+            var stringToFindPointer = GetParameterPointer(0);
+            var stringToSearchPointer = GetParameterPointer(2);
 
-            if (string.IsNullOrEmpty(stringToFind) || string.IsNullOrEmpty(stringToSearch))
+            var stringToFind = Encoding.ASCII.GetString(Module.Memory.GetString(stringToFindPointer, true)).ToUpper();
+            var stringToSearch = Encoding.ASCII.GetString(Module.Memory.GetString(stringToSearchPointer, true))
+                .ToUpper();
+
+            //Won't find it if the substring is greater than the string to search
+            if (stringToFind.Length > stringToSearch.Length)
             {
                 Registers.AX = 0;
                 return;
             }
 
-            Registers.AX = (ushort)(stringToSearch.Contains(stringToFind, StringComparison.InvariantCultureIgnoreCase) ? 1 : 0);
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                //are there not enough charaters left to match?
+                if (stringToFind.Length > (stringToSearch.Length - i))
+                    break;
+
+                var isMatch = true;
+                for (var j = 0; j < stringToFind.Length; j++)
+                {
+                    if (stringToSearch[i + j] == stringToFind[j])
+                        continue;
+
+                    isMatch = false;
+                    break;
+                }
+
+                //Found a match?
+                if (isMatch)
+                {
+                    Registers.AX = 1;
+                    return;
+                }
+            }
+
+            Registers.AX = 0;
         }
 
         /// <summary>
@@ -7525,7 +7549,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int _RTLENTRY _EXPDATA  _8087 = 3;
         /// </summary>
-        private ReadOnlySpan<byte> _8087 => Module.Memory.GetVariablePointer("_8087").Data;
+        private void _8087()
+        {
+            Registers.AX = 3;
+        }
 
         /// <summary>
         ///     Determines if the specified char is a valid User-ID Character
@@ -7551,30 +7578,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
             currentBtrieveFile.Delete();
-        }
-
-        /// <summary>
-        ///     Strips non-printable ASCII characters from the specified string
-        ///
-        ///     Signature: char* stp4cs(char *buf);
-        /// </summary>
-        private void stp4cs()
-        {
-            var stringPointer = GetParameterPointer(0);
-
-            var inputString = Module.Memory.GetString(stringPointer, true);
-            
-            var result = new MemoryStream(inputString.Length);
-
-            for (var i = 0; i < inputString.Length; i++)
-            {
-                if (inputString[i] >= 32 && inputString[i] <= 127)
-                    result.WriteByte(inputString[i]);
-            }
-
-            result.WriteByte(0);
-            Module.Memory.SetArray(stringPointer, result.ToArray());
-            Registers.SetPointer(stringPointer);
         }
     }
 }
