@@ -12,7 +12,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using MBBSEmu.HostProcess.Structs;
-using Microsoft.VisualBasic;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
