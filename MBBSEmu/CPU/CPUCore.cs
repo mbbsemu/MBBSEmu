@@ -762,9 +762,9 @@ namespace MBBSEmu.CPU
                 OpKind.Memory => BitConverter.ToSingle(
                     Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
                         4)),
-                OpKind.Register when operandType == EnumOperandType.Destination => (float) FpuStack[
+                OpKind.Register when operandType == EnumOperandType.Destination => (float)FpuStack[
                     Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
-                OpKind.Register when operandType == EnumOperandType.Source => (float) FpuStack[
+                OpKind.Register when operandType == EnumOperandType.Source => (float)FpuStack[
                     Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
                 _ => throw new Exception($"Unknown Float Operand: {opKind}")
             };
@@ -1021,7 +1021,7 @@ namespace MBBSEmu.CPU
                     Op_Int_21h();
                     return;
                 case 0x3E:
-                    //Borland Interrupt -- ignored
+                //Borland Interrupt -- ignored
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
             }
@@ -2501,44 +2501,59 @@ namespace MBBSEmu.CPU
         private void Op_Fstp()
         {
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()]; //Save off ST(0)
-            
+
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.Memory:
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
                     {
-                        var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, BitConverter.GetBytes(valueToSave));
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes((float)valueToSave));
+                        break;
+                    }
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80:
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
+                    {
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(valueToSave));
                         break;
                     }
                 case OpKind.Register:
-                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = valueToSave;
-                    break;
+                    {
+                        FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = valueToSave;
+                        break;
+                    }
                 default:
-                    throw new Exception($"Unsupported Destination: {_currentInstruction.Op0Kind}:{_currentInstruction.Op0Register}");
+                    throw new Exception($"Unsupported Destination: {_currentInstruction.Op0Kind}");
             }
 
             Registers.Fpu.PopStackTop(); //Pop the stack setting ST(1)->ST(0)
         }
 
         /// <summary>
-        ///     Floating Point Compare (x87)
+        ///     Floating Point Compare ST(0) to ST(1) (x87)
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fcompp()
         {
-            var float1 = FpuStack[Registers.Fpu.GetStackTop()];
-            var float2 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0Value = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1Value = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
             Registers.Fpu.PopStackTop();
             Registers.Fpu.PopStackTop();
 
-            if (float1 > float2)
+            if (double.IsNaN(ST0Value) || double.IsNaN(ST1Value))
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                return;
+            }
+
+            if (ST0Value > ST1Value)
             {
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
             }
-            else if (float1 < float2)
+            else if (ST0Value < ST1Value)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
@@ -2763,9 +2778,9 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
-            Registers.Fpu.PopStackTop();
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
             Memory.SetWord(Registers.DS, offset, (ushort)valueToSave);
+            Registers.Fpu.PopStackTop();
         }
 
         /// <summary>
@@ -3116,7 +3131,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte) ((destination >> (sbyte) source) | (destination << (8 - (sbyte) source)));
+                var result = (byte)((destination >> (sbyte)source) | (destination << (8 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
@@ -3174,7 +3189,7 @@ namespace MBBSEmu.CPU
 
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
 
-            if(double.IsNaN(ST0Value))
+            if (double.IsNaN(ST0Value))
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
