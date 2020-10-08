@@ -2779,8 +2779,54 @@ namespace MBBSEmu.CPU
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
-            Memory.SetWord(Registers.DS, offset, (ushort)valueToSave);
             Registers.Fpu.PopStackTop();
+
+            if (double.IsNaN(valueToSave))
+            {
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                return;
+            }
+
+            switch(_currentInstruction.MemorySize)
+            {
+                case MemorySize.Int16:
+                    {
+                        if (valueToSave > short.MaxValue || valueToSave < short.MinValue)
+                        {
+                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                            break;
+                        }
+
+                        Memory.SetWord(Registers.DS, offset, (ushort)Convert.ToInt16(valueToSave));
+                        break;
+                    }
+                case MemorySize.Int32:
+                    {
+                        if (valueToSave > uint.MaxValue || valueToSave < int.MinValue)
+                        {
+                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                            break;
+                        }
+
+                        Memory.SetArray(Registers.DS, offset, BitConverter.GetBytes(Convert.ToInt32(valueToSave)));
+                        break;
+                    }
+                case MemorySize.Int64:
+                    {
+                        if (valueToSave > long.MaxValue || valueToSave < long.MinValue)
+                        {
+                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                            break;
+                        }
+
+                        Memory.SetArray(Registers.DS, offset, BitConverter.GetBytes(Convert.ToInt64(valueToSave)));
+                        break;
+                    }
+                default:
+                    throw new Exception($"Unknown Memory Size: {_currentInstruction.MemorySize}");
+            }
+            
+            
         }
 
         /// <summary>
