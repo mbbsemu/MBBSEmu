@@ -14,11 +14,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, _8087_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
-            Assert.Equal(3, mbbsEmuCpuRegisters.AX);
+            var returnedPointer = ExecutePropertyTest(_8087_ORDINAL);
+
+            var actualValue = mbbsEmuMemoryCore.GetWord(new IntPtr16(returnedPointer));
+
+            Assert.Equal(3, actualValue);
         }
     }
 }
