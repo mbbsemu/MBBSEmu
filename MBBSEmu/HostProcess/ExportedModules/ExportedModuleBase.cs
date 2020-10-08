@@ -12,6 +12,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using MBBSEmu.HostProcess.Structs;
+using Microsoft.VisualBasic;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -573,6 +574,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Built in internal Text Variables
                     case "USERID":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
+                        break;
+                    
+                    case "DATE":
+                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(DateTime.Now.ToString("MM/dd/yyyy")));
                         break;
 
                     //Registered Variables
