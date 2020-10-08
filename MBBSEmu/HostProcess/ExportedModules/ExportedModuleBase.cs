@@ -574,6 +574,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case "USERID":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
                         break;
+                    
+                    case "DATE":
+                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(DateTime.Now.ToString("MM/dd/yyyy")));
+                        break;
 
                     //Registered Variables
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
