@@ -8,6 +8,7 @@ using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -821,65 +822,140 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return result.ToArray();
         }
 
+        protected enum CharacterAccepterResponse
+        {
+            ABORT,
+            SKIP,
+            ACCEPT,
+        }
+        protected delegate CharacterAccepterResponse CharacterAccepter(char c);
+
+        /*private class BackwardsEnumerator<T> : IEnumerator<T>
+        {
+            private int position = -1;
+            private readonly T first;
+            private readonly IEnumerator<T> rest;
+
+            private BackwardsEnumerator(T first, IEnumerator<T> rest)
+            {
+                this.first = first;
+                this.rest = rest;
+            }
+
+            public T Current
+            {
+                get
+                {
+                    switch (position)
+                    {
+                        case -1:
+                            throw new InvalidOperationException("Forgot MoveFirst");
+                        case 0:
+                            return first;
+                        default:
+                            return rest.Current;
+                    }
+                }
+            }
+            object System.Collections.IEnumerator.Current
+            {
+                get { return Current; }
+            }
+            public bool MoveNext()
+            {
+                if (++position == 0)
+                    return true;
+
+                return rest.MoveNext();
+            }
+
+            // can't support Reset() since we can't safely reset the underlying IEnumerator
+            public void Reset() => throw new InvalidOperationException("Not supported");
+            public void Dispose() => rest.Dispose();
+            public static BackwardsEnumerator<T> of(T first, IEnumerator<T> rest)
+            {
+                return new BackwardsEnumerator<T>(first, rest);
+            }
+        }*/
+
+        protected bool ConsumeWhitespace(IEnumerator<char> input)
+        {
+            do {
+                if (!char.IsWhiteSpace(input.Current))
+                    return true;
+            } while (input.MoveNext());
+
+            return false;
+        }
+
+        protected (string, bool) ReadString(IEnumerator<char> input, CharacterAccepter accepter)
+        {
+            StringBuilder builder = new StringBuilder();
+            CharacterAccepterResponse response;
+
+            if (!ConsumeWhitespace(input))
+                return ("", false);
+
+            do {
+                if (char.IsWhiteSpace(input.Current))
+                    return (builder.ToString(), true);
+
+                response = accepter(input.Current);
+                if (response == CharacterAccepterResponse.ABORT)
+                    return (builder.ToString(), true);
+
+                if (response == CharacterAccepterResponse.ACCEPT)
+                    builder.Append(input.Current);
+            } while (input.MoveNext());
+
+            // end of input
+            return (builder.ToString(), false);
+        }
+
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
         ///
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
-        /// <param name="inputString"></param>
+        /// <param name="input"></param>
         /// <param name="success"></param>
-        private protected int GetLeadingNumberFromString(ReadOnlySpan<byte> inputString, out bool success)
+        private protected (int, bool) GetLeadingNumberFromString(IEnumerator<char> input, out bool success)
         {
             success = false;
+
+            var count = 0;
             var result = 0;
 
-            if (inputString.Length == 0 || inputString[0] == '\0')
-                return result;
+            var (possibleInteger, moreInput) = ReadString(input, c => {
+                var first = (count++ == 0);
+                if (first && c == '+')
+                    return CharacterAccepterResponse.SKIP;
+                else if (char.IsDigit(c) || (first && c == '-'))
+                    return CharacterAccepterResponse.ACCEPT;
+                else
+                    return CharacterAccepterResponse.ABORT;
+            });
 
-            var characterStart = 0;
-            //Trim Leading Spaces/Tabs
-            for (var i = 0; i < inputString.Length; i++)
-            {
-                if (inputString[i] == ' ' || inputString[i] == '\t')
-                    continue;
 
-                characterStart = i;
-                break;
-            }
-
-            //Find the first string representing a numeric value in the provided input string
-            for (var i = characterStart; i < inputString.Length; i++)
-            {
-                if (char.IsNumber((char)inputString[i]) || inputString[i] == '-' || inputString[i] == '+')
-                    continue;
-
-                if (i == 0)
-                {
-                    _logger.Warn($"Unable to find leading number: {Encoding.ASCII.GetString(inputString)}");
-                    return 0;
-                }
-
-                success = int.TryParse(inputString.ToCharSpan().Slice(0, i), out result);
-
-                if (!success)
-                    _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.Slice(0, i).ToArray())}");
-
-                return result;
-            }
-
-            //At this point, the entire string is assumed a numeric
-            success = int.TryParse(inputString.ToCharSpan(), out result);
-
+            success = int.TryParse(possibleInteger, out result);
             if (!success)
-                _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.ToArray())}");
+                _logger.Warn($"Unable to cast to long: {possibleInteger}");
 
-            return result;
+            return (result, moreInput);
         }
 
-        private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
-            GetLeadingNumberFromString(Encoding.ASCII.GetBytes(inputString), out success);
+        private protected (int, bool) GetLeadingNumberFromString(string inputString, out bool success)
+        {
+            var enumerator = inputString.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                success = false;
+                return (0, false);
+            }
 
+            return GetLeadingNumberFromString(enumerator, out success);
+        }
         /// <summary>
         ///     Handles calling functions to format bytes to be sent to the client.
         ///

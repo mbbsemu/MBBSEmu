@@ -1580,7 +1580,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-            var outputValue = GetLeadingNumberFromString(stringToLong, out var success);
+            var (outputValue, moreInput) = GetLeadingNumberFromString(stringToLong, out var success);
 
             Registers.DX = (ushort)(outputValue >> 16);
             Registers.AX = (ushort)(outputValue & 0xFFFF);
@@ -3515,52 +3515,75 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sscanf()
         {
-            var inputPointer = GetParameterPointer(0);
-            var formatPointer = GetParameterPointer(2);
+            var inputString = GetParameterString(0);
+            var formatString = GetParameterString(2);
+            scanf(inputString.GetEnumerator(), formatString, 4);
+        }
 
-            var inputString = Encoding.ASCII.GetString(Module.Memory.GetString(inputPointer));
-            var inputStringElements = inputString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
-            var formatString = Encoding.ASCII.GetString(Module.Memory.GetString(formatPointer));
-            var formatStringElements = formatString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
-            var startingParameterOrdinal = 4;
-            ushort matches = 0;
+        private enum FormatParseState
+        {
+            NORMAL,
+            WHITESPACE,
+            PERCENT
+        };
 
-            for (var index = 0; index < formatStringElements.Length; index++)
+        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal) {
+            var matches = 0;
+            FormatParseState formatParseState = FormatParseState.NORMAL;
+
+            if (!input.MoveNext())
             {
-                var s = formatStringElements[index];
+                Registers.AX = 0;
+                return;
+            }
 
-                if (s[0] == '%' && s[1] != '*')
+            var moreInput = true;
+            int number;
+            string stringValue;
+
+            foreach (var formatChar in formatString)
+            {
+                if (!moreInput)
+                    break;
+
+                switch (formatParseState)
                 {
-                    switch (s[1])
-                    {
-                        case 'd':
-                            Module.Memory.SetWord(GetParameterPointer(startingParameterOrdinal), (ushort)GetLeadingNumberFromString(inputStringElements[index], out _));
-#if DEBUG
-                            //_logger.Info($"Saved {GetLeadingNumberFromString(inputStringElements[index], out _)} to {startingParameterOrdinal}");
-#endif
-                            break;
+                    case FormatParseState.NORMAL when char.IsWhiteSpace(formatChar):
+                        ConsumeWhitespace(input);
+                        formatParseState = FormatParseState.WHITESPACE;
+                        break;
+                    case FormatParseState.NORMAL when formatChar == '%':
+                        formatParseState = FormatParseState.PERCENT;
+                        break;
+                    case FormatParseState.WHITESPACE when !char.IsWhiteSpace(formatChar):
+                        formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
+                        (number, moreInput) = GetLeadingNumberFromString(input, out var success);
+                        Module.Memory.SetWord(
+                            GetParameterPointer(startingParameterOrdinal),
+                            (ushort) number);
+                        if (success)
+                            ++matches;
 
-                        case 's':
-                            var stringValue = $"{inputString[index]}\0";
-                            Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
-#if DEBUG
-                            //_logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {startingParameterOrdinal}");
-#endif
-                            break;
-                        default:
-                            throw new Exception($"Unsupported sscanf specifier: {s[1]}");
-                    }
+                        startingParameterOrdinal += 2;
+                        formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 's':
+                        (stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+                        if (stringValue.Length > 0)
+                            ++matches;
 
-                    //Increment the pointer for the next destination parameter
-                    startingParameterOrdinal += 2;
-                    matches++;
+                        startingParameterOrdinal += 2;
+                        formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT:
+                        throw new Exception($"Unsupported sscanf specifier: {formatChar}");
                 }
             }
 
-            Registers.AX = matches;
-#if DEBUG
-            //_logger.Info($"Processed sscanf on {inputString}-> {formatString}");
-#endif
+            Registers.AX = (ushort) matches;
         }
 
         /// <summary>
