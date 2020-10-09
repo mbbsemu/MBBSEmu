@@ -7075,12 +7075,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Create a new key record
         ///
-        ///     Signature: int nkyrec (char *uid);
+        ///     Signature: string nkyrec (char *uid);
         /// </summary>
         private void nkyrec()
         {
 
-            var uid = GetParameter(0);
+            var uid = GetParameterString(0, stripNull: true);
             
 #if DEBUG
             _logger.Info($"New Key Record: {uid}");
