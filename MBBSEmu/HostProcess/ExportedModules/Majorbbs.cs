@@ -7075,7 +7075,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Create a new key record
         ///
-        ///     Signature: string nkyrec (char *uid);
+        ///     Signature: void nkyrec (char *uid);
         /// </summary>
         private void nkyrec()
         {
