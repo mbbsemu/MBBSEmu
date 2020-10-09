@@ -7079,6 +7079,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void nkyrec()
         {
+
+            var uid = GetParameter(0);
+            
+#if DEBUG
+            _logger.Info($"New Key Record: {uid}");
+#endif
+            
             // no key support for now, so everybody has the key
             Registers.AX = 1;
         }
