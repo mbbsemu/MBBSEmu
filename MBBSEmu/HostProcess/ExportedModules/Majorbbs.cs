@@ -510,6 +510,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 599:
                     time();
                     break;
+                case 432:
+                    nkyrec();
+                    break;
                 case 68:
                     alczer();
                     break;
@@ -7069,6 +7072,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 1;
         }
 
+        /// <summary>
+        ///     Create a new key record
+        ///
+        ///     Signature: int uidkey (char *uid);
+        /// </summary>
+        private void nkyrec()
+        {
+            // no key support for now, so everybody has the key
+            Registers.AX = 1;
+        }
+        
         /// <summary>
         ///     Checks if the other user has the specified key, the one specified by othusn
         ///     and othusp.
