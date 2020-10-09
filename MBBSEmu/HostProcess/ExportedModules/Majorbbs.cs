@@ -7082,12 +7082,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var uid = GetParameterString(0, stripNull: true);
             
+            if (!Module.Memory.TryGetVariablePointer($"NKYREC", out var variablePointer))
+                variablePointer = Module.Memory.AllocateVariable($"NKYREC", 0xFF);
+            
 #if DEBUG
             _logger.Info($"New Key Record: {uid}");
 #endif
             
             // no key support for now, so everybody has the key
-            Registers.AX = 1;
+            Registers.SetPointer(variablePointer);
         }
         
         /// <summary>
