@@ -895,6 +895,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 576:
                     stricmp();
                     break;
+                case 202:
+                    farfree();
+                    break;
+                case 203:
+                    farmalloc();
+                    break;
                 case 400:
                     galmalloc();
                     break;
@@ -3570,6 +3576,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moreInput = true;
             int number;
             string stringValue;
+            bool longInteger = false;
 
             foreach (var formatChar in formatString)
             {
@@ -3582,6 +3589,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         ConsumeWhitespace(input);
                         break;
                     case FormatParseState.NORMAL when formatChar == '%':
+                        longInteger = false;
                         formatParseState = FormatParseState.PERCENT;
                         break;
                     case FormatParseState.NORMAL:
@@ -3595,9 +3603,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         break;
                     case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
                         (number, moreInput) = GetLeadingNumberFromString(input, out var success);
-                        Module.Memory.SetWord(
-                            GetParameterPointer(startingParameterOrdinal),
-                            (ushort) number);
+                        if (longInteger)
+                        {
+                            // low word first followed by high word
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort) ((uint)number & 0xFFFF));
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal + 2),
+                                (ushort) ((uint)number >> 16));
+                        }
+                        else
+                        {
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort) number);
+                        }
                         if (success)
                             ++matches;
 
@@ -3612,6 +3633,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                         startingParameterOrdinal += 2;
                         formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 'l':
+                        longInteger = true;
                         break;
                     case FormatParseState.PERCENT when formatChar == '%':
                         formatParseState = FormatParseState.NORMAL;
@@ -5129,6 +5153,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2 = GetParameterString(2, stripNull: true);
 
             Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
+        }
+
+        /// <summary>
+        ///     Frees memory allocated via farmalloc
+        ///
+        ///     Signature: void farfree(void *)
+        private void farfree()
+        {
+            // no op, we don't support freeing yet
+            _logger.Info($"Module farfreeing {GetParameterPointer(0)}");
+        }
+
+        /// <summary>
+        ///     Implements A LOT of memory!!!
+        ///
+        ///     Signature: void* farmalloc(ULONG size);
+        ///     Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        private void farmalloc()
+        {
+            uint requestedSize = GetParameterULong(0);
+            if (requestedSize > 0xFFFF)
+                _logger.Warn($"Module is trying to allocate {requestedSize} bytes");
+
+            // argument is ULONG size, but who cares, just return a full segment
+            Registers.SetPointer(Module.Memory.AllocateRealModeSegment());
         }
 
         /// <summary>

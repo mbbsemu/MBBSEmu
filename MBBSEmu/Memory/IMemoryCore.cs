@@ -9,15 +9,15 @@ namespace MBBSEmu.Memory
     /// </summary>
     public interface IMemoryCore
     {
-        //*** Variable Memory Management *** 
-        
+        //*** Variable Memory Management ***
+
         /// <summary>
         ///     Returns the pointer to a defined variable
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
         IntPtr16 GetVariablePointer(string name);
-        
+
         /// <summary>
         ///     Safe retrieval of a pointer to a defined variable
         ///
@@ -48,7 +48,7 @@ namespace MBBSEmu.Memory
         /// <param name="declarePointer"></param>
         /// <returns></returns>
         IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false);
-        
+
         /// <summary>
         ///     Allocates the specific number of Big Memory Blocks with the desired size
         /// </summary>
@@ -56,7 +56,7 @@ namespace MBBSEmu.Memory
         /// <param name="size"></param>
         /// <returns></returns>
         IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size);
-        
+
         /// <summary>
         ///     Returns the specified block by index in the desired memory block
         /// </summary>
@@ -65,7 +65,7 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index);
 
-        //*** Segment Management *** 
+        //*** Segment Management ***
 
         /// <summary>
         ///     Adds a new Memory Segment containing 65536 bytes
@@ -75,12 +75,12 @@ namespace MBBSEmu.Memory
         void AddSegment(ushort segmentNumber, int size = 0x10000);
 
         /// <summary>
-        ///     Adds a Decompiled code segment 
+        ///     Adds a Decompiled code segment
         /// </summary>
         /// <param name="segmentNumber"></param>
         /// <param name="segmentInstructionList"></param>
         void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList);
-        
+
         /// <summary>
         ///     Directly adds a raw segment from an NE file segment
         /// </summary>
@@ -110,7 +110,7 @@ namespace MBBSEmu.Memory
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
         Instruction GetInstruction(ushort segment, ushort instructionPointer);
-        
+
         /// <summary>
         ///     Returns a single byte from the specified pointer
         /// </summary>

@@ -41,6 +41,38 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
+        [InlineData("120348343", 120348343, 1)]
+        [InlineData("+120348343", 120348343, 1)]
+        [InlineData("-120348343", -120348343, 1)]
+        [InlineData(" \t120348343\t ", 120348343, 1)]
+        [InlineData(" \t+120348343\t ", 120348343, 1)]
+        [InlineData(" \t-120348343\t ", -120348343, 1)]
+        [InlineData("", 0, 0)]
+        [InlineData("a120348343", 0, 0)]
+        public void sscanf_longInteger_Test(string inputString, int expectedInteger, int expectedResult)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", 16);
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("%ld"));
+
+            var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 4);
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer });
+
+            //Verify Results
+            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+
+            int value = mbbsEmuMemoryCore.GetWord(intPointer) | (mbbsEmuMemoryCore.GetWord(intPointer + 2) << 16);
+            Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+        }
+
+        [Theory]
         [InlineData("%s %d %s", "test +45 another", "test", 45, "another", 3)]
         [InlineData("%s %d %s", "yohoho -1.2 another", "yohoho", -1, ".2", 3)]
         [InlineData("%s %d%s", "yohoha +3456another", "yohoha", 3456, "another", 3)]
