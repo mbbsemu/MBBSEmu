@@ -79,23 +79,22 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected string CreateTextFile(string filename, string contents)
         {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);
-            using (FileStream sw = File.Create(filePath))
-            {
-                sw.Write(Encoding.ASCII.GetBytes(contents));
-            }
+
+            using FileStream sw = File.Create(filePath);
+            sw.Write(Encoding.ASCII.GetBytes(contents));
+
             return filePath;
         }
 
         protected string ReadTextFile(string filename)
         {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);
-            using (FileStream sw = File.Open(filePath, FileMode.Open))
-            {
-                byte[] data = new byte[32*1024];
-                int read = sw.Read(data);
 
-                return Encoding.ASCII.GetString(data, 0, read);
-            }
+            using FileStream sw = File.Open(filePath, FileMode.Open);
+            var data = new byte[32*1024];
+            var read = sw.Read(data);
+
+            return Encoding.ASCII.GetString(data, 0, read);
         }
     }
 }

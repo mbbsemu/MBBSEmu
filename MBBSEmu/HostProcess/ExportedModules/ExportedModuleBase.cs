@@ -853,8 +853,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <return>The string, and a boolean indicating whether there is more input to be read.</return>
         protected (string, bool) ReadString(IEnumerator<char> input, CharacterAccepter accepter)
         {
-            StringBuilder builder = new StringBuilder();
-            CharacterAccepterResponse response;
+            var builder = new StringBuilder();
 
             if (!ConsumeWhitespace(input))
                 return ("", false);
@@ -863,7 +862,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (char.IsWhiteSpace(input.Current))
                     return (builder.ToString(), true);
 
-                response = accepter(input.Current);
+                var response = accepter(input.Current);
                 if (response == CharacterAccepterResponse.ABORT)
                     return (builder.ToString(), true);
 
@@ -881,15 +880,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
-        /// <param name="input"></param>
-        /// <param name="success"></param>
-        /// <return>The number, and a boolean indicating whether there is more input to be read.</return>
+        /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
+        /// <param name="success">True if a valid integer was parsed and returned</param>
+        /// <return>The number, and a boolean indicating whether there is more input to be read.
+        ///         "123test" would return (123, true) where "123" would return (123, false)
+        /// </return>
         private protected (int, bool) GetLeadingNumberFromString(IEnumerator<char> input, out bool success)
         {
             success = false;
 
             var count = 0;
-            var result = 0;
 
             var (possibleInteger, moreInput) = ReadString(input, c => {
                 var first = (count++ == 0);
@@ -897,18 +897,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return CharacterAccepterResponse.SKIP;
                 else if (char.IsDigit(c) || (first && c == '-'))
                     return CharacterAccepterResponse.ACCEPT;
-                else
-                    return CharacterAccepterResponse.ABORT;
+
+                return CharacterAccepterResponse.ABORT;
             });
 
 
-            success = int.TryParse(possibleInteger, out result);
+            success = int.TryParse(possibleInteger, out var result);
             if (!success)
                 _logger.Warn($"Unable to cast to long: {possibleInteger}");
 
             return (result, moreInput);
         }
 
+        /// <summary>
+        ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
+        ///     where a string "123test" should be converted to 123.
+        ///
+        ///     This method extracts the valid number (if any) from the given string
+        /// </summary>
+        /// <param name="inputString">Input string containers integer values</param>
+        /// <param name="success">True if a valid integer was parsed and returned</param>
+        /// <return>The number, and a boolean indicating whether there is more input to be read.
+        ///         "123test" would return (123, true) where "123" would return (123, false)
+        /// </return>
         private protected (int, bool) GetLeadingNumberFromString(string inputString, out bool success)
         {
             var enumerator = inputString.GetEnumerator();

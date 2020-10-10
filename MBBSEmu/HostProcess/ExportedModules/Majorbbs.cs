@@ -3565,7 +3565,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal) {
             var matches = 0;
-            FormatParseState formatParseState = FormatParseState.NORMAL;
+            var formatParseState = FormatParseState.NORMAL;
 
             if (!input.MoveNext())
             {
@@ -5158,7 +5158,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Frees memory allocated via farmalloc
         ///
-        ///     Signature: void farfree(void *)
+        ///     <para/>Signature: void farfree(void *)
+        /// </summary>
         private void farfree()
         {
             // no op, we don't support freeing yet
@@ -5166,14 +5167,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Implements A LOT of memory!!!
+        ///     Allocates A LOT of memory!!!
         ///
-        ///     Signature: void* farmalloc(ULONG size);
-        ///     Return: AX = Offset in Segment (host)
+        ///     <para/>Signature: void* farmalloc(ULONG size);
+        ///     <para/>Return: AX = Offset in Segment (host)
         ///             DX = Data Segment
+        /// </summary>
         private void farmalloc()
         {
-            uint requestedSize = GetParameterULong(0);
+            var requestedSize = GetParameterULong(0);
             if (requestedSize > 0xFFFF)
                 _logger.Warn($"Module is trying to allocate {requestedSize} bytes");
 
