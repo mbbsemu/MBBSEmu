@@ -3522,7 +3522,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             scanf(inputString.GetEnumerator(), formatString, 4);
         }
 
-        private IEnumerator<char> fromFileStream(FileStream input)
+        private static IEnumerator<char> fromFileStream(FileStream input)
         {
             int b;
             while ((b = input.ReadByte()) >= 0)
@@ -7134,12 +7134,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
 
             var uid = GetParameterString(0, stripNull: true);
-            
+
 #if DEBUG
             _logger.Info($"New Key Record: {uid}");
 #endif
         }
-        
+
         /// <summary>
         ///     Checks if the other user has the specified key, the one specified by othusn
         ///     and othusp.
@@ -7634,7 +7634,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringPointer = GetParameterPointer(0);
 
             var inputString = Module.Memory.GetString(stringPointer, true);
-            
+
             var result = new MemoryStream(inputString.Length);
 
             for (var i = 0; i < inputString.Length; i++)

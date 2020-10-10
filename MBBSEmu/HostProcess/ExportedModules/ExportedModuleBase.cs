@@ -575,7 +575,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case "USERID":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
                         break;
-                    
+
                     case "DATE":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(DateTime.Now.ToString("MM/dd/yyyy")));
                         break;
@@ -834,54 +834,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
         protected delegate CharacterAccepterResponse CharacterAccepter(char c);
 
-        /*private class BackwardsEnumerator<T> : IEnumerator<T>
-        {
-            private int position = -1;
-            private readonly T first;
-            private readonly IEnumerator<T> rest;
-
-            private BackwardsEnumerator(T first, IEnumerator<T> rest)
-            {
-                this.first = first;
-                this.rest = rest;
-            }
-
-            public T Current
-            {
-                get
-                {
-                    switch (position)
-                    {
-                        case -1:
-                            throw new InvalidOperationException("Forgot MoveFirst");
-                        case 0:
-                            return first;
-                        default:
-                            return rest.Current;
-                    }
-                }
-            }
-            object System.Collections.IEnumerator.Current
-            {
-                get { return Current; }
-            }
-            public bool MoveNext()
-            {
-                if (++position == 0)
-                    return true;
-
-                return rest.MoveNext();
-            }
-
-            // can't support Reset() since we can't safely reset the underlying IEnumerator
-            public void Reset() => throw new InvalidOperationException("Not supported");
-            public void Dispose() => rest.Dispose();
-            public static BackwardsEnumerator<T> of(T first, IEnumerator<T> rest)
-            {
-                return new BackwardsEnumerator<T>(first, rest);
-            }
-        }*/
-
+        /// <summary>
+        ///     Consumes all whitespace from input and moves to the first non-whitespace character.
+        /// </summary>
         protected bool ConsumeWhitespace(IEnumerator<char> input)
         {
             do {
@@ -892,6 +847,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return false;
         }
 
+        /// <summary>
+        ///     Reads a string from input, validating against accepter. Skips beginning whitespace.
+        /// </summary>
+        /// <return>The string, and a boolean indicating whether there is more input to be read.</return>
         protected (string, bool) ReadString(IEnumerator<char> input, CharacterAccepter accepter)
         {
             StringBuilder builder = new StringBuilder();
@@ -924,6 +883,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="input"></param>
         /// <param name="success"></param>
+        /// <return>The number, and a boolean indicating whether there is more input to be read.</return>
         private protected (int, bool) GetLeadingNumberFromString(IEnumerator<char> input, out bool success)
         {
             success = false;
