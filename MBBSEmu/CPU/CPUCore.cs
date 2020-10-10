@@ -516,6 +516,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fsubr:
                     Op_Fsubr();
                     break;
+                case Mnemonic.Fsubrp:
+                    Op_Fsubrp();
+                    break;
                 case Mnemonic.Fclex:
                 case Mnemonic.Fnclex:
                     Op_Fclex();
@@ -2669,6 +2672,20 @@ namespace MBBSEmu.CPU
 
             var result = valueToSubtractFrom - ST0;
             FpuStack[Registers.Fpu.GetStackTop()] = result;
+        }
+
+        /// <summary>
+        ///     Floating Point Reverse Subtraction (x87)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fsubrp()
+        {
+            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var valueToSubtract = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = valueToSubtractFrom - valueToSubtract;
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
+            Registers.Fpu.PopStackTop();
         }
 
         /// <summary>
