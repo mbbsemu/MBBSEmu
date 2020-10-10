@@ -415,7 +415,7 @@ namespace MBBSEmu
                     }
                     else
                     {
-                        Console.WriteLine("Password mismatch, please tray again.");
+                        Console.WriteLine("Password mismatch, please try again.");
                     }
                 }
             }
