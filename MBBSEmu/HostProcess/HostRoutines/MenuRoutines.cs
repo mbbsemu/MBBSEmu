@@ -295,8 +295,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 foreach (var m in modules)
                 {
                     EchoToClient(session,
-                        $"   |CYAN||B|{m.Value.MenuOptionKey}|YELLOW| ... {m.Value.ModuleDescription}\r\n".PadRight(3, ' ')
-                            .EncodeToANSIArray());
+                        $"   |CYAN||B|{m.Value.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
                 }
             }
             else
