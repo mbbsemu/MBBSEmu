@@ -3610,7 +3610,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 GetParameterPointer(startingParameterOrdinal),
                                 (ushort) ((uint)number & 0xFFFF));
                             Module.Memory.SetWord(
-                                GetParameterPointer(startingParameterOrdinal + 2),
+                                GetParameterPointer(startingParameterOrdinal) + 2,
                                 (ushort) ((uint)number >> 16));
                         }
                         else

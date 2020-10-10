@@ -69,7 +69,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
 
             int value = mbbsEmuMemoryCore.GetWord(intPointer) | (mbbsEmuMemoryCore.GetWord(intPointer + 2) << 16);
-            Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+            Assert.Equal(expectedInteger, value);
         }
 
         [Theory]
