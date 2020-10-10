@@ -251,7 +251,7 @@ namespace MBBSEmu.CPU
             //    Debugger.Break();
 
             //Show Debugging
-            //_showDebug = Registers.CS == 0x3 && Registers.IP >= 0x4947 && Registers.IP <= 0x777E;
+            //_showDebug = Registers.CS == 0x2 && Registers.IP >= 0xA50 && Registers.IP <= 0x0E6D;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -1024,7 +1024,8 @@ namespace MBBSEmu.CPU
                     Op_Int_21h();
                     return;
                 case 0x3E:
-                //Borland Interrupt -- ignored
+                    //Borland Interrupt -- ignored
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
             }

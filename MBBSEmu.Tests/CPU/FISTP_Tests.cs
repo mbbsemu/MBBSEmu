@@ -39,6 +39,7 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData((double)(int.MaxValue), int.MaxValue, 0)]
+        [InlineData(31337.1d, 31337, 0)]
         [InlineData((double)(int.MinValue), int.MinValue, 0)]
         [InlineData(-0.0d, 0, 0)]
         [InlineData(double.NaN, 0, 1)]
