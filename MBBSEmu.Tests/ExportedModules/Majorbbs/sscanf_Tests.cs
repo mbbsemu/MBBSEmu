@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using System;
 using MBBSEmu.Memory;
 using Xunit;
 
@@ -39,11 +40,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
         }
 
-        /*[Theory]
+        [Theory]
         [InlineData("%s %d %s", "test +45 another", "test", 45, "another", 3)]
-        // TODO should the .2 get goobled up and ignored?
         [InlineData("%s %d %s", "yohoho -1.2 another", "yohoho", -1, ".2", 3)]
         [InlineData("%s %d%s", "yohoha +3456another", "yohoha", 3456, "another", 3)]
+        [InlineData("%s %d %s", "yohoho -1", "yohoho", -1, "", 2)]
+        [InlineData("%s %d %s", "yohoho", "yohoho", 0, "", 1)]
+        [InlineData("%s %d %s", "", "", 0, "", 0)]
+        // double percent & ignored format
+        [InlineData("%s %d %% ignored %s", "yohoha +3456 % ignored another", "yohoha", 3456, "another", 3)]
+        // double percent & mismatching ignored format
+        [InlineData("%s %d %% ignored %s", "yohoha +3456 % Ignored another", "yohoha", 3456, "", 2)]
+        // unfinished percent at end of string
+        [InlineData("%s %d%", "yohoha +3456another", "yohoha", 3456, "", 2)]
         public void sscanf_fancy_Test(
             string formatString,
             string inputString,
@@ -73,29 +82,25 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(expectedFirstString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(firstStringPointer, true)));
             Assert.Equal(expectedSecondString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(secondStringPointer, true)));
             Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
-        }*/
+        }
 
-        // TODO have a test where format ends with % but no s/d/etc
         [Fact]
-        public void test()
+        public void invalid_formatString_throws()
         {
             //Reset State
             Reset();
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", 32);
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("abc45"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("abc4567"));
 
             var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", 16);
-            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("abc45%d"));
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("abc45%45q"));
 
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 2);
-            //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer });
-
-            //Verify Results
-            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(45, mbbsEmuMemoryCore.GetWord(intPointer));
+            //Execute Test & Assert
+            Assert.Throws<ArgumentException>(() =>
+                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer }));
         }
     }
 }

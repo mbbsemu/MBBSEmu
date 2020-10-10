@@ -25,7 +25,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
     ///     MAJORBBS.H
     /// </summary>
-    public class Majorbbs : ExportedModuleBase, IExportedModule
+    public class Majorbbs : ExportedModuleBase, IExportedModule, IDisposable
     {
         public IntPtr16 GlobalCommandHandler;
 
@@ -60,6 +60,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
+
+        public void Dispose()
+        {
+            foreach(var f in FilePointerDictionary)
+            {
+                f.Value.Close();
+            }
+            FilePointerDictionary.Clear();
+        }
 
         public Majorbbs(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
@@ -731,6 +740,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 562:
                     sscanf();
+                    break;
+                case 232:
+                    fscanf();
                     break;
                 case 355:
                     intdos();
@@ -3031,7 +3043,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Closes an Open File Pointer
         ///
-        ///     Signature: int fclose(FILE* stream )
+        ///     Signature: int fclose(FILE* stream ). Returns 0 on success, EOF (-1) on failure
         /// </summary>
         private void f_close()
         {
@@ -3047,7 +3059,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 _logger.Warn(
                     $"Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
-                Registers.AX = 0;
+                Registers.AX = 0xFFFF;
                 return;
 #endif
             }
@@ -3056,7 +3068,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 _logger.Warn(
                     $"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
-                Registers.AX = 0;
+                Registers.AX = 0xFFFF;
                 return;
             }
 
@@ -3188,13 +3200,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Reads an array of count elements, each one with a size of size bytes, from the stream and stores
         ///     them in the block of memory specified by ptr.
         ///
-        ///     Signature: size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
+        ///     Signature: size_t fread(void* ptr, size_t elementSize, size_t numberOfElements, FILE* stream)
         /// </summary>
         private void f_read()
         {
             var destinationPointer = GetParameterPointer(0);
-            var size = GetParameter(2);
-            var count = GetParameter(3);
+            var elementSize = GetParameter(2);
+            var numberOfElements = GetParameter(3);
             var fileStructPointer = GetParameterPointer(4);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
@@ -3205,24 +3217,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (fileStream.Position >= fileStream.Length)
             {
-                _logger.Warn("Attempting to read EOF file, returning null pointer");
                 Registers.AX = 0;
                 return;
             }
 
-            ushort elementsRead = 0;
-            for (var i = 0; i < count; i++)
-            {
-                var dataRead = new byte[size];
-                var bytesRead = fileStream.Read(dataRead);
-
-                if (bytesRead != size)
-                    break;
-
-                Module.Memory.SetArray(destinationPointer.Segment, (ushort)(destinationPointer.Offset + (i * size)),
-                    dataRead);
-                elementsRead++;
-            }
+            var totalToRead = elementSize * numberOfElements;
+            var buffer = new byte[totalToRead];
+            var bytesRead = fileStream.Read(buffer);
+            if (bytesRead > 0)
+                Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -3231,12 +3234,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
-#if DEBUG
-            _logger.Info(
-                $"Read {elementsRead} group(s) of {size} bytes from {fileStructPointer} (Stream: {fileStruct.curp}), written to {destinationPointer}");
-#endif
-
-            Registers.AX = elementsRead;
+            Registers.AX = (ushort)(bytesRead / elementSize);
         }
 
         /// <summary>
@@ -3256,13 +3254,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new FileNotFoundException(
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
-            ushort elementsWritten = 0;
-            for (var i = 0; i < count; i++)
-            {
-                fileStream.Write(Module.Memory.GetArray(sourcePointer.Segment,
-                    (ushort)(sourcePointer.Offset + (i * size)), size));
-                elementsWritten++;
-            }
+            var bytesToWrite = size * count;
+            fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort) bytesToWrite));
+            var elementsWritten = bytesToWrite / size;
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -3273,9 +3267,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Read {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+                $"Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
-            Registers.AX = elementsWritten;
+            Registers.AX = (ushort) elementsWritten;
         }
 
         /// <summary>
@@ -3515,15 +3509,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sscanf()
         {
-            var inputString = GetParameterString(0);
-            var formatString = GetParameterString(2);
+            var inputString = GetParameterString(0, stripNull: true);
+            var formatString = GetParameterString(2, stripNull: true);
             scanf(inputString.GetEnumerator(), formatString, 4);
+        }
+
+        private IEnumerator<char> fromFileStream(FileStream input)
+        {
+            int b;
+            while ((b = input.ReadByte()) >= 0)
+                yield return Convert.ToChar(b);
+        }
+
+        /// <summary>
+        ///     Reads data from stream and stores them accounting to parameter format into the locations given by the additional arguments
+        ///
+        ///     Signature: int sscanf(FILE *stream, const char *format, ...)
+        /// </summary>
+        private void fscanf()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var formatString = GetParameterString(2, stripNull: true);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+            {
+                _logger.Warn($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                Registers.AX = 0;
+                return;
+            }
+
+            scanf(fromFileStream(fileStream), formatString, 4);
         }
 
         private enum FormatParseState
         {
             NORMAL,
-            WHITESPACE,
             PERCENT
         };
 
@@ -3550,13 +3572,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     case FormatParseState.NORMAL when char.IsWhiteSpace(formatChar):
                         ConsumeWhitespace(input);
-                        formatParseState = FormatParseState.WHITESPACE;
                         break;
                     case FormatParseState.NORMAL when formatChar == '%':
                         formatParseState = FormatParseState.PERCENT;
                         break;
-                    case FormatParseState.WHITESPACE when !char.IsWhiteSpace(formatChar):
-                        formatParseState = FormatParseState.NORMAL;
+                    case FormatParseState.NORMAL:
+                        // match a single character
+                        moreInput = ConsumeWhitespace(input);
+                        if (moreInput)
+                        {
+                            moreInput = (formatChar == input.Current);
+                            moreInput &= input.MoveNext();
+                        }
                         break;
                     case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
                         (number, moreInput) = GetLeadingNumberFromString(input, out var success);
@@ -3578,8 +3605,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                         formatParseState = FormatParseState.NORMAL;
                         break;
+                    case FormatParseState.PERCENT when formatChar == '%':
+                        formatParseState = FormatParseState.NORMAL;
+                        goto case FormatParseState.NORMAL; // yolo
                     case FormatParseState.PERCENT:
-                        throw new Exception($"Unsupported sscanf specifier: {formatChar}");
+                        throw new ArgumentException($"Unsupported sscanf specifier: {formatChar}");
                 }
             }
 
