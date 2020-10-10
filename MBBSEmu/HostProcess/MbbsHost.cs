@@ -94,6 +94,16 @@ namespace MBBSEmu.HostProcess
         private readonly Timer _timer;
 
         /// <summary>
+        ///     Timer to prevent main loop from executing while cleanup is running
+        /// </summary>
+        private readonly Timer _nightlyCleanupTimer;
+
+        /// <summary>
+        ///     Flag to prevent main loop from executing while cleanup is running
+        /// </summary>
+        private bool _performingNightlyCleanup;
+        
+        /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
         private bool _performCleanup = false;
@@ -112,6 +122,9 @@ namespace MBBSEmu.HostProcess
             _mbbsRoutines = mbbsRoutines;
             _configuration = configuration;
             _globalRoutines = globalRoutines;
+
+            _logger.Info("Constructing MBBSEmu Host...");
+
             _channelDictionary = new PointerDictionary<SessionBase>();
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
@@ -119,13 +132,8 @@ namespace MBBSEmu.HostProcess
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = ParseCleanupTime();
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
-
+            _nightlyCleanupTimer = new Timer(ProcessNightlyCleanup, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
             _logger.Info("Constructed MBBSEmu Host!");
-        }
-
-        private void Restart()
-        {
-            Start(null);
         }
 
         /// <summary>
@@ -133,25 +141,27 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
-            _moduleConfigurations = moduleConfigurations ?? _moduleConfigurations;
-
             //Load Modules
-            foreach (var m in _moduleConfigurations)
+            foreach (var m in moduleConfigurations)
                 AddModule(new MbbsModule(_fileUtility, _logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
             {
                 _logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
-                _moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
+                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
                 _modules.Remove(value.ModuleIdentifier);
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
 
+            //Save module configurations for cleanup
+            _moduleConfigurations = moduleConfigurations;
+
+            _isRunning = true;
+
             if (_workerThread == null)
             {
-                _isRunning = true;
                 _workerThread = new Thread(WorkerThread);
                 _workerThread.Start();
             }
@@ -181,10 +191,8 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                if (_performCleanup) {
-                    _performCleanup = false;
-                    DoNightlyCleanup();
-                }
+                if (_performingNightlyCleanup)
+                    continue;
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -988,14 +996,22 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        private void ProcessNightlyCleanup(object ignored)
+        {
+            if (!_performCleanup) return;
+            _performCleanup = false;
+            DoNightlyCleanup();
+        }
+
         private void DoNightlyCleanup()
         {
             _logger.Info("PERFORMING NIGHTLY CLEANUP");
-
+            _performingNightlyCleanup = true;
+            
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
-
+            
             // removes all sessions and stops worker thread
             RemoveSessions(session => true);
 
@@ -1008,10 +1024,9 @@ namespace MBBSEmu.HostProcess
                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
-
             _logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
-
-            Restart();
+            Start(_moduleConfigurations);
+            _performingNightlyCleanup = false;
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
