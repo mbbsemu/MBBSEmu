@@ -895,7 +895,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var first = (count++ == 0);
                 if (first && c == '+')
                     return CharacterAccepterResponse.SKIP;
-                else if (char.IsDigit(c) || (first && c == '-'))
+                if (char.IsDigit(c) || (first && c == '-'))
                     return CharacterAccepterResponse.ACCEPT;
 
                 return CharacterAccepterResponse.ABORT;
