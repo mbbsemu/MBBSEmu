@@ -10,8 +10,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int NKYREC_ORDINAL = 432;
 
         [Theory]
-        [InlineData("TEST", "TEST")]
-        public void NKYREC_Test(string inputString, string expectedString)
+        [InlineData("TEST")]
+        public void NKYREC_Test(string inputString)
         {
             //Reset State
             Reset();
