@@ -217,10 +217,13 @@ namespace MBBSEmu.HostProcess
                         {
                             session.Status = 1;
                             session.InputBuffer.SetLength(0);
+
+                            //Redisplay Main Menu prompt after global if session is at Main Menu
+                            if (session.SessionState == EnumSessionState.MainMenuInput)
+                            { 
+                                session.SessionState = EnumSessionState.MainMenuInputDisplay;   
+                            }
                             
-                            //Redisplay Main Menu prompt after global
-                            session.SendToClient("\r\n|YELLOW||B|Main Menu\r\n".EncodeToANSIArray());
-                            session.SendToClient("|CYAN||B|Make your selection (X to exit): ".EncodeToANSIArray());
                             continue;
                         }
 

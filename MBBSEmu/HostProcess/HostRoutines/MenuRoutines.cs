@@ -72,6 +72,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 case EnumSessionState.MainMenuDisplay:
                     MainMenuDisplay(session, modules);
                     break;
+                case EnumSessionState.MainMenuInputDisplay:
+                    MainMenuInputDisplay(session);
+                    break;
                 case EnumSessionState.MainMenuInput:
                     MainMenuInput(session, modules);
                     ProcessCharacter(session);
@@ -303,11 +306,17 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session, File.ReadAllBytes(ansiMenuFileName).ToArray());
             }
 
-            EchoToClient(session, "\r\n|YELLOW||B|Main Menu\r\n".EncodeToANSIArray());
-            EchoToClient(session, "|CYAN||B|Make your selection (X to exit): ".EncodeToANSIArray());
-            session.SessionState = EnumSessionState.MainMenuInput;
+            session.SessionState = EnumSessionState.MainMenuInputDisplay;
         }
 
+        private void MainMenuInputDisplay(SessionBase session)
+        {
+            EchoToClient(session, "\r\n|YELLOW||B|Main Menu\r\n".EncodeToANSIArray());
+            EchoToClient(session, "|CYAN||B|Make your selection (X to exit): ".EncodeToANSIArray());
+            
+            session.SessionState = EnumSessionState.MainMenuInput;
+        }
+        
         private void MainMenuInput(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             if (session.Status != 3) return;
