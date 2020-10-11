@@ -26,7 +26,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
     ///     MAJORBBS.H
     /// </summary>
-    public class Majorbbs : ExportedModuleBase, IExportedModule
+    public class Majorbbs : ExportedModuleBase, IExportedModule, IDisposable
     {
         public IntPtr16 GlobalCommandHandler;
 
@@ -61,6 +61,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
+
+        public void Dispose()
+        {
+            foreach(var f in FilePointerDictionary)
+            {
+                f.Value.Close();
+            }
+            FilePointerDictionary.Clear();
+        }
 
         public Majorbbs(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
@@ -740,6 +749,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 562:
                     sscanf();
                     break;
+                case 232:
+                    fscanf();
+                    break;
                 case 355:
                     intdos();
                     break;
@@ -882,6 +894,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 576:
                     stricmp();
+                    break;
+                case 202:
+                    farfree();
+                    break;
+                case 203:
+                    farmalloc();
                     break;
                 case 400:
                     galmalloc();
@@ -1588,7 +1606,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-            var outputValue = GetLeadingNumberFromString(stringToLong, out var success);
+            var (outputValue, moreInput) = GetLeadingNumberFromString(stringToLong, out var success);
 
             Registers.DX = (ushort)(outputValue >> 16);
             Registers.AX = (ushort)(outputValue & 0xFFFF);
@@ -3039,7 +3057,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Closes an Open File Pointer
         ///
-        ///     Signature: int fclose(FILE* stream )
+        ///     Signature: int fclose(FILE* stream ). Returns 0 on success, EOF (-1) on failure
         /// </summary>
         private void f_close()
         {
@@ -3055,7 +3073,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 _logger.Warn(
                     $"Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
-                Registers.AX = 0;
+                Registers.AX = 0xFFFF;
                 return;
 #endif
             }
@@ -3064,7 +3082,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 _logger.Warn(
                     $"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
-                Registers.AX = 0;
+                Registers.AX = 0xFFFF;
                 return;
             }
 
@@ -3196,13 +3214,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Reads an array of count elements, each one with a size of size bytes, from the stream and stores
         ///     them in the block of memory specified by ptr.
         ///
-        ///     Signature: size_t fread(void* ptr, size_t size, size_t count, FILE* stream)
+        ///     Signature: size_t fread(void* ptr, size_t elementSize, size_t numberOfElements, FILE* stream)
         /// </summary>
         private void f_read()
         {
             var destinationPointer = GetParameterPointer(0);
-            var size = GetParameter(2);
-            var count = GetParameter(3);
+            var elementSize = GetParameter(2);
+            var numberOfElements = GetParameter(3);
             var fileStructPointer = GetParameterPointer(4);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
@@ -3213,24 +3231,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (fileStream.Position >= fileStream.Length)
             {
-                _logger.Warn("Attempting to read EOF file, returning null pointer");
                 Registers.AX = 0;
                 return;
             }
 
-            ushort elementsRead = 0;
-            for (var i = 0; i < count; i++)
-            {
-                var dataRead = new byte[size];
-                var bytesRead = fileStream.Read(dataRead);
-
-                if (bytesRead != size)
-                    break;
-
-                Module.Memory.SetArray(destinationPointer.Segment, (ushort)(destinationPointer.Offset + (i * size)),
-                    dataRead);
-                elementsRead++;
-            }
+            var totalToRead = elementSize * numberOfElements;
+            var buffer = new byte[totalToRead];
+            var bytesRead = fileStream.Read(buffer);
+            if (bytesRead > 0)
+                Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -3239,12 +3248,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
             }
 
-#if DEBUG
-            _logger.Info(
-                $"Read {elementsRead} group(s) of {size} bytes from {fileStructPointer} (Stream: {fileStruct.curp}), written to {destinationPointer}");
-#endif
-
-            Registers.AX = elementsRead;
+            Registers.AX = (ushort)(bytesRead / elementSize);
         }
 
         /// <summary>
@@ -3264,13 +3268,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new FileNotFoundException(
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
-            ushort elementsWritten = 0;
-            for (var i = 0; i < count; i++)
-            {
-                fileStream.Write(Module.Memory.GetArray(sourcePointer.Segment,
-                    (ushort)(sourcePointer.Offset + (i * size)), size));
-                elementsWritten++;
-            }
+            var bytesToWrite = size * count;
+            fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort) bytesToWrite));
+            var elementsWritten = bytesToWrite / size;
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -3281,9 +3281,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info(
-                $"Read {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+                $"Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
-            Registers.AX = elementsWritten;
+            Registers.AX = (ushort) elementsWritten;
         }
 
         /// <summary>
@@ -3523,52 +3523,129 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sscanf()
         {
-            var inputPointer = GetParameterPointer(0);
-            var formatPointer = GetParameterPointer(2);
+            var inputString = GetParameterString(0, stripNull: true);
+            var formatString = GetParameterString(2, stripNull: true);
+            scanf(inputString.GetEnumerator(), formatString, 4);
+        }
 
-            var inputString = Encoding.ASCII.GetString(Module.Memory.GetString(inputPointer));
-            var inputStringElements = inputString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
-            var formatString = Encoding.ASCII.GetString(Module.Memory.GetString(formatPointer));
-            var formatStringElements = formatString.Split(SSCANF_SEPARATORS, StringSplitOptions.RemoveEmptyEntries);
-            var startingParameterOrdinal = 4;
-            ushort matches = 0;
+        private static IEnumerator<char> fromFileStream(FileStream input)
+        {
+            int b;
+            while ((b = input.ReadByte()) >= 0)
+                yield return Convert.ToChar(b);
+        }
 
-            for (var index = 0; index < formatStringElements.Length; index++)
+        /// <summary>
+        ///     Reads data from stream and stores them accounting to parameter format into the locations given by the additional arguments
+        ///
+        ///     Signature: int sscanf(FILE *stream, const char *format, ...)
+        /// </summary>
+        private void fscanf()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var formatString = GetParameterString(2, stripNull: true);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
             {
-                var s = formatStringElements[index];
+                _logger.Warn($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                Registers.AX = 0;
+                return;
+            }
 
-                if (s[0] == '%' && s[1] != '*')
+            scanf(fromFileStream(fileStream), formatString, 4);
+        }
+
+        private enum FormatParseState
+        {
+            NORMAL,
+            PERCENT
+        };
+
+        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal) {
+            var matches = 0;
+            var formatParseState = FormatParseState.NORMAL;
+
+            if (!input.MoveNext())
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var moreInput = true;
+            int number;
+            string stringValue;
+            bool longInteger = false;
+
+            foreach (var formatChar in formatString)
+            {
+                if (!moreInput)
+                    break;
+
+                switch (formatParseState)
                 {
-                    switch (s[1])
-                    {
-                        case 'd':
-                            Module.Memory.SetWord(GetParameterPointer(startingParameterOrdinal), (ushort)GetLeadingNumberFromString(inputStringElements[index], out _));
-#if DEBUG
-                            //_logger.Info($"Saved {GetLeadingNumberFromString(inputStringElements[index], out _)} to {startingParameterOrdinal}");
-#endif
-                            break;
+                    case FormatParseState.NORMAL when char.IsWhiteSpace(formatChar):
+                        ConsumeWhitespace(input);
+                        break;
+                    case FormatParseState.NORMAL when formatChar == '%':
+                        longInteger = false;
+                        formatParseState = FormatParseState.PERCENT;
+                        break;
+                    case FormatParseState.NORMAL:
+                        // match a single character
+                        moreInput = ConsumeWhitespace(input);
+                        if (moreInput)
+                        {
+                            moreInput = (formatChar == input.Current);
+                            moreInput &= input.MoveNext();
+                        }
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
+                        (number, moreInput) = GetLeadingNumberFromString(input, out var success);
+                        if (longInteger)
+                        {
+                            // low word first followed by high word
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort) ((uint)number & 0xFFFF));
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal) + 2,
+                                (ushort) ((uint)number >> 16));
+                        }
+                        else
+                        {
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort) number);
+                        }
+                        if (success)
+                            ++matches;
 
-                        case 's':
-                            var stringValue = $"{inputString[index]}\0";
-                            Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
-#if DEBUG
-                            //_logger.Info($"Saved {Encoding.ASCII.GetBytes(stringValue)} to {startingParameterOrdinal}");
-#endif
-                            break;
-                        default:
-                            throw new Exception($"Unsupported sscanf specifier: {s[1]}");
-                    }
+                        startingParameterOrdinal += 2;
+                        formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 's':
+                        (stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+                        if (stringValue.Length > 0)
+                            ++matches;
 
-                    //Increment the pointer for the next destination parameter
-                    startingParameterOrdinal += 2;
-                    matches++;
+                        startingParameterOrdinal += 2;
+                        formatParseState = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 'l':
+                        longInteger = true;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == '%':
+                        formatParseState = FormatParseState.NORMAL;
+                        goto case FormatParseState.NORMAL; // yolo
+                    case FormatParseState.PERCENT:
+                        throw new ArgumentException($"Unsupported sscanf specifier: {formatChar}");
                 }
             }
 
-            Registers.AX = matches;
-#if DEBUG
-            //_logger.Info($"Processed sscanf on {inputString}-> {formatString}");
-#endif
+            Registers.AX = (ushort) matches;
         }
 
         /// <summary>
@@ -5076,6 +5153,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2 = GetParameterString(2, stripNull: true);
 
             Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
+        }
+
+        /// <summary>
+        ///     Frees memory allocated via farmalloc
+        ///
+        ///     <para/>Signature: void farfree(void *)
+        /// </summary>
+        private void farfree()
+        {
+            // no op, we don't support freeing yet
+            _logger.Info($"Module farfreeing {GetParameterPointer(0)}");
+        }
+
+        /// <summary>
+        ///     Allocates A LOT of memory!!!
+        ///
+        ///     <para/>Signature: void* farmalloc(ULONG size);
+        ///     <para/>Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        /// </summary>
+        private void farmalloc()
+        {
+            var requestedSize = GetParameterULong(0);
+            if (requestedSize > 0xFFFF)
+                _logger.Warn($"Module is trying to allocate {requestedSize} bytes");
+
+            // argument is ULONG size, but who cares, just return a full segment
+            Registers.SetPointer(Module.Memory.AllocateRealModeSegment());
         }
 
         /// <summary>
@@ -7081,12 +7186,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
 
             var uid = GetParameterString(0, stripNull: true);
-            
+
 #if DEBUG
             _logger.Info($"New Key Record: {uid}");
 #endif
         }
-        
+
         /// <summary>
         ///     Checks if the other user has the specified key, the one specified by othusn
         ///     and othusp.
@@ -7581,7 +7686,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringPointer = GetParameterPointer(0);
 
             var inputString = Module.Memory.GetString(stringPointer, true);
-            
+
             var result = new MemoryStream(inputString.Length);
 
             for (var i = 0; i < inputString.Length; i++)

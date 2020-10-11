@@ -8,6 +8,7 @@ using MBBSEmu.Session;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -596,7 +597,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case "USERID":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
                         break;
-                    
+
                     case "DATE":
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(DateTime.Now.ToString("MM/dd/yyyy")));
                         break;
@@ -847,65 +848,111 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return result.ToArray();
         }
 
+        protected enum CharacterAccepterResponse
+        {
+            ABORT,
+            SKIP,
+            ACCEPT,
+        }
+        protected delegate CharacterAccepterResponse CharacterAccepter(char c);
+
+        /// <summary>
+        ///     Consumes all whitespace from input and moves to the first non-whitespace character.
+        /// </summary>
+        protected bool ConsumeWhitespace(IEnumerator<char> input)
+        {
+            do {
+                if (!char.IsWhiteSpace(input.Current))
+                    return true;
+            } while (input.MoveNext());
+
+            return false;
+        }
+
+        /// <summary>
+        ///     Reads a string from input, validating against accepter. Skips beginning whitespace.
+        /// </summary>
+        /// <return>The string, and a boolean indicating whether there is more input to be read.</return>
+        protected (string, bool) ReadString(IEnumerator<char> input, CharacterAccepter accepter)
+        {
+            var builder = new StringBuilder();
+
+            if (!ConsumeWhitespace(input))
+                return ("", false);
+
+            do {
+                if (char.IsWhiteSpace(input.Current))
+                    return (builder.ToString(), true);
+
+                var response = accepter(input.Current);
+                if (response == CharacterAccepterResponse.ABORT)
+                    return (builder.ToString(), true);
+
+                if (response == CharacterAccepterResponse.ACCEPT)
+                    builder.Append(input.Current);
+            } while (input.MoveNext());
+
+            // end of input
+            return (builder.ToString(), false);
+        }
+
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
         ///
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
-        /// <param name="inputString"></param>
-        /// <param name="success"></param>
-        private protected int GetLeadingNumberFromString(ReadOnlySpan<byte> inputString, out bool success)
+        /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
+        /// <param name="success">True if a valid integer was parsed and returned</param>
+        /// <return>The number, and a boolean indicating whether there is more input to be read.
+        ///         "123test" would return (123, true) where "123" would return (123, false)
+        /// </return>
+        private protected (int, bool) GetLeadingNumberFromString(IEnumerator<char> input, out bool success)
         {
             success = false;
-            var result = 0;
 
-            if (inputString.Length == 0 || inputString[0] == '\0')
-                return result;
+            var count = 0;
 
-            var characterStart = 0;
-            //Trim Leading Spaces/Tabs
-            for (var i = 0; i < inputString.Length; i++)
-            {
-                if (inputString[i] == ' ' || inputString[i] == '\t')
-                    continue;
+            var (possibleInteger, moreInput) = ReadString(input, c => {
+                var first = (count++ == 0);
+                if (first && c == '+')
+                    return CharacterAccepterResponse.SKIP;
+                if (char.IsDigit(c) || (first && c == '-'))
+                    return CharacterAccepterResponse.ACCEPT;
 
-                characterStart = i;
-                break;
-            }
+                return CharacterAccepterResponse.ABORT;
+            });
 
-            //Find the first string representing a numeric value in the provided input string
-            for (var i = characterStart; i < inputString.Length; i++)
-            {
-                if (char.IsNumber((char)inputString[i]) || inputString[i] == '-' || inputString[i] == '+')
-                    continue;
 
-                if (i == 0)
-                {
-                    _logger.Warn($"Unable to find leading number: {Encoding.ASCII.GetString(inputString)}");
-                    return 0;
-                }
-
-                success = int.TryParse(inputString.ToCharSpan().Slice(0, i), out result);
-
-                if (!success)
-                    _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.Slice(0, i).ToArray())}");
-
-                return result;
-            }
-
-            //At this point, the entire string is assumed a numeric
-            success = int.TryParse(inputString.ToCharSpan(), out result);
-
+            success = int.TryParse(possibleInteger, out var result);
             if (!success)
-                _logger.Warn($"Unable to cast to long: {Encoding.ASCII.GetString(inputString.ToArray())}");
+                _logger.Warn($"Unable to cast to long: {possibleInteger}");
 
-            return result;
+            return (result, moreInput);
         }
 
-        private protected int GetLeadingNumberFromString(string inputString, out bool success) =>
-            GetLeadingNumberFromString(Encoding.ASCII.GetBytes(inputString), out success);
+        /// <summary>
+        ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
+        ///     where a string "123test" should be converted to 123.
+        ///
+        ///     This method extracts the valid number (if any) from the given string
+        /// </summary>
+        /// <param name="inputString">Input string containers integer values</param>
+        /// <param name="success">True if a valid integer was parsed and returned</param>
+        /// <return>The number, and a boolean indicating whether there is more input to be read.
+        ///         "123test" would return (123, true) where "123" would return (123, false)
+        /// </return>
+        private protected (int, bool) GetLeadingNumberFromString(string inputString, out bool success)
+        {
+            var enumerator = inputString.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                success = false;
+                return (0, false);
+            }
 
+            return GetLeadingNumberFromString(enumerator, out success);
+        }
         /// <summary>
         ///     Handles calling functions to format bytes to be sent to the client.
         ///
