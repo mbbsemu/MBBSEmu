@@ -87,8 +87,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected ushort GetParameter(int parameterOrdinal)
         {
-            var parameterOffset = (ushort)(Registers.BP + 7 + (2 * parameterOrdinal));
-            return Module.Memory.GetWord(Registers.SS, parameterOffset);
+            return Module.Memory.GetWord(Registers.SS, GetParameterOffset(parameterOrdinal));
         }
 
         /// <summary>
@@ -107,6 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected int GetParameterLong(int parameterOrdinal)
         {
             return GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16);
@@ -117,20 +117,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected uint GetParameterULong(int parameterOrdinal)
         {
             return (uint)(GetParameter(parameterOrdinal) | (GetParameter(parameterOrdinal + 1) << 16));
         }
 
         /// <summary>
+        ///     Gets a Floating Point Double (64bit) Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected double GetParameterDouble(int parameterOrdinal)
+        {
+            return BitConverter.ToDouble(Module.Memory.GetArray(Registers.SS, GetParameterOffset(parameterOrdinal), 8));
+        }
+
+        /// <summary>
+        ///     Returns the Offset in the Stack of the Specified Parameter
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected ushort GetParameterOffset(int parameterOrdinal) => (ushort)(Registers.BP + 7 + (2 * parameterOrdinal));
+
+        /// <summary>
         ///     Gets a string Parameter
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected string GetParameterString(int parameterOrdinal, bool stripNull = false)
         {
-            var filenamePointer = GetParameterPointer(parameterOrdinal);
-            return Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, stripNull));
+            var stringPointer = GetParameterPointer(parameterOrdinal);
+            return Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull));
         }
 
         /// <summary>
@@ -138,6 +159,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns>The filename parameter, uppercased like DOS expects.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected string GetParameterFilename(int parameterOrdinal)
         {
             return GetParameterString(parameterOrdinal, true).ToUpper();
@@ -456,22 +478,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                         case 'f':
                             {
-                                var floatValue = new byte[4];
+                                var floatValue = new byte[8];
                                 if (isVsPrintf)
                                 {
-                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 4)
+                                    floatValue = Module.Memory.GetArray(vsPrintfBase.Segment, vsPrintfBase.Offset, 8)
                                         .ToArray();
-                                    vsPrintfBase.Offset += 4;
+                                    vsPrintfBase.Offset += 8;
                                 }
                                 else
                                 {
-                                    var parameterValue = GetParameterULong(currentParameter++);
-                                    currentParameter++;
-                                    Array.Copy(BitConverter.GetBytes(parameterValue), 0, floatValue, 0, 4);
+                                    var parameterValue = GetParameterOffset(currentParameter);
+                                    currentParameter+= 4;
+                                    floatValue = Module.Memory.GetArray(Registers.SS, parameterValue, 8).ToArray();
                                 }
 
                                 msFormattedValue.Write(
-                                    Encoding.ASCII.GetBytes(BitConverter.ToSingle(floatValue).ToString()));
+                                    Encoding.ASCII.GetBytes(((float)BitConverter.ToDouble(floatValue)).ToString()));
 
                                 break;
                             }

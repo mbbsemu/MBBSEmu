@@ -86,6 +86,15 @@ namespace MBBSEmu.CPU
             SetStackTop(stackTop);
         }
 
+        /// <summary>
+        ///     Clears Exception Flags from Status and Control Words
+        /// </summary>
+        public void ClearExceptions()
+        {
+            StatusWord &= 0xFFC0;
+            ControlWord &= 0xFFC0;
+        }
+
         public FpuStatusRegister()
         {
             ControlWord = 0x37F;

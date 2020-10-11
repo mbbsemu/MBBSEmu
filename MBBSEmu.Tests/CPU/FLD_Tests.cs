@@ -2,6 +2,7 @@
 using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
+
 namespace MBBSEmu.Tests.CPU
 {
     public class FLD_Tests : CpuTestBase
