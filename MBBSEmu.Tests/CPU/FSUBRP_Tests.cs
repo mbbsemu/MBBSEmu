@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = ST1Value - ST0Value;
+            var expectedValue = ST0Value - ST1Value;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }
@@ -50,7 +50,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = STiValue - ST0Value;
+            var expectedValue = ST0Value - STiValue;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }

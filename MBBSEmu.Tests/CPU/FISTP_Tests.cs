@@ -14,6 +14,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData((double)(short.MaxValue + 1), 0, 1)]
         [InlineData((double)(short.MinValue), short.MinValue, 0)]
         [InlineData((double)(short.MinValue - 1), 0, 1)]
+        [InlineData((double)31337, 31337, 0)]
         [InlineData(-0.0d, 0, 0)]
         [InlineData(double.NaN, 0, 1)]
         public void FISTP_Test_M16(double ST0Value, short expectedvalue, ushort expectedControlWord)

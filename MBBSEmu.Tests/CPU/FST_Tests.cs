@@ -15,17 +15,17 @@ namespace MBBSEmu.Tests.CPU
         public void FST_Test_ST1(double ST0Value)
         {
             Reset();
-            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
-            mbbsEmuCpuCore.FpuStack[0] = ST0Value;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = ST0Value;
 
             var instructions = new Assembler(16);
-            instructions.fst(st0);
+            instructions.fst(st1);
             CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(ST0Value, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
-            Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+            Assert.Equal(ST0Value, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+            Assert.Equal(1, mbbsEmuCpuRegisters.Fpu.GetStackTop());
         }
 
         [Theory]

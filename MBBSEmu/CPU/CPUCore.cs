@@ -2680,8 +2680,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fsubrp()
         {
-            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var valueToSubtract = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var valueToSubtract = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
 
             var result = valueToSubtractFrom - valueToSubtract;
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
@@ -3105,26 +3105,27 @@ namespace MBBSEmu.CPU
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
-                return;
-            }
-
-            if (ST0 > ST1)
-            {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
-            }
-            else if (ST0 < ST1)
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
             }
             else
             {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                if (ST0 > ST1)
+                {
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                }
+                else if (ST0 < ST1)
+                {
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                }
+                else
+                {
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                }
             }
 
             Registers.Fpu.PopStackTop();

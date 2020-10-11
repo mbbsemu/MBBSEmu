@@ -6,7 +6,7 @@ namespace MBBSEmu.Tests.CPU
 {
     public class FCOMPP_Tests : CpuTestBase
     {
-        private readonly ushort FPU_CODE_MASK = (ushort) (EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code1 |
+        private readonly ushort FPU_CODE_MASK = (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code1 |
                                                           EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
 
         [Theory]
@@ -32,6 +32,7 @@ namespace MBBSEmu.Tests.CPU
             var actualFPUCodes = mbbsEmuCpuRegisters.Fpu.StatusWord & FPU_CODE_MASK;
 
             Assert.Equal(expectedFlags, actualFPUCodes);
+            Assert.Equal(7, mbbsEmuCpuRegisters.Fpu.GetStackTop());
         }
     }
 }
