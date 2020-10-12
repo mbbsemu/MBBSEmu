@@ -30,6 +30,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             const string fileName = "file.txt";
             const string fileMode = "r";
             long expectedValue = FILE_CONTENTS.Length;
+            long failedValue = -1;
 
             //Create Text File
             var filePath = Path.Join(mbbsModule.ModulePath, fileName);
@@ -56,6 +57,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLOSE_ORDINAL,new List<IntPtr16> { fileHandle });
             
             File.Delete(filePath);
+            
+            //Test -1 return, use deleted file handle which won't exist
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<IntPtr16> { fileHandle });
+            
+            Assert.Equal((ushort)(failedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
+            Assert.Equal((ushort)(failedValue >> 16), mbbsEmuCpuRegisters.DX);
+            
         }
     }
 }
