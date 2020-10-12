@@ -33,7 +33,7 @@ namespace MBBSEmu.HostProcess
     /// </summary>
     public class MbbsHost : IMbbsHost
     {
-        private readonly ILogger _logger;
+        public ILogger Logger { get; set; }
 
         // 3 in the morning
         private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(hours: 3, minutes: 0, seconds: 0);
@@ -94,19 +94,10 @@ namespace MBBSEmu.HostProcess
         private readonly Timer _timer;
 
         /// <summary>
-        ///     Timer to prevent main loop from executing while cleanup is running
-        /// </summary>
-        private readonly Timer _nightlyCleanupTimer;
-
-        /// <summary>
-        ///     Flag to prevent main loop from executing while cleanup is running
-        /// </summary>
-        private bool _performingNightlyCleanup;
-        
-        /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
         private bool _performCleanup = false;
+        private EventWaitHandle _cleanupRestartEvent = null;
 
         private readonly IGlobalCache _globalCache;
         private readonly IFileUtility _fileUtility;
@@ -116,14 +107,14 @@ namespace MBBSEmu.HostProcess
 
         public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
-            _logger = logger;
+            Logger = logger;
             _globalCache = globalCache;
             _fileUtility = fileUtility;
             _mbbsRoutines = mbbsRoutines;
             _configuration = configuration;
             _globalRoutines = globalRoutines;
 
-            _logger.Info("Constructing MBBSEmu Host...");
+            Logger.Info("Constructing MBBSEmu Host...");
 
             _channelDictionary = new PointerDictionary<SessionBase>();
             _modules = new Dictionary<string, MbbsModule>();
@@ -132,8 +123,7 @@ namespace MBBSEmu.HostProcess
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = ParseCleanupTime();
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
-            _nightlyCleanupTimer = new Timer(ProcessNightlyCleanup, this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-            _logger.Info("Constructed MBBSEmu Host!");
+            Logger.Info("Constructed MBBSEmu Host!");
         }
 
         /// <summary>
@@ -143,12 +133,12 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, _logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
+                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
             {
-                _logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
+                Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
                 _modules.Remove(value.ModuleIdentifier);
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
@@ -176,6 +166,12 @@ namespace MBBSEmu.HostProcess
             _timer.Dispose();
         }
 
+        public void ScheduleNightlyShutdown(EventWaitHandle eventWaitHandle)
+        {
+            _cleanupRestartEvent = eventWaitHandle;
+            _performCleanup = true;
+        }
+
         public void WaitForShutdown()
         {
             _workerThread.Join();
@@ -191,8 +187,7 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
-                if (_performingNightlyCleanup)
-                    continue;
+                ProcessNightlyCleanup();
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -335,7 +330,7 @@ namespace MBBSEmu.HostProcess
 
         private void Shutdown()
         {
-            _logger.Info("SHUTTING DOWN");
+            Logger.Info("SHUTTING DOWN");
 
             // kill all active sessions
             foreach (var session in _channelDictionary.Values) {
@@ -343,7 +338,7 @@ namespace MBBSEmu.HostProcess
             }
 
             // let modules clean themselves up
-            CallModuleRoutine("finrou", module => _logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
+            CallModuleRoutine("finrou", module => Logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
 
             //clean up modules
             foreach (var m in _modules.Keys)
@@ -364,7 +359,7 @@ namespace MBBSEmu.HostProcess
                     routineEntryPoint.Offset != 0)
                 {
 #if DEBUG
-                    _logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
+                    Logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
 #endif
 
                     preRunCallback?.Invoke(m);
@@ -380,14 +375,11 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessIncomingSessions()
         {
-            //No new connections? Bail.
-            if (_incomingSessions.Count <= 0) return;
-
             while (_incomingSessions.TryDequeue(out var incomingSession))
             {
                 incomingSession.Channel = (ushort)_channelDictionary.Allocate(incomingSession);
                 incomingSession.SessionTimer.Start();
-                _logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
+                Logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
             }
         }
 
@@ -654,7 +646,7 @@ namespace MBBSEmu.HostProcess
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > (value.Delay * 1000))
                     {
 #if DEBUG
-                        _logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
+                        Logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
 #endif
                         Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{key}"], ushort.MaxValue);
                         value.Elapsed.Stop();
@@ -730,7 +722,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            _logger.Info($"Adding Module {module.ModuleIdentifier}...");
+            Logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
@@ -739,7 +731,7 @@ namespace MBBSEmu.HostProcess
             foreach (var seg in module.File.SegmentTable)
             {
                 module.Memory.AddSegment(seg);
-                _logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+                Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
             }
 
             //Setup Exported Modules
@@ -756,7 +748,7 @@ namespace MBBSEmu.HostProcess
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
-            _logger.Info($"Module {module.ModuleIdentifier} added!");
+            Logger.Info($"Module {module.ModuleIdentifier} added!");
         }
 
         /// <summary>
@@ -772,8 +764,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         public void AddSession(SessionBase session)
         {
+            Logger.Info($"Session {session.SessionId} added to incoming queue");
             _incomingSessions.Enqueue(session);
-            _logger.Info($"Session {session.SessionId} added to incoming queue");
         }
 
         /// <summary>
@@ -787,11 +779,14 @@ namespace MBBSEmu.HostProcess
                 return false;
             }
 
-            _logger.Info($"Removing Channel: {channel}");
+            Logger.Info($"Removing Channel: {channel}");
 
             CallModuleRoutine("huprou", preRunCallback: null, channel);
 
-            _channelDictionary[channel].Stop();
+            var session = _channelDictionary[channel];
+            session.Stop();
+            session.SessionState = EnumSessionState.Disconnected;
+
             _channelDictionary.Remove(channel);
 
             return true;
@@ -828,12 +823,12 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALGSBL" => new Galgsbl(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "DOSCALLS" => new Doscalls(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALME" => new Galme(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "PHAPI" => new Phapi(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALMSG" => new Galmsg(_logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALGSBL" => new Galgsbl(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "DOSCALLS" => new Doscalls(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALME" => new Galme(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "PHAPI" => new Phapi(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALMSG" => new Galmsg(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 
@@ -996,27 +991,32 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessNightlyCleanup(object ignored)
+        private void ProcessNightlyCleanup()
         {
-            if (!_performCleanup) return;
-            _performCleanup = false;
-            DoNightlyCleanup();
+            if (_performCleanup)
+            {
+                _performCleanup = false;
+                DoNightlyCleanup();
+
+                // signal that cleanup has completed
+                _cleanupRestartEvent?.Set();
+                _cleanupRestartEvent = null;
+            }
         }
 
         private void DoNightlyCleanup()
         {
-            _logger.Info("PERFORMING NIGHTLY CLEANUP");
-            _performingNightlyCleanup = true;
-            
+            Logger.Info("PERFORMING NIGHTLY CLEANUP");
+
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
-            
+
             // removes all sessions and stops worker thread
             RemoveSessions(session => true);
 
-            CallModuleRoutine("mcurou", module => _logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
-            CallModuleRoutine("finrou", module => _logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
+            CallModuleRoutine("mcurou", module => Logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
+            CallModuleRoutine("finrou", module => Logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
 
             foreach (var m in _modules.ToList())
             {
@@ -1024,9 +1024,10 @@ namespace MBBSEmu.HostProcess
                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
-            _logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
+
+            Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
+
             Start(_moduleConfigurations);
-            _performingNightlyCleanup = false;
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
@@ -1037,7 +1038,7 @@ namespace MBBSEmu.HostProcess
                 waitTime += TimeSpan.FromDays(1);
             }
 
-            _logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
+            Logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
             return waitTime;
         }
 
@@ -1053,7 +1054,7 @@ namespace MBBSEmu.HostProcess
 
         public void GenerateAPIReport()
         {
-            foreach (var apiReport in _modules.Select(m => new ApiReport(_logger, m.Value)))
+            foreach (var apiReport in _modules.Select(m => new ApiReport(Logger, m.Value)))
             {
                 apiReport.GenerateReport();
             }

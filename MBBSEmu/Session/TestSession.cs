@@ -22,7 +22,20 @@ namespace MBBSEmu.Session
             SessionState = EnumSessionState.EnteringModule;
         }
 
+        private EnumSessionState _enumSessionState;
+
+        public event EventHandler<EnumSessionState> OnSessionStateChanged;
+
+        public override EnumSessionState SessionState {
+            get => _enumSessionState;
+            set {
+                _enumSessionState = value;
+                OnSessionStateChanged?.Invoke(this, value);
+            }
+        }
+
         public override void Stop() {}
+
 
         /// <summary>
         ///     Reads data from the module until a new line is received, and returns the line with

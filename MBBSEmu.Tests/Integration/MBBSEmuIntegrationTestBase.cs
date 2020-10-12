@@ -1,10 +1,8 @@
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
-using MBBSEmu.IO;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
-using NLog;
 using System.Collections.Generic;
 using System.IO;
 using System;
@@ -57,7 +55,7 @@ namespace MBBSEmu.Tests.Integration
             }
         }
 
-        protected delegate void TestLogic(TestSession testSession);
+        protected delegate void TestLogic(TestSession testSession, IMbbsHost host);
 
         protected void ExecuteTest(TestLogic testLogic)
         {
@@ -82,7 +80,7 @@ namespace MBBSEmu.Tests.Integration
             _session = new TestSession(host);
             host.AddSession(_session);
 
-            testLogic(_session);
+            testLogic(_session, host);
 
             host.Stop();
 

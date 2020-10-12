@@ -73,7 +73,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Current State of this Users Session
         /// </summary>
-        public EnumSessionState SessionState { get; set; }
+        public virtual EnumSessionState SessionState { get; set; }
 
         /// <summary>
         ///     GSBL Echo Buffer
