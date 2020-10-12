@@ -14,7 +14,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -7712,19 +7711,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void filelength()
         {
             var fileHandle = GetParameter(0);
+            var result = -1L;
             
             if (FilePointerDictionary.TryGetValue(fileHandle,out var filePointer))
             {
-                var resultLong = Convert.ToInt32(filePointer.Length);
-                Registers.DX = (ushort)(resultLong >> 16);
-                Registers.AX = (ushort)(resultLong & 0xFFFF);  
+                result = filePointer.Length;
             }
-            else
-            {
-                var resultFail = Convert.ToInt32(-1);
-                Registers.DX = (ushort)(resultFail >> 16);
-                Registers.AX = (ushort)(resultFail & 0xFFFF);    
-            }
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
         }
     }
 }
