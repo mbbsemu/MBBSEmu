@@ -217,6 +217,13 @@ namespace MBBSEmu.HostProcess
                         {
                             session.Status = 1;
                             session.InputBuffer.SetLength(0);
+
+                            //Redisplay Main Menu prompt after global if session is at Main Menu
+                            if (session.SessionState == EnumSessionState.MainMenuInput)
+                            { 
+                                session.SessionState = EnumSessionState.MainMenuInputDisplay;   
+                            }
+                            
                             continue;
                         }
 
