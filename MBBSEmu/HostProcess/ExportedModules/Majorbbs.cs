@@ -1200,6 +1200,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 960:
                     stp4cs();
                     break;
+                case 211:
+                    filelength();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -7698,6 +7701,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             result.WriteByte(0);
             Module.Memory.SetArray(stringPointer, result.ToArray());
             Registers.SetPointer(stringPointer);
+        }
+        
+        /// <summary>
+        ///     filelength - gets file size in bytes
+        ///
+        ///     Signature: long filelength(int handle);
+        /// </summary>
+        private void filelength()
+        {
+            var fileHandle = GetParameter(0);
+            var filePointer = FilePointerDictionary[fileHandle];
+            
+            var resultLong = Convert.ToInt32(filePointer.Length);
+            
+            Registers.DX = (ushort)(resultLong >> 16);
+            Registers.AX = (ushort)(resultLong & 0xFFFF);
         }
     }
 }
