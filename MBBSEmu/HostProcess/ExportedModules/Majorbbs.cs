@@ -949,6 +949,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 125:
                     cncint();
                     break;
+                case 126:
+                    cnclon();
+                    break;
                 case 656:
                     f_ludiv();
                     break;
@@ -5580,6 +5583,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
+        private void cnclon() => cncint();
+
         /// <summary>
         ///     Expect an integer from the user
         ///
@@ -5588,33 +5593,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void cncint()
         {
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLengthPointer = Module.Memory.GetVariablePointer("INPLEN");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
 
-            var inputLength = Module.Memory.GetWord(inputLengthPointer);
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
 
-            if (inputLength == 0)
+            if (remainingCharactersInCommand == 0)
             {
                 Registers.AX = 0;
                 return;
             }
 
-            var inputCommand = Module.Memory.GetArray(inputPointer, inputLength);
+            var inputString = Encoding.ASCII.GetString(Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand));
 
-            var msResult = new MemoryStream();
-            while (_inputCurrentPosition < inputLength && inputCommand[_inputCurrentPosition] != 0x0 &&
-                   inputCommand[_inputCurrentPosition] != 0x20)
+            IEnumerator<char> charEnumerator = inputString.GetEnumerator();
+            if (!charEnumerator.MoveNext())
             {
-                msResult.WriteByte(inputCommand[_inputCurrentPosition]);
-                _inputCurrentPosition++;
+                Registers.AX = 0;
+                return;
             }
 
-            ushort.TryParse(Encoding.ASCII.GetString(msResult.ToArray()), out var result);
+            var (value, moreInput) = GetLeadingNumberFromString(charEnumerator, out var success);
 
+            Registers.AX = success ? (ushort) value : (ushort) 0;
 #if DEBUG
-            _logger.Info($"Returned Int: {result}");
+            _logger.Info($"Returned Int: '{inputString}' {Registers.AX}");
 #endif
-
-            Registers.AX = result;
         }
 
         /// <summary>
