@@ -7721,7 +7721,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             else
             {
-                var resultFail = -1;
+                var resultFail = Convert.ToInt32(-1);
                 Registers.DX = (ushort)(resultFail >> 16);
                 Registers.AX = (ushort)(resultFail & 0xFFFF);    
             }
