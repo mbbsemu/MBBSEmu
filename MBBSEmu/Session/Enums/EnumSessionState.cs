@@ -121,6 +121,8 @@ namespace MBBSEmu.Session.Enums
 
         InFullScreenEditor,
 
-        ExitingFullScreenDisplay
+        ExitingFullScreenDisplay,
+
+        Disconnected
     }
 }

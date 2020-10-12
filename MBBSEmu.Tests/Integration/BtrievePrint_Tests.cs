@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void DoEchoTestAndLogOff()
         {
-            ExecuteTest(session => {
+            ExecuteTest((session, host) => {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));

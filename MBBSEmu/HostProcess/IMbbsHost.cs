@@ -1,7 +1,9 @@
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
+using NLog;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace MBBSEmu.HostProcess
 {
@@ -46,6 +48,12 @@ namespace MBBSEmu.HostProcess
         public MbbsModule GetModule(string uniqueIdentifier);
 
         /// <summary>
+        ///     Schedules nightly shutdown to occur immediately
+        /// </summary>
+        /// <param name="restartCompletionEvent">EventWaitHandle to set when restart has completed</param>
+        public void ScheduleNightlyShutdown(EventWaitHandle restartCompletionEvent);
+
+        /// <summary>
         ///     Waits until the processing thread exits. Useful for tests
         /// </summary>
         public void WaitForShutdown();
@@ -53,6 +61,8 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Generates API Report
         /// </summary>
-        void GenerateAPIReport();
+        public void GenerateAPIReport();
+
+        public ILogger Logger { get; set; }
     }
 }
