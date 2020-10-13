@@ -859,14 +859,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Consumes all whitespace from input and moves to the first non-whitespace character.
         /// </summary>
-        protected bool ConsumeWhitespace(IEnumerator<char> input)
+        /// <return>boolean for whether there is more input remaining, and an integer for the count
+        ///      of characters consumed/skipped</return>
+        protected (bool, int) ConsumeWhitespace(IEnumerator<char> input)
         {
+            int count = 0;
             do {
                 if (!char.IsWhiteSpace(input.Current))
-                    return true;
+                    return (true, count);
+
+                ++count;
             } while (input.MoveNext());
 
-            return false;
+            return (false, count);
         }
 
         /// <summary>
@@ -877,7 +882,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var builder = new StringBuilder();
 
-            if (!ConsumeWhitespace(input))
+            var (moreInput, _) = ConsumeWhitespace(input);
+            if (!moreInput)
                 return ("", false);
 
             do {
@@ -896,6 +902,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return (builder.ToString(), false);
         }
 
+        protected class LeadingNumberFromStringResult
+        {
+            public bool Valid { get; set; }
+            public int Value { get; set; }
+            public String StringValue { get; set; }
+            public bool MoreInput { get; set; }
+
+            public LeadingNumberFromStringResult()
+            {
+                Valid = false;
+                Value = 0;
+                StringValue = "";
+                MoreInput = false;
+            }
+        }
+
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
@@ -903,32 +925,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
-        /// <param name="success">True if a valid integer was parsed and returned</param>
-        /// <return>The number, and a boolean indicating whether there is more input to be read.
-        ///         "123test" would return (123, true) where "123" would return (123, false)
         /// </return>
-        private protected (int, bool) GetLeadingNumberFromString(IEnumerator<char> input, out bool success)
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input)
         {
-            success = false;
+            LeadingNumberFromStringResult result = new LeadingNumberFromStringResult();
 
             var count = 0;
 
-            var (possibleInteger, moreInput) = ReadString(input, c => {
+            (result.StringValue, result.MoreInput) = ReadString(input, c => {
+                if (count >= 11)
+                    return CharacterAccepterResponse.ABORT;
+
                 var first = (count++ == 0);
                 if (first && c == '+')
                     return CharacterAccepterResponse.SKIP;
-                if (char.IsDigit(c) || (first && c == '-'))
+                else if ((first && c == '-') || char.IsDigit(c))
                     return CharacterAccepterResponse.ACCEPT;
 
                 return CharacterAccepterResponse.ABORT;
             });
 
+            result.Valid = Int32.TryParse(result.StringValue, out var value);
+            if (result.Valid)
+                result.Value = value;
 
-            success = int.TryParse(possibleInteger, out var result);
-            if (!success)
-                _logger.Warn($"Unable to cast to long: {possibleInteger}");
-
-            return (result, moreInput);
+            return result;
         }
 
         /// <summary>
@@ -938,21 +959,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
-        /// <param name="success">True if a valid integer was parsed and returned</param>
-        /// <return>The number, and a boolean indicating whether there is more input to be read.
-        ///         "123test" would return (123, true) where "123" would return (123, false)
         /// </return>
-        private protected (int, bool) GetLeadingNumberFromString(string inputString, out bool success)
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
         {
             var enumerator = inputString.GetEnumerator();
             if (!enumerator.MoveNext())
             {
-                success = false;
-                return (0, false);
+                return new LeadingNumberFromStringResult();
             }
 
-            return GetLeadingNumberFromString(enumerator, out success);
+            return GetLeadingNumberFromString(enumerator);
         }
+
         /// <summary>
         ///     Handles calling functions to format bytes to be sent to the client.
         ///

@@ -41,7 +41,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
-        private int _inputCurrentPosition;
 
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
         private const ushort NUMBER_OF_CHANNELS = 0x4;
@@ -76,7 +75,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
-            _inputCurrentPosition = 0;
             _previousMcvFile = new Stack<IntPtr16>(10);
             _previousBtrieveFile = new Stack<IntPtr16>(10);
             _highResolutionTimer.Start();
@@ -947,10 +945,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     morcnc();
                     break;
                 case 125:
-                    cncint();
+                    cncint(CncIntegerReturnType.INT);
                     break;
-                case 126:
-                    cnclon();
+                case 126: // cnclon
+                    cncint(CncIntegerReturnType.LONG);
                     break;
                 case 656:
                     f_ludiv();
@@ -1173,8 +1171,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 155:
                     daytoday();
                     break;
-                case 127:
-                    cncnum();
+                case 127: // cncnum
+                    cncint(CncIntegerReturnType.STRING);
                     break;
                 case 339:
                     hexopt();
@@ -1612,12 +1610,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(0);
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
-            var (outputValue, moreInput) = GetLeadingNumberFromString(stringToLong, out var success);
+            var result = GetLeadingNumberFromString(stringToLong);
+            // GetLeadingNumberFromString overflows
+            result.Valid = Int32.TryParse(result.StringValue, out var value);
+            result.Value = value;
 
-            Registers.DX = (ushort)(outputValue >> 16);
-            Registers.AX = (ushort)(outputValue & 0xFFFF);
+            Registers.DX = (ushort)(result.Value >> 16);
+            Registers.AX = (ushort)(result.Value & 0xFFFF);
 
-            if (success)
+            if (result.Valid)
             {
                 Registers.F.ClearFlag(EnumFlags.CF);
 #if DEBUG
@@ -3580,7 +3581,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var moreInput = true;
-            int number;
             string stringValue;
             bool longInteger = false;
 
@@ -3600,7 +3600,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         break;
                     case FormatParseState.NORMAL:
                         // match a single character
-                        moreInput = ConsumeWhitespace(input);
+                        (moreInput, _) = ConsumeWhitespace(input);
                         if (moreInput)
                         {
                             moreInput = (formatChar == input.Current);
@@ -3608,24 +3608,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         break;
                     case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
-                        (number, moreInput) = GetLeadingNumberFromString(input, out var success);
+                        var result = GetLeadingNumberFromString(input);
+                        moreInput = result.MoreInput;
                         if (longInteger)
                         {
                             // low word first followed by high word
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal),
-                                (ushort) ((uint)number & 0xFFFF));
+                                (ushort) ((uint)result.Value & 0xFFFF));
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal) + 2,
-                                (ushort) ((uint)number >> 16));
+                                (ushort) ((uint)result.Value >> 16));
                         }
                         else
                         {
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal),
-                                (ushort) number);
+                                (ushort) result.Value);
                         }
-                        if (success)
+
+                        if (result.Valid)
                             ++matches;
 
                         startingParameterOrdinal += 2;
@@ -5586,14 +5588,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
-        private void cnclon() => cncint();
+        private enum CncIntegerReturnType
+        {
+            INT, // for cncint()
+            LONG, // for cnclon()
+            STRING, // for cncnum()
+        }
 
         /// <summary>
         ///     Expect an integer from the user
         ///
-        ///     Signature: int n=cncint()
+        ///     Signature: returnType n=cncint()
         /// </summary>
-        private void cncint()
+        private void cncint(CncIntegerReturnType returnType)
         {
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
             var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
@@ -5604,6 +5611,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (remainingCharactersInCommand == 0)
             {
                 Registers.AX = 0;
+                if (returnType == CncIntegerReturnType.LONG)
+                    Registers.DX = 0;
                 return;
             }
 
@@ -5613,15 +5622,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!charEnumerator.MoveNext())
             {
                 Registers.AX = 0;
+                if (returnType == CncIntegerReturnType.LONG)
+                    Registers.DX = 0;
                 return;
             }
 
-            var (value, moreInput) = GetLeadingNumberFromString(charEnumerator, out var success);
+            (var moreInput, var skipped) = ConsumeWhitespace(charEnumerator);
 
-            Registers.AX = success ? (ushort) value : (ushort) 0;
-#if DEBUG
-            _logger.Info($"Returned Int: '{inputString}' {Registers.AX}");
-#endif
+            var result = GetLeadingNumberFromString(charEnumerator);
+
+            if (result.StringValue.Length > 0)
+                Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);
+
+            switch (returnType)
+            {
+                case CncIntegerReturnType.INT:
+                    Registers.AX = result.Valid ? (ushort) result.Value : (ushort) 0;
+                    break;
+                case CncIntegerReturnType.LONG:
+                    Registers.AX = result.Valid ? (ushort) ((uint) result.Value & 0xFFFF) : (ushort) 0;
+                    Registers.DX = result.Valid ? (ushort) ((uint) result.Value >> 16) : (ushort) 0;
+                    break;
+                case CncIntegerReturnType.STRING:
+                    var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
+                    Module.Memory.SetArray(cncNumArray, Encoding.ASCII.GetBytes(result.StringValue));
+                    Registers.SetPointer(cncNumArray);
+                    break;
+            }
         }
 
         /// <summary>
@@ -7494,83 +7521,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public ReadOnlySpan<byte> digalw => Module.Memory.GetVariablePointer("DIGALW").Data;
 
         /// <summary>
-        ///     Expect a Decimal from the user (character from the current command)
-        ///     Allows for a leading '-' to support negative numbers, and stops at the first
-        ///     non-numeric character.
-        ///
-        ///     cncnum() is executed after begincnc(), which runs rstrin() replacing the null separtors
-        ///     in the string with spaces once again.
-        /// </summary>
-        private void cncnum()
-        {
-            //Get Input
-            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
-            var inputLength = Module.Memory.GetWord("INPLEN");
-
-            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
-
-            //Skip any excessive spacing
-            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
-            {
-                nxtcmdPointer.Offset++;
-                remainingCharactersInCommand--;
-            }
-            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 12); //max length is 12 characters
-            Registers.SetPointer(returnPointer);
-
-            //Verify we're not at the end of the input
-            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
-            {
-                //Write null to output
-                Module.Memory.SetByte(returnPointer, 0);
-                return;
-            }
-
-            var returnedWord = new MemoryStream();
-            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
-
-            //Build Return Decimal stopping when a space/non-digit is encountered
-            for (var i = 0; i < 12; i++)
-            {
-                var b = inputString[i];
-
-                //Allow the 1st character to be a negative sign
-                if (i == 0 && b == '-')
-                {
-                    returnedWord.WriteByte(b);
-                    continue;
-                }
-
-                if (b == ' ' || b == 0 || !char.IsDigit((char) b))
-                    break;
-
-                returnedWord.WriteByte(b);
-            }
-
-            returnedWord.WriteByte(0);
-
-            Module.Memory.SetArray(returnPointer, returnedWord.ToArray());
-
-            //Modify the Counters -- if there's more than just the null terminator
-            if (returnedWord.Length > 1)
-            {
-                remainingCharactersInCommand -= (int) returnedWord.Length;
-                nxtcmdPointer.Offset += (ushort) returnedWord.Length;
-            }
-
-            //Advance to the next, non-space character
-            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
-            {
-                nxtcmdPointer.Offset++;
-                remainingCharactersInCommand--;
-            }
-
-            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
-        }
-
-
-        /// <summary>
         ///     Retrieves a Hex value as Numeric option from MCV file
         ///
         ///     Signature: unsigned hexopt(int msgnum,unsigned floor,unsigned ceiling);
@@ -7706,7 +7656,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(stringPointer, result.ToArray());
             Registers.SetPointer(stringPointer);
         }
-        
+
         /// <summary>
         ///     filelength - gets file size in bytes
         ///
@@ -7716,7 +7666,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var fileHandle = GetParameter(0);
             var result = -1L;
-            
+
             if (FilePointerDictionary.TryGetValue(fileHandle,out var filePointer))
             {
                 result = filePointer.Length;
