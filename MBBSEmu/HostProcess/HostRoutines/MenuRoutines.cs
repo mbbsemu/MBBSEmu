@@ -295,7 +295,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session,
                     "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
-                foreach (var m in modules.Values.OrderBy(x => x.MenuOptionKey))
+                foreach (var m in modules.Values.OrderBy(x => x.MenuOptionKey.PadLeft(4, '0')))
                 {
                     EchoToClient(session,
                         $"   |CYAN||B|{m.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.ModuleDescription}\r\n".EncodeToANSIArray());
