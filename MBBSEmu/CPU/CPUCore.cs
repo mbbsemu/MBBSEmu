@@ -535,6 +535,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fcom:
                     Op_Fcom();
                     break;
+                case Mnemonic.Fdivr:
+                    Op_Fdivr();
+                    break;
+                case Mnemonic.Fdivrp:
+                    Op_Fdivrp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -3307,6 +3313,33 @@ namespace MBBSEmu.CPU
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
             }
 
+        }
+
+        /// <summary>
+        ///     Floating Point Reverse Division (x87)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fdivr()
+        {
+            var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+
+            var result = dividend / ST0;
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
+        }
+
+        /// <summary>
+        ///     Floating Point Reverse Division (x87)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fdivrp()
+        {
+            var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var divisor = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+
+            var result = dividend / divisor;
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
+            Registers.Fpu.PopStackTop();
         }
     }
 }
