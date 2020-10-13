@@ -295,10 +295,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session,
                     "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
-                foreach (var m in modules)
+                foreach (var m in modules.Values.OrderBy(x => x.MenuOptionKey))
                 {
                     EchoToClient(session,
-                        $"   |CYAN||B|{m.Value.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.Value.ModuleDescription}\r\n".EncodeToANSIArray());
+                        $"   |CYAN||B|{m.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.ModuleDescription}\r\n".EncodeToANSIArray());
                 }
             }
             else
