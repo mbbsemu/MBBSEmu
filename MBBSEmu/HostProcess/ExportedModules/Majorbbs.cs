@@ -1611,9 +1611,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
 
             var result = GetLeadingNumberFromString(stringToLong);
-            // GetLeadingNumberFromString overflows
-            result.Valid = Int32.TryParse(result.StringValue, out var value);
-            result.Value = value;
 
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
@@ -1621,9 +1618,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (result.Valid)
             {
                 Registers.F.ClearFlag(EnumFlags.CF);
-#if DEBUG
-                //_logger.Info($"Cast {stringToLong} ({sourcePointer}) to {outputValue} long");
-#endif
             }
             else
             {

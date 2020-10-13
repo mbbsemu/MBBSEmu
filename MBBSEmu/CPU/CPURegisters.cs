@@ -362,6 +362,11 @@ namespace MBBSEmu.CPU
             return (GetValue(highBytes) << 16) | GetValue(lowBytes);
         }
 
+        public int GetLong()
+        {
+            return DX << 16 | AX;
+        }
+
         /// <summary>
         ///     Returns a DOS.H compatible struct for register values (WORDREGS, BYTEREGS)
         /// </summary>
