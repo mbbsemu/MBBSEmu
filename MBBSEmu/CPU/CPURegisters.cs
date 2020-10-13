@@ -362,6 +362,9 @@ namespace MBBSEmu.CPU
             return (GetValue(highBytes) << 16) | GetValue(lowBytes);
         }
 
+        /// <summary>
+        ///     Returns a 32-bit long from DX:AX
+        /// </summary>
         public int GetLong()
         {
             return DX << 16 | AX;

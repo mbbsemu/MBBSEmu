@@ -5590,6 +5590,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
             STRING, // for cncnum()
         }
 
+        private void cncint_ErrorResult(CncIntegerReturnType returnType)
+        {
+            switch (returnType)
+            {
+                case CncIntegerReturnType.INT:
+                    Registers.AX = 0;
+                    break;
+                case CncIntegerReturnType.LONG:
+                    Registers.AX = 0;
+                    Registers.DX = 0;
+                    break;
+                case CncIntegerReturnType.STRING:
+                    var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
+                    Module.Memory.SetByte(cncNumArray, 0);
+                    Registers.SetPointer(cncNumArray);
+                    break;
+            }
+        }
+
         /// <summary>
         ///     Expect an integer from the user
         ///
@@ -5605,9 +5624,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (remainingCharactersInCommand == 0)
             {
-                Registers.AX = 0;
-                if (returnType == CncIntegerReturnType.LONG)
-                    Registers.DX = 0;
+                cncint_ErrorResult(returnType);
                 return;
             }
 
@@ -5616,9 +5633,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             IEnumerator<char> charEnumerator = inputString.GetEnumerator();
             if (!charEnumerator.MoveNext())
             {
-                Registers.AX = 0;
-                if (returnType == CncIntegerReturnType.LONG)
-                    Registers.DX = 0;
+                cncint_ErrorResult(returnType);
                 return;
             }
 

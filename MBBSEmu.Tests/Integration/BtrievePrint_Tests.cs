@@ -38,7 +38,7 @@ namespace MBBSEmu.Tests.Integration
             });
         }
 
-        private int mbbsemuHash(string s)
+        private static int mbbsemuHash(string s)
         {
             int hash = 7;
             foreach (char c in s)
@@ -69,10 +69,6 @@ namespace MBBSEmu.Tests.Integration
                 session.SendToModule(Encoding.ASCII.GetBytes("P\r\n"));
 
                 var lines = WaitUntil('.', "Press X to exit");
-
-                foreach (var s in lines)
-                    host.Logger.Error(s);
-
                 var expected = new List<string>() {
                     " P\r\nPrinting all the btrieve rows.",
                     ".",
