@@ -2831,6 +2831,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bgncnc()
         {
+            clrprf();
             rstrin();
         }
 
