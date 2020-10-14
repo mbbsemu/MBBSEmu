@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -128,6 +129,8 @@ namespace MBBSEmu.Btrieve
             //Only load records if there are any present
             if (LoadedFile.RecordCount > 0)
                 LoadBtrieveRecords();
+
+            CreateSqliteDB(Path.Combine(path, Path.ChangeExtension(fileName, "DB")));
         }
 
         /// <summary>
@@ -1113,5 +1116,118 @@ namespace MBBSEmu.Btrieve
             outputFile.Close();
         }
 
+        private void CreateSqliteDataTable(SQLiteConnection connection)
+        {
+            StringBuilder sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
+            foreach(var key in LoadedFile.Keys)
+            {
+                var segment = key.Value.Segments[0];
+                sb.Append($", key{segment.Number} BLOB NOT NULL");
+            }
+            sb.Append(");");
+
+            using var cmd = new SQLiteCommand(sb.ToString(), connection);
+            cmd.ExecuteNonQuery();
+
+            using var transaction = connection.BeginTransaction();
+            foreach (var record in LoadedFile.Records.OrderBy(x => x.Offset))
+            {
+                using var insertCmd = new SQLiteCommand(connection);
+
+                sb = new StringBuilder("INSERT INTO data_t(data");
+                foreach(var key in LoadedFile.Keys)
+                {
+                    var segment = key.Value.Segments[0];
+                    sb.Append($", key{segment.Number}");
+                }
+                sb.Append(") VALUES(@data");
+                foreach(var key in LoadedFile.Keys)
+                {
+                    var segment = key.Value.Segments[0];
+                    sb.Append($", @key{segment.Number}");
+                }
+                sb.Append(");");
+                insertCmd.CommandText = sb.ToString();
+
+                //var data = record.Data;
+                insertCmd.Parameters.AddWithValue("@data", record.Data);
+                foreach(var key in LoadedFile.Keys)
+                {
+                    var segment = key.Value.Segments[0];
+                    var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
+                    insertCmd.Parameters.AddWithValue($"key{segment.Number}", keyData.ToArray());
+                }
+                insertCmd.ExecuteNonQuery();
+            }
+            transaction.Commit();
+        }
+
+        private void CreateSqliteMetadataTable(SQLiteConnection connection)
+        {
+            string statement = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
+
+            using var cmd = new SQLiteCommand(statement, connection);
+            cmd.ExecuteNonQuery();
+
+            using var insertCmd = new SQLiteCommand(connection);
+            cmd.CommandText = "INSERT INTO metadata_t(record_length, physical_record_length, page_length) VALUES(@record_length, @physical_record_length, @page_length)";
+            cmd.Parameters.AddWithValue("@record_length", LoadedFile.RecordLength);
+            cmd.Parameters.AddWithValue("@physical_record_length", LoadedFile.PhysicalRecordLength);
+            cmd.Parameters.AddWithValue("@page_length", LoadedFile.PageLength);
+            cmd.ExecuteNonQuery();
+        }
+
+        private void CreateSqliteKeysTable(SQLiteConnection connection)
+        {
+            string statement = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL)";
+
+            using var cmd = new SQLiteCommand(statement, connection);
+            cmd.ExecuteNonQuery();
+
+            using var insertCmd = new SQLiteCommand(connection);
+            cmd.CommandText = "INSERT INTO keys_t(id, attributes, data_type, offset, length) VALUES(@id, @attributes, @data_type, @offset, @length)";
+
+            foreach (var key in LoadedFile.Keys)
+            {
+                // only grab the first
+                var segment = key.Value.Segments[0];
+                {
+                    cmd.Reset();
+                    cmd.Parameters.AddWithValue("@id", segment.Number);
+                    cmd.Parameters.AddWithValue("@attributes", segment.Attributes);
+                    cmd.Parameters.AddWithValue("@data_type", segment.DataType);
+                    cmd.Parameters.AddWithValue("@offset", segment.Offset);
+                    cmd.Parameters.AddWithValue("@length", segment.Length);
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private void CreateSqliteDB(string filepath)
+        {
+            _logger.Warn($"Creating sqlite db {filepath}");
+
+            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
+            {
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                DataSource = filepath,
+            }.ToString();
+            string stm = "SELECT SQLITE_VERSION()";
+
+            using var conn = new SQLiteConnection(connectionString);
+            conn.Open();
+
+            CreateSqliteMetadataTable(conn);
+            CreateSqliteKeysTable(conn);
+            CreateSqliteDataTable(conn);
+
+            using var cmd = new SQLiteCommand(stm, conn);
+            string version = cmd.ExecuteScalar().ToString();
+
+            _logger.Error($"SQLite version: {version}");
+
+            conn.Close();
+        }
     }
 }
