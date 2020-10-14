@@ -20,6 +20,9 @@ namespace MBBSEmu.Session
 
             SessionType = EnumSessionType.Test;
             SessionState = EnumSessionState.EnteringModule;
+
+            Username = "Sysop";
+            Email  = "sysop@grnet.com";
         }
 
         private EnumSessionState _enumSessionState;

@@ -102,7 +102,7 @@ namespace MBBSEmu.Memory
             if (left is null && right is null)
                 return true;
 
-            if (!(left is null) && right is null)
+            if (left is null || right is null)
                 return false;
 
             if (left.Segment != right.Segment)
@@ -119,7 +119,7 @@ namespace MBBSEmu.Memory
             if (left is null && right is null)
                 return false;
 
-            if (!(left is null) && right is null)
+            if (left is null || right is null)
                 return true;
 
             if (left.Segment != right.Segment)

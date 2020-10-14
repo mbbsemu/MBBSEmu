@@ -363,6 +363,14 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Returns a 32-bit long from DX:AX
+        /// </summary>
+        public int GetLong()
+        {
+            return DX << 16 | AX;
+        }
+
+        /// <summary>
         ///     Returns a DOS.H compatible struct for register values (WORDREGS, BYTEREGS)
         /// </summary>
         /// <returns></returns>
