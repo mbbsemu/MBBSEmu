@@ -137,7 +137,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("PFNLVL", 0);
             Module.Memory.AllocateVariable("VERSION", 5);
             Module.Memory.SetArray("VERSION", Encoding.ASCII.GetBytes("2.00"));
-            Module.Memory.AllocateVariable("SYSCYC", sizeof(uint));
+            Module.Memory.AllocateVariable("SYSCYC", IntPtr16.Size);
 
             Module.Memory.AllocateVariable("NUMBYTS", sizeof(uint));
             Module.Memory.AllocateVariable("NUMFILS", sizeof(uint));
