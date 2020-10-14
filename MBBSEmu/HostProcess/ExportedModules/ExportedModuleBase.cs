@@ -21,6 +21,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public abstract class ExportedModuleBase
     {
+        /// <summary>
+        ///     The return value from the GetLeadingNumberFromString methods
+        /// </summary>
+        protected class LeadingNumberFromStringResult
+        {
+            /// <summary>Whether the integer parsing succeeded</summary>
+            public bool Valid { get; set; }
+            /// <summary>The integer valued parsed. Only valid is Valid is true, otherwise 0.</summary>
+            public int Value { get; set; }
+            /// <summary>The raw string that was parsed.</summary>
+            public string StringValue { get; set; }
+            /// <summary>True to indicate there is more input following what was parsed</summary>
+            public bool MoreInput { get; set; }
+
+            public LeadingNumberFromStringResult()
+            {
+                Valid = false;
+                Value = 0;
+                StringValue = "";
+                MoreInput = false;
+            }
+        }
+
         public const ushort OUTBUF_SIZE = 8192;
 
         /// <summary>
@@ -863,7 +886,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///      of characters consumed/skipped</return>
         protected (bool, int) ConsumeWhitespace(IEnumerator<char> input)
         {
-            int count = 0;
+            var count = 0;
             do {
                 if (!char.IsWhiteSpace(input.Current))
                     return (true, count);
@@ -902,22 +925,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return (builder.ToString(), false);
         }
 
-        protected class LeadingNumberFromStringResult
-        {
-            public bool Valid { get; set; }
-            public int Value { get; set; }
-            public String StringValue { get; set; }
-            public bool MoreInput { get; set; }
-
-            public LeadingNumberFromStringResult()
-            {
-                Valid = false;
-                Value = 0;
-                StringValue = "";
-                MoreInput = false;
-            }
-        }
-
         /// <summary>
         ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
         ///     where a string "123test" should be converted to 123.
@@ -925,11 +932,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
-        /// </return>
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input)
         {
-            LeadingNumberFromStringResult result = new LeadingNumberFromStringResult();
-
+            var result = new LeadingNumberFromStringResult();
             var count = 0;
 
             (result.StringValue, result.MoreInput) = ReadString(input, c => {
@@ -939,7 +944,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var first = (count++ == 0);
                 if (first && c == '+')
                     return CharacterAccepterResponse.SKIP;
-                else if ((first && c == '-') || char.IsDigit(c))
+                if ((first && c == '-') || char.IsDigit(c))
                     return CharacterAccepterResponse.ACCEPT;
 
                 return CharacterAccepterResponse.ABORT;
@@ -963,12 +968,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
         {
             var enumerator = inputString.GetEnumerator();
-            if (!enumerator.MoveNext())
-            {
-                return new LeadingNumberFromStringResult();
-            }
-
-            return GetLeadingNumberFromString(enumerator);
+            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator) : new LeadingNumberFromStringResult();
         }
 
         /// <summary>

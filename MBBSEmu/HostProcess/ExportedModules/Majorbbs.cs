@@ -18,7 +18,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Iced.Intel;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -28,6 +27,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public class Majorbbs : ExportedModuleBase, IExportedModule, IDisposable
     {
+        /// <summary>Used to specify the return type of cncint/cnclon/cncnum</summary>
+        private enum CncIntegerReturnType
+        {
+            INT, // for cncint()
+            LONG, // for cnclon()
+            STRING, // for cncnum()
+        }
+
         public IntPtr16 GlobalCommandHandler;
 
         private IntPtr16 _currentMcvFile
@@ -5583,13 +5590,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
-        private enum CncIntegerReturnType
-        {
-            INT, // for cncint()
-            LONG, // for cnclon()
-            STRING, // for cncnum()
-        }
-
         private void cncint_ErrorResult(CncIntegerReturnType returnType)
         {
             switch (returnType)
@@ -5637,7 +5637,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            (var moreInput, var skipped) = ConsumeWhitespace(charEnumerator);
+            var (moreInput, skipped) = ConsumeWhitespace(charEnumerator);
+            if (!moreInput) {
+                cncint_ErrorResult(returnType);
+                return;
+            }
 
             var result = GetLeadingNumberFromString(charEnumerator);
 
