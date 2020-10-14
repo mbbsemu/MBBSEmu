@@ -329,6 +329,7 @@ namespace MBBSEmu.HostProcess
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
                 ProcessRTIHDLR();
+                ProcessSYSCYC();
                 ProcessTasks();
             }
 
@@ -692,6 +693,20 @@ namespace MBBSEmu.HostProcess
             }
 
             _realTimeStopwatch.Restart();
+        }
+
+        /// <summary>
+        ///     Processes the routine set to a modules specified SYSCYC Pointer
+        /// </summary>
+        private void ProcessSYSCYC()
+        {
+            foreach (var m in _modules.Values)
+            {
+                var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
+                if (syscycPointer == IntPtr16.Empty) continue;
+
+                Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
+            }
         }
 
         /// <summary>
