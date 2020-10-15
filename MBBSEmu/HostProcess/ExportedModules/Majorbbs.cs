@@ -3118,18 +3118,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destination = GetParameterPointer(0);
             var source = GetParameterPointer(2);
 
-            var output = Module.Memory.GetString(source);
+            var output = Module.Memory.GetString(source, stripNull: true);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 4);
 
             Module.Memory.SetArray(destination, formattedMessage);
 
-#if DEBUG
-            _logger.Info($"Added {output.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
-
-#endif
-
+            Registers.AX = (ushort)formattedMessage.Length;
         }
 
         /// <summary>
