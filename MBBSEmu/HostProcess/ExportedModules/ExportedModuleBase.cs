@@ -350,6 +350,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (!string.IsNullOrEmpty(stringPrecisionValue))
                         stringPrecision = int.Parse(stringPrecisionValue);
 
+                    if (stringPrecision == -1)
+                    {
+
+                        if (!isVsPrintf)
+                        {
+                            //printf
+                            stringPrecision = GetParameter(currentParameter++);
+                        }
+                        else
+                        {
+                            //vsprintf
+                            stringPrecision = Module.Memory.GetWord(vsPrintfBase.Segment, vsPrintfBase.Offset);
+                            vsPrintfBase.Offset += 2;
+                        }
+                    }
+
                     //Process Length
                     //TODO -- We'll process it but ignore it for now
                     var variableLength = 0;
