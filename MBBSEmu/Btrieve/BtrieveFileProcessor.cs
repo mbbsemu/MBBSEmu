@@ -53,7 +53,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="fileName"></param>
         /// <param name="path"></param>
-        public BtrieveFileProcessor(IFileUtility fileUtility, string fileName, string path)
+        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
         {
             _fileFinder = fileUtility;
 
@@ -142,72 +142,72 @@ namespace MBBSEmu.Btrieve
         public int GetRecordCount()
         {
             using var stmt = new SQLiteCommand("SELECT COUNT(*) FROM data_t;", _connection);
-            return (int) stmt.ExecuteScalar();
+            return (int) (long) stmt.ExecuteScalar();
         }
 
         /// <summary>
         ///     Sets Position to the offset of the first Record in the loaded Btrieve File
         /// </summary>
         /// <returns></returns>
-        public ushort StepFirst()
+        public bool StepFirst()
         {
             using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint) reader.GetInt32(0) : 0;
-            return Position > 0 ? (ushort) 1 : (ushort) 0;
+            return Position > 0;
         }
 
         /// <summary>
         ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File
         /// </summary>
         /// <returns></returns>
-        public ushort StepNext()
+        public bool StepNext()
         {
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
             if (!reader.Read())
-                return 0;
+                return false;
 
             Position = (uint) reader.GetInt32(0);
-            return 1;
+            return true;
         }
 
         /// <summary>
         ///     Sets Position to the offset of the next logical record in the loaded Btrieve File
         /// </summary>
         /// <returns></returns>
-        public ushort StepPrevious()
+        public bool StepPrevious()
         {
-            using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id < {Position} LIMIT 1;", _connection);
+            using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
             if (!reader.Read())
-                return 0;
+                return false;
 
             Position = (uint) reader.GetInt32(0);
-            return 1;
+            return true;
         }
 
         /// <summary>
         ///     Sets Position to the offset of the last Record in the loaded Btrieve File
         /// </summary>
         /// <returns></returns>
-        public ushort StepLast()
+        public bool StepLast()
         {
-            using var cmd = new SQLiteCommand("SELECT id FROM data_t ORDER BY DESC LIMIT 1;", _connection);
+            using var cmd = new SQLiteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint) reader.GetInt32(0) : 0;
-            return Position > 0 ? (ushort) 1 : (ushort) 0;
+            return Position > 0;
         }
 
         /// <summary>
         ///     Returns the Record at the current Position
         /// </summary>
         /// <returns></returns>
-        public byte[] GetRecord() => GetRecord(Position).Data;
+        public byte[] GetRecord() => GetRecord(Position)?.Data;
 
         /// <summary>
         ///     Returns the Record at the specified Offset
@@ -221,8 +221,6 @@ namespace MBBSEmu.Btrieve
 
             using var cmd = new SQLiteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
             using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
-
-            _logger.Error($"Looking up offset {offset} length {RecordLength}");
 
             if (!reader.Read())
                 return null;
@@ -349,6 +347,8 @@ namespace MBBSEmu.Btrieve
         {
             _cache.Clear();
 
+            Position = 0;
+
             using var cmd = new SQLiteCommand($"DELETE FROM data_t;", _connection);
             return cmd.ExecuteNonQuery() > 0 ? true : false;
         }
@@ -358,7 +358,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="operationCode"></param>
         /// <returns></returns>
-        public ushort Seek(EnumBtrieveOperationCodes operationCode)
+        public bool Seek(EnumBtrieveOperationCodes operationCode)
         {
             return operationCode switch
             {

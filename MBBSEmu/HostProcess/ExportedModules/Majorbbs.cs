@@ -2207,7 +2207,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Opens a Btrieve file for I/O
         ///
-        ///     Signature: BTVFILE *bbptr=opnbtv(char *filnae, int reclen)
+        ///     Signature: BTVFILE *bbptr=opnbtv(char *filename, int reclen)
         ///     Return: AX = Offset to File Pointer
         ///             DX = Host Btrieve Segment
         /// </summary>
@@ -2219,7 +2219,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
@@ -2281,11 +2281,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ushort resultCode = 0;
             switch (stpopt)
             {
+                // TODO(support step previous)
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
-                    resultCode = currentBtrieveFile.StepFirst();
+                    resultCode = currentBtrieveFile.StepFirst() ? (ushort) 1 : (ushort) 0;
                     break;
                 case (ushort)EnumBtrieveOperationCodes.StepNext:
-                    resultCode = currentBtrieveFile.StepNext();
+                    resultCode = currentBtrieveFile.StepNext() ? (ushort) 1 : (ushort) 0;
                     break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
@@ -2719,7 +2720,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
                 case EnumBtrieveOperationCodes.GetLast when keyNum == 0 && keyPointer == IntPtr16.Empty:
                     {
-                        result = currentBtrieveFile.StepLast();
+                        result = currentBtrieveFile.StepLast() ? (ushort) 1 : (ushort) 0;
                         break;
                     }
                 case EnumBtrieveOperationCodes.GetFirst:
@@ -4384,11 +4385,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ushort resultCode = 0;
             switch (stpopt)
             {
+                // TODO(support step previous)
                 case (ushort)EnumBtrieveOperationCodes.StepFirst:
-                    resultCode = currentBtrieveFile.StepFirst();
+                    resultCode = currentBtrieveFile.StepFirst() ? (ushort) 1 : (ushort) 0;
                     break;
                 case (ushort)EnumBtrieveOperationCodes.StepNext:
-                    resultCode = currentBtrieveFile.StepNext();
+                    resultCode = currentBtrieveFile.StepNext() ? (ushort) 1 : (ushort) 0;
                     break;
                 default:
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
@@ -6410,7 +6412,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 case EnumBtrieveOperationCodes.GetNext:
                     {
-                        if (currentBtrieveFile.StepNext() == 0)
+                        if (!currentBtrieveFile.StepNext())
                         {
                             //EOF
                             Registers.AX = 0;

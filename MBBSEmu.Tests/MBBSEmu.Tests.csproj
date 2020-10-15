@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\MBBSEMU.DAT" />
+    <EmbeddedResource Include="Assets\MBBSEMU.DB" />
     <EmbeddedResource Include="Assets\MBBSEMU.DLL" />
     <EmbeddedResource Include="Assets\MBBSEMU.MCV" />
     <EmbeddedResource Include="Assets\MBBSEMU.MDF" />
