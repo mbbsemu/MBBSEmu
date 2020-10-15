@@ -1,5 +1,4 @@
 ﻿using MBBSEmu.Btrieve.Enums;
-using System;
 
 namespace MBBSEmu.Btrieve
 {
@@ -24,5 +23,7 @@ namespace MBBSEmu.Btrieve
         public ushort SegmentOf { get; set; }
 
         public ushort Position => (ushort) (Offset + 1);
+
+
     }
 }
