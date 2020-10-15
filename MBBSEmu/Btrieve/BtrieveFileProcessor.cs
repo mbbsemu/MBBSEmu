@@ -1,8 +1,6 @@
 using MBBSEmu.Btrieve.Enums;
-using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -39,11 +37,15 @@ namespace MBBSEmu.Btrieve
         public int RecordLength { get; set; }
 
         private SQLiteConnection _connection;
-        private Dictionary<int, BtrieveKeyDefinition> _keys = new Dictionary<int, BtrieveKeyDefinition>();
+        private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
+        public Dictionary<int, BtrieveKeyDefinition> Keys { get; set; }
+
+        public int PageLength { get; set; }
 
         public void Dispose()
         {
             _connection.Close();
+            _cache.Clear();
         }
 
         /// <summary>
@@ -55,200 +57,92 @@ namespace MBBSEmu.Btrieve
         {
             _fileFinder = fileUtility;
 
+            Keys = new Dictionary<int, BtrieveKeyDefinition>();
+
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
             if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
-            var LoadedFilePath = path;
-            var LoadedFileName = _fileFinder.FindFile(path, fileName);
+            var loadedFileName = _fileFinder.FindFile(path, fileName);
 
             //If a .EMU version exists, load it over the .DAT file
-            var dbFileName = LoadedFileName.ToUpper().Replace(".DAT", ".DB");
-            if (File.Exists(Path.Combine(LoadedFilePath, dbFileName)))
+            var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
+            var fullPath = Path.Combine(path, dbFileName);
+
+            if (File.Exists(fullPath))
             {
-                LoadedFileName = dbFileName;
-                LoadSqlite(LoadedFilePath, LoadedFileName);
+                LoadSqlite(fullPath);
             }
             else
             {
-                LoadBtrieve(LoadedFilePath, LoadedFileName);
+                var btrieveFile = new BtrieveFile();
+                btrieveFile.LoadFile(_logger, path, loadedFileName);
+                CreateSqliteDB(fullPath, btrieveFile);
             }
 
             //Set Position to First Record
             StepFirst();
         }
 
-        /// <summary>
-        ///     Loads a Btrieve .DAT File
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileName"></param>
-        private void LoadBtrieve(string path, string fileName)
-        {
-            //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
-            var virginFileName = fileName.ToUpper().Replace(".DAT", ".VIR");
-            if (!File.Exists(Path.Combine(path, fileName)) && File.Exists(Path.Combine(path, virginFileName)))
-            {
-                File.Copy(Path.Combine(path, virginFileName), Path.Combine(path, fileName));
-                _logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
-            }
 
-            //If we're missing a DAT file, just bail. Because we don't know the file definition, we can't just create a "blank" one.
-            if (!File.Exists(Path.Combine(path, fileName)))
-            {
-                _logger.Error($"Unable to locate existing btrieve file {fileName}");
-                throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
-            }
-
-            var fullPath = Path.Combine(path, fileName);
-            var fileData = File.ReadAllBytes(fullPath);
-            var LoadedFile = new BtrieveFile(fileData) { FileName = fullPath };
-#if DEBUG
-            _logger.Info($"Opened {fileName} and read {LoadedFile.Data.Length} bytes");
-#endif
-            //Only Parse Keys if they are defined
-            if (LoadedFile.KeyCount > 0)
-                LoadBtrieveKeyDefinitions(LoadedFile);
-
-            //Only load records if there are any present
-            if (LoadedFile.RecordCount > 0)
-                LoadBtrieveRecords(LoadedFile);
-
-            CreateSqliteDB(Path.Combine(path, Path.ChangeExtension(fileName, "DB")), LoadedFile);
-        }
 
         /// <summary>
         ///     Loads an MBBSEmu representation of a Btrieve File
         /// </summary>
         /// <param name="path"></param>
         /// <param name="fileName"></param>
-        private void LoadSqlite(string path, string fileName)
+        private void LoadSqlite(string fullPath)
         {
-            var fullpath = Path.Combine(path, fileName);
+            _logger.Info($"Opening sqlite DB {fullPath}");
+
             var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
             {
                 Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                DataSource = fullpath,
+                DataSource = fullPath,
             }.ToString();
 
             _connection = new SQLiteConnection(connectionString);
             _connection.Open();
 
-            // TODO load keys
+            LoadSqliteMetadata();
+        }
+
+        private void LoadSqliteMetadata()
+        {
+            using (var cmd = new SQLiteCommand("SELECT record_length, page_length FROM metadata_t;", _connection))
+            {
+                using var reader = cmd.ExecuteReader();
+
+                if (!reader.Read())
+                    throw new ArgumentException($"Can't read metadata_t from {_connection.VfsName}");
+
+                RecordLength = reader.GetInt32(0);
+                PageLength = reader.GetInt32(1);
+            }
+
+            using (var cmd = new SQLiteCommand("SELECT id, attributes, data_type, offset, length FROM keys_t;", _connection))
+            {
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read()) {
+                    var number = reader.GetInt32(0);
+                    Keys[number] = new BtrieveKeyDefinition() {
+                        Number = (ushort) number,
+                        Attributes = (EnumKeyAttributeMask) reader.GetInt32(1),
+                        DataType = (EnumKeyDataType) reader.GetInt32(2),
+                        Offset = (ushort) reader.GetInt32(3),
+                        Length = (ushort) reader.GetInt32(4),
+                        Segment = false,
+                    };
+                }
+            }
         }
 
         public int GetRecordCount()
         {
             using var stmt = new SQLiteCommand("SELECT COUNT(*) FROM data_t;", _connection);
             return (int) stmt.ExecuteScalar();
-        }
-
-        /// <summary>
-        ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
-        /// </summary>
-        private void LoadBtrieveKeyDefinitions(BtrieveFile LoadedFile)
-        {
-            ushort keyDefinitionBase = 0x110;
-            const ushort keyDefinitionLength = 0x1E;
-            ReadOnlySpan<byte> btrieveFileContentSpan = LoadedFile.Data;
-
-            //Check for Log Key
-            if (btrieveFileContentSpan[0x10C] == 1)
-            {
-                _logger.Warn($"Btireve Log Key Present in {LoadedFile.FileName}");
-                LoadedFile.LogKeyPresent = true;
-            }
-
-            ushort totalKeys = LoadedFile.KeyCount;
-            ushort currentKeyNumber = 0;
-            while (currentKeyNumber < totalKeys)
-            {
-                var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
-
-                keyDefinition.Number = currentKeyNumber;
-
-                //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
-                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
-                    currentKeyNumber++;
-
-#if DEBUG
-                _logger.Info("----------------");
-                _logger.Info("Loaded Key Definition:");
-                _logger.Info("----------------");
-                _logger.Info($"Number: {keyDefinition.Number}");
-                _logger.Info($"Total Records: {keyDefinition.TotalRecords}");
-                _logger.Info($"Data Type: {keyDefinition.DataType}");
-                _logger.Info($"Attributes: {keyDefinition.Attributes}");
-                _logger.Info($"Position: {keyDefinition.Position}");
-                _logger.Info($"Length: {keyDefinition.Length}");
-                _logger.Info("----------------");
-#endif
-                if (!LoadedFile.Keys.TryGetValue(keyDefinition.Number, out var key))
-                {
-                    key = new BtrieveKey(keyDefinition);
-                    LoadedFile.Keys.Add(keyDefinition.Number, key);
-                }
-                else
-                {
-                    key.Segments.Add(keyDefinition);
-                }
-
-                keyDefinitionBase += keyDefinitionLength;
-            }
-        }
-
-        /// <summary>
-        ///     Loads Btrieve Records from Data Pages
-        /// </summary>
-        private void LoadBtrieveRecords(BtrieveFile LoadedFile)
-        {
-            var recordsLoaded = 0;
-
-            //Starting at 1, since the first page is the header
-            for (var i = 1; i <= LoadedFile.PageCount; i++)
-            {
-                var pageOffset = (LoadedFile.PageLength * i);
-                var recordsInPage = (LoadedFile.PageLength / LoadedFile.PhysicalRecordLength);
-
-                //Key Page
-                if (BitConverter.ToUInt32(LoadedFile.Data, pageOffset + 0x8) == uint.MaxValue)
-                    continue;
-
-                //Key Constraint Page
-                if (LoadedFile.Data[pageOffset + 0x6] == 0xAC)
-                    continue;
-
-                //Verify Data Page
-                if (!LoadedFile.Data[pageOffset + 0x5].IsNegative())
-                {
-                    _logger.Warn(
-                        $"Skipping Non-Data Page, might have invalid data - Page Start: 0x{pageOffset + 0x5:X4}");
-                    continue;
-                }
-
-                //Page data starts 6 bytes in
-                pageOffset += 6;
-                for (var j = 0; j < recordsInPage; j++)
-                {
-                    if (recordsLoaded == LoadedFile.RecordCount)
-                        break;
-
-                    var recordArray = new byte[LoadedFile.RecordLength];
-                    Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.PhysicalRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
-
-                    //End of Page 0xFFFFFFFF
-                    if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
-                        continue;
-
-                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (LoadedFile.PhysicalRecordLength * j)), recordArray));
-                    recordsLoaded++;
-                }
-            }
-#if DEBUG
-            _logger.Info($"Loaded {recordsLoaded} records from {LoadedFile.FileName}. Resetting cursor to 0");
-#endif
         }
 
         /// <summary>
@@ -322,15 +216,23 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset)
         {
+            if (_cache.TryGetValue(offset, out var record))
+                return record;
+
             using var cmd = new SQLiteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
-            using var reader = cmd.ExecuteReader();
+            using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+
+            _logger.Error($"Looking up offset {offset} length {RecordLength}");
 
             if (!reader.Read())
                 return null;
 
             var data = new byte[RecordLength];
-            reader.GetBlob(0, readOnly:true).Read(data, 0, (int) RecordLength);
-            return new BtrieveRecord(offset, data);
+            reader.GetBlob(0, readOnly:true).Read(data, data.Length, 0);
+
+            record = new BtrieveRecord(offset, data);
+            _cache[offset] = record;
+            return record;
         }
 
         /// <summary>
@@ -355,7 +257,7 @@ namespace MBBSEmu.Btrieve
             using var insertCmd = new SQLiteCommand(_connection);
 
             StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data");
-            foreach(var key in _keys)
+            foreach(var key in Keys)
             {
                 sb.Append($", key{key.Value.Number}=@key{key.Value.Number}");
             }
@@ -364,12 +266,17 @@ namespace MBBSEmu.Btrieve
 
             //var data = record.Data;
             insertCmd.Parameters.AddWithValue("@data", recordData);
-            foreach(var key in _keys)
+            foreach(var key in Keys)
             {
                 var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
-                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", keyData.ToArray());
+                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
             }
-            return insertCmd.ExecuteNonQuery() > 0 ? true : false;
+
+            if (insertCmd.ExecuteNonQuery() == 0)
+                return false;
+
+            _cache[offset] = new BtrieveRecord(offset, recordData);
+            return true;
         }
 
         private static byte[] forceSize(byte[] b, int size)
@@ -396,12 +303,12 @@ namespace MBBSEmu.Btrieve
             using var insertCmd = new SQLiteCommand(_connection);
 
             StringBuilder sb = new StringBuilder("INSERT INTO data_t(data");
-            foreach(var key in _keys)
+            foreach(var key in Keys)
             {
                 sb.Append($", key{key.Value.Number}");
             }
             sb.Append(") VALUES(@data");
-            foreach(var key in _keys)
+            foreach(var key in Keys)
             {
                 sb.Append($", @key{key.Value.Number}");
             }
@@ -410,12 +317,17 @@ namespace MBBSEmu.Btrieve
 
             //var data = record.Data;
             insertCmd.Parameters.AddWithValue("@data", recordData);
-            foreach(var key in _keys)
+            foreach(var key in Keys)
             {
                 var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
-                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", keyData.ToArray());
+                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
             }
-            return insertCmd.ExecuteNonQuery() > 0 ? true : false;
+
+            if (insertCmd.ExecuteNonQuery() == 0)
+                return false;
+
+            _cache[(uint) _connection.LastInsertRowId] = new BtrieveRecord((uint) _connection.LastInsertRowId, recordData);
+            return true;
         }
 
         /// <summary>
@@ -424,6 +336,8 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool Delete()
         {
+            _cache.Remove(Position);
+
             using var cmd = new SQLiteCommand($"DELETE FROM data_t WHERE id={Position};", _connection);
             return cmd.ExecuteNonQuery() > 0 ? true : false;
         }
@@ -433,6 +347,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public bool DeleteAll()
         {
+            _cache.Clear();
+
             using var cmd = new SQLiteCommand($"DELETE FROM data_t;", _connection);
             return cmd.ExecuteNonQuery() > 0 ? true : false;
         }
@@ -469,8 +385,8 @@ namespace MBBSEmu.Btrieve
             {
                 currentQuery = new BtrieveQuery
                 {
-                    KeyOffset = _keys[keyNumber].Offset,
-                    KeyDataType = _keys[keyNumber].DataType,
+                    KeyOffset = Keys[keyNumber].Offset,
+                    KeyDataType = Keys[keyNumber].DataType,
                     Key = key == null ? null : new byte[key.Length],
                     KeyLength = GetKeyLength(keyNumber)
                 };
@@ -569,14 +485,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="keyNumber"></param>
         /// <returns></returns>
-        public ushort GetKeyLength(ushort keyNumber) => (ushort)_keys[keyNumber].Length;
+        public ushort GetKeyLength(ushort keyNumber) => (ushort)Keys[keyNumber].Length;
 
         /// <summary>
         ///     Returns the defined Key Type of the specified Key
         /// </summary>
         /// <param name="keyNumber"></param>
         /// <returns></returns>
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => _keys[keyNumber].DataType;
+        public EnumKeyDataType GetKeyType(ushort keyNumber) => Keys[keyNumber].DataType;
 
         /// <summary>
         ///     Retrieves the First Record, numerically, by the specified key
@@ -730,13 +646,60 @@ namespace MBBSEmu.Btrieve
             outputFile.Close();
         }
 
+        private static object SqliteType(BtrieveKeyDefinition key, byte[] data)
+        {
+            if (key.Length != data.Length)
+                _logger.Error("Inserting key value with mismatched length");
+
+            switch (key.DataType)
+            {
+                case EnumKeyDataType.Integer:
+                case EnumKeyDataType.Unsigned:
+                    switch (key.Length)
+                    {
+                        case 1:
+                            return data[0];
+                        case 2:
+                            return BitConverter.ToInt16(data);
+                        case 4:
+                            return BitConverter.ToInt32(data);
+                        case 8:
+                            return BitConverter.ToInt64(data);
+                        default:
+                            throw new ArgumentException($"Bad integer key length {key.Length}");
+                    }
+                case EnumKeyDataType.String:
+                case EnumKeyDataType.Lstring:
+                case EnumKeyDataType.Zstring:
+                    return Encoding.ASCII.GetString(data);
+                default:
+                    return data;
+            }
+        }
+
+        private static string SqliteType(EnumKeyDataType dataType)
+        {
+            switch (dataType)
+            {
+                case EnumKeyDataType.Integer:
+                case EnumKeyDataType.Unsigned:
+                    return "INTEGER";
+                case EnumKeyDataType.String:
+                case EnumKeyDataType.Lstring:
+                case EnumKeyDataType.Zstring:
+                    return "TEXT";
+                default:
+                    return "BLOB";
+            }
+        }
+
         private void CreateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             StringBuilder sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
             foreach(var key in btrieveFile.Keys)
             {
                 var segment = key.Value.Segments[0];
-                sb.Append($", key{segment.Number} BLOB NOT NULL");
+                sb.Append($", key{segment.Number} {SqliteType(segment.DataType)} NOT NULL");
             }
             sb.Append(");");
 
@@ -763,13 +726,12 @@ namespace MBBSEmu.Btrieve
                 sb.Append(");");
                 insertCmd.CommandText = sb.ToString();
 
-                //var data = record.Data;
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
                 foreach(var key in btrieveFile.Keys)
                 {
                     var segment = key.Value.Segments[0];
                     var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
-                    insertCmd.Parameters.AddWithValue($"key{segment.Number}", keyData.ToArray());
+                    insertCmd.Parameters.AddWithValue($"key{segment.Number}", SqliteType(segment, keyData.ToArray()));
                 }
                 insertCmd.ExecuteNonQuery();
             }
@@ -818,25 +780,27 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        private void CreateSqliteDB(string filepath, BtrieveFile btrieveFile)
+        private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
-            _logger.Warn($"Creating sqlite db {filepath}");
+            _logger.Warn($"Creating sqlite db {fullpath}");
 
             var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
             {
                 Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                DataSource = filepath,
+                DataSource = fullpath,
             }.ToString();
-            string stm = "SELECT SQLITE_VERSION()";
 
-            using var conn = new SQLiteConnection(connectionString);
-            conn.Open();
+            _connection = new SQLiteConnection(connectionString);
+            _connection.Open();
 
-            CreateSqliteMetadataTable(conn, btrieveFile);
-            CreateSqliteKeysTable(conn, btrieveFile);
-            CreateSqliteDataTable(conn, btrieveFile);
+            RecordLength = btrieveFile.RecordLength;
+            PageLength = btrieveFile.PageLength;
+            foreach (var key in btrieveFile.Keys)
+                Keys.Add(key.Value.Segments[0].Number, key.Value.Segments[0]);
 
-            conn.Close();
+            CreateSqliteMetadataTable(_connection, btrieveFile);
+            CreateSqliteKeysTable(_connection, btrieveFile);
+            CreateSqliteDataTable(_connection, btrieveFile);
         }
     }
 }

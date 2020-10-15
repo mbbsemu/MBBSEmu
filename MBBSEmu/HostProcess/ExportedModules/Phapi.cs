@@ -203,20 +203,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     {
                                         fs = new BtvfilespecStruct()
                                         {
-                                            numofr = currentBtrieveFile.LoadedFile.RecordCount,
-                                            numofx = currentBtrieveFile.LoadedFile.KeyCount,
-                                            pagsiz = currentBtrieveFile.LoadedFile.PageLength,
-                                            reclen = currentBtrieveFile.LoadedFile.RecordLength
+                                            numofr = (uint) currentBtrieveFile.GetRecordCount(),
+                                            numofx = (ushort) currentBtrieveFile.Keys.Count,
+                                            pagsiz = (ushort) currentBtrieveFile.PageLength,
+                                            reclen = (ushort) currentBtrieveFile.RecordLength
                                         }
                                     };
 
-                                    var definedKeys = currentBtrieveFile.LoadedFile.Keys.Values.Select(k =>
+                                    var definedKeys = currentBtrieveFile.Keys.Values.Select(k =>
                                         new BtvkeyspecStruct()
                                         {
-                                            flags = (ushort)k.Segments[0].Attributes,
-                                            keylen = k.Segments[0].Length,
-                                            keypos = k.Segments[0].Position,
-                                            numofk = k.Segments[0].Number
+                                            flags = (ushort)k.Attributes,
+                                            keylen = k.Length,
+                                            keypos = k.Position,
+                                            numofk = k.Number
                                         }).ToList();
                                     btvStats.keyspec = definedKeys.ToArray();
 

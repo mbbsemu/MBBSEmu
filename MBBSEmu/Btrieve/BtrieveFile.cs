@@ -1,6 +1,9 @@
-﻿using System;
+﻿using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Extensions;
+using NLog;
+using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.IO;
 
 namespace MBBSEmu.Btrieve
 {
@@ -17,7 +20,6 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Number of Pages within the Btrieve File
         /// </summary>
-        [JsonIgnore]
         public ushort PageCount => (ushort) (Data.Length / PageLength - 1);
 
         private ushort _recordCount;
@@ -141,8 +143,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
-        [JsonIgnore]
-        public byte[] Data { get; }
+        private byte[] Data { get; set; }
 
         /// <summary>
         ///     Btrieve Records
@@ -168,9 +169,152 @@ namespace MBBSEmu.Btrieve
             Keys = new Dictionary<ushort, BtrieveKey>();
         }
 
-        public BtrieveFile(ReadOnlySpan<byte> fileContents) : this()
+        /// <summary>
+        ///     Loads a Btrieve .DAT File
+        /// </summary>
+        public void LoadFile(ILogger logger, string path, string fileName)
         {
-            Data = fileContents.ToArray();
+            //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
+            var virginFileName = fileName.ToUpper().Replace(".DAT", ".VIR");
+            if (!File.Exists(Path.Combine(path, fileName)) && File.Exists(Path.Combine(path, virginFileName)))
+            {
+                File.Copy(Path.Combine(path, virginFileName), Path.Combine(path, fileName));
+                logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
+            }
+
+            //If we're missing a DAT file, just bail. Because we don't know the file definition, we can't just create a "blank" one.
+            if (!File.Exists(Path.Combine(path, fileName)))
+            {
+                logger.Error($"Unable to locate existing btrieve file {fileName}");
+                throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
+            }
+
+            var fullPath = Path.Combine(path, fileName);
+            var fileData = File.ReadAllBytes(fullPath);
+
+            FileName = fullPath;
+            Data = fileData;
+
+#if DEBUG
+            logger.Info($"Opened {fileName} and read {Data.Length} bytes");
+#endif
+            //Only Parse Keys if they are defined
+            if (KeyCount > 0)
+                LoadBtrieveKeyDefinitions(logger);
+
+            //Only load records if there are any present
+            if (RecordCount > 0)
+                LoadBtrieveRecords(logger);
+        }
+
+        /// <summary>
+        ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
+        /// </summary>
+        private void LoadBtrieveKeyDefinitions(ILogger logger)
+        {
+            ushort keyDefinitionBase = 0x110;
+            const ushort keyDefinitionLength = 0x1E;
+            ReadOnlySpan<byte> btrieveFileContentSpan = Data;
+
+            //Check for Log Key
+            if (btrieveFileContentSpan[0x10C] == 1)
+            {
+                logger.Warn($"Btrieve Log Key Present in {FileName}");
+                LogKeyPresent = true;
+            }
+
+            ushort totalKeys = KeyCount;
+            ushort currentKeyNumber = 0;
+            while (currentKeyNumber < totalKeys)
+            {
+                var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
+                var keyDefinition = new BtrieveKeyDefinition {
+                    Number = currentKeyNumber,
+                    Attributes = (EnumKeyAttributeMask) data[0x8],
+                    DataType = (EnumKeyDataType) data[0x1C],
+                    Offset = BitConverter.ToUInt16(data, 0x14),
+                    Length = BitConverter.ToUInt16(data, 0x16),
+                    Segment = false,
+                  };
+
+                //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
+                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
+                    currentKeyNumber++;
+
+#if DEBUG
+                logger.Info("----------------");
+                logger.Info("Loaded Key Definition:");
+                logger.Info("----------------");
+                logger.Info($"Number: {keyDefinition.Number}");
+                logger.Info($"Data Type: {keyDefinition.DataType}");
+                logger.Info($"Attributes: {keyDefinition.Attributes}");
+                logger.Info($"Length: {keyDefinition.Length}");
+                logger.Info("----------------");
+#endif
+                if (!Keys.TryGetValue(keyDefinition.Number, out var key))
+                {
+                    key = new BtrieveKey(keyDefinition);
+                    Keys.Add(keyDefinition.Number, key);
+                }
+                else
+                {
+                    key.Segments.Add(keyDefinition);
+                }
+
+                keyDefinitionBase += keyDefinitionLength;
+            }
+        }
+
+        /// <summary>
+        ///     Loads Btrieve Records from Data Pages
+        /// </summary>
+        private void LoadBtrieveRecords(ILogger logger)
+        {
+            var recordsLoaded = 0;
+
+            //Starting at 1, since the first page is the header
+            for (var i = 1; i <= PageCount; i++)
+            {
+                var pageOffset = (PageLength * i);
+                var recordsInPage = (PageLength / PhysicalRecordLength);
+
+                //Key Page
+                if (BitConverter.ToUInt32(Data, pageOffset + 0x8) == uint.MaxValue)
+                    continue;
+
+                //Key Constraint Page
+                if (Data[pageOffset + 0x6] == 0xAC)
+                    continue;
+
+                //Verify Data Page
+                if (!Data[pageOffset + 0x5].IsNegative())
+                {
+                    logger.Warn(
+                        $"Skipping Non-Data Page, might have invalid data - Page Start: 0x{pageOffset + 0x5:X4}");
+                    continue;
+                }
+
+                //Page data starts 6 bytes in
+                pageOffset += 6;
+                for (var j = 0; j < recordsInPage; j++)
+                {
+                    if (recordsLoaded == RecordCount)
+                        break;
+
+                    var recordArray = new byte[RecordLength];
+                    Array.Copy(Data, pageOffset + (PhysicalRecordLength * j), recordArray, 0, RecordLength);
+
+                    //End of Page 0xFFFFFFFF
+                    if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
+                        continue;
+
+                    Records.Add(new BtrieveRecord((uint)(pageOffset + (PhysicalRecordLength * j)), recordArray));
+                    recordsLoaded++;
+                }
+            }
+#if DEBUG
+            logger.Info($"Loaded {recordsLoaded} records from {FileName}. Resetting cursor to 0");
+#endif
         }
     }
 }

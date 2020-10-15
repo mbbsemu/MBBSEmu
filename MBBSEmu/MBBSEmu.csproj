@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Assets\BBSGEN.EMU" />
-    <None Remove="Assets\BBSUSR.EMU" />
+    <None Remove="Assets\BBSGEN.DB" />
+    <None Remove="Assets\BBSUSR.DB" />
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\crashDetailsAPI.txt" />
     <None Remove="Assets\login.ans" />
@@ -33,8 +33,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\BBSGEN.EMU" />
-    <EmbeddedResource Include="Assets\BBSUSR.EMU" />
+    <EmbeddedResource Include="Assets\BBSGEN.DB" />
+    <EmbeddedResource Include="Assets\BBSUSR.DB" />
     <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
