@@ -7481,8 +7481,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
             var currentBtrieveFile = BtrieveGetProcessor(currentBtrieveFilePointer);
 
-            Registers.DX = (ushort)(currentBtrieveFile.LoadedFile.RecordLength >> 16);
-            Registers.AX = (ushort)(currentBtrieveFile.LoadedFile.RecordLength & 0xFFFF);
+            Registers.DX = (ushort)(currentBtrieveFile.LoadedFile.Records.Count >> 16);
+            Registers.AX = (ushort)(currentBtrieveFile.LoadedFile.Records.Count & 0xFFFF);
         }
 
         /// <summary>
