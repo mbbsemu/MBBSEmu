@@ -93,7 +93,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     MBBSEmu exposes the entire 16-bit (4GB) address space to the module, so there is no difference
         ///     between Real-Mode and Protected-Mode
-        ///     
+        ///
         ///     Signature: USHORT DosAllocRealSeg(ULONG size, PUSHORT parap, PSEL selp);
         ///                 typedef unsigned short _far *PSEL;
         ///                 typedef unsigned short _far *PUSHORT;
@@ -174,12 +174,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     var btvFileStructPointer = new IntPtr16(btvda.posblkseg, btvda.posblkoff);
                                     var btvFileNamePointer =
                                         Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
-                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", btvFile.LoadedFile.RecordLength);
+                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", (ushort) btvFile.RecordLength);
 
                                     var newBtvStruct = new BtvFileStruct
                                     {
                                         filenam = btvFileNamePointer,
-                                        reclen = btvFile.LoadedFile.RecordLength,
+                                        reclen = (ushort) btvFile.RecordLength,
                                         data = btvDataPointer
                                     };
                                     BtrieveSaveProcessor(btvFileStructPointer, btvFile);

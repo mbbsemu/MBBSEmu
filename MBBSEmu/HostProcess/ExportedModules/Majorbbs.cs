@@ -2356,7 +2356,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.LoadedFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort) currentBtrieveFile.RecordLength);
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
@@ -2377,7 +2377,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, currentBtrieveFile.LoadedFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort) currentBtrieveFile.RecordLength);
 
             currentBtrieveFile.Insert(dataToWrite.ToArray());
 
@@ -3129,7 +3129,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"Added {output.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
 
 #endif
-
+            Registers.AX = (ushort) formattedMessage.Length;
         }
 
         /// <summary>
@@ -4559,7 +4559,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, currentBtrieveFile.LoadedFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort) currentBtrieveFile.RecordLength);
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
@@ -4909,11 +4909,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(btvStruct.data,
                     currentBtrieveFile.GetRecordByOffset(currentBtrieveFile.Position));
             }
-
-#if DEBUG
-            _logger.Info(
-                $"Performed Query {queryOption} on {currentBtrieveFile.LoadedFileName} ({Module.Memory.GetPointer("BB")}) with result {result}");
-#endif
 
             Registers.AX = (ushort)result;
         }
@@ -5780,11 +5775,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     currentBtrieveFile.GetRecordByOffset(currentBtrieveFile.Position));
             }
 
-#if DEBUG
-            _logger.Info(
-                $"Performed Query {(EnumBtrieveOperationCodes)queryOption} on {currentBtrieveFile.LoadedFileName} ({Module.Memory.GetPointer("BB")}) with result {result}");
-#endif
-
             Registers.AX = (ushort)result;
         }
 
@@ -6418,7 +6408,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Landing spot for the data
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var btrieveRecord = new byte[currentBtrieveFile.LoadedFile.RecordLength];
+            var btrieveRecord = new byte[currentBtrieveFile.RecordLength];
 
             switch ((EnumBtrieveOperationCodes)btrieveOperation)
             {
@@ -7478,11 +7468,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cntrbtv()
         {
+            // TODO THIS IS WRONG?
             var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
             var currentBtrieveFile = BtrieveGetProcessor(currentBtrieveFilePointer);
 
-            Registers.DX = (ushort)(currentBtrieveFile.LoadedFile.RecordLength >> 16);
-            Registers.AX = (ushort)(currentBtrieveFile.LoadedFile.RecordLength & 0xFFFF);
+            var records = currentBtrieveFile.GetRecordCount();
+            Registers.DX = (ushort)(records >> 16);
+            Registers.AX = (ushort)(records & 0xFFFF);
         }
 
         /// <summary>

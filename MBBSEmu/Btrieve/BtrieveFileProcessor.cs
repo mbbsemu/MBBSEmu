@@ -20,31 +20,11 @@ namespace MBBSEmu.Btrieve
     ///     of the underlying Btrieve Data. This means the legacy .DAT files are only used once on initial load and are not
     ///     modified. All Inserts & Updates happen within the new .EMU JSON files.
     /// </summary>
-    public class BtrieveFileProcessor
+    public class BtrieveFileProcessor : IDisposable
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         private readonly IFileUtility _fileFinder;
-
-        /// <summary>
-        ///     File Name of the Btrieve File currently loaded into the Processor
-        /// </summary>
-        public string LoadedFileName { get; set; }
-
-        /// <summary>
-        ///     File Path of the Btrieve File currently loaded into the Processor
-        /// </summary>
-        public string LoadedFilePath { get; set; }
-
-        /// <summary>
-        ///     Total Size of the Loaded Btrieve File
-        /// </summary>
-        public int LoadedFileSize { get; set; }
-
-        /// <summary>
-        ///     Btrieve File Loaded into the Processor
-        /// </summary>
-        public BtrieveFile LoadedFile { get; set; }
 
         /// <summary>
         ///     Current Position (offset) of the Processor in the Btrieve File
@@ -55,6 +35,16 @@ namespace MBBSEmu.Btrieve
         ///     The Previous Query that was executed
         /// </summary>
         private BtrieveQuery PreviousQuery { get; set; }
+
+        public int RecordLength { get; set; }
+
+        private SQLiteConnection _connection;
+        private Dictionary<int, BtrieveKeyDefinition> _keys = new Dictionary<int, BtrieveKeyDefinition>();
+
+        public void Dispose()
+        {
+            _connection.Close();
+        }
 
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
@@ -71,27 +61,23 @@ namespace MBBSEmu.Btrieve
             if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
-            LoadedFilePath = path;
-            LoadedFileName = _fileFinder.FindFile(path, fileName);
+            var LoadedFilePath = path;
+            var LoadedFileName = _fileFinder.FindFile(path, fileName);
 
             //If a .EMU version exists, load it over the .DAT file
-            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            if (File.Exists(Path.Combine(LoadedFilePath, jsonFileName)))
+            var dbFileName = LoadedFileName.ToUpper().Replace(".DAT", ".DB");
+            if (File.Exists(Path.Combine(LoadedFilePath, dbFileName)))
             {
-                LoadedFileName = jsonFileName;
-                LoadJson(LoadedFilePath, LoadedFileName);
+                LoadedFileName = dbFileName;
+                LoadSqlite(LoadedFilePath, LoadedFileName);
             }
             else
             {
                 LoadBtrieve(LoadedFilePath, LoadedFileName);
-                SaveJson();
             }
 
-            //Ensure loaded records (regardless of source) are in order by their offset within the Btrieve file
-            LoadedFile.Records = LoadedFile.Records.OrderBy(x => x.Offset).ToList();
-
             //Set Position to First Record
-            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
+            StepFirst();
         }
 
         /// <summary>
@@ -116,21 +102,21 @@ namespace MBBSEmu.Btrieve
                 throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
             }
 
-            var fileData = File.ReadAllBytes(Path.Combine(path, fileName));
-            LoadedFile = new BtrieveFile(fileData) { FileName = LoadedFileName };
-            LoadedFileSize = fileData.Length;
+            var fullPath = Path.Combine(path, fileName);
+            var fileData = File.ReadAllBytes(fullPath);
+            var LoadedFile = new BtrieveFile(fileData) { FileName = fullPath };
 #if DEBUG
             _logger.Info($"Opened {fileName} and read {LoadedFile.Data.Length} bytes");
 #endif
             //Only Parse Keys if they are defined
             if (LoadedFile.KeyCount > 0)
-                LoadBtrieveKeyDefinitions();
+                LoadBtrieveKeyDefinitions(LoadedFile);
 
             //Only load records if there are any present
             if (LoadedFile.RecordCount > 0)
-                LoadBtrieveRecords();
+                LoadBtrieveRecords(LoadedFile);
 
-            CreateSqliteDB(Path.Combine(path, Path.ChangeExtension(fileName, "DB")));
+            CreateSqliteDB(Path.Combine(path, Path.ChangeExtension(fileName, "DB")), LoadedFile);
         }
 
         /// <summary>
@@ -138,25 +124,31 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="path"></param>
         /// <param name="fileName"></param>
-        private void LoadJson(string path, string fileName)
+        private void LoadSqlite(string path, string fileName)
         {
-            LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText(Path.Combine(path, fileName)));
+            var fullpath = Path.Combine(path, fileName);
+            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
+            {
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                DataSource = fullpath,
+            }.ToString();
+
+            _connection = new SQLiteConnection(connectionString);
+            _connection.Open();
+
+            // TODO load keys
         }
 
-        /// <summary>
-        ///     Saves the MBBSEmu representation of a Btrieve File to disk
-        /// </summary>
-        private void SaveJson()
+        public int GetRecordCount()
         {
-            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            File.WriteAllText(Path.Combine(LoadedFilePath, jsonFileName),
-                JsonConvert.SerializeObject(LoadedFile, Formatting.Indented));
+            using var stmt = new SQLiteCommand("SELECT COUNT(*) FROM data_t;", _connection);
+            return (int) stmt.ExecuteScalar();
         }
 
         /// <summary>
         ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
         /// </summary>
-        private void LoadBtrieveKeyDefinitions()
+        private void LoadBtrieveKeyDefinitions(BtrieveFile LoadedFile)
         {
             ushort keyDefinitionBase = 0x110;
             const ushort keyDefinitionLength = 0x1E;
@@ -203,7 +195,6 @@ namespace MBBSEmu.Btrieve
                     key.Segments.Add(keyDefinition);
                 }
 
-
                 keyDefinitionBase += keyDefinitionLength;
             }
         }
@@ -211,7 +202,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Loads Btrieve Records from Data Pages
         /// </summary>
-        private void LoadBtrieveRecords()
+        private void LoadBtrieveRecords(BtrieveFile LoadedFile)
         {
             var recordsLoaded = 0;
 
@@ -266,7 +257,10 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ushort StepFirst()
         {
-            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
+            using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
+
+            Position = reader.Read() ? (uint) reader.GetInt32(0) : 0;
             return Position > 0 ? (ushort) 1 : (ushort) 0;
         }
 
@@ -276,12 +270,13 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ushort StepNext()
         {
-            var nextRecord = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault(x => x.Offset > Position);
+            using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
 
-            if (nextRecord == null)
+            if (!reader.Read())
                 return 0;
 
-            Position = nextRecord.Offset;
+            Position = (uint) reader.GetInt32(0);
             return 1;
         }
 
@@ -291,13 +286,13 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ushort StepPrevious()
         {
-            var previousRecord = LoadedFile.Records.Where(x => x.Offset < Position).OrderByDescending(x => x.Offset)
-                .FirstOrDefault();
+            using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id < {Position} LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
 
-            if (previousRecord == null)
+            if (!reader.Read())
                 return 0;
 
-            Position = previousRecord.Offset;
+            Position = (uint) reader.GetInt32(0);
             return 1;
         }
 
@@ -307,13 +302,11 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ushort StepLast()
         {
-            var lastRecord = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault();
+            using var cmd = new SQLiteCommand("SELECT id FROM data_t ORDER BY DESC LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
 
-            if (lastRecord == null)
-                return 0;
-
-            Position = lastRecord.Offset;
-            return 1;
+            Position = reader.Read() ? (uint) reader.GetInt32(0) : 0;
+            return Position > 0 ? (ushort) 1 : (ushort) 0;
         }
 
         /// <summary>
@@ -329,18 +322,15 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset)
         {
-            var result = LoadedFile.Records.FirstOrDefault(x => x.Offset == offset);
+            using var cmd = new SQLiteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
+            using var reader = cmd.ExecuteReader();
 
-            if (result == null)
-            {
-                _logger.Error($"No Record found at offset {offset}");
-            }
-            else
-            {
-                Position = offset;
-            }
+            if (!reader.Read())
+                return null;
 
-            return result;
+            var data = new byte[RecordLength];
+            reader.GetBlob(0, readOnly:true).Read(data, 0, (int) RecordLength);
+            return new BtrieveRecord(offset, data);
         }
 
         /// <summary>
@@ -354,43 +344,78 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="offset"></param>
         /// <param name="recordData"></param>
-        public void Update(uint offset, byte[] recordData)
+        public bool Update(uint offset, byte[] recordData)
         {
-            if (recordData.Length != LoadedFile.RecordLength)
-                throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
-
-            //Find the Record to Update
-            foreach (var r in LoadedFile.Records)
+            if (recordData.Length != RecordLength)
             {
-                if (r.Offset != offset) continue;
-
-                //Update It
-                r.Data = recordData;
-                break;
+                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
+                recordData = forceSize(recordData, RecordLength);
             }
 
-            //Save the Change
-            SaveJson();
+            using var insertCmd = new SQLiteCommand(_connection);
+
+            StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data");
+            foreach(var key in _keys)
+            {
+                sb.Append($", key{key.Value.Number}=@key{key.Value.Number}");
+            }
+            sb.Append(" WHERE id=@id;");
+            insertCmd.CommandText = sb.ToString();
+
+            //var data = record.Data;
+            insertCmd.Parameters.AddWithValue("@data", recordData);
+            foreach(var key in _keys)
+            {
+                var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
+                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", keyData.ToArray());
+            }
+            return insertCmd.ExecuteNonQuery() > 0 ? true : false;
+        }
+
+        private static byte[] forceSize(byte[] b, int size)
+        {
+            var ret = new byte[size];
+            for (int i = 0; i < Math.Min(b.Length, size); ++i)
+                ret[i] = b[i];
+
+            return ret;
         }
 
         /// <summary>
         ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
         /// </summary>
         /// <param name="recordData"></param>
-        public void Insert(byte[] recordData)
+        public bool Insert(byte[] recordData)
         {
-            if (recordData.Length != LoadedFile.RecordLength)
-                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length} ({LoadedFile})");
+            if (recordData.Length != RecordLength)
+            {
+                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
+                recordData = forceSize(recordData, RecordLength);
+            }
 
-            //Make it +1 of the last record loaded, or make it 1 if it's the first
-            var newRecordOffset = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
+            using var insertCmd = new SQLiteCommand(_connection);
 
-            LoadedFile.Records.Add(new BtrieveRecord(newRecordOffset, recordData));
+            StringBuilder sb = new StringBuilder("INSERT INTO data_t(data");
+            foreach(var key in _keys)
+            {
+                sb.Append($", key{key.Value.Number}");
+            }
+            sb.Append(") VALUES(@data");
+            foreach(var key in _keys)
+            {
+                sb.Append($", @key{key.Value.Number}");
+            }
+            sb.Append(");");
+            insertCmd.CommandText = sb.ToString();
 
-#if DEBUG
-            _logger.Info($"Inserted Record into {LoadedFile.FileName} (Offset: {newRecordOffset})");
-#endif
-            SaveJson();
+            //var data = record.Data;
+            insertCmd.Parameters.AddWithValue("@data", recordData);
+            foreach(var key in _keys)
+            {
+                var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
+                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", keyData.ToArray());
+            }
+            return insertCmd.ExecuteNonQuery() > 0 ? true : false;
         }
 
         /// <summary>
@@ -399,25 +424,17 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool Delete()
         {
-            if (LoadedFile.Records.Count == 0)
-                return false;
-
-            var recordsDeleted = LoadedFile.Records.RemoveAll(x => x.Offset == Position);
-
-            if(recordsDeleted > 1)
-                _logger.Warn($"{recordsDeleted} Records found at Offset {Position} were deleted");
-
-            return recordsDeleted > 0;
+            using var cmd = new SQLiteCommand($"DELETE FROM data_t WHERE id={Position};", _connection);
+            return cmd.ExecuteNonQuery() > 0 ? true : false;
         }
 
         /// <summary>
         ///     Deletes all records within the current Btrieve File
         /// </summary>
-        public void DeleteAll()
+        public bool DeleteAll()
         {
-            _logger.Warn($"Deleting all Records from {LoadedFileName} ({LoadedFile.RecordCount} records)");
-            LoadedFile.Records.Clear();
-            SaveJson();
+            using var cmd = new SQLiteCommand($"DELETE FROM data_t;", _connection);
+            return cmd.ExecuteNonQuery() > 0 ? true : false;
         }
 
         /// <summary>
@@ -452,8 +469,8 @@ namespace MBBSEmu.Btrieve
             {
                 currentQuery = new BtrieveQuery
                 {
-                    KeyOffset = LoadedFile.Keys[keyNumber].Segments[0].Offset,
-                    KeyDataType = LoadedFile.Keys[keyNumber].Segments[0].DataType,
+                    KeyOffset = _keys[keyNumber].Offset,
+                    KeyDataType = _keys[keyNumber].DataType,
                     Key = key == null ? null : new byte[key.Length],
                     KeyLength = GetKeyLength(keyNumber)
                 };
@@ -543,16 +560,8 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public ReadOnlySpan<byte> GetRecordByOffset(uint absolutePosition)
         {
-            foreach (var record in LoadedFile.Records)
-            {
-                if (record.Offset == absolutePosition)
-                {
-                    Position = record.Offset;
-                    return record.Data;
-                }
-            }
-
-            throw new Exception($"No Btrieve Record located at Offset {absolutePosition}");
+            Position = absolutePosition;
+            return GetRecord(absolutePosition).ToSpan();
         }
 
         /// <summary>
@@ -560,14 +569,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="keyNumber"></param>
         /// <returns></returns>
-        public ushort GetKeyLength(ushort keyNumber) => (ushort)LoadedFile.Keys[keyNumber].Segments.Sum(x => x.Length);
+        public ushort GetKeyLength(ushort keyNumber) => (ushort)_keys[keyNumber].Length;
 
         /// <summary>
         ///     Returns the defined Key Type of the specified Key
         /// </summary>
         /// <param name="keyNumber"></param>
         /// <returns></returns>
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => LoadedFile.Keys[keyNumber].Segments[0].DataType;
+        public EnumKeyDataType GetKeyType(ushort keyNumber) => _keys[keyNumber].DataType;
 
         /// <summary>
         ///     Retrieves the First Record, numerically, by the specified key
@@ -576,36 +585,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyFirstAlphabetical(BtrieveQuery query)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = "ZZZZZZZZZZZZZZZZZ"; //hacky way of ensuring the first record we find is before this alphabetically :P
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, lowestRecordKeyValue) < 0)
-                {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = (uint)lowestRecordOffset;
-            return 1;
+            return 0;
         }
 
         /// <summary>
@@ -614,50 +594,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="query"></param>
         private ushort GetByKeyFirstNumeric(BtrieveQuery query)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = uint.MaxValue;
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (recordKeyValue < lowestRecordKeyValue)
-                {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = lowestRecordOffset;
-            return 1;
+            return 0;
         }
 
         /// <summary>
@@ -669,21 +606,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyNextAlphabetical(BtrieveQuery query)
         {
-            //Searching All Records AFTER current for the given key
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-
-                if (recordKey.SequenceEqual(query.Key))
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            //Unable to find record with matching key value
             return 0;
         }
 
@@ -696,23 +618,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyNextNumeric(BtrieveQuery query)
         {
-            //Set Query Value to Current Value
-            query.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
-
-            //Increment the Value & Save It
-            switch (query.KeyLength)
-            {
-                case 2:
-                    query.Key = BitConverter.GetBytes((ushort)(BitConverter.ToUInt16(query.Key) + 1));
-                    break;
-                case 4:
-                    query.Key = BitConverter.GetBytes(BitConverter.ToUInt32(query.Key) + 1);
-                    break;
-                default:
-                    throw new Exception($"Unsupported Key Length: {query.KeyLength} ({LoadedFileName})");
-            }
-
-            return GetByKeyEqual(query);
+            return 0;
         }
 
         /// <summary>
@@ -722,21 +628,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyEqual(BtrieveQuery query)
         {
-            //Searching All Records for the Given Key
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-
-                if (recordKey.SequenceEqual(query.Key))
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            //Unable to find record with matching key value
             return 0;
         }
 
@@ -747,24 +638,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyGreaterAlphabetical(BtrieveQuery query)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, currentRecordKey) > 0)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -775,49 +648,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyGreaterOrEqualNumeric(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
-
-            //Get the Query Key Value
-            switch (query.KeyLength)
-            {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue >= queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -828,49 +658,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyLessOrEqualNumeric(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
-
-            //Get the Query Key Value
-            switch (query.KeyLength)
-            {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue <= queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -881,49 +668,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyGreaterNumeric(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
-
-            //Get the Query Key Value
-            switch (query.KeyLength)
-            {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue > queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -934,24 +678,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyLessAlphabetical(BtrieveQuery query)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, currentRecordKey) < 0)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -962,49 +688,6 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyLessNumeric(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
-
-            //Get the Query Key Value
-            switch (query.KeyLength)
-            {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue < queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
             return 0;
         }
 
@@ -1015,36 +698,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyLastAlphabetical(BtrieveQuery query)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = "\0"; //hacky way of ensuring the first record we find is before this alphabetically :P
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, lowestRecordKeyValue) > 0)
-                {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate Last record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = lowestRecordOffset;
-            return 1;
+            return 0;
         }
 
         /// <summary>
@@ -1054,47 +708,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private ushort GetByKeyLastNumeric(BtrieveQuery query)
         {
-            //Since we're doing LAST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var highestRecordOffset = uint.MaxValue;
-            var highestRecordKeyValue = -1;
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (recordKeyValue > highestRecordKeyValue)
-                {
-                    highestRecordOffset = r.Offset;
-                    highestRecordKeyValue = (int)recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (highestRecordOffset == uint.MaxValue)
-                return 0;
-#if DEBUG
-            _logger.Info($"Offset set to {highestRecordOffset}");
-#endif
-            Position = highestRecordOffset;
-            return 1;
+            return 0;
         }
 
         /// <summary>
@@ -1116,10 +730,10 @@ namespace MBBSEmu.Btrieve
             outputFile.Close();
         }
 
-        private void CreateSqliteDataTable(SQLiteConnection connection)
+        private void CreateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             StringBuilder sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
-            foreach(var key in LoadedFile.Keys)
+            foreach(var key in btrieveFile.Keys)
             {
                 var segment = key.Value.Segments[0];
                 sb.Append($", key{segment.Number} BLOB NOT NULL");
@@ -1130,18 +744,18 @@ namespace MBBSEmu.Btrieve
             cmd.ExecuteNonQuery();
 
             using var transaction = connection.BeginTransaction();
-            foreach (var record in LoadedFile.Records.OrderBy(x => x.Offset))
+            foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
             {
                 using var insertCmd = new SQLiteCommand(connection);
 
                 sb = new StringBuilder("INSERT INTO data_t(data");
-                foreach(var key in LoadedFile.Keys)
+                foreach(var key in btrieveFile.Keys)
                 {
                     var segment = key.Value.Segments[0];
                     sb.Append($", key{segment.Number}");
                 }
                 sb.Append(") VALUES(@data");
-                foreach(var key in LoadedFile.Keys)
+                foreach(var key in btrieveFile.Keys)
                 {
                     var segment = key.Value.Segments[0];
                     sb.Append($", @key{segment.Number}");
@@ -1151,7 +765,7 @@ namespace MBBSEmu.Btrieve
 
                 //var data = record.Data;
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
-                foreach(var key in LoadedFile.Keys)
+                foreach(var key in btrieveFile.Keys)
                 {
                     var segment = key.Value.Segments[0];
                     var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
@@ -1162,7 +776,7 @@ namespace MBBSEmu.Btrieve
             transaction.Commit();
         }
 
-        private void CreateSqliteMetadataTable(SQLiteConnection connection)
+        private void CreateSqliteMetadataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             string statement = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
 
@@ -1171,13 +785,13 @@ namespace MBBSEmu.Btrieve
 
             using var insertCmd = new SQLiteCommand(connection);
             cmd.CommandText = "INSERT INTO metadata_t(record_length, physical_record_length, page_length) VALUES(@record_length, @physical_record_length, @page_length)";
-            cmd.Parameters.AddWithValue("@record_length", LoadedFile.RecordLength);
-            cmd.Parameters.AddWithValue("@physical_record_length", LoadedFile.PhysicalRecordLength);
-            cmd.Parameters.AddWithValue("@page_length", LoadedFile.PageLength);
+            cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
+            cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
+            cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
             cmd.ExecuteNonQuery();
         }
 
-        private void CreateSqliteKeysTable(SQLiteConnection connection)
+        private void CreateSqliteKeysTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             string statement = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL)";
 
@@ -1187,7 +801,7 @@ namespace MBBSEmu.Btrieve
             using var insertCmd = new SQLiteCommand(connection);
             cmd.CommandText = "INSERT INTO keys_t(id, attributes, data_type, offset, length) VALUES(@id, @attributes, @data_type, @offset, @length)";
 
-            foreach (var key in LoadedFile.Keys)
+            foreach (var key in btrieveFile.Keys)
             {
                 // only grab the first
                 var segment = key.Value.Segments[0];
@@ -1204,7 +818,7 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        private void CreateSqliteDB(string filepath)
+        private void CreateSqliteDB(string filepath, BtrieveFile btrieveFile)
         {
             _logger.Warn($"Creating sqlite db {filepath}");
 
@@ -1218,14 +832,9 @@ namespace MBBSEmu.Btrieve
             using var conn = new SQLiteConnection(connectionString);
             conn.Open();
 
-            CreateSqliteMetadataTable(conn);
-            CreateSqliteKeysTable(conn);
-            CreateSqliteDataTable(conn);
-
-            using var cmd = new SQLiteCommand(stm, conn);
-            string version = cmd.ExecuteScalar().ToString();
-
-            _logger.Error($"SQLite version: {version}");
+            CreateSqliteMetadataTable(conn, btrieveFile);
+            CreateSqliteKeysTable(conn, btrieveFile);
+            CreateSqliteDataTable(conn, btrieveFile);
 
             conn.Close();
         }
