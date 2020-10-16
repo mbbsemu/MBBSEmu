@@ -452,6 +452,24 @@ namespace MBBSEmu.Tests.Btrieve
         }
 
         [Fact]
+        public void InsertionConstraintFailure()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            var record = new MBBSEmuRecord();
+            record.Key0 = "Paladine";
+            record.Key1 = 3444; // constraint failure here
+            record.Key2 = "In orbe terrarum, optimus sum";
+            record.Key3 = 4444;
+
+            var insertedId = btrieve.Insert(record.Data);
+            insertedId.Should().Be(0);
+        }
+
+        [Fact]
         public void UpdateTest()
         {
             CopyFilesToTempPath("MBBSEMU.DB");
@@ -486,15 +504,40 @@ namespace MBBSEmu.Tests.Btrieve
             record.Key0 = "Paladine";
             record.Key1 = 31337;
             record.Key2 = "In orbe terrarum, optimus sum";
+            record.Key3 = 2;
 
-            btrieve.Update(2, MakeSmaller(record.Data, 10)).Should().BeTrue();
+            btrieve.Update(2, MakeSmaller(record.Data, 14)).Should().BeTrue();
 
             record = new MBBSEmuRecord(btrieve.GetRecord(2)?.Data);
             record.Key0.Should().Be("Paladine");
             record.Key1.Should().Be(31337);
             record.Key2.Should().Be("In orbe terrarum, opti");
+            record.Key3.Should().Be(5); // regenerated
 
             btrieve.GetRecordCount().Should().Be(4);
+        }
+
+        [Fact]
+        public void UpdateTestConstraintFailed()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            var record = new MBBSEmuRecord();
+            record.Key0 = "Paladine";
+            record.Key1 = 7776; // constraint failure here
+            record.Key2 = "In orbe terrarum, optimus sum";
+
+            btrieve.Update(1, record.Data).Should().BeFalse();
+
+            // assert update didn't occur
+            record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);
+            record.Key0.Should().Be("Sysop");
+            record.Key1.Should().Be(3444);
+            record.Key2.Should().Be("3444");
+            record.Key3.Should().Be(1);
         }
 
         [Fact]

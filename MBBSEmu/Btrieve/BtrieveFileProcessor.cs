@@ -262,7 +262,11 @@ namespace MBBSEmu.Btrieve
                 recordData = ForceSize(recordData, RecordLength);
             }
 
-            using var insertCmd = new SQLiteCommand(_connection);
+            using var transaction = _connection.BeginTransaction();
+            using var updateCmd = new SQLiteCommand(_connection);
+            updateCmd.Transaction = transaction;
+
+            InsertAutoincrementValues(transaction, recordData);
 
             StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data");
             foreach(var key in Keys)
@@ -270,17 +274,30 @@ namespace MBBSEmu.Btrieve
                 sb.Append($", key{key.Value.Number}=@key{key.Value.Number}");
             }
             sb.Append(" WHERE id=@id;");
-            insertCmd.CommandText = sb.ToString();
+            updateCmd.CommandText = sb.ToString();
 
-            insertCmd.Parameters.AddWithValue("@id", offset);
-            insertCmd.Parameters.AddWithValue("@data", recordData);
+            updateCmd.Parameters.AddWithValue("@id", offset);
+            updateCmd.Parameters.AddWithValue("@data", recordData);
             foreach(var key in Keys)
             {
                 var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
-                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
+                updateCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
             }
 
-            if (insertCmd.ExecuteNonQuery() == 0)
+            int queryResult;
+            try
+            {
+                queryResult = updateCmd.ExecuteNonQuery();
+            }
+            catch (SQLiteException)
+            {
+                transaction.Rollback();
+                return false;
+            }
+
+            transaction.Commit();
+
+            if (queryResult == 0)
                 return false;
 
             _cache[offset] = new BtrieveRecord(offset, recordData);
@@ -390,7 +407,16 @@ namespace MBBSEmu.Btrieve
                 insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
             }
 
-            var queryResult = insertCmd.ExecuteNonQuery();
+            int queryResult;
+            try
+            {
+                queryResult = insertCmd.ExecuteNonQuery();
+            }
+            catch (SQLiteException)
+            {
+                transaction.Rollback();
+                return 0;
+            }
 
             transaction.Commit();
 
