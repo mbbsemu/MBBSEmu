@@ -430,8 +430,8 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
 
-                /*EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),*/
+                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
 
                 EnumBtrieveOperationCodes.GetNext => GetByKeyNext(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
@@ -583,9 +583,13 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLast(BtrieveQuery query)
+        private bool GetByKeyLast(BtrieveQuery query)
         {
-            return 0;
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t ORDER BY key{query.KeyDefinition.Number} DESC LIMIT 1", _connection);
+
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
         }
 
         /// <summary>
