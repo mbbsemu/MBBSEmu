@@ -249,7 +249,7 @@ namespace MBBSEmu.Btrieve
             if (recordData.Length != RecordLength)
             {
                 _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
-                recordData = forceSize(recordData, RecordLength);
+                recordData = ForceSize(recordData, RecordLength);
             }
 
             using var insertCmd = new SQLiteCommand(_connection);
@@ -262,7 +262,7 @@ namespace MBBSEmu.Btrieve
             sb.Append(" WHERE id=@id;");
             insertCmd.CommandText = sb.ToString();
 
-            //var data = record.Data;
+            insertCmd.Parameters.AddWithValue("@id", offset);
             insertCmd.Parameters.AddWithValue("@data", recordData);
             foreach(var key in Keys)
             {
@@ -277,12 +277,11 @@ namespace MBBSEmu.Btrieve
             return true;
         }
 
-        private static byte[] forceSize(byte[] b, int size)
+        /// <summary>Copies b into an array of size size, growing or shrinking</summary>
+        private static byte[] ForceSize(byte[] b, int size)
         {
             var ret = new byte[size];
-            for (int i = 0; i < Math.Min(b.Length, size); ++i)
-                ret[i] = b[i];
-
+            Array.Copy(b, 0, ret, 0, Math.Min(b.Length, size));
             return ret;
         }
 
@@ -290,12 +289,13 @@ namespace MBBSEmu.Btrieve
         ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
         /// </summary>
         /// <param name="recordData"></param>
-        public bool Insert(byte[] recordData)
+        /// <return>Position of the newly inserted item, or 0 on failure</return>
+        public uint Insert(byte[] recordData)
         {
             if (recordData.Length != RecordLength)
             {
                 _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
-                recordData = forceSize(recordData, RecordLength);
+                recordData = ForceSize(recordData, RecordLength);
             }
 
             using var insertCmd = new SQLiteCommand(_connection);
@@ -322,10 +322,10 @@ namespace MBBSEmu.Btrieve
             }
 
             if (insertCmd.ExecuteNonQuery() == 0)
-                return false;
+                return 0;
 
             _cache[(uint) _connection.LastInsertRowId] = new BtrieveRecord((uint) _connection.LastInsertRowId, recordData);
-            return true;
+            return (uint) _connection.LastInsertRowId;
         }
 
         /// <summary>
