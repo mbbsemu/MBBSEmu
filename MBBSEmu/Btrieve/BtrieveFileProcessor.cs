@@ -39,6 +39,7 @@ namespace MBBSEmu.Btrieve
         private SQLiteConnection _connection;
         private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
         public Dictionary<int, BtrieveKeyDefinition> Keys { get; set; }
+        private Dictionary<int, BtrieveKeyDefinition> AutoincrementedKeys { get; set; }
 
         public int PageLength { get; set; }
 
@@ -58,6 +59,7 @@ namespace MBBSEmu.Btrieve
             _fileFinder = fileUtility;
 
             Keys = new Dictionary<int, BtrieveKeyDefinition>();
+            AutoincrementedKeys = new Dictionary<int, BtrieveKeyDefinition>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -127,7 +129,7 @@ namespace MBBSEmu.Btrieve
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read()) {
                     var number = reader.GetInt32(0);
-                    Keys[number] = new BtrieveKeyDefinition() {
+                    var btrieveKeyDefinition = new BtrieveKeyDefinition() {
                         Number = (ushort) number,
                         Attributes = (EnumKeyAttributeMask) reader.GetInt32(1),
                         DataType = (EnumKeyDataType) reader.GetInt32(2),
@@ -135,6 +137,11 @@ namespace MBBSEmu.Btrieve
                         Length = (ushort) reader.GetInt32(4),
                         Segment = false,
                     };
+
+                    Keys[number] = btrieveKeyDefinition;
+
+                    if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
+                        AutoincrementedKeys[number] = btrieveKeyDefinition;
                 }
             }
         }
@@ -288,6 +295,61 @@ namespace MBBSEmu.Btrieve
             return ret;
         }
 
+        private bool HasZeroKeyValue(byte[] recordData, BtrieveKeyDefinition key)
+        {
+            var convertible = (IConvertible) SqliteType(key, recordData.AsSpan().Slice(key.Offset, key.Length).ToArray());
+            return convertible.ToInt64(null) == 0;
+        }
+
+        /// <summary>
+        ///     Searches for any zero-filled autoincremented memory in recordData and figures out
+        ///     the value to use, inserting it back into recordData
+        /// </summary>
+        private void InsertAutoincrementValues(SQLiteTransaction transaction, byte[] recordData)
+        {
+            var zeroedKeys = AutoincrementedKeys
+                .Where(key => HasZeroKeyValue(recordData, key.Value))
+                .Select(key => $"(MAX(key{key.Value.Number}) + 1)")
+                .ToList();
+
+            if (zeroedKeys.Count == 0)
+                return;
+
+            StringBuilder sb = new StringBuilder("SELECT ");
+            sb.Append(string.Join(", ", zeroedKeys));
+            sb.Append(" FROM data_t;");
+
+            using var cmd = new SQLiteCommand(sb.ToString(), _connection, transaction);
+            using var reader = cmd.ExecuteReader();
+
+            if (!reader.Read())
+            {
+                _logger.Error("Unable to query for MAX autoincremented values, unable to update");
+                return;
+            }
+
+            var i = 0;
+            foreach (var key in AutoincrementedKeys)
+            {
+                byte[] b;
+                switch (key.Value.Length) {
+                    case 2:
+                        b = BitConverter.GetBytes(reader.GetInt16(i++));
+                        break;
+                    case 4:
+                        b = BitConverter.GetBytes(reader.GetInt32(i++));
+                        break;
+                    case 8:
+                        b = BitConverter.GetBytes(reader.GetInt64(i++));
+                        break;
+                    default:
+                        throw new ArgumentException($"Key integer length not supported {key.Value.Length}");
+                }
+
+                Array.Copy(b, 0, recordData, key.Value.Offset, key.Value.Length);
+            }
+        }
+
         /// <summary>
         ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
         /// </summary>
@@ -301,7 +363,11 @@ namespace MBBSEmu.Btrieve
                 recordData = ForceSize(recordData, RecordLength);
             }
 
+            using var transaction = _connection.BeginTransaction();
             using var insertCmd = new SQLiteCommand(_connection);
+            insertCmd.Transaction = transaction;
+
+            InsertAutoincrementValues(transaction, recordData);
 
             StringBuilder sb = new StringBuilder("INSERT INTO data_t(data");
             foreach(var key in Keys)
@@ -324,7 +390,11 @@ namespace MBBSEmu.Btrieve
                 insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
             }
 
-            if (insertCmd.ExecuteNonQuery() == 0)
+            var queryResult = insertCmd.ExecuteNonQuery();
+
+            transaction.Commit();
+
+            if (queryResult == 0)
                 return 0;
 
             _cache[(uint) _connection.LastInsertRowId] = new BtrieveRecord((uint) _connection.LastInsertRowId, recordData);
@@ -438,15 +508,14 @@ namespace MBBSEmu.Btrieve
 
                 /*EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery),
                 EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery),
+
                 EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery),
                 EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqual(currentQuery),
+
                 EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery),
-                EnumBtrieveOperationCodes.GetLast => GetByKeyLastNumeric(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDefinition.DataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDefinition.DataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),*/
+                */
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
@@ -611,19 +680,18 @@ namespace MBBSEmu.Btrieve
             outputFile.Close();
         }
 
-        private static object SqliteType(BtrieveKeyDefinition key, byte[] data)
+        private static object SqliteType(BtrieveKeyDefinition key, ReadOnlySpan<byte> data)
         {
             /*if (key.Length != data.Length)
                 _logger.Error("Inserting key value with mismatched length");*/
 
             switch (key.DataType)
             {
+                case EnumKeyDataType.AutoInc:
                 case EnumKeyDataType.Integer:
                 case EnumKeyDataType.Unsigned:
                     switch (key.Length)
                     {
-                        case 1:
-                            return data[0];
                         case 2:
                             return BitConverter.ToInt16(data);
                         case 4:
@@ -639,33 +707,46 @@ namespace MBBSEmu.Btrieve
                     // very important to trim trailing nulls/etc
                     return ToCleanString(data);
                 default:
-                    return data;
+                    return data.ToArray();
             }
         }
 
-        private static string ToCleanString(byte[] b)
+        public static string ToCleanString(ReadOnlySpan<byte> b)
         {
-            int strlen = Array.IndexOf(b, (byte) 0);
+            int strlen = b.IndexOf((byte) 0);
             if (strlen < 0)
                 strlen = b.Length;
 
-            return Encoding.ASCII.GetString(b, 0, strlen);
+            return Encoding.ASCII.GetString(b.Slice(0, strlen));
         }
 
-        private static string SqliteType(EnumKeyDataType dataType)
+        private static string SqliteType(BtrieveKeyDefinition key)
         {
-            switch (dataType)
+            String type;
+            switch (key.DataType)
             {
+                case EnumKeyDataType.AutoInc:
+                    return "INTEGER NOT NULL UNIQUE";
                 case EnumKeyDataType.Integer:
                 case EnumKeyDataType.Unsigned:
-                    return "INTEGER";
+                    type = "INTEGER NOT NULL";
+                    break;
                 case EnumKeyDataType.String:
                 case EnumKeyDataType.Lstring:
                 case EnumKeyDataType.Zstring:
-                    return "TEXT";
+                    type = "TEXT NOT NULL";
+                    break;
                 default:
-                    return "BLOB";
+                    type = "BLOB NOT NULL";
+                    break;
             }
+
+            if ((key.Attributes & EnumKeyAttributeMask.Duplicates) == 0)
+            {
+                type += " UNIQUE";
+            }
+
+            return type;
         }
 
         private void CreateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
@@ -674,7 +755,7 @@ namespace MBBSEmu.Btrieve
             foreach(var key in btrieveFile.Keys)
             {
                 var segment = key.Value.Segments[0];
-                sb.Append($", key{segment.Number} {SqliteType(segment.DataType)} NOT NULL");
+                sb.Append($", key{segment.Number} {SqliteType(segment)}");
             }
             sb.Append(");");
 
@@ -771,7 +852,12 @@ namespace MBBSEmu.Btrieve
             RecordLength = btrieveFile.RecordLength;
             PageLength = btrieveFile.PageLength;
             foreach (var key in btrieveFile.Keys)
+            {
                 Keys.Add(key.Value.Segments[0].Number, key.Value.Segments[0]);
+
+                if (key.Value.Segments[0].DataType == EnumKeyDataType.AutoInc)
+                    AutoincrementedKeys.Add(key.Value.Segments[0].Number, key.Value.Segments[0]);
+            }
 
             CreateSqliteMetadataTable(_connection, btrieveFile);
             CreateSqliteKeysTable(_connection, btrieveFile);
