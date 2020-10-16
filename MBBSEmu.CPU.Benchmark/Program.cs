@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using Iced.Intel;
 using MBBSEmu.Memory;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.CPU.Benchmark
 {
@@ -28,27 +29,24 @@ namespace MBBSEmu.CPU.Benchmark
             mbbsEmuCpuCore.Reset();
             mbbsEmuMemoryCore.Clear();
             mbbsEmuCpuRegisters.CS = 1;
+            mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.IP = 0;
 
+            var instructions = new Assembler(16);
+            var label_start = instructions.CreateLabel();
+            var label_loop = instructions.CreateLabel();
+            instructions.Label(ref label_start);
+            instructions.mov(__word_ptr[0], 1);
+            instructions.Label(ref label_loop);
+            instructions.mov(ax, __word_ptr[0]);
+            instructions.cmp(ax, 0x7FFF);
+            instructions.je(label_start);
+            instructions.inc(__word_ptr[0]);
+            instructions.jmp(label_loop);
 
-            var msCodeSegment = new MemoryStream();
+            CreateCodeSegment(instructions);
+            CreateDataSegment(new ReadOnlySpan<byte>());
 
-            //XOR AX, AX
-            msCodeSegment.Write(new byte[] { 0x33, 0xC0});
-            //CMP AX, 0xF
-            msCodeSegment.Write(new byte[] { 0x3D, 0xF, 0x00});
-            //JLE
-            msCodeSegment.Write(new byte[] {0x7E, 0x02});
-            //INC AX
-            msCodeSegment.Write(new byte[] { 0x40 });
-            //INC AX
-            msCodeSegment.Write(new byte[] { 0x40 });
-            //CMP AX, 0x64
-            msCodeSegment.Write(new byte[] {0x3D, 0x64, 0x00});
-            //JL
-            msCodeSegment.Write(new byte[] {0x7C, 0xF2});
-
-            CreateCodeSegment(msCodeSegment.ToArray());
 
             _isRunning = true;
             new Thread(RunThread).Start();
@@ -74,6 +72,14 @@ namespace MBBSEmu.CPU.Benchmark
             }
         }
 
+        private static void CreateCodeSegment(Assembler instructions, ushort segmentOrdinal = 1)
+        {
+            var stream = new MemoryStream();
+            instructions.Assemble(new StreamCodeWriter(stream), 0);
+
+            CreateCodeSegment(stream.ToArray(), segmentOrdinal);
+        }
+
         private static void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
         {
 
@@ -88,6 +94,11 @@ namespace MBBSEmu.CPU.Benchmark
                 decoder.Decode(out instructionList.AllocUninitializedElement());
             }
 
+            CreateCodeSegment(instructionList, segmentOrdinal);
+        }
+
+        private static void CreateCodeSegment(InstructionList instructionList, ushort segmentOrdinal = 1)
+        {
             mbbsEmuMemoryCore.AddSegment(segmentOrdinal, instructionList);
         }
 

@@ -93,7 +93,7 @@ namespace MBBSEmu.Memory
             //    $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
 #endif
             var currentOffset = _currentVariablePointer.Offset;
-            _currentVariablePointer.Offset += (ushort) (size + 1);
+            _currentVariablePointer.Offset += (ushort)(size + 1);
 
             var newPointer = new IntPtr16(_currentVariablePointer.Segment, currentOffset);
 
@@ -216,7 +216,7 @@ namespace MBBSEmu.Memory
                 var decoder = Decoder.Create(16, codeReader);
                 decoder.IP = 0x0;
 
-                while (decoder.IP < (ulong) segment.Data.Length)
+                while (decoder.IP < (ulong)segment.Data.Length)
                 {
                     decoder.Decode(out instructionList.AllocUninitializedElement());
                 }
@@ -476,8 +476,13 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
-        public void SetWord(ushort segment, ushort offset, ushort value) =>
-            SetArray(segment, offset, BitConverter.GetBytes(value));
+        public void SetWord(ushort segment, ushort offset, ushort value)
+        {
+            _ = new Span<byte>(_memorySegments[segment])
+            {
+                [offset] = (byte) (value & 0xFF), [offset + 1] = (byte) (value >> 8)
+            };
+        }
 
         /// <summary>
         ///     Sets the specified word at the defined variable
@@ -496,17 +501,11 @@ namespace MBBSEmu.Memory
 
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
-
-#if DEBUG
+            var destinationSpan = new Span<byte>(_memorySegments[segment]);
             for (var i = 0; i < array.Length; i++)
             {
-                _memorySegments[segment][offset + i] = array[i];
+                destinationSpan[offset++] = array[i];
             }
-#else
-
-            var destinationSpan = new Span<byte>(_memorySegments[segment], offset, array.Length);
-            array.CopyTo(destinationSpan);
-#endif
         }
 
         /// <summary>
