@@ -4448,6 +4448,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newUserNumber = GetParameter(0);
             ChannelNumber = newUserNumber;
 
+            Module.Memory.SetWord("USRNUM", newUserNumber);
+
 #if DEBUG
             _logger.Info($"Setting Current User to {newUserNumber}");
 #endif
