@@ -461,6 +461,101 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Update(5, record.Data).Should().BeFalse();
         }
 
+        [Fact]
+        public void SeekByKeyString()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+        }
+
+        [Fact]
+        public void SeekByKeyInteger()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(1, BitConverter.GetBytes(23556), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(23556);
+
+            btrieve.SeekByKey(1, BitConverter.GetBytes(23556), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+        }
+
+        [Fact]
+        public void SeekByKeyNotFound()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop2"), EnumBtrieveOperationCodes.GetEqual, newQuery: true).Should().BeFalse();
+        }
+
+        [Fact]
+        public void SeekByKeyFirstString()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().BeEmpty();
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+        }
+
+        [Fact]
+        public void SeekByKeyFirstInteger()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(0);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+        }
+
+        [Fact]
+        public void SeekByKeyFirstNotFound()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.DeleteAll();
+
+            btrieve.SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeFalse();
+        }
+
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
         private static byte[] MakeSmaller(byte[] data, int cutOff)
         {

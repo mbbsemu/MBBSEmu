@@ -2715,7 +2715,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //GetEqual
                 case EnumBtrieveOperationCodes.GetEqual:
                     {
-                        result = currentBtrieveFile.SeekByKey(keyNum, keyValue, EnumBtrieveOperationCodes.GetKeyEqual);
+                        result = currentBtrieveFile.SeekByKey(keyNum, keyValue, EnumBtrieveOperationCodes.GetKeyEqual) ? (ushort) 1 : (ushort) 0;
                         break;
                     }
                 case EnumBtrieveOperationCodes.GetLast when keyNum == 0 && keyPointer == IntPtr16.Empty:
@@ -2730,7 +2730,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case EnumBtrieveOperationCodes.GetLess:
                     {
                         result = currentBtrieveFile.SeekByKey(keyNum, keyValue,
-                            (EnumBtrieveOperationCodes)obtopt);
+                            (EnumBtrieveOperationCodes)obtopt) ? (ushort) 1 : (ushort) 0;
                         break;
                     }
                 default:
@@ -4892,11 +4892,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case EnumBtrieveOperationCodes.GetKeyLast:
                 case EnumBtrieveOperationCodes.GetKeyEqual:
                 case EnumBtrieveOperationCodes.GetKeyLess:
-                    result = currentBtrieveFile.SeekByKey(keyNumber, key, (EnumBtrieveOperationCodes)queryOption);
+                    result = currentBtrieveFile.SeekByKey(keyNumber, key, (EnumBtrieveOperationCodes)queryOption) ? (ushort) 1 : (ushort) 0;
                     break;
                 case EnumBtrieveOperationCodes.GetKeyFirst:
                     result = currentBtrieveFile
-                        .SeekByKey(keyNumber, keyPointer == IntPtr16.Empty ? null : key, EnumBtrieveOperationCodes.GetKeyFirst);
+                        .SeekByKey(keyNumber, keyPointer == IntPtr16.Empty ? null : key, EnumBtrieveOperationCodes.GetKeyFirst) ? (ushort) 1 : (ushort) 0;
                     break;
                 default:
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
@@ -5761,7 +5761,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 //Get Next -- repeating the same previous query
                 case EnumBtrieveOperationCodes.GetKeyNext:
                     result = currentBtrieveFile
-                        .SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyNext, false);
+                        .SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyNext, false) ? (ushort) 1 : (ushort) 0;
                     break;
                 default:
                     throw new Exception($"Unsupported Btrieve Query Option: {(EnumBtrieveOperationCodes)queryOption}");
@@ -5811,7 +5811,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void htrval()
         {
-
             var outputSeconds = (ushort)(_highResolutionTimer.Elapsed.TotalSeconds % ushort.MaxValue);
             var outputMicroseconds = (ushort)_highResolutionTimer.Elapsed.Milliseconds;
 

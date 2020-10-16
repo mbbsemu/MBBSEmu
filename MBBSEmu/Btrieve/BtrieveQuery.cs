@@ -1,11 +1,12 @@
-﻿using MBBSEmu.Btrieve.Enums;
+﻿using System.Data.SQLite;
+using System;
 
 namespace MBBSEmu.Btrieve
 {
     /// <summary>
     ///     Represents a Btrieve Query that is executed against a given Btrieve File
     /// </summary>
-    public class BtrieveQuery
+    public class BtrieveQuery : IDisposable
     {
         /// <summary>
         ///     Key Value to be queried on
@@ -13,18 +14,22 @@ namespace MBBSEmu.Btrieve
         public byte[] Key { get; set; }
 
         /// <summary>
-        ///     Data Type of the given Key
+        ///     Key Definition
         /// </summary>
-        public EnumKeyDataType KeyDataType { get; set; }
+        public BtrieveKeyDefinition KeyDefinition { get; set; }
 
-        /// <summary>
-        ///     Length of the given Key
-        /// </summary>
-        public ushort KeyLength { get; set; }
+        public uint Position { get; set; }
 
-        /// <summary>
-        ///     Offset within the record of the given Key
-        /// </summary>
-        public ushort KeyOffset { get; set; }
+        public SQLiteDataReader Reader { get; set; }
+
+        public BtrieveQuery()
+        {
+            Position = 0;
+        }
+
+        public void Dispose()
+        {
+            Reader?.Dispose();
+        }
     }
 }

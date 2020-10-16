@@ -151,6 +151,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepFirst()
         {
+            // TODO consider grabbing data at the same and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -164,6 +165,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepNext()
         {
+            // TODO consider grabbing data at the same and prepopulating the cache
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -196,6 +198,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepLast()
         {
+            // TODO consider grabbing data at the same and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -377,7 +380,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="btrieveOperationCode"></param>
         /// <param name="newQuery"></param>
         /// <returns></returns>
-        public ushort SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode, bool newQuery = true)
+        public bool SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode, bool newQuery = true)
         {
             BtrieveQuery currentQuery;
 
@@ -385,10 +388,8 @@ namespace MBBSEmu.Btrieve
             {
                 currentQuery = new BtrieveQuery
                 {
-                    KeyOffset = Keys[keyNumber].Offset,
-                    KeyDataType = Keys[keyNumber].DataType,
+                    KeyDefinition = Keys[keyNumber],
                     Key = key == null ? null : new byte[key.Length],
-                    KeyLength = GetKeyLength(keyNumber)
                 };
 
                 /*
@@ -396,11 +397,11 @@ namespace MBBSEmu.Btrieve
                  * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
                  * we increase the size of the defined key in the query.
                  */
-                if (key != null && key.Length != currentQuery.KeyLength)
+                /*if (key != null && key.Length != currentQuery.KeyDefinition.Length)
                 {
-                    _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyLength}");
+                    _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyDefinition.Length}");
                     currentQuery.KeyLength = (ushort)key.Length;
-                }
+                }*/
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
@@ -413,6 +414,7 @@ namespace MBBSEmu.Btrieve
                 }
 
                 //Update Previous for the next run
+                PreviousQuery?.Dispose();
                 PreviousQuery = currentQuery;
             }
             else
@@ -425,45 +427,26 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
 
-                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
+                /*EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),*/
 
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyNextAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyNextAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNextNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreaterNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreaterNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreaterOrEqualNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqualNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLessNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLessNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
+                /*EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery),
+                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery),
+                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqual(currentQuery),
+                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery),
                 EnumBtrieveOperationCodes.GetLast => GetByKeyLastNumeric(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDefinition.DataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDefinition.DataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),*/
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
@@ -495,22 +478,17 @@ namespace MBBSEmu.Btrieve
         public EnumKeyDataType GetKeyType(ushort keyNumber) => Keys[keyNumber].DataType;
 
         /// <summary>
-        ///     Retrieves the First Record, numerically, by the specified key
+        ///     Retrieves the First Record (lowest sort order by the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyFirstAlphabetical(BtrieveQuery query)
+        private bool GetByKeyFirst(BtrieveQuery query)
         {
-            return 0;
-        }
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t ORDER BY key{query.KeyDefinition.Number} ASC LIMIT 1", _connection);
 
-        /// <summary>
-        ///     Retrieves the First Record, numerically, by the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        private ushort GetByKeyFirstNumeric(BtrieveQuery query)
-        {
-            return 0;
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
         }
 
         /// <summary>
@@ -520,21 +498,29 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyNextAlphabetical(BtrieveQuery query)
+        private bool GetByKeyNext(BtrieveQuery query)
         {
-            return 0;
+            return NextReader(query);
         }
 
-        /// <summary>
-        ///     GetNext for Numeric key types
-        ///
-        ///     Key Value needs to be incremented, then the specific key needs to be found
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyNextNumeric(BtrieveQuery query)
+        private bool NextReader(BtrieveQuery query)
         {
-            return 0;
+            if (query.Reader == null)
+                return false;
+
+            if (!query.Reader.Read())
+            {
+                query.Reader.Dispose();
+                query.Reader = null;
+                return false;
+            }
+
+            var data = new byte[RecordLength];
+            query.Reader.GetBlob(1, readOnly:true).Read(data, data.Length, 0);
+
+            query.Position = Position = (uint) query.Reader.GetInt32(0);
+            _cache[query.Position] = new BtrieveRecord(query.Position, data);
+            return true;
         }
 
         /// <summary>
@@ -542,9 +528,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyEqual(BtrieveQuery query)
+        private bool GetByKeyEqual(BtrieveQuery query)
         {
-            return 0;
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t WHERE key{query.KeyDefinition.Number}=@value", _connection);
+            command.Parameters.AddWithValue("@value", SqliteType(query.KeyDefinition, query.Key));
+
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
         }
 
         /// <summary>
@@ -552,7 +543,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyGreaterAlphabetical(BtrieveQuery query)
+        private ushort GetByKeyGreater(BtrieveQuery query)
         {
             return 0;
         }
@@ -562,7 +553,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyGreaterOrEqualNumeric(BtrieveQuery query)
+        private ushort GetByKeyGreaterOrEqual(BtrieveQuery query)
         {
             return 0;
         }
@@ -572,17 +563,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLessOrEqualNumeric(BtrieveQuery query)
-        {
-            return 0;
-        }
-
-        /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Greater Than the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyGreaterNumeric(BtrieveQuery query)
+        private ushort GetByKeyLessOrEqual(BtrieveQuery query)
         {
             return 0;
         }
@@ -592,37 +573,17 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLessAlphabetical(BtrieveQuery query)
+        private ushort GetByKeyLess(BtrieveQuery query)
         {
             return 0;
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Less Than the specified key
+        ///     Retrieves the Last Record, highest, by the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyLessNumeric(BtrieveQuery query)
-        {
-            return 0;
-        }
-
-        /// <summary>
-        ///     Retrieves the Last Record, Alphabetically, by the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLastAlphabetical(BtrieveQuery query)
-        {
-            return 0;
-        }
-
-        /// <summary>
-        ///     Search for the Last logical record after the current position with the specified Key value
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLastNumeric(BtrieveQuery query)
+        private ushort GetByKeyLast(BtrieveQuery query)
         {
             return 0;
         }
@@ -648,8 +609,8 @@ namespace MBBSEmu.Btrieve
 
         private static object SqliteType(BtrieveKeyDefinition key, byte[] data)
         {
-            if (key.Length != data.Length)
-                _logger.Error("Inserting key value with mismatched length");
+            /*if (key.Length != data.Length)
+                _logger.Error("Inserting key value with mismatched length");*/
 
             switch (key.DataType)
             {
@@ -671,10 +632,20 @@ namespace MBBSEmu.Btrieve
                 case EnumKeyDataType.String:
                 case EnumKeyDataType.Lstring:
                 case EnumKeyDataType.Zstring:
-                    return Encoding.ASCII.GetString(data);
+                    // very important to trim trailing nulls/etc
+                    return ToCleanString(data);
                 default:
                     return data;
             }
+        }
+
+        private static string ToCleanString(byte[] b)
+        {
+            int strlen = Array.IndexOf(b, (byte) 0);
+            if (strlen < 0)
+                strlen = b.Length;
+
+            return Encoding.ASCII.GetString(b, 0, strlen);
         }
 
         private static string SqliteType(EnumKeyDataType dataType)
