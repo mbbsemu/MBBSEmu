@@ -12,7 +12,7 @@ namespace MBBSEmu.Memory
 
         public byte[] Data
         {
-            get => BitConverter.GetBytes(Segment | Offset << 16);
+            get => BitConverter.GetBytes((Segment << 16) | Offset);
             set
             {
                 Offset = BitConverter.ToUInt16(value, 0);
