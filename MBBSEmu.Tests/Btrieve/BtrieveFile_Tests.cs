@@ -47,20 +47,21 @@ namespace MBBSEmu.Tests.Btrieve
             var btrieve = new BtrieveFile();
             btrieve.LoadFile(serviceResolver.GetService<ILogger>(), _modulePath, "MBBSEMU.DAT");
 
-            Assert.Equal(3, btrieve.KeyCount);
-            Assert.Equal(3, btrieve.Keys.Count);
-            Assert.Equal(70, btrieve.RecordLength);
-            Assert.Equal(86, btrieve.PhysicalRecordLength);
+            Assert.Equal(4, btrieve.KeyCount);
+            Assert.Equal(4, btrieve.Keys.Count);
+            Assert.Equal(74, btrieve.RecordLength);
+            Assert.Equal(90, btrieve.PhysicalRecordLength);
             Assert.Equal(512, btrieve.PageLength);
-            Assert.Equal(4, btrieve.PageCount);
+            Assert.Equal(5, btrieve.PageCount);
             Assert.False(btrieve.LogKeyPresent);
 
             Assert.Single(btrieve.Keys[0].Segments);
             Assert.Single(btrieve.Keys[1].Segments);
             Assert.Single(btrieve.Keys[2].Segments);
+            Assert.Single(btrieve.Keys[3].Segments);
 
 
-            btrieve.Keys[0].Segments[0].Should().BeEquivalentTo(
+            btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates,
@@ -69,7 +70,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 32,
                     Segment = false,
                 });
-            btrieve.Keys[1].Segments[0].Should().BeEquivalentTo(
+            btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable,
@@ -78,13 +79,22 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 4,
                     Segment = false,
                 });
-            btrieve.Keys[2].Segments[0].Should().BeEquivalentTo(
+            btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable,
                     DataType = EnumKeyDataType.Zstring,
                     Offset = 38,
                     Length = 32,
+                    Segment = false,
+                });
+            btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
+                new BtrieveKeyDefinition() {
+                    Number = 3,
+                    Attributes = 0,
+                    DataType = EnumKeyDataType.AutoInc,
+                    Offset = 70,
+                    Length = 4,
                     Segment = false,
                 });
         }

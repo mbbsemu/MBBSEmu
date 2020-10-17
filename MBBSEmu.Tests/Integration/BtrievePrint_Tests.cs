@@ -23,10 +23,10 @@ namespace MBBSEmu.Tests.Integration
                     " P\r\nPrinting all the btrieve rows.",
                     ".",
                     ".",
-                    "\r\nuid: Sysop lvalue: 23923 svalue: \r\n" +
-                    "uid: Sysop lvalue: 0 svalue: Whatever\r\n" +
-                    "uid: Sysop lvalue: 23556 svalue: 3553088\r\n" +
-                    "uid: Sysop lvalue: 3774400 svalue: hahah\r\n" +
+                    "\r\nuid: Sysop lvalue: 3444 svalue: 3444 incvalue: 1\r\n" +
+                    "uid: Sysop lvalue: 7776 svalue: 7776 incvalue: 2\r\n" +
+                    "uid: Sysop lvalue: 1052234073 svalue: StringValue incvalue: 3\r\n" +
+                    "uid: Sysop lvalue: -615634567 svalue: stringValue incvalue: 4\r\n" +
                     "Press X to exit.",
                 };
 
@@ -73,12 +73,12 @@ namespace MBBSEmu.Tests.Integration
                     " P\r\nPrinting all the btrieve rows.",
                     ".",
                     ".",
-                    "\r\nuid: Sysop lvalue: 23923 svalue: \r\n" +
-                    "uid: Sysop lvalue: 0 svalue: Whatever\r\n" +
-                    "uid: Sysop lvalue: 23556 svalue: 3553088\r\n" +
-                    "uid: Sysop lvalue: 3774400 svalue: hahah\r\n" +
-                    "uid: Sysop lvalue: 31337 svalue: 31337\r\n" +
-                    $"uid: Sysop lvalue: {mbbsemuHash("mbbs4evr")} svalue: mbbs4evr\r\n" +
+                    "\r\nuid: Sysop lvalue: 3444 svalue: 3444 incvalue: 1\r\n" +
+                    "uid: Sysop lvalue: 7776 svalue: 7776 incvalue: 2\r\n" +
+                    "uid: Sysop lvalue: 1052234073 svalue: StringValue incvalue: 3\r\n" +
+                    "uid: Sysop lvalue: -615634567 svalue: stringValue incvalue: 4\r\n" +
+                    "uid: Sysop lvalue: 31337 svalue: 31337 incvalue: 5\r\n" +
+                    $"uid: Sysop lvalue: {mbbsemuHash("mbbs4evr")} svalue: mbbs4evr incvalue: 6\r\n" +
                     "Press X to exit.",
                 };
 

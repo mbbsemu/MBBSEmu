@@ -56,7 +56,7 @@ DBPRINT {Printing all the btrieve rows...
 DBPRINTE {Press X to exit...
 } T Btrieve Print
 
-DBVPRINT {uid: %s lvalue: %s svalue: %s
+DBVPRINT {uid: %s lvalue: %s svalue: %s incvalue: %s
 } T Btrieve Print
 
 INSFAIL {Failed to insert record
