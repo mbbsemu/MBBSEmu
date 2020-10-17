@@ -17,8 +17,8 @@ namespace MBBSEmu.Tests.Btrieve
         const int RECORD_LENGTH = 74;
 
         private const string EXPECTED_METADATA_T_SQL = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
-        private const string EXPECTED_KEYS_T_SQL = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL)";
-        private const string EXPECTED_DATA_T_SQL = "CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key0 TEXT NOT NULL, key1 INTEGER NOT NULL UNIQUE, key2 TEXT NOT NULL, key3 INTEGER NOT NULL UNIQUE)";
+        private const string EXPECTED_KEYS_T_SQL = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, UNIQUE(number, segment))";
+        private const string EXPECTED_DATA_T_SQL = "CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0_0 TEXT NOT NULL, key_1_0 INTEGER NOT NULL UNIQUE, key_2_0 TEXT NOT NULL, key_3_0 INTEGER NOT NULL UNIQUE)";
 
         private static readonly Random RANDOM = new Random();
 
@@ -96,7 +96,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.RecordLength.Should().Be(RECORD_LENGTH);
             btrieve.PageLength.Should().Be(512);
 
-            btrieve.Keys[0].Should().BeEquivalentTo(
+            btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates,
@@ -105,7 +105,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 32,
                     Segment = false,
                 });
-            btrieve.Keys[1].Should().BeEquivalentTo(
+            btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable,
@@ -114,7 +114,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 4,
                     Segment = false,
                 });
-            btrieve.Keys[2].Should().BeEquivalentTo(
+            btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable,
@@ -123,7 +123,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 32,
                     Segment = false,
                 });
-            btrieve.Keys[3].Should().BeEquivalentTo(
+            btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 3,
                     Attributes = 0,
@@ -172,7 +172,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.RecordLength.Should().Be(RECORD_LENGTH);
             btrieve.PageLength.Should().Be(512);
 
-            btrieve.Keys[0].Should().BeEquivalentTo(
+            btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates,
@@ -181,7 +181,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 32,
                     Segment = false,
                 });
-            btrieve.Keys[1].Should().BeEquivalentTo(
+            btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable,
@@ -190,7 +190,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 4,
                     Segment = false,
                 });
-            btrieve.Keys[2].Should().BeEquivalentTo(
+            btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable,
@@ -199,7 +199,7 @@ namespace MBBSEmu.Tests.Btrieve
                     Length = 32,
                     Segment = false,
                 });
-            btrieve.Keys[3].Should().BeEquivalentTo(
+            btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 3,
                     Attributes = 0,

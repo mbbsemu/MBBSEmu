@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace MBBSEmu.Btrieve
 {
@@ -10,6 +11,21 @@ namespace MBBSEmu.Btrieve
     public class BtrieveKey
     {
         public List<BtrieveKeyDefinition> Segments { get; set; }
+
+        public BtrieveKeyDefinition PrimarySegment
+        {
+            get => Segments[0];
+        }
+
+        public bool IsComposite
+        {
+            get => Segments.Count > 1;
+        }
+
+        public int Length
+        {
+            get => Segments.Sum(segment => segment.Length);
+        }
 
         public BtrieveKey()
         {

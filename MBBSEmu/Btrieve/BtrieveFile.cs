@@ -249,6 +249,8 @@ namespace MBBSEmu.Btrieve
                 logger.Info($"Data Type: {keyDefinition.DataType}");
                 logger.Info($"Attributes: {keyDefinition.Attributes}");
                 logger.Info($"Length: {keyDefinition.Length}");
+                logger.Info($"Segment: {keyDefinition.Segment}");
+                logger.Info($"SegmentOf: {keyDefinition.SegmentOf}");
                 logger.Info("----------------");
 #endif
                 if (!Keys.TryGetValue(keyDefinition.Number, out var key))
@@ -262,6 +264,16 @@ namespace MBBSEmu.Btrieve
                 }
 
                 keyDefinitionBase += keyDefinitionLength;
+            }
+
+            // update segment indices
+            foreach (var key in Keys)
+            {
+                var i = 0;
+                foreach (var segment in key.Value.Segments)
+                {
+                    segment.SegmentIndex = i++;
+                }
             }
         }
 

@@ -210,7 +210,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                         }
                                     };
 
-                                    var definedKeys = currentBtrieveFile.Keys.Values.Select(k =>
+                                    var definedKeys = currentBtrieveFile.Keys.Values.SelectMany(k => k.Segments).Select(k =>
                                         new BtvkeyspecStruct()
                                         {
                                             flags = (ushort)k.Attributes,

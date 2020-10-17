@@ -38,8 +38,8 @@ namespace MBBSEmu.Btrieve
 
         private SQLiteConnection _connection;
         private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
-        public Dictionary<int, BtrieveKeyDefinition> Keys { get; set; }
-        private Dictionary<int, BtrieveKeyDefinition> AutoincrementedKeys { get; set; }
+        public Dictionary<ushort, BtrieveKey> Keys { get; set; }
+        private Dictionary<ushort, BtrieveKeyDefinition> AutoincrementedKeys { get; set; }
 
         public int PageLength { get; set; }
 
@@ -58,10 +58,8 @@ namespace MBBSEmu.Btrieve
         {
             _fileFinder = fileUtility;
 
-            Keys = new Dictionary<int, BtrieveKeyDefinition>();
-            AutoincrementedKeys = new Dictionary<int, BtrieveKeyDefinition>();
-
-            _logger.Error($"Opening path:{path} fileName:{fileName}");
+            Keys = new Dictionary<ushort, BtrieveKey>();
+            AutoincrementedKeys = new Dictionary<ushort, BtrieveKeyDefinition>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -130,24 +128,28 @@ namespace MBBSEmu.Btrieve
                 PageLength = reader.GetInt32(1);
             }
 
-            using (var cmd = new SQLiteCommand("SELECT id, attributes, data_type, offset, length FROM keys_t;", _connection))
+            using (var cmd = new SQLiteCommand("SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment;", _connection))
             {
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read()) {
                     var number = reader.GetInt32(0);
                     var btrieveKeyDefinition = new BtrieveKeyDefinition() {
                         Number = (ushort) number,
-                        Attributes = (EnumKeyAttributeMask) reader.GetInt32(1),
-                        DataType = (EnumKeyDataType) reader.GetInt32(2),
-                        Offset = (ushort) reader.GetInt32(3),
-                        Length = (ushort) reader.GetInt32(4),
-                        Segment = false,
+                        Segment = reader.GetInt32(1) != 0,
+                        SegmentOf = 0,
+                        Attributes = (EnumKeyAttributeMask) reader.GetInt32(2),
+                        DataType = (EnumKeyDataType) reader.GetInt32(3),
+                        Offset = (ushort) reader.GetInt32(4),
+                        Length = (ushort) reader.GetInt32(5),
                     };
 
-                    Keys[number] = btrieveKeyDefinition;
+                    if (!Keys.ContainsKey(btrieveKeyDefinition.Number))
+                        Keys[btrieveKeyDefinition.Number] = new BtrieveKey();
+
+                    Keys[btrieveKeyDefinition.Number].Segments.Add(btrieveKeyDefinition);
 
                     if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
-                        AutoincrementedKeys[number] = btrieveKeyDefinition;
+                        AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKeyDefinition;
                 }
             }
         }
@@ -274,11 +276,8 @@ namespace MBBSEmu.Btrieve
 
             InsertAutoincrementValues(transaction, recordData);
 
-            StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data");
-            foreach(var key in Keys)
-            {
-                sb.Append($", key{key.Value.Number}=@key{key.Value.Number}");
-            }
+            StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data, ");
+            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"{segment.SqliteKeyName}=@{segment.SqliteKeyName}").ToList()));
             sb.Append(" WHERE id=@id;");
             updateCmd.CommandText = sb.ToString();
 
@@ -286,8 +285,11 @@ namespace MBBSEmu.Btrieve
             updateCmd.Parameters.AddWithValue("@data", recordData);
             foreach(var key in Keys)
             {
-                var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
-                updateCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
+                foreach(var segment in key.Value.Segments)
+                {
+                    var keyData = recordData.AsSpan().Slice(segment.Offset, segment.Length);
+                    updateCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
+                }
             }
 
             int queryResult;
@@ -295,8 +297,9 @@ namespace MBBSEmu.Btrieve
             {
                 queryResult = updateCmd.ExecuteNonQuery();
             }
-            catch (SQLiteException)
+            catch (SQLiteException ex)
             {
+                _logger.Warn(ex, $"Failed to update record because {ex.Message}");
                 transaction.Rollback();
                 return false;
             }
@@ -332,7 +335,7 @@ namespace MBBSEmu.Btrieve
         {
             var zeroedKeys = AutoincrementedKeys
                 .Where(key => HasZeroKeyValue(recordData, key.Value))
-                .Select(key => $"(MAX(key{key.Value.Number}) + 1)")
+                .Select(key => $"(MAX({key.Value.SqliteKeyName}) + 1)")
                 .ToList();
 
             if (zeroedKeys.Count == 0)
@@ -392,25 +395,21 @@ namespace MBBSEmu.Btrieve
 
             InsertAutoincrementValues(transaction, recordData);
 
-            StringBuilder sb = new StringBuilder("INSERT INTO data_t(data");
-            foreach(var key in Keys)
-            {
-                sb.Append($", key{key.Value.Number}");
-            }
-            sb.Append(") VALUES(@data");
-            foreach(var key in Keys)
-            {
-                sb.Append($", @key{key.Value.Number}");
-            }
+            StringBuilder sb = new StringBuilder("INSERT INTO data_t(data, ");
+            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => segment.SqliteKeyName).ToList()));
+            sb.Append(") VALUES(@data, ");
+            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"@{segment.SqliteKeyName}").ToList()));
             sb.Append(");");
             insertCmd.CommandText = sb.ToString();
 
-            //var data = record.Data;
             insertCmd.Parameters.AddWithValue("@data", recordData);
             foreach(var key in Keys)
             {
-                var keyData = recordData.AsSpan().Slice(key.Value.Offset, key.Value.Length);
-                insertCmd.Parameters.AddWithValue($"key{key.Value.Number}", SqliteType(key.Value, keyData.ToArray()));
+                foreach(var segment in key.Value.Segments)
+                {
+                    var keyData = recordData.AsSpan().Slice(segment.Offset, segment.Length);
+                    insertCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
+                }
             }
 
             int queryResult;
@@ -418,8 +417,9 @@ namespace MBBSEmu.Btrieve
             {
                 queryResult = insertCmd.ExecuteNonQuery();
             }
-            catch (SQLiteException)
+            catch (SQLiteException ex)
             {
+                _logger.Warn(ex, $"Failed to insert record because {ex.Message}");
                 transaction.Rollback();
                 return 0;
             }
@@ -490,8 +490,8 @@ namespace MBBSEmu.Btrieve
             {
                 currentQuery = new BtrieveQuery
                 {
-                    KeyDefinition = Keys[keyNumber],
-                    Key = key == null ? null : new byte[key.Length],
+                    Key = Keys[keyNumber],
+                    KeyData = key == null ? null : new byte[key.Length],
                 };
 
                 /*
@@ -512,7 +512,7 @@ namespace MBBSEmu.Btrieve
                  */
                 if (key != null)
                 {
-                    Array.Copy(key.ToArray(), 0, currentQuery.Key, 0, key.Length);
+                    Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
                 }
 
                 //Update Previous for the next run
@@ -576,7 +576,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="keyNumber"></param>
         /// <returns></returns>
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => Keys[keyNumber].DataType;
+        public EnumKeyDataType GetKeyType(ushort keyNumber) => Keys[keyNumber].PrimarySegment.DataType;
 
         /// <summary>
         ///     Retrieves the First Record (lowest sort order by the specified key
@@ -585,8 +585,11 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyFirst(BtrieveQuery query)
         {
+            if (query.Key.IsComposite)
+                throw new ArgumentException("Composite query NYI");
+
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY key{query.KeyDefinition.Number} ASC LIMIT 1", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC LIMIT 1", _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -631,9 +634,12 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
+            if (query.Key.IsComposite)
+                throw new ArgumentException("Composite query NYI");
+
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE key{query.KeyDefinition.Number}=@value", _connection);
-            command.Parameters.AddWithValue("@value", SqliteType(query.KeyDefinition, query.Key));
+                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName}=@value", _connection);
+            command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -686,8 +692,11 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyLast(BtrieveQuery query)
         {
+            if (query.Key.IsComposite)
+                throw new ArgumentException("Composite query NYI");
+
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY key{query.KeyDefinition.Number} DESC LIMIT 1", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC LIMIT 1", _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -764,10 +773,10 @@ namespace MBBSEmu.Btrieve
             return Encoding.ASCII.GetString(b.Slice(0, strlen));
         }
 
-        private static string SqliteType(BtrieveKeyDefinition key)
+        private static string SqliteType(BtrieveKey key, BtrieveKeyDefinition keyDefinition)
         {
             String type;
-            switch (key.DataType)
+            switch (keyDefinition.DataType)
             {
                 case EnumKeyDataType.AutoInc:
                     return "INTEGER NOT NULL UNIQUE";
@@ -782,12 +791,12 @@ namespace MBBSEmu.Btrieve
                     type = "TEXT NOT NULL";
                     break;
                 default:
-                    _logger.Warn($"Defaulting to BLOB type for {key.DataType}");
+                    _logger.Warn($"Defaulting to BLOB type for {keyDefinition.DataType}");
                     type = "BLOB NOT NULL";
                     break;
             }
 
-            if ((key.Attributes & EnumKeyAttributeMask.Duplicates) == 0)
+            if (!key.IsComposite && keyDefinition.IsUnique)
             {
                 type += " UNIQUE";
             }
@@ -800,40 +809,49 @@ namespace MBBSEmu.Btrieve
             StringBuilder sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
             foreach(var key in btrieveFile.Keys)
             {
-                var segment = key.Value.Segments[0];
-                sb.Append($", key{segment.Number} {SqliteType(segment)}");
+                foreach (var segment in key.Value.Segments)
+                {
+                    sb.Append($", {segment.SqliteKeyName} {SqliteType(key.Value, segment)}");
+                }
+            }
+            // check for uniqueness constraints on composite keys
+            foreach(var key in btrieveFile.Keys)
+            {
+                if (key.Value.IsComposite && key.Value.PrimarySegment.IsUnique)
+                {
+                    sb.Append(", UNIQUE(");
+                    sb.Append(string.Join(", ", key.Value.Segments.Select(segment => segment.SqliteKeyName).ToList()));
+                    sb.Append(")");
+                }
             }
             sb.Append(");");
 
             using var cmd = new SQLiteCommand(sb.ToString(), connection);
             cmd.ExecuteNonQuery();
+        }
 
+        private void PopulateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
+        {
             using var transaction = connection.BeginTransaction();
             foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
             {
                 using var insertCmd = new SQLiteCommand(connection);
 
-                sb = new StringBuilder("INSERT INTO data_t(data");
-                foreach(var key in btrieveFile.Keys)
-                {
-                    var segment = key.Value.Segments[0];
-                    sb.Append($", key{segment.Number}");
-                }
-                sb.Append(") VALUES(@data");
-                foreach(var key in btrieveFile.Keys)
-                {
-                    var segment = key.Value.Segments[0];
-                    sb.Append($", @key{segment.Number}");
-                }
+                var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => segment.SqliteKeyName).ToList()));
+                sb.Append(") VALUES(@data, ");
+                sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"@{segment.SqliteKeyName}").ToList()));
                 sb.Append(");");
-                insertCmd.CommandText = sb.ToString();
 
+                insertCmd.CommandText = sb.ToString();
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
                 foreach(var key in btrieveFile.Keys)
                 {
-                    var segment = key.Value.Segments[0];
-                    var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
-                    insertCmd.Parameters.AddWithValue($"key{segment.Number}", SqliteType(segment, keyData.ToArray()));
+                    foreach (var segment in key.Value.Segments)
+                    {
+                        var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
+                        insertCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
+                    }
                 }
 
                 try
@@ -842,7 +860,7 @@ namespace MBBSEmu.Btrieve
                 }
                 catch (SQLiteException ex)
                 {
-                    _logger.Error(ex, "Error importing btrieve data");
+                    _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
                 }
             }
             transaction.Commit();
@@ -865,25 +883,26 @@ namespace MBBSEmu.Btrieve
 
         private void CreateSqliteKeysTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
-            string statement = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL)";
+            string statement = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, UNIQUE(number, segment))";
 
             using var cmd = new SQLiteCommand(statement, connection);
             cmd.ExecuteNonQuery();
 
             using var insertCmd = new SQLiteCommand(connection);
-            cmd.CommandText = "INSERT INTO keys_t(id, attributes, data_type, offset, length) VALUES(@id, @attributes, @data_type, @offset, @length)";
+            cmd.CommandText = "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length) VALUES(@number, @segment, @attributes, @data_type, @offset, @length)";
 
             foreach (var key in btrieveFile.Keys)
             {
-                // only grab the first
-                var segment = key.Value.Segments[0];
+                foreach (var keyDefinition in key.Value.Segments)
                 {
+                    // only grab the first
                     cmd.Reset();
-                    cmd.Parameters.AddWithValue("@id", segment.Number);
-                    cmd.Parameters.AddWithValue("@attributes", segment.Attributes);
-                    cmd.Parameters.AddWithValue("@data_type", segment.DataType);
-                    cmd.Parameters.AddWithValue("@offset", segment.Offset);
-                    cmd.Parameters.AddWithValue("@length", segment.Length);
+                    cmd.Parameters.AddWithValue("@number", keyDefinition.Number);
+                    cmd.Parameters.AddWithValue("@segment", keyDefinition.SegmentIndex);
+                    cmd.Parameters.AddWithValue("@attributes", keyDefinition.Attributes);
+                    cmd.Parameters.AddWithValue("@data_type", keyDefinition.DataType);
+                    cmd.Parameters.AddWithValue("@offset", keyDefinition.Offset);
+                    cmd.Parameters.AddWithValue("@length", keyDefinition.Length);
 
                     cmd.ExecuteNonQuery();
                 }
@@ -905,17 +924,17 @@ namespace MBBSEmu.Btrieve
 
             RecordLength = btrieveFile.RecordLength;
             PageLength = btrieveFile.PageLength;
+            Keys = btrieveFile.Keys;
             foreach (var key in btrieveFile.Keys)
             {
-                Keys.Add(key.Value.Segments[0].Number, key.Value.Segments[0]);
-
-                if (key.Value.Segments[0].DataType == EnumKeyDataType.AutoInc)
-                    AutoincrementedKeys.Add(key.Value.Segments[0].Number, key.Value.Segments[0]);
+                if (key.Value.PrimarySegment.DataType == EnumKeyDataType.AutoInc)
+                    AutoincrementedKeys.Add(key.Value.PrimarySegment.Number, key.Value.PrimarySegment);
             }
 
             CreateSqliteMetadataTable(_connection, btrieveFile);
             CreateSqliteKeysTable(_connection, btrieveFile);
             CreateSqliteDataTable(_connection, btrieveFile);
+            PopulateSqliteDataTable(_connection, btrieveFile);
         }
     }
 }

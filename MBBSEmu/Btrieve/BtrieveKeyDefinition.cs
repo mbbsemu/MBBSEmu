@@ -22,8 +22,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public ushort SegmentOf { get; set; }
 
+        public int SegmentIndex { get; set; }
+
         public ushort Position => (ushort) (Offset + 1);
 
+        public string SqliteKeyName => $"key_{Number}_{SegmentIndex}";
 
+        public bool IsUnique { get => (Attributes & EnumKeyAttributeMask.Duplicates) == 0; }
+
+        public bool AllowDuplicates { get => !IsUnique; }
     }
 }

@@ -11,12 +11,12 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Key Value to be queried on
         /// </summary>
-        public byte[] Key { get; set; }
+        public byte[] KeyData { get; set; }
 
         /// <summary>
         ///     Key Definition
         /// </summary>
-        public BtrieveKeyDefinition KeyDefinition { get; set; }
+        public BtrieveKey Key { get; set; }
 
         public uint Position { get; set; }
 
