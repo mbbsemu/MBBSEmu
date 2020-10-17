@@ -335,6 +335,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="channel"></param>
         public void UpdateSession(ushort channel)
         {
+            //Don't process on RTKICK, etc. runs
+            if (channel == ushort.MaxValue)
+                return;
+
             //Set the Channel Status
             if (ChannelDictionary[ChannelNumber].OutputEmptyStatus && !ChannelDictionary[ChannelNumber].StatusChange)
             {
@@ -4437,16 +4441,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Change to a different user number
+        ///     Change the currently active Channel to the specified Channel Number
         ///
         ///     Signature: void curusr(int newunum)
         /// </summary>
         private void curusr()
         {
             var newUserNumber = GetParameter(0);
-            ChannelNumber = newUserNumber;
 
-            Module.Memory.SetWord("USRNUM", newUserNumber);
+            if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
+            {
+                _logger.Warn($"Invalid Channel: {newUserNumber}");
+                return;
+            }
+
+            //Save the Current Channel
+            UpdateSession(ChannelNumber);
+
+            //Load the new Channel
+            SetState(newUserNumber);
 
 #if DEBUG
             _logger.Info($"Setting Current User to {newUserNumber}");
