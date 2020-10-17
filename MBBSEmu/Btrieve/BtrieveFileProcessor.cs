@@ -713,9 +713,21 @@ namespace MBBSEmu.Btrieve
 
             switch (key.DataType)
             {
+                case EnumKeyDataType.Unsigned:
+                case EnumKeyDataType.UnsignedBinary:
+                    switch (key.Length)
+                    {
+                        case 2:
+                            return BitConverter.ToUInt16(data);
+                        case 4:
+                            return BitConverter.ToUInt32(data);
+                        case 8:
+                            return BitConverter.ToUInt64(data);
+                        default:
+                            throw new ArgumentException($"Bad unsigned integer key length {key.Length}");
+                    }
                 case EnumKeyDataType.AutoInc:
                 case EnumKeyDataType.Integer:
-                case EnumKeyDataType.Unsigned:
                     switch (key.Length)
                     {
                         case 2:
@@ -755,6 +767,7 @@ namespace MBBSEmu.Btrieve
                     return "INTEGER NOT NULL UNIQUE";
                 case EnumKeyDataType.Integer:
                 case EnumKeyDataType.Unsigned:
+                case EnumKeyDataType.UnsignedBinary:
                     type = "INTEGER NOT NULL";
                     break;
                 case EnumKeyDataType.String:
@@ -763,6 +776,7 @@ namespace MBBSEmu.Btrieve
                     type = "TEXT NOT NULL";
                     break;
                 default:
+                    _logger.Warn($"Defaulting to BLOB type for {key.DataType}");
                     type = "BLOB NOT NULL";
                     break;
             }
@@ -815,7 +829,15 @@ namespace MBBSEmu.Btrieve
                     var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
                     insertCmd.Parameters.AddWithValue($"key{segment.Number}", SqliteType(segment, keyData.ToArray()));
                 }
-                insertCmd.ExecuteNonQuery();
+
+                try
+                {
+                    insertCmd.ExecuteNonQuery();
+                }
+                catch (SQLiteException ex)
+                {
+                    _logger.Error(ex, "Error importing btrieve data");
+                }
             }
             transaction.Commit();
         }

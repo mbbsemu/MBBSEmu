@@ -205,7 +205,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
                     File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT"));
 
                 //Setup User Database
                 if (!File.Exists($"BBSUSR.DB"))
@@ -213,7 +213,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
                     File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSUSR.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT"));
 
                 //Database Reset
                 if (_doResetDatabase)
