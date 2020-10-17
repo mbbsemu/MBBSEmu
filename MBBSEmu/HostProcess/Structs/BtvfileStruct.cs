@@ -48,7 +48,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
                 return new IntPtr16(btvFileStructSpan.Slice(128, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 128, 4);
+            set => Array.Copy(value.Data, 0, Data, 128, 4);
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
                 return new IntPtr16(btvFileStructSpan.Slice(134, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 134, 4);
+            set => Array.Copy(value.Data, 0, Data, 134, 4);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
                 return new IntPtr16(btvFileStructSpan.Slice(138, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 138, 4);
+            set => Array.Copy(value.Data, 0, Data, 138, 4);
         }
 
         public readonly byte[] Data = new byte[192];

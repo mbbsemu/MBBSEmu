@@ -82,7 +82,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> fileSpan = Data;
                 return new IntPtr16(fileSpan.Slice(8,4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 8, 4);
+            set => Array.Copy(value.Data, 0, Data, 8, 4);
         }
 
         //Current active pointer [12-15]
@@ -92,7 +92,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> fileSpan = Data;
                 return new IntPtr16(fileSpan.Slice(12, 4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 12, 4);
+            set => Array.Copy(value.Data, 0, Data, 12, 4);
         }
 
         //Temporary file indicator [16]

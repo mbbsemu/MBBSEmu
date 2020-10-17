@@ -16,7 +16,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 fldspc
         {
             get => new IntPtr16(Data);
-            set => Array.Copy(value.ToArray(), 0, Data, 0, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 0, IntPtr16.Size);
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 flddat
         {
             get => new IntPtr16(Data, 4);
-            set => Array.Copy(value.ToArray(), 0, Data, 4, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 4, IntPtr16.Size);
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 mbpunc
         {
             get => new IntPtr16(Data, 8);
-            set => Array.Copy(value.ToArray(), 0, Data, 8, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 8, IntPtr16.Size);
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 newans
         {
             get => new IntPtr16(Data, 12);
-            set => Array.Copy(value.ToArray(), 0, Data, 12, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 12, IntPtr16.Size);
         }
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 fldvfy
         {
             get => new IntPtr16(Data, 16);
-            set => Array.Copy(value.ToArray(), 0, Data, 16, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 16, IntPtr16.Size);
         }
 
         /// <summary>
@@ -241,7 +241,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 ftmptr
         {
             get => new IntPtr16(Data, 153);
-            set => Array.Copy(value.ToArray(), 0, Data, 153, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 153, IntPtr16.Size);
         }
 
         /// <summary>
@@ -259,7 +259,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 altptr
         {
             get => new IntPtr16(Data, 158);
-            set => Array.Copy(value.ToArray(), 0, Data, 158, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 158, IntPtr16.Size);
         }
 
         /// <summary>

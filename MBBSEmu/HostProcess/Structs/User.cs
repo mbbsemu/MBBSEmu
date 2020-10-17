@@ -18,7 +18,7 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 Keys
         {
             get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(2,4));
-            set => Array.Copy(value.ToArray(), 0, Data, 2, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 2, IntPtr16.Size);
         }
 
         public short State
@@ -96,13 +96,13 @@ namespace MBBSEmu.HostProcess.Structs
         public IntPtr16 Clsptr
         {
             get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(32, 4));
-            set => Array.Copy(value.ToArray(), 0, Data, 32, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 32, IntPtr16.Size);
         }
 
         public IntPtr16 Polrou
         {
             get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(36, 4));
-            set => Array.Copy(value.ToArray(), 0, Data, 36, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 36, IntPtr16.Size);
         }
 
         public byte lcstat

@@ -55,19 +55,7 @@ namespace MBBSEmu.Memory
         ///     Returns the int16:int16 pointer as a 32-bit value
         /// </summary>
         /// <returns></returns>
-        public int ToInt32() => BitConverter.ToInt32(ToSpan());
-
-        /// <summary>
-        ///     Returns the int16:int16 pointer as a byte[]
-        /// </summary>
-        /// <returns></returns>
-        public byte[] ToArray() => Data;
-
-        /// <summary>
-        ///     Returns a reference to the int16:int16 pointer
-        /// </summary>
-        /// <returns></returns>
-        public ReadOnlySpan<byte> ToSpan() => Data;
+        public int ToInt32() => (Segment << 16) | Offset;
 
         /// <summary>
         ///     Returns the int16:int16 pointer as a string
