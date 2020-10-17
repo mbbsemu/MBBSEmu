@@ -7,27 +7,18 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class IntPtr16 : IEquatable<IntPtr16>
     {
-        public ushort Segment
+        public ushort Segment { get; set; }
+        public ushort Offset { get; set; }
+
+        public byte[] Data
         {
-            get => BitConverter.ToUInt16(Data, 2);
+            get => BitConverter.GetBytes((Segment << 16) | Offset);
             set
             {
-                Data[2] = (byte)(value & 0xFF);
-                Data[3] = (byte)(value >> 8);
-            }
-
-        }
-        public ushort Offset
-        {
-            get => BitConverter.ToUInt16(Data, 0);
-            set
-            {
-                Data[0] = (byte)(value & 0xFF);
-                Data[1] = (byte)(value >> 8);
+                Offset = BitConverter.ToUInt16(value, 0);
+                Segment = BitConverter.ToUInt16(value, 2);
             }
         }
-
-        public readonly byte[] Data = new byte[Size];
 
         public const ushort Size = 4;
 
@@ -57,7 +48,7 @@ namespace MBBSEmu.Memory
 
         public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
         {
-            Array.Copy(intPtr16Span.ToArray(), 0, Data, 0, 4);
+            Data = intPtr16Span.ToArray();
         }
 
         /// <summary>
