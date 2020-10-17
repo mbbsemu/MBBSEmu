@@ -108,7 +108,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
-                return methodPointer.ToSpan();
+                return methodPointer.Data;
             }
 
             switch (ordinal)
@@ -241,7 +241,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result: DX == Segment containing bturno
         /// </summary>
         /// <returns></returns>
-        public ReadOnlySpan<byte> bturno() => Module.Memory.GetVariablePointer("BTURNO").ToSpan();
+        public ReadOnlySpan<byte> bturno() => Module.Memory.GetVariablePointer("BTURNO").Data;
 
         /// <summary>
         ///     Report the amount of space (number of bytes) available in the output buffer
@@ -442,7 +442,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routinePointer.ToSpan());
+            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routinePointer.Data);
 
 #if DEBUG
             _logger.Info($"Assigned Character Interceptor Routine {ChannelDictionary[channel].CharacterInterceptor} to Channel {channel}");
@@ -759,7 +759,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
 
-        private ReadOnlySpan<byte> ticker => Module.Memory.GetVariablePointer("TICKER").ToSpan();
+        private ReadOnlySpan<byte> ticker => Module.Memory.GetVariablePointer("TICKER").Data;
 
         /// <summary>
         ///     Status of a Channel

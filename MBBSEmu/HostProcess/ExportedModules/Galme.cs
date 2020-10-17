@@ -39,7 +39,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
-                return methodPointer.ToSpan();
+                return methodPointer.Data;
             }
 
             switch (ordinal)
@@ -103,6 +103,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: unsigned txtlen(void)
         /// </summary>
-        private ReadOnlySpan<byte> _txtlen => Module.Memory.GetVariablePointer("TXTLEN").ToSpan();
+        private ReadOnlySpan<byte> _txtlen => Module.Memory.GetVariablePointer("TXTLEN").Data;
     }
 }

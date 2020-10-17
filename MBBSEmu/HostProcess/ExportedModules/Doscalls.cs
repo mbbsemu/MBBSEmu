@@ -40,7 +40,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
-                return methodPointer.ToSpan();
+                return methodPointer.Data;
             }
 
             switch (ordinal)
