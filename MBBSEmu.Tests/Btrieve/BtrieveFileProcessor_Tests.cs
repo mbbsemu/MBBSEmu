@@ -588,9 +588,9 @@ namespace MBBSEmu.Tests.Btrieve
             ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            btrieve.SeekByKey(1, BitConverter.GetBytes(23556), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
+            btrieve.SeekByKey(1, BitConverter.GetBytes(1052234073), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
-            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(23556);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(23556), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
         }
@@ -616,7 +616,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
-            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().BeEmpty();
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("3444");
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -631,11 +631,11 @@ namespace MBBSEmu.Tests.Btrieve
             var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
-            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(0);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(-615634567);
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
         }
 
         [Fact]
@@ -661,7 +661,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyLast, newQuery: true).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
-            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("hahah");
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
@@ -676,11 +676,11 @@ namespace MBBSEmu.Tests.Btrieve
             var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyLast, newQuery: true).Should().BeTrue();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
-            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(3774400);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
         }
 
         [Fact]
