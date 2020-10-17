@@ -61,6 +61,8 @@ namespace MBBSEmu.Btrieve
             Keys = new Dictionary<int, BtrieveKeyDefinition>();
             AutoincrementedKeys = new Dictionary<int, BtrieveKeyDefinition>();
 
+            _logger.Error($"Opening path:{path} fileName:{fileName}");
+
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
 
@@ -68,6 +70,10 @@ namespace MBBSEmu.Btrieve
                 path += Path.DirectorySeparatorChar;
 
             var loadedFileName = _fileFinder.FindFile(path, fileName);
+
+            // hack for MUTANTS which tries to load a DATT file
+            if (Path.GetExtension(loadedFileName).ToUpper() == ".DATT")
+                loadedFileName = Path.ChangeExtension(loadedFileName, ".DAT");
 
             //If a .EMU version exists, load it over the .DAT file
             var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
