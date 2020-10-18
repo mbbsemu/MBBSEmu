@@ -13,10 +13,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CURUSR_ORDINAL, new List<ushort> { 0xFF });
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord("USRNUM"));
 
-            Assert.Equal(0xFF, mbbsEmuMemoryCore.GetWord("USRNUM"));
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CURUSR_ORDINAL, new List<ushort> { 1 });
+
+            Assert.Equal(1, mbbsEmuMemoryCore.GetWord("USRNUM"));
         }
     }
 }
