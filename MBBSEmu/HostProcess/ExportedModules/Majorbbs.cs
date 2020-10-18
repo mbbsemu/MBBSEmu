@@ -649,8 +649,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     updbtv();
                     break;
                 case 351:
-                case 170:
                     insbtv();
+                    break;
+                case 170:
+                    dinsbtv();
                     break;
                 case 488:
                     rdedcrd();
@@ -2352,10 +2354,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Update the Btrieve current record
         ///
-        ///     Signature: void updbtv(char *recptr)
+        ///     Signature: int dupdbtv(char *recptr)
         /// </summary>
         /// <returns></returns>
-        private void updbtv()
+        private void dupdbtv()
         {
             var btrieveRecordPointerPointer = GetParameterPointer(0);
 
@@ -2363,7 +2365,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort) currentBtrieveFile.RecordLength);
 
-            currentBtrieveFile.Update(dataToWrite.ToArray());
+            Registers.AX = currentBtrieveFile.Update(dataToWrite.ToArray()) ? (ushort) 1 : (ushort) 0;
 
 #if DEBUG
             _logger.Info(
@@ -2372,25 +2374,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Insert new fixed-length Btrieve record
+        ///     Insert new fixed-length Btrieve record - harshly
         ///
         ///     Signature: void insbtv(char *recptr)
         /// </summary>
-        /// <returns></returns>
         private void insbtv()
+        {
+            dinsbtv();
+
+            if (Registers.AX == 0)
+                throw new SystemException("Failed to insert database record");
+        }
+
+        /// <summary>
+        ///     Insert new fixed-length Btrieve record
+        ///
+        ///     Signature: int dinsbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        private void dinsbtv()
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort) currentBtrieveFile.RecordLength);
 
-            currentBtrieveFile.Insert(dataToWrite.ToArray());
+            Registers.AX = currentBtrieveFile.Insert(dataToWrite.ToArray()) == 0 ? (ushort) 0 : (ushort) 1;
 
 #if DEBUG
             _logger.Info(
                 $"Inserted Btrieve record at {currentBtrieveFile.Position} with {dataToWrite.Length} bytes");
 #endif
-            Registers.AX = 1;
         }
 
 
@@ -2810,7 +2824,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer("*USER").Data;
-         
+
 
         /// <summary>
         ///     Points to the Volatile Data Area for the current channel
@@ -6500,16 +6514,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     More Tolerant Update to Current Record
+        ///     Less Tolerant Update to Current Record
         ///
-        ///     Signature: int dupdbtv (void *recptr);
+        ///     Signature: void updbtv (void *recptr);
         /// </summary>
-        private void dupdbtv()
+        private void updbtv()
         {
-            //Since we're not checking for dupes (yet?), just update and signal success
-            updbtv();
+            dupdbtv();
 
-            Registers.AX = 1;
+            if (Registers.AX == 0)
+                throw new SystemException("Unable to update btrieve record");
         }
 
         /// <summary>

@@ -264,7 +264,7 @@ namespace MBBSEmu.Btrieve
         ///     Updates the Record at the current Position
         /// </summary>
         /// <param name="recordData"></param>
-        public void Update(byte[] recordData) => Update(Position, recordData);
+        public bool Update(byte[] recordData) => Update(Position, recordData);
 
         /// <summary>
         ///     Updates the Record at the specified Offset
