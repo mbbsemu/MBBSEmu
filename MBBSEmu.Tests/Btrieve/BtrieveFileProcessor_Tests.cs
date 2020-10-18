@@ -618,8 +618,20 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
             new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("3444");
 
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("7776");
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("StringValue");
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
+
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
         }
 
         [Fact]
@@ -634,8 +646,20 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
             new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(-615634567);
 
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(3444);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(7776);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
+
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
         }
 
         [Fact]
@@ -663,8 +687,20 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
             new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
 
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("StringValue");
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("7776");
+
+            btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("3444");
+
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
         }
 
         [Fact]
@@ -679,8 +715,20 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
             new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
 
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(7776);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(3444);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(-615634567);
+
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
         }
 
         [Fact]

@@ -140,7 +140,7 @@ namespace MBBSEmu.Btrieve
                     var btrieveKeyDefinition = new BtrieveKeyDefinition() {
                         Number = (ushort) number,
                         Segment = reader.GetInt32(1) != 0,
-                        SegmentOf = (ushort) number,
+                        SegmentOf = reader.GetInt32(1) != 0 ? (ushort) number : (ushort) 0,
                         Attributes = (EnumKeyAttributeMask) reader.GetInt32(2),
                         DataType = (EnumKeyDataType) reader.GetInt32(3),
                         Offset = (ushort) reader.GetInt32(4),
