@@ -41,7 +41,7 @@ namespace MBBSEmu.HostProcess.Structs
                 ReadOnlySpan<byte> dataSpan = Data;
                 return new IntPtr16(dataSpan.Slice(18,4));
             }
-            set => Array.Copy(value.ToArray(), 0, Data, 18, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 18, IntPtr16.Size);
         }
 
         public readonly byte[] Data;

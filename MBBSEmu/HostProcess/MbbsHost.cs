@@ -926,7 +926,7 @@ namespace MBBSEmu.HostProcess
                                 //32-Bit Pointer
                                 if (relocationRecord.SourceType == 3)
                                 {
-                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
                                     continue;
                                 }
 
@@ -955,7 +955,7 @@ namespace MBBSEmu.HostProcess
                                     var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
                                         relocationRecord.TargetTypeValueTuple.Item4);
 
-                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
                                     break;
                                 }
                                 Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
@@ -985,7 +985,7 @@ namespace MBBSEmu.HostProcess
                                 //32-Bit Pointer
                                 if (relocationRecord.SourceType == 3)
                                 {
-                                    Array.Copy(relocationPointer.ToArray(), 0, s.Data, relocationRecord.Offset, 4);
+                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
                                     continue;
                                 }
 

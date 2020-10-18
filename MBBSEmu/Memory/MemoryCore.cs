@@ -107,7 +107,7 @@ namespace MBBSEmu.Memory
                 if (declarePointer)
                 {
                     var variablePointer = AllocateVariable($"*{name}", 0x4, false);
-                    SetArray(variablePointer, newPointer.ToSpan());
+                    SetArray(variablePointer, newPointer.Data);
                 }
             }
 
