@@ -553,7 +553,7 @@ namespace MBBSEmu.Btrieve
 
                 EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
                 // TODO verify, is GetKeyLessOrEqual?
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
