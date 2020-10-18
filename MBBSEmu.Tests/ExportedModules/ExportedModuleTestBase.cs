@@ -39,6 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
+            testSessions.Allocate(new TestSession(null));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<ILogger>(),
@@ -87,6 +88,7 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuCpuRegisters.IP = 0;
 
             testSessions = new PointerDictionary<SessionBase>();
+            testSessions.Allocate(new TestSession(null));
             testSessions.Allocate(new TestSession(null));
 
             //Redeclare to re-allocate memory values that have been cleared
