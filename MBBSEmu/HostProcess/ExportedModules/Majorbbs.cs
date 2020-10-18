@@ -2809,7 +2809,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer("*USER").Data;
-         
+
 
         /// <summary>
         ///     Points to the Volatile Data Area for the current channel
@@ -3122,6 +3122,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var formattedMessage = FormatPrintf(output, 4);
 
             Module.Memory.SetArray(destination, formattedMessage);
+            Module.Memory.SetByte(destination + formattedMessage.Length, 0);
 
             Registers.AX = (ushort)formattedMessage.Length;
         }
