@@ -650,8 +650,6 @@ namespace MBBSEmu.Btrieve
                 sb.Append(string.Join(" AND ", query.Key.Segments.Select(segment => $"{segment.SqliteKeyName}=@{segment.SqliteKeyName}").ToList()));
                 sb.Append(";");
 
-                _logger.Error($"{FullPath} {sb.ToString()}");
-
                 command.CommandText = sb.ToString();
                 foreach (var segment in query.Key.Segments)
                     command.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(query.Key.PrimarySegment, query.KeyData));
