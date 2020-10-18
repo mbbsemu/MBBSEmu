@@ -744,6 +744,120 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.SeekByKey(0, null, EnumBtrieveOperationCodes.GetKeyLast, newQuery: true).Should().BeFalse();
         }
 
+        [Fact]
+        public void SeekByKeyGreaterString()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("StringValue");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+        }
+
+        [Fact]
+        public void SeekByKeyGreaterInteger()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(7776);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+        }
+
+        [Fact]
+        public void SeekByKeyGreaterNotFound()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.DeleteAll();
+
+            btrieve.SeekByKey(0, BitConverter.GetBytes(2_000_000_000), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeFalse();
+        }
+
+        [Fact]
+        public void SeekByKeyGreaterOrEqualString()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetGreaterOrEqual, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("7776");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("StringValue");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+        }
+
+        [Fact]
+        public void SeekByKeyGreaterOrEqualInteger()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.GetGreaterOrEqual, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(3444);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(7776);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key1.Should().Be(1052234073);
+
+            btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+        }
+
+        [Fact]
+        public void SeekByKeyGreaterOrEqualFound()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.DeleteAll();
+
+            btrieve.SeekByKey(0, BitConverter.GetBytes(2_000_000_000), EnumBtrieveOperationCodes.GetGreaterOrEqual, newQuery: true).Should().BeFalse();
+        }
+
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
         private static byte[] MakeSmaller(byte[] data, int cutOff)
         {
