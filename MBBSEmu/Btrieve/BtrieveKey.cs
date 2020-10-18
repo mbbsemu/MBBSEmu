@@ -22,6 +22,16 @@ namespace MBBSEmu.Btrieve
             get => Segments.Count > 1;
         }
 
+        public bool IsUnique
+        {
+            get
+            {
+                var unique = true;
+                Segments.ForEach(segment => unique &= segment.IsUnique);
+                return unique;
+            }
+        }
+
         public int Length
         {
             get => Segments.Sum(segment => segment.Length);

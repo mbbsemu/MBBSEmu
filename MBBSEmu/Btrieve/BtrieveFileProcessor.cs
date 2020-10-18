@@ -43,6 +43,8 @@ namespace MBBSEmu.Btrieve
 
         public int PageLength { get; set; }
 
+        public string FullPath { get; set; }
+
         public void Dispose()
         {
             _connection.Close();
@@ -103,6 +105,8 @@ namespace MBBSEmu.Btrieve
         {
             _logger.Info($"Opening sqlite DB {fullPath}");
 
+            FullPath = fullPath;
+
             var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
             {
                 Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
@@ -136,17 +140,22 @@ namespace MBBSEmu.Btrieve
                     var btrieveKeyDefinition = new BtrieveKeyDefinition() {
                         Number = (ushort) number,
                         Segment = reader.GetInt32(1) != 0,
-                        SegmentOf = 0,
+                        SegmentOf = (ushort) number,
                         Attributes = (EnumKeyAttributeMask) reader.GetInt32(2),
                         DataType = (EnumKeyDataType) reader.GetInt32(3),
                         Offset = (ushort) reader.GetInt32(4),
                         Length = (ushort) reader.GetInt32(5),
                     };
 
-                    if (!Keys.ContainsKey(btrieveKeyDefinition.Number))
-                        Keys[btrieveKeyDefinition.Number] = new BtrieveKey();
+                    if (!Keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
+                    {
+                        btrieveKey = new BtrieveKey();
+                        Keys[btrieveKeyDefinition.Number] = btrieveKey;
+                    }
 
-                    Keys[btrieveKeyDefinition.Number].Segments.Add(btrieveKeyDefinition);
+                    var index = btrieveKey.Segments.Count;
+                    btrieveKeyDefinition.SegmentIndex = index;
+                    btrieveKey.Segments.Add(btrieveKeyDefinition);
 
                     if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
                         AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKeyDefinition;
@@ -419,7 +428,7 @@ namespace MBBSEmu.Btrieve
             }
             catch (SQLiteException ex)
             {
-                _logger.Warn(ex, $"Failed to insert record because {ex.Message}");
+                _logger.Warn(ex, $"{FullPath}: Failed to insert record because {ex.Message}");
                 transaction.Rollback();
                 return 0;
             }
@@ -538,16 +547,14 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetNext => GetByKeyNext(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
 
-                /*EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery),
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
 
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery),
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqual(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery),
-
-                */
+                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<"),
+                // TODO verify, is GetKeyLessOrEqual?
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
@@ -589,7 +596,7 @@ namespace MBBSEmu.Btrieve
                 throw new ArgumentException("Composite query NYI");
 
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC LIMIT 1", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC", _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -634,11 +641,43 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
+            using var command = new SQLiteCommand(_connection);
+
             if (query.Key.IsComposite)
-                throw new ArgumentException("Composite query NYI");
+            {
+                var sb = new StringBuilder();
+                sb.Append("SELECT id, data FROM data_t WHERE ");
+                sb.Append(string.Join(" AND ", query.Key.Segments.Select(segment => $"{segment.SqliteKeyName}=@{segment.SqliteKeyName}").ToList()));
+                sb.Append(";");
+
+                _logger.Error($"{FullPath} {sb.ToString()}");
+
+                command.CommandText = sb.ToString();
+                foreach (var segment in query.Key.Segments)
+                    command.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(query.Key.PrimarySegment, query.KeyData));
+            }
+            else
+            {
+                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName}=@value";
+                command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
+            }
+
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
+        }
+
+        /// <summary>
+        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        private bool GetByKeyGreater(BtrieveQuery query, string oprator)
+        {
+            //if (query.Key.IsComposite)
+                //throw new ArgumentException("Composite query NYI");
 
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName}=@value", _connection);
+                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName} {oprator} @value ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC", _connection);
             command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
@@ -650,9 +689,17 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
-        private ushort GetByKeyGreater(BtrieveQuery query)
+        private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
-            return 0;
+            //if (query.Key.IsComposite)
+                //throw new ArgumentException("Composite query NYI");
+
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName} {oprator} @value ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC", _connection);
+            command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
+
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
         }
 
         /// <summary>
@@ -676,16 +723,6 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Retrieves the Next Record, Alphabetically, by the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLess(BtrieveQuery query)
-        {
-            return 0;
-        }
-
-        /// <summary>
         ///     Retrieves the Last Record, highest, by the specified key
         /// </summary>
         /// <param name="query"></param>
@@ -696,7 +733,7 @@ namespace MBBSEmu.Btrieve
                 throw new ArgumentException("Composite query NYI");
 
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC LIMIT 1", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC", _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -817,7 +854,7 @@ namespace MBBSEmu.Btrieve
             // check for uniqueness constraints on composite keys
             foreach(var key in btrieveFile.Keys)
             {
-                if (key.Value.IsComposite && key.Value.PrimarySegment.IsUnique)
+                if (key.Value.IsComposite && key.Value.IsUnique)
                 {
                     sb.Append(", UNIQUE(");
                     sb.Append(string.Join(", ", key.Value.Segments.Select(segment => segment.SqliteKeyName).ToList()));
@@ -912,6 +949,8 @@ namespace MBBSEmu.Btrieve
         private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
             _logger.Warn($"Creating sqlite db {fullpath}");
+
+            FullPath = fullpath;
 
             var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
             {
