@@ -19,6 +19,11 @@ namespace MBBSEmu.Btrieve
 
         public List<BtrieveKeyDefinition> Segments { get; set; }
 
+        public ushort Number
+        {
+            get => PrimarySegment.Number;
+        }
+
         public BtrieveKeyDefinition PrimarySegment
         {
             get => Segments[0];
@@ -41,12 +46,12 @@ namespace MBBSEmu.Btrieve
 
         public bool IsNumeric
         {
-            get 
+            get
             {
                 var numeric = true;
                 Segments.ForEach(segment => numeric &= segment.IsNumeric);
                 return numeric;
-            }    
+            }
         }
 
         public int Length
