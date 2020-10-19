@@ -39,6 +39,16 @@ namespace MBBSEmu.Btrieve
             }
         }
 
+        public bool IsNumeric
+        {
+            get 
+            {
+                var numeric = true;
+                Segments.ForEach(segment => numeric &= segment.IsNumeric);
+                return numeric;
+            }    
+        }
+
         public int Length
         {
             get => Segments.Sum(segment => segment.Length);

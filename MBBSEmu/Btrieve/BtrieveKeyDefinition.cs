@@ -29,5 +29,22 @@ namespace MBBSEmu.Btrieve
         public bool IsUnique { get => (Attributes & EnumKeyAttributeMask.Duplicates) == 0; }
 
         public bool AllowDuplicates { get => !IsUnique; }
+
+        public bool IsNumeric
+        {
+            get
+            {
+                switch (DataType)
+                {
+                    case EnumKeyDataType.Integer:
+                    case EnumKeyDataType.AutoInc:
+                    case EnumKeyDataType.Unsigned:
+                    case EnumKeyDataType.UnsignedBinary:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        }
     }
 }
