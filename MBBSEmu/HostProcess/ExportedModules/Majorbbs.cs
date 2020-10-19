@@ -1748,13 +1748,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourcePointer = GetParameterPointer(0);
 
-            var output = Module.Memory.GetString(sourcePointer, false);
+            var output = Module.Memory.GetString(sourcePointer, stripNull: false);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            var prfptrPointer = Module.Memory.GetVariablePointer("PRFPTR");
-            var pointerPosition = Module.Memory.GetPointer(prfptrPointer);
+            var pointerPosition = Module.Memory.GetPointer("PRFPTR");
             Module.Memory.SetArray(pointerPosition, formattedMessage);
 
             //Update prfptr value
