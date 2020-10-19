@@ -231,17 +231,18 @@ namespace MBBSEmu.CPU
         public void Tick()
         {
             //Check for segment end
-            if ((Registers.CS == ushort.MaxValue || Registers.CS == 0) && (Registers.IP == ushort.MaxValue || Registers.IP == 0))
+            if (Registers.CS == ushort.MaxValue)
             {
                 Registers.Halt = true;
                 return;
             }
 
+#if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
             _currentInstructionPointer.Segment = Registers.CS;
+#endif
 
             _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
-            Registers.IP = _currentInstruction.IP16;
             _currentOperationSize = GetCurrentOperationSize();
 
 #if DEBUG
@@ -545,8 +546,10 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
+#if DEBUG
             _previousInstructionPointer.Offset = Registers.IP;
             _previousInstructionPointer.Segment = Registers.CS;
+#endif
 
             Registers.IP += (ushort)_currentInstruction.Length;
 
@@ -636,16 +639,14 @@ namespace MBBSEmu.CPU
                     return (ushort)_currentInstruction.Immediate8to16;
                 case OpKind.Memory:
                     {
-                        var offset = GetOperandOffset(opKind);
-
                         switch (_currentInstruction.MemorySize)
                         {
                             case MemorySize.Int8:
                             case MemorySize.UInt8:
-                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int16:
                             case MemorySize.UInt16:
-                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             default:
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
@@ -680,20 +681,18 @@ namespace MBBSEmu.CPU
                     return (uint)_currentInstruction.Immediate8to32;
                 case OpKind.Memory:
                     {
-                        var offset = GetOperandOffset(opKind);
-
                         switch (_currentInstruction.MemorySize)
                         {
                             case MemorySize.Int8:
                             case MemorySize.UInt8:
-                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int16:
                             case MemorySize.UInt16:
-                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int32:
                             case MemorySize.UInt32:
                                 return BitConverter.ToUInt32(
-                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
+                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind), 4));
                             default:
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
@@ -732,24 +731,22 @@ namespace MBBSEmu.CPU
                     return (ulong)_currentInstruction.Immediate8to64;
                 case OpKind.Memory:
                     {
-                        var offset = GetOperandOffset(opKind);
-
                         switch (_currentInstruction.MemorySize)
                         {
                             case MemorySize.Int8:
                             case MemorySize.UInt8:
-                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int16:
                             case MemorySize.UInt16:
-                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                                return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int32:
                             case MemorySize.UInt32:
                                 return BitConverter.ToUInt32(
-                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 4));
+                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind), 4));
                             case MemorySize.Int64:
                             case MemorySize.UInt64:
                                 return BitConverter.ToUInt64(
-                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), offset, 8));
+                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind), 8));
                             default:
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
@@ -2268,8 +2265,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv()
         {
-
-            switch (GetCurrentOperationSize())
+            switch (_currentOperationSize)
             {
                 case 1:
                     Op_Idiv_8();
@@ -2283,27 +2279,31 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_8()
         {
-            var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var destination = (sbyte)GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
 
-            unchecked
-            {
-                var quotient = Math.DivRem(Registers.AX, destination, out var remainder);
-                Registers.AL = (byte)quotient;
-                Registers.AH = (byte)remainder;
-            }
+            var quotient = Math.DivRem((short)Registers.AX, destination, out var remainder);
+
+            if(quotient > sbyte.MaxValue || quotient < sbyte.MinValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
+
+            Registers.AL = (byte)quotient;
+            Registers.AH = (byte)remainder;
+
         }
 
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_16()
         {
-            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var destination = (short)GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
 
-            unchecked
-            {
-                var quotient = Math.DivRem(Registers.GetLong(Register.DX, Register.AX), destination, out var remainder);
-                Registers.AX = (ushort)quotient;
-                Registers.DX = (ushort)remainder;
-            }
+            var quotient = Math.DivRem(Registers.GetLong(), destination, out var remainder);
+
+            if (quotient > short.MaxValue || quotient < short.MinValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
+
+            Registers.AX = (ushort)quotient;
+            Registers.DX = (ushort)remainder;
+
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2628,27 +2628,42 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Div()
         {
-            var source = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-
-            var operationSize = GetCurrentOperationSize();
-
-            int destination = 0;
-            switch (operationSize)
+            switch (_currentOperationSize)
             {
                 case 1:
-                    destination = Registers.AX;
-                    break;
+                    Op_Div_8();
+                    return;
                 case 2:
-                    destination = (Registers.DX << 16) | Registers.AX;
-                    break;
+                    Op_Div_16();
+                    return;
             }
+        }
 
-            var quotient = Math.DivRem(destination, source, out var remainder);
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Div_8()
+        {
+            var divisor = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var dividend = Registers.AX;
+
+            var quotient = Math.DivRem(dividend, divisor, out var remainder);
+
+            if (quotient > byte.MaxValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
+
+            Registers.AL = (byte)quotient;
+            Registers.AH = (byte)remainder;
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Div_16()
+        {
+            var divisor = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var dividend = (uint)Registers.GetLong();
+
+            var quotient = Math.DivRem(dividend, divisor, out var remainder);
+
+            if (quotient > ushort.MaxValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
 
             Registers.AX = (ushort)quotient;
             Registers.DX = (ushort)remainder;
