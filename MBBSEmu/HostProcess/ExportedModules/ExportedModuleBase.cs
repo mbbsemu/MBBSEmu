@@ -528,7 +528,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 else
                                 {
                                     var parameterValue = GetParameterOffset(currentParameter);
-                                    currentParameter+= 4;
+                                    currentParameter += 4;
                                     floatValue = Module.Memory.GetArray(Registers.SS, parameterValue, 8).ToArray();
                                 }
 
@@ -872,15 +872,32 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected ReadOnlySpan<byte> FormatNewLineCarriageReturn(ReadOnlySpan<byte> stringToFormat)
         {
             using var result = new MemoryStream();
-            foreach (var c in stringToFormat)
+            for (var i = 0; i < stringToFormat.Length; i++)
             {
+                var c = stringToFormat[i];
                 switch ((char)c)
                 {
                     case '\n':
                     case '\r': //carriage return on the input string is handled as a \r\n
-                        result.Write(NEW_LINE); //new line
-                        continue;
+                        {
+                            result.Write(NEW_LINE); //new line
+
+                            //Verify we're not at the end of the string
+                            if (i + 1 < stringToFormat.Length)
+                            {
+                                var nextCharacter = stringToFormat[i + 1];
+
+                                //If the character sequence was already \r\n (or reverse), then skip the next character
+                                //as to not write double new lines
+                                if ((c == '\r' && nextCharacter == '\n') ||
+                                    (c == '\n' && nextCharacter == '\r'))
+                                    i++;
+                            }
+
+                            continue;
+                        }
                 }
+
                 result.WriteByte(c);
             }
 
@@ -903,7 +920,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         protected (bool, int) ConsumeWhitespace(IEnumerator<char> input)
         {
             var count = 0;
-            do {
+            do
+            {
                 if (!char.IsWhiteSpace(input.Current))
                     return (true, count);
 
@@ -925,7 +943,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!moreInput)
                 return ("", false);
 
-            do {
+            do
+            {
                 if (char.IsWhiteSpace(input.Current))
                     return (builder.ToString(), true);
 
@@ -953,7 +972,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var result = new LeadingNumberFromStringResult();
             var count = 0;
 
-            (result.StringValue, result.MoreInput) = ReadString(input, c => {
+            (result.StringValue, result.MoreInput) = ReadString(input, c =>
+            {
                 if (count >= 11)
                     return CharacterAccepterResponse.ABORT;
 
