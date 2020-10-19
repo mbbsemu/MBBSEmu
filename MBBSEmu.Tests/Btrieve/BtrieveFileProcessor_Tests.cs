@@ -557,7 +557,7 @@ namespace MBBSEmu.Tests.Btrieve
         }
 
         [Fact]
-        public void SeekByKeyString()
+        public void SeekByKeyStringDuplicates()
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
@@ -578,6 +578,21 @@ namespace MBBSEmu.Tests.Btrieve
 
             btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+        }
+
+        [Fact]
+        public void SeekByKeyString()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+
+            btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
         }
 
         [Fact]
