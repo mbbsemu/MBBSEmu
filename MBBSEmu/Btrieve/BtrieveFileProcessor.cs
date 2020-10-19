@@ -39,7 +39,7 @@ namespace MBBSEmu.Btrieve
         private SQLiteConnection _connection;
         private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
         public Dictionary<ushort, BtrieveKey> Keys { get; set; }
-        private Dictionary<ushort, BtrieveKeyDefinition> AutoincrementedKeys { get; set; }
+        private Dictionary<ushort, BtrieveKey> AutoincrementedKeys { get; set; }
 
         public int PageLength { get; set; }
 
@@ -61,7 +61,7 @@ namespace MBBSEmu.Btrieve
             _fileFinder = fileUtility;
 
             Keys = new Dictionary<ushort, BtrieveKey>();
-            AutoincrementedKeys = new Dictionary<ushort, BtrieveKeyDefinition>();
+            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -158,7 +158,7 @@ namespace MBBSEmu.Btrieve
                     btrieveKey.Segments.Add(btrieveKeyDefinition);
 
                     if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
-                        AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKeyDefinition;
+                        AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKey;
                 }
             }
         }
@@ -283,23 +283,21 @@ namespace MBBSEmu.Btrieve
             using var updateCmd = new SQLiteCommand(_connection);
             updateCmd.Transaction = transaction;
 
-            InsertAutoincrementValues(transaction, recordData);
+            if (!InsertAutoincrementValues(transaction, recordData))
+            {
+                transaction.Rollback();
+                return false;
+            }
 
             StringBuilder sb = new StringBuilder("UPDATE data_t SET data=@data, ");
-            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"{segment.SqliteKeyName}=@{segment.SqliteKeyName}").ToList()));
+            sb.Append(string.Join(", ", Keys.Values.Select(key => $"{key.SqliteKeyName}=@{key.SqliteKeyName}").ToList()));
             sb.Append(" WHERE id=@id;");
             updateCmd.CommandText = sb.ToString();
 
             updateCmd.Parameters.AddWithValue("@id", offset);
             updateCmd.Parameters.AddWithValue("@data", recordData);
-            foreach(var key in Keys)
-            {
-                foreach(var segment in key.Value.Segments)
-                {
-                    var keyData = recordData.AsSpan().Slice(segment.Offset, segment.Length);
-                    updateCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
-                }
-            }
+            foreach(var key in Keys.Values)
+                updateCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}", key.ExtractToSQLiteObject(recordData));
 
             int queryResult;
             try
@@ -330,25 +328,19 @@ namespace MBBSEmu.Btrieve
             return ret;
         }
 
-        private bool HasZeroKeyValue(byte[] recordData, BtrieveKeyDefinition key)
-        {
-            var convertible = (IConvertible) SqliteType(key, recordData.AsSpan().Slice(key.Offset, key.Length).ToArray());
-            return convertible.ToInt64(null) == 0;
-        }
-
         /// <summary>
         ///     Searches for any zero-filled autoincremented memory in recordData and figures out
         ///     the value to use, inserting it back into recordData
         /// </summary>
-        private void InsertAutoincrementValues(SQLiteTransaction transaction, byte[] recordData)
+        private bool InsertAutoincrementValues(SQLiteTransaction transaction, byte[] record)
         {
-            var zeroedKeys = AutoincrementedKeys
-                .Where(key => HasZeroKeyValue(recordData, key.Value))
-                .Select(key => $"(MAX({key.Value.SqliteKeyName}) + 1)")
+            var zeroedKeys = AutoincrementedKeys.Values
+                .Where(key => key.IsZeroValue(record))
+                .Select(key => $"(MAX({key.SqliteKeyName}) + 1)")
                 .ToList();
 
             if (zeroedKeys.Count == 0)
-                return;
+                return true;
 
             StringBuilder sb = new StringBuilder("SELECT ");
             sb.Append(string.Join(", ", zeroedKeys));
@@ -360,14 +352,14 @@ namespace MBBSEmu.Btrieve
             if (!reader.Read())
             {
                 _logger.Error("Unable to query for MAX autoincremented values, unable to update");
-                return;
+                return false;
             }
 
             var i = 0;
-            foreach (var key in AutoincrementedKeys)
+            foreach (var segment in AutoincrementedKeys.Values.SelectMany(x => x.Segments))
             {
                 byte[] b;
-                switch (key.Value.Length) {
+                switch (segment.Length) {
                     case 2:
                         b = BitConverter.GetBytes(reader.GetInt16(i++));
                         break;
@@ -378,11 +370,12 @@ namespace MBBSEmu.Btrieve
                         b = BitConverter.GetBytes(reader.GetInt64(i++));
                         break;
                     default:
-                        throw new ArgumentException($"Key integer length not supported {key.Value.Length}");
+                        throw new ArgumentException($"Key integer length not supported {segment.Length}");
                 }
 
-                Array.Copy(b, 0, recordData, key.Value.Offset, key.Value.Length);
+                Array.Copy(b, 0, record, segment.Offset, segment.Length);
             }
+            return true;
         }
 
         /// <summary>
@@ -390,35 +383,35 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="recordData"></param>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
-        public uint Insert(byte[] recordData)
+        public uint Insert(byte[] record)
         {
-            if (recordData.Length != RecordLength)
+            if (record.Length != RecordLength)
             {
-                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
-                recordData = ForceSize(recordData, RecordLength);
+                _logger.Warn($"Btrieve Record Size Mismatch TRUNCATING. Expected Length {RecordLength}, Actual Length {record.Length}");
+                record = ForceSize(record, RecordLength);
             }
 
             using var transaction = _connection.BeginTransaction();
             using var insertCmd = new SQLiteCommand(_connection);
             insertCmd.Transaction = transaction;
 
-            InsertAutoincrementValues(transaction, recordData);
+            if (!InsertAutoincrementValues(transaction, record))
+            {
+                transaction.Rollback();
+                return 0;
+            }
 
             StringBuilder sb = new StringBuilder("INSERT INTO data_t(data, ");
-            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => segment.SqliteKeyName).ToList()));
+            sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
             sb.Append(") VALUES(@data, ");
-            sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"@{segment.SqliteKeyName}").ToList()));
+            sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
             sb.Append(");");
             insertCmd.CommandText = sb.ToString();
 
-            insertCmd.Parameters.AddWithValue("@data", recordData);
-            foreach(var key in Keys)
+            insertCmd.Parameters.AddWithValue("@data", record);
+            foreach(var key in Keys.Values)
             {
-                foreach(var segment in key.Value.Segments)
-                {
-                    var keyData = recordData.AsSpan().Slice(segment.Offset, segment.Length);
-                    insertCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
-                }
+                insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}", key.ExtractToSQLiteObject(record));
             }
 
             int queryResult;
@@ -438,7 +431,7 @@ namespace MBBSEmu.Btrieve
             if (queryResult == 0)
                 return 0;
 
-            _cache[(uint) _connection.LastInsertRowId] = new BtrieveRecord((uint) _connection.LastInsertRowId, recordData);
+            _cache[(uint) _connection.LastInsertRowId] = new BtrieveRecord((uint) _connection.LastInsertRowId, record);
             return (uint) _connection.LastInsertRowId;
         }
 
@@ -554,7 +547,6 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
                 EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
-                // TODO verify, is GetKeyLessOrEqual?
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
@@ -579,24 +571,14 @@ namespace MBBSEmu.Btrieve
         public ushort GetKeyLength(ushort keyNumber) => (ushort)Keys[keyNumber].Length;
 
         /// <summary>
-        ///     Returns the defined Key Type of the specified Key
-        /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <returns></returns>
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => Keys[keyNumber].PrimarySegment.DataType;
-
-        /// <summary>
         ///     Retrieves the First Record (lowest sort order by the specified key
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
         private bool GetByKeyFirst(BtrieveQuery query)
         {
-            if (query.Key.IsComposite)
-                throw new ArgumentException("Composite query NYI");
-
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -614,7 +596,14 @@ namespace MBBSEmu.Btrieve
             return NextReader(query);
         }
 
+        private delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
+
         private bool NextReader(BtrieveQuery query)
+        {
+            return NextReader(query, (query, record) => true);
+        }
+
+        private bool NextReader(BtrieveQuery query, QueryMatcher matcher)
         {
             if (query.Reader == null)
                 return false;
@@ -627,11 +616,35 @@ namespace MBBSEmu.Btrieve
             }
 
             var data = new byte[RecordLength];
+            query.Position = (uint) query.Reader.GetInt32(0);
             query.Reader.GetBlob(1, readOnly:true).Read(data, data.Length, 0);
+            var record = new BtrieveRecord(query.Position, data);
 
-            query.Position = Position = (uint) query.Reader.GetInt32(0);
-            _cache[query.Position] = new BtrieveRecord(query.Position, data);
+            // we have it, might as well cache it
+            _cache[query.Position] = record;
+
+            if (!matcher.Invoke(query, record))
+                return false;
+
+            Position = query.Position;
             return true;
+        }
+
+        private static bool RecordMatchesKey(BtrieveRecord retrievedRecord, BtrieveKey key, byte[] keyData)
+        {
+            var a = key.ExtractKeyDataFromRecord(retrievedRecord.Data);
+            var b = keyData;
+
+            switch (key.PrimarySegment.DataType) {
+                case EnumKeyDataType.String:
+                case EnumKeyDataType.Lstring:
+                case EnumKeyDataType.Zstring:
+                    var c = BtrieveKey.ExtractNullTerminatedString(a);
+                    var d = BtrieveKey.ExtractNullTerminatedString(b);
+                    return c == d;
+                default:
+                    return a.SequenceEqual(b);
+            }
         }
 
         /// <summary>
@@ -641,27 +654,13 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
-            using var command = new SQLiteCommand(_connection);
-
-            if (query.Key.IsComposite)
-            {
-                var sb = new StringBuilder();
-                sb.Append("SELECT id, data FROM data_t WHERE ");
-                sb.Append(string.Join(" AND ", query.Key.Segments.Select(segment => $"{segment.SqliteKeyName}=@{segment.SqliteKeyName}").ToList()));
-                sb.Append(";");
-
-                command.CommandText = sb.ToString();
-                foreach (var segment in query.Key.Segments)
-                    command.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(query.Key.PrimarySegment, query.KeyData));
-            }
-            else
-            {
-                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName}=@value";
-                command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
-            }
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value",
+                _connection);
+            command.Parameters.AddWithValue("@value", query.Key.ToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
-            return NextReader(query);
+            return NextReader(query, (query, record) => RecordMatchesKey(record, query.Key, query.KeyData));
         }
 
         /// <summary>
@@ -671,12 +670,10 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyGreater(BtrieveQuery query, string oprator)
         {
-            //if (query.Key.IsComposite)
-                //throw new ArgumentException("Composite query NYI");
-
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName} {oprator} @value ORDER BY {query.Key.PrimarySegment.SqliteKeyName} ASC", _connection);
-            command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC",
+                _connection);
+            command.Parameters.AddWithValue("@value", query.Key.ToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -689,12 +686,9 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
-            //if (query.Key.IsComposite)
-                //throw new ArgumentException("Composite query NYI");
-
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.PrimarySegment.SqliteKeyName} {oprator} @value ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC", _connection);
-            command.Parameters.AddWithValue("@value", SqliteType(query.Key.PrimarySegment, query.KeyData));
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC", _connection);
+            command.Parameters.AddWithValue("@value", query.Key.ToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
@@ -727,137 +721,20 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyLast(BtrieveQuery query)
         {
-            if (query.Key.IsComposite)
-                throw new ArgumentException("Composite query NYI");
-
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.PrimarySegment.SqliteKeyName} DESC", _connection);
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC",
+                _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             return NextReader(query);
         }
 
-        /// <summary>
-        ///     Writes a similar file as BUTIL -RECOVER to verify records loaded from recovery process match records loaded by MBBSEmu
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="records"></param>
-        public static void WriteBtrieveRecoveryFile(string file, IEnumerable<BtrieveRecord> records)
-        {
-            using var outputFile = File.Open(file, FileMode.Create);
-
-            foreach (var r in records)
-            {
-                outputFile.Write(Encoding.ASCII.GetBytes($"{r.Data.Length},"));
-                outputFile.Write(r.Data);
-                outputFile.Write(new byte[] { 0xD, 0xA });
-            }
-            outputFile.WriteByte(0x1A);
-            outputFile.Close();
-        }
-
-        private static object SqliteType(BtrieveKeyDefinition key, ReadOnlySpan<byte> data)
-        {
-            /*if (key.Length != data.Length)
-                _logger.Error("Inserting key value with mismatched length");*/
-
-            switch (key.DataType)
-            {
-                case EnumKeyDataType.Unsigned:
-                case EnumKeyDataType.UnsignedBinary:
-                    switch (key.Length)
-                    {
-                        case 2:
-                            return BitConverter.ToUInt16(data);
-                        case 4:
-                            return BitConverter.ToUInt32(data);
-                        case 8:
-                            return BitConverter.ToUInt64(data);
-                        default:
-                            throw new ArgumentException($"Bad unsigned integer key length {key.Length}");
-                    }
-                case EnumKeyDataType.AutoInc:
-                case EnumKeyDataType.Integer:
-                    switch (key.Length)
-                    {
-                        case 2:
-                            return BitConverter.ToInt16(data);
-                        case 4:
-                            return BitConverter.ToInt32(data);
-                        case 8:
-                            return BitConverter.ToInt64(data);
-                        default:
-                            throw new ArgumentException($"Bad integer key length {key.Length}");
-                    }
-                case EnumKeyDataType.String:
-                case EnumKeyDataType.Lstring:
-                case EnumKeyDataType.Zstring:
-                    // very important to trim trailing nulls/etc
-                    return ToCleanString(data);
-                default:
-                    return data.ToArray();
-            }
-        }
-
-        public static string ToCleanString(ReadOnlySpan<byte> b)
-        {
-            int strlen = b.IndexOf((byte) 0);
-            if (strlen < 0)
-                strlen = b.Length;
-
-            return Encoding.ASCII.GetString(b.Slice(0, strlen));
-        }
-
-        private static string SqliteType(BtrieveKey key, BtrieveKeyDefinition keyDefinition)
-        {
-            String type;
-            switch (keyDefinition.DataType)
-            {
-                case EnumKeyDataType.AutoInc:
-                    return "INTEGER NOT NULL UNIQUE";
-                case EnumKeyDataType.Integer:
-                case EnumKeyDataType.Unsigned:
-                case EnumKeyDataType.UnsignedBinary:
-                    type = "INTEGER NOT NULL";
-                    break;
-                case EnumKeyDataType.String:
-                case EnumKeyDataType.Lstring:
-                case EnumKeyDataType.Zstring:
-                    type = "TEXT NOT NULL";
-                    break;
-                default:
-                    _logger.Warn($"Defaulting to BLOB type for {keyDefinition.DataType}");
-                    type = "BLOB NOT NULL";
-                    break;
-            }
-
-            if (!key.IsComposite && keyDefinition.IsUnique)
-            {
-                type += " UNIQUE";
-            }
-
-            return type;
-        }
-
         private void CreateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             StringBuilder sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
-            foreach(var key in btrieveFile.Keys)
+            foreach(var key in btrieveFile.Keys.Values)
             {
-                foreach (var segment in key.Value.Segments)
-                {
-                    sb.Append($", {segment.SqliteKeyName} {SqliteType(key.Value, segment)}");
-                }
-            }
-            // check for uniqueness constraints on composite keys
-            foreach(var key in btrieveFile.Keys)
-            {
-                if (key.Value.IsComposite && key.Value.IsUnique)
-                {
-                    sb.Append(", UNIQUE(");
-                    sb.Append(string.Join(", ", key.Value.Segments.Select(segment => segment.SqliteKeyName).ToList()));
-                    sb.Append(")");
-                }
+                sb.Append($", {key.SqliteKeyName} {key.SqliteColumnType()}");
             }
             sb.Append(");");
 
@@ -873,21 +750,15 @@ namespace MBBSEmu.Btrieve
                 using var insertCmd = new SQLiteCommand(connection);
 
                 var sb = new StringBuilder("INSERT INTO data_t(data, ");
-                sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => segment.SqliteKeyName).ToList()));
+                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
                 sb.Append(") VALUES(@data, ");
-                sb.Append(string.Join(", ", Keys.SelectMany(key => key.Value.Segments).Select(segment => $"@{segment.SqliteKeyName}").ToList()));
+                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
                 sb.Append(");");
 
                 insertCmd.CommandText = sb.ToString();
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
-                foreach(var key in btrieveFile.Keys)
-                {
-                    foreach (var segment in key.Value.Segments)
-                    {
-                        var keyData = record.Data.AsSpan().Slice(segment.Offset, segment.Length);
-                        insertCmd.Parameters.AddWithValue($"@{segment.SqliteKeyName}", SqliteType(segment, keyData.ToArray()));
-                    }
-                }
+                foreach(var key in btrieveFile.Keys.Values)
+                    insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}", key.ExtractToSQLiteObject(record.Data));
 
                 try
                 {
@@ -965,7 +836,7 @@ namespace MBBSEmu.Btrieve
             foreach (var key in btrieveFile.Keys)
             {
                 if (key.Value.PrimarySegment.DataType == EnumKeyDataType.AutoInc)
-                    AutoincrementedKeys.Add(key.Value.PrimarySegment.Number, key.Value.PrimarySegment);
+                    AutoincrementedKeys.Add(key.Value.PrimarySegment.Number, key.Value);
             }
 
             CreateSqliteMetadataTable(_connection, btrieveFile);

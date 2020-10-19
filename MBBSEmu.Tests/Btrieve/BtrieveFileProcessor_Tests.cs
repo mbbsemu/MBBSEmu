@@ -18,7 +18,7 @@ namespace MBBSEmu.Tests.Btrieve
 
         private const string EXPECTED_METADATA_T_SQL = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
         private const string EXPECTED_KEYS_T_SQL = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, UNIQUE(number, segment))";
-        private const string EXPECTED_DATA_T_SQL = "CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0_0 TEXT NOT NULL, key_1_0 INTEGER NOT NULL UNIQUE, key_2_0 TEXT NOT NULL, key_3_0 INTEGER NOT NULL UNIQUE)";
+        private const string EXPECTED_DATA_T_SQL = "CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0 TEXT NOT NULL, key_1 INTEGER NOT NULL UNIQUE, key_2 TEXT NOT NULL, key_3 INTEGER NOT NULL UNIQUE)";
 
         private static readonly Random RANDOM = new Random();
 

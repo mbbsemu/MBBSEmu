@@ -9,4 +9,4 @@ INSERT INTO keys_t(number, segment, attributes, data_type, offset, length) VALUE
 
 INSERT INTO keys_t(number, segment, attributes, data_type, offset, length) VALUES(1, 0, 35, 11, 30, 25);
 
-CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0_0 STRING NOT NULL, key_0_1 STRING NOT NULL, key_1_0 STRING NOT NULL);
+CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0 STRING NOT NULL, key_1 STRING NOT NULL);

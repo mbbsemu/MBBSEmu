@@ -26,8 +26,6 @@ namespace MBBSEmu.Btrieve
 
         public ushort Position => (ushort) (Offset + 1);
 
-        public string SqliteKeyName => $"key_{Number}_{SegmentIndex}";
-
         public bool IsUnique { get => (Attributes & EnumKeyAttributeMask.Duplicates) == 0; }
 
         public bool AllowDuplicates { get => !IsUnique; }

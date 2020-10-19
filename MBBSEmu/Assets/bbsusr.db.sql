@@ -6,4 +6,4 @@ CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INT
 
 INSERT INTO keys_t(number, segment, attributes, data_type, offset, length) VALUES(0, 0, 0, 11, 0, 30);
 
-CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0_0 STRING NOT NULL);
+CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0 STRING NOT NULL);
