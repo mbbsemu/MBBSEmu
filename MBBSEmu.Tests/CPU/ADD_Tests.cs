@@ -1,6 +1,5 @@
-﻿using System;
-using System.Runtime.InteropServices;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
