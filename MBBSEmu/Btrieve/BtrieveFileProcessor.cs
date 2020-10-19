@@ -648,19 +648,32 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Gets the First Logical Record for the given key
+        ///     Gets the First Logical Record for the given key.
+        ///
+        ///     <para/>Annoyingly, there appears to be some differing behavior between numeric & string types.
+        ///            String types are a strict equality check. GetKeyNext returns only matching keys.
+        ///            Numeric types behave more like GetKeyGreaterOrEqual. GetNext returns matching keys of
+        ///            course, but then also returns subsequent keys in sort order.
         /// </summary>
         /// <param name="query"></param>
         /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
+            var numeric = query.Key.IsNumeric;
+            var oprator = numeric ? ">=" : "=";
+            QueryMatcher initialMatcher;
+            if (numeric) // I'd use a ternary but it doesn't work in language 8.0
+                initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
+            else
+                initialMatcher = (query, record) => true;
+
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value",
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value",
                 _connection);
             command.Parameters.AddWithValue("@value", query.Key.ToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
-            return NextReader(query, (query, record) => RecordMatchesKey(record, query.Key, query.KeyData));
+            return NextReader(query, initialMatcher);
         }
 
         /// <summary>
