@@ -2863,37 +2863,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Pointer = GetParameterPointer(0);
             var string2Pointer = GetParameterPointer(2);
 
-            var string1Buffer = Module.Memory.GetString(string1Pointer, true);
-            var string2Buffer = Module.Memory.GetString(string2Pointer, true);
+            var string1Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
+            var string2Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
 
-            if (string1Buffer.Length > string2Buffer.Length)
-            {
-#if DEBUG
-                _logger.Info(
-                    $"Returning False, String 1 Length {string1Buffer.Length} > Stringe 2 Length {string2Buffer.Length}");
-#endif
-                Registers.AX = 0;
-                return;
-            }
-
-            var resultValue = true;
-            for (var i = 0; i < string1Buffer.Length; i++)
-            {
-                if (string1Buffer[i] == string2Buffer[i] || //same case
-                    string1Buffer[i] == string2Buffer[i] - 32 || //check upper->lower
-                    string1Buffer[i] == string2Buffer[i] + 32) //check lower->upper
-                    continue;
-
-                resultValue = false;
-                break;
-            }
-
-#if DEBUG
-            _logger.Info(
-                $"Returned {resultValue} comparing {Encoding.ASCII.GetString(string1Buffer)} ({string1Pointer}) to {Encoding.ASCII.GetString(string2Buffer)} ({string2Pointer})");
-#endif
-
-            Registers.AX = (ushort)(resultValue ? 1 : 0);
+            Registers.AX = (ushort)(string2Buffer.Contains(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
         }
 
         /// <summary>
@@ -6990,14 +6963,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringPointerBase = GetParameterPointer(0);
 
-            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase));
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase, stripNull: true));
 
-            if (!Module.Memory.TryGetVariablePointer("lastwd-buffer", out var lastwdBufferPointer))
-                lastwdBufferPointer = Module.Memory.AllocateVariable("lastwd-buffer", 0xFF);
+            var lastWordIndex = stringToParse.LastIndexOf(' ');
+            lastWordIndex++; //Start on next character after space
 
-            Module.Memory.SetArray(lastwdBufferPointer, Encoding.ASCII.GetBytes($"{stringToParse.Split(' ').Last()}\0"));
-
-            Registers.SetPointer(lastwdBufferPointer);
+            Registers.SetPointer(stringPointerBase + lastWordIndex);
         }
 
         /// <summary>
@@ -7013,11 +6984,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 var currentCharacter = Module.Memory.GetByte(stringPointerBase.Segment, i);
                 if (currentCharacter != 0 && currentCharacter != ' ') continue;
-                Registers.SetPointer(stringPointerBase + i);
+
+                Registers.SetPointer(new IntPtr16(stringPointerBase.Segment, i));
                 return;
             }
 
-            Registers.SetPointer(IntPtr16.Empty);
+            Registers.SetPointer(stringPointerBase);
         }
 
         /// <summary>
