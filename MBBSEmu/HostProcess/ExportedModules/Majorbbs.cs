@@ -70,7 +70,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void Dispose()
         {
-            foreach(var f in FilePointerDictionary)
+            foreach (var f in FilePointerDictionary)
             {
                 f.Value.Close();
             }
@@ -1412,7 +1412,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
-            if(string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = Module.StateCode.ToString();
+            if (string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = Module.StateCode.ToString();
         }
 
         /// <summary>
@@ -1692,7 +1692,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             stricmp();
 
-            Registers.AX = (Registers.AX == 0 ? (ushort) 1 : (ushort) 0);
+            Registers.AX = (Registers.AX == 0 ? (ushort)1 : (ushort)0);
         }
 
         /// <summary>
@@ -1801,7 +1801,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputBufferProcessed = FormatOutput(outputBuffer);
 
-            if(ChannelDictionary.ContainsKey(userChannel))
+            if (ChannelDictionary.ContainsKey(userChannel))
                 ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
 #if DEBUG
@@ -2673,7 +2673,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 }
 
-                Module.Memory.SetByte(destinationPointer, (byte) source[i]);
+                Module.Memory.SetByte(destinationPointer, (byte)source[i]);
             }
         }
 
@@ -3152,14 +3152,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             path = Path.Combine(Module.ModulePath, path);
 
-            try {
+            try
+            {
                 var fileEnumerator = Directory.EnumerateFileSystemEntries(path, search, FileUtility.CASE_INSENSITIVE_ENUMERATION_OPTIONS);
                 var guid = Guid.NewGuid();
 
                 _activeSearches.Add(guid, fileEnumerator.GetEnumerator());
 
                 var fndblk = new FndblkStruct() { Guid = guid };
-                Module.Memory.SetArray(findBlockPointer,fndblk.Data);
+                Module.Memory.SetArray(findBlockPointer, fndblk.Data);
             }
             catch (DirectoryNotFoundException)
             {
@@ -3198,7 +3199,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 var fileInfo = new FileInfo(enumerator.Current);
                 fndblk.DateTime = fileInfo.LastWriteTime;
-                fndblk.Size = (int) fileInfo.Length;
+                fndblk.Size = (int)fileInfo.Length;
                 fndblk.SetAttributes(fileInfo.Attributes);
 
                 // DOS doesn't support long file names, so filter those out from the result set
@@ -3207,7 +3208,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     continue;
 
                 fndblk.Name = name;
-                Module.Memory.SetArray(fndblkPointer,fndblk.Data);
+                Module.Memory.SetArray(fndblkPointer, fndblk.Data);
                 Registers.AX = 1;
                 return;
             }
@@ -3272,7 +3273,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
             var bytesToWrite = size * count;
-            fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort) bytesToWrite));
+            fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort)bytesToWrite));
             var elementsWritten = bytesToWrite / size;
 
             //Update EOF Flag if required
@@ -3286,7 +3287,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
-            Registers.AX = (ushort) elementsWritten;
+            Registers.AX = (ushort)elementsWritten;
         }
 
         /// <summary>
@@ -3392,18 +3393,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             oldFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, oldFilenameInputValue);
             newFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, newFilenameInputValue);
 
-            if (!File.Exists(Path.Combine(Module.ModulePath, oldFilenameInputValue)))
-                throw new FileNotFoundException(
-                    $"Attempted to rename file that doesn't exist: {oldFilenameInputValue}");
-
-            File.Move(Path.Combine(Module.ModulePath, oldFilenameInputValue), Path.Combine(Module.ModulePath, newFilenameInputValue),
-                true);
+            try
+            {
+                File.Move(Path.Combine(Module.ModulePath, oldFilenameInputValue), Path.Combine(Module.ModulePath, newFilenameInputValue),
+                    true);
 
 #if DEBUG
-            _logger.Info($"Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
+                _logger.Info($"Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
 #endif
 
-            Registers.AX = 0;
+                Registers.AX = 0;
+            }
+            catch (Exception e)
+            {
+                _logger.Error($"{e.Message}");
+                Registers.AX = 0xFFFF;
+            }
         }
 
 
@@ -3458,7 +3463,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationString = Module.Memory.GetString(destinationPointer, stripNull: true);
             var sourceString = Module.Memory.GetString(sourcePointer, stripNull: true);
 
-            bytesToCopy = Math.Min(bytesToCopy, (ushort) sourceString.Length);
+            bytesToCopy = Math.Min(bytesToCopy, (ushort)sourceString.Length);
 
             Module.Memory.SetArray(destinationPointer.Segment,
                 (ushort)(destinationPointer.Offset + destinationString.Length),
@@ -3566,7 +3571,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             PERCENT
         };
 
-        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal) {
+        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
+        {
             var matches = 0;
             var formatParseState = FormatParseState.NORMAL;
 
@@ -3611,16 +3617,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             // low word first followed by high word
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal),
-                                (ushort) ((uint)result.Value & 0xFFFF));
+                                (ushort)((uint)result.Value & 0xFFFF));
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal) + 2,
-                                (ushort) ((uint)result.Value >> 16));
+                                (ushort)((uint)result.Value >> 16));
                         }
                         else
                         {
                             Module.Memory.SetWord(
                                 GetParameterPointer(startingParameterOrdinal),
-                                (ushort) result.Value);
+                                (ushort)result.Value);
                         }
 
                         if (result.Valid)
@@ -3649,7 +3655,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
             }
 
-            Registers.AX = (ushort) matches;
+            Registers.AX = (ushort)matches;
         }
 
         /// <summary>
@@ -4251,7 +4257,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringData.Length; i++)
             {
-                stringData[i] = (byte) modifier.Invoke((char) stringData[i]);
+                stringData[i] = (byte)modifier.Invoke((char)stringData[i]);
             }
 
             Module.Memory.SetArray(stringToConvertPointer, stringData);
@@ -5019,7 +5025,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, stripNull: true));
 
             // skip starting delims
-            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
+            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
             {
                 Module.Memory.SetByte(workPointer++, 0x0);
             }
@@ -5036,7 +5042,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(workPointer);
 
             // scan until we find the next deliminater and then null it out for the return
-            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char) Module.Memory.GetByte(workPointer)))
+            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
             {
                 workPointer++;
             }
@@ -5643,7 +5649,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var (moreInput, skipped) = ConsumeWhitespace(charEnumerator);
-            if (!moreInput) {
+            if (!moreInput)
+            {
                 cncint_ErrorResult(returnType);
                 return;
             }
@@ -5656,11 +5663,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (returnType)
             {
                 case CncIntegerReturnType.INT:
-                    Registers.AX = result.Valid ? (ushort) result.Value : (ushort) 0;
+                    Registers.AX = result.Valid ? (ushort)result.Value : (ushort)0;
                     break;
                 case CncIntegerReturnType.LONG:
-                    Registers.AX = result.Valid ? (ushort) ((uint) result.Value & 0xFFFF) : (ushort) 0;
-                    Registers.DX = result.Valid ? (ushort) ((uint) result.Value >> 16) : (ushort) 0;
+                    Registers.AX = result.Valid ? (ushort)((uint)result.Value & 0xFFFF) : (ushort)0;
+                    Registers.DX = result.Valid ? (ushort)((uint)result.Value >> 16) : (ushort)0;
                     break;
                 case CncIntegerReturnType.STRING:
                     var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
@@ -7455,7 +7462,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Truncate to 29 bytes
-            if(returnedWord.Length > 29)
+            if (returnedWord.Length > 29)
                 returnedWord.SetLength(29);
 
             returnedWord.WriteByte(0);
@@ -7464,7 +7471,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Modify the Counters
             remainingCharactersInCommand -= (int)returnedWord.Length;
-            nxtcmdPointer.Offset += (ushort) returnedWord.Length;
+            nxtcmdPointer.Offset += (ushort)returnedWord.Length;
 
             //Advance to the next, non-space character
             while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
@@ -7502,7 +7509,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stride = GetParameter(3);
             var tsize = GetParameter(4);
 
-            if(size > ushort.MaxValue)
+            if (size > ushort.MaxValue)
                 throw new Exception("Allocation Exceeds Segment Size");
 
             var realSegmentBase = Module.Memory.AllocateRealModeSegment();
@@ -7515,7 +7522,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             */
             var numberOfSegments = (size / tsize) * 8;
 
-            for(var i = 0; i < numberOfSegments; i++)
+            for (var i = 0; i < numberOfSegments; i++)
                 Module.Memory.AllocateRealModeSegment(tsize);
 
             _logger.Debug($"Allocated base {realSegmentBase} for {size} bytes ({numberOfSegments} segments)");
@@ -7577,7 +7584,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Scan the current channels for any usernames that match the specified one
             Registers.AX = ChannelDictionary.Any(x =>
-                string.Equals(x.Value.Username, username, StringComparison.CurrentCultureIgnoreCase)) ? (ushort) 1 : (ushort) 0;
+                string.Equals(x.Value.Username, username, StringComparison.CurrentCultureIgnoreCase)) ? (ushort)1 : (ushort)0;
         }
 
         /// <summary>
@@ -7686,7 +7693,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileHandle = GetParameter(0);
             var result = -1L;
 
-            if (FilePointerDictionary.TryGetValue(fileHandle,out var filePointer))
+            if (FilePointerDictionary.TryGetValue(fileHandle, out var filePointer))
             {
                 result = filePointer.Length;
             }
