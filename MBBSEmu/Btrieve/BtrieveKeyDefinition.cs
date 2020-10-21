@@ -12,6 +12,7 @@ namespace MBBSEmu.Btrieve
         public ushort Offset { get; set; }
         public EnumKeyDataType DataType { get; set; }
         public EnumKeyAttributeMask Attributes {get; set; }
+
         /// <summary>
         ///     Defines if the Key is a Segment Key
         /// </summary>
@@ -24,11 +25,28 @@ namespace MBBSEmu.Btrieve
 
         public int SegmentIndex { get; set; }
 
+        public byte NullValue { get; set; }
+
         public ushort Position => (ushort) (Offset + 1);
 
-        public bool IsUnique { get => (Attributes & EnumKeyAttributeMask.Duplicates) == 0; }
+        public bool IsModifiable { get => Attributes.HasFlag(EnumKeyAttributeMask.Modifiable); }
 
-        public bool AllowDuplicates { get => !IsUnique; }
+        public bool IsUnique { get => !AllowDuplicates; }
+
+        public bool AllowDuplicates {
+            get
+            {
+                return Attributes.HasFlag(EnumKeyAttributeMask.Duplicates)
+                    || Attributes.HasFlag(EnumKeyAttributeMask.RepeatingDuplicatesKey);
+            }
+        }
+
+        public bool IsNullable { get =>
+            Attributes.HasFlag(EnumKeyAttributeMask.NullAllSegments)
+                || Attributes.HasFlag(EnumKeyAttributeMask.NullAnySegment)
+                //|| IsString; // string is implicitly nullable
+                || Attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary);
+        }
 
         public bool IsNumeric
         {
@@ -40,6 +58,22 @@ namespace MBBSEmu.Btrieve
                     case EnumKeyDataType.AutoInc:
                     case EnumKeyDataType.Unsigned:
                     case EnumKeyDataType.UnsignedBinary:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        }
+
+        public bool IsString
+        {
+            get
+            {
+                switch (DataType)
+                {
+                    case EnumKeyDataType.String:
+                    case EnumKeyDataType.Lstring:
+                    case EnumKeyDataType.Zstring:
                         return true;
                     default:
                         return false;

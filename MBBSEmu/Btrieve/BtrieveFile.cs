@@ -201,6 +201,8 @@ namespace MBBSEmu.Btrieve
             //Only Parse Keys if they are defined
             if (KeyCount > 0)
                 LoadBtrieveKeyDefinitions(logger);
+            else
+                throw new ArgumentException("NO KEYS defined in {fileName}");
 
             //Only load records if there are any present
             if (RecordCount > 0)
@@ -230,11 +232,12 @@ namespace MBBSEmu.Btrieve
                 var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
                 var keyDefinition = new BtrieveKeyDefinition {
                     Number = currentKeyNumber,
-                    Attributes = (EnumKeyAttributeMask) data[0x8],
+                    Attributes = (EnumKeyAttributeMask) BitConverter.ToUInt16(data, 0x8),
                     DataType = (EnumKeyDataType) data[0x1C],
                     Offset = BitConverter.ToUInt16(data, 0x14),
                     Length = BitConverter.ToUInt16(data, 0x16),
                     Segment = false,
+                    NullValue = data[0x1D],
                   };
 
                 //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment

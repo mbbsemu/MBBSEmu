@@ -34,15 +34,9 @@ namespace MBBSEmu.Btrieve
             get => Segments.Count > 1;
         }
 
-        public bool IsUnique
-        {
-            get
-            {
-                var unique = true;
-                Segments.ForEach(segment => unique &= segment.IsUnique);
-                return unique;
-            }
-        }
+        public bool IsModifiable { get => PrimarySegment.IsModifiable; }
+
+        public bool IsUnique { get => PrimarySegment.IsUnique; }
 
         public bool IsNumeric
         {
@@ -53,6 +47,18 @@ namespace MBBSEmu.Btrieve
                 return numeric;
             }
         }
+
+        public bool IsString
+        {
+            get
+            {
+                var str = true;
+                Segments.ForEach(segment => str &= segment.IsString);
+                return str;
+            }
+        }
+
+        public bool IsNullable { get => PrimarySegment.IsNullable; }
 
         public int Length
         {
@@ -81,25 +87,38 @@ namespace MBBSEmu.Btrieve
             return composite;
         }
 
-        public bool IsZeroValue(ReadOnlySpan<byte> record)
+        private static bool IsAllSameByteValue(ReadOnlySpan<byte> data, byte value)
         {
-            var convertible = (IConvertible) ToSQLiteObject(ExtractKeyDataFromRecord(record));
-            return convertible.ToInt64(null) == 0;
+            foreach (byte b in data)
+                if (b != value)
+                    return false;
+
+            return true;
         }
 
-        public object ExtractToSQLiteObject(ReadOnlySpan<byte> data)
+        public bool KeyInRecordIsAllSameByte(ReadOnlySpan<byte> record, byte b) => IsAllSameByteValue(ExtractKeyDataFromRecord(record), b);
+
+        public bool KeyInRecordIsAllZero(ReadOnlySpan<byte> record) => KeyInRecordIsAllSameByte(record, 0);
+
+        public object ExtractKeyInRecordToSQLiteObject(ReadOnlySpan<byte> data)
         {
-            return ToSQLiteObject(ExtractKeyDataFromRecord(data));
+            return KeyDataToSQLiteObject(ExtractKeyDataFromRecord(data));
         }
 
         /// <summary>
         ///     Returns an object suitable for inserting into sqlite for the specified
-        ///     data.
+        ///     key data.
         /// </summary>
-        public object ToSQLiteObject(ReadOnlySpan<byte> data)
+        public object KeyDataToSQLiteObject(ReadOnlySpan<byte> keyData)
         {
+            if (IsNullable && IsAllSameByteValue(keyData, PrimarySegment.NullValue))
+            {
+                _logger.Info($"Returning a NULL value");
+                return null;
+            }
+
             if (IsComposite)
-                return data.ToArray();
+                return keyData.ToArray();
 
             switch (PrimarySegment.DataType)
             {
@@ -108,11 +127,11 @@ namespace MBBSEmu.Btrieve
                     switch (PrimarySegment.Length)
                     {
                         case 2:
-                            return BitConverter.ToUInt16(data);
+                            return BitConverter.ToUInt16(keyData);
                         case 4:
-                            return BitConverter.ToUInt32(data);
+                            return BitConverter.ToUInt32(keyData);
                         case 8:
-                            return BitConverter.ToUInt64(data);
+                            return BitConverter.ToUInt64(keyData);
                         default:
                             throw new ArgumentException($"Bad unsigned integer key length {PrimarySegment.Length}");
                     }
@@ -121,28 +140,27 @@ namespace MBBSEmu.Btrieve
                     switch (PrimarySegment.Length)
                     {
                         case 2:
-                            return BitConverter.ToInt16(data);
+                            return BitConverter.ToInt16(keyData);
                         case 4:
-                            return BitConverter.ToInt32(data);
+                            return BitConverter.ToInt32(keyData);
                         case 8:
-                            return BitConverter.ToInt64(data);
+                            return BitConverter.ToInt64(keyData);
                         default:
                             throw new ArgumentException($"Bad integer key length {PrimarySegment.Length}");
                     }
                 case EnumKeyDataType.String:
                 case EnumKeyDataType.Lstring:
                 case EnumKeyDataType.Zstring:
-                    // very important to trim trailing nulls/etc
-                    return ExtractNullTerminatedString(data);
+                    return ExtractNullTerminatedString(keyData);
                 default:
-                    return data.ToArray();
+                    return keyData.ToArray();
             }
         }
 
         public static string ExtractNullTerminatedString(ReadOnlySpan<byte> b)
         {
             int strlen = b.IndexOf((byte) 0);
-            if (strlen < 0)
+            if (strlen <= 0)
                 strlen = b.Length;
 
             return Encoding.ASCII.GetString(b.Slice(0, strlen));
@@ -154,7 +172,7 @@ namespace MBBSEmu.Btrieve
 
             if (IsComposite)
             {
-                type = "BLOB NOT NULL";
+                type = "BLOB";
             }
             else
             {
@@ -165,17 +183,22 @@ namespace MBBSEmu.Btrieve
                     case EnumKeyDataType.Integer:
                     case EnumKeyDataType.Unsigned:
                     case EnumKeyDataType.UnsignedBinary:
-                        type = "INTEGER NOT NULL";
+                        type = "INTEGER";
                         break;
                     case EnumKeyDataType.String:
                     case EnumKeyDataType.Lstring:
                     case EnumKeyDataType.Zstring:
-                        type = "TEXT NOT NULL";
+                        type = "TEXT";
                         break;
                     default:
-                        type = "BLOB NOT NULL";
+                        type = "BLOB";
                         break;
                 }
+            }
+
+            if (!IsNullable)
+            {
+                type += " NOT NULL";
             }
 
             if (IsUnique)

@@ -17,7 +17,7 @@ namespace MBBSEmu.Tests.Btrieve
         const int RECORD_LENGTH = 74;
 
         private const string EXPECTED_METADATA_T_SQL = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
-        private const string EXPECTED_KEYS_T_SQL = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, UNIQUE(number, segment))";
+        private const string EXPECTED_KEYS_T_SQL = "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, null_value INTEGER NOT NULL, UNIQUE(number, segment))";
         private const string EXPECTED_DATA_T_SQL = "CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL, key_0 TEXT NOT NULL, key_1 INTEGER NOT NULL UNIQUE, key_2 TEXT NOT NULL, key_3 INTEGER NOT NULL UNIQUE)";
 
         private static readonly Random RANDOM = new Random();
@@ -99,7 +99,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 0,
-                    Attributes = EnumKeyAttributeMask.Duplicates,
+                    Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
                     Offset = 2,
                     Length = 32,
@@ -108,7 +108,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 1,
-                    Attributes = EnumKeyAttributeMask.Modifiable,
+                    Attributes = EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Integer,
                     Offset = 34,
                     Length = 4,
@@ -117,7 +117,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 2,
-                    Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable,
+                    Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
                     Offset = 38,
                     Length = 32,
@@ -126,7 +126,7 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition() {
                     Number = 3,
-                    Attributes = 0,
+                    Attributes = EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.AutoInc,
                     Offset = 70,
                     Length = 4,
