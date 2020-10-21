@@ -13,6 +13,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("this is a test", "test")]
         [InlineData("test word", "word")]
         [InlineData("test", "test")]
+        [InlineData("     ", "")]
+        [InlineData("", "")]
         public void LASTWD_Test(string inputString, string expectedString)
         {
             //Reset State
