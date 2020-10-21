@@ -44,8 +44,7 @@ namespace MBBSEmu.Btrieve
         public bool IsNullable { get =>
             Attributes.HasFlag(EnumKeyAttributeMask.NullAllSegments)
                 || Attributes.HasFlag(EnumKeyAttributeMask.NullAnySegment)
-                //|| IsString; // string is implicitly nullable
-                || Attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary);
+                || IsString; // string is implicitly nullable
         }
 
         public bool IsNumeric
