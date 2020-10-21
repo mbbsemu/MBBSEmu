@@ -760,6 +760,17 @@ namespace MBBSEmu.Btrieve
             cmd.ExecuteNonQuery();
         }
 
+        private void CreateSqliteDataIndices(SQLiteConnection connection, BtrieveFile btrieveFile)
+        {
+            foreach(var key in btrieveFile.Keys.Values)
+            {
+                var possiblyUnique = key.IsUnique ? "UNIQUE" : "";
+                using var command = new SQLiteCommand(
+                    $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})", _connection);
+                command.ExecuteNonQuery();
+            }
+        }
+
         private void PopulateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             using var transaction = connection.BeginTransaction();
@@ -861,6 +872,7 @@ namespace MBBSEmu.Btrieve
             CreateSqliteMetadataTable(_connection, btrieveFile);
             CreateSqliteKeysTable(_connection, btrieveFile);
             CreateSqliteDataTable(_connection, btrieveFile);
+            CreateSqliteDataIndices(_connection, btrieveFile);
             PopulateSqliteDataTable(_connection, btrieveFile);
         }
     }
