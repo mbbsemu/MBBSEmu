@@ -314,8 +314,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
             Module.Memory.SetZero(inputPointer, 0xFF);
             var inputFromChannel = ChannelDictionary[channelNumber].InputCommand;
-            Module.Memory.SetArray(inputPointer, inputFromChannel);
             var inputLength = (ushort)ChannelDictionary[ChannelNumber].InputCommand.Length;
+            Module.Memory.SetArray(inputPointer, inputFromChannel);
+            Module.Memory.SetByte(inputPointer + inputFromChannel.Length, 0);
             Module.Memory.SetWord("INPLEN", inputLength);
 
             ChannelDictionary[channelNumber].UsrPtr.Flags = 0;
