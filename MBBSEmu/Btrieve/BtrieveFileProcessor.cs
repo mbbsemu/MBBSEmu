@@ -175,7 +175,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepFirst()
         {
-            // TODO consider grabbing data at the same and prepopulating the cache
+            // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -189,7 +189,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepNext()
         {
-            // TODO consider grabbing data at the same and prepopulating the cache
+            // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -222,7 +222,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public bool StepLast()
         {
-            // TODO consider grabbing data at the same and prepopulating the cache
+            // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
 
@@ -243,6 +243,8 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset)
         {
+            Position = offset;
+
             if (_cache.TryGetValue(offset, out var record))
                 return record;
 
