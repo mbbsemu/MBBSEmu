@@ -2715,8 +2715,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int obtbtvl (void *recptr, void *key, int keynum, int obtopt, int loktyp)
         ///     Returns: AX == 0 record not found, 1 record found
         /// </summary>
-        /// <returns></returns>
-        private void obtbtvl()
+        /// <returns>true if record found</returns>
+        private bool obtbtvl()
         {
             var recordPointer = GetParameterPointer(0);
             var keyPointer = GetParameterPointer(2);
@@ -2782,6 +2782,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Registers.AX = result ? (ushort) 1 : (ushort) 0;
+            return result;
         }
 
         /// <summary>
@@ -5717,33 +5718,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void getbtvl()
         {
-            var btrieveRecordPointer = GetParameterPointer(0);
-            var keyPointer = GetParameterPointer(2);
-            var keyNumber = GetParameter(4);
-            var queryOption = GetParameter(5);
+            ushort ax = Registers.AX;
 
-            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+            if (!obtbtvl())
+                throw new ArgumentException($"No record found in getbtvl, bombing");
 
-            if ((short)keyNumber < 0 && keyPointer.Equals(IntPtr16.Empty))
-            {
-                currentBtrieveFile.Seek((EnumBtrieveOperationCodes)queryOption);
-            }
-            else
-            {
-                var key = Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength(keyNumber));
-
-                currentBtrieveFile.SeekByKey(keyNumber, key, (EnumBtrieveOperationCodes)queryOption);
-            }
-
-            //Set Memory Values
-            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(Module.Memory.GetPointer("BB"), BtvFileStruct.Size));
-
-            var record = currentBtrieveFile.GetRecord();
-            Module.Memory.SetArray(btvStruct.data, record);
-            Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[keyNumber].ExtractKeyDataFromRecord(record));
-
-            if (btrieveRecordPointer != IntPtr16.Empty)
-                Module.Memory.SetArray(btrieveRecordPointer, record);
+            Registers.AX = ax;
         }
 
         /// <summary>
