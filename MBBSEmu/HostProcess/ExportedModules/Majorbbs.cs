@@ -4903,9 +4903,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch ((EnumBtrieveOperationCodes)queryOption)
             {
                 case EnumBtrieveOperationCodes.GetKeyGreater:
+                case EnumBtrieveOperationCodes.GetKeyGreaterOrEqual:
                 case EnumBtrieveOperationCodes.GetKeyLast:
                 case EnumBtrieveOperationCodes.GetKeyEqual:
                 case EnumBtrieveOperationCodes.GetKeyLess:
+                case EnumBtrieveOperationCodes.GetKeyLessOrEqual:
                     result = currentBtrieveFile.SeekByKey(keyNumber, key, (EnumBtrieveOperationCodes)queryOption);
                     break;
                 case EnumBtrieveOperationCodes.GetKeyFirst:

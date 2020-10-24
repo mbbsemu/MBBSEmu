@@ -530,26 +530,14 @@ namespace MBBSEmu.Btrieve
 
             return btrieveOperationCode switch
             {
-                EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
-
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
-
-                EnumBtrieveOperationCodes.GetNext => GetByKeyNext(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
-
                 EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
-
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetKeyGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
-
+                EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
         }
@@ -607,14 +595,21 @@ namespace MBBSEmu.Btrieve
 
         private bool NextReader(BtrieveQuery query, QueryMatcher matcher)
         {
-            if (query.Reader == null)
-                return false;
-
-            if (!query.Reader.Read())
+            if (query.Reader == null || !query.Reader.Read())
             {
-                query.Reader.Dispose();
+                query?.Reader.Dispose();
                 query.Reader = null;
-                return false;
+
+                if (query.ContinuationReader == null)
+                    return false;
+
+                query.Reader = query.ContinuationReader(query);
+                if (query.Reader == null || !query.Reader.Read())
+                {
+                    query?.Reader.Dispose();
+                    query.Reader = null;
+                    return false;
+                }
             }
 
             var data = new byte[RecordLength];
@@ -707,31 +702,19 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC", _connection);
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1", _connection);
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            query.ContinuationReader = (thisQuery) => {
+                using var command = new SQLiteCommand(
+                    $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value AND id != {thisQuery.Position} ORDER BY {query.Key.SqliteKeyName}", _connection);
+                command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
+
+                thisQuery.ContinuationReader = null;
+                return command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            };
             return NextReader(query);
-        }
-
-        /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Greater Than or Equal To the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyGreaterOrEqual(BtrieveQuery query)
-        {
-            return 0;
-        }
-
-        /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLessOrEqual(BtrieveQuery query)
-        {
-            return 0;
         }
 
         /// <summary>
@@ -742,7 +725,7 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyLast(BtrieveQuery query)
         {
             using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC",
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
                 _connection);
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
