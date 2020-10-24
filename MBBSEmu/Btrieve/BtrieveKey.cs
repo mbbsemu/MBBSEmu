@@ -80,10 +80,7 @@ namespace MBBSEmu.Btrieve
 
         public bool KeyInRecordIsAllZero(ReadOnlySpan<byte> record) => KeyInRecordIsAllSameByte(record, 0);
 
-        public object ExtractKeyInRecordToSQLiteObject(ReadOnlySpan<byte> data)
-        {
-            return KeyDataToSQLiteObject(ExtractKeyDataFromRecord(data));
-        }
+        public object ExtractKeyInRecordToSQLiteObject(ReadOnlySpan<byte> data) => KeyDataToSQLiteObject(ExtractKeyDataFromRecord(data));
 
         /// <summary>
         ///     Returns an object suitable for inserting into sqlite for the specified
@@ -93,7 +90,6 @@ namespace MBBSEmu.Btrieve
         {
             if (IsNullable && IsAllSameByteValue(keyData, PrimarySegment.NullValue))
             {
-                _logger.Info($"Returning a NULL value");
                 return null;
             }
 

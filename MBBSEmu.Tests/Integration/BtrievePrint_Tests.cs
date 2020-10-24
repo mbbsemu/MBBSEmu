@@ -1,3 +1,4 @@
+using FluentAssertions;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
@@ -30,7 +31,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -65,7 +66,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -98,7 +99,7 @@ namespace MBBSEmu.Tests.Integration
                     "\r\nPress X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -132,7 +133,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -167,7 +168,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -203,7 +204,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -238,7 +239,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -275,7 +276,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -309,7 +310,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -346,7 +347,7 @@ namespace MBBSEmu.Tests.Integration
 
                 foreach (var line in lines) host.Logger.Error(line);
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -382,7 +383,7 @@ namespace MBBSEmu.Tests.Integration
 
                 foreach (var line in lines) host.Logger.Error(line);
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -416,7 +417,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -451,7 +452,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -487,7 +488,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -522,7 +523,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -559,7 +560,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -593,7 +594,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -645,7 +646,7 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                Assert.Equal(expected, lines);
+                lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
 
@@ -653,6 +654,43 @@ namespace MBBSEmu.Tests.Integration
             });
         }
 
-        // TODO(paladine): Add a test that inserts the same key to verify key restraints
+
+        [Fact]
+        public void AddItems_KeyConstraint_Failure()
+        {
+            ExecuteTest((session, host) => {
+                WaitUntil(':', "Make your selection");
+
+                session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
+
+                WaitUntil(':', "Make your selection");
+
+                // add - by id - 3444 is a dup
+                session.SendToModule(Encoding.ASCII.GetBytes("AI3444\r\n"));
+                var lines = WaitUntil(':', "Make your selection");
+                lines[0].Should().Contain("Failed to insert record");
+
+                session.SendToModule(Encoding.ASCII.GetBytes("P\r\n"));
+
+                lines = WaitUntil('.', "Press X to exit");
+                var expected = new List<string>() {
+                    " P\r\nPrinting all the btrieve rows, key 0 and length 32.",
+                    ".",
+                    ".",
+                    "\r\nuid: Sysop lvalue: 3444 svalue: 3444 incvalue: 1\r\n" +
+                    "uid: Sysop lvalue: 7776 svalue: 7776 incvalue: 2\r\n" +
+                    "uid: Sysop lvalue: 1052234073 svalue: StringValue incvalue: 3\r\n" +
+                    "uid: Sysop lvalue: -615634567 svalue: stringValue incvalue: 4\r\n" +
+                    "Press X to exit.",
+                };
+
+                lines.Should().BeEquivalentTo(expected);
+
+                session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
+
+                WaitUntil('.', "Have a nice day");
+            });
+        }
+
     }
 }
