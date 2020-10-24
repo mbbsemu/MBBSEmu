@@ -7,7 +7,7 @@ namespace MBBSEmu.Tests.Integration
     public class BtrievePrint_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]
-        public void DoPrintTestAndLogOff()
+        public void PhysicalOrderTestAndLogOff()
         {
             ExecuteTest((session, host) => {
                 WaitUntil(':', "Make your selection");
@@ -20,7 +20,7 @@ namespace MBBSEmu.Tests.Integration
 
                 var lines = WaitUntil('.', "Press X to exit");
                 var expected = new List<string>() {
-                    " P\r\nPrinting all the btrieve rows.",
+                    " P\r\nPrinting all the btrieve rows, key 0 and length 32.",
                     ".",
                     ".",
                     "\r\nuid: Sysop lvalue: 3444 svalue: 3444 incvalue: 1\r\n" +
@@ -49,7 +49,7 @@ namespace MBBSEmu.Tests.Integration
         }
 
         [Fact]
-        public void AddItemsAndPrintTestAndThenLogoff()
+        public void AddItemsAndPhysicalOrderTestAndThenLogoff()
         {
             ExecuteTest((session, host) => {
                 WaitUntil(':', "Make your selection");
@@ -70,7 +70,7 @@ namespace MBBSEmu.Tests.Integration
 
                 var lines = WaitUntil('.', "Press X to exit");
                 var expected = new List<string>() {
-                    " P\r\nPrinting all the btrieve rows.",
+                    " P\r\nPrinting all the btrieve rows, key 0 and length 32.",
                     ".",
                     ".",
                     "\r\nuid: Sysop lvalue: 3444 svalue: 3444 incvalue: 1\r\n" +

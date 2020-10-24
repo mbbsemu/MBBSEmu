@@ -27,6 +27,20 @@ BMENU {[1;32mPlease select one of the following:
    [1;36mA [1;33m... Add item
    [1;36mD [1;33m... Delete item
    [1;36mP [1;33m... Print all items
+
+   [1;36m1 [1;33m... Search in physical order
+   [1;36m2 [1;33m... Search by key equal
+   [1;36m3 [1;33m... Search by key greater
+   [1;36m4 [1;33m... Search by key greater/eq
+   [1;36m5 [1;33m... Search by key less
+   [1;36m6 [1;33m... Search by key less/eq
+   [1;36m7 [1;33m... Search by key lowest
+   [1;36m8 [1;33m... Search by key highest
+
+   [1;36mK [1;33m... Set search key
+   [1;36mI [1;33m... Set search key int
+   [1;36mS [1;33m... Set search key string
+
    [1;36mX [1;33m... eXit 
    
 [1;36mMake your selection (A, D, P, X to exit): } T Menu
@@ -50,7 +64,7 @@ BDELMENU {[1;32mPlease select one of the following:
    
 [1;36mMake your selection (I, S, X to exit): } T Menu
 
-DBPRINT {Printing all the btrieve rows...
+DBPRINT {Printing all the btrieve rows, key %d and length %d...
 } T Btrieve Print
 
 DBPRINTE {Press X to exit...
