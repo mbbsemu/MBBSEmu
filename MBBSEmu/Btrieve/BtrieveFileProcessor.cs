@@ -667,13 +667,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
-            var numeric = query.Key.IsNumeric;
-            var oprator = numeric ? ">=" : "=";
-            QueryMatcher initialMatcher;
-            if (numeric) // I'd use a ternary but it doesn't work in language 8.0
-                initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
-            else
-                initialMatcher = (query, record) => true;
+            QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
 
             var sqliteObject = query.Key.KeyDataToSQLiteObject(query.KeyData);
             using var command = new SQLiteCommand(_connection);
@@ -683,7 +677,7 @@ namespace MBBSEmu.Btrieve
             }
             else
             {
-                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value";
+                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value";
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
             }
 

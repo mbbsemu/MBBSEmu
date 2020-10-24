@@ -591,8 +591,12 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
 
+            btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeTrue();
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            new MBBSEmuRecord(btrieve.GetRecord(btrieve.Position)?.Data).Key2.Should().Be("stringValue");
+
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyNext, newQuery: false).Should().BeFalse();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
+            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
         }
 
         [Fact]

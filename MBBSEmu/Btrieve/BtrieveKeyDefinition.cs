@@ -47,23 +47,6 @@ namespace MBBSEmu.Btrieve
                 || IsString; // string is implicitly nullable
         }
 
-        public bool IsNumeric
-        {
-            get
-            {
-                switch (DataType)
-                {
-                    case EnumKeyDataType.Integer:
-                    case EnumKeyDataType.AutoInc:
-                    case EnumKeyDataType.Unsigned:
-                    case EnumKeyDataType.UnsignedBinary:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-        }
-
         public bool IsString
         {
             get

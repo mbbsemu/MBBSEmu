@@ -38,26 +38,6 @@ namespace MBBSEmu.Btrieve
 
         public bool IsUnique { get => PrimarySegment.IsUnique; }
 
-        public bool IsNumeric
-        {
-            get
-            {
-                var numeric = true;
-                Segments.ForEach(segment => numeric &= segment.IsNumeric);
-                return numeric;
-            }
-        }
-
-        public bool IsString
-        {
-            get
-            {
-                var str = true;
-                Segments.ForEach(segment => str &= segment.IsString);
-                return str;
-            }
-        }
-
         public bool IsNullable { get => PrimarySegment.IsNullable; }
 
         public int Length
