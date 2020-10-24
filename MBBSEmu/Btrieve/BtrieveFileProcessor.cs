@@ -530,14 +530,27 @@ namespace MBBSEmu.Btrieve
 
             return btrieveOperationCode switch
             {
+                EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
+
+                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
+
+                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
+
+                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
                 EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
                 EnumBtrieveOperationCodes.GetKeyGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+
+                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
                 EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
                 EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
+
+                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
+
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
         }
