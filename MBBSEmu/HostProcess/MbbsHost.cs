@@ -35,9 +35,6 @@ namespace MBBSEmu.HostProcess
     {
         public ILogger Logger { get; set; }
 
-        // 3 in the morning
-        private readonly TimeSpan DEFAULT_CLEANUP_TIME = new TimeSpan(hours: 3, minutes: 0, seconds: 0);
-
         /// <summary>
         ///     Dictionary containing all active Channels
         /// </summary>
@@ -121,7 +118,7 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
-            _cleanupTime = ParseCleanupTime();
+            _cleanupTime = AppSettings.CleanupTime;
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
             Logger.Info("Constructed MBBSEmu Host!");
         }
@@ -522,9 +519,7 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessLONROU(SessionBase session)
         {
-            bool.TryParse(_configuration["Module.DoLoginRoutine"], out var doLoginRoutine);
-
-            session.OutputEnabled = doLoginRoutine;
+            session.OutputEnabled = AppSettings.ModuleDoLoginRoutine;
 
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 
@@ -1062,16 +1057,6 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
             return waitTime;
-        }
-
-        private TimeSpan ParseCleanupTime()
-        {
-            if (!TimeSpan.TryParse(_configuration["Cleanup.Time"], out var cleanupTime))
-            {
-                cleanupTime = DEFAULT_CLEANUP_TIME;
-            }
-
-            return cleanupTime;
         }
 
         public void GenerateAPIReport()
