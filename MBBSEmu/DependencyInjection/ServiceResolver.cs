@@ -37,6 +37,7 @@ namespace MBBSEmu.DependencyInjection
         private void BuildServiceProvider()
         {
             //Base Configuration Items
+            _serviceCollection.AddSingleton<AppSettings>();
             _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
             _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
