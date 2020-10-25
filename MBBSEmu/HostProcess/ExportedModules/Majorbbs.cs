@@ -4654,17 +4654,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration.BBSTitle;
-
-                if (string.IsNullOrEmpty(title))
-                    title = "MBBSEmu";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("BBSTTL");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSTitle));
                 return Module.Memory.GetVariablePointer("*BBSTTL").Data;
             }
         }

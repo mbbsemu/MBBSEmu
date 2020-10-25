@@ -8,6 +8,7 @@ using NLog;
 using System;
 using System.Text;
 using System.Threading;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -42,7 +43,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Check for Module Specific Activation #
             var bturno = configuration.GSBLActivation;
             _logger.Info($"Setting BTURNO to: {bturno}");
-            _logger.Info($"Setting BTURNO to: {configuration.GSBLActivation}");
+            // (Tuday) Need to figure out in Configuration.cs
             //if (!string.IsNullOrEmpty(_configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"]))
             //{
             //    bturno = _configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"];

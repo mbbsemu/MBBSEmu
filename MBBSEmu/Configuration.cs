@@ -28,9 +28,10 @@ namespace MBBSEmu
         }
 
         //Validate Config File
-        public string BBSTitle => GetStringAppSettings("BBS.Title");
+        public string BBSTitle => GetBBSTitleSettings("BBS.Title");
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
         public string GSBLActivation => GetGSBLAppSettings("GSBL.Activation");
+        public string GSBLModuleActivation => GetGSBLModuleAppSettings($"GSBL.Activation"); // (Tuday) NOT WORKING -- can't figure out how to get .<module> and create a string for each?
         public bool ModuleDoLoginRoutine => GetBoolAppSettings("Module.DoLoginRoutine");
         public bool TelnetEnabled => GetBoolAppSettings("Telnet.Enabled");
         public int TelnetPort => GetIntAppSettings("Telnet.Port");
@@ -52,22 +53,6 @@ namespace MBBSEmu
         public string BBSAddress2 = "Fort Lauderdale, FL 33314\0";
         public string BBSDataPhone = "(305) 583-7808\0";
         public string BBSVoicePhone = "(305) 583-5990\0";
-
-        private string GetAppSettings<T>(string key)
-        {
-            if (string.IsNullOrEmpty(ConfigurationRoot[key]))
-            {
-                throw key switch
-                {
-                    "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    "Telnet.Port" => new Exception($"You must specify a port via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Telnet"),
-                    "Rlogin.Port" => new Exception($"You must specify a port via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Rlogin"),
-                    "Rlogin.RemoteIP" => new Exception("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin"),
-                    _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
-                };
-            }
-            return ConfigurationRoot[key];
-        }
 
         private string GetStringAppSettings(string key)
         {
@@ -111,6 +96,27 @@ namespace MBBSEmu
             return result;
         }
 
+        /// <summary>
+        ///     Sets a default BBS Title with \0 termination 
+        /// </summary>
+        /// <param name="key">BBS.Title</param>
+        /// <returns></returns>
+        private string GetBBSTitleSettings(string key)
+        {
+            var result = "MBBSEmu\0";
+            if (string.IsNullOrEmpty(ConfigurationRoot[key])) return result;
+            if (!ConfigurationRoot[key].EndsWith("\0"))
+                ConfigurationRoot[key] += "\0";
+
+            result = ConfigurationRoot[key];
+            return result;
+        }
+
+        /// <summary>
+        ///     Sets a default cleanup time if missing or what is provided can't be parsed into TimeSpan
+        /// </summary>
+        /// <param name="key">Cleanup.Time</param>
+        /// <returns></returns>
         private TimeSpan GetCleanUpTimeSettings(string key)
         {
             if (!TimeSpan.TryParse(ConfigurationRoot[key], out var result))
@@ -121,14 +127,41 @@ namespace MBBSEmu
             return result;
         }
         
+        /// <summary>
+        ///     Sets a default GSBL value if none provided
+        /// </summary>
+        /// <param name="key">GSBL.Activation</param>
+        /// <returns></returns>
         private string GetGSBLAppSettings(string key)
         {
             var result = "11111111";
+
             if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
                 //Set Default
                 result = ConfigurationRoot[key];
             }
+
+            return result;
+        }
+
+        /// <summary>
+        ///     Sets a default GSBL value if none provided
+        /// </summary>
+        /// <param name="key">GSBL.Activation</param>
+        /// <returns></returns>
+        private string GetGSBLModuleAppSettings(string key)
+        {
+            var result = "11111111";
+
+            var GSBLActivationModule = ConfigurationRoot.GetSection(key);
+
+            if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
+            {
+                //Set Default
+                result = ConfigurationRoot[key];
+            }
+
             return result;
         }
 
