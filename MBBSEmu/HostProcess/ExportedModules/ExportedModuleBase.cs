@@ -1041,8 +1041,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected BtrieveFileProcessor BtrieveGetProcessor(IntPtr16 btrievePointer) =>
             _globalCache.Get<BtrieveFileProcessor>(BtrieveCacheKey(btrievePointer));
 
-        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer) =>
-            _globalCache.Remove(BtrieveCacheKey(btrievePointer));
+        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer)
+        {
+            var key = BtrieveCacheKey(btrievePointer);
+            
+            if (_globalCache.TryGet<BtrieveFileProcessor>(key, out var processor))
+            {
+                processor.Dispose();
+                return _globalCache.Remove(key);
+            }
+
+            return false;
+        }
 
         /// <summary>
         ///     Generates a Unique Key to be used for saving a BtrieveFileProcessor mapped to its pointer

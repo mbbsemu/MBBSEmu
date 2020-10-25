@@ -71,9 +71,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void Dispose()
         {
             foreach (var f in FilePointerDictionary)
-            {
                 f.Value.Close();
-            }
             FilePointerDictionary.Clear();
         }
 

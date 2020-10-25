@@ -79,7 +79,12 @@ namespace MBBSEmu.Btrieve
 
         public void Dispose()
         {
+            PreviousQuery?.Dispose();
+
             _connection.Close();
+            _connection.Dispose();
+            _connection = null;
+
             _cache.Clear();
         }
 
@@ -154,12 +159,18 @@ namespace MBBSEmu.Btrieve
             using (var cmd = new SQLiteCommand("SELECT record_length, page_length FROM metadata_t;", _connection))
             {
                 using var reader = cmd.ExecuteReader();
+                try
+                {
+                    if (!reader.Read())
+                        throw new ArgumentException($"Can't read metadata_t from {_connection.VfsName}");
 
-                if (!reader.Read())
-                    throw new ArgumentException($"Can't read metadata_t from {_connection.VfsName}");
-
-                RecordLength = reader.GetInt32(0);
-                PageLength = reader.GetInt32(1);
+                    RecordLength = reader.GetInt32(0);
+                    PageLength = reader.GetInt32(1);
+                } 
+                finally
+                {
+                    reader.Close();
+                }
             }
 
             using (var cmd =
@@ -195,6 +206,7 @@ namespace MBBSEmu.Btrieve
                     if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
                         AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKey;
                 }
+                reader.Close();
             }
         }
 
@@ -217,8 +229,9 @@ namespace MBBSEmu.Btrieve
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
-
+            
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
+            reader.Close();
             return Position > 0;
         }
 
@@ -231,12 +244,18 @@ namespace MBBSEmu.Btrieve
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
+            try
+            {
+                if (!reader.Read())
+                    return false;
 
-            if (!reader.Read())
-                return false;
-
-            Position = (uint)reader.GetInt32(0);
-            return true;
+                Position = (uint)reader.GetInt32(0);
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
@@ -248,12 +267,18 @@ namespace MBBSEmu.Btrieve
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
                 _connection);
             using var reader = cmd.ExecuteReader();
+            try
+            {
+                if (!reader.Read())
+                    return false;
 
-            if (!reader.Read())
-                return false;
-
-            Position = (uint)reader.GetInt32(0);
-            return true;
+                Position = (uint)reader.GetInt32(0);
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
@@ -267,6 +292,7 @@ namespace MBBSEmu.Btrieve
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
+            reader.Close();
             return Position > 0;
         }
 
@@ -290,16 +316,24 @@ namespace MBBSEmu.Btrieve
 
             using var cmd = new SQLiteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
             using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            try
+            {
+                if (!reader.Read())
+                    return null;
 
-            if (!reader.Read())
-                return null;
+                var data = new byte[RecordLength];
+                var blob = reader.GetBlob(0, readOnly: true);
+                blob.Read(data, data.Length, 0);
+                blob.Close();
 
-            var data = new byte[RecordLength];
-            reader.GetBlob(0, readOnly: true).Read(data, data.Length, 0);
-
-            record = new BtrieveRecord(offset, data);
-            _cache[offset] = record;
-            return record;
+                record = new BtrieveRecord(offset, data);
+                _cache[offset] = record;
+                return record;
+            } 
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
@@ -392,27 +426,31 @@ namespace MBBSEmu.Btrieve
 
             using var cmd = new SQLiteCommand(sb.ToString(), _connection, transaction);
             using var reader = cmd.ExecuteReader();
-
-            if (!reader.Read())
-            {
-                _logger.Error("Unable to query for MAX autoincremented values, unable to update");
-                return false;
-            }
-
-            var i = 0;
-            foreach (var segment in AutoincrementedKeys.Values.SelectMany(x => x.Segments))
-            {
-                var b = segment.Length switch
+            try { 
+                if (!reader.Read())
                 {
-                    2 => BitConverter.GetBytes(reader.GetInt16(i++)),
-                    4 => BitConverter.GetBytes(reader.GetInt32(i++)),
-                    8 => BitConverter.GetBytes(reader.GetInt64(i++)),
-                    _ => throw new ArgumentException($"Key integer length not supported {segment.Length}"),
-                };
-                Array.Copy(b, 0, record, segment.Offset, segment.Length);
-            }
+                    _logger.Error("Unable to query for MAX autoincremented values, unable to update");
+                    return false;
+                }
 
-            return true;
+                var i = 0;
+                foreach (var segment in AutoincrementedKeys.Values.SelectMany(x => x.Segments))
+                {
+                    var b = segment.Length switch
+                    {
+                        2 => BitConverter.GetBytes(reader.GetInt16(i++)),
+                        4 => BitConverter.GetBytes(reader.GetInt32(i++)),
+                        8 => BitConverter.GetBytes(reader.GetInt64(i++)),
+                        _ => throw new ArgumentException($"Key integer length not supported {segment.Length}"),
+                    };
+                    Array.Copy(b, 0, record, segment.Offset, segment.Length);
+                }
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
@@ -668,9 +706,13 @@ namespace MBBSEmu.Btrieve
                 }
             }
 
-            var data = new byte[RecordLength];
             query.Position = (uint)query.Reader.GetInt32(0);
-            query.Reader.GetBlob(1, readOnly: true).Read(data, data.Length, 0);
+
+            var data = new byte[RecordLength];
+            var blob = query.Reader.GetBlob(1, readOnly: true);
+            blob.Read(data, data.Length, 0);
+            blob.Close();
+
             var record = new BtrieveRecord(query.Position, data);
 
             // we have it, might as well cache it

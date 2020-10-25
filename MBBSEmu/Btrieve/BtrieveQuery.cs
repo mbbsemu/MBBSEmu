@@ -43,6 +43,7 @@ namespace MBBSEmu.Btrieve
 
         public void Dispose()
         {
+            Reader?.Close();
             Reader?.Dispose();
         }
     }

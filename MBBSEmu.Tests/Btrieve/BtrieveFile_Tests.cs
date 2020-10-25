@@ -17,8 +17,8 @@ namespace MBBSEmu.Tests.Btrieve
 
         private readonly string[] _btrieveFiles = {"MBBSEMU.DAT"};
 
-
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
+        
         public BtrieveFile_Tests()
         {
             Directory.CreateDirectory(_modulePath);
