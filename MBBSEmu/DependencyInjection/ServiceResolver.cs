@@ -20,19 +20,10 @@ namespace MBBSEmu.DependencyInjection
         private ServiceProvider _provider;
         private readonly ServiceCollection _serviceCollection = new ServiceCollection();
 
-        public ServiceResolver(AppSettings configuration)
+        public ServiceResolver()
         {
             BuildServiceProvider();
         }
-
-//        public void static GetTestDefaults(AppSettings configuration)
-//        {
-//            configuration.BBSTitle = "Test";
-//            configuration.GSBLActivation = "12345678";
-//            configuration.TelnetEnabled = "False";
-//            configuration.RloginEnabled = "False";
-//            configuration.DatabaseFile = "mbbsemu.db";
-//        }
 
         private void BuildServiceProvider()
         {

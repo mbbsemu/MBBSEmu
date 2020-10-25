@@ -191,7 +191,7 @@ namespace MBBSEmu
                     }
                 }
                 var _configuration = new AppSettings();
-                _serviceResolver = new ServiceResolver(_configuration);
+                _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
                 
