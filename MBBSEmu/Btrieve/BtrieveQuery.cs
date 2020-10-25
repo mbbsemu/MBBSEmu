@@ -4,12 +4,13 @@ using System;
 namespace MBBSEmu.Btrieve
 {
     /// <summary>
-    ///     Represents a Btrieve Query that is executed against a given Btrieve File
+    ///     Represents a Btrieve Query that is executed against a given Btrieve File. Remember to
+    ///     dispose of this object when it is no longer needed.
     /// </summary>
     public class BtrieveQuery : IDisposable
     {
         /// <summary>
-        ///     Delegate to invoke to fetch the next data reader. Return null to stop the getNext()
+        ///     Delegate to invoke to fetch the next data reader. Return null to stop the GetNext()
         ///     flow. You can chain endlessly by keeping ContinuationReader set, but if you want
         ///     the enumeration to end, set thisQuery.ContinuationReader back to null in the
         ///     delegate.
@@ -26,6 +27,10 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public BtrieveKey Key { get; set; }
 
+        /// <summary>
+        ///     Current position of the query. Changes as GetNext/GetPrevious is called
+        /// </summary>
+        /// <value></value>
         public uint Position { get; set; }
 
         public SQLiteDataReader Reader { get; set; }

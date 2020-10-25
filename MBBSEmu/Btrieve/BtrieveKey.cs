@@ -19,37 +19,67 @@ namespace MBBSEmu.Btrieve
 
         public List<BtrieveKeyDefinition> Segments { get; set; }
 
+        /// <summary>
+        ///     Represents the key number, starting from 0. Each database has at least one key.
+        /// </summary>
         public ushort Number
         {
             get => PrimarySegment.Number;
         }
 
+        /// <summary>
+        ///     The primary segment in a key. Always first in the list of Segments.
+        /// </summary>
         public BtrieveKeyDefinition PrimarySegment
         {
             get => Segments[0];
         }
 
+        /// <summary>
+        ///     Whether the key is a composite key - composed of two or more segments.
+        /// </summary>
         public bool IsComposite
         {
             get => Segments.Count > 1;
         }
 
+        /// <summary>
+        ///     Whether the key data in the record can be modified once inserted.
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
         public bool IsModifiable { get => PrimarySegment.IsModifiable; }
 
+        /// <summary>
+        ///     Whether the key data in the record is unique (no duplicates allowed).
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
         public bool IsUnique { get => PrimarySegment.IsUnique; }
 
+        /// <summary>
+        ///     Whether the key data in the record is nullable.
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
         public bool IsNullable { get => PrimarySegment.IsNullable; }
 
+        /// <summary>
+        ///     The total length in bytes of the key.
+        /// </summary>
         public int Length
         {
             get => Segments.Sum(segment => segment.Length);
         }
 
+        /// <summary>
+        ///     The key name used in the SQLite data_t table.
+        /// </summary>
         public string SqliteKeyName
         {
             get =>  $"key_{PrimarySegment.Number}";
         }
 
+        /// <summary>
+        ///     Returns a span of bytes containing the key value from record.
+        /// </summary>
         public ReadOnlySpan<byte> ExtractKeyDataFromRecord(ReadOnlySpan<byte> record)
         {
             if (!IsComposite)
@@ -67,6 +97,9 @@ namespace MBBSEmu.Btrieve
             return composite;
         }
 
+        /// <summary>
+        ///      Returns true if data contains all of value.
+        /// </summary>
         private static bool IsAllSameByteValue(ReadOnlySpan<byte> data, byte value)
         {
             foreach (byte b in data)
@@ -76,15 +109,25 @@ namespace MBBSEmu.Btrieve
             return true;
         }
 
+        /// <summary>
+        ///     Returns true if the key data inside record contains all of b.
+        /// </summary>
         public bool KeyInRecordIsAllSameByte(ReadOnlySpan<byte> record, byte b) => IsAllSameByteValue(ExtractKeyDataFromRecord(record), b);
 
+        /// <summary>
+        ///     Returns true if the key data inside record is all zero.
+        /// </summary>
         public bool KeyInRecordIsAllZero(ReadOnlySpan<byte> record) => KeyInRecordIsAllSameByte(record, 0);
 
+        /// <summary>
+        ///     Returns an object that can be used for inserting into the data_t key column based on
+        ///     the type of this key, extracting from data.
+        /// </summary>
         public object ExtractKeyInRecordToSQLiteObject(ReadOnlySpan<byte> data) => KeyDataToSQLiteObject(ExtractKeyDataFromRecord(data));
 
         /// <summary>
-        ///     Returns an object suitable for inserting into sqlite for the specified
-        ///     key data.
+        ///     Returns an object that can be used for inserting into the data_t key column based on
+        ///     the type of this key from keyData.
         /// </summary>
         public object KeyDataToSQLiteObject(ReadOnlySpan<byte> keyData)
         {
@@ -133,6 +176,9 @@ namespace MBBSEmu.Btrieve
             }
         }
 
+        /// <summary>
+        ///     Returns a null terminated string from b. Length will be between 0 and b.Length.
+        /// </summary>
         public static string ExtractNullTerminatedString(ReadOnlySpan<byte> b)
         {
             int strlen = b.IndexOf((byte) 0);
@@ -142,6 +188,9 @@ namespace MBBSEmu.Btrieve
             return Encoding.ASCII.GetString(b.Slice(0, strlen));
         }
 
+        /// <summary>
+        ///     Returns the SQLite column type when creating the initial database.
+        /// </summary>
         public string SqliteColumnType()
         {
             String type;

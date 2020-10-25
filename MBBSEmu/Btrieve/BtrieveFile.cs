@@ -8,7 +8,7 @@ using System.IO;
 namespace MBBSEmu.Btrieve
 {
     /// <summary>
-    ///     Represents an instance of a Btrieve File (both Legacy .DAT and new .EMU)
+    ///     Represents an instance of a Btrieve File .DAT
     /// </summary>
     public class BtrieveFile
     {
@@ -134,13 +134,6 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Records appear to have a potential padding at the end of the records.
-        ///
-        ///     If we detect it, we can modify this value
-        /// </summary>
-        public int RecordPadding { get; set; }
-
-        /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
         private byte[] Data { get; set; }
@@ -158,8 +151,9 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Log Key is an internal value used by the Btrieve engine to track unique
         ///     records -- it adds 8 bytes to the end of the record that's not accounted for
-        ///     in the RecordLength definition. We need to know if it's present to properly
-        ///     offset records when loading
+        ///     in the RecordLength definition (but it is accounted for in PhysicalRecordLength).
+        ///
+        ///     <para/>This data is for completion purposes and not currently used.
         /// </summary>
         public bool LogKeyPresent { get; set; }
 

@@ -12,11 +12,17 @@ using System.Text;
 namespace MBBSEmu.Btrieve
 {
     /// <summary>
-    ///     The BtrieveFileProcessor class is used to handle Loading, Parsing, and Querying legacy Btrieve Files
+    ///     The BtrieveFileProcessor class is used to abstract the loading, parsing, and querying of
+    ///     legacy Btrieve Files.
     ///
-    ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.EMU), which are JSON representations
-    ///     of the underlying Btrieve Data. This means the legacy .DAT files are only used once on initial load and are not
-    ///     modified. All Inserts & Updates happen within the new .EMU JSON files.
+    ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.DB), which
+    ///     are SQLite representations of the underlying Btrieve Data. This means the legacy .DAT
+    ///     files are only used once on initial load and are not modified. All Inserts & Updates
+    ///     happen within the new .DB SQLite files.
+    ///
+    ///     These .DB files can be inspected and modified/edited cleanly once MBBSEmu has exited.
+    ///     Attempting to modify the files during runtime is unsupported and will likely cause
+    ///     concurrent access exceptions to fire in MBBSEmu.
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
@@ -25,60 +31,68 @@ namespace MBBSEmu.Btrieve
         private readonly IFileUtility _fileFinder;
 
         /// <summary>
-        ///     Current Position (offset) of the Processor in the Btrieve File
+        ///     Current Position (offset) of the current BtrieveRecord in the Btrieve File.
         /// </summary>
         public uint Position { get; set; }
 
         /// <summary>
-        ///     The Previous Query that was executed
+        ///     The Previous Query that was executed.
         /// </summary>
         private BtrieveQuery PreviousQuery { get; set; }
 
         /// <summary>
-        /// 
+        ///     The length in bytes of each record.
+        ///     <para/>Currently only fixed length record databases are supported.
         /// </summary>
         public int RecordLength { get; set; }
 
         /// <summary>
-        /// 
+        ///     The active connection to the SQLite database.
         /// </summary>
         private SQLiteConnection _connection;
 
         /// <summary>
-        /// 
+        ///     An offset -> BtrieveRecord cache used to speed up record access by reducing SQLite
+        ///     lookups.
         /// </summary>
         private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
 
         /// <summary>
-        /// 
+        ///     The list of keys in this database, keyed by key number.
         /// </summary>
         public Dictionary<ushort, BtrieveKey> Keys { get; set; }
 
         /// <summary>
-        /// 
+        ///     The list of autoincremented keys in this database, keyed by key number.
         /// </summary>
         private Dictionary<ushort, BtrieveKey> AutoincrementedKeys { get; set; }
 
         /// <summary>
-        /// 
+        ///     The length of each page in the original Btrieve database.
+        ///     <para/>Not actually used beyond initial database conversion.
         /// </summary>
         public int PageLength { get; set; }
 
         /// <summary>
-        /// 
+        ///     The full path of the loaded database.
         /// </summary>
         public string FullPath { get; set; }
 
         /// <summary>
-        /// 
+        ///     A delegate function that returns true if the retrieved record matches the query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <param name="record"></param>
-        /// <returns></returns>
+        /// <param name="query">Query made</param>
+        /// <param name="record">The record retrieve from the query</param>
+        /// <returns>true if the record is valid for the query</returns>
         private delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
 
+        /// <summary>
+        ///     Closes all long lived resources, such as the SQLite connection.
+        /// </summary>
         public void Dispose()
         {
+            _logger.Info($"Closing sqlite DB {FullPath}");
+
             PreviousQuery?.Dispose();
 
             _connection.Close();
@@ -112,7 +126,7 @@ namespace MBBSEmu.Btrieve
             if (Path.GetExtension(loadedFileName).ToUpper() == ".DATT")
                 loadedFileName = Path.ChangeExtension(loadedFileName, ".DAT");
 
-            //If a .EMU version exists, load it over the .DAT file
+            // If a .DB version exists, load it over the .DAT file
             var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
             var fullPath = Path.Combine(path, dbFileName);
 
@@ -132,10 +146,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Loads an MBBSEmu representation of a Btrieve File
+        ///     Loads an MBBSEmu representation of a Btrieve File from the specified SQLite DB file.
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileName"></param>
         private void LoadSqlite(string fullPath)
         {
             _logger.Info($"Opening sqlite DB {fullPath}");
@@ -154,6 +166,9 @@ namespace MBBSEmu.Btrieve
             LoadSqliteMetadata();
         }
 
+        /// <summary>
+        ///     Loads metadata from the loaded SQLite table, such as RecordLength and all the key metadata.
+        /// </summary>
         private void LoadSqliteMetadata()
         {
             using (var cmd = new SQLiteCommand("SELECT record_length, page_length FROM metadata_t;", _connection))
@@ -166,7 +181,7 @@ namespace MBBSEmu.Btrieve
 
                     RecordLength = reader.GetInt32(0);
                     PageLength = reader.GetInt32(1);
-                } 
+                }
                 finally
                 {
                     reader.Close();
@@ -211,9 +226,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Returns the total number of records contained in the database.
         /// </summary>
-        /// <returns></returns>
         public int GetRecordCount()
         {
             using var stmt = new SQLiteCommand("SELECT COUNT(*) FROM data_t;", _connection);
@@ -221,24 +235,22 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the first Record in the loaded Btrieve File
+        ///     Sets Position to the offset of the first Record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
         public bool StepFirst()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SQLiteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
-            
+
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
             reader.Close();
             return Position > 0;
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File
+        ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
         public bool StepNext()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
@@ -259,9 +271,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the next logical record in the loaded Btrieve File
+        ///     Sets Position to the offset of the previous logical record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
         public bool StepPrevious()
         {
             using var cmd = new SQLiteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
@@ -282,9 +293,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the last Record in the loaded Btrieve File
+        ///     Sets Position to the offset of the last Record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
         public bool StepLast()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
@@ -303,10 +313,8 @@ namespace MBBSEmu.Btrieve
         public byte[] GetRecord() => GetRecord(Position)?.Data;
 
         /// <summary>
-        ///     Returns the Record at the specified Offset
+        ///     Returns the Record at the specified Offset, while also updating Position to match.
         /// </summary>
-        /// <param name="offset"></param>
-        /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset)
         {
             Position = offset;
@@ -329,7 +337,7 @@ namespace MBBSEmu.Btrieve
                 record = new BtrieveRecord(offset, data);
                 _cache[offset] = record;
                 return record;
-            } 
+            }
             finally
             {
                 reader.Close();
@@ -337,16 +345,13 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Updates the Record at the current Position
+        ///     Updates the Record at the current Position.
         /// </summary>
-        /// <param name="recordData"></param>
         public bool Update(byte[] recordData) => Update(Position, recordData);
 
         /// <summary>
-        ///     Updates the Record at the specified Offset
+        ///     Updates the Record at the specified Offset.
         /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="recordData"></param>
         public bool Update(uint offset, byte[] recordData)
         {
             if (recordData.Length != RecordLength)
@@ -398,7 +403,9 @@ namespace MBBSEmu.Btrieve
             return true;
         }
 
-        /// <summary>Copies b into an array of size size, growing or shrinking</summary>
+        /// <summary>
+        ///     Copies b into an array of size size, growing or shrinking as necessary.
+        /// </summary>
         private static byte[] ForceSize(byte[] b, int size)
         {
             var ret = new byte[size];
@@ -407,8 +414,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Searches for any zero-filled autoincremented memory in recordData and figures out
-        ///     the value to use, inserting it back into recordData
+        ///     Searches for any zero-filled autoincremented memory in record and figures out
+        ///     the autoincremented value to use, inserting it back into record.
         /// </summary>
         private bool InsertAutoincrementValues(SQLiteTransaction transaction, byte[] record)
         {
@@ -426,7 +433,7 @@ namespace MBBSEmu.Btrieve
 
             using var cmd = new SQLiteCommand(sb.ToString(), _connection, transaction);
             using var reader = cmd.ExecuteReader();
-            try { 
+            try {
                 if (!reader.Read())
                 {
                     _logger.Error("Unable to query for MAX autoincremented values, unable to update");
@@ -454,9 +461,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
+        ///     Inserts a new Btrieve Record.
         /// </summary>
-        /// <param name="record"></param>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
         public uint Insert(byte[] record)
         {
@@ -513,9 +519,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Deletes the Btrieve Record at the Current Position within the File
+        ///     Deletes the Btrieve Record at the Current Position within the File.
         /// </summary>
-        /// <returns></returns>
         public bool Delete()
         {
             _cache.Remove(Position);
@@ -525,7 +530,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Deletes all records within the current Btrieve File
+        ///     Deletes all records within the current Btrieve File.
         /// </summary>
         public bool DeleteAll()
         {
@@ -538,54 +543,24 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Performs a Step based Seek on the loaded Btrieve File
-        ///
-        ///     TODO: Remove? It's not referenced
-        /// </summary>
-        /// <param name="operationCode"></param>
-        /// <returns></returns>
-        public bool Seek(EnumBtrieveOperationCodes operationCode)
-        {
-            return operationCode switch
-            {
-                EnumBtrieveOperationCodes.GetFirst => StepFirst(),
-                EnumBtrieveOperationCodes.GetNext => StepNext(),
-                EnumBtrieveOperationCodes.GetPrevious => StepPrevious(),
-                _ => throw new Exception($"Unsupported Btrieve Operation: {operationCode}")
-            };
-        }
-
-        /// <summary>
         ///     Performs a Key Based Query on the loaded Btrieve File
         /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <param name="key"></param>
-        /// <param name="btrieveOperationCode"></param>
-        /// <param name="newQuery"></param>
-        /// <returns></returns>
+        /// <param name="keyNumber">Which key to query against</param>
+        /// <param name="key">The key data to query against</param>
+        /// <param name="btrieveOperationCode">Which query to perform</param>
+        /// <param name="newQuery">true to start a new query, false to continue a prior one</param>
         public bool SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode,
             bool newQuery = true)
         {
             BtrieveQuery currentQuery;
 
-            if (newQuery)
+            if (newQuery || PreviousQuery == null)
             {
                 currentQuery = new BtrieveQuery
                 {
                     Key = Keys[keyNumber],
                     KeyData = key == null ? null : new byte[key.Length],
                 };
-
-                /*
-                 * Occasionally, zstring keys are marked with a length of 1, where as the length is actually
-                 * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
-                 * we increase the size of the defined key in the query.
-                 */
-                /*if (key != null && key.Length != currentQuery.KeyDefinition.Length)
-                {
-                    _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyDefinition.Length}");
-                    currentQuery.KeyLength = (ushort)key.Length;
-                }*/
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
@@ -597,7 +572,7 @@ namespace MBBSEmu.Btrieve
                     Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
                 }
 
-                //Update Previous for the next run
+                // Wipe any previous query we have and store this new query
                 PreviousQuery?.Dispose();
                 PreviousQuery = currentQuery;
             }
@@ -634,10 +609,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Returns the Record at the specified position
+        ///     Returns the Record at the specified position.
         /// </summary>
-        /// <param name="absolutePosition"></param>
-        /// <returns></returns>
         public ReadOnlySpan<byte> GetRecordByOffset(uint absolutePosition)
         {
             Position = absolutePosition;
@@ -647,46 +620,29 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Returns the defined Data Length of the specified Key
         /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <returns></returns>
         public ushort GetKeyLength(ushort keyNumber) => (ushort)Keys[keyNumber].Length;
 
         /// <summary>
-        ///     Retrieves the First Record (lowest sort order by the specified key
+        ///     Updates Position to the next logical position based on the sorted key query, always
+        ///     ascending in sort order.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private bool GetByKeyFirst(BtrieveQuery query)
-        {
-            using var command = new SQLiteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
-
-            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
-            return NextReader(query);
-        }
-
-        /// <summary>
-        ///     GetNext for Non-Numeric Key Types
-        ///
-        ///     Search for the next logical record with a matching Key that comes after the current Position
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
         private bool GetByKeyNext(BtrieveQuery query) => NextReader(query);
 
         /// <summary>
-        /// 
+        ///     Calls NextReader with an always-true query matcher.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
         private bool NextReader(BtrieveQuery query) => NextReader(query, (query, record) => true);
 
         /// <summary>
-        /// 
+        ///     Updates Position based on the value of current SQLite cursor.
+        ///
+        ///     <para/>If the query has ended, it invokes query.ContinuationReader to get the next
+        ///     SQLite cursor and continues from there.
         /// </summary>
-        /// <param name="query"></param>
-        /// <param name="matcher"></param>
-        /// <returns></returns>
+        /// <param name="query">Current query</param>
+        /// <param name="matcher">Delegate function for verifying results. If this matcher returns
+        ///     false, the query is aborted and returns no more results.</param>
+        /// <returns>true if the SQLite cursor returned a valid item</returns>
         private bool NextReader(BtrieveQuery query, QueryMatcher matcher)
         {
             if (query.Reader == null || !query.Reader.Read())
@@ -725,7 +681,9 @@ namespace MBBSEmu.Btrieve
             return true;
         }
 
-        ///
+        /// <summary>
+        ///     Returns true if the retrievedRecord has equal keyData for the specified key.
+        /// </summary>
         private static bool RecordMatchesKey(BtrieveRecord retrievedRecord, BtrieveKey key, byte[] keyData)
         {
             var keyA = key.ExtractKeyDataFromRecord(retrievedRecord.Data);
@@ -744,15 +702,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Gets the First Logical Record for the given key.
-        ///
-        ///     <para/>Annoyingly, there appears to be some differing behavior between numeric & string types.
-        ///            String types are a strict equality check. GetKeyNext returns only matching keys.
-        ///            Numeric types behave more like GetKeyGreaterOrEqual. GetNext returns matching keys of
-        ///            course, but then also returns subsequent keys in sort order.
+        ///     Gets the first equal record for the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
             QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
@@ -765,7 +716,7 @@ namespace MBBSEmu.Btrieve
             }
             else
             {
-                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value";
+                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value ORDER BY {query.Key.SqliteKeyName} ASC";
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
             }
 
@@ -774,10 +725,10 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        ///     Gets the first record greater or greater-than-equal-to than the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
+        /// <param name="query">The query</param>
+        /// <param name="oprator">Which operator to use, valid values are ">" and ">="</param>
         private bool GetByKeyGreater(BtrieveQuery query, string oprator)
         {
             using var command = new SQLiteCommand(
@@ -790,22 +741,24 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        ///     Gets the first record less or less-than-equal-to than the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
+        /// <param name="query">The query</param>
+        /// <param name="oprator">Which operator to use, valid values are "<" and "<="</param>
         private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
+            // this query finds the first item less than
             using var command = new SQLiteCommand(
                 $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
                 _connection);
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
 
             query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            // and this continuation query allows for increasing subsequent GetNext calls
             query.ContinuationReader = (thisQuery) =>
             {
                 using var command = new SQLiteCommand(
-                    $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value AND id != {thisQuery.Position} ORDER BY {query.Key.SqliteKeyName}",
+                    $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value AND id != {thisQuery.Position} ORDER BY {query.Key.SqliteKeyName} ASC",
                     _connection);
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSQLiteObject(query.KeyData));
 
@@ -816,10 +769,20 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Retrieves the Last Record, highest, by the specified key
+        ///     Gets the first record sorted by the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
+        private bool GetByKeyFirst(BtrieveQuery query)
+        {
+            using var command = new SQLiteCommand(
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
+
+            query.Reader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            return NextReader(query);
+        }
+
+        /// <summary>
+        ///     Gets the last record sorted by the given key in query.
+        /// </summary>
         private bool GetByKeyLast(BtrieveQuery query)
         {
             using var command = new SQLiteCommand(
@@ -831,10 +794,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Creates the SQLite data_t table.
         /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="btrieveFile"></param>
         private void CreateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             var sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
@@ -850,10 +811,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Creates the SQLite data_t indices.
         /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="btrieveFile"></param>
         private void CreateSqliteDataIndices(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             foreach (var key in btrieveFile.Keys.Values)
@@ -867,10 +826,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Fills in the SQLite data_t table with all the data from btrieveFile.
         /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="btrieveFile"></param>
         private void PopulateSqliteDataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             using var transaction = connection.BeginTransaction();
@@ -904,10 +861,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Creates the SQLite metadata_t table.
         /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="btrieveFile"></param>
         private void CreateSqliteMetadataTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             const string statement =
@@ -926,10 +881,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Creates the SQLite keys_t table.
         /// </summary>
-        /// <param name="connection"></param>
-        /// <param name="btrieveFile"></param>
         private void CreateSqliteKeysTable(SQLiteConnection connection, BtrieveFile btrieveFile)
         {
             const string statement =
@@ -959,10 +912,8 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        /// 
+        ///     Creates the SQLite database from btrieveFile.
         /// </summary>
-        /// <param name="fullpath"></param>
-        /// <param name="btrieveFile"></param>
         private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
             _logger.Warn($"Creating sqlite db {fullpath}");
