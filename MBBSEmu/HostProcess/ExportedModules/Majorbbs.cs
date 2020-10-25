@@ -5526,10 +5526,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
             var inputLength = Module.Memory.GetWord("INPLEN");
-            var nxtcmdPoiter = Module.Memory.GetPointer("NXTCMD");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
 
             //Return current NXTCMD
-            Registers.SetPointer(nxtcmdPoiter);
+            Registers.SetPointer(nxtcmdPointer);
 
             //Set NXTCMD to the end of the INPUT
             var newNxtcmd = new IntPtr16(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength - 1));
