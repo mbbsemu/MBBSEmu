@@ -78,7 +78,7 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Configuration Class giving access to the appsettings.json file
         /// </summary>
-        private readonly IConfiguration _configuration;
+        private readonly AppSettings _configuration;
 
         /// <summary>
         ///     Time of day that the cleanup routine will trigger
@@ -102,7 +102,7 @@ namespace MBBSEmu.HostProcess
 
         private Thread _workerThread;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, IConfiguration configuration, IEnumerable<IGlobalRoutine> globalRoutines)
+        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines)
         {
             Logger = logger;
             _globalCache = globalCache;
@@ -118,7 +118,7 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
-            _cleanupTime = AppSettings.CleanupTime;
+            _cleanupTime = _configuration.CleanupTime;
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
             Logger.Info("Constructed MBBSEmu Host!");
         }
@@ -519,7 +519,7 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessLONROU(SessionBase session)
         {
-            session.OutputEnabled = AppSettings.ModuleDoLoginRoutine;
+            session.OutputEnabled = _configuration.ModuleDoLoginRoutine;
 
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 

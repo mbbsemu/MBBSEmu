@@ -9,10 +9,8 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
-using System.Collections.Generic;
 using MBBSEmu.HostProcess.GlobalRoutines;
 
 namespace MBBSEmu.DependencyInjection
@@ -22,34 +20,23 @@ namespace MBBSEmu.DependencyInjection
         private ServiceProvider _provider;
         private readonly ServiceCollection _serviceCollection = new ServiceCollection();
 
-        public ServiceResolver(IEnumerable<KeyValuePair<string,string>> data) {
-            var configurationRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection(data)
-                .Build();
-
-            BuildServiceProvider(configurationRoot);
-        }
-
-        public ServiceResolver(IConfigurationRoot configurationRoot)
+        public ServiceResolver(AppSettings configuration)
         {
-            BuildServiceProvider(configurationRoot);
+            BuildServiceProvider();
         }
 
-        public static List<KeyValuePair<string, string>> GetTestDefaults()
-        {
-            return new List<KeyValuePair<string, string>>() {
-                new KeyValuePair<string, string>("BBS.Title", "Test"),
-                new KeyValuePair<string, string>("GSBL.Activation", "123456789"),
-                new KeyValuePair<string, string>("Telnet.Enabled", "False"),
-                new KeyValuePair<string, string>("Rlogin.Enabled", "False"),
-                new KeyValuePair<string, string>("Database.File", "mbbsemu.db")
-            };
-        }
+//        public void static GetTestDefaults(AppSettings configuration)
+//        {
+//            configuration.BBSTitle = "Test";
+//            configuration.GSBLActivation = "12345678";
+//            configuration.TelnetEnabled = "False";
+//            configuration.RloginEnabled = "False";
+//            configuration.DatabaseFile = "mbbsemu.db";
+//        }
 
-        private void BuildServiceProvider(IConfigurationRoot configurationRoot)
+        private void BuildServiceProvider()
         {
             //Base Configuration Items
-            _serviceCollection.AddSingleton<IConfiguration>(configurationRoot);
             _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
             _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             _serviceCollection.AddSingleton<IFileUtility, FileUtility>();

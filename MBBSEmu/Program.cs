@@ -87,7 +87,7 @@ namespace MBBSEmu
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-
+        
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -190,8 +190,8 @@ namespace MBBSEmu
                             return;
                     }
                 }
-
-                _serviceResolver = new ServiceResolver(AppSettings.ConfigurationRoot);
+                var _configuration = new AppSettings();
+                _serviceResolver = new ServiceResolver(_configuration);
 
                 _logger = _serviceResolver.GetService<ILogger>();
                 
@@ -219,7 +219,7 @@ namespace MBBSEmu
                     DatabaseReset();
 
                 //Database Sanity Checks
-                var databaseFile = AppSettings.DatabaseFile;
+                var databaseFile = _configuration.DatabaseFile;
                 if (!File.Exists($"{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
@@ -282,29 +282,29 @@ namespace MBBSEmu
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
-                if (AppSettings.TelnetEnabled)
+                if (_configuration.TelnetEnabled)
                 {
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, AppSettings.TelnetPort);
+                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort);
 
-                    _logger.Info($"Telnet listening on port {AppSettings.TelnetPort}");
+                    _logger.Info($"Telnet listening on port {_configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
 
                 //Setup and Run Rlogin Server
-                if (AppSettings.RloginEnabled)
+                if (_configuration.RloginEnabled)
                 {
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, AppSettings.RloginPort);
+                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort);
 
-                    _logger.Info($"Rlogin listening on port {AppSettings.RloginPort}");
+                    _logger.Info($"Rlogin listening on port {_configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 
-                    if (AppSettings.RloginPortPerModule)
+                    if (_configuration.RloginPortPerModule)
                     {
-                        var rloginPort = AppSettings.RloginPort + 1;
+                        var rloginPort = _configuration.RloginPort + 1;
                         foreach (var m in _moduleConfigurations)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");

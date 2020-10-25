@@ -24,10 +24,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
-        private readonly IConfiguration _configuration;
+        private readonly AppSettings _configuration;
         private readonly IGlobalCache _globalCache;
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, IConfiguration configuration, IGlobalCache globalCache)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
@@ -191,7 +191,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
             EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
             //Load File if specified in appsettings.json and display if it exists, else display default
-            var ansiLoginFileName = AppSettings.ANSILogin;
+            var ansiLoginFileName = _configuration.ANSILogin;
             EchoToClient(session,
                 File.Exists(ansiLoginFileName)
                     ? File.ReadAllBytes(ansiLoginFileName).ToArray()
@@ -241,7 +241,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 EchoToClient(session, new byte[] { 0x1B, 0x5B, 0x48 });
 
                 //Load File if specified in appsettings.json and display if it exists, else display default
-                var ansiSignupFileName = AppSettings.ANSISignup;
+                var ansiSignupFileName = _configuration.ANSISignup;
                 EchoToClient(session,
                     File.Exists(ansiSignupFileName)
                         ? File.ReadAllBytes(ansiSignupFileName).ToArray()
@@ -289,7 +289,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void MainMenuDisplay(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             //Load File if specified in appsettings.json and display if it exists, else display default
-            var ansiMenuFileName = AppSettings.ANSIMenu;
+            var ansiMenuFileName = _configuration.ANSIMenu;
             if (!File.Exists(ansiMenuFileName))
             {
                 EchoToClient(session,
@@ -405,7 +405,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoggingOffDisplay(SessionBase session)
         {
             //Load File if specified in appsettings.json and display if it exists
-            var ansiLogoffFileName = AppSettings.ANSILogoff;
+            var ansiLogoffFileName = _configuration.ANSILogoff;
             EchoToClient(session,
                 File.Exists(ansiLogoffFileName)
                     ? File.ReadAllBytes(ansiLogoffFileName).ToArray()

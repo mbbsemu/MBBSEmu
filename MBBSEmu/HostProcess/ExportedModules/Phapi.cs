@@ -6,7 +6,6 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Linq;
@@ -22,7 +21,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
-        internal Phapi(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+        internal Phapi(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
         }

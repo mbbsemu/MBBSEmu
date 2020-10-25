@@ -9,7 +9,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -77,7 +76,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        public Majorbbs(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+        public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _margvPointers = new List<IntPtr16>();
@@ -4655,10 +4654,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.Title"];
+                var title = _configuration.BBSTitle;
 
                 if (string.IsNullOrEmpty(title))
-                    title = "MMBSEmu";
+                    title = "MBBSEmu";
 
                 if (!title.EndsWith("\0"))
                     title += "\0";
@@ -4679,17 +4678,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.CompanyName"];
-
-                if (string.IsNullOrEmpty(title))
-                    title = "MMBSEmu";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("COMPANY");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSCompanyName));
                 return Module.Memory.GetVariablePointer("*COMPANY").Data;
             }
         }
@@ -4703,17 +4694,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.Address1"];
-
-                if (string.IsNullOrEmpty(title))
-                    title = "4101 SW 47th Ave., Suite 101";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("ADDRES1");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSAddress1));
                 return Module.Memory.GetVariablePointer("*ADDRES1").Data;
             }
         }
@@ -4727,17 +4710,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.Address2"];
-
-                if (string.IsNullOrEmpty(title))
-                    title = "Fort Lauderdale, FL 33314";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("ADDRES2");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSAddress2));
                 return Module.Memory.GetVariablePointer("*ADDRES2").Data;
             }
         }
@@ -4751,17 +4726,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.DataPhone"];
-
-                if (string.IsNullOrEmpty(title))
-                    title = "(305) 583-7808";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("DATAPH");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSDataPhone));
                 return Module.Memory.GetVariablePointer("*DATAPH").Data;
             }
         }
@@ -4775,17 +4742,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                var title = _configuration["BBS.VoicePhone"];
-
-                if (string.IsNullOrEmpty(title))
-                    title = "(305) 583-5990";
-
-                if (!title.EndsWith("\0"))
-                    title += "\0";
-
                 var titlePointer = Module.Memory.GetVariablePointer("LIVEPH");
 
-                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(title));
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSVoicePhone));
                 return Module.Memory.GetVariablePointer("*LIVEPH").Data;
             }
         }
