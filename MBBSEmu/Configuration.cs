@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -32,13 +33,13 @@ namespace MBBSEmu
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
         public string GSBLActivation => GetGSBLAppSettings("GSBL.Activation");
         public string GSBLModuleActivation => GetGSBLModuleAppSettings($"GSBL.Activation"); // (Tuday) NOT WORKING -- can't figure out how to get .<module> and create a string for each?
-        public bool ModuleDoLoginRoutine => GetBoolAppSettings("Module.DoLoginRoutine");
-        public bool TelnetEnabled => GetBoolAppSettings("Telnet.Enabled");
-        public int TelnetPort => GetIntAppSettings("Telnet.Port");
-        public bool RloginEnabled => GetBoolAppSettings("Rlogin.Enabled");
-        public int RloginPort => GetIntAppSettings("Rlogin.Port");
+        public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
+        public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
+        public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
+        public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
+        public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
         public string RloginoRemoteIP => GetStringAppSettings("Rlogin.RemoteIP");
-        public bool RloginPortPerModule => GetBoolAppSettings("Rlogin.PortPerModule");
+        public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
         
         //Optional Keys
@@ -54,6 +55,46 @@ namespace MBBSEmu
         public string BBSDataPhone = "(305) 583-7808\0";
         public string BBSVoicePhone = "(305) 583-5990\0";
 
+        public static T GetAppSettings<T>(object value, string valueName)
+        {
+            if (value is T variable) return variable;
+
+            try
+            {
+                //Handling Nullable types i.e, int?, double?, bool? .. etc
+                if (Nullable.GetUnderlyingType(typeof(T)) != null)
+                {
+                    return (T)TypeDescriptor.GetConverter(typeof(T)).ConvertFrom(value);
+                }
+
+                return (T)Convert.ChangeType(value, typeof(T));
+            }
+            catch (Exception)
+            {
+                switch (valueName)
+                {
+                    case "Module.DoLoginRoutine":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                    case "Telnet.Enabled":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                    case "Telnet.Port":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 23");
+                    case "Rlogin.Enabled":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                    case "Rlogin.Port":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 513");
+                    case "Rlogin.RemoteIP":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 127.0.0.1");
+                    case "Rlogin.PortPerModule":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                    case "Database.File":
+                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: mbbsemu.db");
+                    default:
+                        return default(T);
+                }
+            }
+        }
+
         private string GetStringAppSettings(string key)
         {
             if (string.IsNullOrEmpty(ConfigurationRoot[key]))
@@ -61,39 +102,11 @@ namespace MBBSEmu
                 throw key switch
                 {
                     "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    "Telnet.Port" => new Exception($"You must specify a port via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Telnet"),
-                    "Rlogin.Port" => new Exception($"You must specify a port via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Rlogin"),
                     "Rlogin.RemoteIP" => new Exception("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin"),
                     _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
                 };
             }
             return ConfigurationRoot[key];
-        }
-
-        private int GetIntAppSettings(string key)
-        {
-            var value = GetStringAppSettings(key);
-            if (!int.TryParse(value, out var result))
-            {
-                throw key switch
-                {
-                    "Telnet.Port" => new Exception($"You must specify a valid port number via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Telnet"),
-                    "Rlogin.Port" => new Exception($"You must specify a valid port number via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Rlogin"),
-                    "Rlogin.RemoteIP" => new Exception($"For security reasons you must specify a valid authorized Remote IP via {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} if you're going to enable Rlogin"),
-                    _ => new Exception($"Invalid integer for {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
-                };
-            }
-            return result;
-        }
-
-        private bool GetBoolAppSettings(string key)
-        {
-            var value = GetStringAppSettings(key);
-            if (!bool.TryParse(value, out var result))
-            {
-                throw new Exception($"Invalid boolean for { key } in { Program._settingsFileName ?? Program.DefaultEmuSettingsFilename }");
-            }
-            return result;
         }
 
         /// <summary>
