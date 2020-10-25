@@ -31,8 +31,7 @@ namespace MBBSEmu
         //Validate Config File
         public string BBSTitle => GetBBSTitleSettings("BBS.Title");
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
-        public string GSBLActivation => GetGSBLAppSettings("GSBL.Activation");
-        public string GSBLModuleActivation => GetGSBLModuleAppSettings($"GSBL.Activation"); // (Tuday) NOT WORKING -- can't figure out how to get .<module> and create a string for each?
+        public string GSBLActivation => GetGSBLActivationSettings("GSBL.Activation");
         public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
         public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
         public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
@@ -41,8 +40,9 @@ namespace MBBSEmu
         public string RloginoRemoteIP => GetStringAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
-        
+
         //Optional Keys
+        public string GetActivation(string moduleId) => ConfigurationRoot[$"GSBL.Activation.{moduleId}"];
         public string ANSILogin => ConfigurationRoot["ANSI.Login"];
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
@@ -139,35 +139,15 @@ namespace MBBSEmu
             }
             return result;
         }
-        
-        /// <summary>
-        ///     Sets a default GSBL value if none provided
-        /// </summary>
-        /// <param name="key">GSBL.Activation</param>
-        /// <returns></returns>
-        private string GetGSBLAppSettings(string key)
-        {
-            var result = "11111111";
-
-            if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
-            {
-                //Set Default
-                result = ConfigurationRoot[key];
-            }
-
-            return result;
-        }
 
         /// <summary>
         ///     Sets a default GSBL value if none provided
         /// </summary>
         /// <param name="key">GSBL.Activation</param>
         /// <returns></returns>
-        private string GetGSBLModuleAppSettings(string key)
+        private string GetGSBLActivationSettings(string key)
         {
             var result = "11111111";
-
-            var GSBLActivationModule = ConfigurationRoot.GetSection(key);
 
             if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
@@ -210,6 +190,4 @@ namespace MBBSEmu
             return false;
         }
     }
-
-    
 }

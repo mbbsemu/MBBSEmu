@@ -8,7 +8,6 @@ using NLog;
 using System;
 using System.Text;
 using System.Threading;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -42,13 +41,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Check for Module Specific Activation #
             var bturno = configuration.GSBLActivation;
-            _logger.Info($"Setting BTURNO to: {bturno}");
-            // (Tuday) Need to figure out in Configuration.cs
-            //if (!string.IsNullOrEmpty(_configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"]))
-            //{
-            //    bturno = _configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"];
-            //    _logger.Info($"Found Module Specific Activation # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
-            //}
+            if (!string.IsNullOrEmpty(_configuration.GetActivation(Module.ModuleIdentifier)))
+            {
+                bturno = _configuration.GetActivation(Module.ModuleIdentifier);
+                _logger.Info($"Found Module Specific Activation # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
+            }
 
             //Sanity Check
             if (bturno.Length > 8)
