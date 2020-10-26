@@ -5,18 +5,17 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class cncwrd_Tests : ExportedModuleTestBase
+    public class cncall_Tests : ExportedModuleTestBase
     {
-        private const int CNCWORD_ORDINAL = 130;
+        private const int CNCALL_ORDINAL = 121;
 
         [Theory]
-        [InlineData("FIRST SECOND\0", 0, "FIRST", 6)]
-        [InlineData("FIRST SECOND\0", 6, "SECOND", 13)]
-        [InlineData("FIRST SECOND THIRD\0", 1, "IRST", 6)]
-        [InlineData("FIRST SECOND THIRD\0", 13, "THIRD", 19)]
-        [InlineData("123456789012345678901234567890\0", 0, "12345678901234567890123456789", 30)] //Test Truncation
+        [InlineData("FIRST SECOND\0", 0, "FIRST SECOND", 12)]
+        [InlineData("FIRST SECOND\0", 6, "SECOND", 12)]
+        [InlineData("FIRST SECOND THIRD\0", 1, "IRST SECOND THIRD", 18)]
+        [InlineData("FIRST SECOND THIRD\0", 13, "THIRD", 18)]
         [InlineData("\0", 0, "", 0)]
-        public void cncwrd_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
+        public void cncall_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State
             Reset();
@@ -33,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCWORD_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCALL_ORDINAL, new List<IntPtr16>());
 
             //Verify Results
             var expectedResultPointer = mbbsEmuMemoryCore.GetVariablePointer("INPUT");
