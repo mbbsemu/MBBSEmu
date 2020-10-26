@@ -18,9 +18,9 @@ namespace MBBSEmu.Memory
     public class MemoryCore : IMemoryCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        private readonly byte[][] _memorySegments = new byte[65536][];
-        private readonly Segment[] _segments = new Segment[65536];
-        private readonly Instruction[][] _decompiledSegments = new Instruction[65536][];
+        private readonly byte[][] _memorySegments = new byte[0x10000][];
+        private readonly Segment[] _segments = new Segment[0x10000];
+        private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
 
         private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
         private IntPtr16 _currentVariablePointer;
@@ -212,7 +212,7 @@ namespace MBBSEmu.Memory
                     decoder.Decode(out instructionList.AllocUninitializedElement());
                 }
 
-                _decompiledSegments[segment.Ordinal] = new Instruction[65536];
+                _decompiledSegments[segment.Ordinal] = new Instruction[0x10000];
                 foreach (var i in instructionList)
                 {
                     _decompiledSegments[segment.Ordinal][i.IP16] = i;
@@ -229,7 +229,7 @@ namespace MBBSEmu.Memory
         /// <param name="segmentInstructionList"></param>
         public void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList)
         {
-            _decompiledSegments[segmentNumber] = new Instruction[65536];
+            _decompiledSegments[segmentNumber] = new Instruction[0x10000];
             foreach (var i in segmentInstructionList)
             {
                 _decompiledSegments[segmentNumber][i.IP16] = i;
@@ -256,23 +256,21 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer)
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
+            _decompiledSegments[segment][instructionPointer];
+
+        public Instruction Recompile(ushort segment, ushort instructionPointer)
         {
             //If it wasn't able to decompile linear through the data, there might have been
             //data in the path of the code that messed up decoding, in this case, we grab up to
             //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            var outputInstruction = _decompiledSegments[segment][instructionPointer];
-            if (outputInstruction.Mnemonic == Mnemonic.INVALID)
-            {
-                Span<byte> segmentData = _segments[segment].Data;
-                var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
-                var decoder = Decoder.Create(16, reader);
-                decoder.IP = instructionPointer;
-                decoder.Decode(out outputInstruction);
+            Span<byte> segmentData = _segments[segment].Data;
+            var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
+            var decoder = Decoder.Create(16, reader);
+            decoder.IP = instructionPointer;
+            decoder.Decode(out var outputInstruction);
 
-                _decompiledSegments[segment][instructionPointer] = outputInstruction;
-            }
-
+            _decompiledSegments[segment][instructionPointer] = outputInstruction;
             return outputInstruction;
         }
 

@@ -230,7 +230,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         public void Tick()
         {
-            //Check for segment end
+            // TODO figure out how we can remove this check, such as filling the
+            // memory core instruction set at 65535 to all halt instructions
+
+            // Check for segment end
             if (Registers.CS == ushort.MaxValue)
             {
                 Registers.Halt = true;
@@ -261,10 +264,13 @@ namespace MBBSEmu.CPU
             InstructionCounter++;
 
             //Jump Table
+            Switch:
             switch (_currentInstruction.Mnemonic)
             {
                 case Mnemonic.INVALID:
-                    return;
+                    _currentInstruction = Memory.Recompile(Registers.CS, Registers.IP);
+                    _currentOperationSize = GetCurrentOperationSize();
+                    goto Switch;
                 //Instructions that will set the IP -- we just return
                 case Mnemonic.Retf:
                     Op_Retf();
