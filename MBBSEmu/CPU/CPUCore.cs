@@ -263,6 +263,8 @@ namespace MBBSEmu.CPU
             //Jump Table
             switch (_currentInstruction.Mnemonic)
             {
+                case Mnemonic.INVALID:
+                    return;
                 //Instructions that will set the IP -- we just return
                 case Mnemonic.Retf:
                     Op_Retf();

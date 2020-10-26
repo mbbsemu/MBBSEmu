@@ -27,10 +27,6 @@ namespace MBBSEmu.Memory
         private const ushort VARIABLE_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
         private IntPtr16 _currentRealModePointer;
         private const ushort REALMODE_BASE_SEGMENT = 0x2000; //0x2000->0x2FFF == 256MB
-
-        private ushort _currentCodeSegment;
-        private Instruction[] _currentCodeSegmentInstructions;
-
         private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
 
         public MemoryCore()
@@ -188,12 +184,6 @@ namespace MBBSEmu.Memory
             _memorySegments[segment] = null;
             _segments[segment] = null;
             _decompiledSegments[segment] = null;
-
-            if (_currentCodeSegment == segment)
-            {
-                _currentCodeSegment = 0;
-                _currentCodeSegmentInstructions = null;
-            }
         }
 
         /// <summary>
@@ -268,24 +258,19 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
-            //Prevents constant hash lookups for instructions from the same segment
-            if (_currentCodeSegment != segment)
-            {
-                _currentCodeSegment = segment;
-                _currentCodeSegmentInstructions = _decompiledSegments[segment];
-            }
-
             //If it wasn't able to decompile linear through the data, there might have been
             //data in the path of the code that messed up decoding, in this case, we grab up to
             //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            var outputInstruction = _currentCodeSegmentInstructions[instructionPointer];
-            if (outputInstruction == null)
+            var outputInstruction = _decompiledSegments[segment][instructionPointer];
+            if (outputInstruction.Mnemonic == Mnemonic.INVALID)
             {
                 Span<byte> segmentData = _segments[segment].Data;
                 var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
                 var decoder = Decoder.Create(16, reader);
                 decoder.IP = instructionPointer;
                 decoder.Decode(out outputInstruction);
+
+                _decompiledSegments[segment][instructionPointer] = outputInstruction;
             }
 
             return outputInstruction;
