@@ -1,3 +1,4 @@
+using System;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
@@ -9,14 +10,8 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using MBBSEmu.HostProcess.GlobalRoutines;
 
 namespace MBBSEmu.DependencyInjection
@@ -31,38 +26,15 @@ namespace MBBSEmu.DependencyInjection
             _provider.Dispose();
         }
 
-        public ServiceResolver(IEnumerable<KeyValuePair<string,string>> data) {
-            var configurationRoot = new ConfigurationBuilder()
-                .AddInMemoryCollection(data)
-                .Build();
-
-            BuildServiceProvider(configurationRoot);
-        }
-
-        public ServiceResolver(string appSettingsFilename)
+        public ServiceResolver()
         {
-            var configurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonStream(LoadAppSettings(appSettingsFilename))
-                .Build();
-
-            BuildServiceProvider(configurationRoot);
+            BuildServiceProvider();
         }
 
-        public static List<KeyValuePair<string, string>> GetTestDefaults()
-        {
-            return new List<KeyValuePair<string, string>>() {
-                new KeyValuePair<string, string>("BBS.Title", "Test"),
-                new KeyValuePair<string, string>("GSBL.Activation", "123456789"),
-                new KeyValuePair<string, string>("Telnet.Enabled", "False"),
-                new KeyValuePair<string, string>("Rlogin.Enabled", "False"),
-                new KeyValuePair<string, string>("Database.File", "mbbsemu.db")
-            };
-        }
-
-        private void BuildServiceProvider(IConfigurationRoot configurationRoot)
+        private void BuildServiceProvider()
         {
             //Base Configuration Items
-            _serviceCollection.AddSingleton<IConfiguration>(configurationRoot);
+            _serviceCollection.AddSingleton<AppSettings>();
             _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
             _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
@@ -94,52 +66,5 @@ namespace MBBSEmu.DependencyInjection
         public ServiceCollection GetServiceCollection() => _serviceCollection;
 
         public T GetService<T>() => _provider.GetService<T>();
-
-        /// <summary>
-        ///     Safe loading of appsettings.json for Configuration Builder
-        /// </summary>
-        /// <returns></returns>
-        private static FileStream LoadAppSettings(string filename)
-        {
-            if(!File.Exists(filename))
-                throw new FileNotFoundException($"Unable to locate [{filename}] emulator settings file.");
-
-            if(!IsValidJson(File.ReadAllText(filename)))
-                throw new InvalidDataException($"Invalid JSON detected in [{filename}]. Please verify the format & contents of the file are valid JSON.");
-
-            return File.Open(filename, FileMode.Open, FileAccess.Read);
-        }
-
-        /// <summary>
-        ///     Validates that a JSON file is a correct Format
-        /// </summary>
-        /// <param name="strInput"></param>
-        /// <returns></returns>
-        private static bool IsValidJson(string strInput)
-        {
-            strInput = strInput.Trim();
-            if (strInput.StartsWith("{") && strInput.EndsWith("}") || //For object
-                strInput.StartsWith("[") && strInput.EndsWith("]")) //For array
-            {
-                try
-                {
-                    JToken.Parse(strInput);
-                    return true;
-                }
-                catch (JsonReaderException jex)
-                {
-                    //Exception in parsing json
-                    Console.WriteLine($"JSON Parsing Error: {jex.Message}");
-                    return false;
-                }
-                catch (Exception ex) //some other exception
-                {
-                    Console.WriteLine($"JSON Parsing Exception: {ex.Message}");
-                    return false;
-                }
-            }
-
-            return false;
-        }
     }
 }

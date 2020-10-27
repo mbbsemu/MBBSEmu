@@ -59,7 +59,7 @@ namespace MBBSEmu.Tests.Integration
 
         protected void ExecuteTest(TestLogic testLogic)
         {
-            using var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            using var serviceResolver = new ServiceResolver();
 
             //Setup Generic Database
             var resourceManager = serviceResolver.GetService<IResourceManager>();

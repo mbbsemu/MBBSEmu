@@ -41,7 +41,7 @@ namespace MBBSEmu.Tests.Btrieve
         [Fact]
         public void LoadsFile()
         {
-            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver();
 
             var btrieve = new BtrieveFile();
             btrieve.LoadFile(serviceResolver.GetService<ILogger>(), _modulePath, "MBBSEMU.DAT");

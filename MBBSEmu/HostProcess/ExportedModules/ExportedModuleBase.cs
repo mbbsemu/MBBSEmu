@@ -63,7 +63,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
-        private protected readonly IConfiguration _configuration;
+        private protected readonly AppSettings _configuration;
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
 
@@ -88,7 +88,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
 
 
-        private protected ExportedModuleBase(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
+        private protected ExportedModuleBase(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
             _logger = logger;
             _configuration = configuration;

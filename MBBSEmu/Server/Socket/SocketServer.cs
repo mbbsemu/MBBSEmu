@@ -1,12 +1,12 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Net;
 using System.Net.Sockets;
 using MBBSEmu.Session.Enums;
+using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Server.Socket
 {
@@ -19,13 +19,13 @@ namespace MBBSEmu.Server.Socket
     {
         private readonly ILogger _logger;
         private readonly IMbbsHost _host;
-        private readonly IConfiguration _configuration;
+        private readonly AppSettings _configuration;
 
         private System.Net.Sockets.Socket _listenerSocket;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
 
-        public SocketServer(ILogger logger, IMbbsHost host, IConfiguration configuration)
+        public SocketServer(ILogger logger, IMbbsHost host, AppSettings configuration)
         {
             _logger = logger;
             _host = host;
@@ -77,7 +77,7 @@ namespace MBBSEmu.Server.Socket
                     }
                 case EnumSessionType.Rlogin:
                     {
-                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration["Rlogin.RemoteIP"])
+                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration.RloginoRemoteIP)
                         {
                             _logger.Info(
                                 $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
