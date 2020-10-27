@@ -64,18 +64,12 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     The total length in bytes of the key.
         /// </summary>
-        public int Length
-        {
-            get => Segments.Sum(segment => segment.Length);
-        }
+        public int Length => Segments.Sum(segment => segment.Length);
 
         /// <summary>
         ///     The key name used in the SQLite data_t table.
         /// </summary>
-        public string SqliteKeyName
-        {
-            get =>  $"key_{PrimarySegment.Number}";
-        }
+        public string SqliteKeyName => $"key_{PrimarySegment.Number}";
 
         /// <summary>
         ///     Returns a span of bytes containing the key value from record.
@@ -181,7 +175,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public static string ExtractNullTerminatedString(ReadOnlySpan<byte> b)
         {
-            int strlen = b.IndexOf((byte) 0);
+            var strlen = b.IndexOf((byte)0);
             if (strlen <= 0)
                 strlen = b.Length;
 
@@ -193,7 +187,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public string SqliteColumnType()
         {
-            String type;
+            string type;
 
             if (IsComposite)
             {
@@ -241,7 +235,7 @@ namespace MBBSEmu.Btrieve
 
         public BtrieveKey(BtrieveKeyDefinition keyDefinition)
         {
-            Segments = new List<BtrieveKeyDefinition> {keyDefinition};
+            Segments = new List<BtrieveKeyDefinition> { keyDefinition };
         }
     }
 }

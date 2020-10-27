@@ -1,12 +1,11 @@
 using FluentAssertions;
-using FluentAssertions.Extensions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Resources;
 using NLog;
-using System.IO;
 using System;
+using System.IO;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -15,10 +14,10 @@ namespace MBBSEmu.Tests.Btrieve
     {
         private static readonly Random RANDOM = new Random();
 
-        private readonly string[] _btrieveFiles = {"MBBSEMU.DAT"};
+        private readonly string[] _btrieveFiles = { "MBBSEMU.DAT" };
 
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
-        
+
         public BtrieveFile_Tests()
         {
             Directory.CreateDirectory(_modulePath);
@@ -28,7 +27,7 @@ namespace MBBSEmu.Tests.Btrieve
 
         public void Dispose()
         {
-            Directory.Delete(_modulePath,  recursive: true);
+            Directory.Delete(_modulePath, recursive: true);
         }
 
         private void CopyFilesToTempPath(IResourceManager resourceManager)
@@ -42,7 +41,7 @@ namespace MBBSEmu.Tests.Btrieve
         [Fact]
         public void LoadsFile()
         {
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
             var btrieve = new BtrieveFile();
             btrieve.LoadFile(serviceResolver.GetService<ILogger>(), _modulePath, "MBBSEMU.DAT");
@@ -62,7 +61,8 @@ namespace MBBSEmu.Tests.Btrieve
 
 
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -71,7 +71,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Integer,
@@ -80,7 +81,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -89,7 +91,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 3,
                     Attributes = EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.AutoInc,

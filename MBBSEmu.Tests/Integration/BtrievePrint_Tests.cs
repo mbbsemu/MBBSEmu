@@ -604,8 +604,8 @@ namespace MBBSEmu.Tests.Integration
 
         private static int mbbsemuHash(string s)
         {
-            int hash = 7;
-            foreach (char c in s)
+            var hash = 7;
+            foreach (var c in s)
             {
                 hash = hash * 31 + c;
             }

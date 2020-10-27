@@ -28,7 +28,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Key attribute flags.
         /// </summary>
-        public EnumKeyAttributeMask Attributes {get; set; }
+        public EnumKeyAttributeMask Attributes { get; set; }
 
         /// <summary>
         ///     Defines if the Key is a Segment Key. The PrimarySegment of a composite key has this
@@ -55,37 +55,32 @@ namespace MBBSEmu.Btrieve
         ///     The offset of the key as a position, which starts at 1 in Btrieve. This value is
         ///     simply Offset + 1.
         /// </summary>
-        public ushort Position => (ushort) (Offset + 1);
+        public ushort Position => (ushort)(Offset + 1);
 
         /// <summary>
         ///     Whether the key inside the record can be modified after being inserted.
         /// </summary>
-        public bool IsModifiable { get => Attributes.HasFlag(EnumKeyAttributeMask.Modifiable); }
+        public bool IsModifiable => Attributes.HasFlag(EnumKeyAttributeMask.Modifiable);
 
         /// <summary>
         ///     Whether the key is unique, i.e. does not allow duplicates.
         /// </summary>
-        public bool IsUnique { get => !AllowDuplicates; }
+        public bool IsUnique => !AllowDuplicates;
 
         /// <summary>
         ///     Whether the key allows duplicates.
         /// </summary>
-        public bool AllowDuplicates {
-            get
-            {
-                return Attributes.HasFlag(EnumKeyAttributeMask.Duplicates)
-                    || Attributes.HasFlag(EnumKeyAttributeMask.RepeatingDuplicatesKey);
-            }
-        }
+        public bool AllowDuplicates =>
+            Attributes.HasFlag(EnumKeyAttributeMask.Duplicates)
+            || Attributes.HasFlag(EnumKeyAttributeMask.RepeatingDuplicatesKey);
 
         /// <summary>
         ///     Whether the key allows null values.
         /// </summary>
-        public bool IsNullable { get =>
+        public bool IsNullable =>
             Attributes.HasFlag(EnumKeyAttributeMask.NullAllSegments)
-                || Attributes.HasFlag(EnumKeyAttributeMask.NullAnySegment)
-                || IsString; // string is implicitly nullable
-        }
+            || Attributes.HasFlag(EnumKeyAttributeMask.NullAnySegment)
+            || IsString; // string is implicitly nullable
 
         /// <summary>
         ///     Whether the key is a string type.

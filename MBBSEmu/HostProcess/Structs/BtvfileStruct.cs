@@ -108,7 +108,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 192;
 
-        public BtvFileStruct() {}
+        public BtvFileStruct() { }
 
         public BtvFileStruct(ReadOnlySpan<byte> btvFileStruct)
         {

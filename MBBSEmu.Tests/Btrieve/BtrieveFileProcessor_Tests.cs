@@ -5,9 +5,9 @@ using MBBSEmu.DependencyInjection;
 using MBBSEmu.IO;
 using MBBSEmu.Resources;
 using Microsoft.Data.Sqlite;
+using System;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -29,30 +29,34 @@ namespace MBBSEmu.Tests.Btrieve
             public byte[] Data { get; }
 
             // offset 2, length 32
-            public string Key0 {
-                get => Encoding.ASCII.GetString(Data.AsSpan().Slice(2, 32)).TrimEnd((char) 0);
+            public string Key0
+            {
+                get => Encoding.ASCII.GetString(Data.AsSpan().Slice(2, 32)).TrimEnd((char)0);
                 set => Array.Copy(Encoding.ASCII.GetBytes(value), 0, Data, 2, value.Length);
             }
 
             // offset 34, length 4
-            public int Key1 {
+            public int Key1
+            {
                 get => BitConverter.ToInt32(Data, 34);
                 set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 34, 4);
             }
 
             // offset 38, length 32
-            public string Key2 {
-                get => Encoding.ASCII.GetString(Data.AsSpan().Slice(38, 32)).TrimEnd((char) 0);
+            public string Key2
+            {
+                get => Encoding.ASCII.GetString(Data.AsSpan().Slice(38, 32)).TrimEnd((char)0);
                 set => Array.Copy(Encoding.ASCII.GetBytes(value), 0, Data, 38, value.Length);
             }
 
             // offset 70, length 4
-            public int Key3 {
+            public int Key3
+            {
                 get => BitConverter.ToInt32(Data, 70);
                 set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 70, 4);
             }
 
-            public MBBSEmuRecord() : this(new byte[RECORD_LENGTH]) {}
+            public MBBSEmuRecord() : this(new byte[RECORD_LENGTH]) { }
 
             public MBBSEmuRecord(byte[] data)
             {
@@ -70,7 +74,7 @@ namespace MBBSEmu.Tests.Btrieve
 
         public void Dispose()
         {
-            Directory.Delete(_modulePath,  recursive: true);
+            Directory.Delete(_modulePath, recursive: true);
         }
 
         private void CopyFilesToTempPath(params string[] files)
@@ -88,7 +92,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DAT");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
             var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
@@ -97,7 +101,8 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.PageLength.Should().Be(512);
 
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -106,7 +111,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Integer,
@@ -115,7 +121,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -124,7 +131,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 3,
                     Attributes = EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.AutoInc,
@@ -140,9 +148,9 @@ namespace MBBSEmu.Tests.Btrieve
 
         private void AssertSqlStructure(string fullPath)
         {
-            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
+            var connectionString = new SqliteConnectionStringBuilder()
             {
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                Mode = SqliteOpenMode.ReadWriteCreate,
                 DataSource = fullPath,
             }.ToString();
 
@@ -150,13 +158,13 @@ namespace MBBSEmu.Tests.Btrieve
             connection.Open();
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'metadata_t';", connection))
-                ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_METADATA_T_SQL);
+                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_METADATA_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'keys_t';", connection))
-                ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_KEYS_T_SQL);
+                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_KEYS_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'data_t';", connection))
-                ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_DATA_T_SQL);
+                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_DATA_T_SQL);
         }
 
         [Fact]
@@ -164,7 +172,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
@@ -173,7 +181,8 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.PageLength.Should().Be(512);
 
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates,
                     DataType = EnumKeyDataType.Zstring,
@@ -182,7 +191,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable,
                     DataType = EnumKeyDataType.Integer,
@@ -191,7 +201,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable,
                     DataType = EnumKeyDataType.Zstring,
@@ -200,7 +211,8 @@ namespace MBBSEmu.Tests.Btrieve
                     Segment = false,
                 });
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
-                new BtrieveKeyDefinition() {
+                new BtrieveKeyDefinition()
+                {
                     Number = 3,
                     Attributes = 0,
                     DataType = EnumKeyDataType.AutoInc,
@@ -215,7 +227,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.StepFirst().Should().BeTrue();
@@ -243,7 +255,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.StepLast().Should().BeTrue();
@@ -271,7 +283,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             var record = new MBBSEmuRecord(btrieve.GetRecord(4)?.Data);
@@ -292,7 +304,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.GetRecord(5).Should().BeNull();
@@ -310,7 +322,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.GetRecordCount().Should().Be(4);
@@ -321,10 +333,13 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            using var btrieve =
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                {
+                    Position = 3
+                };
 
-            btrieve.Position = 3;
             btrieve.DeleteAll().Should().BeTrue();
 
             btrieve.Position.Should().Be(0);
@@ -338,10 +353,13 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            using var btrieve =
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                {
+                    Position = 2
+                };
 
-            btrieve.Position = 2;
             btrieve.Delete().Should().BeTrue();
             btrieve.Delete().Should().BeFalse();
 
@@ -355,10 +373,13 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            using var btrieve =
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                {
+                    Position = 2
+                };
 
-            btrieve.Position = 2;
             btrieve.Delete().Should().BeTrue();
 
             btrieve.StepFirst().Should().BeTrue();
@@ -381,13 +402,10 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
+            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
             var insertedId = btrieve.Insert(record.Data);
             insertedId.Should().Be(5);
@@ -406,14 +424,16 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
-            record.Key3 = 4444;
+            var record = new MBBSEmuRecord
+            {
+                Key0 = "Paladine",
+                Key1 = 31337,
+                Key2 = "In orbe terrarum, optimus sum",
+                Key3 = 4444
+            };
 
             var insertedId = btrieve.Insert(record.Data);
             insertedId.Should().Be(5);
@@ -432,13 +452,10 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
+            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
             var insertedId = btrieve.Insert(MakeSmaller(record.Data, 14));
             insertedId.Should().Be(5);
@@ -456,14 +473,17 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 3444; // constraint failure here
-            record.Key2 = "In orbe terrarum, optimus sum";
-            record.Key3 = 4444;
+            var record = new MBBSEmuRecord
+            {
+                Key0 = "Paladine",
+                Key1 = 3444, // constraint failure here
+                Key2 = "In orbe terrarum, optimus sum",
+                Key3 = 4444
+            };
+
 
             var insertedId = btrieve.Insert(record.Data);
             insertedId.Should().Be(0);
@@ -474,13 +494,10 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
+            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
             btrieve.Update(1, record.Data).Should().BeTrue();
 
@@ -497,14 +514,16 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
-            record.Key3 = 2;
+            var record = new MBBSEmuRecord
+            {
+                Key0 = "Paladine",
+                Key1 = 31337,
+                Key2 = "In orbe terrarum, optimus sum",
+                Key3 = 2
+            };
 
             btrieve.Update(2, MakeSmaller(record.Data, 14)).Should().BeTrue();
 
@@ -522,13 +541,11 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 7776; // constraint failure here
-            record.Key2 = "In orbe terrarum, optimus sum";
+            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
+            // constraint failure here
 
             btrieve.Update(1, record.Data).Should().BeFalse();
 
@@ -545,13 +562,10 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord();
-            record.Key0 = "Paladine";
-            record.Key1 = 31337;
-            record.Key2 = "In orbe terrarum, optimus sum";
+            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
             btrieve.Update(5, record.Data).Should().BeFalse();
         }
@@ -561,7 +575,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
@@ -585,7 +599,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("StringValue"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
@@ -604,7 +618,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(1052234073), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeTrue();
@@ -619,7 +633,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(0, Encoding.ASCII.GetBytes("Sysop2"), EnumBtrieveOperationCodes.GetKeyEqual, newQuery: true).Should().BeFalse();
@@ -630,7 +644,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
@@ -658,7 +672,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyFirst, newQuery: true).Should().BeTrue();
@@ -686,7 +700,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -699,7 +713,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, null, EnumBtrieveOperationCodes.GetKeyLast, newQuery: true).Should().BeTrue();
@@ -715,7 +729,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, null, EnumBtrieveOperationCodes.GetKeyLast, newQuery: true).Should().BeTrue();
@@ -731,7 +745,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -744,7 +758,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeTrue();
@@ -764,7 +778,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeTrue();
@@ -784,7 +798,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -797,7 +811,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetKeyGreaterOrEqual, newQuery: true).Should().BeTrue();
@@ -821,7 +835,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.GetKeyGreaterOrEqual, newQuery: true).Should().BeTrue();
@@ -845,7 +859,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -858,7 +872,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetKeyLess, newQuery: true).Should().BeTrue();
@@ -886,7 +900,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(7776), EnumBtrieveOperationCodes.GetKeyLess, newQuery: true).Should().BeTrue();
@@ -910,7 +924,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -923,7 +937,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.GetKeyLessOrEqual, newQuery: true).Should().BeTrue();
@@ -947,7 +961,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(7776), EnumBtrieveOperationCodes.GetKeyLessOrEqual, newQuery: true).Should().BeTrue();
@@ -967,7 +981,7 @@ namespace MBBSEmu.Tests.Btrieve
         {
             CopyFilesToTempPath("MBBSEMU.DB");
 
-            ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
             btrieve.DeleteAll();
@@ -978,7 +992,7 @@ namespace MBBSEmu.Tests.Btrieve
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
         private static byte[] MakeSmaller(byte[] data, int cutOff)
         {
-            var ret =  new byte[data.Length - cutOff];
+            var ret = new byte[data.Length - cutOff];
             Array.Copy(data, 0, ret, 0, ret.Length);
             return ret;
         }

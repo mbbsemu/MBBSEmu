@@ -105,8 +105,9 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
         /// </summary>
-        /// <param name="fileName"></param>
+        /// <param name="fileUtility"></param>
         /// <param name="path"></param>
+        /// <param name="fileName"></param>
         public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
         {
             _fileFinder = fileUtility;
@@ -436,7 +437,8 @@ namespace MBBSEmu.Btrieve
 
             using var cmd = new SqliteCommand(sb.ToString(), _connection, transaction);
             using var reader = cmd.ExecuteReader();
-            try {
+            try
+            {
                 if (!reader.Read())
                 {
                     _logger.Error("Unable to query for MAX autoincremented values, unable to update");
@@ -767,7 +769,7 @@ namespace MBBSEmu.Btrieve
 
             query.Reader = new BtrieveQuery.SqliteReader()
             {
-                DataReader =command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
             // and this continuation query allows for increasing subsequent GetNext calls
