@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.Btrieve
         private static readonly Random RANDOM = new Random();
 
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
-      
+
         private class MBBSEmuRecord
         {
             public byte[] Data { get; }
@@ -134,7 +134,7 @@ namespace MBBSEmu.Tests.Btrieve
                 });
 
             btrieve.Dispose();
-           
+
             AssertSqlStructure(Path.Combine(_modulePath, "MBBSEMU.DB"));
         }
 
@@ -390,7 +390,7 @@ namespace MBBSEmu.Tests.Btrieve
             record.Key2 = "In orbe terrarum, optimus sum";
 
             var insertedId = btrieve.Insert(record.Data);
-            insertedId.Should().BePositive();
+            insertedId.Should().Be(5);
 
             record = new MBBSEmuRecord(btrieve.GetRecord(insertedId)?.Data);
             record.Key0.Should().Be("Paladine");
@@ -416,7 +416,7 @@ namespace MBBSEmu.Tests.Btrieve
             record.Key3 = 4444;
 
             var insertedId = btrieve.Insert(record.Data);
-            insertedId.Should().BePositive();
+            insertedId.Should().Be(5);
 
             record = new MBBSEmuRecord(btrieve.GetRecord(insertedId)?.Data);
             record.Key0.Should().Be("Paladine");
@@ -441,7 +441,7 @@ namespace MBBSEmu.Tests.Btrieve
             record.Key2 = "In orbe terrarum, optimus sum";
 
             var insertedId = btrieve.Insert(MakeSmaller(record.Data, 14));
-            insertedId.Should().BePositive();
+            insertedId.Should().Be(5);
 
             record = new MBBSEmuRecord(btrieve.GetRecord(insertedId)?.Data);
             record.Key0.Should().Be("Paladine");
