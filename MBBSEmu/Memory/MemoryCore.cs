@@ -32,15 +32,10 @@ namespace MBBSEmu.Memory
         /// <summary>
         ///     Default Compiler Hints for use on methods within the MemoryCore
         ///
-        ///     AggressiveInlining == The method should be inlined if possible
-        ///     AggressiveOptimization == The method contains a hot path and should be optimized
-        ///
-        ///     Because the majority of methods within the CPU are internal to the CPU with a single calling point,
-        ///     they should be inlined as much as possible.
-        ///
-        ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
+        ///     Works fastest with just AggressiveOptimization. Enabling AggressiveInlining slowed
+        ///     down the code.
         /// </summary>
-        private const MethodImplOptions CompilerOptimizations = (MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization);
+        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         public MemoryCore()
         {

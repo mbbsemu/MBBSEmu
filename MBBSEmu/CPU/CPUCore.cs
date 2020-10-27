@@ -112,15 +112,15 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Default Compiler Hints for use on methods within the CPU
         ///
-        ///     AggressiveInlining == The method should be inlined if possible
         ///     AggressiveOptimization == The method contains a hot path and should be optimized
         ///
-        ///     Because the majority of methods within the CPU are internal to the CPU with a single calling point,
-        ///     they should be inlined as much as possible.
+        ///     Inlining actually *slows* down this code, to a great extent, most due to CPU L1
+        ///     cache limits. Performance seemed best with AggressiveOptimization on and AggressiveInlining
+        ///     off.
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
-        private const MethodImplOptions CompilerOptimizations = (MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization);
+        private const MethodImplOptions CompilerOptimizations = (/*MethodImplOptions.AggressiveInlining |*/ MethodImplOptions.AggressiveOptimization);
 
         public CpuCore(ILogger logger)
         {
