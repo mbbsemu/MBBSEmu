@@ -45,12 +45,9 @@ namespace MBBSEmu.Memory
         /// </summary>
         public void Clear()
         {
-            for(int i = 0; i < _memorySegments.Length; ++i)
-                _memorySegments[i] = null;
-            for(int i = 0; i < _segments.Length; ++i)
-                _segments[i] = null;
-            for(int i = 0; i < _decompiledSegments.Length; ++i)
-                _decompiledSegments[i] = null;
+            Array.Clear(_memorySegments, 0, _memorySegments.Length);
+            Array.Clear(_segments, 0, _segments.Length);
+            Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
 
             _variablePointerDictionary.Clear();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
