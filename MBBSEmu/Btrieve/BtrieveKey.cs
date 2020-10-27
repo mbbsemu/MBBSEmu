@@ -127,7 +127,7 @@ namespace MBBSEmu.Btrieve
         {
             if (IsNullable && IsAllSameByteValue(keyData, PrimarySegment.NullValue))
             {
-                return null;
+                return DBNull.Value;
             }
 
             if (IsComposite)
