@@ -4,7 +4,7 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.IO;
 using MBBSEmu.Resources;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.IO;
 using System.Text;
 using System;
@@ -146,16 +146,16 @@ namespace MBBSEmu.Tests.Btrieve
                 DataSource = fullPath,
             }.ToString();
 
-            using var connection = new SQLiteConnection(connectionString);
+            using var connection = new SqliteConnection(connectionString);
             connection.Open();
 
-            using (var stmt = new SQLiteCommand("SELECT sql FROM sqlite_master WHERE name = 'metadata_t';", connection))
+            using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'metadata_t';", connection))
                 ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_METADATA_T_SQL);
 
-            using (var stmt = new SQLiteCommand("SELECT sql FROM sqlite_master WHERE name = 'keys_t';", connection))
+            using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'keys_t';", connection))
                 ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_KEYS_T_SQL);
 
-            using (var stmt = new SQLiteCommand("SELECT sql FROM sqlite_master WHERE name = 'data_t';", connection))
+            using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'data_t';", connection))
                 ((string) stmt.ExecuteScalar()).Should().Be(EXPECTED_DATA_T_SQL);
         }
 
