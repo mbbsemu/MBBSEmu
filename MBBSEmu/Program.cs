@@ -42,7 +42,7 @@ namespace MBBSEmu
         ///     Module Option Key specified by the -K Command Line Argument
         /// </summary>
         private string _menuOptionKey;
-        
+
         /// <summary>
         ///     Specified if -APIREPORT Command Line Argument was passed
         /// </summary>
@@ -82,7 +82,7 @@ namespace MBBSEmu
         ///     Module Configuration
         /// </summary>
         private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
-        
+
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
 
@@ -199,20 +199,20 @@ namespace MBBSEmu
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
-                if (!File.Exists($"BBSGEN.EMU"))
+                if (!File.Exists($"BBSGEN.DB"))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.EMU");
-                    File.WriteAllBytes($"BBSGEN.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.EMU").ToArray());
+                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
+                    File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT"));
 
                 //Setup User Database
-                if (!File.Exists($"BBSUSR.EMU"))
+                if (!File.Exists($"BBSUSR.DB"))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.EMU");
-                    File.WriteAllBytes($"BBSUSR.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.EMU").ToArray());
+                    _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
+                    File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSUSR.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT"));
 
                 //Database Reset
                 if (_doResetDatabase)
@@ -246,14 +246,14 @@ namespace MBBSEmu
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
                         }
-                        
+
                         //Check for duplicate module in moduleConfig
                         if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m["Identifier"]))
                         {
                             _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
                             continue;
                         }
-                        
+
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
                         _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"]});
@@ -274,11 +274,11 @@ namespace MBBSEmu
                 if (_doApiReport)
                 {
                     host.GenerateAPIReport();
-                    
+
                     host.Stop();
                     return;
                 }
-                
+
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server

@@ -15,10 +15,15 @@ using MBBSEmu.HostProcess.GlobalRoutines;
 
 namespace MBBSEmu.DependencyInjection
 {
-    public class ServiceResolver
+    public class ServiceResolver : IDisposable
     {
         private ServiceProvider _provider;
         private readonly ServiceCollection _serviceCollection = new ServiceCollection();
+
+        public void Dispose()
+        {
+            _provider.Dispose();
+        }
 
         public ServiceResolver()
         {

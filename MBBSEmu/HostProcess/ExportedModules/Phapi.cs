@@ -92,7 +92,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     MBBSEmu exposes the entire 16-bit (4GB) address space to the module, so there is no difference
         ///     between Real-Mode and Protected-Mode
-        ///     
+        ///
         ///     Signature: USHORT DosAllocRealSeg(ULONG size, PUSHORT parap, PSEL selp);
         ///                 typedef unsigned short _far *PSEL;
         ///                 typedef unsigned short _far *PUSHORT;
@@ -167,18 +167,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 {
                                     //Get the File Name to oPen
                                     var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvda.keyseg, 0, true));
-                                    var btvFile = new BtrieveFileProcessor(_fileFinder, fileName, Module.ModulePath);
+                                    var btvFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName);
 
                                     //Setup Pointers
                                     var btvFileStructPointer = new IntPtr16(btvda.posblkseg, btvda.posblkoff);
                                     var btvFileNamePointer =
                                         Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
-                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", btvFile.LoadedFile.RecordLength);
+                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", (ushort) btvFile.RecordLength);
 
                                     var newBtvStruct = new BtvFileStruct
                                     {
                                         filenam = btvFileNamePointer,
-                                        reclen = btvFile.LoadedFile.RecordLength,
+                                        reclen = (ushort) btvFile.RecordLength,
                                         data = btvDataPointer
                                     };
                                     BtrieveSaveProcessor(btvFileStructPointer, btvFile);
@@ -202,20 +202,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     {
                                         fs = new BtvfilespecStruct()
                                         {
-                                            numofr = currentBtrieveFile.LoadedFile.RecordCount,
-                                            numofx = currentBtrieveFile.LoadedFile.KeyCount,
-                                            pagsiz = currentBtrieveFile.LoadedFile.PageLength,
-                                            reclen = currentBtrieveFile.LoadedFile.RecordLength
+                                            numofr = (uint) currentBtrieveFile.GetRecordCount(),
+                                            numofx = (ushort) currentBtrieveFile.Keys.Count,
+                                            pagsiz = (ushort) currentBtrieveFile.PageLength,
+                                            reclen = (ushort) currentBtrieveFile.RecordLength
                                         }
                                     };
 
-                                    var definedKeys = currentBtrieveFile.LoadedFile.Keys.Values.Select(k =>
+                                    var definedKeys = currentBtrieveFile.Keys.Values.SelectMany(k => k.Segments).Select(k =>
                                         new BtvkeyspecStruct()
                                         {
-                                            flags = (ushort)k.Segments[0].Attributes,
-                                            keylen = k.Segments[0].Length,
-                                            keypos = k.Segments[0].Position,
-                                            numofk = k.Segments[0].Number
+                                            flags = (ushort)k.Attributes,
+                                            keylen = k.Length,
+                                            keypos = k.Position,
+                                            numofk = k.Number
                                         }).ToList();
                                     btvStats.keyspec = definedKeys.ToArray();
 

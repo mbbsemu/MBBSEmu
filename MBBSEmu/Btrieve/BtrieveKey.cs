@@ -1,4 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Logging;
+using NLog;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System;
 
 namespace MBBSEmu.Btrieve
 {
@@ -9,7 +15,218 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveKey
     {
+        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+
         public List<BtrieveKeyDefinition> Segments { get; set; }
+
+        /// <summary>
+        ///     Represents the key number, starting from 0. Each database has at least one key.
+        /// </summary>
+        public ushort Number
+        {
+            get => PrimarySegment.Number;
+        }
+
+        /// <summary>
+        ///     The primary segment in a key. Always first in the list of Segments.
+        /// </summary>
+        public BtrieveKeyDefinition PrimarySegment
+        {
+            get => Segments[0];
+        }
+
+        /// <summary>
+        ///     Whether the key is a composite key - composed of two or more segments.
+        /// </summary>
+        public bool IsComposite
+        {
+            get => Segments.Count > 1;
+        }
+
+        /// <summary>
+        ///     Whether the key data in the record can be modified once inserted.
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
+        public bool IsModifiable { get => PrimarySegment.IsModifiable; }
+
+        /// <summary>
+        ///     Whether the key data in the record is unique (no duplicates allowed).
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
+        public bool IsUnique { get => PrimarySegment.IsUnique; }
+
+        /// <summary>
+        ///     Whether the key data in the record is nullable.
+        ///     <para/>All segmented keys in a composite key must have the same value.
+        /// </summary>
+        public bool IsNullable { get => PrimarySegment.IsNullable; }
+
+        /// <summary>
+        ///     The total length in bytes of the key.
+        /// </summary>
+        public int Length => Segments.Sum(segment => segment.Length);
+
+        /// <summary>
+        ///     The key name used in the SQLite data_t table.
+        /// </summary>
+        public string SqliteKeyName => $"key_{PrimarySegment.Number}";
+
+        /// <summary>
+        ///     Returns a span of bytes containing the key value from record.
+        /// </summary>
+        public ReadOnlySpan<byte> ExtractKeyDataFromRecord(ReadOnlySpan<byte> record)
+        {
+            if (!IsComposite)
+                return record.Slice(PrimarySegment.Offset, PrimarySegment.Length);
+
+            var composite = new byte[Length];
+            var i = 0;
+            foreach (var segment in Segments)
+            {
+                var destSlice = composite.AsSpan(i, segment.Length);
+                record.Slice(segment.Offset, segment.Length).CopyTo(destSlice);
+                i += segment.Length;
+            }
+
+            return composite;
+        }
+
+        /// <summary>
+        ///      Returns true if data contains all of value.
+        /// </summary>
+        private static bool IsAllSameByteValue(ReadOnlySpan<byte> data, byte value)
+        {
+            foreach (byte b in data)
+                if (b != value)
+                    return false;
+
+            return true;
+        }
+
+        /// <summary>
+        ///     Returns true if the key data inside record contains all of b.
+        /// </summary>
+        public bool KeyInRecordIsAllSameByte(ReadOnlySpan<byte> record, byte b) => IsAllSameByteValue(ExtractKeyDataFromRecord(record), b);
+
+        /// <summary>
+        ///     Returns true if the key data inside record is all zero.
+        /// </summary>
+        public bool KeyInRecordIsAllZero(ReadOnlySpan<byte> record) => KeyInRecordIsAllSameByte(record, 0);
+
+        /// <summary>
+        ///     Returns an object that can be used for inserting into the data_t key column based on
+        ///     the type of this key, extracting from data.
+        /// </summary>
+        public object ExtractKeyInRecordToSqliteObject(ReadOnlySpan<byte> data) => KeyDataToSqliteObject(ExtractKeyDataFromRecord(data));
+
+        /// <summary>
+        ///     Returns an object that can be used for inserting into the data_t key column based on
+        ///     the type of this key from keyData.
+        /// </summary>
+        public object KeyDataToSqliteObject(ReadOnlySpan<byte> keyData)
+        {
+            if (IsNullable && IsAllSameByteValue(keyData, PrimarySegment.NullValue))
+            {
+                return null;
+            }
+
+            if (IsComposite)
+                return keyData.ToArray();
+
+            switch (PrimarySegment.DataType)
+            {
+                case EnumKeyDataType.Unsigned:
+                case EnumKeyDataType.UnsignedBinary:
+                    switch (PrimarySegment.Length)
+                    {
+                        case 2:
+                            return BitConverter.ToUInt16(keyData);
+                        case 4:
+                            return BitConverter.ToUInt32(keyData);
+                        case 8:
+                            return BitConverter.ToUInt64(keyData);
+                        default:
+                            throw new ArgumentException($"Bad unsigned integer key length {PrimarySegment.Length}");
+                    }
+                case EnumKeyDataType.AutoInc:
+                case EnumKeyDataType.Integer:
+                    switch (PrimarySegment.Length)
+                    {
+                        case 2:
+                            return BitConverter.ToInt16(keyData);
+                        case 4:
+                            return BitConverter.ToInt32(keyData);
+                        case 8:
+                            return BitConverter.ToInt64(keyData);
+                        default:
+                            throw new ArgumentException($"Bad integer key length {PrimarySegment.Length}");
+                    }
+                case EnumKeyDataType.String:
+                case EnumKeyDataType.Lstring:
+                case EnumKeyDataType.Zstring:
+                    return ExtractNullTerminatedString(keyData);
+                default:
+                    return keyData.ToArray();
+            }
+        }
+
+        /// <summary>
+        ///     Returns a null terminated string from b. Length will be between 0 and b.Length.
+        /// </summary>
+        public static string ExtractNullTerminatedString(ReadOnlySpan<byte> b)
+        {
+            var strlen = b.IndexOf((byte)0);
+            if (strlen <= 0)
+                strlen = b.Length;
+
+            return Encoding.ASCII.GetString(b.Slice(0, strlen));
+        }
+
+        /// <summary>
+        ///     Returns the SQLite column type when creating the initial database.
+        /// </summary>
+        public string SqliteColumnType()
+        {
+            string type;
+
+            if (IsComposite)
+            {
+                type = "BLOB";
+            }
+            else
+            {
+                switch (PrimarySegment.DataType)
+                {
+                    case EnumKeyDataType.AutoInc:
+                        return "INTEGER NOT NULL UNIQUE";
+                    case EnumKeyDataType.Integer:
+                    case EnumKeyDataType.Unsigned:
+                    case EnumKeyDataType.UnsignedBinary:
+                        type = "INTEGER";
+                        break;
+                    case EnumKeyDataType.String:
+                    case EnumKeyDataType.Lstring:
+                    case EnumKeyDataType.Zstring:
+                        type = "TEXT";
+                        break;
+                    default:
+                        type = "BLOB";
+                        break;
+                }
+            }
+
+            if (!IsNullable)
+            {
+                type += " NOT NULL";
+            }
+
+            if (IsUnique)
+            {
+                type += " UNIQUE";
+            }
+
+            return type;
+        }
 
         public BtrieveKey()
         {
@@ -18,7 +235,7 @@ namespace MBBSEmu.Btrieve
 
         public BtrieveKey(BtrieveKeyDefinition keyDefinition)
         {
-            Segments = new List<BtrieveKeyDefinition> {keyDefinition};
+            Segments = new List<BtrieveKeyDefinition> { keyDefinition };
         }
     }
 }

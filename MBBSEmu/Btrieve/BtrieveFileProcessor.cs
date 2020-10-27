@@ -1,8 +1,7 @@
 using MBBSEmu.Btrieve.Enums;
-using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using Newtonsoft.Json;
+using Microsoft.Data.Sqlite;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -13,56 +12,108 @@ using System.Text;
 namespace MBBSEmu.Btrieve
 {
     /// <summary>
-    ///     The BtrieveFileProcessor class is used to handle Loading, Parsing, and Querying legacy Btrieve Files
+    ///     The BtrieveFileProcessor class is used to abstract the loading, parsing, and querying of
+    ///     legacy Btrieve Files.
     ///
-    ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.EMU), which are JSON representations
-    ///     of the underlying Btrieve Data. This means the legacy .DAT files are only used once on initial load and are not
-    ///     modified. All Inserts & Updates happen within the new .EMU JSON files.
+    ///     Legacy Btrieve files (.DAT) are converted on load to MBBSEmu format files (.DB), which
+    ///     are Sqlite representations of the underlying Btrieve Data. This means the legacy .DAT
+    ///     files are only used once on initial load and are not modified. All Inserts & Updates
+    ///     happen within the new .DB Sqlite files.
+    ///
+    ///     These .DB files can be inspected and modified/edited cleanly once MBBSEmu has exited.
+    ///     Attempting to modify the files during runtime is unsupported and will likely cause
+    ///     concurrent access exceptions to fire in MBBSEmu.
     /// </summary>
-    public class BtrieveFileProcessor
+    public class BtrieveFileProcessor : IDisposable
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         private readonly IFileUtility _fileFinder;
 
         /// <summary>
-        ///     File Name of the Btrieve File currently loaded into the Processor
-        /// </summary>
-        public string LoadedFileName { get; set; }
-
-        /// <summary>
-        ///     File Path of the Btrieve File currently loaded into the Processor
-        /// </summary>
-        public string LoadedFilePath { get; set; }
-
-        /// <summary>
-        ///     Total Size of the Loaded Btrieve File
-        /// </summary>
-        public int LoadedFileSize { get; set; }
-
-        /// <summary>
-        ///     Btrieve File Loaded into the Processor
-        /// </summary>
-        public BtrieveFile LoadedFile { get; set; }
-
-        /// <summary>
-        ///     Current Position (offset) of the Processor in the Btrieve File
+        ///     Current Position (offset) of the current BtrieveRecord in the Btrieve File.
         /// </summary>
         public uint Position { get; set; }
 
         /// <summary>
-        ///     The Previous Query that was executed
+        ///     The Previous Query that was executed.
         /// </summary>
         private BtrieveQuery PreviousQuery { get; set; }
 
         /// <summary>
+        ///     The length in bytes of each record.
+        ///     <para/>Currently only fixed length record databases are supported.
+        /// </summary>
+        public int RecordLength { get; set; }
+
+        /// <summary>
+        ///     The active connection to the Sqlite database.
+        /// </summary>
+        private SqliteConnection _connection;
+
+        /// <summary>
+        ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
+        ///     lookups.
+        /// </summary>
+        private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
+
+        /// <summary>
+        ///     The list of keys in this database, keyed by key number.
+        /// </summary>
+        public Dictionary<ushort, BtrieveKey> Keys { get; set; }
+
+        /// <summary>
+        ///     The list of autoincremented keys in this database, keyed by key number.
+        /// </summary>
+        private Dictionary<ushort, BtrieveKey> AutoincrementedKeys { get; set; }
+
+        /// <summary>
+        ///     The length of each page in the original Btrieve database.
+        ///     <para/>Not actually used beyond initial database conversion.
+        /// </summary>
+        public int PageLength { get; set; }
+
+        /// <summary>
+        ///     The full path of the loaded database.
+        /// </summary>
+        public string FullPath { get; set; }
+
+        /// <summary>
+        ///     A delegate function that returns true if the retrieved record matches the query.
+        /// </summary>
+        /// <param name="query">Query made</param>
+        /// <param name="record">The record retrieve from the query</param>
+        /// <returns>true if the record is valid for the query</returns>
+        private delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
+
+        /// <summary>
+        ///     Closes all long lived resources, such as the Sqlite connection.
+        /// </summary>
+        public void Dispose()
+        {
+            _logger.Info($"Closing sqlite DB {FullPath}");
+
+            PreviousQuery?.Dispose();
+
+            _connection.Close();
+            _connection.Dispose();
+            _connection = null;
+
+            _cache.Clear();
+        }
+
+        /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
         /// </summary>
-        /// <param name="fileName"></param>
+        /// <param name="fileUtility"></param>
         /// <param name="path"></param>
-        public BtrieveFileProcessor(IFileUtility fileUtility, string fileName, string path)
+        /// <param name="fileName"></param>
+        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
         {
             _fileFinder = fileUtility;
+
+            Keys = new Dictionary<ushort, BtrieveKey>();
+            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -70,401 +121,453 @@ namespace MBBSEmu.Btrieve
             if (!Path.EndsInDirectorySeparator(path))
                 path += Path.DirectorySeparatorChar;
 
-            LoadedFilePath = path;
-            LoadedFileName = _fileFinder.FindFile(path, fileName);
+            var loadedFileName = _fileFinder.FindFile(path, fileName);
 
-            //If a .EMU version exists, load it over the .DAT file
-            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            if (File.Exists(Path.Combine(LoadedFilePath, jsonFileName)))
+            // hack for MUTANTS which tries to load a DATT file
+            if (Path.GetExtension(loadedFileName).ToUpper() == ".DATT")
+                loadedFileName = Path.ChangeExtension(loadedFileName, ".DAT");
+
+            // If a .DB version exists, load it over the .DAT file
+            var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
+            var fullPath = Path.Combine(path, dbFileName);
+
+            if (File.Exists(fullPath))
             {
-                LoadedFileName = jsonFileName;
-                LoadJson(LoadedFilePath, LoadedFileName);
+                LoadSqlite(fullPath);
             }
             else
             {
-                LoadBtrieve(LoadedFilePath, LoadedFileName);
-                SaveJson();
+                var btrieveFile = new BtrieveFile();
+                btrieveFile.LoadFile(_logger, path, loadedFileName);
+                CreateSqliteDB(fullPath, btrieveFile);
             }
-
-            //Ensure loaded records (regardless of source) are in order by their offset within the Btrieve file
-            LoadedFile.Records = LoadedFile.Records.OrderBy(x => x.Offset).ToList();
 
             //Set Position to First Record
-            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
+            StepFirst();
         }
 
         /// <summary>
-        ///     Loads a Btrieve .DAT File
+        ///     Loads an MBBSEmu representation of a Btrieve File from the specified Sqlite DB file.
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileName"></param>
-        private void LoadBtrieve(string path, string fileName)
+        private void LoadSqlite(string fullPath)
         {
-            //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
-            var virginFileName = fileName.ToUpper().Replace(".DAT", ".VIR");
-            if (!File.Exists(Path.Combine(path, fileName)) && File.Exists(Path.Combine(path, virginFileName)))
+            _logger.Info($"Opening sqlite DB {fullPath}");
+
+            FullPath = fullPath;
+
+            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
             {
-                File.Copy(Path.Combine(path, virginFileName), Path.Combine(path, fileName));
-                _logger.Warn($"Created {fileName} by copying {virginFileName} for first use");
-            }
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                DataSource = fullPath,
+            }.ToString();
 
-            //If we're missing a DAT file, just bail. Because we don't know the file definition, we can't just create a "blank" one.
-            if (!File.Exists(Path.Combine(path, fileName)))
-            {
-                _logger.Error($"Unable to locate existing btrieve file {fileName}");
-                throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
-            }
+            _connection = new SqliteConnection(connectionString);
+            _connection.Open();
 
-            var fileData = File.ReadAllBytes(Path.Combine(path, fileName));
-            LoadedFile = new BtrieveFile(fileData) { FileName = LoadedFileName };
-            LoadedFileSize = fileData.Length;
-#if DEBUG
-            _logger.Info($"Opened {fileName} and read {LoadedFile.Data.Length} bytes");
-#endif
-            //Only Parse Keys if they are defined
-            if (LoadedFile.KeyCount > 0)
-                LoadBtrieveKeyDefinitions();
-
-            //Only load records if there are any present
-            if (LoadedFile.RecordCount > 0)
-                LoadBtrieveRecords();
+            LoadSqliteMetadata();
         }
 
         /// <summary>
-        ///     Loads an MBBSEmu representation of a Btrieve File
+        ///     Loads metadata from the loaded Sqlite table, such as RecordLength and all the key metadata.
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="fileName"></param>
-        private void LoadJson(string path, string fileName)
+        private void LoadSqliteMetadata()
         {
-            LoadedFile = JsonConvert.DeserializeObject<BtrieveFile>(File.ReadAllText(Path.Combine(path, fileName)));
-        }
-
-        /// <summary>
-        ///     Saves the MBBSEmu representation of a Btrieve File to disk
-        /// </summary>
-        private void SaveJson()
-        {
-            var jsonFileName = LoadedFileName.ToUpper().Replace(".DAT", ".EMU");
-            File.WriteAllText(Path.Combine(LoadedFilePath, jsonFileName),
-                JsonConvert.SerializeObject(LoadedFile, Formatting.Indented));
-        }
-
-        /// <summary>
-        ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
-        /// </summary>
-        private void LoadBtrieveKeyDefinitions()
-        {
-            ushort keyDefinitionBase = 0x110;
-            const ushort keyDefinitionLength = 0x1E;
-            ReadOnlySpan<byte> btrieveFileContentSpan = LoadedFile.Data;
-
-            //Check for Log Key
-            if (btrieveFileContentSpan[0x10C] == 1)
+            using (var cmd = new SqliteCommand("SELECT record_length, page_length FROM metadata_t;", _connection))
             {
-                _logger.Warn($"Btireve Log Key Present in {LoadedFile.FileName}");
-                LoadedFile.LogKeyPresent = true;
-            }
-
-            ushort totalKeys = LoadedFile.KeyCount;
-            ushort currentKeyNumber = 0;
-            while (currentKeyNumber < totalKeys)
-            {
-                var keyDefinition = new BtrieveKeyDefinition { Data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray() };
-
-                keyDefinition.Number = currentKeyNumber;
-
-                //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
-                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
-                    currentKeyNumber++;
-
-#if DEBUG
-                _logger.Info("----------------");
-                _logger.Info("Loaded Key Definition:");
-                _logger.Info("----------------");
-                _logger.Info($"Number: {keyDefinition.Number}");
-                _logger.Info($"Total Records: {keyDefinition.TotalRecords}");
-                _logger.Info($"Data Type: {keyDefinition.DataType}");
-                _logger.Info($"Attributes: {keyDefinition.Attributes}");
-                _logger.Info($"Position: {keyDefinition.Position}");
-                _logger.Info($"Length: {keyDefinition.Length}");
-                _logger.Info("----------------");
-#endif
-                if (!LoadedFile.Keys.TryGetValue(keyDefinition.Number, out var key))
+                using var reader = cmd.ExecuteReader();
+                try
                 {
-                    key = new BtrieveKey(keyDefinition);
-                    LoadedFile.Keys.Add(keyDefinition.Number, key);
+                    if (!reader.Read())
+                        throw new ArgumentException($"Can't read metadata_t from {FullPath}");
+
+                    RecordLength = reader.GetInt32(0);
+                    PageLength = reader.GetInt32(1);
                 }
-                else
+                finally
                 {
-                    key.Segments.Add(keyDefinition);
-                }
-
-
-                keyDefinitionBase += keyDefinitionLength;
-            }
-        }
-
-        /// <summary>
-        ///     Loads Btrieve Records from Data Pages
-        /// </summary>
-        private void LoadBtrieveRecords()
-        {
-            var recordsLoaded = 0;
-
-            //Starting at 1, since the first page is the header
-            for (var i = 1; i <= LoadedFile.PageCount; i++)
-            {
-                var pageOffset = (LoadedFile.PageLength * i);
-                var recordsInPage = (LoadedFile.PageLength / LoadedFile.PhysicalRecordLength);
-
-                //Key Page
-                if (BitConverter.ToUInt32(LoadedFile.Data, pageOffset + 0x8) == uint.MaxValue)
-                    continue;
-
-                //Key Constraint Page
-                if (LoadedFile.Data[pageOffset + 0x6] == 0xAC)
-                    continue;
-
-                //Verify Data Page
-                if (!LoadedFile.Data[pageOffset + 0x5].IsNegative())
-                {
-                    _logger.Warn(
-                        $"Skipping Non-Data Page, might have invalid data - Page Start: 0x{pageOffset + 0x5:X4}");
-                    continue;
-                }
-
-                //Page data starts 6 bytes in
-                pageOffset += 6;
-                for (var j = 0; j < recordsInPage; j++)
-                {
-                    if (recordsLoaded == LoadedFile.RecordCount)
-                        break;
-
-                    var recordArray = new byte[LoadedFile.RecordLength];
-                    Array.Copy(LoadedFile.Data, pageOffset + (LoadedFile.PhysicalRecordLength * j), recordArray, 0, LoadedFile.RecordLength);
-
-                    //End of Page 0xFFFFFFFF
-                    if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
-                        continue;
-
-                    LoadedFile.Records.Add(new BtrieveRecord((uint)(pageOffset + (LoadedFile.PhysicalRecordLength * j)), recordArray));
-                    recordsLoaded++;
+                    reader.Close();
                 }
             }
-#if DEBUG
-            _logger.Info($"Loaded {recordsLoaded} records from {LoadedFile.FileName}. Resetting cursor to 0");
-#endif
+
+            using (var cmd =
+                new SqliteCommand(
+                    "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment;",
+                    _connection))
+            {
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var number = reader.GetInt32(0);
+                    var btrieveKeyDefinition = new BtrieveKeyDefinition()
+                    {
+                        Number = (ushort)number,
+                        Segment = reader.GetInt32(1) != 0,
+                        SegmentOf = reader.GetInt32(1) != 0 ? (ushort)number : (ushort)0,
+                        Attributes = (EnumKeyAttributeMask)reader.GetInt32(2),
+                        DataType = (EnumKeyDataType)reader.GetInt32(3),
+                        Offset = (ushort)reader.GetInt32(4),
+                        Length = (ushort)reader.GetInt32(5),
+                    };
+
+                    if (!Keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
+                    {
+                        btrieveKey = new BtrieveKey();
+                        Keys[btrieveKeyDefinition.Number] = btrieveKey;
+                    }
+
+                    var index = btrieveKey.Segments.Count;
+                    btrieveKeyDefinition.SegmentIndex = index;
+                    btrieveKey.Segments.Add(btrieveKeyDefinition);
+
+                    if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
+                        AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKey;
+                }
+                reader.Close();
+            }
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the first Record in the loaded Btrieve File
+        ///     Returns the total number of records contained in the database.
         /// </summary>
-        /// <returns></returns>
-        public ushort StepFirst()
+        public int GetRecordCount()
         {
-            Position = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault()?.Offset ?? 0;
-            return Position > 0 ? (ushort) 1 : (ushort) 0;
+            using var stmt = new SqliteCommand("SELECT COUNT(*) FROM data_t;", _connection);
+            return (int)(long)stmt.ExecuteScalar();
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File
+        ///     Sets Position to the offset of the first Record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
-        public ushort StepNext()
+        public bool StepFirst()
         {
-            var nextRecord = LoadedFile.Records.OrderBy(x => x.Offset).FirstOrDefault(x => x.Offset > Position);
+            // TODO consider grabbing data at the same time and prepopulating the cache
+            using var cmd = new SqliteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
 
-            if (nextRecord == null)
-                return 0;
-
-            Position = nextRecord.Offset;
-            return 1;
+            Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
+            reader.Close();
+            return Position > 0;
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the next logical record in the loaded Btrieve File
+        ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
-        public ushort StepPrevious()
+        public bool StepNext()
         {
-            var previousRecord = LoadedFile.Records.Where(x => x.Offset < Position).OrderByDescending(x => x.Offset)
-                .FirstOrDefault();
+            // TODO consider grabbing data at the same time and prepopulating the cache
+            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
+            try
+            {
+                if (!reader.Read())
+                    return false;
 
-            if (previousRecord == null)
-                return 0;
-
-            Position = previousRecord.Offset;
-            return 1;
+                Position = (uint)reader.GetInt32(0);
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
-        ///     Sets Position to the offset of the last Record in the loaded Btrieve File
+        ///     Sets Position to the offset of the previous logical record in the loaded Btrieve File.
         /// </summary>
-        /// <returns></returns>
-        public ushort StepLast()
+        public bool StepPrevious()
         {
-            var lastRecord = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault();
+            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
+                _connection);
+            using var reader = cmd.ExecuteReader();
+            try
+            {
+                if (!reader.Read())
+                    return false;
 
-            if (lastRecord == null)
-                return 0;
+                Position = (uint)reader.GetInt32(0);
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
 
-            Position = lastRecord.Offset;
-            return 1;
+        /// <summary>
+        ///     Sets Position to the offset of the last Record in the loaded Btrieve File.
+        /// </summary>
+        public bool StepLast()
+        {
+            // TODO consider grabbing data at the same time and prepopulating the cache
+            using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);
+            using var reader = cmd.ExecuteReader();
+
+            Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
+            reader.Close();
+            return Position > 0;
         }
 
         /// <summary>
         ///     Returns the Record at the current Position
         /// </summary>
         /// <returns></returns>
-        public byte[] GetRecord() => GetRecord(Position).Data;
+        public byte[] GetRecord() => GetRecord(Position)?.Data;
 
         /// <summary>
-        ///     Returns the Record at the specified Offset
+        ///     Returns the Record at the specified Offset, while also updating Position to match.
         /// </summary>
-        /// <param name="offset"></param>
-        /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset)
         {
-            var result = LoadedFile.Records.FirstOrDefault(x => x.Offset == offset);
+            Position = offset;
 
-            if (result == null)
-            {
-                _logger.Error($"No Record found at offset {offset}");
-            }
-            else
-            {
-                Position = offset;
-            }
+            if (_cache.TryGetValue(offset, out var record))
+                return record;
 
-            return result;
+            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
+            using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
+            try
+            {
+                if (!reader.Read())
+                    return null;
+
+                var data = new byte[RecordLength];
+                using var stream = reader.GetStream(0);
+                stream.Read(data, 0, data.Length);
+
+                record = new BtrieveRecord(offset, data);
+                _cache[offset] = record;
+                return record;
+            }
+            finally
+            {
+                reader.Close();
+            }
         }
 
         /// <summary>
-        ///     Updates the Record at the current Position
+        ///     Updates the Record at the current Position.
         /// </summary>
-        /// <param name="recordData"></param>
-        public void Update(byte[] recordData) => Update(Position, recordData);
+        public bool Update(byte[] recordData) => Update(Position, recordData);
 
         /// <summary>
-        ///     Updates the Record at the specified Offset
+        ///     Updates the Record at the specified Offset.
         /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="recordData"></param>
-        public void Update(uint offset, byte[] recordData)
+        public bool Update(uint offset, byte[] recordData)
         {
-            if (recordData.Length != LoadedFile.RecordLength)
-                throw new Exception($"Invalid Btrieve Record. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length}");
-
-            //Find the Record to Update
-            foreach (var r in LoadedFile.Records)
+            if (recordData.Length != RecordLength)
             {
-                if (r.Offset != offset) continue;
-
-                //Update It
-                r.Data = recordData;
-                break;
+                _logger.Warn(
+                    $"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
+                recordData = ForceSize(recordData, RecordLength);
             }
 
-            //Save the Change
-            SaveJson();
-        }
+            using var transaction = _connection.BeginTransaction();
+            using var updateCmd = new SqliteCommand()
+            {
+                Connection = _connection,
+                Transaction = transaction
+            };
 
-        /// <summary>
-        ///     Inserts a new Btrieve Record at the End of the currently loaded Btrieve File
-        /// </summary>
-        /// <param name="recordData"></param>
-        public void Insert(byte[] recordData)
-        {
-            if (recordData.Length != LoadedFile.RecordLength)
-                _logger.Warn($"Btrieve Record Size Mismatch. Expected Length {LoadedFile.RecordLength}, Actual Length {recordData.Length} ({LoadedFile})");
+            if (!InsertAutoincrementValues(transaction, recordData))
+            {
+                transaction.Rollback();
+                return false;
+            }
 
-            //Make it +1 of the last record loaded, or make it 1 if it's the first
-            var newRecordOffset = LoadedFile.Records.OrderByDescending(x => x.Offset).FirstOrDefault()?.Offset + 1 ?? 1;
+            var sb = new StringBuilder("UPDATE data_t SET data=@data, ");
+            sb.Append(
+                string.Join(", ", Keys.Values.Select(key => $"{key.SqliteKeyName}=@{key.SqliteKeyName}").ToList()));
+            sb.Append(" WHERE id=@id;");
+            updateCmd.CommandText = sb.ToString();
 
-            LoadedFile.Records.Add(new BtrieveRecord(newRecordOffset, recordData));
+            updateCmd.Parameters.AddWithValue("@id", offset);
+            updateCmd.Parameters.AddWithValue("@data", recordData);
+            foreach (var key in Keys.Values)
+                updateCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
+                    key.ExtractKeyInRecordToSqliteObject(recordData));
 
-#if DEBUG
-            _logger.Info($"Inserted Record into {LoadedFile.FileName} (Offset: {newRecordOffset})");
-#endif
-            SaveJson();
-        }
+            int queryResult;
+            try
+            {
+                queryResult = updateCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException ex)
+            {
+                _logger.Warn(ex, $"Failed to update record because {ex.Message}");
+                transaction.Rollback();
+                return false;
+            }
 
-        /// <summary>
-        ///     Deletes the Btrieve Record at the Current Position within the File
-        /// </summary>
-        /// <returns></returns>
-        public bool Delete()
-        {
-            if (LoadedFile.Records.Count == 0)
+            transaction.Commit();
+
+            if (queryResult == 0)
                 return false;
 
-            var recordsDeleted = LoadedFile.Records.RemoveAll(x => x.Offset == Position);
-
-            if(recordsDeleted > 1)
-                _logger.Warn($"{recordsDeleted} Records found at Offset {Position} were deleted");
-
-            return recordsDeleted > 0;
+            _cache[offset] = new BtrieveRecord(offset, recordData);
+            return true;
         }
 
         /// <summary>
-        ///     Deletes all records within the current Btrieve File
+        ///     Copies b into an array of size size, growing or shrinking as necessary.
         /// </summary>
-        public void DeleteAll()
+        private static byte[] ForceSize(byte[] b, int size)
         {
-            _logger.Warn($"Deleting all Records from {LoadedFileName} ({LoadedFile.RecordCount} records)");
-            LoadedFile.Records.Clear();
-            SaveJson();
+            var ret = new byte[size];
+            Array.Copy(b, 0, ret, 0, Math.Min(b.Length, size));
+            return ret;
         }
 
         /// <summary>
-        ///     Performs a Step based Seek on the loaded Btrieve File
+        ///     Searches for any zero-filled autoincremented memory in record and figures out
+        ///     the autoincremented value to use, inserting it back into record.
         /// </summary>
-        /// <param name="operationCode"></param>
-        /// <returns></returns>
-        public ushort Seek(EnumBtrieveOperationCodes operationCode)
+        private bool InsertAutoincrementValues(SqliteTransaction transaction, byte[] record)
         {
-            return operationCode switch
+            var zeroedKeys = AutoincrementedKeys.Values
+                .Where(key => key.KeyInRecordIsAllZero(record))
+                .Select(key => $"(MAX({key.SqliteKeyName}) + 1)")
+                .ToList();
+
+            if (zeroedKeys.Count == 0)
+                return true;
+
+            var sb = new StringBuilder("SELECT ");
+            sb.Append(string.Join(", ", zeroedKeys));
+            sb.Append(" FROM data_t;");
+
+            using var cmd = new SqliteCommand(sb.ToString(), _connection, transaction);
+            using var reader = cmd.ExecuteReader();
+            try
             {
-                EnumBtrieveOperationCodes.GetFirst => StepFirst(),
-                EnumBtrieveOperationCodes.GetNext => StepNext(),
-                EnumBtrieveOperationCodes.GetPrevious => StepPrevious(),
-                _ => throw new Exception($"Unsupported Btrieve Operation: {operationCode}")
-            };
+                if (!reader.Read())
+                {
+                    _logger.Error("Unable to query for MAX autoincremented values, unable to update");
+                    return false;
+                }
+
+                var i = 0;
+                foreach (var segment in AutoincrementedKeys.Values.SelectMany(x => x.Segments))
+                {
+                    var b = segment.Length switch
+                    {
+                        2 => BitConverter.GetBytes(reader.GetInt16(i++)),
+                        4 => BitConverter.GetBytes(reader.GetInt32(i++)),
+                        8 => BitConverter.GetBytes(reader.GetInt64(i++)),
+                        _ => throw new ArgumentException($"Key integer length not supported {segment.Length}"),
+                    };
+                    Array.Copy(b, 0, record, segment.Offset, segment.Length);
+                }
+                return true;
+            }
+            finally
+            {
+                reader.Close();
+            }
+        }
+
+        /// <summary>
+        ///     Inserts a new Btrieve Record.
+        /// </summary>
+        /// <return>Position of the newly inserted item, or 0 on failure</return>
+        public uint Insert(byte[] record)
+        {
+            if (record.Length != RecordLength)
+            {
+                _logger.Warn(
+                    $"Btrieve Record Size Mismatch TRUNCATING. Expected Length {RecordLength}, Actual Length {record.Length}");
+                record = ForceSize(record, RecordLength);
+            }
+
+            using var transaction = _connection.BeginTransaction();
+            using var insertCmd = new SqliteCommand() { Connection = _connection };
+            insertCmd.Transaction = transaction;
+
+            if (!InsertAutoincrementValues(transaction, record))
+            {
+                transaction.Rollback();
+                return 0;
+            }
+
+            var sb = new StringBuilder("INSERT INTO data_t(data, ");
+            sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+            sb.Append(") VALUES(@data, ");
+            sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+            sb.Append(");");
+            insertCmd.CommandText = sb.ToString();
+
+            insertCmd.Parameters.AddWithValue("@data", record);
+            foreach (var key in Keys.Values)
+            {
+                insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
+                    key.ExtractKeyInRecordToSqliteObject(record));
+            }
+
+            int queryResult;
+            try
+            {
+                queryResult = insertCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException ex)
+            {
+                _logger.Warn(ex, $"{FullPath}: Failed to insert record because {ex.Message}");
+                transaction.Rollback();
+                return 0;
+            }
+
+            var lastInsertRowId = Convert.ToUInt32(new SqliteCommand("SELECT last_insert_rowid()", _connection, transaction).ExecuteScalar());
+
+            transaction.Commit();
+
+            if (queryResult == 0)
+                return 0;
+
+            _cache[lastInsertRowId] = new BtrieveRecord(lastInsertRowId, record);
+            return lastInsertRowId;
+        }
+
+        /// <summary>
+        ///     Deletes the Btrieve Record at the Current Position within the File.
+        /// </summary>
+        public bool Delete()
+        {
+            _cache.Remove(Position);
+
+            using var cmd = new SqliteCommand($"DELETE FROM data_t WHERE id={Position};", _connection);
+            return cmd.ExecuteNonQuery() > 0;
+        }
+
+        /// <summary>
+        ///     Deletes all records within the current Btrieve File.
+        /// </summary>
+        public bool DeleteAll()
+        {
+            _cache.Clear();
+
+            Position = 0;
+
+            using var cmd = new SqliteCommand($"DELETE FROM data_t;", _connection);
+            return cmd.ExecuteNonQuery() > 0;
         }
 
         /// <summary>
         ///     Performs a Key Based Query on the loaded Btrieve File
         /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <param name="key"></param>
-        /// <param name="btrieveOperationCode"></param>
-        /// <param name="newQuery"></param>
-        /// <returns></returns>
-        public ushort SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode, bool newQuery = true)
+        /// <param name="keyNumber">Which key to query against</param>
+        /// <param name="key">The key data to query against</param>
+        /// <param name="btrieveOperationCode">Which query to perform</param>
+        /// <param name="newQuery">true to start a new query, false to continue a prior one</param>
+        public bool SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode,
+            bool newQuery = true)
         {
             BtrieveQuery currentQuery;
 
-            if (newQuery)
+            if (newQuery || PreviousQuery == null)
             {
                 currentQuery = new BtrieveQuery
                 {
-                    KeyOffset = LoadedFile.Keys[keyNumber].Segments[0].Offset,
-                    KeyDataType = LoadedFile.Keys[keyNumber].Segments[0].DataType,
-                    Key = key == null ? null : new byte[key.Length],
-                    KeyLength = GetKeyLength(keyNumber)
+                    Key = Keys[keyNumber],
+                    KeyData = key == null ? null : new byte[key.Length],
                 };
-
-                /*
-                 * Occasionally, zstring keys are marked with a length of 1, where as the length is actually
-                 * longer in the defined struct. Because of this, if the key passed in is longer than the definition,
-                 * we increase the size of the defined key in the query.
-                 */
-                if (key != null && key.Length != currentQuery.KeyLength)
-                {
-                    _logger.Warn($"Adjusting Query Key Size, Data Size {key.Length} differs from Defined Key Size {currentQuery.KeyLength}");
-                    currentQuery.KeyLength = (ushort)key.Length;
-                }
 
                 /*
                  * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
@@ -473,10 +576,11 @@ namespace MBBSEmu.Btrieve
                  */
                 if (key != null)
                 {
-                    Array.Copy(key.ToArray(), 0, currentQuery.Key, 0, key.Length);
+                    Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
                 }
 
-                //Update Previous for the next run
+                // Wipe any previous query we have and store this new query
+                PreviousQuery?.Dispose();
                 PreviousQuery = currentQuery;
             }
             else
@@ -489,629 +593,390 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
                 EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirstNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
 
-                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetFirst when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyFirstAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirstNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
 
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyNextAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyNextAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNextNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+                EnumBtrieveOperationCodes.GetKeyGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
 
-                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreaterNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
+                EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
 
-                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetGreater when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyGreaterAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreaterNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreaterOrEqualNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLessOrEqualNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLessNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLess when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLessAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLessNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetLast => GetByKeyLastNumeric(currentQuery),
-
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.Zstring => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast when currentQuery.KeyDataType == EnumKeyDataType.String => GetByKeyLastAlphabetical(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLastNumeric(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
         }
 
         /// <summary>
-        ///     Returns the Record at the specified position
+        ///     Returns the Record at the specified position.
         /// </summary>
-        /// <param name="absolutePosition"></param>
-        /// <returns></returns>
         public ReadOnlySpan<byte> GetRecordByOffset(uint absolutePosition)
         {
-            foreach (var record in LoadedFile.Records)
-            {
-                if (record.Offset == absolutePosition)
-                {
-                    Position = record.Offset;
-                    return record.Data;
-                }
-            }
-
-            throw new Exception($"No Btrieve Record located at Offset {absolutePosition}");
+            Position = absolutePosition;
+            return GetRecord(absolutePosition).ToSpan();
         }
 
         /// <summary>
         ///     Returns the defined Data Length of the specified Key
         /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <returns></returns>
-        public ushort GetKeyLength(ushort keyNumber) => (ushort)LoadedFile.Keys[keyNumber].Segments.Sum(x => x.Length);
+        public ushort GetKeyLength(ushort keyNumber) => (ushort)Keys[keyNumber].Length;
 
         /// <summary>
-        ///     Returns the defined Key Type of the specified Key
+        ///     Updates Position to the next logical position based on the sorted key query, always
+        ///     ascending in sort order.
         /// </summary>
-        /// <param name="keyNumber"></param>
-        /// <returns></returns>
-        public EnumKeyDataType GetKeyType(ushort keyNumber) => LoadedFile.Keys[keyNumber].Segments[0].DataType;
+        private bool GetByKeyNext(BtrieveQuery query) => NextReader(query);
 
         /// <summary>
-        ///     Retrieves the First Record, numerically, by the specified key
+        ///     Calls NextReader with an always-true query matcher.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyFirstAlphabetical(BtrieveQuery query)
-        {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = "ZZZZZZZZZZZZZZZZZ"; //hacky way of ensuring the first record we find is before this alphabetically :P
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, lowestRecordKeyValue) < 0)
-                {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = (uint)lowestRecordOffset;
-            return 1;
-        }
+        private bool NextReader(BtrieveQuery query) => NextReader(query, (query, record) => true);
 
         /// <summary>
-        ///     Retrieves the First Record, numerically, by the specified key
-        /// </summary>
-        /// <param name="query"></param>
-        private ushort GetByKeyFirstNumeric(BtrieveQuery query)
-        {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = uint.MaxValue;
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (recordKeyValue < lowestRecordKeyValue)
-                {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate First record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = lowestRecordOffset;
-            return 1;
-        }
-
-        /// <summary>
-        ///     GetNext for Non-Numeric Key Types
+        ///     Updates Position based on the value of current Sqlite cursor.
         ///
-        ///     Search for the next logical record with a matching Key that comes after the current Position
+        ///     <para/>If the query has ended, it invokes query.ContinuationReader to get the next
+        ///     Sqlite cursor and continues from there.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyNextAlphabetical(BtrieveQuery query)
+        /// <param name="query">Current query</param>
+        /// <param name="matcher">Delegate function for verifying results. If this matcher returns
+        ///     false, the query is aborted and returns no more results.</param>
+        /// <returns>true if the Sqlite cursor returned a valid item</returns>
+        private bool NextReader(BtrieveQuery query, QueryMatcher matcher)
         {
-            //Searching All Records AFTER current for the given key
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-
-            foreach (var r in recordsToSearch)
+            if (query.Reader == null || !query.Reader.Read())
             {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
+                query?.Reader?.Dispose();
+                query.Reader = null;
 
-                if (recordKey.SequenceEqual(query.Key))
+                if (query.ContinuationReader == null)
+                    return false;
+
+                query.Reader = query.ContinuationReader(query);
+                if (query.Reader == null || !query.Reader.Read())
                 {
-                    Position = r.Offset;
-                    return 1;
+                    query?.Reader?.Dispose();
+                    query.Reader = null;
+                    return false;
                 }
             }
 
-            //Unable to find record with matching key value
-            return 0;
+            query.Position = (uint)query.Reader.DataReader.GetInt32(0);
+
+            var data = new byte[RecordLength];
+            using var stream = query.Reader.DataReader.GetStream(1);
+            stream.Read(data, 0, data.Length);
+
+            var record = new BtrieveRecord(query.Position, data);
+
+            // we have it, might as well cache it
+            _cache[query.Position] = record;
+
+            if (!matcher.Invoke(query, record))
+                return false;
+
+            Position = query.Position;
+            return true;
         }
 
         /// <summary>
-        ///     GetNext for Numeric key types
-        ///
-        ///     Key Value needs to be incremented, then the specific key needs to be found
+        ///     Returns true if the retrievedRecord has equal keyData for the specified key.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyNextNumeric(BtrieveQuery query)
+        private static bool RecordMatchesKey(BtrieveRecord retrievedRecord, BtrieveKey key, byte[] keyData)
         {
-            //Set Query Value to Current Value
-            query.Key = (new ReadOnlySpan<byte>(GetRecord()).Slice(query.KeyOffset, query.KeyLength)).ToArray();
+            var keyA = key.ExtractKeyDataFromRecord(retrievedRecord.Data);
+            var keyB = keyData;
 
-            //Increment the Value & Save It
-            switch (query.KeyLength)
+            switch (key.PrimarySegment.DataType)
             {
-                case 2:
-                    query.Key = BitConverter.GetBytes((ushort)(BitConverter.ToUInt16(query.Key) + 1));
-                    break;
-                case 4:
-                    query.Key = BitConverter.GetBytes(BitConverter.ToUInt32(query.Key) + 1);
-                    break;
+                case EnumKeyDataType.String:
+                case EnumKeyDataType.Lstring:
+                case EnumKeyDataType.Zstring:
+                    return string.Equals(BtrieveKey.ExtractNullTerminatedString(keyA),
+                        BtrieveKey.ExtractNullTerminatedString(keyB));
                 default:
-                    throw new Exception($"Unsupported Key Length: {query.KeyLength} ({LoadedFileName})");
+                    return keyA.SequenceEqual(keyB);
             }
-
-            return GetByKeyEqual(query);
         }
 
         /// <summary>
-        ///     Gets the First Logical Record for the given key
+        ///     Gets the first equal record for the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyEqual(BtrieveQuery query)
+        private bool GetByKeyEqual(BtrieveQuery query)
         {
-            //Searching All Records for the Given Key
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
+            QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
 
-            foreach (var r in recordsToSearch)
+            var sqliteObject = query.Key.KeyDataToSqliteObject(query.KeyData);
+            var command = new SqliteCommand() { Connection = _connection };
+            if (sqliteObject == null)
             {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-
-                if (recordKey.SequenceEqual(query.Key))
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
+                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} IS NULL";
+            }
+            else
+            {
+                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value ORDER BY {query.Key.SqliteKeyName} ASC";
+                command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
             }
 
-            //Unable to find record with matching key value
-            return 0;
+            query.Reader = new BtrieveQuery.SqliteReader()
+            {
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            return NextReader(query, initialMatcher);
         }
 
         /// <summary>
-        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        ///     Gets the first record greater or greater-than-equal-to than the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyGreaterAlphabetical(BtrieveQuery query)
+        /// <param name="query">The query</param>
+        /// <param name="oprator">Which operator to use, valid values are ">" and ">="</param>
+        private bool GetByKeyGreater(BtrieveQuery query, string oprator)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
+            var command = new SqliteCommand(
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC",
+                _connection);
+            command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
-            //Loop through each record
-            foreach (var r in recordsToSearch)
+            query.Reader = new BtrieveQuery.SqliteReader()
             {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, currentRecordKey) > 0)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            return NextReader(query);
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Greater Than or Equal To the specified key
+        ///     Gets the first record less or less-than-equal-to than the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyGreaterOrEqualNumeric(BtrieveQuery query)
+        /// <param name="query">The query</param>
+        /// <param name="oprator">Which operator to use, valid values are "<" and "<="</param>
+        private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
+            // this query finds the first item less than
+            var command = new SqliteCommand(
+                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
+                _connection);
+            command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
-            //Get the Query Key Value
-            switch (query.KeyLength)
+            query.Reader = new BtrieveQuery.SqliteReader()
             {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            // and this continuation query allows for increasing subsequent GetNext calls
+            query.ContinuationReader = (thisQuery) =>
             {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
+                var command = new SqliteCommand(
+                    $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value AND id != {thisQuery.Position} ORDER BY {query.Key.SqliteKeyName} ASC",
+                    _connection);
+                command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
-                switch (query.KeyLength)
+                thisQuery.ContinuationReader = null;
+                return new BtrieveQuery.SqliteReader()
                 {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue >= queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
+                    DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                    Command = command
+                };
+            };
+            return NextReader(query);
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Less Than or Equal To the specified key
+        ///     Gets the first record sorted by the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLessOrEqualNumeric(BtrieveQuery query)
+        private bool GetByKeyFirst(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
+            var command = new SqliteCommand(
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
 
-            //Get the Query Key Value
-            switch (query.KeyLength)
+            query.Reader = new BtrieveQuery.SqliteReader()
             {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue <= queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            return NextReader(query);
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Greater Than the specified key
+        ///     Gets the last record sorted by the given key in query.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyGreaterNumeric(BtrieveQuery query)
+        private bool GetByKeyLast(BtrieveQuery query)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
+            var command = new SqliteCommand(
+                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
+                _connection);
 
-            //Get the Query Key Value
-            switch (query.KeyLength)
+            query.Reader = new BtrieveQuery.SqliteReader()
             {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
-            }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue > queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            return NextReader(query);
         }
 
         /// <summary>
-        ///     Retrieves the Next Record, Alphabetically, by the specified key
+        ///     Creates the Sqlite data_t table.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLessAlphabetical(BtrieveQuery query)
+        private void CreateSqliteDataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            var currentRecordKey = Encoding.ASCII.GetString(query.Key).TrimEnd('\0');
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
+            var sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
+            foreach (var key in btrieveFile.Keys.Values)
             {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, currentRecordKey) < 0)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
+                sb.Append($", {key.SqliteKeyName} {key.SqliteColumnType()}");
             }
 
-            return 0;
+            sb.Append(");");
+
+            using var cmd = new SqliteCommand(sb.ToString(), connection);
+            cmd.ExecuteNonQuery();
         }
 
         /// <summary>
-        ///     Search for the next logical record after the current position with a Key value that is Less Than the specified key
+        ///     Creates the Sqlite data_t indices.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLessNumeric(BtrieveQuery query)
+        private void CreateSqliteDataIndices(SqliteConnection connection, BtrieveFile btrieveFile)
         {
-            //Only searching Records AFTER the current one in logical order
-            var recordsToSearch = LoadedFile.Records.Where(x => x.Offset > Position).OrderBy(x => x.Offset);
-            uint queryKeyValue = 0;
-
-            //Get the Query Key Value
-            switch (query.KeyLength)
+            foreach (var key in btrieveFile.Keys.Values)
             {
-                case 0: //null -- so just treat it as 16-bit
-                    queryKeyValue = 0;
-                    break;
-                case 2:
-                    queryKeyValue = BitConverter.ToUInt16(query.Key);
-                    break;
-                case 4:
-                    queryKeyValue = BitConverter.ToUInt32(query.Key);
-                    break;
+                var possiblyUnique = key.IsUnique ? "UNIQUE" : "";
+                using var command = new SqliteCommand(
+                    $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})",
+                    _connection);
+                command.ExecuteNonQuery();
             }
-
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
-
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                if (recordKeyValue < queryKeyValue)
-                {
-                    Position = r.Offset;
-                    return 1;
-                }
-            }
-
-            return 0;
         }
 
         /// <summary>
-        ///     Retrieves the Last Record, Alphabetically, by the specified key
+        ///     Fills in the Sqlite data_t table with all the data from btrieveFile.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLastAlphabetical(BtrieveQuery query)
+        private void PopulateSqliteDataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
-            //Since we're doing FIRST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var lowestRecordOffset = uint.MaxValue;
-            var lowestRecordKeyValue = "\0"; //hacky way of ensuring the first record we find is before this alphabetically :P
-
-            //Loop through each record
-            foreach (var r in recordsToSearch)
+            using var transaction = connection.BeginTransaction();
+            foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
             {
-                var recordKeyValue = Encoding.ASCII.GetString(r.ToSpan().Slice(query.KeyOffset, query.KeyLength)).TrimEnd('\0');
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (string.Compare(recordKeyValue, lowestRecordKeyValue) > 0)
+                using var insertCmd = new SqliteCommand()
                 {
-                    lowestRecordOffset = r.Offset;
-                    lowestRecordKeyValue = recordKeyValue;
+                    Connection = _connection,
+                    Transaction = transaction
+                };
+
+                var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                sb.Append(") VALUES(@data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                sb.Append(");");
+
+                insertCmd.CommandText = sb.ToString();
+                insertCmd.Parameters.AddWithValue("@data", record.Data);
+                foreach (var key in btrieveFile.Keys.Values)
+                    insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
+                        key.ExtractKeyInRecordToSqliteObject(record.Data));
+
+                try
+                {
+                    insertCmd.ExecuteNonQuery();
+                }
+                catch (SqliteException ex)
+                {
+                    _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
                 }
             }
 
-            //No first??? Throw 0
-            if (lowestRecordOffset == uint.MaxValue)
-            {
-                _logger.Warn($"Unable to locate Last record by key {LoadedFileName}:{query.KeyOffset}:{query.KeyLength}");
-                return 0;
-            }
-#if DEBUG
-            _logger.Info($"Offset set to {lowestRecordOffset}");
-#endif
-            Position = lowestRecordOffset;
-            return 1;
+            transaction.Commit();
         }
 
         /// <summary>
-        ///     Search for the Last logical record after the current position with the specified Key value
+        ///     Creates the Sqlite metadata_t table.
         /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        private ushort GetByKeyLastNumeric(BtrieveQuery query)
+        private void CreateSqliteMetadataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
-            //Since we're doing LAST, we want to search all available records
-            var recordsToSearch = LoadedFile.Records.OrderBy(x => x.Offset);
-            var highestRecordOffset = uint.MaxValue;
-            var highestRecordKeyValue = -1;
+            const string statement =
+                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
 
-            //Loop through each record
-            foreach (var r in recordsToSearch)
-            {
-                var recordKey = r.ToSpan().Slice(query.KeyOffset, query.KeyLength);
-                uint recordKeyValue = 0;
+            using var cmd = new SqliteCommand(statement, connection);
+            cmd.ExecuteNonQuery();
 
-                switch (query.KeyLength)
-                {
-                    case 0: //null -- so just treat it as 16-bit
-                        recordKeyValue = 0;
-                        break;
-                    case 2:
-                        recordKeyValue = BitConverter.ToUInt16(recordKey);
-                        break;
-                    case 4:
-                        recordKeyValue = BitConverter.ToUInt32(recordKey);
-                        break;
-                }
-
-                //Compare the value of the key, we're looking for the lowest
-                //If it's lower than the lowest we've already compared, save the offset
-                if (recordKeyValue > highestRecordKeyValue)
-                {
-                    highestRecordOffset = r.Offset;
-                    highestRecordKeyValue = (int)recordKeyValue;
-                }
-            }
-
-            //No first??? Throw 0
-            if (highestRecordOffset == uint.MaxValue)
-                return 0;
-#if DEBUG
-            _logger.Info($"Offset set to {highestRecordOffset}");
-#endif
-            Position = highestRecordOffset;
-            return 1;
+            using var insertCmd = new SqliteCommand() { Connection = connection };
+            cmd.CommandText =
+                "INSERT INTO metadata_t(record_length, physical_record_length, page_length) VALUES(@record_length, @physical_record_length, @page_length)";
+            cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
+            cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
+            cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
+            cmd.ExecuteNonQuery();
         }
 
         /// <summary>
-        ///     Writes a similar file as BUTIL -RECOVER to verify records loaded from recovery process match records loaded by MBBSEmu
+        ///     Creates the Sqlite keys_t table.
         /// </summary>
-        /// <param name="file"></param>
-        /// <param name="records"></param>
-        public static void WriteBtrieveRecoveryFile(string file, IEnumerable<BtrieveRecord> records)
+        private void CreateSqliteKeysTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
-            using var outputFile = File.Open(file, FileMode.Create);
+            const string statement =
+                "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, null_value INTEGER NOT NULL, UNIQUE(number, segment))";
 
-            foreach (var r in records)
+            using var cmd = new SqliteCommand(statement, connection);
+            cmd.ExecuteNonQuery();
+
+            using var insertCmd = new SqliteCommand() { Connection = connection };
+            cmd.CommandText =
+                "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
+
+            foreach (var keyDefinition in btrieveFile.Keys.SelectMany(key => key.Value.Segments))
             {
-                outputFile.Write(Encoding.ASCII.GetBytes($"{r.Data.Length},"));
-                outputFile.Write(r.Data);
-                outputFile.Write(new byte[] { 0xD, 0xA });
+                // only grab the first
+                cmd.Parameters.Clear();
+                cmd.Parameters.AddWithValue("@number", keyDefinition.Number);
+                cmd.Parameters.AddWithValue("@segment", keyDefinition.SegmentIndex);
+                cmd.Parameters.AddWithValue("@attributes", keyDefinition.Attributes);
+                cmd.Parameters.AddWithValue("@data_type", keyDefinition.DataType);
+                cmd.Parameters.AddWithValue("@offset", keyDefinition.Offset);
+                cmd.Parameters.AddWithValue("@length", keyDefinition.Length);
+                cmd.Parameters.AddWithValue("@null_value", keyDefinition.NullValue);
+
+                cmd.ExecuteNonQuery();
             }
-            outputFile.WriteByte(0x1A);
-            outputFile.Close();
         }
 
+        /// <summary>
+        ///     Creates the Sqlite database from btrieveFile.
+        /// </summary>
+        private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
+        {
+            _logger.Warn($"Creating sqlite db {fullpath}");
+
+            FullPath = fullpath;
+
+            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
+            {
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                DataSource = fullpath,
+            }.ToString();
+
+            _connection = new SqliteConnection(connectionString);
+            _connection.Open();
+
+            RecordLength = btrieveFile.RecordLength;
+            PageLength = btrieveFile.PageLength;
+            Keys = btrieveFile.Keys;
+            foreach (var key in btrieveFile.Keys.Where(key =>
+                key.Value.PrimarySegment.DataType == EnumKeyDataType.AutoInc))
+            {
+                AutoincrementedKeys.Add(key.Value.PrimarySegment.Number, key.Value);
+            }
+
+            CreateSqliteMetadataTable(_connection, btrieveFile);
+            CreateSqliteKeysTable(_connection, btrieveFile);
+            CreateSqliteDataTable(_connection, btrieveFile);
+            CreateSqliteDataIndices(_connection, btrieveFile);
+            PopulateSqliteDataTable(_connection, btrieveFile);
+        }
     }
 }
