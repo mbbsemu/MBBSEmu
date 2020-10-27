@@ -653,15 +653,10 @@ namespace MBBSEmu.HostProcess
                 {
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > (value.Delay * 1000))
                     {
-                        var watch = new Stopwatch();
-                        watch.Start();
 #if DEBUG
                         Logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
 #endif
                         Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{key}"], ushort.MaxValue);
-
-                        watch.Stop();
-                        Logger.Info($"RTKICK took {watch.ElapsedMilliseconds}");
 
                         value.Elapsed.Stop();
                         value.Executed = true;
