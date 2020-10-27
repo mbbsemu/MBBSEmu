@@ -123,13 +123,13 @@ namespace MBBSEmu.Btrieve
         ///     Returns an object that can be used for inserting into the data_t key column based on
         ///     the type of this key, extracting from data.
         /// </summary>
-        public object ExtractKeyInRecordToSQLiteObject(ReadOnlySpan<byte> data) => KeyDataToSQLiteObject(ExtractKeyDataFromRecord(data));
+        public object ExtractKeyInRecordToSqliteObject(ReadOnlySpan<byte> data) => KeyDataToSqliteObject(ExtractKeyDataFromRecord(data));
 
         /// <summary>
         ///     Returns an object that can be used for inserting into the data_t key column based on
         ///     the type of this key from keyData.
         /// </summary>
-        public object KeyDataToSQLiteObject(ReadOnlySpan<byte> keyData)
+        public object KeyDataToSqliteObject(ReadOnlySpan<byte> keyData)
         {
             if (IsNullable && IsAllSameByteValue(keyData, PrimarySegment.NullValue))
             {
