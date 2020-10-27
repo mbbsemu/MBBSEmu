@@ -212,10 +212,10 @@ namespace MBBSEmu.HostProcess
 
                             //Redisplay Main Menu prompt after global if session is at Main Menu
                             if (session.SessionState == EnumSessionState.MainMenuInput)
-                            { 
-                                session.SessionState = EnumSessionState.MainMenuInputDisplay;   
+                            {
+                                session.SessionState = EnumSessionState.MainMenuInputDisplay;
                             }
-                            
+
                             continue;
                         }
 
@@ -652,6 +652,7 @@ namespace MBBSEmu.HostProcess
                         Logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
 #endif
                         Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{key}"], ushort.MaxValue);
+
                         value.Elapsed.Stop();
                         value.Executed = true;
                         module.EntryPoints.Remove($"RTKICK-{key}");
