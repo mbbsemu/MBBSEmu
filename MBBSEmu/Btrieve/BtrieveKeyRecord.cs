@@ -9,6 +9,7 @@ namespace MBBSEmu.Btrieve
     ///           It is kept here as additional information for anyone doing research on the
     ///           Btrieve file Format.
     /// </summary>
+    [Obsolete("BtrieveKeyRecord is obsolete, do not use.", true)]
     public class BtrieveKeyRecord
     {
         public byte[] Data { get; set; }
@@ -23,7 +24,7 @@ namespace MBBSEmu.Btrieve
                 //Swap Endian
                 return ((offsetValue >> 16) & 0xFFFF) | ((offsetValue << 16) & 0xFFFF0000);
             }
-        } 
+        }
 
         public byte[] Key
         {

@@ -1041,8 +1041,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected BtrieveFileProcessor BtrieveGetProcessor(IntPtr16 btrievePointer) =>
             _globalCache.Get<BtrieveFileProcessor>(BtrieveCacheKey(btrievePointer));
 
-        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer) =>
-            _globalCache.Remove(BtrieveCacheKey(btrievePointer));
+        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer)
+        {
+            var key = BtrieveCacheKey(btrievePointer);
+            
+            if (_globalCache.TryGet<BtrieveFileProcessor>(key, out var processor))
+            {
+                processor.Dispose();
+                return _globalCache.Remove(key);
+            }
+
+            return false;
+        }
 
         /// <summary>
         ///     Generates a Unique Key to be used for saving a BtrieveFileProcessor mapped to its pointer
@@ -1069,7 +1079,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Some Btrieve Processors can be declared elsewhere in the system, so verify the processor doesn't already exist before creating
             if (!_globalCache.ContainsKey($"{variableName}-PROCESSOR"))
-                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, fileName, Directory.GetCurrentDirectory()));
+                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, Directory.GetCurrentDirectory(), fileName));
 
             //Setup the Pointer to the Global Address -- ensuring each module is referencing the same Pointer & Processor
             if (!_globalCache.ContainsKey($"{variableName}-POINTER"))

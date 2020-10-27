@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Assets\BBSGEN.EMU" />
-    <None Remove="Assets\BBSUSR.EMU" />
+    <None Remove="Assets\BBSGEN.DB" />
+    <None Remove="Assets\BBSUSR.DB" />
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\crashDetailsAPI.txt" />
     <None Remove="Assets\login.ans" />
@@ -33,8 +33,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Assets\BBSGEN.EMU" />
-    <EmbeddedResource Include="Assets\BBSUSR.EMU" />
+    <EmbeddedResource Include="Assets\BBSGEN.DB" />
+    <EmbeddedResource Include="Assets\BBSUSR.DB" />
     <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
@@ -59,14 +59,14 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.35" />
-    <PackageReference Include="Iced" Version="1.8.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="5.0.0-preview.5.20278.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0-preview.5.20278.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0-preview.5.20278.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0-preview.5.20278.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.0-preview.5.20278.1" />
+    <PackageReference Include="Iced" Version="1.9.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="5.0.0-rc.2.20475.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0-rc.2.20475.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0-rc.2.20475.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0-rc.2.20475.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.0-rc.2.20475.5" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="NLog" Version="4.7.4" />
+    <PackageReference Include="NLog" Version="4.7.5" />
   </ItemGroup>
 
   <ItemGroup>
