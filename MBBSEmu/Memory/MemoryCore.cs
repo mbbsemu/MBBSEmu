@@ -4,7 +4,7 @@ using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Runtime.CompilerServices;
 using Decoder = Iced.Intel.Decoder;
 
 
@@ -18,26 +18,27 @@ namespace MBBSEmu.Memory
     public class MemoryCore : IMemoryCore
     {
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
-        private readonly Dictionary<ushort, byte[]> _memorySegments;
-        private readonly Dictionary<ushort, Segment> _segments;
-        private readonly Dictionary<ushort, Dictionary<ushort, Instruction>> _decompiledSegments;
+        private readonly byte[][] _memorySegments = new byte[0x10000][];
+        private readonly Segment[] _segments = new Segment[0x10000];
+        private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
 
         private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
         private IntPtr16 _currentVariablePointer;
         private const ushort VARIABLE_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
         private IntPtr16 _currentRealModePointer;
         private const ushort REALMODE_BASE_SEGMENT = 0x2000; //0x2000->0x2FFF == 256MB
-
-        private ushort _currentCodeSegment;
-        private Dictionary<ushort, Instruction> _currentCodeSegmentInstructions;
-
         private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
+
+        /// <summary>
+        ///     Default Compiler Hints for use on methods within the MemoryCore
+        ///
+        ///     Works fastest with just AggressiveOptimization. Enabling AggressiveInlining slowed
+        ///     down the code.
+        /// </summary>
+        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         public MemoryCore()
         {
-            _memorySegments = new Dictionary<ushort, byte[]>();
-            _segments = new Dictionary<ushort, Segment>();
-            _decompiledSegments = new Dictionary<ushort, Dictionary<ushort, Instruction>>();
             _variablePointerDictionary = new Dictionary<string, IntPtr16>();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
             _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
@@ -52,9 +53,10 @@ namespace MBBSEmu.Memory
         /// </summary>
         public void Clear()
         {
-            _memorySegments.Clear();
-            _segments.Clear();
-            _decompiledSegments.Clear();
+            Array.Clear(_memorySegments, 0, _memorySegments.Length);
+            Array.Clear(_segments, 0, _segments.Length);
+            Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
+
             _variablePointerDictionary.Clear();
             _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
             _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
@@ -172,7 +174,7 @@ namespace MBBSEmu.Memory
         /// <param name="size"></param>
         public void AddSegment(ushort segmentNumber, int size = 0x10000)
         {
-            if (_memorySegments.ContainsKey(segmentNumber))
+            if (_memorySegments[segmentNumber] != null)
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
             _memorySegments[segmentNumber] = new byte[size];
@@ -184,15 +186,9 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         public void RemoveSegment(ushort segment)
         {
-            _memorySegments.Remove(segment);
-            _segments.Remove(segment);
-            _decompiledSegments.Remove(segment);
-
-            if (_currentCodeSegment == segment)
-            {
-                _currentCodeSegment = 0;
-                _currentCodeSegmentInstructions.Clear();
-            }
+            _memorySegments[segment] = null;
+            _segments[segment] = null;
+            _decompiledSegments[segment] = null;
         }
 
         /// <summary>
@@ -206,7 +202,7 @@ namespace MBBSEmu.Memory
 
             //Add the data to memory and record the segment offset in memory
             Array.Copy(segment.Data, 0, segmentMemory, 0, segment.Data.Length);
-            _memorySegments.Add(segment.Ordinal, segmentMemory);
+            _memorySegments[segment.Ordinal] = segmentMemory;
 
             if (segment.Flags.Contains(EnumSegmentFlags.Code))
             {
@@ -221,10 +217,10 @@ namespace MBBSEmu.Memory
                     decoder.Decode(out instructionList.AllocUninitializedElement());
                 }
 
-                _decompiledSegments.Add(segment.Ordinal, new Dictionary<ushort, Instruction>());
+                _decompiledSegments[segment.Ordinal] = new Instruction[0x10000];
                 foreach (var i in instructionList)
                 {
-                    _decompiledSegments[segment.Ordinal].Add(i.IP16, i);
+                    _decompiledSegments[segment.Ordinal][i.IP16] = i;
                 }
             }
 
@@ -238,10 +234,10 @@ namespace MBBSEmu.Memory
         /// <param name="segmentInstructionList"></param>
         public void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList)
         {
-            _decompiledSegments.Add(segmentNumber, new Dictionary<ushort, Instruction>());
+            _decompiledSegments[segmentNumber] = new Instruction[0x10000];
             foreach (var i in segmentInstructionList)
             {
-                _decompiledSegments[segmentNumber].Add(i.IP16, i);
+                _decompiledSegments[segmentNumber][i.IP16] = i;
             }
         }
 
@@ -250,6 +246,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="segmentNumber"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public Segment GetSegment(ushort segmentNumber) => _segments[segmentNumber];
 
         /// <summary>
@@ -257,7 +254,8 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="segmentNumber"></param>
         /// <returns></returns>
-        public bool HasSegment(ushort segmentNumber) => _memorySegments.ContainsKey(segmentNumber);
+        [MethodImpl(CompilerOptimizations)]
+        public bool HasSegment(ushort segmentNumber) => _memorySegments[segmentNumber] != null;
 
         /// <summary>
         ///     Returns the decompiled instruction from the specified segment:pointer
@@ -265,27 +263,22 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer)
-        {
-            //Prevents constant hash lookups for instructions from the same segment
-            if (_currentCodeSegment != segment)
-            {
-                _currentCodeSegment = segment;
-                _currentCodeSegmentInstructions = _decompiledSegments[segment];
-            }
+        [MethodImpl(CompilerOptimizations)]
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
+            _decompiledSegments[segment][instructionPointer];
 
+        public Instruction Recompile(ushort segment, ushort instructionPointer)
+        {
             //If it wasn't able to decompile linear through the data, there might have been
             //data in the path of the code that messed up decoding, in this case, we grab up to
             //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            if (!_currentCodeSegmentInstructions.TryGetValue(instructionPointer, out var outputInstruction))
-            {
-                Span<byte> segmentData = _segments[segment].Data;
-                var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
-                var decoder = Decoder.Create(16, reader);
-                decoder.IP = instructionPointer;
-                decoder.Decode(out outputInstruction);
-            }
+            Span<byte> segmentData = _segments[segment].Data;
+            var reader = new ByteArrayCodeReader(segmentData.Slice(instructionPointer, 6).ToArray());
+            var decoder = Decoder.Create(16, reader);
+            decoder.IP = instructionPointer;
+            decoder.Decode(out var outputInstruction);
 
+            _decompiledSegments[segment][instructionPointer] = outputInstruction;
             return outputInstruction;
         }
 
@@ -294,6 +287,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public byte GetByte(IntPtr16 pointer) => GetByte(pointer.Segment, pointer.Offset);
 
         /// <summary>
@@ -302,19 +296,15 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
-        public byte GetByte(ushort segment, ushort offset)
-        {
-            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
-                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
-
-            return selectedSegment[offset];
-        }
+        [MethodImpl(CompilerOptimizations)]
+        public byte GetByte(ushort segment, ushort offset) => _memorySegments[segment][offset];
 
         /// <summary>
         ///     Returns an unsigned byte from the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ushort GetWord(string variableName) => GetWord(GetVariablePointer(variableName));
 
         /// <summary>
@@ -322,6 +312,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         /// <summary>
@@ -330,19 +321,15 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
-        public ushort GetWord(ushort segment, ushort offset)
-        {
-            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
-                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
-
-            return BitConverter.ToUInt16(selectedSegment, offset);
-        }
+        [MethodImpl(CompilerOptimizations)]
+        public ushort GetWord(ushort segment, ushort offset) => BitConverter.ToUInt16(_memorySegments[segment], offset);
 
         /// <summary>
         ///     Returns a pointer stored at the specified pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
 
         /// <summary>
@@ -350,6 +337,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public IntPtr16 GetPointer(string variableName) => new IntPtr16(GetArray(GetVariablePointer(variableName), 4));
 
         /// <summary>
@@ -358,6 +346,7 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
 
         /// <summary>
@@ -366,6 +355,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="count"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
             GetArray(pointer.Segment, pointer.Offset, count);
 
@@ -375,6 +365,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="count"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetArray(string variableName, ushort count) =>
             GetArray(GetVariablePointer(variableName), count);
 
@@ -385,14 +376,9 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
-        {
-            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
-                throw new ArgumentOutOfRangeException($"Unable to locate {segment:X4}:{offset:X4}");
-
-            ReadOnlySpan<byte> segmentSpan = selectedSegment;
-            return segmentSpan.Slice(offset, count);
-        }
+        [MethodImpl(CompilerOptimizations)]
+        public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count) =>
+            _memorySegments[segment].AsSpan().Slice(offset, count);
 
         /// <summary>
         ///     Returns an array containing the cstring stored at the specified pointer
@@ -400,6 +386,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="stripNull"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false) =>
             GetString(pointer.Segment, pointer.Offset, stripNull);
 
@@ -409,6 +396,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="stripNull"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) =>
             GetString(GetVariablePointer(variableName), stripNull);
 
@@ -421,13 +409,7 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         {
-            if (!_memorySegments.TryGetValue(segment, out var selectedSegment))
-            {
-                _logger.Error($"Invalid Pointer -> {segment:X4}:{offset:X4}");
-                return Encoding.ASCII.GetBytes("Invalid Pointer");
-            }
-
-            ReadOnlySpan<byte> segmentSpan = selectedSegment;
+            ReadOnlySpan<byte> segmentSpan = _memorySegments[segment];
 
             for (var i = offset; i < ushort.MaxValue; i++)
             {
@@ -443,6 +425,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetByte(string variableName, byte value) => SetByte(GetVariablePointer(variableName), value);
 
         /// <summary>
@@ -450,6 +433,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetByte(IntPtr16 pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
@@ -458,16 +442,15 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
-        public void SetByte(ushort segment, ushort offset, byte value)
-        {
-            _memorySegments[segment][offset] = value;
-        }
+        [MethodImpl(CompilerOptimizations)]
+        public void SetByte(ushort segment, ushort offset, byte value) =>_memorySegments[segment][offset] = value;
 
         /// <summary>
         ///     Sets the specified word at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
@@ -476,6 +459,7 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetWord(ushort segment, ushort offset, ushort value)
         {
             _ = new Span<byte>(_memorySegments[segment])
@@ -489,6 +473,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetWord(string variableName, ushort value) => SetWord(GetVariablePointer(variableName), value);
 
         /// <summary>
@@ -496,9 +481,11 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="array"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) =>
             SetArray(pointer.Segment, pointer.Offset, array);
 
+        [MethodImpl(CompilerOptimizations)]
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
             var destinationSpan = new Span<byte>(_memorySegments[segment]);
@@ -513,6 +500,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="array"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetArray(string variableName, ReadOnlySpan<byte> value) =>
             SetArray(GetVariablePointer(variableName), value);
 
@@ -521,6 +509,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.Data);
 
         /// <summary>
@@ -528,6 +517,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetPointer(string variableName, IntPtr16 value) =>
             SetArray(GetVariablePointer(variableName), value.Data);
 
@@ -537,6 +527,7 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetPointer(ushort segment, ushort offset, IntPtr16 value) => SetArray(segment, offset, value.Data);
 
         /// <summary>
@@ -544,6 +535,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="length"></param>
+        [MethodImpl(CompilerOptimizations)]
         public void SetZero(IntPtr16 pointer, int length)
         {
             var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);
@@ -573,6 +565,7 @@ namespace MBBSEmu.Memory
         /// <param name="block"></param>
         /// <param name="index"></param>
         /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
         public IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index) => _bigMemoryBlocks[block.Offset][index];
 
         /// <summary>

@@ -112,15 +112,15 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Default Compiler Hints for use on methods within the CPU
         ///
-        ///     AggressiveInlining == The method should be inlined if possible
         ///     AggressiveOptimization == The method contains a hot path and should be optimized
         ///
-        ///     Because the majority of methods within the CPU are internal to the CPU with a single calling point,
-        ///     they should be inlined as much as possible.
+        ///     Inlining actually *slows* down this code, to a great extent, most due to CPU L1
+        ///     cache limits. Performance seemed best with AggressiveOptimization on and AggressiveInlining
+        ///     off.
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
-        private const MethodImplOptions CompilerOptimizations = (MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization);
+        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         public CpuCore(ILogger logger)
         {
@@ -230,7 +230,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         public void Tick()
         {
-            //Check for segment end
+            // TODO figure out how we can remove this check, such as filling the
+            // memory core instruction set at 65535 to all halt instructions
+
+            // Check for segment end
             if (Registers.CS == ushort.MaxValue)
             {
                 Registers.Halt = true;
@@ -261,8 +264,13 @@ namespace MBBSEmu.CPU
             InstructionCounter++;
 
             //Jump Table
+            Switch:
             switch (_currentInstruction.Mnemonic)
             {
+                case Mnemonic.INVALID:
+                    _currentInstruction = Memory.Recompile(Registers.CS, Registers.IP);
+                    _currentOperationSize = GetCurrentOperationSize();
+                    goto Switch;
                 //Instructions that will set the IP -- we just return
                 case Mnemonic.Retf:
                     Op_Retf();
