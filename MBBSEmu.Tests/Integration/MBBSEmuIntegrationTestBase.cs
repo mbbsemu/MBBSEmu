@@ -3,16 +3,16 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System;
 
 namespace MBBSEmu.Tests.Integration
 {
     public class MBBSEmuIntegrationTestBase : IDisposable
     {
         private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
-        private readonly string[] _moduleFiles = {"MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG"};
+        private readonly string[] _moduleFiles = { "MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG" };
 
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
         protected TestSession _session;
@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.Integration
 
         public void Dispose()
         {
-            Directory.Delete(_modulePath,  recursive: true);
+            Directory.Delete(_modulePath, recursive: true);
         }
 
         private void CopyModuleToTempPath(IResourceManager resourceManager)
@@ -42,7 +42,7 @@ namespace MBBSEmu.Tests.Integration
         /// </summary>
         protected List<string> WaitUntil(char endingCharacter, string message)
         {
-            List<string> lines = new List<string>();
+            var lines = new List<string>();
             while (true)
             {
                 var line = _session.GetLine(endingCharacter, TimeSpan.FromSeconds(2));
@@ -59,7 +59,7 @@ namespace MBBSEmu.Tests.Integration
 
         protected void ExecuteTest(TestLogic testLogic)
         {
-            using ServiceResolver serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+            using var serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
 
             //Setup Generic Database
             var resourceManager = serviceResolver.GetService<IResourceManager>();
