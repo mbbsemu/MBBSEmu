@@ -120,7 +120,7 @@ namespace MBBSEmu.CPU
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
-        private const MethodImplOptions CompilerOptimizations = (/*MethodImplOptions.AggressiveInlining |*/ MethodImplOptions.AggressiveOptimization);
+        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         public CpuCore(ILogger logger)
         {
