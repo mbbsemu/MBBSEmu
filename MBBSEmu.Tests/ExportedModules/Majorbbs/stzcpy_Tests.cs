@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(4, "TestPhrase\0", "Tes\0")]
         [InlineData(8, "Test\0", "Test\0\0\0\0")]
         [InlineData(4, "Test\0", "Tes\0")]
-        [InlineData(12, "TestTestTest\0", "TestTestTest\0")]
+        [InlineData(8, "TestTes\0", "TestTes\0")]
         public void stzcpy_Test(ushort dstLength, string srcString, string expected)
         {
             //Reset State
@@ -22,7 +22,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DST", dstLength);
-            //mbbsEmuMemoryCore.SetArray("DST", Enumerable.Repeat((byte) 'A', dstLength).ToArray());
 
             var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort) (srcString.Length));
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(srcString));
@@ -39,8 +38,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 });
 
             //Verify Results
-            //Assert.Equal(expected, Encoding.ASCII.GetArray(mbbsEmuMemoryCore.GetString("DST", false)));
-            Assert.Equal(expected, Encoding.ASCII.GetBytes(mbbsEmuMemoryCore.GetArray(destinationStringPointer, dstLength)));
+            Assert.Equal(expected.ToArray(), Encoding.ASCII.GetChars(mbbsEmuMemoryCore.GetArray(destinationStringPointer, dstLength).ToArray()).ToArray());
             Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);
             Assert.Equal(destinationStringPointer.Offset, mbbsEmuCpuRegisters.AX);
         }

@@ -1345,6 +1345,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var limit = GetParameter(4);
 
+            //Reserve last byte for NUL
+            limit -= Convert.ToUInt16(Math.Abs(1));
+
             using var inputBuffer = new MemoryStream();
             var potentialString = Module.Memory.GetArray(sourcePointer, limit);
             for (var i = 0; i < limit; i++)
@@ -1359,6 +1362,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //per the MajorBBS Development Guide
             for (var i = inputBuffer.Length; i < limit; i++)
                 inputBuffer.WriteByte(0x0);
+
+            //Set last byte to NUL
+            inputBuffer.WriteByte(0x0);;
 
             Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
 
