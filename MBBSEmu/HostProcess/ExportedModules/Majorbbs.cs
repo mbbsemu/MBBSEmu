@@ -1346,7 +1346,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var limit = GetParameter(4);
 
             //Reserve last byte for NUL
-            limit -= Convert.ToUInt16(Math.Abs(1));
+            if (limit > 0)
+            {
+                limit -= Convert.ToUInt16(Math.Abs(1));
+            }
 
             using var inputBuffer = new MemoryStream();
             var potentialString = Module.Memory.GetArray(sourcePointer, limit);
