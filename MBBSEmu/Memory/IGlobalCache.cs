@@ -1,6 +1,8 @@
-﻿namespace MBBSEmu.Memory
+﻿using System;
+
+namespace MBBSEmu.Memory
 {
-    public interface IGlobalCache
+    public interface IGlobalCache : IDisposable
     {
         T Get<T>(string key);
         object Get(string key);

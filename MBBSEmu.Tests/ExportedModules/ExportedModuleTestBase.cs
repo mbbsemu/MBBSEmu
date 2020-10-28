@@ -9,7 +9,6 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
-using Microsoft.Extensions.Configuration;
 using NLog;
 
 namespace MBBSEmu.Tests.ExportedModules
@@ -26,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver(ServiceResolver.GetTestDefaults());
+        protected ServiceResolver _serviceResolver = new ServiceResolver();
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
@@ -43,7 +42,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -51,7 +50,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -94,7 +93,7 @@ namespace MBBSEmu.Tests.ExportedModules
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -102,7 +101,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<IConfiguration>(),
+                _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,

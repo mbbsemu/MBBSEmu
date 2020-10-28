@@ -10,7 +10,7 @@ namespace MBBSEmu.Tests.Session.Telnet
 {
     public class IacFilter_Tests
     {
-        private readonly IacFilter iacFilter = new IacFilter(new ServiceResolver(ServiceResolver.GetTestDefaults()).GetService<ILogger>());
+        private readonly IacFilter iacFilter = new IacFilter(new ServiceResolver().GetService<ILogger>());
 
         [Fact]
         public void PassThroughNoIAC()

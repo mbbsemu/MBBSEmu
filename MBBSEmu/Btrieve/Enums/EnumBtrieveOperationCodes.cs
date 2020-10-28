@@ -36,7 +36,9 @@
         GetKeyEqual = 0x37,
         GetKeyNext = 0x38,
         GetKeyGreater = 0x3A,
+        GetKeyGreaterOrEqual = 0x3B,
         GetKeyLess = 0x3C,
+        GetKeyLessOrEqual = 0x3D,
         GetKeyFirst = 0x3E,
         GetKeyLast = 0x3F,
 

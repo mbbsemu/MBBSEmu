@@ -42,7 +42,7 @@ namespace MBBSEmu
         ///     Module Option Key specified by the -K Command Line Argument
         /// </summary>
         private string _menuOptionKey;
-        
+
         /// <summary>
         ///     Specified if -APIREPORT Command Line Argument was passed
         /// </summary>
@@ -61,7 +61,7 @@ namespace MBBSEmu
         /// <summary>
         ///     Custom appsettings.json File specified by the -S Command Line Argument
         /// </summary>
-        private string _settingsFileName;
+        public static string _settingsFileName;
 
         /// <summary>
         ///     Specified if -DBRESET Command Line Argument was Passed
@@ -82,12 +82,12 @@ namespace MBBSEmu
         ///     Module Configuration
         /// </summary>
         private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
-        
+
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-
+        
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -190,42 +190,36 @@ namespace MBBSEmu
                             return;
                     }
                 }
-
-                _serviceResolver = new ServiceResolver(_settingsFileName ?? DefaultEmuSettingsFilename);
+                var _configuration = new AppSettings();
+                _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-                var config = _serviceResolver.GetService<IConfiguration>();
-
+                
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
-                if (!File.Exists($"BBSGEN.EMU"))
+                if (!File.Exists($"BBSGEN.DB"))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.EMU");
-                    File.WriteAllBytes($"BBSGEN.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.EMU").ToArray());
+                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
+                    File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSGEN.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT"));
 
                 //Setup User Database
-                if (!File.Exists($"BBSUSR.EMU"))
+                if (!File.Exists($"BBSUSR.DB"))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.EMU");
-                    File.WriteAllBytes($"BBSUSR.EMU", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.EMU").ToArray());
+                    _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
+                    File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, "BBSUSR.DAT", Directory.GetCurrentDirectory()));
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT"));
 
                 //Database Reset
                 if (_doResetDatabase)
                     DatabaseReset();
 
                 //Database Sanity Checks
-                var databaseFile = _serviceResolver.GetService<IConfiguration>()["Database.File"];
-                if (string.IsNullOrEmpty(databaseFile))
-                {
-                    _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
-                    return;
-                }
+                var databaseFile = _configuration.DatabaseFile;
                 if (!File.Exists($"{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
@@ -252,14 +246,14 @@ namespace MBBSEmu
                             _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
                             continue;
                         }
-                        
+
                         //Check for duplicate module in moduleConfig
                         if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m["Identifier"]))
                         {
                             _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
                             continue;
                         }
-                        
+
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
                         _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"]});
@@ -280,59 +274,37 @@ namespace MBBSEmu
                 if (_doApiReport)
                 {
                     host.GenerateAPIReport();
-                    
+
                     host.Stop();
                     return;
                 }
-                
+
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
-                if (bool.TryParse(config["Telnet.Enabled"], out var telnetEnabled) && telnetEnabled)
+                if (_configuration.TelnetEnabled)
                 {
-                    if (string.IsNullOrEmpty("Telnet.Port"))
-                    {
-                        _logger.Error("You must specify a port via Telnet.Port in appconfig.json if you're going to enable Telnet");
-                        return;
-                    }
-
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
+                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort);
 
-                    _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
+                    _logger.Info($"Telnet listening on port {_configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
-                else
-                {
-                    _logger.Info("Telnet Server Disabled (via appsettings.json)");
-                }
 
                 //Setup and Run Rlogin Server
-                if (bool.TryParse(config["Rlogin.Enabled"], out var rloginEnabled) && rloginEnabled)
+                if (_configuration.RloginEnabled)
                 {
-                    if (string.IsNullOrEmpty("Rlogin.Port"))
-                    {
-                        _logger.Error("You must specify a port via Rlogin.Port in appconfig.json if you're going to enable Rlogin");
-                        return;
-                    }
-
-                    if (string.IsNullOrEmpty("Rlogin.RemoteIP"))
-                    {
-                        _logger.Error("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin");
-                        return;
-                    }
-
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
+                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort);
 
-                    _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
+                    _logger.Info($"Rlogin listening on port {_configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 
-                    if (bool.Parse(config["Rlogin.PortPerModule"]))
+                    if (_configuration.RloginPortPerModule)
                     {
-                        var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
+                        var rloginPort = _configuration.RloginPort + 1;
                         foreach (var m in _moduleConfigurations)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
