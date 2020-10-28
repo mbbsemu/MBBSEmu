@@ -1348,7 +1348,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Reserve last byte for NUL
             if (limit > 0)
             {
-                limit--;
+                --limit;
             }
 
             using var inputBuffer = new MemoryStream();
