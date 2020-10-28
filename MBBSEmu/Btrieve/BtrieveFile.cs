@@ -186,6 +186,9 @@ namespace MBBSEmu.Btrieve
             var fullPath = Path.Combine(path, fileName);
             var fileData = File.ReadAllBytes(fullPath);
 
+            if (fileData[0] == 'F' && fileData[1] == 'C' && fileData[2] == 0 && fileData[3] == 0)
+                throw new ArgumentException($"Cannot import v6 Btrieve database {fileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
+
             FileName = fullPath;
             Data = fileData;
 
@@ -245,6 +248,7 @@ namespace MBBSEmu.Btrieve
                 logger.Info($"Number: {keyDefinition.Number}");
                 logger.Info($"Data Type: {keyDefinition.DataType}");
                 logger.Info($"Attributes: {keyDefinition.Attributes}");
+                logger.Info($"Offset: {keyDefinition.Offset}");
                 logger.Info($"Length: {keyDefinition.Length}");
                 logger.Info($"Segment: {keyDefinition.Segment}");
                 logger.Info($"SegmentOf: {keyDefinition.SegmentOf}");

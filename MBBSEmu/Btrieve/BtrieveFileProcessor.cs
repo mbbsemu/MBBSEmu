@@ -241,7 +241,7 @@ namespace MBBSEmu.Btrieve
         public bool StepFirst()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
-            using var cmd = new SqliteCommand("SELECT id FROM data_t LIMIT 1;", _connection);
+            using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id LIMIT 1", _connection);
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
@@ -255,7 +255,7 @@ namespace MBBSEmu.Btrieve
         public bool StepNext()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
-            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} LIMIT 1;", _connection);
+            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} ORDER BY id LIMIT 1;", _connection);
             using var reader = cmd.ExecuteReader();
             try
             {
