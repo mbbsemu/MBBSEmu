@@ -227,10 +227,18 @@ namespace MBBSEmu.Btrieve
             while (currentKeyNumber < totalKeys)
             {
                 var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
+
+                EnumKeyDataType dataType;
+                var attributes = (EnumKeyAttributeMask) BitConverter.ToUInt16(data, 0x8);
+                if (attributes.HasFlag(EnumKeyAttributeMask.UseExtendedDataType))
+                    dataType = (EnumKeyDataType) data[0x1C];
+                else
+                    dataType = attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary) ? EnumKeyDataType.UnsignedBinary : EnumKeyDataType.Zstring;
+
                 var keyDefinition = new BtrieveKeyDefinition {
                     Number = currentKeyNumber,
-                    Attributes = (EnumKeyAttributeMask) BitConverter.ToUInt16(data, 0x8),
-                    DataType = (EnumKeyDataType) data[0x1C],
+                    Attributes = attributes,
+                    DataType = dataType,
                     Offset = BitConverter.ToUInt16(data, 0x14),
                     Length = BitConverter.ToUInt16(data, 0x16),
                     Segment = false,
