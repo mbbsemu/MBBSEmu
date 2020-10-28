@@ -521,7 +521,6 @@ namespace MBBSEmu.Btrieve
             if (queryResult == 0)
                 return 0;
 
-            Position = lastInsertRowId;
             _cache[lastInsertRowId] = new BtrieveRecord(lastInsertRowId, record);
             return lastInsertRowId;
         }
