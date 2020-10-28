@@ -1348,7 +1348,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Reserve last byte for NUL
             if (limit > 0)
             {
-                limit -= Convert.ToUInt16(Math.Abs(1));
+                limit--;
             }
 
             using var inputBuffer = new MemoryStream();
@@ -1367,7 +1367,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 inputBuffer.WriteByte(0x0);
 
             //Set last byte to NUL
-            inputBuffer.WriteByte(0x0);;
+            inputBuffer.WriteByte(0x0);
 
             Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
 

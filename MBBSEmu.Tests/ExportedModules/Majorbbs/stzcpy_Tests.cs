@@ -11,6 +11,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         [Theory]
         [InlineData(1, "T", "\0")]
+        [InlineData(0, "T", "")]
+        [InlineData(0, "\0", "")]
         [InlineData(0, "", "")]
         [InlineData(4, "TestPhrase\0", "Tes\0")]
         [InlineData(8, "Test\0", "Test\0\0\0\0")]
