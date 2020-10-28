@@ -23,8 +23,8 @@ namespace MBBSEmu
             if (!IsValidJson(File.ReadAllText(Program._settingsFileName ?? Program.DefaultEmuSettingsFilename)))
                 throw new InvalidDataException($"Invalid JSON detected in [{Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}]. Please verify the format & contents of the file are valid JSON.");
 
-            ConfigurationRoot = new ConfigurationBuilder()
-                .AddJsonFile(Program._settingsFileName ?? Program.DefaultEmuSettingsFilename, optional: true)
+            ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile(Program._settingsFileName ?? Program.DefaultEmuSettingsFilename)
                 .Build();
         }
 
