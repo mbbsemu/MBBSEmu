@@ -1095,7 +1095,7 @@ namespace MBBSEmu.CPU
                         Memory.SetArray(Registers.DS, Registers.SI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
                         Registers.AX = 0;
                         Registers.DL = 0;
-                        Registers.F.ClearFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
                 case 0x62:
@@ -1143,10 +1143,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(0 - destination);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1158,10 +1158,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(0 - destination);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1186,14 +1186,14 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                if (Registers.F.IsFlagSet(EnumFlags.CF))
+                if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                     source += 1;
 
                 var result = (byte)(destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1206,20 +1206,20 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (Registers.F.IsFlagSet(EnumFlags.CF))
+                if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                     source += 1;
 
                 var result = (ushort)(destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
 
         [MethodImpl(CompilerOptimizations)]
-        private void Op_Clc() => Registers.F.ClearFlag(EnumFlags.CF);
+        private void Op_Clc() => Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Or()
@@ -1232,8 +1232,8 @@ namespace MBBSEmu.CPU
             };
 
             //Clear Flags
-            Registers.F.ClearFlag(EnumFlags.CF);
-            Registers.F.ClearFlag(EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
 
             WriteToDestination(result);
         }
@@ -1244,8 +1244,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
             return destination;
         }
 
@@ -1255,8 +1255,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
             return destination;
         }
 
@@ -1290,17 +1290,17 @@ namespace MBBSEmu.CPU
                     result = (byte)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                         result.SetFlag(1 << 7);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.F.SetFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                     }
                     else
                     {
-                        Registers.F.ClearFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
                     }
                 }
 
@@ -1325,17 +1325,17 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                         result.SetFlag(1 << 15);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.F.SetFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                     }
                     else
                     {
-                        Registers.F.ClearFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
                     }
                 }
 
@@ -1374,17 +1374,17 @@ namespace MBBSEmu.CPU
                     result = (byte)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                         result.SetFlag(1);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.F.SetFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                     }
                     else
                     {
-                        Registers.F.ClearFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
                     }
                 }
 
@@ -1410,17 +1410,17 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet(EnumFlags.CF))
+                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                         result.SetFlag(1);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.F.SetFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                     }
                     else
                     {
-                        Registers.F.ClearFlag(EnumFlags.CF);
+                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
                     }
                 }
 
@@ -1455,10 +1455,10 @@ namespace MBBSEmu.CPU
                 if (destination.IsNegative())
                     result.SetFlag(1 << 7);
 
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1477,10 +1477,10 @@ namespace MBBSEmu.CPU
                 if (destination.IsNegative())
                     result.SetFlag(1 << 15);
 
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1507,10 +1507,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination >> (sbyte)source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1524,10 +1524,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination >> source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1554,10 +1554,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination << (sbyte)source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1571,10 +1571,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination << source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -1686,10 +1686,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination + 1);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1702,10 +1702,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination + 1);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1731,10 +1731,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination - 1);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1747,10 +1747,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination - 1);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -1768,8 +1768,8 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F.ClearFlag(EnumFlags.CF);
-            Registers.F.ClearFlag(EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -1779,8 +1779,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
             return destination;
         }
 
@@ -1791,8 +1791,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
             return destination;
         }
 
@@ -1809,8 +1809,8 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F.ClearFlag(EnumFlags.CF);
-            Registers.F.ClearFlag(EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -1820,8 +1820,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = (byte)(destination ^ source);
-            Registers.F.Evaluate(EnumFlags.ZF, result);
-            Registers.F.Evaluate(EnumFlags.SF, result);
+            Flags_EvaluateZero(result);
+            Flags_EvaluateSign(result);
             return result;
         }
 
@@ -1832,15 +1832,15 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = (ushort)(destination ^ source);
-            Registers.F.Evaluate(EnumFlags.ZF, result);
-            Registers.F.Evaluate(EnumFlags.SF, result);
+            Flags_EvaluateZero(result);
+            Flags_EvaluateSign(result);
             return result;
         }
 
         [MethodImpl(CompilerOptimizations)]
         private void Op_Ja()
         {
-            if (!Registers.F.IsFlagSet(EnumFlags.CF) && !Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (!Registers.F.IsFlagSet((ushort)EnumFlags.CF) && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1853,7 +1853,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Jae()
         {
-            if (!Registers.F.IsFlagSet(EnumFlags.CF))
+            if (!Registers.F.IsFlagSet((ushort)EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1866,7 +1866,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Jbe()
         {
-            if (Registers.F.IsFlagSet(EnumFlags.ZF) || Registers.F.IsFlagSet(EnumFlags.CF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) || Registers.F.IsFlagSet((ushort)EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1919,8 +1919,8 @@ namespace MBBSEmu.CPU
         private void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
-            if (Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF)
-                || Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) != Registers.F.IsFlagSet((ushort)EnumFlags.OF)
+                || Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1934,7 +1934,7 @@ namespace MBBSEmu.CPU
         private void Op_Jge()
         {
             // SF == OF
-            if (Registers.F.IsFlagSet(EnumFlags.SF) == Registers.F.IsFlagSet(EnumFlags.OF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) == Registers.F.IsFlagSet((ushort)EnumFlags.OF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1948,7 +1948,7 @@ namespace MBBSEmu.CPU
         private void Op_Jne()
         {
             //ZF == 0
-            if (!Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1962,8 +1962,8 @@ namespace MBBSEmu.CPU
         private void Op_Jg()
         {
             //ZF == 0 & SF == OF
-            if (!Registers.F.IsFlagSet(EnumFlags.ZF) &&
-                (Registers.F.IsFlagSet(EnumFlags.SF) == Registers.F.IsFlagSet(EnumFlags.OF)))
+            if (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) &&
+                (Registers.F.IsFlagSet((ushort)EnumFlags.SF) == Registers.F.IsFlagSet((ushort)EnumFlags.OF)))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1977,7 +1977,7 @@ namespace MBBSEmu.CPU
         private void Op_Je()
         {
             // ZF == 1
-            if (Registers.F.IsFlagSet(EnumFlags.ZF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -1991,7 +1991,7 @@ namespace MBBSEmu.CPU
         private void Op_Jl()
         {
             //SF <> OF
-            if (Registers.F.IsFlagSet(EnumFlags.SF) != Registers.F.IsFlagSet(EnumFlags.OF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) != Registers.F.IsFlagSet((ushort)EnumFlags.OF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2005,7 +2005,7 @@ namespace MBBSEmu.CPU
         private void Op_Jb()
         {
             //CF == 1
-            if (Registers.F.IsFlagSet(EnumFlags.CF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2031,8 +2031,8 @@ namespace MBBSEmu.CPU
             }
 
             //Clear Overflow & Carry
-            Registers.F.Flags.ClearFlag((ushort)EnumFlags.OF);
-            Registers.F.Flags.ClearFlag((ushort)EnumFlags.CF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
 
         }
 
@@ -2043,8 +2043,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2054,8 +2054,8 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Registers.F.Evaluate(EnumFlags.ZF, destination);
-            Registers.F.Evaluate(EnumFlags.SF, destination);
+            Flags_EvaluateZero(destination);
+            Flags_EvaluateSign(destination);
         }
 
         /// <summary>
@@ -2071,9 +2071,6 @@ namespace MBBSEmu.CPU
                     return;
                 case 2:
                     Op_Sub_16();
-                    return;
-                case 4:
-                    Op_Sub_32();
                     return;
                 default:
                     throw new Exception("Unsupported Operation Size");
@@ -2102,10 +2099,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -2119,28 +2116,10 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                return result;
-            }
-        }
-
-
-        [MethodImpl(CompilerOptimizations)]
-        private uint Op_Sub_32()
-        {
-            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind);
-            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind);
-
-            unchecked
-            {
-                var result = (destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
                 return result;
             }
         }
@@ -2170,14 +2149,14 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.F.IsFlagSet(EnumFlags.CF))
+                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                     source++;
 
                 var result = (byte)(source + destination);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -2190,14 +2169,14 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.F.IsFlagSet(EnumFlags.CF))
+                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
                     source++;
 
                 var result = (ushort)(source + destination);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.SF, result);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateSign(result);
+                Flags_EvaluateZero(result);
                 return result;
             }
         }
@@ -2283,7 +2262,7 @@ namespace MBBSEmu.CPU
 
             var quotient = Math.DivRem((short)Registers.AX, destination, out var remainder);
 
-            if(quotient > sbyte.MaxValue || quotient < sbyte.MinValue)
+            if (quotient > sbyte.MaxValue || quotient < sbyte.MinValue)
                 throw new OverflowException("Divide Error: Quotient Overflow");
 
             Registers.AL = (byte)quotient;
@@ -2545,47 +2524,47 @@ namespace MBBSEmu.CPU
 
             if (Registers.AH.IsFlagSet((byte)EnumFlags.SF))
             {
-                Registers.F.SetFlag(EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
             }
             else
             {
-                Registers.F.ClearFlag(EnumFlags.SF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
 
             if (Registers.AH.IsFlagSet((byte)EnumFlags.ZF))
             {
-                Registers.F.SetFlag(EnumFlags.ZF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
             }
             else
             {
-                Registers.F.ClearFlag(EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
             }
 
             if (Registers.AH.IsFlagSet((byte)EnumFlags.AF))
             {
-                Registers.F.SetFlag(EnumFlags.AF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
             }
             else
             {
-                Registers.F.ClearFlag(EnumFlags.AF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
             }
 
             if (Registers.AH.IsFlagSet((byte)EnumFlags.PF))
             {
-                Registers.F.SetFlag(EnumFlags.PF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.PF);
             }
             else
             {
-                Registers.F.ClearFlag(EnumFlags.PF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.PF);
             }
 
             if (Registers.AH.IsFlagSet((byte)EnumFlags.CF))
             {
-                Registers.F.SetFlag(EnumFlags.CF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
             }
             else
             {
-                Registers.F.ClearFlag(EnumFlags.CF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
             }
         }
 
@@ -2832,7 +2811,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Cli()
         {
-            Registers.F.ClearFlag(EnumFlags.IF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.IF);
         }
 
         /// <summary>
@@ -2841,7 +2820,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Sti()
         {
-            Registers.F.SetFlag(EnumFlags.IF);
+            Registers.F = Registers.F.SetFlag((ushort)EnumFlags.IF);
         }
 
         /// <summary>
@@ -2890,7 +2869,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Cld()
         {
-            Registers.F.ClearFlag(EnumFlags.DF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.DF);
         }
 
         /// <summary>
@@ -2901,7 +2880,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
 
-            if (Registers.F.IsFlagSet(EnumFlags.DF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
                 Registers.SI--;
             }
@@ -2920,7 +2899,7 @@ namespace MBBSEmu.CPU
         {
             Memory.SetByte(Registers.DS, Registers.SI, Registers.AL);
 
-            if (Registers.F.IsFlagSet(EnumFlags.DF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
                 Registers.SI--;
                 Registers.DI--;
@@ -2959,12 +2938,12 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination - source);
-                Registers.F.EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F.EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Registers.F.Evaluate(EnumFlags.ZF, result);
-                Registers.F.Evaluate(EnumFlags.SF, result);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateZero(result);
+                Flags_EvaluateSign(result);
 
-                if (Registers.F.IsFlagSet(EnumFlags.DF))
+                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
                 {
                     Registers.DI--;
                 }
@@ -2980,7 +2959,7 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (Registers.F.IsFlagSet(EnumFlags.ZF) && Registers.CX != 0)
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.CX != 0)
             {
                 Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
@@ -3159,7 +3138,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Pushf()
         {
-            Push(Registers.F.Flags);
+            Push(Registers.F);
         }
 
         /// <summary>
@@ -3247,15 +3226,15 @@ namespace MBBSEmu.CPU
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
-                    Registers.F.SetFlag(EnumFlags.CF);
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                 else
-                    Registers.F.ClearFlag(EnumFlags.CF);
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
 
                 //If Bits 7 & 6 are not the same, then we overflowed
                 if (result.IsBitSet(7) != result.IsBitSet(6))
-                    Registers.F.SetFlag(EnumFlags.OF);
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
                 else
-                    Registers.F.ClearFlag(EnumFlags.OF);
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
 
                 return result;
             }
@@ -3277,15 +3256,15 @@ namespace MBBSEmu.CPU
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
-                    Registers.F.SetFlag(EnumFlags.CF);
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
                 else
-                    Registers.F.ClearFlag(EnumFlags.CF);
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
 
                 //If Bits 15 & 14 are not the same, then we overflowed
                 if (result.IsBitSet(15) != result.IsBitSet(14))
-                    Registers.F.SetFlag(EnumFlags.OF);
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
                 else
-                    Registers.F.ClearFlag(EnumFlags.OF);
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
 
                 return result;
             }
@@ -3355,6 +3334,237 @@ namespace MBBSEmu.CPU
             var result = dividend / divisor;
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
             Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateCarry(EnumArithmeticOperation arithmeticOperation, byte result = 0,
+            byte destination = 0, byte source = 0)
+        {
+            var setFlag = arithmeticOperation switch
+            {
+                EnumArithmeticOperation.Addition => (source + destination) > byte.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                    "Unsupported Carry Flag Operation for Evaluation"),
+            };
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+        }
+
+        /// <summary>
+        ///     Evaluates the given 16-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateCarry(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
+            ushort destination = 0, ushort source = 0)
+        {
+            var setFlag = arithmeticOperation switch
+            {
+                EnumArithmeticOperation.Addition => (source + destination) > ushort.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                    "Unsupported Carry Flag Operation for Evaluation")
+            };
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+        }
+
+        /// <summary>
+        ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, byte result = 0,
+            byte destination = 0, byte source = 0)
+        {
+            var setFlag = false;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                    {
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                case EnumArithmeticOperation.Subtraction:
+                    {
+
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            }
+        }
+
+        /// <summary>
+        ///     Evaluates the given 16-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, ushort result = 0,
+            ushort destination = 0, ushort source = 0)
+        {
+            var setFlag = false;
+            switch (arithmeticOperation)
+            {
+                case EnumArithmeticOperation.Addition:
+                    {
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                case EnumArithmeticOperation.Subtraction:
+                    {
+
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
+            }
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateZero(ushort result = 0)
+        {
+            if (result == 0)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateSign(byte result)
+        {
+            if (result.IsNegative())
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateSign(ushort result)
+        {
+            if (result.IsNegative())
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            }
         }
     }
 }
