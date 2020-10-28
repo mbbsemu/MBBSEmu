@@ -112,6 +112,11 @@ namespace MBBSEmu.Memory
         Instruction GetInstruction(ushort segment, ushort instructionPointer);
 
         /// <summary>
+        ///     Recompiles the memory located at segment:instructionPointer and returns the instruction.
+        /// </summary>
+        Instruction Recompile(ushort segment, ushort instructionPointer);
+
+        /// <summary>
         ///     Returns a single byte from the specified pointer
         /// </summary>
         /// <param name="pointer"></param>

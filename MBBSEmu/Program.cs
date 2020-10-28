@@ -61,7 +61,7 @@ namespace MBBSEmu
         /// <summary>
         ///     Custom appsettings.json File specified by the -S Command Line Argument
         /// </summary>
-        private string _settingsFileName;
+        public static string _settingsFileName;
 
         /// <summary>
         ///     Specified if -DBRESET Command Line Argument was Passed
@@ -87,7 +87,7 @@ namespace MBBSEmu
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-
+        
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -190,12 +190,11 @@ namespace MBBSEmu
                             return;
                     }
                 }
-
-                _serviceResolver = new ServiceResolver(_settingsFileName ?? DefaultEmuSettingsFilename);
+                var _configuration = new AppSettings();
+                _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-                var config = _serviceResolver.GetService<IConfiguration>();
-
+                
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
@@ -220,12 +219,7 @@ namespace MBBSEmu
                     DatabaseReset();
 
                 //Database Sanity Checks
-                var databaseFile = _serviceResolver.GetService<IConfiguration>()["Database.File"];
-                if (string.IsNullOrEmpty(databaseFile))
-                {
-                    _logger.Fatal($"Please set a valid database filename (eg: mbbsemu.db) in the appsettings.json file before running MBBSEmu");
-                    return;
-                }
+                var databaseFile = _configuration.DatabaseFile;
                 if (!File.Exists($"{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
@@ -288,51 +282,29 @@ namespace MBBSEmu
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
-                if (bool.TryParse(config["Telnet.Enabled"], out var telnetEnabled) && telnetEnabled)
+                if (_configuration.TelnetEnabled)
                 {
-                    if (string.IsNullOrEmpty("Telnet.Port"))
-                    {
-                        _logger.Error("You must specify a port via Telnet.Port in appconfig.json if you're going to enable Telnet");
-                        return;
-                    }
-
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, int.Parse(config["Telnet.Port"]));
+                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort);
 
-                    _logger.Info($"Telnet listening on port {config["Telnet.Port"]}");
+                    _logger.Info($"Telnet listening on port {_configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
-                else
-                {
-                    _logger.Info("Telnet Server Disabled (via appsettings.json)");
-                }
 
                 //Setup and Run Rlogin Server
-                if (bool.TryParse(config["Rlogin.Enabled"], out var rloginEnabled) && rloginEnabled)
+                if (_configuration.RloginEnabled)
                 {
-                    if (string.IsNullOrEmpty("Rlogin.Port"))
-                    {
-                        _logger.Error("You must specify a port via Rlogin.Port in appconfig.json if you're going to enable Rlogin");
-                        return;
-                    }
-
-                    if (string.IsNullOrEmpty("Rlogin.RemoteIP"))
-                    {
-                        _logger.Error("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin");
-                        return;
-                    }
-
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, int.Parse(config["Rlogin.Port"]));
+                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort);
 
-                    _logger.Info($"Rlogin listening on port {config["Rlogin.Port"]}");
+                    _logger.Info($"Rlogin listening on port {_configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 
-                    if (bool.Parse(config["Rlogin.PortPerModule"]))
+                    if (_configuration.RloginPortPerModule)
                     {
-                        var rloginPort = int.Parse(config["Rlogin.Port"]) + 1;
+                        var rloginPort = _configuration.RloginPort + 1;
                         foreach (var m in _moduleConfigurations)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
