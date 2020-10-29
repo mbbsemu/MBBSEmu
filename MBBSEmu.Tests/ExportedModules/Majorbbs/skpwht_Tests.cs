@@ -5,18 +5,18 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class skpwrd_Tests : ExportedModuleTestBase
+    public class skpwht_Tests : ExportedModuleTestBase
     {
-        private const int SKPWRD_ORDINAL = 554;
+        private const int SKPWHT_ORDINAL = 553;
 
         [Theory]
-        [InlineData("testing 123", " 123\0")]
-        [InlineData(" test", " test\0")]
+        [InlineData("  testing 123 hello", "testing 123 hello\0")]
+        [InlineData("          Hi", "Hi\0")]
+        [InlineData("   #%#@#$%#$!&&^^ Hi", "#%#@#$%#$!&&^^ Hi\0")]
+        [InlineData(" test", "test\0")]
         [InlineData("\0test", "\0")]
-        [InlineData("1234$%&(*@#)_&te st", " st\0")]
-        [InlineData("\0", "\0")]
-        [InlineData(" ", " \0")]
-        public void SKPWRD_Test(string inputString, string expectedString)
+        [InlineData("NoWhiteSpace", "NoWhiteSpace\0")]
+        public void SKPWHT_Test(string inputString, string expectedString)
         {
             //Reset State
             Reset();
@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SKPWRD_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SKPWHT_ORDINAL, new List<IntPtr16> { stringPointer });
 
             //Verify Results
             Assert.Equal(expectedString,
