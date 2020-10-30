@@ -3513,6 +3513,7 @@ namespace MBBSEmu.CPU
         ///     Evaluates and sets the value of both the Carry and Zero Flag based upon the specified result
         /// </summary>
         /// <param name="result"></param>
+        [MethodImpl(CompilerOptimizations)]
         private void Flags_EvaluateSignZero(byte result)
         {
             if (result == 0)
@@ -3531,10 +3532,19 @@ namespace MBBSEmu.CPU
         ///     Evaluates and sets the value of both the Carry and Zero Flag based upon the specified result
         /// </summary>
         /// <param name="result"></param>
+        [MethodImpl(CompilerOptimizations)]
         private void Flags_EvaluateSignZero(ushort result)
         {
-            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
-            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            if (result == 0)
+            {
+                Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.F.SetFlag((ushort)EnumFlags.ZF);
+            }
+            else
+            {
+                Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            }
         }
     }
 }
