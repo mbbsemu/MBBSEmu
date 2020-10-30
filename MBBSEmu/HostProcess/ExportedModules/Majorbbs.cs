@@ -6048,7 +6048,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringPointer = GetParameterPointer(0);
 
             var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer));
-
             var parsedString = string.Concat(stringToParse.Where(c => !char.IsWhiteSpace(c)));
 
             Module.Memory.SetArray(stringPointer, Encoding.ASCII.GetBytes(parsedString));
