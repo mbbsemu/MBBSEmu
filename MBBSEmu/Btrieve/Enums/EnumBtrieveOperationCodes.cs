@@ -35,6 +35,7 @@
         //Get Key Operations
         GetKeyEqual = 0x37,
         GetKeyNext = 0x38,
+        GetKeyPrevious = 0x39,
         GetKeyGreater = 0x3A,
         GetKeyGreaterOrEqual = 0x3B,
         GetKeyLess = 0x3C,

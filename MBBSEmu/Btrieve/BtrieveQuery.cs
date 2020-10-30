@@ -27,18 +27,23 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        /// <summary>
-        ///     Delegate to invoke to fetch the next data reader. Return null to stop the GetNext()
-        ///     flow. You can chain endlessly by keeping ContinuationReader set, but if you want
-        ///     the enumeration to end, set thisQuery.ContinuationReader back to null in the
-        ///     delegate.
-        /// </summary>
-        public delegate SqliteReader GetContinuationReader(BtrieveQuery thisQuery);
+        public enum CursorDirection {
+            Forward,
+            Reverse
+        }
+
+        public CursorDirection Direction { get; set; }
 
         /// <summary>
-        ///     Key Value to be queried on
+        ///     Initial Key Value to be queried on
         /// </summary>
         public byte[] KeyData { get; set; }
+
+        /// <summary>
+        ///     Last Key Value retrieved during GetNext/GetPrevious cursor movement,
+        ///     as a Sqlite object.
+        /// </summary>
+        public object LastKey { get; set; }
 
         /// <summary>
         ///     Key Definition
@@ -53,16 +58,10 @@ namespace MBBSEmu.Btrieve
 
         public SqliteReader Reader { get; set; }
 
-        /// <summary>
-        ///     A delegate to invoke after which the last record has been read. Allows the
-        ///     continuation of a query -> getNext() flow by creating a new SQLiteDataReader that
-        ///     returns more records.
-        /// </summary>
-        public GetContinuationReader ContinuationReader { get; set; }
-
         public BtrieveQuery()
         {
             Position = 0;
+            Direction = CursorDirection.Forward;
         }
 
         public void Dispose()
