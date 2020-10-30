@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -6007,7 +6008,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (stgToParse[i] >= 'a' && stgToParse[i] <= 'z')
                         stgToParse[i] -= 32;
 
-                    toUpper = false;
+                    if (stgToParse[i] != 32)
+                        toUpper = false;
                 }
                 else if (stgToParse[i] == 32)
                 {
@@ -6046,9 +6048,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringPointer = GetParameterPointer(0);
 
-            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, true));
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer));
 
-            var parsedString = stringToParse.Trim() + '\0';
+            var parsedString = string.Concat(stringToParse.Where(c => !char.IsWhiteSpace(c)));
 
             Module.Memory.SetArray(stringPointer, Encoding.ASCII.GetBytes(parsedString));
         }
