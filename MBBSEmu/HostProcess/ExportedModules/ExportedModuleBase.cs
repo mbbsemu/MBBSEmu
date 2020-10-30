@@ -757,7 +757,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ReadOnlySpan<byte> ProcessIfANSI(ReadOnlySpan<byte> inputSpan, bool isAnsi = false)
         {
-            using var resultStream = new MemoryStream();
+            using var resultStream = new MemoryStream(inputSpan.Length);
             for (var i = 0; i < inputSpan.Length; i++)
             {
                 if (inputSpan[i] != 0x1B)
@@ -871,7 +871,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ReadOnlySpan<byte> FormatNewLineCarriageReturn(ReadOnlySpan<byte> stringToFormat)
         {
-            using var result = new MemoryStream();
+            using var result = new MemoryStream(stringToFormat.Length + 32);
             for (var i = 0; i < stringToFormat.Length; i++)
             {
                 var c = stringToFormat[i];
@@ -1044,7 +1044,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer)
         {
             var key = BtrieveCacheKey(btrievePointer);
-            
+
             if (_globalCache.TryGet<BtrieveFileProcessor>(key, out var processor))
             {
                 processor.Dispose();
