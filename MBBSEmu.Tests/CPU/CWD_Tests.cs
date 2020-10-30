@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Extensions;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -22,10 +23,10 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(dxValue, mbbsEmuCpuRegisters.DX);
 
             //Verify Flags
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.CF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.ZF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.OF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet(EnumFlags.SF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
         }
     }
 }

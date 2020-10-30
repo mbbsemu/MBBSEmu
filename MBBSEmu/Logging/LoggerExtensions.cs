@@ -2,6 +2,7 @@
 using MBBSEmu.Memory;
 using NLog;
 using System.Text;
+using MBBSEmu.Extensions;
 
 namespace MBBSEmu.Logging
 {
@@ -72,11 +73,11 @@ namespace MBBSEmu.Logging
             output.Append($"SP={cpu.Registers.SP:X4}  ");
             output.AppendLine($"BP={cpu.Registers.BP:X4}");
 
-            output.Append(cpu.Registers.F.IsFlagSet(EnumFlags.CF) ? "C" : "c");
-            output.Append(cpu.Registers.F.IsFlagSet(EnumFlags.PF) ? "P" : "p");
-            output.Append(cpu.Registers.F.IsFlagSet(EnumFlags.ZF) ? "Z" : "z");
-            output.Append(cpu.Registers.F.IsFlagSet(EnumFlags.SF) ? "S" : "s");
-            output.Append(cpu.Registers.F.IsFlagSet(EnumFlags.OF) ? "O" : "o");
+            output.Append(cpu.Registers.F.IsFlagSet((ushort)EnumFlags.CF) ? "C" : "c");
+            output.Append(cpu.Registers.F.IsFlagSet((ushort)EnumFlags.PF) ? "P" : "p");
+            output.Append(cpu.Registers.F.IsFlagSet((ushort)EnumFlags.ZF) ? "Z" : "z");
+            output.Append(cpu.Registers.F.IsFlagSet((ushort)EnumFlags.SF) ? "S" : "s");
+            output.Append(cpu.Registers.F.IsFlagSet((ushort)EnumFlags.OF) ? "O" : "o");
 
             foreach (var line in output.ToString().Split("\r\n"))
             {
