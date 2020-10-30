@@ -3515,8 +3515,16 @@ namespace MBBSEmu.CPU
         /// <param name="result"></param>
         private void Flags_EvaluateSignZero(byte result)
         {
-            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
-            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            if (result == 0)
+            {
+                Registers.F.ClearFlag((ushort) EnumFlags.SF);
+                Registers.F.SetFlag((ushort) EnumFlags.ZF);
+            }
+            else
+            {
+                Registers.F.ClearFlag((ushort) EnumFlags.ZF);
+                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            }
         }
 
         /// <summary>
