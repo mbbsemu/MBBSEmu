@@ -4,7 +4,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Text;
@@ -34,17 +33,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
 
-        public Galgsbl(ILogger logger, IConfiguration configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+        public Galgsbl(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _startDate = DateTime.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);
 
             //Check for Module Specific Activation #
-            var bturno = _configuration["GSBL.Activation"];
-            if (!string.IsNullOrEmpty(_configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"]))
+            var bturno = configuration.GSBLActivation;
+            if (!string.IsNullOrEmpty(_configuration.GetActivation(Module.ModuleIdentifier)))
             {
-                bturno = _configuration[$"GSBL.Activation.{Module.ModuleIdentifier}"];
+                bturno = _configuration.GetActivation(Module.ModuleIdentifier);
                 _logger.Info($"Found Module Specific Activation # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
             }
 

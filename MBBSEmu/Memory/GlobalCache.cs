@@ -15,6 +15,17 @@ namespace MBBSEmu.Memory
             _cacheDictionary = new Dictionary<string, object>();
         }
 
+        public void Dispose()
+        {
+            foreach (var global in _cacheDictionary.Values)
+            {
+                if (global is IDisposable)
+                    ((IDisposable) global).Dispose();
+            }
+
+            _cacheDictionary.Clear();
+        }
+
         public T Get<T>(string key)
         {
             if (!_cacheDictionary.TryGetValue(key, out var result))

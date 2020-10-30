@@ -11,6 +11,7 @@ namespace MBBSEmu.HostProcess.Structs
     /// </summary>
     public class BtvFileStruct
     {
+        private const int MAX_KEYS = 24;
 
         /// <summary>
         ///     Position Block
@@ -86,11 +87,28 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(value.Data, 0, Data, 138, 4);
         }
 
+        /// <summary>
+        ///     last key used
+        /// </summary>
+        public ushort lastkn
+        {
+            get => BitConverter.ToUInt16(Data, 142);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 142, 2);
+        }
+
+        public void SetKeyLength(ushort key, ushort keyLength)
+        {
+            if (key >= MAX_KEYS)
+                throw new ArgumentException($"Max keys is {MAX_KEYS} but asked to set {key}.");
+
+            Array.Copy(BitConverter.GetBytes(key), 0, Data, 144 + 2 * key, 2);
+        }
+
         public readonly byte[] Data = new byte[192];
 
         public const ushort Size = 192;
 
-        public BtvFileStruct() {}
+        public BtvFileStruct() { }
 
         public BtvFileStruct(ReadOnlySpan<byte> btvFileStruct)
         {
