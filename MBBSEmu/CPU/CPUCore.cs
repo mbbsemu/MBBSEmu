@@ -3518,12 +3518,12 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F.ClearFlag((ushort) EnumFlags.SF);
-                Registers.F.SetFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
             }
             else
             {
-                Registers.F.ClearFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.ZF);
                 Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
         }
@@ -3537,12 +3537,12 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                Registers.F.SetFlag((ushort)EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
             }
             else
             {
-                Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
         }
