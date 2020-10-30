@@ -1153,8 +1153,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(0 - destination);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1168,8 +1167,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(0 - destination);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1200,8 +1198,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1220,8 +1217,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1252,8 +1248,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
             return destination;
         }
 
@@ -1263,8 +1258,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
             return destination;
         }
 
@@ -1465,8 +1459,7 @@ namespace MBBSEmu.CPU
 
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1487,8 +1480,7 @@ namespace MBBSEmu.CPU
 
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1517,8 +1509,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination >> (sbyte)source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1534,8 +1525,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination >> source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1564,8 +1554,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination << (sbyte)source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1581,8 +1570,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination << source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1696,8 +1684,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination + 1);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1712,8 +1699,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination + 1);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1741,8 +1727,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination - 1);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1757,8 +1742,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination - 1);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -1787,8 +1771,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
             return destination;
         }
 
@@ -1799,8 +1782,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
             return destination;
         }
 
@@ -1828,8 +1810,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = (byte)(destination ^ source);
-            Flags_EvaluateZero(result);
-            Flags_EvaluateSign(result);
+            Flags_EvaluateSignZero(result);
             return result;
         }
 
@@ -1840,8 +1821,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = (ushort)(destination ^ source);
-            Flags_EvaluateZero(result);
-            Flags_EvaluateSign(result);
+            Flags_EvaluateSignZero(result);
             return result;
         }
 
@@ -2051,8 +2031,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2062,8 +2041,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
-            Flags_EvaluateZero(destination);
-            Flags_EvaluateSign(destination);
+            Flags_EvaluateSignZero(destination);
         }
 
         /// <summary>
@@ -2109,8 +2087,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -2126,8 +2103,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -2163,8 +2139,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(source + destination);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -2183,8 +2158,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)(source + destination);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateSign(result);
-                Flags_EvaluateZero(result);
+                Flags_EvaluateSignZero(result);
                 return result;
             }
         }
@@ -2948,8 +2922,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
-                Flags_EvaluateZero(result);
-                Flags_EvaluateSign(result);
+                Flags_EvaluateSignZero(result);
 
                 if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
                 {
@@ -3536,43 +3509,24 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
-        public void Flags_EvaluateZero(ushort result = 0)
+        /// <summary>
+        ///     Evaluates and sets the value of both the Carry and Zero Flag based upon the specified result
+        /// </summary>
+        /// <param name="result"></param>
+        private void Flags_EvaluateSignZero(byte result)
         {
-            if (result == 0)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            }
+            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
 
-        [MethodImpl(CompilerOptimizations)]
-        public void Flags_EvaluateSign(byte result)
+        /// <summary>
+        ///     Evaluates and sets the value of both the Carry and Zero Flag based upon the specified result
+        /// </summary>
+        /// <param name="result"></param>
+        private void Flags_EvaluateSignZero(ushort result)
         {
-            if (result.IsNegative())
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-            }
-        }
-
-        [MethodImpl(CompilerOptimizations)]
-        public void Flags_EvaluateSign(ushort result)
-        {
-            if (result.IsNegative())
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-            }
+            Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            Registers.F = result == 0 ? Registers.F.SetFlag((ushort)EnumFlags.ZF) : Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
     }
 }
