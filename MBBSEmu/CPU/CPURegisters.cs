@@ -25,7 +25,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Flags
         /// </summary>
-        public CpuFlags F { get; set; }
+        public ushort F { get; set; }
 
         /*
          * General Registers
@@ -207,7 +207,6 @@ namespace MBBSEmu.CPU
 
         public CpuRegisters()
         {
-            F = new CpuFlags();
             Fpu = new FpuStatusRegister();
         }
 

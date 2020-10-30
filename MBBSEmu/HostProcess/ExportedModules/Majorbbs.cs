@@ -1637,11 +1637,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (result.Valid)
             {
-                Registers.F.ClearFlag(EnumFlags.CF);
+                Registers.F.ClearFlag((ushort)EnumFlags.CF);
             }
             else
             {
-                Registers.F.SetFlag(EnumFlags.CF);
+                Registers.F.SetFlag((ushort)EnumFlags.CF);
 
 #if DEBUG
                 _logger.Warn($"Unable to cast {stringToLong} ({sourcePointer}) to long");
