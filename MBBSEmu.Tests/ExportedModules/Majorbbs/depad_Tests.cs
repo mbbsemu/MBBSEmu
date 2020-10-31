@@ -10,13 +10,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int DEPAD_ORDINAL = 164;
 
         [Theory]
-        [InlineData("%   ", 3)]
-        [InlineData("T    ", 4)]
-        [InlineData("T ", 1)]
-        [InlineData("TeSt  ", 2)]
-        [InlineData("TeSt", 0)]
-        [InlineData("", 0)]
-        public void DEPAD_Test(string inputString, ushort expected)
+        [InlineData("%   ", 3, "%\0")]
+        [InlineData("T    ", 4, "T\0")]
+        [InlineData("T ", 1, "T\0")]
+        [InlineData("TeSt  ", 2, "TeSt\0")]
+        [InlineData("TeSt", 0, "TeSt\0")]
+        [InlineData("", 0, "\0")]
+        public void DEPAD_Test(string inputString, ushort expected, string expectedString)
         {
             //Reset State
             Reset();
@@ -29,6 +29,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("INPUT_STRING")));
         }
     }
 }
