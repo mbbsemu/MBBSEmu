@@ -5995,28 +5995,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void zonkhl()
         {
-            var stgPointer = GetParameterPointer(0);
-
-            var stgToParse = Module.Memory.GetString(stgPointer).ToArray();
-
-            var toUpper = true;
-            for (var i = 0; i < stgToParse.Length; i++)
+            var inputStringPointer = GetParameterPointer(0);
+            var inputString = Module.Memory.GetString(inputStringPointer).ToArray();
+            var isSpace = true;
+            
+            for (var i = 0; i < inputString.Length; i++)
             {
-                if (toUpper)
+                if (inputString[i] >= 'A' && inputString[i] <= 'Z')
+                    inputString[i] += 32;
+                
+                if (inputString[i] == 32)
+                    isSpace = true;
+                
+                if (inputString[i] >= 'a' && inputString[i] <= 'z' && isSpace)
                 {
-                    if (stgToParse[i] >= 'a' && stgToParse[i] <= 'z')
-                        stgToParse[i] -= 32;
-
-                    if (stgToParse[i] != 32)
-                        toUpper = false;
-                }
-                else if (stgToParse[i] == 32)
-                {
-                    toUpper = true;
+                    inputString[i] -= 32;
+                    isSpace = false;
                 }
             }
 
-            Module.Memory.SetArray(stgPointer, stgToParse);
+            Module.Memory.SetArray(inputStringPointer, inputString);
         }
 
         /// <summary>
@@ -7032,24 +7030,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stripb()
         {
-            var stringToParsePointer = GetParameterPointer(0);
+            var inputStringPointer = GetParameterPointer(0);
+            var inputString = Module.Memory.GetString(inputStringPointer);
 
-            var stringToParse = Module.Memory.GetString(stringToParsePointer).ToArray();
+            depad();
 
-            for (var i = 2; i < stringToParse.Length; i++)
-            {
-                if (stringToParse[^i] == (byte)' ')
-                    continue;
-
-                //String had no trailing spaces
-                if (i == 1)
-                    return;
-
-                stringToParse[^(i - 1)] = 0;
-
-                //Write the new terminated string back
-                Module.Memory.SetArray(stringToParsePointer, stringToParse);
-            }
+            //Write the new terminated string back
+            Module.Memory.SetArray(inputStringPointer, inputString);
+            
         }
 
         /// <summary>

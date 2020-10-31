@@ -13,6 +13,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("upper case", "Upper Case\0")]
         [InlineData("   capitalize me", "   Capitalize Me\0")]
         [InlineData("lower case words", "Lower Case Words\0")]
+        [InlineData("loWER caSE worDS", "Lower Case Words\0")]
         [InlineData("  ---&&&^^^ hello", "  ---&&&^^^ Hello\0")]
         [InlineData("       hi", "       Hi\0")]
         public void ZONKHL_Test(string inputString, string expectedString)
