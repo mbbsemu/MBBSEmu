@@ -19,6 +19,8 @@
         Zstring = 0xB,
         Unsigned = 0xD,
         UnsignedBinary = 0xE,
-        AutoInc = 0xF
+        AutoInc = 0xF,
+        OldAscii = 0x20,
+        OldBinary = 0x21,
     }
 }
