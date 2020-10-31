@@ -15,7 +15,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class McvFile
     {
-        private static readonly byte[] NEW_LINE = new byte[] {(byte)'\r', (byte)'\n'};
+        private static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'};
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
