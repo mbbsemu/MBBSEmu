@@ -171,7 +171,7 @@ namespace MBBSEmu.Session.Telnet
                 return;
             }
 
-            using var msIacToSend = new MemoryStream();
+            using var msIacToSend = new MemoryStream(128);
             foreach (var resp in iacResponses)
             {
                 if (_iacSentResponses.Add(resp))

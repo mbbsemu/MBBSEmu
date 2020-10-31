@@ -58,7 +58,7 @@ namespace MBBSEmu.Session
         /// <param name="timeout">Maximum time to wait before throwing a TimeoutException</param>
         public string GetLine(char endingCharacter, TimeSpan timeout)
         {
-            var line = new MemoryStream();
+            var line = new MemoryStream(80);
             while (true)
             {
                 if (!_data.TryTake(out var b, timeout))
