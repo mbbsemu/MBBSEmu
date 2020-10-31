@@ -7037,7 +7037,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Write the new terminated string back
             Module.Memory.SetArray(inputStringPointer, inputString);
-            
         }
 
         /// <summary>
