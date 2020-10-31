@@ -4300,7 +4300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int nremoved=depad(char *string)
         /// </summary>
-        private void depad()
+        private void depad(bool updateAX = true)
         {
             var stringPointer = GetParameterPointer(0);
 
@@ -4320,7 +4320,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetArray(stringPointer, stringToSearch);
-            Registers.AX = numRemoved;
+
+            if (updateAX)
+                Registers.AX = numRemoved;
         }
 
         private ReadOnlySpan<byte> othusn => Module.Memory.GetVariablePointer("OTHUSN").Data;
@@ -4458,7 +4460,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
+#if DEBUG
                 _logger.Warn($"Invalid Channel: {newUserNumber}");
+#endif               
                 return;
             }
 
@@ -5993,27 +5997,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void zonkhl()
         {
-            var stgPointer = GetParameterPointer(0);
-
-            var stgToParse = Module.Memory.GetString(stgPointer).ToArray();
-
-            var toUpper = true;
-            for (var i = 0; i < stgToParse.Length; i++)
+            var inputStringPointer = GetParameterPointer(0);
+            var inputString = Module.Memory.GetString(inputStringPointer).ToArray();
+            var isSpace = true;
+            
+            for (var i = 0; i < inputString.Length; i++)
             {
-                if (toUpper)
+                if (char.IsUpper((char)inputString[i]))
+                    inputString[i] = (byte)char.ToLower((char)inputString[i]);
+                
+                if (inputString[i] == (byte) ' ')
+                    isSpace = true;
+                
+                if (char.IsLower((char)inputString[i]) && isSpace)
                 {
-                    if (stgToParse[i] >= 'a' && stgToParse[i] <= 'z')
-                        stgToParse[i] -= 32;
-
-                    toUpper = false;
-                }
-                else if (stgToParse[i] == 32)
-                {
-                    toUpper = true;
+                    inputString[i] = (byte)char.ToUpper((char)inputString[i]);
+                    isSpace = false;
                 }
             }
 
-            Module.Memory.SetArray(stgPointer, stgToParse);
+            Module.Memory.SetArray(inputStringPointer, inputString);
         }
 
         /// <summary>
@@ -6044,9 +6047,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringPointer = GetParameterPointer(0);
 
-            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, true));
-
-            var parsedString = stringToParse.Trim() + '\0';
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer));
+            var parsedString = string.Concat(stringToParse.Where(c => !char.IsWhiteSpace(c)));
 
             Module.Memory.SetArray(stringPointer, Encoding.ASCII.GetBytes(parsedString));
         }
@@ -7028,27 +7030,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void stripb(char *stg);
         /// </summary>
-        private void stripb()
-        {
-            var stringToParsePointer = GetParameterPointer(0);
-
-            var stringToParse = Module.Memory.GetString(stringToParsePointer).ToArray();
-
-            for (var i = 2; i < stringToParse.Length; i++)
-            {
-                if (stringToParse[^i] == (byte)' ')
-                    continue;
-
-                //String had no trailing spaces
-                if (i == 1)
-                    return;
-
-                stringToParse[^(i - 1)] = 0;
-
-                //Write the new terminated string back
-                Module.Memory.SetArray(stringToParsePointer, stringToParse);
-            }
-        }
+        private void stripb() => depad(false);
 
         /// <summary>
         ///     Formats a String for use in btrieve (best I can tell)
