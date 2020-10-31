@@ -581,6 +581,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     uacoff();
                     break;
                 case 474:
+                case 787: //pmlt is just mult-lingual prf, so we just call prf
                     prf();
                     break;
                 case 463:
@@ -868,9 +869,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 648:
                     xlttxv();
-                    break;
-                case 787: //pmlt is just mult-lingual prf, so we just call prf
-                    prf();
                     break;
                 case 485:
                     qrybtv();

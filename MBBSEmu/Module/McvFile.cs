@@ -111,7 +111,19 @@ namespace MBBSEmu.Module
                 }
                 var message = fileSpan.Slice(messageLocationOffset, messageLength);
 
-                Messages.Add(i, message.ToArray());
+                using var parsedMessage = new MemoryStream(message.Length * 2);
+                foreach (var b in message)
+                {
+                    //Make sure any New Lines have Carriage Returns, and vice versa
+                    if (b == 0xD)
+                        parsedMessage.WriteByte(0xA);
+                    else if (b == 0xA)
+                        parsedMessage.WriteByte(0xD);
+
+                    parsedMessage.WriteByte(b);
+                }
+
+                Messages.Add(i, parsedMessage.ToArray());
             }
 
 #if DEBUG

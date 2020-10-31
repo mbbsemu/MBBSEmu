@@ -78,7 +78,7 @@ namespace MBBSEmu.Tests.ExportedModules
             }
         }
 
-        protected void Reset()
+        protected virtual void Reset()
         {
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
