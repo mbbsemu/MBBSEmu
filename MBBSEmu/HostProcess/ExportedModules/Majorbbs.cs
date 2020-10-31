@@ -4300,7 +4300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int nremoved=depad(char *string)
         /// </summary>
-        private void depad()
+        private void depad(bool updateAX = true)
         {
             var stringPointer = GetParameterPointer(0);
 
@@ -4320,7 +4320,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetArray(stringPointer, stringToSearch);
-            Registers.AX = numRemoved;
+
+            if (updateAX)
+                Registers.AX = numRemoved;
         }
 
         private ReadOnlySpan<byte> othusn => Module.Memory.GetVariablePointer("OTHUSN").Data;
@@ -7026,7 +7028,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void stripb(char *stg);
         /// </summary>
-        private void stripb() => depad();
+        private void stripb() => depad(false);
 
         /// <summary>
         ///     Formats a String for use in btrieve (best I can tell)
