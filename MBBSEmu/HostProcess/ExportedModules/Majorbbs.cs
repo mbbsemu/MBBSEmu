@@ -1349,7 +1349,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 --limit;
             }
 
-            using var inputBuffer = new MemoryStream();
+            using var inputBuffer = new MemoryStream(limit);
             var potentialString = Module.Memory.GetArray(sourcePointer, limit);
             for (var i = 0; i < limit; i++)
             {
@@ -3790,7 +3790,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            using var valueFromFile = new MemoryStream();
+            using var valueFromFile = new MemoryStream(maxCharactersToRead);
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
@@ -4197,7 +4197,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            using var valueFromFile = new MemoryStream();
+            using var valueFromFile = new MemoryStream(maxCharactersToRead);
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
@@ -4602,7 +4602,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var limit = GetParameter(4);
 
-            using var inputBuffer = new MemoryStream();
+            using var inputBuffer = new MemoryStream(limit);
             var potentialString = Module.Memory.GetArray(sourcePointer, limit);
             for (var i = 0; i < limit; i++)
             {
@@ -7349,8 +7349,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var returnedWord = new MemoryStream();
             var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+            var returnedWord = new MemoryStream(remainingCharactersInCommand);
 
             //Build Return Word stopping when a space is encountered
             foreach (var b in inputString)

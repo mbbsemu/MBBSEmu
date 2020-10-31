@@ -230,8 +230,8 @@ namespace MBBSEmu.Session
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
             OutputEnabled = true;
-            EchoBuffer = new MemoryStream();
-            InputBuffer = new MemoryStream();
+            EchoBuffer = new MemoryStream(1024);
+            InputBuffer = new MemoryStream(1024);
 
             InputCommand = new byte[] { 0x0 };
         }
