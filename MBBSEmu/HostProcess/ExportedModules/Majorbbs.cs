@@ -5999,15 +5999,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             
             for (var i = 0; i < inputString.Length; i++)
             {
-                if (inputString[i] >= 'A' && inputString[i] <= 'Z')
-                    inputString[i] += 32;
+                if (char.IsUpper((char)inputString[i]))
+                    inputString[i] = (byte)char.ToLower((char)inputString[i]);
                 
-                if (inputString[i] == 32)
+                if (inputString[i] == (byte) ' ')
                     isSpace = true;
                 
-                if (inputString[i] >= 'a' && inputString[i] <= 'z' && isSpace)
+                if (char.IsLower((char)inputString[i]) && isSpace)
                 {
-                    inputString[i] -= 32;
+                    inputString[i] = (byte)char.ToUpper((char)inputString[i]);
                     isSpace = false;
                 }
             }
