@@ -12,6 +12,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Theory]
         [InlineData("T", "T\0")]
         [InlineData("T          ", "T\0")]
+        [InlineData("   ", " \0")]
+        [InlineData(" XX  ", " XX\0")]
         [InlineData("TEST test TEST\0", "TEST test TEST\0")]
         [InlineData("TeSt \0", "TeSt\0")]
         public void STRIPB_Test(string inputString, string expectedString)
