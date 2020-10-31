@@ -164,6 +164,7 @@ namespace MBBSEmu.Btrieve
                 case EnumKeyDataType.String:
                 case EnumKeyDataType.Lstring:
                 case EnumKeyDataType.Zstring:
+                case EnumKeyDataType.OldAscii:
                     return ExtractNullTerminatedString(keyData);
                 default:
                     return keyData.ToArray();
@@ -207,6 +208,7 @@ namespace MBBSEmu.Btrieve
                     case EnumKeyDataType.String:
                     case EnumKeyDataType.Lstring:
                     case EnumKeyDataType.Zstring:
+                    case EnumKeyDataType.OldAscii:
                         type = "TEXT";
                         break;
                     default:

@@ -233,7 +233,7 @@ namespace MBBSEmu.Btrieve
                 if (attributes.HasFlag(EnumKeyAttributeMask.UseExtendedDataType))
                     dataType = (EnumKeyDataType) data[0x1C];
                 else
-                    dataType = attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary) ? EnumKeyDataType.UnsignedBinary : EnumKeyDataType.Zstring;
+                    dataType = attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary) ? EnumKeyDataType.OldBinary : EnumKeyDataType.OldAscii;
 
                 var keyDefinition = new BtrieveKeyDefinition {
                     Number = currentKeyNumber,
