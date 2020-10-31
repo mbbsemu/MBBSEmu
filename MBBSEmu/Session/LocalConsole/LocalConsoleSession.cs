@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;
 using NLog;
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -61,7 +62,13 @@ namespace MBBSEmu.Session.LocalConsole
             }, this, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500));
 
             Console.Clear();
+
             Console.OutputEncoding = Encoding.Unicode;
+
+            //Detect if we're on Windows and enable VT100 on the current Terminal Window
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                new Win32VT100().Enable();
+
             SessionState = EnumSessionState.Unauthenticated;
 
             (_logger as CustomLogger)?.DisableConsoleLogging();
