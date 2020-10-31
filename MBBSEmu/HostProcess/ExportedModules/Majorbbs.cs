@@ -7026,10 +7026,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: void stripb(char *stg);
         /// </summary>
-        private void stripb()
-        {
-            depad();
-        }
+        private void stripb() => depad();
 
         /// <summary>
         ///     Formats a String for use in btrieve (best I can tell)
