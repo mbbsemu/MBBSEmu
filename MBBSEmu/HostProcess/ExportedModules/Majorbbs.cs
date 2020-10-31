@@ -4460,7 +4460,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
+#if DEBUG
                 _logger.Warn($"Invalid Channel: {newUserNumber}");
+#endif               
                 return;
             }
 
