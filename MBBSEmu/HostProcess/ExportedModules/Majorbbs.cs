@@ -7028,9 +7028,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stripb()
         {
-            var inputStringPointer = GetParameterPointer(0);
-            var inputString = Module.Memory.GetString(inputStringPointer);
-
             depad();
         }
 
