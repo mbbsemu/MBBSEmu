@@ -172,7 +172,7 @@ namespace MBBSEmu.HostProcess.Fsd
                 foundFieldCharacter = '\xFF';
 
                 //If it's a new line, increment Y and set X back to -1
-                if (c == '\r')
+                if (c == '\n')
                 {
                     currentY++;
                     currentX = 0;
