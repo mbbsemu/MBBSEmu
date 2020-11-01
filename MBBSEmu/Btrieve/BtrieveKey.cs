@@ -143,6 +143,8 @@ namespace MBBSEmu.Btrieve
                             return BitConverter.ToUInt16(keyData);
                         case 4:
                             return BitConverter.ToUInt32(keyData);
+                        case 6:
+                            return (ulong)BitConverter.ToUInt32(keyData.Slice(0, 4)) | (((ulong)BitConverter.ToUInt16(keyData.Slice(4, 2))) << 32);
                         case 8:
                             return BitConverter.ToUInt64(keyData);
                         default:
@@ -156,6 +158,8 @@ namespace MBBSEmu.Btrieve
                             return BitConverter.ToInt16(keyData);
                         case 4:
                             return BitConverter.ToInt32(keyData);
+                        case 6:
+                            return (long)BitConverter.ToUInt32(keyData.Slice(0, 4)) | (((long)BitConverter.ToInt16(keyData.Slice(4, 2))) << 32);
                         case 8:
                             return BitConverter.ToInt64(keyData);
                         default:
