@@ -13,7 +13,6 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {
@@ -26,13 +25,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly IAccountRepository _accountRepository;
         private readonly AppSettings _configuration;
         private readonly IGlobalCache _globalCache;
+        private readonly PointerDictionary<SessionBase> _sessions;
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, PointerDictionary<SessionBase> sessions)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
             _configuration = configuration;
             _globalCache = globalCache;
+            _sessions = sessions;
         }
 
         /// <summary>
@@ -40,7 +41,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// </summary>
         /// <param name="session"></param>
         /// <param name="modules"></param>
-        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
+        /// <param name="sessions"></param>
+        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules, PointerDictionary<SessionBase> sessions)
         {
             switch (session.SessionState)
             {
@@ -248,6 +250,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
                         : _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
                 return;
             }
+
+            if (_sessions.Values.Any(s => s.Username == session.Username))
+            {
+                EchoToClient(session, $"\r\n|RED||B|{session.Username} is already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                return;
+            }
+                
 
             session.Username = inputValue;
             session.InputBuffer.SetLength(0);
