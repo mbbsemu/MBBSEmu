@@ -766,6 +766,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     intdos();
                     break;
                 case 786:
+                case 178: // same signature/same functionality as prfmlt(), ansi is always true
                     prfmlt();
                     break;
                 case 783:
