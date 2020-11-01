@@ -292,6 +292,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
                         break;
                     }
                 //Numeric Validation
+                case EnumFsdFieldType.Numeric when !int.TryParse(fsdStatus.SelectedField.Value, out var _):
+                    DisplayErrorMessage(session, fsdStatus.ErrorField, $"You must enter a value");
+                    isValid = false;
+                    break;
                 case EnumFsdFieldType.Numeric when int.Parse(fsdStatus.SelectedField.Value) > fsdStatus.SelectedField.Maximum:
                     DisplayErrorMessage(session, fsdStatus.ErrorField, $"Enter no higher than {fsdStatus.SelectedField.Maximum}");
                     isValid = false;
