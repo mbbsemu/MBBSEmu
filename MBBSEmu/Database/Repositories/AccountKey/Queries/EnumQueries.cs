@@ -23,6 +23,10 @@ namespace MBBSEmu.Database.Repositories.AccountKey.Queries
 
         [SqlQuery("GetAccountKeysByAccountId.sql")]
         [Description("Gets Account Keys by the specified Account ID")]
-        GetAccountKeysByAccountId
+        GetAccountKeysByAccountId,
+
+        [SqlQuery("GetAccountKeysByUsername.sql")]
+        [Description("Gets Account Keys by the specified Username")]
+        GetAccountKeysByUsername
     }
 }

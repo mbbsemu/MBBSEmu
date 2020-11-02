@@ -1,9 +1,11 @@
-﻿using System;
-using System.ComponentModel;
-using System.IO;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
 
 namespace MBBSEmu
 {
@@ -47,6 +49,8 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
+        public IEnumerable<string> DefaultKeys => ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
+            .ToArray().Select(c => c.Value).ToArray();
 
         //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
@@ -90,7 +94,7 @@ namespace MBBSEmu
                     case "Database.File":
                         throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: mbbsemu.db");
                     default:
-                        return default(T);
+                        return default;
                 }
             }
         }

@@ -44,5 +44,10 @@ namespace MBBSEmu.Database.Repositories.AccountKey
         {
             return Query<AccountKeyModel>(EnumQueries.GetAccountKeysByAccountId, new { accountId });
         }
+
+        public IEnumerable<AccountKeyModel> GetAccountKeysByUsername(string userName)
+        {
+            return Query<AccountKeyModel>(EnumQueries.GetAccountKeysByUsername, new {userName});
+        }
     }
 }

@@ -11,5 +11,6 @@ namespace MBBSEmu.Database.Repositories.AccountKey
         bool InsertAccountKey(Model.AccountKeyModel accountKey);
         bool InsertAccountKey(int accountId, string accountKey);
         IEnumerable<AccountKeyModel> GetAccountKeysByAccountId(int accountId);
+        IEnumerable<AccountKeyModel> GetAccountKeysByUsername(string username);
     }
 }
