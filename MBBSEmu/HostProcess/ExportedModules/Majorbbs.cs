@@ -2013,8 +2013,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void hasmkey()
         {
-            var key = GetParameter(0);
-            Registers.AX = 1;
+            var msgnum = GetParameter(0);
+
+            var accountLock = Encoding.ASCII.GetString(McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)).TrimEnd('\0');
+
+            var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[ChannelNumber].Username);
+
+            Registers.AX = accountKeys.Any(k =>
+                string.Equals(accountLock, k.accountKey, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Info($"Returning {Registers.AX} for Haskey({lockName})");
+#endif
         }
 
         /// <summary>
