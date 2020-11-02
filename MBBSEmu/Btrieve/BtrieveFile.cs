@@ -44,6 +44,9 @@ namespace MBBSEmu.Btrieve
             }
         }
 
+        public bool RecordsContainVariableLength { get; set; }
+        public bool VariableLengthRecords { get; set; }
+
         private ushort _recordLength;
         /// <summary>
         ///     Defined Length of the records within the Btrieve File
@@ -148,6 +151,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public Dictionary<ushort, BtrieveKey> Keys { get; set; }
 
+        private ILogger _logger;
+
         /// <summary>
         ///     Log Key is an internal value used by the Btrieve engine to track unique
         ///     records -- it adds 8 bytes to the end of the record that's not accounted for
@@ -157,10 +162,13 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public bool LogKeyPresent { get; set; }
 
+        public HashSet<uint> DeletedRecordOffsets { get; set; }
+
         public BtrieveFile()
         {
             Records = new List<BtrieveRecord>();
             Keys = new Dictionary<ushort, BtrieveKey>();
+            DeletedRecordOffsets = new HashSet<uint>();
         }
 
         /// <summary>
@@ -183,27 +191,96 @@ namespace MBBSEmu.Btrieve
                 throw new FileNotFoundException($"Unable to locate existing btrieve file {fileName}");
             }
 
-            var fullPath = Path.Combine(path, fileName);
-            var fileData = File.ReadAllBytes(fullPath);
+            LoadFile(logger, Path.Combine(path, fileName));
+        }
 
-            if (fileData[0] == 'F' && fileData[1] == 'C' && fileData[2] == 0 && fileData[3] == 0)
-                throw new ArgumentException($"Cannot import v6 Btrieve database {fileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
+        public void LoadFile(ILogger logger, string fullPath)
+        {
+            _logger = logger;
+
+            var fileName = Path.GetFileName(fullPath);
+            var fileData = File.ReadAllBytes(fullPath);
 
             FileName = fullPath;
             Data = fileData;
 
+            var (valid, errorMessage) = ValidateDatabase();
+            if (!valid)
+                throw new ArgumentException($"Failed to load database {FileName}: {errorMessage}");
+
 #if DEBUG
             logger.Info($"Opened {fileName} and read {Data.Length} bytes");
 #endif
-            //Only Parse Keys if they are defined
-            if (KeyCount > 0)
-                LoadBtrieveKeyDefinitions(logger);
-            else
-                throw new ArgumentException("NO KEYS defined in {fileName}");
+            RecordsContainVariableLength = (Data[0x38] == 0xFF);
 
+            var nxtReuseRec = GetRecordPointer(0x10);
+            if (nxtReuseRec != 0xFFFFFFFF)
+                DeletedRecordOffsets = GetRecordPointerList(nxtReuseRec);
+
+            //Only Parse Keys if they are defined
+            LoadBtrieveKeyDefinitions(logger);
             //Only load records if there are any present
             if (RecordCount > 0)
                 LoadBtrieveRecords(logger);
+        }
+
+        private (bool, string) ValidateDatabase()
+        {
+            if (Data[0] == 'F' && Data[1] == 'C'/* && fileData[2] == 0 && fileData[3] == 0*/)
+                return (false, $"Cannot import v6 Btrieve database {FileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
+            if (Data[0] != 0 && Data[1] != 0 && Data[2] != 0 && Data[3] != 0)
+                return (false, $"Doesn't appear to be a Btrieve database {FileName}");
+
+            var versionCode = Data[6] << 16 | Data[7];
+            switch (versionCode)
+            {
+                case 3:
+                case 4:
+                case 5:
+                    break;
+                default:
+                    return (false, $"Invalid version code [{versionCode}] in Btrieve database {FileName}");
+            }
+
+            var needsRecovery = (Data[0x22] == 0xFF && Data[0x23] == 0xFF);
+            if (needsRecovery)
+                return (false, $"Cannot import Btrieve database {FileName} since it's marked inconsistent and needs recovery.");
+
+            if (PageLength < 512 || (PageLength & 0x1FF) != 0)
+                return (false, $"Invalid PageLength, must be multiple of 512 {FileName}");
+
+            if (KeyCount <= 0)
+                return (false, $"NO KEYS defined in {FileName}");
+
+            var accelFlags = BitConverter.ToUInt16(Data.AsSpan().Slice(0xA, 2));
+            if (accelFlags != 0)
+                return (false, $"Valid accel flags! {FileName} {accelFlags}");
+
+            var usrflgs = BitConverter.ToUInt16(Data.AsSpan().Slice(0x106, 2));
+            if ((usrflgs & 0x8) != 0)
+                return (false, "Data is compressed, cannot handle {FileName}");
+
+            VariableLengthRecords = ((usrflgs & 0x1) != 0);
+            if (VariableLengthRecords) _logger.Error($"VARIABLE LENGTH RECORDS IN {FileName}");
+            return (true, "");
+        }
+
+        HashSet<uint> GetRecordPointerList(uint first)
+        {
+            HashSet<uint> ret = new HashSet<uint>();
+            do
+            {
+                ret.Add(first);
+
+                first = GetRecordPointer(first);
+            } while (first != 0xFFFFFFFF);
+
+            return ret;
+        }
+
+        private uint GetRecordPointer(uint offset)
+        {
+            return (uint)BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset, 2)) << 16 | BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset + 2, 2));
         }
 
         /// <summary>
@@ -215,12 +292,7 @@ namespace MBBSEmu.Btrieve
             const ushort keyDefinitionLength = 0x1E;
             ReadOnlySpan<byte> btrieveFileContentSpan = Data;
 
-            //Check for Log Key
-            if (btrieveFileContentSpan[0x10C] == 1)
-            {
-                logger.Warn($"Btrieve Log Key Present in {FileName}");
-                LogKeyPresent = true;
-            }
+            LogKeyPresent = (btrieveFileContentSpan[0x10C] == 1);
 
             ushort totalKeys = KeyCount;
             ushort currentKeyNumber = 0;
@@ -296,24 +368,12 @@ namespace MBBSEmu.Btrieve
             //Starting at 1, since the first page is the header
             for (var i = 1; i <= PageCount; i++)
             {
-                var pageOffset = (PageLength * i);
-                var recordsInPage = (PageLength / PhysicalRecordLength);
+                var pageOffset = (uint)(PageLength * i);
+                var recordsInPage = ((PageLength - 6) / PhysicalRecordLength);
 
-                //Key Page
-                if (BitConverter.ToUInt32(Data, pageOffset + 0x8) == uint.MaxValue)
+                //Verify Data Page, high bit set on byte 5 (usage count)
+                if ((Data[pageOffset + 0x5] & 0x80) == 0)
                     continue;
-
-                //Key Constraint Page
-                if (Data[pageOffset + 0x6] == 0xAC)
-                    continue;
-
-                //Verify Data Page
-                if (!Data[pageOffset + 0x5].IsNegative())
-                {
-                    logger.Warn(
-                        $"Skipping Non-Data Page, might have invalid data - Page Start: 0x{pageOffset + 0x5:X4}");
-                    continue;
-                }
 
                 //Page data starts 6 bytes in
                 pageOffset += 6;
@@ -322,20 +382,108 @@ namespace MBBSEmu.Btrieve
                     if (recordsLoaded == RecordCount)
                         break;
 
-                    var recordArray = new byte[RecordLength];
-                    Array.Copy(Data, pageOffset + (PhysicalRecordLength * j), recordArray, 0, RecordLength);
-
-                    //End of Page 0xFFFFFFFF
-                    if (BitConverter.ToUInt32(recordArray, 0) == uint.MaxValue)
+                    var recordOffset = (uint)pageOffset + (uint)(PhysicalRecordLength * j);
+                    // Marked for deletion? Skip
+                    if (DeletedRecordOffsets.Contains(recordOffset))
                         continue;
 
-                    Records.Add(new BtrieveRecord((uint)(pageOffset + (PhysicalRecordLength * j)), recordArray));
+                    var recordArray = new byte[RecordLength];
+                    Array.Copy(Data, recordOffset, recordArray, 0, RecordLength);
+
+                    // End of Page 0xFFFFFFFF
+                    if (BitConverter.ToUInt32(recordArray) == uint.MaxValue)
+                        continue;
+
+                    if (VariableLengthRecords)
+                    {
+                        using var stream = new MemoryStream();
+                        stream.Write(recordArray);
+
+                        Records.Add(new BtrieveRecord((uint)recordOffset, GetVariableLengthData(recordOffset, stream)));
+                    }
+                    else
+                        Records.Add(new BtrieveRecord((uint)recordOffset, recordArray));
+
                     recordsLoaded++;
                 }
             }
 #if DEBUG
             logger.Info($"Loaded {recordsLoaded} records from {FileName}. Resetting cursor to 0");
 #endif
+        }
+
+        private byte[] GetVariableLengthData(uint recordOffset, MemoryStream stream) {
+            var variableData = Data.AsSpan().Slice((int)recordOffset + RecordLength, PhysicalRecordLength - RecordLength);
+            var vrecPage = GetVariableLengthRecordPointer(variableData);
+            var vrecFragment = variableData[3];
+
+            while (true) {
+                /*if (vrecPage == 0) // bad data?
+                {
+                    Console.WriteLine("TODD bad data");
+                    //return stream.ToArray();
+                }*/
+
+                // jump to that page
+                var vpage = Data.AsSpan().Slice((int)vrecPage * PageLength, PageLength);
+                // do some assertions on the page
+                var numFragmentsInPage = BitConverter.ToUInt16(vpage.Slice(0xA, 2));
+                // grab the fragment pointer
+                var (offset, length, nextPointerExists) = GetFragment(vpage, vrecFragment, numFragmentsInPage);
+                // now finally read the data!
+                variableData = vpage.Slice((int)offset, (int)length);
+                if (!nextPointerExists)
+                {
+                    // read all the data and reached the end!
+                    stream.Write(variableData);
+                    return stream.ToArray();
+                }
+
+                // keep going through more pages!
+                vrecPage = GetVariableLengthRecordPointer(variableData);
+                vrecFragment = variableData[3];
+
+                stream.Write(variableData.Slice(4));
+            }
+        }
+
+        private (uint, uint, bool) GetFragment(ReadOnlySpan<byte> page, uint fragment, uint numFragments)
+        {
+            var offsetPointer = (uint)PageLength - 2u * (fragment + 1u);
+            var (offset, nextPointerExists) = GetOffsetFromFragmentArray(page.Slice((int)offsetPointer, 2));
+
+            // to compute length, keep going until I read the next valid fragment and get its offset
+            var nextFragmentOffset = offsetPointer;
+            uint nextOffset = 0xFFFFFFFF;
+            for (var i = fragment + 1; i <= numFragments; ++i)
+            {
+                nextFragmentOffset -= 2;
+                (nextOffset, _) = GetOffsetFromFragmentArray(page.Slice((int)nextFragmentOffset, 2));
+                if (nextOffset == 0x7FFF)
+                    continue;
+            }
+
+            // some sanity checks
+            if (nextOffset == 0xFFFFFFFF)
+                throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments}");
+
+            var length = nextOffset - offset;
+            if (offset < 0xC || (offset + length) > (PageLength - 2 * (numFragments + 1)))
+                throw new ArgumentException($"Variable data overflows page {fragment} numFragments:{numFragments}");
+
+            return (offset, length, nextPointerExists);
+        }
+
+        private static (uint, bool) GetOffsetFromFragmentArray(ReadOnlySpan<byte> arrayEntry)
+        {
+            var offset = (uint)arrayEntry[0] | ((uint)arrayEntry[1] & 0x7F) << 8;
+            var nextPointerExists = (arrayEntry[1] & 0x80) != 0;
+            return (offset, nextPointerExists);
+        }
+
+        private static uint GetVariableLengthRecordPointer(ReadOnlySpan<byte> data) {
+            // high low mid, yep it's stupid
+            return (uint)data[0] << 16 | (uint)data[1] | (uint)data[2] << 8;
         }
     }
 }

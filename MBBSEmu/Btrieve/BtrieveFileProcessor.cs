@@ -102,6 +102,12 @@ namespace MBBSEmu.Btrieve
             _cache.Clear();
         }
 
+        public BtrieveFileProcessor()
+        {
+            Keys = new Dictionary<ushort, BtrieveKey>();
+            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
+        }
+
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
         /// </summary>
@@ -949,7 +955,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite database from btrieveFile.
         /// </summary>
-        private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
+        public void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
             _logger.Warn($"Creating sqlite db {fullpath}");
 
