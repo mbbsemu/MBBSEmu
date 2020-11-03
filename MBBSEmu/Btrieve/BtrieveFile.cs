@@ -44,7 +44,6 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        public bool RecordsContainVariableLength { get; set; }
         public bool VariableLengthRecords { get; set; }
 
         private ushort _recordLength;
@@ -211,8 +210,6 @@ namespace MBBSEmu.Btrieve
 #if DEBUG
             logger.Info($"Opened {fileName} and read {Data.Length} bytes");
 #endif
-            RecordsContainVariableLength = (Data[0x38] == 0xFF);
-
             var nxtReuseRec = GetRecordPointer(0x10);
             if (nxtReuseRec != 0xFFFFFFFF)
                 DeletedRecordOffsets = GetRecordPointerList(nxtReuseRec);
@@ -261,7 +258,11 @@ namespace MBBSEmu.Btrieve
                 return (false, "Data is compressed, cannot handle {FileName}");
 
             VariableLengthRecords = ((usrflgs & 0x1) != 0);
-            if (VariableLengthRecords) _logger.Error($"VARIABLE LENGTH RECORDS IN {FileName}");
+            var recordsContainVariableLength = (Data[0x38] == 0xFF);
+
+            if (VariableLengthRecords ^ recordsContainVariableLength)
+                return (false, "Mismatched variable length fields");
+
             return (true, "");
         }
 
