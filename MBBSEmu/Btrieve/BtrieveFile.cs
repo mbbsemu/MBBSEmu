@@ -229,7 +229,7 @@ namespace MBBSEmu.Btrieve
             if (Data[0] == 'F' && Data[1] == 'C'/* && fileData[2] == 0 && fileData[3] == 0*/)
                 return (false, $"Cannot import v6 Btrieve database {FileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
             if (Data[0] != 0 && Data[1] != 0 && Data[2] != 0 && Data[3] != 0)
-                return (false, $"Doesn't appear to be a Btrieve database {FileName}");
+                return (false, $"Doesn't appear to be a v5 Btrieve database {FileName}");
 
             var versionCode = Data[6] << 16 | Data[7];
             switch (versionCode)
@@ -239,7 +239,7 @@ namespace MBBSEmu.Btrieve
                 case 5:
                     break;
                 default:
-                    return (false, $"Invalid version code [{versionCode}] in Btrieve database {FileName}");
+                    return (false, $"Invalid version code [{versionCode}] in v5 Btrieve database {FileName}");
             }
 
             var needsRecovery = (Data[0x22] == 0xFF && Data[0x23] == 0xFF);
@@ -313,12 +313,13 @@ namespace MBBSEmu.Btrieve
                     DataType = dataType,
                     Offset = BitConverter.ToUInt16(data, 0x14),
                     Length = BitConverter.ToUInt16(data, 0x16),
-                    Segment = false,
+                    Segment = attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey),
+                    SegmentOf = attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey) ? currentKeyNumber : (ushort)0,
                     NullValue = data[0x1D],
                   };
 
                 //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
-                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
+                if (!keyDefinition.Segment)
                     currentKeyNumber++;
 
 #if DEBUG
