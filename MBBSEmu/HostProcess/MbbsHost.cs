@@ -18,6 +18,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 
 namespace MBBSEmu.HostProcess
@@ -104,7 +105,9 @@ namespace MBBSEmu.HostProcess
 
         private readonly IAccountKeyRepository _accountKeyRepository;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository)
+        private readonly IAccountRepository _accountRepository;
+
+        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository)
         {
             Logger = logger;
             _globalCache = globalCache;
@@ -113,6 +116,7 @@ namespace MBBSEmu.HostProcess
             _configuration = configuration;
             _globalRoutines = globalRoutines;
             _accountKeyRepository = accountKeyRepository;
+            _accountRepository = accountRepository;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -844,7 +848,7 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository),
+                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
                     "GALGSBL" => new Galgsbl(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     "DOSCALLS" => new Doscalls(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     "GALME" => new Galme(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),

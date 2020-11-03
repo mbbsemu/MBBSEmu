@@ -35,12 +35,12 @@ namespace MBBSEmu
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
         public string GSBLActivation => GetGSBLActivationSettings("GSBL.Activation");
         public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
-        public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
-        public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
+        public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"], "Telnet.Enabled");
+        public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"], "Telnet.Port");
         public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
-        public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
+        public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"], "Rlogin.Port");
         public string RloginoRemoteIP => GetStringAppSettings("Rlogin.RemoteIP");
-        public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
+        public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"], "Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
 
         //Optional Keys
@@ -49,8 +49,17 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
-        public IEnumerable<string> DefaultKeys => ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
-            .ToArray().Select(c => c.Value).ToArray();
+        public IEnumerable<string> DefaultKeys
+        {
+            get
+            {
+                if (ConfigurationRoot.GetSection("Account.DefaultKeys") == null)
+                    return new[] { "DEMO", "NORMAL" };
+
+                return ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
+                    .ToArray().Select(c => c.Value).ToArray();
+            }
+        }
 
         //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
