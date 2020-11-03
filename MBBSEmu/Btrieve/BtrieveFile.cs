@@ -463,6 +463,8 @@ namespace MBBSEmu.Btrieve
                 (nextOffset, _) = GetOffsetFromFragmentArray(page.Slice((int)nextFragmentOffset, 2));
                 if (nextOffset == 0x7FFF)
                     continue;
+                // valid offset, break now
+                break;
             }
 
             // some sanity checks
