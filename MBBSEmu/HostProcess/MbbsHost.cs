@@ -6,7 +6,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Rlogin;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -102,7 +101,7 @@ namespace MBBSEmu.HostProcess
 
         private Thread _workerThread;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines)
+        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, PointerDictionary<SessionBase> channelDictionary)
         {
             Logger = logger;
             _globalCache = globalCache;
@@ -110,10 +109,10 @@ namespace MBBSEmu.HostProcess
             _mbbsRoutines = mbbsRoutines;
             _configuration = configuration;
             _globalRoutines = globalRoutines;
+            _channelDictionary = channelDictionary;
 
             Logger.Info("Constructing MBBSEmu Host...");
-
-            _channelDictionary = new PointerDictionary<SessionBase>();
+            
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
@@ -315,7 +314,7 @@ namespace MBBSEmu.HostProcess
                         default:
                             {
                                 foreach (var r in _mbbsRoutines)
-                                    if (r.ProcessSessionState(session, _modules))
+                                    if (r.ProcessSessionState(session, _modules, _channelDictionary))
                                         break;
 
                             }

@@ -13,6 +13,7 @@ using MBBSEmu.Server.Socket;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using MBBSEmu.HostProcess.GlobalRoutines;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -35,6 +36,7 @@ namespace MBBSEmu.DependencyInjection
         {
             //Base Configuration Items
             _serviceCollection.AddSingleton<AppSettings>();
+            _serviceCollection.AddSingleton<PointerDictionary<SessionBase>>();
             _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
             _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
             _serviceCollection.AddSingleton<IFileUtility, FileUtility>();

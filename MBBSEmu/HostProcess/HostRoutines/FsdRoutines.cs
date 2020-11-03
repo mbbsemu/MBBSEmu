@@ -35,7 +35,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             _globalCache = globalCache;
         }
 
-        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
+        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules, PointerDictionary<SessionBase> channelDictionary)
         {
             switch (session.SessionState)
             {

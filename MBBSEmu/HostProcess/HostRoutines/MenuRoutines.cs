@@ -25,15 +25,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly IAccountRepository _accountRepository;
         private readonly AppSettings _configuration;
         private readonly IGlobalCache _globalCache;
-        private readonly PointerDictionary<SessionBase> _sessions;
+        private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, PointerDictionary<SessionBase> sessions)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, PointerDictionary<SessionBase> channelDictionary)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
             _configuration = configuration;
             _globalCache = globalCache;
-            _sessions = sessions;
+            _channelDictionary = channelDictionary;
         }
 
         /// <summary>
@@ -251,13 +251,13 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            if (_sessions.Values.Any(s => s.Username == session.Username))
+            if (_channelDictionary.Values.Any(s => string.Equals(s.Username, inputValue, StringComparison.CurrentCultureIgnoreCase)))
             {
-                EchoToClient(session, $"\r\n|RED||B|{session.Username} is already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
+                EchoToClient(session, $"\r\n|RED||B|{inputValue} is already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
+                session.InputBuffer.SetLength(0);
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
-                
 
             session.Username = inputValue;
             session.InputBuffer.SetLength(0);
