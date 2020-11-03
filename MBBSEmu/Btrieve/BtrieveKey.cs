@@ -137,6 +137,7 @@ namespace MBBSEmu.Btrieve
             {
                 case EnumKeyDataType.Unsigned:
                 case EnumKeyDataType.UnsignedBinary:
+                case EnumKeyDataType.OldBinary:
                     switch (PrimarySegment.Length)
                     {
                         case 2:
@@ -207,6 +208,7 @@ namespace MBBSEmu.Btrieve
                     case EnumKeyDataType.Integer:
                     case EnumKeyDataType.Unsigned:
                     case EnumKeyDataType.UnsignedBinary:
+                    case EnumKeyDataType.OldBinary:
                         type = "INTEGER";
                         break;
                     case EnumKeyDataType.String:
