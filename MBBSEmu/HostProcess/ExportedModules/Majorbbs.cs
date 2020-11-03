@@ -4609,10 +4609,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
-#if DEBUG
+//#if DEBUG
             _logger.Info(
-                $"Updated current Btrieve record ({currentBtrieveFile.Position}) with {dataToWrite.Length} bytes");
-#endif
+                $"Updated current Btrieve record ({currentBtrieveFile.Position}) with variable {dataToWrite.Length} bytes");
+//#endif
         }
 
         /// <summary>

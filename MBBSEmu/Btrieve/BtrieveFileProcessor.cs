@@ -368,7 +368,10 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public bool Update(uint offset, byte[] recordData)
         {
-            if (recordData.Length != RecordLength)
+            if (VariableLengthRecords && recordData.Length != RecordLength)
+                _logger.Warn($"Updating variable length record of {recordData.Length} bytes into {FullPath}");
+
+            if (!VariableLengthRecords && recordData.Length != RecordLength)
             {
                 _logger.Warn(
                     $"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
@@ -485,7 +488,10 @@ namespace MBBSEmu.Btrieve
         /// <return>Position of the newly inserted item, or 0 on failure</return>
         public uint Insert(byte[] record)
         {
-            if (record.Length != RecordLength)
+            if (VariableLengthRecords && record.Length != RecordLength)
+                _logger.Warn($"Inserting variable length record of {record.Length} bytes into {FullPath}");
+
+            if (!VariableLengthRecords && record.Length != RecordLength)
             {
                 _logger.Warn(
                     $"Btrieve Record Size Mismatch TRUNCATING. Expected Length {RecordLength}, Actual Length {record.Length}");
