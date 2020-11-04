@@ -60,9 +60,6 @@ namespace MBBSEmu.Tests.ExportedModules
                 mbbsModule,
                 testSessions);
 
-            _serviceResolver.GetService<IAccountRepository>().Reset("sysop");
-            _serviceResolver.GetService<IAccountKeyRepository>().Reset();
-
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate);
         }
 
@@ -115,9 +112,6 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
                 testSessions);
-
-            _serviceResolver.GetService<IAccountRepository>().Reset("sysop");
-            _serviceResolver.GetService<IAccountKeyRepository>().Reset();
             
         }
 
