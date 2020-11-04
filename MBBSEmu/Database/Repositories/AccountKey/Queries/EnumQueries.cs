@@ -17,6 +17,10 @@ namespace MBBSEmu.Database.Repositories.AccountKey.Queries
         [Description("Inserts new Account Key")]
         InsertAccountKey,
 
+        [SqlQuery("InsertAccountKeyByUsername.sql")]
+        [Description("Inserts new Account Key by Username")]
+        InsertAccountKeyByUsername,
+
         [SqlQuery("DropAccountKeysTable.sql")]
         [Description("Drops the Account Table")]
         DropAccountKeysTable,

@@ -49,5 +49,29 @@ namespace MBBSEmu.Database.Repositories.AccountKey
         {
             return Query<AccountKeyModel>(EnumQueries.GetAccountKeysByUsername, new {userName});
         }
+
+        public bool InsertAccountKeyByUsername(string userName, string accountKey)
+        {
+            var result = Query(EnumQueries.InsertAccountKeyByUsername, new { userName, accountKey });
+            return result.Any();
+        }
+
+        public void Reset()
+        {
+            if (TableExists())
+                DropTable();
+
+            CreateTable();
+
+            //Keys for SYSOP
+            InsertAccountKeyByUsername("sysop", "DEMO");
+            InsertAccountKeyByUsername("sysop", "NORMAL");
+            InsertAccountKeyByUsername("sysop", "SUPER");
+            InsertAccountKeyByUsername("sysop", "SYSOP");
+
+            //Keys for GUEST
+            InsertAccountKeyByUsername("sysop", "DEMO");
+            InsertAccountKeyByUsername("sysop", "NORMAL");
+        }
     }
 }

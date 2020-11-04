@@ -87,6 +87,17 @@ namespace MBBSEmu.Database.Repositories.Account
             Query(EnumQueries.UpdateAccountById, new { accountId, userName, passwordHash, passwordSalt, email });
         }
 
+        public void Reset(string sysopPassword)
+        {
+            if (TableExists())
+                DropTable();
+
+            CreateTable();
+
+            InsertAccount("sysop", sysopPassword, "sysop@mbbsemu.com");
+            InsertAccount("guest", "guest", "guest@mbbsemu.com");
+        }
+
         /// <summary>
         ///     Generates a cryptographically strong random sequence of bytes
         ///
