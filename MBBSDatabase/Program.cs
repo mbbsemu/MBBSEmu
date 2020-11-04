@@ -38,7 +38,7 @@ namespace MBBSEmu
             }
             catch (Exception e)
             {
-              logger.Error(e, $"Failed to load Btrieve file {e.Message}\n{e.StackTrace}");
+              logger.Error(e, $"Failed to load Btrieve file {s}: {e.Message}\n{e.StackTrace}");
             }
           }
         }

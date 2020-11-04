@@ -469,6 +469,10 @@ namespace MBBSEmu.Btrieve
             var vrecFragment = variableData[3];
 
             while (true) {
+                // invalid page? abort and return what we have
+                if (vrecPage == 0xFFFFFF && vrecFragment == 0xFF)
+                    return stream.ToArray();
+
                 // jump to that page
                 var vpage = Data.AsSpan().Slice((int)vrecPage * PageLength, PageLength);
                 var numFragmentsInPage = BitConverter.ToUInt16(vpage.Slice(0xA, 2));
