@@ -44,6 +44,9 @@ namespace MBBSEmu.Btrieve
             }
         }
 
+        /// <summary>
+        ///     Whether the records are variable length
+        /// </summary>
         public bool VariableLengthRecords { get; set; }
 
         private ushort _recordLength;
@@ -161,6 +164,10 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public bool LogKeyPresent { get; set; }
 
+        /// <summary>
+        ///     Set of absolute file position record offsets that are marked as deleted, and
+        ///     therefore not loaded during initial load.
+        /// </summary>
         public HashSet<uint> DeletedRecordOffsets { get; set; }
 
         public BtrieveFile()
@@ -210,9 +217,7 @@ namespace MBBSEmu.Btrieve
 #if DEBUG
             logger.Info($"Opened {fileName} and read {Data.Length} bytes");
 #endif
-            var nxtReuseRec = GetRecordPointer(0x10);
-            if (nxtReuseRec != 0xFFFFFFFF)
-                DeletedRecordOffsets = GetRecordPointerList(nxtReuseRec);
+            DeletedRecordOffsets = GetRecordPointerList(GetRecordPointer(0x10));
 
             //Only Parse Keys if they are defined
             LoadBtrieveKeyDefinitions(logger);
@@ -221,9 +226,13 @@ namespace MBBSEmu.Btrieve
                 LoadBtrieveRecords(logger);
         }
 
+        /// <summary>
+        ///     Validates the Btrieve database being loaded
+        /// </summary>
+        /// <returns>True if valid. If false, the string is the error message.</returns>
         private (bool, string) ValidateDatabase()
         {
-            if (Data[0] == 'F' && Data[1] == 'C'/* && fileData[2] == 0 && fileData[3] == 0*/)
+            if (Data[0] == 'F' && Data[1] == 'C')
                 return (false, $"Cannot import v6 Btrieve database {FileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
             if (Data[0] != 0 && Data[1] != 0 && Data[2] != 0 && Data[3] != 0)
                 return (false, $"Doesn't appear to be a v5 Btrieve database {FileName}");
@@ -251,11 +260,11 @@ namespace MBBSEmu.Btrieve
 
             var accelFlags = BitConverter.ToUInt16(Data.AsSpan().Slice(0xA, 2));
             if (accelFlags != 0)
-                return (false, $"Valid accel flags! {FileName} {accelFlags}");
+                return (false, $"Valid accel flags, expected 0, got {accelFlags}! {FileName}");
 
             var usrflgs = BitConverter.ToUInt16(Data.AsSpan().Slice(0x106, 2));
             if ((usrflgs & 0x8) != 0)
-                return (false, "Data is compressed, cannot handle {FileName}");
+                return (false, $"Data is compressed, cannot handle {FileName}");
 
             VariableLengthRecords = ((usrflgs & 0x1) != 0);
             var recordsContainVariableLength = (Data[0x38] == 0xFF);
@@ -266,21 +275,30 @@ namespace MBBSEmu.Btrieve
             return (true, "");
         }
 
+        /// <summary>
+        ///     Gets a record pointer offset at <paramref name="first"/> and then continues to walk
+        ///     the chain of pointers until the end, returning all the offsets.
+        /// </summary>
+        /// <param name="first">Record pointer offset to start scanning from.</param>
         HashSet<uint> GetRecordPointerList(uint first)
         {
             HashSet<uint> ret = new HashSet<uint>();
-            do
+            while (first != 0xFFFFFFFF)
             {
                 ret.Add(first);
 
                 first = GetRecordPointer(first);
-            } while (first != 0xFFFFFFFF);
+            }
 
             return ret;
         }
 
+        /// <summary>
+        ///     Returns the record pointer located at absolute file offset <paramref name="offset"/>.
+        /// </summary>
         private uint GetRecordPointer(uint offset)
         {
+            // 2 byte high word -> 2 byte low word
             return (uint)BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset, 2)) << 16 | BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset + 2, 2));
         }
 
@@ -414,21 +432,20 @@ namespace MBBSEmu.Btrieve
 #endif
         }
 
+        /// <summary>
+        ///     Gets the complete variable length data from the specified <paramref name="recordOffset"/>,
+        ///     walking through all data pages and returning the concatenated data.
+        /// </summary>
+        /// <param name="first">Fixed record pointer offset of the record from a data page</param>
+        /// <param name="stream">MemoryStream containing the fixed record data already read.</param>
         private byte[] GetVariableLengthData(uint recordOffset, MemoryStream stream) {
             var variableData = Data.AsSpan().Slice((int)recordOffset + RecordLength, PhysicalRecordLength - RecordLength);
-            var vrecPage = GetVariableLengthRecordPointer(variableData);
+            var vrecPage = GetPageFromVariableLengthRecordPointer(variableData);
             var vrecFragment = variableData[3];
 
             while (true) {
-                /*if (vrecPage == 0) // bad data?
-                {
-                    Console.WriteLine("TODD bad data");
-                    //return stream.ToArray();
-                }*/
-
                 // jump to that page
                 var vpage = Data.AsSpan().Slice((int)vrecPage * PageLength, PageLength);
-                // do some assertions on the page
                 var numFragmentsInPage = BitConverter.ToUInt16(vpage.Slice(0xA, 2));
                 // grab the fragment pointer
                 var (offset, length, nextPointerExists) = GetFragment(vpage, vrecFragment, numFragmentsInPage);
@@ -442,25 +459,37 @@ namespace MBBSEmu.Btrieve
                 }
 
                 // keep going through more pages!
-                vrecPage = GetVariableLengthRecordPointer(variableData);
+                vrecPage = GetPageFromVariableLengthRecordPointer(variableData);
                 vrecFragment = variableData[3];
 
                 stream.Write(variableData.Slice(4));
             }
         }
 
+        /// <summary>
+        ///     Returns data about the specified fragment.
+        /// </summary>
+        /// <param name="page">The entire page's data, will be PageLength in size</param>
+        /// <param name="fragment">The fragment to lookup, 0 based</param>
+        /// <param name="numFragments">The maximum number of fragments in the page.</param>
+        /// <returns>Three items: 1) the offset within the page where the fragment data resides, 2)
+        ///     the length of data contained in the fragment, and 3) a boolean indicating the fragment
+        ///     has a "next pointer", meaning the fragment data is prefixed with 4 bytes of another
+        ///     data page to continue reading from.
+        /// </returns>
         private (uint, uint, bool) GetFragment(ReadOnlySpan<byte> page, uint fragment, uint numFragments)
         {
             var offsetPointer = (uint)PageLength - 2u * (fragment + 1u);
-            var (offset, nextPointerExists) = GetOffsetFromFragmentArray(page.Slice((int)offsetPointer, 2));
+            var (offset, nextPointerExists) = GetPageOffsetFromFragmentArray(page.Slice((int)offsetPointer, 2));
 
             // to compute length, keep going until I read the next valid fragment and get its offset
+            // then we subtract the two offets to compute length
             var nextFragmentOffset = offsetPointer;
             uint nextOffset = 0xFFFFFFFF;
             for (var i = fragment + 1; i <= numFragments; ++i)
             {
-                nextFragmentOffset -= 2;
-                (nextOffset, _) = GetOffsetFromFragmentArray(page.Slice((int)nextFragmentOffset, 2));
+                nextFragmentOffset -= 2; // fragment array is at end of page and grows downward
+                (nextOffset, _) = GetPageOffsetFromFragmentArray(page.Slice((int)nextFragmentOffset, 2));
                 if (nextOffset == 0x7FFF)
                     continue;
                 // valid offset, break now
@@ -472,20 +501,33 @@ namespace MBBSEmu.Btrieve
                 throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments}");
 
             var length = nextOffset - offset;
+            // sanity checks
             if (offset < 0xC || (offset + length) > (PageLength - 2 * (numFragments + 1)))
                 throw new ArgumentException($"Variable data overflows page {fragment} numFragments:{numFragments}");
 
             return (offset, length, nextPointerExists);
         }
 
-        private static (uint, bool) GetOffsetFromFragmentArray(ReadOnlySpan<byte> arrayEntry)
+        /// <summary>
+        ///     Reads the page offset from the fragment array
+        /// </summary>
+        /// <param name="arrayEntry">Fragment arran entry, size of 2 bytes</param>
+        /// <returns>The offset and a boolean indicating the offset contains a next pointer</returns>
+        private static (uint, bool) GetPageOffsetFromFragmentArray(ReadOnlySpan<byte> arrayEntry)
         {
             var offset = (uint)arrayEntry[0] | ((uint)arrayEntry[1] & 0x7F) << 8;
             var nextPointerExists = (arrayEntry[1] & 0x80) != 0;
             return (offset, nextPointerExists);
         }
 
-        private static uint GetVariableLengthRecordPointer(ReadOnlySpan<byte> data) {
+        /// <summary>
+        ///     Reads the variable length record pointer, which is contained in the first 3 bytes
+        ///     of the 4 byte footer after each fixed length record, and returns the page it points
+        ///     to.
+        /// </summary>
+        /// <param name="data">4 byte footer of the fixed record</param>
+        /// <returns>The page that this variable length record pointer points to</returns>
+        private static uint GetPageFromVariableLengthRecordPointer(ReadOnlySpan<byte> data) {
             // high low mid, yep it's stupid
             return (uint)data[0] << 16 | (uint)data[1] | (uint)data[2] << 8;
         }
