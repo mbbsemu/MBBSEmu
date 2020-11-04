@@ -298,8 +298,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private uint GetRecordPointer(uint offset)
         {
+            var data = Data.AsSpan().Slice((int)offset, 4);
+            return GetRecordPointer(data);
+        }
+
+        private uint GetRecordPointer(ReadOnlySpan<byte> data)
+        {
             // 2 byte high word -> 2 byte low word
-            return (uint)BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset, 2)) << 16 | BitConverter.ToUInt16(Data.AsSpan().Slice((int)offset + 2, 2));
+            return (uint)BitConverter.ToUInt16(data.Slice(0, 2)) << 16 | (uint)BitConverter.ToUInt16(data.Slice(2, 2));
         }
 
         /// <summary>
@@ -407,12 +413,13 @@ namespace MBBSEmu.Btrieve
                     if (DeletedRecordOffsets.Contains(recordOffset))
                         continue;
 
+                    var record = Data.AsSpan().Slice((int)recordOffset, PhysicalRecordLength);
+                    var unused = IsUnusedRecord(record);
+                    if (unused)
+                        break;
+
                     var recordArray = new byte[RecordLength];
                     Array.Copy(Data, recordOffset, recordArray, 0, RecordLength);
-
-                    // End of Page 0xFFFFFFFF
-                    if (BitConverter.ToUInt32(recordArray) == uint.MaxValue)
-                        continue;
 
                     if (VariableLengthRecords)
                     {
@@ -433,6 +440,24 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Returns true if the fixed record appears to be unused and should be skipped.
+        ///
+        ///     <para/>Fixed length records are contiguous in the page, and unused records are all zero except
+        ///     for the first 4 bytes, which is a record pointer to the next free page.
+        private bool IsUnusedRecord(ReadOnlySpan<byte> fixedRecordData)
+        {
+            if (fixedRecordData.Slice(4).ContainsOnly(0))
+            {
+                // additional validation, to ensure the record pointer is valid
+                uint offset = GetRecordPointer(fixedRecordData);
+                if (offset < Data.Length)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         ///     Gets the complete variable length data from the specified <paramref name="recordOffset"/>,
         ///     walking through all data pages and returning the concatenated data.
         /// </summary>
@@ -444,11 +469,6 @@ namespace MBBSEmu.Btrieve
             var vrecFragment = variableData[3];
 
             while (true) {
-                if (vrecPage == 0) {
-                    // not a valid page, so abort and return what we have
-                    return stream.ToArray();
-                }
-
                 // jump to that page
                 var vpage = Data.AsSpan().Slice((int)vrecPage * PageLength, PageLength);
                 var numFragmentsInPage = BitConverter.ToUInt16(vpage.Slice(0xA, 2));
@@ -526,11 +546,10 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Reads the variable length record pointer, which is contained in the first 3 bytes
-        ///     of the 4 byte footer after each fixed length record, and returns the page it points
-        ///     to.
+        ///     Reads the variable length record pointer, which is contained in the first 4 bytes
+        ///     of the footer after each fixed length record, and returns the page it points to.
         /// </summary>
-        /// <param name="data">4 byte footer of the fixed record</param>
+        /// <param name="data">footer of the fixed record, at least 4 bytes in length</param>
         /// <returns>The page that this variable length record pointer points to</returns>
         private static uint GetPageFromVariableLengthRecordPointer(ReadOnlySpan<byte> data) {
             // high low mid, yep it's stupid
