@@ -444,6 +444,11 @@ namespace MBBSEmu.Btrieve
             var vrecFragment = variableData[3];
 
             while (true) {
+                if (vrecPage == 0) {
+                    // not a valid page, so abort and return what we have
+                    return stream.ToArray();
+                }
+
                 // jump to that page
                 var vpage = Data.AsSpan().Slice((int)vrecPage * PageLength, PageLength);
                 var numFragmentsInPage = BitConverter.ToUInt16(vpage.Slice(0xA, 2));
@@ -498,12 +503,12 @@ namespace MBBSEmu.Btrieve
 
             // some sanity checks
             if (nextOffset == 0xFFFFFFFF)
-                throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments}");
+                throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments} {FileName}");
 
             var length = nextOffset - offset;
             // sanity checks
             if (offset < 0xC || (offset + length) > (PageLength - 2 * (numFragments + 1)))
-                throw new ArgumentException($"Variable data overflows page {fragment} numFragments:{numFragments}");
+                throw new ArgumentException($"Variable data overflows page {fragment} numFragments:{numFragments} {FileName}");
 
             return (offset, length, nextPointerExists);
         }
