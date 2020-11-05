@@ -392,8 +392,8 @@ namespace MBBSEmu
                 }
             }
 
-            var sysopUserId = acct.InsertAccount("sysop", _newSysopPassword, "sysop@mbbsemu.com");
-            var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
+            var sysopUserId = acct.InsertAccount("Sysop", _newSysopPassword, "sysop@mbbsemu.com");
+            var guestUserId = acct.InsertAccount("Guest", "guest", "guest@mbbsemu.com");
 
             var keys = _serviceResolver.GetService<IAccountKeyRepository>();
 
