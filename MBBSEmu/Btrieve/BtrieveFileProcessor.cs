@@ -674,10 +674,12 @@ namespace MBBSEmu.Btrieve
         {
             if (query.Reader == null || !query.Reader.Read())
             {
+                var hadRows = query?.Reader?.DataReader?.HasRows ?? false;
+
                 query?.Reader?.Dispose();
                 query.Reader = null;
 
-                if (query.ContinuationReader == null)
+                if (query.ContinuationReader == null || !hadRows)
                     return false;
 
                 query.Reader = query.ContinuationReader(query);
