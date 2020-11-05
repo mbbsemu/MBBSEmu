@@ -196,16 +196,18 @@ namespace MBBSEmu
                             return;
                     }
                 }
+                
                 var _configuration = new AppSettings();
                 _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
                 
-                //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
                 var channelDictionary = _channelDictionary;
+
+                //Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
