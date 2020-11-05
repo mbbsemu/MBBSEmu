@@ -64,7 +64,9 @@ namespace MBBSEmu.Session.Rlogin
             if (_channelDictionary.Values.Any(s => string.Equals(s.Username,
                 rloginStrings.First(s => !string.IsNullOrEmpty(s)), StringComparison.CurrentCultureIgnoreCase)))
             {
-                _logger.Info($"Duplicate User");
+                _logger.Info($"RLogin -- User already logged in");
+                Send(new byte[] {101, 68, 117, 112, 108, 105, 99, 97, 116, 101, 32, 85, 115, 101, 114});
+                SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
             
