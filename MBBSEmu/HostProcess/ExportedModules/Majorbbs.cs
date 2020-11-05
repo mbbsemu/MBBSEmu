@@ -45,6 +45,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<IntPtr16> _previousBtrieveFile;
 
+        private readonly AppSettings _configuration;
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
 
@@ -77,6 +78,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
+            _configuration = configuration;
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _previousMcvFile = new Stack<IntPtr16>(10);
@@ -110,7 +112,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, 4); // TODO(make this configurable)
+            Module.Memory.SetWord(ntermsPointer, (ushort) _configuration.BBSChannels); // Number of channels from Settings
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);

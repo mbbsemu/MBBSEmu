@@ -3,7 +3,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 
 namespace MBBSEmu.Session.Telnet
@@ -15,9 +14,10 @@ namespace MBBSEmu.Session.Telnet
     {
         private int _iacPhase;
 
-        private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
+        private static byte[] IAC_NOP = { 0xFF, 0xF1};
         private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
         private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
+        private readonly AppSettings _configuration;
 
         //Tracks Responses We've already sent -- prevents looping
         private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
@@ -41,13 +41,20 @@ namespace MBBSEmu.Session.Telnet
 
         private readonly IacFilter _iacFilter;
 
-        public TelnetSession(ILogger logger, Socket telnetConnection) : base(logger, telnetConnection)
+        public TelnetSession(ILogger logger, Socket telnetConnection, AppSettings configuration) : base(logger, telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;
 
             _iacFilter = new IacFilter(logger);
             _iacFilter.IacVerbReceived += OnIacVerbReceived;
+
+            //Set Telnet Heartbeat from Config
+            _configuration = configuration;
+            if (!_configuration.TelnetHeartbeat)
+            {
+                IAC_NOP = null;
+            }
         }
 
         public override void Start()
