@@ -281,7 +281,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="first">Record pointer offset to start scanning from.</param>
         HashSet<uint> GetRecordPointerList(uint first)
         {
-            HashSet<uint> ret = new HashSet<uint>();
+            var ret = new HashSet<uint>();
             while (first != 0xFFFFFFFF)
             {
                 ret.Add(first);
@@ -312,14 +312,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadBtrieveKeyDefinitions(ILogger logger)
         {
-            ushort keyDefinitionBase = 0x110;
+            var keyDefinitionBase = 0x110;
             const ushort keyDefinitionLength = 0x1E;
-            ReadOnlySpan<byte> btrieveFileContentSpan = Data;
+            var btrieveFileContentSpan = Data.AsSpan();
 
             LogKeyPresent = (btrieveFileContentSpan[0x10C] == 1);
 
-            ushort totalKeys = KeyCount;
-            ushort currentKeyNumber = 0;
+            var totalKeys = KeyCount;
+            var currentKeyNumber = (ushort)0;
             while (currentKeyNumber < totalKeys)
             {
                 var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
@@ -424,10 +424,10 @@ namespace MBBSEmu.Btrieve
                         using var stream = new MemoryStream();
                         stream.Write(recordArray);
 
-                        Records.Add(new BtrieveRecord((uint)recordOffset, GetVariableLengthData(recordOffset, stream)));
+                        Records.Add(new BtrieveRecord(recordOffset, GetVariableLengthData(recordOffset, stream)));
                     }
                     else
-                        Records.Add(new BtrieveRecord((uint)recordOffset, recordArray));
+                        Records.Add(new BtrieveRecord(recordOffset, recordArray));
 
                     recordsLoaded++;
                 }
@@ -447,12 +447,13 @@ namespace MBBSEmu.Btrieve
         ///
         ///     <para/>Fixed length records are contiguous in the page, and unused records are all zero except
         ///     for the first 4 bytes, which is a record pointer to the next free page.
+        /// </summary>
         private bool IsUnusedRecord(ReadOnlySpan<byte> fixedRecordData)
         {
             if (fixedRecordData.Slice(4).ContainsOnly(0))
             {
                 // additional validation, to ensure the record pointer is valid
-                uint offset = GetRecordPointer(fixedRecordData);
+                var offset = GetRecordPointer(fixedRecordData);
                 if (offset < Data.Length)
                     return true;
             }
@@ -517,19 +518,19 @@ namespace MBBSEmu.Btrieve
             // to compute length, keep going until I read the next valid fragment and get its offset
             // then we subtract the two offets to compute length
             var nextFragmentOffset = offsetPointer;
-            uint nextOffset = 0xFFFFFFFF;
+            var nextOffset = 0xFFFFFFFFu;
             for (var i = fragment + 1; i <= numFragments; ++i)
             {
                 nextFragmentOffset -= 2; // fragment array is at end of page and grows downward
                 (nextOffset, _) = GetPageOffsetFromFragmentArray(page.Slice((int)nextFragmentOffset, 2));
-                if (nextOffset == 0x7FFF)
+                if (nextOffset == 0xFFFF)
                     continue;
                 // valid offset, break now
                 break;
             }
 
             // some sanity checks
-            if (nextOffset == 0xFFFFFFFF)
+            if (nextOffset == 0xFFFFFFFFu)
                 throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments} {FileName}");
 
             var length = nextOffset - offset;
@@ -547,6 +548,9 @@ namespace MBBSEmu.Btrieve
         /// <returns>The offset and a boolean indicating the offset contains a next pointer</returns>
         private static (uint, bool) GetPageOffsetFromFragmentArray(ReadOnlySpan<byte> arrayEntry)
         {
+            if (arrayEntry.ContainsOnly(0xFF))
+                return (0xFFFFu, false);
+
             var offset = (uint)arrayEntry[0] | ((uint)arrayEntry[1] & 0x7F) << 8;
             var nextPointerExists = (arrayEntry[1] & 0x80) != 0;
             return (offset, nextPointerExists);
