@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Session;
 
 namespace MBBSEmu
 {
@@ -82,6 +83,11 @@ namespace MBBSEmu
         ///     Module Configuration
         /// </summary>
         private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
+
+        /// <summary>
+        ///     Channel Dictionary
+        /// </summary>
+        private readonly PointerDictionary<SessionBase> _channelDictionary = new PointerDictionary<SessionBase>();
 
         private readonly List<IStoppable> _runningServices = new List<IStoppable>();
         private int _cancellationRequests = 0;
@@ -199,6 +205,7 @@ namespace MBBSEmu
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
+                var channelDictionary = _channelDictionary;
                 if (!File.Exists($"BBSGEN.DB"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
@@ -285,7 +292,7 @@ namespace MBBSEmu
                 if (_configuration.TelnetEnabled)
                 {
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort);
+                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort, channelDictionary);
 
                     _logger.Info($"Telnet listening on port {_configuration.TelnetPort}");
 
@@ -296,7 +303,7 @@ namespace MBBSEmu
                 if (_configuration.RloginEnabled)
                 {
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort);
+                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort, channelDictionary);
 
                     _logger.Info($"Rlogin listening on port {_configuration.RloginPort}");
 
@@ -309,7 +316,7 @@ namespace MBBSEmu
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, channelDictionary, m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }
