@@ -7,6 +7,13 @@ using System;
 
 namespace MBBSEmu
 {
+    /// <summary>
+    ///   An MBBSEmu database (.DB) utility program.
+    ///
+    ///   </para/>Currently supports two modes of operation, view and convert.
+    ///   View mode shows information about the specified DAT file, such as key information.
+    ///   Convert mode converts the DAT file into a .DB file.
+    /// </summary>
     public class Program
     {
         static void Main(string[] args)

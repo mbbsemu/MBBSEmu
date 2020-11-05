@@ -219,7 +219,6 @@ namespace MBBSEmu.Btrieve
 #endif
             DeletedRecordOffsets = GetRecordPointerList(GetRecordPointer(0x10));
 
-            //Only Parse Keys if they are defined
             LoadBtrieveKeyDefinitions(logger);
             //Only load records if there are any present
             if (RecordCount > 0)
@@ -296,12 +295,12 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Returns the record pointer located at absolute file offset <paramref name="offset"/>.
         /// </summary>
-        private uint GetRecordPointer(uint offset)
-        {
-            var data = Data.AsSpan().Slice((int)offset, 4);
-            return GetRecordPointer(data);
-        }
+        private uint GetRecordPointer(uint offset) =>
+            GetRecordPointer(Data.AsSpan().Slice((int)offset, 4));
 
+        /// <summary>
+        ///     Returns the record pointer located within the span starting at offset 0
+        /// </summary>
         private uint GetRecordPointer(ReadOnlySpan<byte> data)
         {
             // 2 byte high word -> 2 byte low word
@@ -414,8 +413,7 @@ namespace MBBSEmu.Btrieve
                         continue;
 
                     var record = Data.AsSpan().Slice((int)recordOffset, PhysicalRecordLength);
-                    var unused = IsUnusedRecord(record);
-                    if (unused)
+                    if (IsUnusedRecord(record))
                         break;
 
                     var recordArray = new byte[RecordLength];
@@ -433,6 +431,11 @@ namespace MBBSEmu.Btrieve
 
                     recordsLoaded++;
                 }
+            }
+
+            if (recordsLoaded != RecordCount)
+            {
+                logger.Warn($"Database {FileName} contains {RecordCount} records but only read {recordsLoaded}!");
             }
 #if DEBUG
             logger.Info($"Loaded {recordsLoaded} records from {FileName}. Resetting cursor to 0");
@@ -530,7 +533,7 @@ namespace MBBSEmu.Btrieve
                 throw new ArgumentException($"Can't find next fragment offset {fragment} numFragments:{numFragments} {FileName}");
 
             var length = nextOffset - offset;
-            // sanity checks
+            // final sanity check
             if (offset < 0xC || (offset + length) > (PageLength - 2 * (numFragments + 1)))
                 throw new ArgumentException($"Variable data overflows page {fragment} numFragments:{numFragments} {FileName}");
 

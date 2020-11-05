@@ -972,7 +972,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
-            _logger.Warn($"Creating sqlite db {fullpath}");
+            _logger.Info($"Creating sqlite db {fullpath}");
 
             FullPath = fullpath;
 
