@@ -1,0 +1,53 @@
+using MBBSEmu.Btrieve;
+using MBBSEmu.DependencyInjection;
+using NLog;
+using System.Linq;
+using System.IO;
+using System;
+
+namespace MBBSEmu
+{
+    /// <summary>
+    ///   An MBBSEmu database (.DB) utility program.
+    ///
+    ///   </para/>Currently supports two modes of operation, view and convert.
+    ///   View mode shows information about the specified DAT file, such as key information.
+    ///   Convert mode converts the DAT file into a .DB file.
+    /// </summary>
+    public class Program
+    {
+        static void Main(string[] args)
+        {
+            new Program().Run(args);
+        }
+
+        private void Run(string[] args)
+        {
+          var serviceResolver = new ServiceResolver();
+          var logger = serviceResolver.GetService<ILogger>();
+
+          if (args.Length == 0)
+              Console.WriteLine("Usage: MBBSDatabase [view|convert] [files]");
+
+          var convert = (args[0] == "convert");
+
+          foreach (string s in args.Skip(1))
+          {
+            BtrieveFile file = new BtrieveFile();
+            try
+            {
+              file.LoadFile(logger, s);
+              if (convert)
+              {
+                  using var processor = new BtrieveFileProcessor();
+                  processor.CreateSqliteDB(Path.ChangeExtension(s, ".DB"), file);
+              }
+            }
+            catch (Exception e)
+            {
+              logger.Error(e, $"Failed to load Btrieve file {s}: {e.Message}\n{e.StackTrace}");
+            }
+          }
+        }
+    }
+}

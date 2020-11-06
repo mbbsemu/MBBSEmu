@@ -47,6 +47,13 @@ namespace MBBSEmu.Btrieve
         public int RecordLength { get; set; }
 
         /// <summary>
+        ///     Whether the database contains variable length records.
+        ///     <para/>If true, the RecordLength field is the fixed record length portion. Total
+        ///     record size is RecordLength + some variable length
+        /// </summary>
+        public bool VariableLengthRecords { get; set; }
+
+        /// <summary>
         ///     The active connection to the Sqlite database.
         /// </summary>
         private SqliteConnection _connection;
@@ -100,6 +107,12 @@ namespace MBBSEmu.Btrieve
             _connection = null;
 
             _cache.Clear();
+        }
+
+        public BtrieveFileProcessor()
+        {
+            Keys = new Dictionary<ushort, BtrieveKey>();
+            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
         }
 
         /// <summary>
@@ -172,7 +185,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            using (var cmd = new SqliteCommand("SELECT record_length, page_length FROM metadata_t;", _connection))
+            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records FROM metadata_t;", _connection))
             {
                 using var reader = cmd.ExecuteReader();
                 try
@@ -182,6 +195,7 @@ namespace MBBSEmu.Btrieve
 
                     RecordLength = reader.GetInt32(0);
                     PageLength = reader.GetInt32(1);
+                    VariableLengthRecords = reader.GetBoolean(2);
                 }
                 finally
                 {
@@ -354,7 +368,10 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public bool Update(uint offset, byte[] recordData)
         {
-            if (recordData.Length != RecordLength)
+            if (VariableLengthRecords && recordData.Length != RecordLength)
+                _logger.Warn($"Updating variable length record of {recordData.Length} bytes into {FullPath}");
+
+            if (!VariableLengthRecords && recordData.Length != RecordLength)
             {
                 _logger.Warn(
                     $"Btrieve Record Size Mismatch. Expected Length {RecordLength}, Actual Length {recordData.Length}");
@@ -471,7 +488,10 @@ namespace MBBSEmu.Btrieve
         /// <return>Position of the newly inserted item, or 0 on failure</return>
         public uint Insert(byte[] record)
         {
-            if (record.Length != RecordLength)
+            if (VariableLengthRecords && record.Length != RecordLength)
+                _logger.Warn($"Inserting variable length record of {record.Length} bytes into {FullPath}");
+
+            if (!VariableLengthRecords && record.Length != RecordLength)
             {
                 _logger.Warn(
                     $"Btrieve Record Size Mismatch TRUNCATING. Expected Length {RecordLength}, Actual Length {record.Length}");
@@ -654,10 +674,12 @@ namespace MBBSEmu.Btrieve
         {
             if (query.Reader == null || !query.Reader.Read())
             {
+                var hadRows = query?.Reader?.DataReader?.HasRows ?? false;
+
                 query?.Reader?.Dispose();
                 query.Reader = null;
 
-                if (query.ContinuationReader == null)
+                if (query.ContinuationReader == null || !hadRows)
                     return false;
 
                 query.Reader = query.ContinuationReader(query);
@@ -901,17 +923,18 @@ namespace MBBSEmu.Btrieve
         private void CreateSqliteMetadataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
             const string statement =
-                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL)";
+                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL)";
 
             using var cmd = new SqliteCommand(statement, connection);
             cmd.ExecuteNonQuery();
 
             using var insertCmd = new SqliteCommand() { Connection = connection };
             cmd.CommandText =
-                "INSERT INTO metadata_t(record_length, physical_record_length, page_length) VALUES(@record_length, @physical_record_length, @page_length)";
+                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records)";
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
             cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
+            cmd.Parameters.AddWithValue("@variable_length_records", btrieveFile.VariableLengthRecords ? 1 : 0);
             cmd.ExecuteNonQuery();
         }
 
@@ -949,9 +972,9 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite database from btrieveFile.
         /// </summary>
-        private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
+        public void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
-            _logger.Warn($"Creating sqlite db {fullpath}");
+            _logger.Info($"Creating sqlite db {fullpath}");
 
             FullPath = fullpath;
 
