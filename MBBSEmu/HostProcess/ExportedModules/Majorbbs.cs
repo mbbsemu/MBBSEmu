@@ -47,7 +47,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<IntPtr16> _previousBtrieveFile;
 
-        private readonly AppSettings _configuration;
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
 
@@ -92,7 +91,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
-            _configuration = configuration;
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _previousMcvFile = new Stack<IntPtr16>(10);
