@@ -803,8 +803,6 @@ namespace MBBSEmu.Tests.Btrieve
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            btrieve.DeleteAll();
-
             btrieve.SeekByKey(1, BitConverter.GetBytes(2_000_000_000), EnumBtrieveOperationCodes.GetKeyGreater, newQuery: true).Should().BeFalse();
         }
 
@@ -928,8 +926,6 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
-
-            btrieve.DeleteAll();
 
             btrieve.SeekByKey(1, BitConverter.GetBytes(-2_000_000_000), EnumBtrieveOperationCodes.GetKeyLess, newQuery: true).Should().BeFalse();
         }

@@ -444,7 +444,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         //Signed decimal integer
                         case 'i':
                         case 'd':
+                        case 'u':
                             {
+                                long value;
                                 if (isVsPrintf)
                                 {
                                     switch (variableLength)
@@ -455,22 +457,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                                 vsPrintfBase.Offset += 2;
                                                 var longHigh = Module.Memory.GetWord(vsPrintfBase);
                                                 vsPrintfBase.Offset += 2;
-                                                var longIntParameter = longHigh << 16 | longLow;
-                                                msFormattedValue.Write(
-                                                    Encoding.ASCII.GetBytes(longIntParameter.ToString()));
+                                                value = (uint)longHigh << 16 | (uint)longLow;
+                                                if (stringToParse[i] != 'u')
+                                                    value = (int)value;
                                                 break;
                                             }
                                         case 0:
                                         default:
                                             {
-                                                var parameterString =
-                                                    ((short)Module.Memory.GetWord(vsPrintfBase)).ToString();
-                                                msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
+                                                value = Module.Memory.GetWord(vsPrintfBase);
+                                                if (stringToParse[i] != 'u')
+                                                    value = (short)value;
                                                 vsPrintfBase.Offset += 2;
                                                 break;
                                             }
                                     }
-
                                 }
                                 else
                                 {
@@ -481,39 +482,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                             {
                                                 var longLow = GetParameter(currentParameter++);
                                                 var longHigh = GetParameter(currentParameter++);
-                                                var longIntParameter = longHigh << 16 | longLow;
-                                                msFormattedValue.Write(
-                                                    Encoding.ASCII.GetBytes(longIntParameter.ToString()));
+                                                value = (uint)longHigh << 16 | (uint)longLow;
+                                                if (stringToParse[i] != 'u')
+                                                    value = (int)value;
                                                 break;
                                             }
                                         case 0:
                                         default:
-                                            var parameter = (short)GetParameter(currentParameter++);
-                                            msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
+                                            value = GetParameter(currentParameter++);
+                                            if (stringToParse[i] != 'u')
+                                                    value = (short)value;
                                             break;
                                     }
-
-
                                 }
 
-                                break;
-                            }
-                        //Unsigned decimal integer
-                        case 'u':
-                            {
-                                if (isVsPrintf)
-                                {
-                                    var parameterString = Module.Memory.GetWord(vsPrintfBase)
-                                        .ToString();
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameterString));
-                                    vsPrintfBase.Offset += 2;
-                                }
-                                else
-                                {
-                                    var parameter = GetParameter(currentParameter++);
-                                    msFormattedValue.Write(Encoding.ASCII.GetBytes(parameter.ToString()));
-                                }
-
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(value.ToString()));
                                 break;
                             }
                         case 'f':

@@ -1,15 +1,12 @@
 using System;
-using System.ComponentModel;
-using System.IO;
-using System.Net;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MBBSEmu
 {
@@ -150,13 +147,13 @@ namespace MBBSEmu
             {
                 return result.ToString();
             }
-            
+
             Console.WriteLine($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
             return "127.0.0.1";
         }
 
         /// <summary>
-        ///     Sets a default BBS Title with \0 termination 
+        ///     Sets a default BBS Title with \0 termination
         /// </summary>
         /// <param name="key">BBS.Title</param>
         /// <returns></returns>

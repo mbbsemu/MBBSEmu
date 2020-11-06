@@ -15,9 +15,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         [Theory]
         [InlineData("%d", "1", (ushort)1)]
+        [InlineData("%d", "0", (ushort)0)]
+        [InlineData("%d", "-1", (ushort)0xFFFF)]
+        [InlineData("%u", "1", (ushort)1)]
+        [InlineData("%u", "0", (ushort)0)]
+        [InlineData("%u", "65535", (ushort)0xFFFF)]
         [InlineData("%s-%d", "TEST-1", "TEST", (ushort)1)]
         [InlineData("%s-%ld", "TEST-2147483647", "TEST", 2147483647)]
         [InlineData("%s-%ld-%d-%s", "TEST-2147483647-1-FOO", "TEST", 2147483647, (ushort)1, "FOO")]
+        [InlineData("%s-%ld-%d-%s", "TEST--1-1-FOO", "TEST", (uint)0xFFFFFFFF, (ushort)1, "FOO")]
+        [InlineData("%s-%lu-%d-%s", "TEST-2147483647-1-FOO", "TEST", 2147483647u, (ushort)1, "FOO")]
+        [InlineData("%s-%lu-%d-%s", "TEST-3147483647-1-FOO", "TEST", 3147483647u, (ushort)1, "FOO")]
         public void prf_Test(string inputString, string expectedString, params object[] values)
         {
             Reset();
@@ -37,6 +45,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                         mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
                         parameters.Add(stringParameterPointer.Offset);
                         parameters.Add(stringParameterPointer.Segment);
+                        break;
+                    }
+                    case uint @parameterULong:
+                    {
+                        var longBytes = BitConverter.GetBytes(@parameterULong);
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
                         break;
                     }
                     case int @parameterLong:
