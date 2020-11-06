@@ -6,7 +6,6 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using MBBSEmu.Session.Enums;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Server.Socket
 {
