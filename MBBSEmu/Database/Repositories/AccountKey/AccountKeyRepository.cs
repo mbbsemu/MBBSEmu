@@ -70,8 +70,8 @@ namespace MBBSEmu.Database.Repositories.AccountKey
             InsertAccountKeyByUsername("sysop", "SYSOP");
 
             //Keys for GUEST
-            InsertAccountKeyByUsername("sysop", "DEMO");
-            InsertAccountKeyByUsername("sysop", "NORMAL");
+            InsertAccountKeyByUsername("guest", "DEMO");
+            InsertAccountKeyByUsername("guest", "NORMAL");
         }
     }
 }
