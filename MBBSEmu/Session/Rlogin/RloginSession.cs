@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
@@ -65,7 +66,10 @@ namespace MBBSEmu.Session.Rlogin
                 rloginStrings.First(s => !string.IsNullOrEmpty(s)), StringComparison.CurrentCultureIgnoreCase)))
             {
                 _logger.Info($"RLogin -- User already logged in");
-                Send(new byte[] {101, 68, 117, 112, 108, 105, 99, 97, 116, 101, 32, 85, 115, 101, 114});
+                var duplicateLoginMsg =
+                    $"\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|"
+                        .EncodeToANSIArray();
+                Send(duplicateLoginMsg);
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
