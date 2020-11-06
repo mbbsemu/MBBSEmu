@@ -53,6 +53,7 @@ namespace MBBSEmu.Tests.Btrieve
             Assert.Equal(512, btrieve.PageLength);
             Assert.Equal(5, btrieve.PageCount);
             Assert.False(btrieve.LogKeyPresent);
+            Assert.False(btrieve.VariableLengthRecords);
 
             Assert.Single(btrieve.Keys[0].Segments);
             Assert.Single(btrieve.Keys[1].Segments);

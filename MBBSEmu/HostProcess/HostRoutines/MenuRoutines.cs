@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
@@ -23,14 +24,16 @@ namespace MBBSEmu.HostProcess.HostRoutines
     {
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
+        private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly AppSettings _configuration;
         private readonly IGlobalCache _globalCache;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, PointerDictionary<SessionBase> channelDictionary)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
+            _accountKeyRepository = accountKeyRepository;
             _configuration = configuration;
             _globalCache = globalCache;
             _channelDictionary = channelDictionary;
@@ -571,11 +574,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.Email = inputValue;
 
             //Create the user in the database
-            _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
-            
+            var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
+            foreach (var c in _configuration.DefaultKeys)
+                _accountKeyRepository.InsertAccountKey(accountId, c);
+
             //Add The User to the BBS Btrieve User Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
+           
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

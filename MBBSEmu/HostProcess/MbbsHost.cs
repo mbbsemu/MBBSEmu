@@ -1,10 +1,15 @@
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
+using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Reports;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Attributes;
+using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using NLog;
 using System;
@@ -13,11 +18,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess.GlobalRoutines;
-using MBBSEmu.Reports;
-using MBBSEmu.Session.Attributes;
-using MBBSEmu.Session.Enums;
+using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
 
 namespace MBBSEmu.HostProcess
 {
@@ -101,7 +103,10 @@ namespace MBBSEmu.HostProcess
 
         private Thread _workerThread;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, PointerDictionary<SessionBase> channelDictionary)
+        private readonly IAccountKeyRepository _accountKeyRepository;
+        private readonly IAccountRepository _accountRepository;
+
+        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             Logger = logger;
             _globalCache = globalCache;
@@ -110,6 +115,8 @@ namespace MBBSEmu.HostProcess
             _configuration = configuration;
             _globalRoutines = globalRoutines;
             _channelDictionary = channelDictionary;
+            _accountKeyRepository = accountKeyRepository;
+            _accountRepository = accountRepository;
 
             Logger.Info("Constructing MBBSEmu Host...");
             
@@ -840,7 +847,7 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
                     "GALGSBL" => new Galgsbl(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     "DOSCALLS" => new Doscalls(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     "GALME" => new Galme(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),

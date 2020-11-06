@@ -93,7 +93,7 @@ namespace MBBSEmu
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-        
+
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -201,7 +201,8 @@ namespace MBBSEmu
                 _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-                
+
+                //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
@@ -375,10 +376,7 @@ namespace MBBSEmu
         private void DatabaseReset()
         {
             _logger.Info("Resetting Database...");
-            var acct = _serviceResolver.GetService<IAccountRepository>();
-            if (acct.TableExists())
-                acct.DropTable();
-            acct.CreateTable();
+            
 
             if (string.IsNullOrEmpty(_newSysopPassword))
             {
@@ -401,32 +399,17 @@ namespace MBBSEmu
                 }
             }
 
-            var sysopUserId = acct.InsertAccount("sysop", _newSysopPassword, "sysop@mbbsemu.com");
-            var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
+            var acct = _serviceResolver.GetService<IAccountRepository>();
+            acct.Reset(_newSysopPassword);
 
             var keys = _serviceResolver.GetService<IAccountKeyRepository>();
-
-            if (keys.TableExists())
-                keys.DropTable();
-
-            keys.CreateTable();
-
-            //Keys for SYSOP
-            keys.InsertAccountKey(sysopUserId, "DEMO");
-            keys.InsertAccountKey(sysopUserId, "NORMAL");
-            keys.InsertAccountKey(sysopUserId, "SUPER");
-            keys.InsertAccountKey(sysopUserId, "SYSOP");
-
-            //Keys for GUEST
-            keys.InsertAccountKey(guestUserId, "DEMO");
-            keys.InsertAccountKey(guestUserId, "NORMAL");
-
+            keys.Reset();
 
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
 
             _logger.Info("Database Reset!");
         }

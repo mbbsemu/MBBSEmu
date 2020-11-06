@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
@@ -17,6 +18,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Database.Repositories.Account;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -45,6 +47,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<IntPtr16> _previousBtrieveFile;
 
+        private readonly AppSettings _configuration;
         private readonly List<IntPtr16> _margvPointers;
         private readonly List<IntPtr16> _margnPointers;
 
@@ -67,6 +70,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
+        /// <summary>
+        ///     Repository with Account Key Information
+        /// </summary>
+        private readonly IAccountKeyRepository _accountKeyRepository;
+
+        /// <summary>
+        ///     Repository with Account Information
+        /// </summary>
+        private readonly IAccountRepository _accountRepository;
+
         public void Dispose()
         {
             foreach (var f in FilePointerDictionary)
@@ -74,9 +87,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+        public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
             logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
+            _accountKeyRepository = accountKeyRepository;
+            _accountRepository = accountRepository;
+            _configuration = configuration;
             _margvPointers = new List<IntPtr16>();
             _margnPointers = new List<IntPtr16>();
             _previousMcvFile = new Stack<IntPtr16>(10);
@@ -110,7 +126,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, 4); // TODO(make this configurable)
+            Module.Memory.SetWord(ntermsPointer, (ushort) _configuration.BBSChannels); // Number of channels from Settings
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
@@ -693,8 +709,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     register_textvar();
                     break;
                 case 997:
-                case 444:
                     obtbtvl();
+                    break;
+                case 444:
+                    obtbtv();
                     break;
                 case 158:
                     dclvda();
@@ -854,7 +872,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     outmlt();
                     break;
                 case 622:
-                    updvbtv();
+                    upvbtv();
                     break;
                 case 959:
                     stlcpy();
@@ -1983,7 +2001,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void haskey()
         {
-            Registers.AX = 1;
+            var accountLock = GetParameterString(0, true);
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[ChannelNumber].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[ChannelNumber].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
 #if DEBUG
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
             _logger.Info($"Returning {Registers.AX} for Haskey({lockName})");
@@ -1999,14 +2035,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void hasmkey()
         {
-            var key = GetParameter(0);
-            Registers.AX = 1;
+            var msgnum = GetParameter(0);
+
+            var accountLock = Encoding.ASCII.GetString(McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)).TrimEnd('\0');
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[ChannelNumber].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[ChannelNumber].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Info($"Returning {Registers.AX} for Haskey({lockName})");
+#endif
         }
 
         /// <summary>
         ///     Returns a pseudo-random integral number in the range between 0 and RAND_MAX.
         ///
-        ///     Signature: int rand (void)
+        ///     Signature: int rand()
         ///     Returns: AX = 16-bit Random Number
         /// </summary>
         /// <returns></returns>
@@ -2204,7 +2263,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
                 _logger.Warn($"Queue Empty, Ignoring");
 #endif
-                Registers.AX = 0;
                 return;
             }
 
@@ -2242,7 +2300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var newBtvStruct = new BtvFileStruct
             { filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer, key = btvKeyPointer };
             foreach (var key in btrieveFile.Keys.Values)
-                newBtvStruct.SetKeyLength(key.Number, (ushort) key.Length);
+                newBtvStruct.SetKeyLength(key.Number, (ushort)key.Length);
             BtrieveSaveProcessor(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
             Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
@@ -2307,7 +2365,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 
-            Registers.AX = result ? (ushort) 1 : (ushort) 0;
+            Registers.AX = result ? (ushort)1 : (ushort)0;
 
             //Set Memory Values
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(Module.Memory.GetPointer("BB"), BtvFileStruct.Size));
@@ -2337,7 +2395,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Restores the last Btrieve data block for use
         ///
-        ///     Signature: void rstbtv (void)
+        ///     Signature: void rstbtv()
         /// </summary>
         /// <returns></returns>
         private void rstbtv()
@@ -2366,18 +2424,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dupdbtv()
         {
+            Registers.AX = updateBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        private bool updateBtv()
+        {
             var btrieveRecordPointerPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort) currentBtrieveFile.RecordLength);
-
-            Registers.AX = currentBtrieveFile.Update(dataToWrite.ToArray()) ? (ushort) 1 : (ushort) 0;
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort)currentBtrieveFile.RecordLength);
 
 #if DEBUG
             _logger.Info(
                 $"Updated current Btrieve record ({currentBtrieveFile.Position}) with {dataToWrite.Length} bytes");
 #endif
+            return currentBtrieveFile.Update(dataToWrite.ToArray());
         }
 
         /// <summary>
@@ -2387,9 +2449,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            dinsbtv();
-
-            if (Registers.AX == 0)
+            if (!insertBtv())
                 throw new SystemException("Failed to insert database record");
         }
 
@@ -2401,17 +2461,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
+            Registers.AX = insertBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        private bool insertBtv()
+        {
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort) currentBtrieveFile.RecordLength);
-
-            Registers.AX = currentBtrieveFile.Insert(dataToWrite.ToArray()) == 0 ? (ushort) 0 : (ushort) 1;
-
 #if DEBUG
             _logger.Info(
                 $"Inserted Btrieve record at {currentBtrieveFile.Position} with {dataToWrite.Length} bytes");
 #endif
+
+            return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
         }
 
 
@@ -2717,11 +2781,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Does a GetEqual based on the Key -- the record corresponding to the key is returned
         ///
+        ///     Signature: int obtbtv (void *recptr, void *key, int keynum, int obtopt)
+        ///     Returns: AX == 0 record not found, 1 record found
+        /// </summary>
+        /// <returns>true if record found</returns>
+        private void obtbtv()
+        {
+            Registers.AX = obtainBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Does a GetEqual based on the Key -- the record corresponding to the key is returned
+        ///
         ///     Signature: int obtbtvl (void *recptr, void *key, int keynum, int obtopt, int loktyp)
         ///     Returns: AX == 0 record not found, 1 record found
         /// </summary>
         /// <returns>true if record found</returns>
-        private bool obtbtvl()
+        private void obtbtvl()
+        {
+            Registers.AX = obtainBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        private bool obtainBtv()
         {
             var recordPointer = GetParameterPointer(0);
             var keyPointer = GetParameterPointer(2);
@@ -2786,7 +2867,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[keyNum].ExtractKeyDataFromRecord(record));
             }
 
-            Registers.AX = result ? (ushort) 1 : (ushort) 0;
             return result;
         }
 
@@ -3131,7 +3211,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destination, formattedMessage);
             Module.Memory.SetByte(destination + formattedMessage.Length, 0);
 
-            Registers.AX = (ushort) formattedMessage.Length;
+            Registers.AX = (ushort)formattedMessage.Length;
         }
 
         /// <summary>
@@ -4409,7 +4489,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     throw new InvalidEnumArgumentException($"Unknown Btrieve Operation Code: {stpopt}");
             }
 
-            Registers.AX = result ? (ushort) 1 : (ushort) 0;
+            Registers.AX = result ? (ushort)1 : (ushort)0;
 
             //Set Memory Values
             var bbPointer = Module.Memory.GetPointer("BB");
@@ -4463,7 +4543,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
 #if DEBUG
                 _logger.Warn($"Invalid Channel: {newUserNumber}");
-#endif               
+#endif
                 return;
             }
 
@@ -4547,7 +4627,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void byenow()
         {
             prfmsg();
-            Registers.AX = 0;
         }
 
         /// <summary>
@@ -4573,23 +4652,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Update the Btrieve current record with a variable length record
         ///
-        ///     Signature: void updvbtv(char *recptr)
+        ///     Signature: void upvbtv(char *recptr, int length)
         /// </summary>
         /// <returns></returns>
-        private void updvbtv()
+        private void upvbtv()
         {
             var btrieveRecordPointerPointer = GetParameterPointer(0);
+            var length = GetParameter(2);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort) currentBtrieveFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, length);
 
             currentBtrieveFile.Update(dataToWrite.ToArray());
 
-#if DEBUG
+//#if DEBUG
             _logger.Info(
-                $"Updated current Btrieve record ({currentBtrieveFile.Position}) with {dataToWrite.Length} bytes");
-#endif
+                $"Updated current Btrieve record ({currentBtrieveFile.Position}) with variable {dataToWrite.Length} bytes");
+//#endif
         }
 
         /// <summary>
@@ -4646,8 +4726,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (routinePointer == IntPtr16.Empty)
             {
                 ChannelDictionary[channelNumber].PollingRoutine = null;
-                Registers.AX = 0;
-
 #if DEBUG
                 _logger.Info($"Unassigned Polling Routine on Channel {channelNumber}");
 #endif
@@ -4662,8 +4740,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info(
                 $"Assigned Polling Routine {ChannelDictionary[channelNumber].PollingRoutine} to Channel {channelNumber}");
 #endif
-
-            Registers.AX = 0;
         }
 
         /// <summary>
@@ -4676,12 +4752,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channelNumber = GetParameter(0);
 
             ChannelDictionary[channelNumber].PollingRoutine = null;
-            Registers.AX = 0;
 
 #if DEBUG
             _logger.Info($"Unassigned Polling Routine on Channel {channelNumber}");
 #endif
-            return;
         }
 
         /// <summary>
@@ -4893,7 +4967,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[keyNumber].ExtractKeyDataFromRecord(record));
             }
 
-            Registers.AX = result ? (ushort) 1 : (ushort) 0;
+            Registers.AX = result ? (ushort)1 : (ushort)0;
         }
 
         /// <summary>
@@ -5683,12 +5757,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void getbtvl()
         {
-            ushort ax = Registers.AX;
-
-            if (!obtbtvl())
+            if (!obtainBtv())
                 throw new ArgumentException($"No record found in getbtvl, bombing");
-
-            Registers.AX = ax;
         }
 
         /// <summary>
@@ -5726,7 +5796,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[btvStruct.lastkn].ExtractKeyDataFromRecord(record));
             }
 
-            Registers.AX = result ? (ushort) 1 : (ushort) 0;
+            Registers.AX = result ? (ushort)1 : (ushort)0;
         }
 
         /// <summary>
@@ -6001,15 +6071,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputStringPointer = GetParameterPointer(0);
             var inputString = Module.Memory.GetString(inputStringPointer).ToArray();
             var isSpace = true;
-            
+
             for (var i = 0; i < inputString.Length; i++)
             {
                 if (char.IsUpper((char)inputString[i]))
                     inputString[i] = (byte)char.ToLower((char)inputString[i]);
-                
+
                 if (inputString[i] == (byte) ' ')
                     isSpace = true;
-                
+
                 if (char.IsLower((char)inputString[i]) && isSpace)
                 {
                     inputString[i] = (byte)char.ToUpper((char)inputString[i]);
@@ -6450,9 +6520,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void updbtv()
         {
-            dupdbtv();
-
-            if (Registers.AX == 0)
+            if (!updateBtv())
                 throw new SystemException("Unable to update btrieve record");
         }
 
@@ -7393,7 +7461,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void cntrbtv()
         {
-            // TODO THIS IS WRONG?
             var currentBtrieveFilePointer = Module.Memory.GetPointer("BB");
             var currentBtrieveFile = BtrieveGetProcessor(currentBtrieveFilePointer);
 

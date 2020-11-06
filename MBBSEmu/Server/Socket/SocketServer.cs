@@ -8,7 +8,6 @@ using System.Net.Sockets;
 using MBBSEmu.Memory;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.Server.Socket
 {
@@ -74,7 +73,7 @@ namespace MBBSEmu.Server.Socket
                 case EnumSessionType.Telnet:
                     {
                         _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
-                        var session = new TelnetSession(_logger, client);
+                        var session = new TelnetSession(_logger, client, _configuration);
                         _host.AddSession(session);
                         session.Start();
                         break;
