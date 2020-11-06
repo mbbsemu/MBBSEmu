@@ -87,7 +87,7 @@ namespace MBBSEmu
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-        
+
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -194,7 +194,7 @@ namespace MBBSEmu
                 _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-                
+
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
@@ -392,8 +392,8 @@ namespace MBBSEmu
                 }
             }
 
-            var sysopUserId = acct.InsertAccount("sysop", _newSysopPassword, "sysop@mbbsemu.com");
-            var guestUserId = acct.InsertAccount("guest", "guest", "guest@mbbsemu.com");
+            var sysopUserId = acct.InsertAccount("Sysop", _newSysopPassword, "sysop@mbbsemu.com");
+            var guestUserId = acct.InsertAccount("Guest", "guest", "guest@mbbsemu.com");
 
             var keys = _serviceResolver.GetService<IAccountKeyRepository>();
 
