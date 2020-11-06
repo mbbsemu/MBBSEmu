@@ -14,7 +14,7 @@ namespace MBBSEmu.Session.Telnet
     {
         private int _iacPhase;
 
-        private static byte[] IAC_NOP = { 0xFF, 0xF1};
+        private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
         private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
         private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
         private readonly AppSettings _configuration;
