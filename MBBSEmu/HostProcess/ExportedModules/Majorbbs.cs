@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
@@ -18,7 +19,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Database.Repositories.Account;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {

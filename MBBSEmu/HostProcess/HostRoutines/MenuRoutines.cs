@@ -44,8 +44,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// </summary>
         /// <param name="session"></param>
         /// <param name="modules"></param>
-        /// <param name="sessions"></param>
-        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules, PointerDictionary<SessionBase> channelDictionary)
+        public bool ProcessSessionState(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
             switch (session.SessionState)
             {

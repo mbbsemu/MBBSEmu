@@ -1,13 +1,13 @@
 using MBBSEmu.HostProcess;
+using MBBSEmu.Memory;
+using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
 using NLog;
 using System;
 using System.Net;
 using System.Net.Sockets;
-using MBBSEmu.Memory;
-using MBBSEmu.Session;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Server.Socket
 {
@@ -35,7 +35,7 @@ namespace MBBSEmu.Server.Socket
             _channelDictionary = channelDictionary;
         }
 
-        public void Start(EnumSessionType sessionType, int port, PointerDictionary<SessionBase> channelDictionary, string moduleIdentifier = null)
+        public void Start(EnumSessionType sessionType, int port, string moduleIdentifier = null)
         {
             _sessionType = sessionType;
             _moduleIdentifier = moduleIdentifier;

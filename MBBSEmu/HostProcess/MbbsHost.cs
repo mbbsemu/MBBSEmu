@@ -1,3 +1,5 @@
+using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -18,8 +20,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using MBBSEmu.Database.Repositories.Account;
-using MBBSEmu.Database.Repositories.AccountKey;
 
 namespace MBBSEmu.HostProcess
 {
@@ -321,7 +321,7 @@ namespace MBBSEmu.HostProcess
                         default:
                             {
                                 foreach (var r in _mbbsRoutines)
-                                    if (r.ProcessSessionState(session, _modules, _channelDictionary))
+                                    if (r.ProcessSessionState(session, _modules))
                                         break;
 
                             }
