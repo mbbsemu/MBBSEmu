@@ -87,7 +87,7 @@ namespace MBBSEmu
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
-        
+
         static void Main(string[] args)
         {
             new Program().Run(args);
@@ -194,7 +194,7 @@ namespace MBBSEmu
                 _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-                
+
                 //Setup Generic Database
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
@@ -398,8 +398,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("Guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
 
             _logger.Info("Database Reset!");
         }

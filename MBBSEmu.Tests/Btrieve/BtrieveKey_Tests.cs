@@ -42,6 +42,10 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(4, EnumKeyDataType.UnsignedBinary, 0xF4F3F2F1)]
         [InlineData(6, EnumKeyDataType.UnsignedBinary, 0xF6F5F4F3F2F1)]
         [InlineData(8, EnumKeyDataType.UnsignedBinary, 0xF8F7F6F5F4F3F2F1)]
+        [InlineData(2, EnumKeyDataType.OldBinary, 0xF2F1)]
+        [InlineData(4, EnumKeyDataType.OldBinary, 0xF4F3F2F1)]
+        [InlineData(6, EnumKeyDataType.OldBinary, 0xF6F5F4F3F2F1)]
+        [InlineData(8, EnumKeyDataType.OldBinary, 0xF8F7F6F5F4F3F2F1)]
         public void NegativeIntegerTypeConversion(ushort length, EnumKeyDataType type, object expected)
         {
             var key = new BtrieveKey() {
@@ -79,6 +83,10 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(4, EnumKeyDataType.Unsigned, 0x4030201)]
         [InlineData(6, EnumKeyDataType.Unsigned, 0x60504030201)]
         [InlineData(8, EnumKeyDataType.Unsigned, 0x807060504030201)]
+        [InlineData(2, EnumKeyDataType.OldBinary, 0x201)]
+        [InlineData(4, EnumKeyDataType.OldBinary, 0x4030201)]
+        [InlineData(6, EnumKeyDataType.OldBinary, 0x60504030201)]
+        [InlineData(8, EnumKeyDataType.OldBinary, 0x807060504030201)]
         public void PositiveIntegerTypeConversion(ushort length, EnumKeyDataType type, object expected)
         {
             var key = new BtrieveKey() {

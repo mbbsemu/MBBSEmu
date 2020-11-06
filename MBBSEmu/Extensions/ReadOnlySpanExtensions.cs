@@ -13,5 +13,18 @@ namespace MBBSEmu.Extensions
             }
             return output;
         }
+
+        /// <summary>
+        ///     Returns true if readOnlySpan contains only value.
+        /// </summary>
+        public static bool ContainsOnly(this ReadOnlySpan<byte> readOnlySpan, byte value)
+        {
+            for (var i = 0; i < readOnlySpan.Length; ++i)
+            {
+                if (readOnlySpan[i] != value)
+                    return false;
+            }
+            return true;
+        }
     }
 }
