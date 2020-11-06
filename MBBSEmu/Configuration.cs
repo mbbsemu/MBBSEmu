@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO;
+using System.Net;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -39,7 +40,7 @@ namespace MBBSEmu
         public bool TelnetHeartbeat => GetAppSettings<bool>(ConfigurationRoot["Telnet.Heartbeat"], "Telnet.Heartbeat");
         public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
         public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
-        public string RloginoRemoteIP => GetStringAppSettings("Rlogin.RemoteIP");
+        public string RloginoRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
 
@@ -120,11 +121,22 @@ namespace MBBSEmu
                 throw key switch
                 {
                     "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    "Rlogin.RemoteIP" => new Exception("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin"),
                     _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
                 };
             }
             return ConfigurationRoot[key];
+        }
+
+        private string GetRemoteIPAppSettings(string key)
+        {
+
+            if (IPAddress.TryParse(ConfigurationRoot[key], out var result))
+            {
+                return result.ToString();
+            }
+            
+            Console.WriteLine($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
+            return "127.0.0.1";
         }
 
         /// <summary>

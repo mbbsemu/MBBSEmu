@@ -17,6 +17,7 @@ namespace MBBSEmu.Session.Telnet
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
         private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
         private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
+        private readonly bool _heartbeat;
         private readonly AppSettings _configuration;
 
         //Tracks Responses We've already sent -- prevents looping
@@ -50,6 +51,8 @@ namespace MBBSEmu.Session.Telnet
             _iacFilter.IacVerbReceived += OnIacVerbReceived;
             _configuration = configuration;
 
+            _heartbeat = _configuration.TelnetHeartbeat;
+
         }
 
         public override void Start()
@@ -68,7 +71,7 @@ namespace MBBSEmu.Session.Telnet
         {
             try
             {
-                if (_configuration.TelnetHeartbeat)
+                if (_heartbeat)
                     base.Send(IAC_NOP);
             }
             catch (Exception ex)
