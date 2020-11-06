@@ -446,7 +446,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'd':
                         case 'u':
                             {
-                                int value;
+                                long value;
                                 if (isVsPrintf)
                                 {
                                     switch (variableLength)
@@ -457,13 +457,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                                 vsPrintfBase.Offset += 2;
                                                 var longHigh = Module.Memory.GetWord(vsPrintfBase);
                                                 vsPrintfBase.Offset += 2;
-                                                value = longHigh << 16 | longLow;
+                                                value = (uint)longHigh << 16 | (uint)longLow;
+                                                if (stringToParse[i] != 'u')
+                                                    value = (int)value;
                                                 break;
                                             }
                                         case 0:
                                         default:
                                             {
                                                 value = Module.Memory.GetWord(vsPrintfBase);
+                                                if (stringToParse[i] != 'u')
+                                                    value = (short)value;
                                                 vsPrintfBase.Offset += 2;
                                                 break;
                                             }
@@ -478,25 +482,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                             {
                                                 var longLow = GetParameter(currentParameter++);
                                                 var longHigh = GetParameter(currentParameter++);
-                                                value = longHigh << 16 | longLow;
+                                                value = (uint)longHigh << 16 | (uint)longLow;
+                                                if (stringToParse[i] != 'u')
+                                                    value = (int)value;
                                                 break;
                                             }
                                         case 0:
                                         default:
                                             value = GetParameter(currentParameter++);
+                                            if (stringToParse[i] != 'u')
+                                                    value = (short)value;
                                             break;
                                     }
                                 }
 
-                                object final;
-                                if (stringToParse[i] == 'u')
-                                    final = (uint)value;
-                                else if (variableLength != 4)
-                                    final = (short)value;
-                                else
-                                    final = value;
-
-                                msFormattedValue.Write(Encoding.ASCII.GetBytes(final.ToString()));
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(value.ToString()));
                                 break;
                             }
                         case 'f':
