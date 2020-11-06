@@ -17,12 +17,20 @@ namespace MBBSEmu.Database.Repositories.AccountKey.Queries
         [Description("Inserts new Account Key")]
         InsertAccountKey,
 
+        [SqlQuery("InsertAccountKeyByUsername.sql")]
+        [Description("Inserts new Account Key by Username")]
+        InsertAccountKeyByUsername,
+
         [SqlQuery("DropAccountKeysTable.sql")]
         [Description("Drops the Account Table")]
         DropAccountKeysTable,
 
         [SqlQuery("GetAccountKeysByAccountId.sql")]
         [Description("Gets Account Keys by the specified Account ID")]
-        GetAccountKeysByAccountId
+        GetAccountKeysByAccountId,
+
+        [SqlQuery("GetAccountKeysByUsername.sql")]
+        [Description("Gets Account Keys by the specified Username")]
+        GetAccountKeysByUsername
     }
 }

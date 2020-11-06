@@ -1,10 +1,15 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Net;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using System.Linq;
 
 namespace MBBSEmu
 {
@@ -50,6 +55,17 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
+        public IEnumerable<string> DefaultKeys
+        {
+            get
+            {
+                if (ConfigurationRoot.GetSection("Account.DefaultKeys") == null)
+                    return new[] { "DEMO", "NORMAL" };
+
+                return ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
+                    .ToArray().Select(c => c.Value).ToArray();
+            }
+        }
 
         //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
