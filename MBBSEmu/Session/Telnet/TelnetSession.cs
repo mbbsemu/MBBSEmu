@@ -48,13 +48,8 @@ namespace MBBSEmu.Session.Telnet
 
             _iacFilter = new IacFilter(logger);
             _iacFilter.IacVerbReceived += OnIacVerbReceived;
-
-            //Set Telnet Heartbeat from Config
             _configuration = configuration;
-            if (!_configuration.TelnetHeartbeat)
-            {
-                IAC_NOP = null;
-            }
+
         }
 
         public override void Start()
@@ -73,7 +68,8 @@ namespace MBBSEmu.Session.Telnet
         {
             try
             {
-                base.Send(IAC_NOP);
+                if (_configuration.TelnetHeartbeat)
+                    base.Send(IAC_NOP);
             }
             catch (Exception ex)
             {
