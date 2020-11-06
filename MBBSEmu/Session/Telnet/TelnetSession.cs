@@ -3,7 +3,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 
 namespace MBBSEmu.Session.Telnet
@@ -18,6 +17,9 @@ namespace MBBSEmu.Session.Telnet
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
         private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
         private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
+        
+        private readonly bool _heartbeat;
+        private readonly AppSettings _configuration;
 
         //Tracks Responses We've already sent -- prevents looping
         private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
@@ -41,13 +43,17 @@ namespace MBBSEmu.Session.Telnet
 
         private readonly IacFilter _iacFilter;
 
-        public TelnetSession(ILogger logger, Socket telnetConnection) : base(logger, telnetConnection)
+        public TelnetSession(ILogger logger, Socket telnetConnection, AppSettings configuration) : base(logger, telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;
 
             _iacFilter = new IacFilter(logger);
             _iacFilter.IacVerbReceived += OnIacVerbReceived;
+            _configuration = configuration;
+
+            _heartbeat = _configuration.TelnetHeartbeat;
+
         }
 
         public override void Start()
@@ -66,7 +72,8 @@ namespace MBBSEmu.Session.Telnet
         {
             try
             {
-                base.Send(IAC_NOP);
+                if (_heartbeat)
+                    base.Send(IAC_NOP);
             }
             catch (Exception ex)
             {
@@ -171,7 +178,7 @@ namespace MBBSEmu.Session.Telnet
                 return;
             }
 
-            using var msIacToSend = new MemoryStream();
+            using var msIacToSend = new MemoryStream(128);
             foreach (var resp in iacResponses)
             {
                 if (_iacSentResponses.Add(resp))

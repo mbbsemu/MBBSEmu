@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using MBBSEmu.CPU;
+using MBBSEmu.Database.Repositories.Account;
+using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -46,7 +48,9 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                testSessions);
+                testSessions,
+                _serviceResolver.GetService<IAccountKeyRepository>(),
+                _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<ILogger>(),
@@ -78,7 +82,7 @@ namespace MBBSEmu.Tests.ExportedModules
             }
         }
 
-        protected void Reset()
+        protected virtual void Reset()
         {
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
@@ -97,7 +101,9 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
-                testSessions);
+                testSessions,
+                _serviceResolver.GetService<IAccountKeyRepository>(),
+                _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<ILogger>(),
@@ -106,6 +112,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
                 testSessions);
+            
         }
 
         /// <summary>

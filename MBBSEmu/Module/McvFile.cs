@@ -15,6 +15,8 @@ namespace MBBSEmu.Module
     /// </summary>
     public class McvFile
     {
+        private static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'};
+
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         public readonly string FileName;
@@ -111,7 +113,17 @@ namespace MBBSEmu.Module
                 }
                 var message = fileSpan.Slice(messageLocationOffset, messageLength);
 
-                Messages.Add(i, message.ToArray());
+                using var parsedMessage = new MemoryStream(message.Length * 2);
+                foreach (var b in message)
+                {
+                    //Make sure any New Lines have Carriage Returns, and vice versa
+                    if (b == 0xD || b == 0xA)
+                        parsedMessage.Write(NEW_LINE);
+                    else
+                        parsedMessage.WriteByte(b);
+                }
+
+                Messages.Add(i, parsedMessage.ToArray());
             }
 
 #if DEBUG

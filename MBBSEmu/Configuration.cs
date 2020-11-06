@@ -1,6 +1,9 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Net;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -30,14 +33,16 @@ namespace MBBSEmu
 
         //Validate Config File
         public string BBSTitle => GetBBSTitleSettings("BBS.Title");
+        public int BBSChannels => GetAppSettings<int>(ConfigurationRoot["BBS.Channels"], "BBS.Channels");
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
         public string GSBLActivation => GetGSBLActivationSettings("GSBL.Activation");
         public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
         public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
         public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
+        public bool TelnetHeartbeat => GetAppSettings<bool>(ConfigurationRoot["Telnet.Heartbeat"], "Telnet.Heartbeat");
         public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
         public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
-        public string RloginoRemoteIP => GetStringAppSettings("Rlogin.RemoteIP");
+        public string RloginoRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
 
@@ -47,6 +52,17 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
+        public IEnumerable<string> DefaultKeys
+        {
+            get
+            {
+                if (ConfigurationRoot.GetSection("Account.DefaultKeys") == null)
+                    return new[] { "DEMO", "NORMAL" };
+
+                return ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
+                    .ToArray().Select(c => c.Value).ToArray();
+            }
+        }
 
         //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
@@ -73,24 +89,40 @@ namespace MBBSEmu
             {
                 switch (valueName)
                 {
+                    case "BBS.Channels":
+                        value = 4;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     case "Module.DoLoginRoutine":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                        value = true;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     case "Telnet.Enabled":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                        value = false;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
+                    case "Telnet.Heartbeat":
+                        value = false;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     case "Telnet.Port":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 23");
+                        value = 23;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value; ;
                     case "Rlogin.Enabled":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
+                        value = false;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     case "Rlogin.Port":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 513");
-                    case "Rlogin.RemoteIP":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: 127.0.0.1");
+                        value = 513;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     case "Rlogin.PortPerModule":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- True or False");
-                    case "Database.File":
-                        throw new Exception($"You must specify a value for {valueName} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- Example: mbbsemu.db");
+                        value = false;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
                     default:
-                        return default(T);
+                        return default;
                 }
             }
         }
@@ -102,15 +134,26 @@ namespace MBBSEmu
                 throw key switch
                 {
                     "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    "Rlogin.RemoteIP" => new Exception("For security reasons, you must specify an authorized Remote IP via Rlogin.Port if you're going to enable Rlogin"),
                     _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
                 };
             }
             return ConfigurationRoot[key];
         }
 
+        private string GetRemoteIPAppSettings(string key)
+        {
+
+            if (IPAddress.TryParse(ConfigurationRoot[key], out var result))
+            {
+                return result.ToString();
+            }
+
+            Console.WriteLine($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
+            return "127.0.0.1";
+        }
+
         /// <summary>
-        ///     Sets a default BBS Title with \0 termination 
+        ///     Sets a default BBS Title with \0 termination
         /// </summary>
         /// <param name="key">BBS.Title</param>
         /// <returns></returns>
@@ -136,6 +179,7 @@ namespace MBBSEmu
             {
                 //Set Default 3am
                 result = TimeSpan.Parse("03:00");
+                Console.WriteLine($"Cleanup.Time not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
             }
             return result;
         }
@@ -153,6 +197,10 @@ namespace MBBSEmu
             {
                 //Set Default
                 result = ConfigurationRoot[key];
+            }
+            else
+            {
+                Console.WriteLine($"GSBL.Activation not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
             }
 
             return result;

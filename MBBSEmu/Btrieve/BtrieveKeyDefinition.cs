@@ -94,6 +94,7 @@ namespace MBBSEmu.Btrieve
                     case EnumKeyDataType.String:
                     case EnumKeyDataType.Lstring:
                     case EnumKeyDataType.Zstring:
+                    case EnumKeyDataType.OldAscii:
                         return true;
                     default:
                         return false;

@@ -16,5 +16,6 @@ namespace MBBSEmu.Database.Repositories.Account
         AccountModel GetAccountById(int accountId);
         void DeleteAccountById(int accountId);
         void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email);
+        void Reset(string sysopPassword);
     }
 }

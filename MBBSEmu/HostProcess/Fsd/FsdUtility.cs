@@ -127,7 +127,7 @@ namespace MBBSEmu.HostProcess.Fsd
         {
             //Get Template and Strip out ANSI Characters
             var templateString = Encoding.ASCII.GetString(StripAnsi(template));
-            
+
 
             var currentY = 1; //ANSI x/y positions are 1 based, so first loop these will be 1,1
             var currentX = 0;
@@ -164,7 +164,7 @@ namespace MBBSEmu.HostProcess.Fsd
                         //Standard Fields
                         status.Fields[currentField - 1].FieldLength = currentFieldLength + 1;
                     }
-                    
+
                     currentFieldLength = 0;
                 }
 
@@ -172,7 +172,7 @@ namespace MBBSEmu.HostProcess.Fsd
                 foundFieldCharacter = '\xFF';
 
                 //If it's a new line, increment Y and set X back to -1
-                if (c == '\r')
+                if (c == '\n')
                 {
                     currentY++;
                     currentX = 0;
@@ -317,7 +317,7 @@ namespace MBBSEmu.HostProcess.Fsd
         public List<string> ParseAnswers(int answerCount, ReadOnlySpan<byte> answerList)
         {
             var result = new List<string>();
-            using var msAnswerBuffer = new MemoryStream();
+            using var msAnswerBuffer = new MemoryStream(answerList.Length);
 
             foreach (var c in answerList)
             {
@@ -345,7 +345,7 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <returns></returns>
         public ReadOnlySpan<byte> StripAnsi(ReadOnlySpan<byte> inputBuffer)
         {
-            using var msResult = new MemoryStream();
+            using var msResult = new MemoryStream(inputBuffer.Length);
 
             //Replace Extended ASCII with spaces
             foreach (var c in inputBuffer)
@@ -363,7 +363,7 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <returns></returns>
         public ReadOnlySpan<byte> BuildAnswerString(FsdStatus fsdStatus)
         {
-            using var result = new MemoryStream();
+            using var result = new MemoryStream(fsdStatus.Fields.Sum(field => field.Name.Length + field.Value.Length + 4));
             foreach (var field in fsdStatus.Fields)
             {
                 result.Write(Encoding.ASCII.GetBytes($"{field.Name}={field.Value}\0"));
@@ -374,8 +374,8 @@ namespace MBBSEmu.HostProcess.Fsd
 
         /// <summary>
         ///     Exchanges Field Information between the fsdfld definitions and the FsdFieldSpec List3
-        /// 
-        ///     fsdfldSpan.flags & 0x80 -> fields.IsReadOnly    
+        ///
+        ///     fsdfldSpan.flags & 0x80 -> fields.IsReadOnly
         /// </summary>
         /// <param name="fsdfldSpan"></param>
         /// <param name="fields"></param>

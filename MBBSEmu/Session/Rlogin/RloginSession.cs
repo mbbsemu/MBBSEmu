@@ -16,7 +16,7 @@ namespace MBBSEmu.Session.Rlogin
     {
         private readonly IMbbsHost _host;
         private readonly List<string> rloginStrings = new List<string>();
-        private readonly MemoryStream memoryStream = new MemoryStream();
+        private readonly MemoryStream memoryStream = new MemoryStream(1024);
 
         public readonly string ModuleIdentifier;
 
