@@ -550,6 +550,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fdivrp:
                     Op_Fdivrp();
                     break;
+                case Mnemonic.Fsin:
+                    Op_Fsin();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -3315,6 +3318,25 @@ namespace MBBSEmu.CPU
             var result = dividend / divisor;
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
             Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point SIN (x87)
+        /// </summary>
+        private void Op_Fsin()
+        {
+            var valueToSin = FpuStack[Registers.Fpu.GetStackTop()];
+
+            switch (valueToSin)
+            {
+                case double.PositiveInfinity:
+                case double.NegativeInfinity:
+                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                case double.NaN:
+                    return;
+            }
+            
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
         }
 
         /// <summary>
