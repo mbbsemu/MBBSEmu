@@ -66,7 +66,7 @@ namespace MBBSEmu.Btrieve
 
         private SqliteReader _reader;
         public SqliteReader Reader {
-            get { return _reader; }
+            get => _reader;
             set // overloaded so that we can call Dispose() on Reader when changed/nulled
             {
                 if (_reader != value)
@@ -74,6 +74,7 @@ namespace MBBSEmu.Btrieve
                     _reader?.Dispose();
                     _reader = value;
 
+                    // grab the connection while we're at it
                     Connection = value?.Command?.Connection ?? Connection;
                 }
             }
