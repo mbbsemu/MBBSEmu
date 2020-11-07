@@ -669,6 +669,7 @@ namespace MBBSEmu.Btrieve
         /// <param name="query">Current query</param>
         /// <param name="matcher">Delegate function for verifying results. If this matcher returns
         ///     false, the query is aborted and returns no more results.</param>
+        /// <param name="cursorDirection">Which direction to move along the query results</param>
         /// <returns>true if the Sqlite cursor returned a valid item</returns>
         private bool NextReader(BtrieveQuery query, BtrieveQuery.QueryMatcher matcher, BtrieveQuery.CursorDirection cursorDirection)
         {

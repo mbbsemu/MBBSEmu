@@ -32,8 +32,14 @@ namespace MBBSEmu.Btrieve
             Reverse
         }
 
+        /// <summary>
+        ///     The SqliteConnection associated with this query
+        /// </summary>
         public SqliteConnection Connection { get; set; }
 
+        /// <summary>
+        ///     The direction this cursor is currently moving along.
+        /// </summary>
         public CursorDirection Direction { get; set; }
 
         /// <summary>
@@ -61,7 +67,7 @@ namespace MBBSEmu.Btrieve
         private SqliteReader _reader;
         public SqliteReader Reader {
             get { return _reader; }
-            set
+            set // overloaded so that we can call Dispose() on Reader when changed/nulled
             {
                 if (_reader != value)
                 {
@@ -92,6 +98,9 @@ namespace MBBSEmu.Btrieve
         /// <returns>true if the record is valid for the query</returns>
         public delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
 
+        /// <summary>
+        ///     Moves along the cursor until we hit position
+        /// </summary>
         private void SeekTo(uint position)
         {
             while (Reader.Read())
@@ -133,7 +142,12 @@ namespace MBBSEmu.Btrieve
             };
             Direction = newDirection;
             // due to duplicate keys, we need to seek past the current position since we might serve
-            // data already served
+            // data already served.
+            //
+            // For example, if you have 4 identical keys with id 1,2,3,4 and are currently at id 2
+            // and seek previous expecting id 1, sqlite might return a cursor counting from 4,3,2,1
+            // and the cursor would point to 4, returning the wrong result. This next call skips
+            // 4,3,2 until the cursor is at the proper point.
             SeekTo(Position);
         }
 
