@@ -56,6 +56,11 @@ namespace MBBSEmu.Database.Repositories.AccountKey
             return result.Any();
         }
 
+        public void DeleteAccountKeyByUsernameAndAccountKey(string userName, string accountKey)
+        {
+            Query(EnumQueries.DeleteAccountKeyByUsernameAndAccountKey, new {userName, accountKey});
+        }
+
         public void Reset()
         {
             if (TableExists())

@@ -1,4 +1,5 @@
-﻿using MBBSEmu.Extensions;
+﻿using System;
+using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
@@ -10,7 +11,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 {
     public class UsersOnlineGlobal : IGlobalRoutine
     {
-        public bool ProcessCommand(byte[] command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
+        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
         {
             var commandString = Encoding.ASCII.GetString(command).TrimEnd('\0');
 
