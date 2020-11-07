@@ -1,11 +1,14 @@
-using MBBSEmu.HostProcess;
-using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess;
+using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
+using NLog;
 
 namespace MBBSEmu.Session.Rlogin
 {
@@ -15,15 +18,17 @@ namespace MBBSEmu.Session.Rlogin
     public class RloginSession : SocketSession
     {
         private readonly IMbbsHost _host;
+        private readonly PointerDictionary<SessionBase> _channelDictionary;
         private readonly List<string> rloginStrings = new List<string>();
         private readonly MemoryStream memoryStream = new MemoryStream(1024);
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, string moduleIdentifier = null) : base(logger, rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, string moduleIdentifier = null) : base(logger, rloginConnection)
         {
             _host = host;
             ModuleIdentifier = moduleIdentifier;
+            _channelDictionary = channelDictionary;
             SessionType = EnumSessionType.Rlogin;
             SessionState = EnumSessionState.Negotiating;
         }
@@ -56,6 +61,19 @@ namespace MBBSEmu.Session.Rlogin
                 return false;
             }
 
+            //Check if user is already logged in
+            if (_channelDictionary.Values.Any(s => string.Equals(s.Username,
+                rloginStrings.First(s => !string.IsNullOrEmpty(s)), StringComparison.CurrentCultureIgnoreCase)))
+            {
+                _logger.Info($"RLogin -- User already logged in");
+                var duplicateLoginMsg =
+                    $"\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|"
+                        .EncodeToANSIArray();
+                Send(duplicateLoginMsg);
+                SessionState = EnumSessionState.LoggedOff;
+                return false;
+            }
+            
             // we have 3 strings, pick out username and launch appropriately
             Username = rloginStrings.First(s => !string.IsNullOrEmpty(s));
 

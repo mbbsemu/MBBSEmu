@@ -1,11 +1,13 @@
 using MBBSEmu.HostProcess;
+using MBBSEmu.Memory;
+using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
 using NLog;
 using System;
 using System.Net;
 using System.Net.Sockets;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Server.Socket
 {
@@ -23,12 +25,14 @@ namespace MBBSEmu.Server.Socket
         private System.Net.Sockets.Socket _listenerSocket;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
+        private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public SocketServer(ILogger logger, IMbbsHost host, AppSettings configuration)
+        public SocketServer(ILogger logger, IMbbsHost host, AppSettings configuration, PointerDictionary<SessionBase> channelDictionary)
         {
             _logger = logger;
             _host = host;
             _configuration = configuration;
+            _channelDictionary = channelDictionary;
         }
 
         public void Start(EnumSessionType sessionType, int port, string moduleIdentifier = null)
@@ -85,7 +89,7 @@ namespace MBBSEmu.Server.Socket
                         }
 
                         _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
-                        var session = new RloginSession(_host, _logger, client, _moduleIdentifier);
+                        var session = new RloginSession(_host, _logger, client, _channelDictionary, _moduleIdentifier);
                         _host.AddSession(session);
                         session.Start();
                         break;
