@@ -107,6 +107,9 @@ namespace MBBSEmu.Btrieve
 
         private void ChangeDirection(CursorDirection newDirection)
         {
+            if (LastKey == null) // no successful prior query, so abort
+                return;
+
             var command = new SqliteCommand() { Connection = this.Connection };
             command.CommandText = $"SELECT id, {Key.SqliteKeyName}, data FROM data_t WHERE {Key.SqliteKeyName} ";
             switch (newDirection)

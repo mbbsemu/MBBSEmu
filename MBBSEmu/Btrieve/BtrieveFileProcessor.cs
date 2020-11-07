@@ -329,7 +329,7 @@ namespace MBBSEmu.Btrieve
             if (_cache.TryGetValue(offset, out var record))
                 return record;
 
-            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
+            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id = {offset}", _connection);
             using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             try
             {
