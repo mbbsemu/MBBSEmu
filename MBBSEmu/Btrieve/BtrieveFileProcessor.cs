@@ -86,14 +86,6 @@ namespace MBBSEmu.Btrieve
         public string FullPath { get; set; }
 
         /// <summary>
-        ///     A delegate function that returns true if the retrieved record matches the query.
-        /// </summary>
-        /// <param name="query">Query made</param>
-        /// <param name="record">The record retrieve from the query</param>
-        /// <returns>true if the record is valid for the query</returns>
-        private delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
-
-        /// <summary>
         ///     Closes all long lived resources, such as the Sqlite connection.
         /// </summary>
         public void Dispose()
@@ -344,8 +336,8 @@ namespace MBBSEmu.Btrieve
                 if (!reader.Read())
                     return null;
 
-                var data = new byte[RecordLength];
                 using var stream = reader.GetStream(0);
+                var data = new byte[stream.Length];
                 stream.Read(data, 0, data.Length);
 
                 record = new BtrieveRecord(offset, data);
@@ -678,41 +670,17 @@ namespace MBBSEmu.Btrieve
         /// <param name="matcher">Delegate function for verifying results. If this matcher returns
         ///     false, the query is aborted and returns no more results.</param>
         /// <returns>true if the Sqlite cursor returned a valid item</returns>
-        private bool NextReader(BtrieveQuery query, QueryMatcher matcher, BtrieveQuery.CursorDirection cursorDirection)
+        private bool NextReader(BtrieveQuery query, BtrieveQuery.QueryMatcher matcher, BtrieveQuery.CursorDirection cursorDirection)
         {
-            if (query.Direction != cursorDirection)
-            {
-                // create new query
-                query?.Reader?.Dispose();
-            }
+            var (success, record) = query.Next(matcher, cursorDirection);
 
-            // out of records?
-            if (query.Reader == null || !query.Reader.Read())
-            {
-                var hadRows = query?.Reader?.DataReader?.HasRows ?? false;
+            if (success)
+                Position = query.Position;
 
-                query?.Reader?.Dispose();
-                query.Reader = null;
-                return false;
-            }
+            if (record != null)
+                _cache[query.Position] = record;
 
-            query.Position = (uint)query.Reader.DataReader.GetInt32(0);
-            query.LastKey = query.Reader.DataReader.GetValue(1);
-
-            var data = new byte[RecordLength];
-            using var stream = query.Reader.DataReader.GetStream(2);
-            stream.Read(data, 0, data.Length);
-
-            var record = new BtrieveRecord(query.Position, data);
-
-            // we have it, might as well cache it
-            _cache[query.Position] = record;
-
-            if (!matcher.Invoke(query, record))
-                return false;
-
-            Position = query.Position;
-            return true;
+            return success;
         }
 
         /// <summary>
@@ -741,7 +709,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
-            QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
+            BtrieveQuery.QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
 
             var sqliteObject = query.Key.KeyDataToSqliteObject(query.KeyData);
             var command = new SqliteCommand() { Connection = _connection };
@@ -801,7 +769,7 @@ namespace MBBSEmu.Btrieve
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command,
             };
-
+            query.Direction = BtrieveQuery.CursorDirection.Reverse;
             return NextReader(query, BtrieveQuery.CursorDirection.Reverse);
         }
 
@@ -836,7 +804,7 @@ namespace MBBSEmu.Btrieve
                 Command = command
             };
             query.Direction = BtrieveQuery.CursorDirection.Reverse;
-            return NextReader(query, BtrieveQuery.CursorDirection.Forward);
+            return NextReader(query, BtrieveQuery.CursorDirection.Reverse);
         }
 
         /// <summary>
