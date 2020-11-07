@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
@@ -18,7 +19,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Database.Repositories.Account;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -2001,6 +2001,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var accountLock = GetParameterString(0, true);
 
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
             IEnumerable<string> keys;
 
             //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
@@ -2037,6 +2043,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var accountLock = Encoding.ASCII.GetString(McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)).TrimEnd('\0');
 
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
             IEnumerable<string> keys;
 
             //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
@@ -2056,7 +2068,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 : (ushort)0;
 #if DEBUG
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
-            _logger.Info($"Returning {Registers.AX} for Haskey({lockName})");
+            _logger.Info($"Returning {Registers.AX} for Hasmkey({lockName})");
 #endif
         }
 

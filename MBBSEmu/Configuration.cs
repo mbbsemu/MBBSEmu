@@ -1,12 +1,12 @@
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace MBBSEmu
 {
@@ -56,7 +56,7 @@ namespace MBBSEmu
         {
             get
             {
-                if (ConfigurationRoot.GetSection("Account.DefaultKeys") == null)
+                if (!ConfigurationRoot.GetSection("Account.DefaultKeys").Exists())
                     return new[] { "DEMO", "NORMAL" };
 
                 return ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()

@@ -190,15 +190,16 @@ namespace MBBSEmu
                             return;
                     }
                 }
-                var _configuration = new AppSettings();
+                
                 _serviceResolver = new ServiceResolver();
 
                 _logger = _serviceResolver.GetService<ILogger>();
-
-                //Setup Generic Database
+                var configuration = _serviceResolver.GetService<AppSettings>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
+
+                //Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
@@ -219,7 +220,7 @@ namespace MBBSEmu
                     DatabaseReset();
 
                 //Database Sanity Checks
-                var databaseFile = _configuration.DatabaseFile;
+                var databaseFile = configuration.DatabaseFile;
                 if (!File.Exists($"{databaseFile}"))
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
@@ -282,29 +283,29 @@ namespace MBBSEmu
                 _runningServices.Add(host);
 
                 //Setup and Run Telnet Server
-                if (_configuration.TelnetEnabled)
+                if (configuration.TelnetEnabled)
                 {
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, _configuration.TelnetPort);
+                    telnetService.Start(EnumSessionType.Telnet, configuration.TelnetPort);
 
-                    _logger.Info($"Telnet listening on port {_configuration.TelnetPort}");
+                    _logger.Info($"Telnet listening on port {configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
 
                 //Setup and Run Rlogin Server
-                if (_configuration.RloginEnabled)
+                if (configuration.RloginEnabled)
                 {
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, _configuration.RloginPort);
+                    rloginService.Start(EnumSessionType.Rlogin, configuration.RloginPort);
 
-                    _logger.Info($"Rlogin listening on port {_configuration.RloginPort}");
+                    _logger.Info($"Rlogin listening on port {configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 
-                    if (_configuration.RloginPortPerModule)
+                    if (configuration.RloginPortPerModule)
                     {
-                        var rloginPort = _configuration.RloginPort + 1;
+                        var rloginPort = configuration.RloginPort + 1;
                         foreach (var m in _moduleConfigurations)
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");

@@ -14,7 +14,6 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using Microsoft.Extensions.Configuration;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {
@@ -28,14 +27,16 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly AppSettings _configuration;
         private readonly IGlobalCache _globalCache;
+        private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;
             _accountKeyRepository = accountKeyRepository;
             _configuration = configuration;
             _globalCache = globalCache;
+            _channelDictionary = channelDictionary;
         }
 
         /// <summary>
@@ -249,6 +250,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     File.Exists(ansiSignupFileName)
                         ? File.ReadAllBytes(ansiSignupFileName).ToArray()
                         : _resourceManager.GetResource("MBBSEmu.Assets.signup.ans").ToArray());
+                return;
+            }
+
+            if (_channelDictionary.Values.Any(s => string.Equals(s.Username, inputValue, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                EchoToClient(session, $"\r\n|RED||B|{inputValue} is already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
+                session.InputBuffer.SetLength(0);
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
 
