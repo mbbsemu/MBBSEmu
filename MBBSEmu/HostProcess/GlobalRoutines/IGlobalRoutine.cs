@@ -1,4 +1,5 @@
-﻿using MBBSEmu.Memory;
+﻿using System;
+using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <param name="sessions"></param>
         /// <param name="modules"></param>
         /// <returns></returns>
-        bool ProcessCommand(byte[] command, ushort channelNumber, PointerDictionary<SessionBase> sessions,
+        bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions,
             Dictionary<string, MbbsModule> modules);
     }
 }

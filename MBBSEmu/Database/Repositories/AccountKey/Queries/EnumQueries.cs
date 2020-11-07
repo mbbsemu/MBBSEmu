@@ -31,6 +31,10 @@ namespace MBBSEmu.Database.Repositories.AccountKey.Queries
 
         [SqlQuery("GetAccountKeysByUsername.sql")]
         [Description("Gets Account Keys by the specified Username")]
-        GetAccountKeysByUsername
+        GetAccountKeysByUsername,
+
+        [SqlQuery("DeleteAccountKeyByUsernameAndAccountKey.sql")]
+        [Description("Deletes the specified Account Key from the Specified Username")]
+        DeleteAccountKeyByUsernameAndAccountKey
     }
 }

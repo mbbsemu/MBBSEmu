@@ -13,6 +13,7 @@ namespace MBBSEmu.Database.Repositories.AccountKey
         IEnumerable<AccountKeyModel> GetAccountKeysByAccountId(int accountId);
         IEnumerable<AccountKeyModel> GetAccountKeysByUsername(string username);
         bool InsertAccountKeyByUsername(string userName, string accountKey);
+        void DeleteAccountKeyByUsernameAndAccountKey(string userName, string accountKey);
         public void Reset();
     }
 }
