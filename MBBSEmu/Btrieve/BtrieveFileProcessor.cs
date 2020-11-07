@@ -86,14 +86,6 @@ namespace MBBSEmu.Btrieve
         public string FullPath { get; set; }
 
         /// <summary>
-        ///     A delegate function that returns true if the retrieved record matches the query.
-        /// </summary>
-        /// <param name="query">Query made</param>
-        /// <param name="record">The record retrieve from the query</param>
-        /// <returns>true if the record is valid for the query</returns>
-        private delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
-
-        /// <summary>
         ///     Closes all long lived resources, such as the Sqlite connection.
         /// </summary>
         public void Dispose()
@@ -337,15 +329,15 @@ namespace MBBSEmu.Btrieve
             if (_cache.TryGetValue(offset, out var record))
                 return record;
 
-            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id={offset}", _connection);
+            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id = {offset}", _connection);
             using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             try
             {
                 if (!reader.Read())
                     return null;
 
-                var data = new byte[RecordLength];
                 using var stream = reader.GetStream(0);
+                var data = new byte[stream.Length];
                 stream.Read(data, 0, data.Length);
 
                 record = new BtrieveRecord(offset, data);
@@ -630,6 +622,7 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
 
                 EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.GetKeyPrevious => GetByKeyPrevious(currentQuery),
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
@@ -653,12 +646,19 @@ namespace MBBSEmu.Btrieve
         ///     Updates Position to the next logical position based on the sorted key query, always
         ///     ascending in sort order.
         /// </summary>
-        private bool GetByKeyNext(BtrieveQuery query) => NextReader(query);
+        private bool GetByKeyNext(BtrieveQuery query) => NextReader(query, BtrieveQuery.CursorDirection.Forward);
+
+        /// <summary>
+        ///     Updates Position to the prior logical position based on the sorted key query, always
+        ///     ascending in sort order.
+        /// </summary>
+        private bool GetByKeyPrevious(BtrieveQuery query) => NextReader(query, BtrieveQuery.CursorDirection.Reverse);
 
         /// <summary>
         ///     Calls NextReader with an always-true query matcher.
         /// </summary>
-        private bool NextReader(BtrieveQuery query) => NextReader(query, (query, record) => true);
+        private bool NextReader(BtrieveQuery query, BtrieveQuery.CursorDirection cursorDirection) =>
+            NextReader(query, (query, record) => true, cursorDirection);
 
         /// <summary>
         ///     Updates Position based on the value of current Sqlite cursor.
@@ -669,44 +669,19 @@ namespace MBBSEmu.Btrieve
         /// <param name="query">Current query</param>
         /// <param name="matcher">Delegate function for verifying results. If this matcher returns
         ///     false, the query is aborted and returns no more results.</param>
+        /// <param name="cursorDirection">Which direction to move along the query results</param>
         /// <returns>true if the Sqlite cursor returned a valid item</returns>
-        private bool NextReader(BtrieveQuery query, QueryMatcher matcher)
+        private bool NextReader(BtrieveQuery query, BtrieveQuery.QueryMatcher matcher, BtrieveQuery.CursorDirection cursorDirection)
         {
-            if (query.Reader == null || !query.Reader.Read())
-            {
-                var hadRows = query?.Reader?.DataReader?.HasRows ?? false;
+            var (success, record) = query.Next(matcher, cursorDirection);
 
-                query?.Reader?.Dispose();
-                query.Reader = null;
+            if (success)
+                Position = query.Position;
 
-                if (query.ContinuationReader == null || !hadRows)
-                    return false;
+            if (record != null)
+                _cache[query.Position] = record;
 
-                query.Reader = query.ContinuationReader(query);
-                if (query.Reader == null || !query.Reader.Read())
-                {
-                    query?.Reader?.Dispose();
-                    query.Reader = null;
-                    return false;
-                }
-            }
-
-            query.Position = (uint)query.Reader.DataReader.GetInt32(0);
-
-            var data = new byte[RecordLength];
-            using var stream = query.Reader.DataReader.GetStream(1);
-            stream.Read(data, 0, data.Length);
-
-            var record = new BtrieveRecord(query.Position, data);
-
-            // we have it, might as well cache it
-            _cache[query.Position] = record;
-
-            if (!matcher.Invoke(query, record))
-                return false;
-
-            Position = query.Position;
-            return true;
+            return success;
         }
 
         /// <summary>
@@ -735,17 +710,17 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
-            QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
+            BtrieveQuery.QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
 
             var sqliteObject = query.Key.KeyDataToSqliteObject(query.KeyData);
             var command = new SqliteCommand() { Connection = _connection };
             if (sqliteObject == null)
             {
-                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} IS NULL";
+                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} IS NULL";
             }
             else
             {
-                command.CommandText = $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value ORDER BY {query.Key.SqliteKeyName} ASC";
+                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value ORDER BY {query.Key.SqliteKeyName} ASC";
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
             }
 
@@ -754,7 +729,7 @@ namespace MBBSEmu.Btrieve
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
-            return NextReader(query, initialMatcher);
+            return NextReader(query, initialMatcher, BtrieveQuery.CursorDirection.Forward);
         }
 
         /// <summary>
@@ -765,7 +740,7 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyGreater(BtrieveQuery query, string oprator)
         {
             var command = new SqliteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC",
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC",
                 _connection);
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
@@ -774,7 +749,7 @@ namespace MBBSEmu.Btrieve
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
-            return NextReader(query);
+            return NextReader(query, BtrieveQuery.CursorDirection.Forward);
         }
 
         /// <summary>
@@ -786,31 +761,17 @@ namespace MBBSEmu.Btrieve
         {
             // this query finds the first item less than
             var command = new SqliteCommand(
-                $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC",
                 _connection);
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
             query.Reader = new BtrieveQuery.SqliteReader()
             {
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
-                Command = command
+                Command = command,
             };
-            // and this continuation query allows for increasing subsequent GetNext calls
-            query.ContinuationReader = (thisQuery) =>
-            {
-                var command = new SqliteCommand(
-                    $"SELECT id, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value AND id != {thisQuery.Position} ORDER BY {query.Key.SqliteKeyName} ASC",
-                    _connection);
-                command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
-
-                thisQuery.ContinuationReader = null;
-                return new BtrieveQuery.SqliteReader()
-                {
-                    DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
-                    Command = command
-                };
-            };
-            return NextReader(query);
+            query.Direction = BtrieveQuery.CursorDirection.Reverse;
+            return NextReader(query, BtrieveQuery.CursorDirection.Reverse);
         }
 
         /// <summary>
@@ -819,14 +780,14 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyFirst(BtrieveQuery query)
         {
             var command = new SqliteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", _connection);
 
             query.Reader = new BtrieveQuery.SqliteReader()
             {
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
-            return NextReader(query);
+            return NextReader(query, BtrieveQuery.CursorDirection.Forward);
         }
 
         /// <summary>
@@ -835,7 +796,7 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyLast(BtrieveQuery query)
         {
             var command = new SqliteCommand(
-                $"SELECT id, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC LIMIT 1",
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC",
                 _connection);
 
             query.Reader = new BtrieveQuery.SqliteReader()
@@ -843,7 +804,8 @@ namespace MBBSEmu.Btrieve
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
-            return NextReader(query);
+            query.Direction = BtrieveQuery.CursorDirection.Reverse;
+            return NextReader(query, BtrieveQuery.CursorDirection.Reverse);
         }
 
         /// <summary>

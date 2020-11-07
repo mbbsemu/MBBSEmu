@@ -27,18 +27,31 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        /// <summary>
-        ///     Delegate to invoke to fetch the next data reader. Return null to stop the GetNext()
-        ///     flow. You can chain endlessly by keeping ContinuationReader set, but if you want
-        ///     the enumeration to end, set thisQuery.ContinuationReader back to null in the
-        ///     delegate.
-        /// </summary>
-        public delegate SqliteReader GetContinuationReader(BtrieveQuery thisQuery);
+        public enum CursorDirection {
+            Forward,
+            Reverse
+        }
 
         /// <summary>
-        ///     Key Value to be queried on
+        ///     The SqliteConnection associated with this query
+        /// </summary>
+        public SqliteConnection Connection { get; set; }
+
+        /// <summary>
+        ///     The direction this cursor is currently moving along.
+        /// </summary>
+        public CursorDirection Direction { get; set; }
+
+        /// <summary>
+        ///     Initial Key Value to be queried on
         /// </summary>
         public byte[] KeyData { get; set; }
+
+        /// <summary>
+        ///     Last Key Value retrieved during GetNext/GetPrevious cursor movement,
+        ///     as a Sqlite object.
+        /// </summary>
+        public object LastKey { get; set; }
 
         /// <summary>
         ///     Key Definition
@@ -51,24 +64,132 @@ namespace MBBSEmu.Btrieve
         /// <value></value>
         public uint Position { get; set; }
 
-        public SqliteReader Reader { get; set; }
+        private SqliteReader _reader;
+        public SqliteReader Reader {
+            get => _reader;
+            set // overloaded so that we can call Dispose() on Reader when changed/nulled
+            {
+                if (_reader != value)
+                {
+                    _reader?.Dispose();
+                    _reader = value;
 
-        /// <summary>
-        ///     A delegate to invoke after which the last record has been read. Allows the
-        ///     continuation of a query -> getNext() flow by creating a new SQLiteDataReader that
-        ///     returns more records.
-        /// </summary>
-        public GetContinuationReader ContinuationReader { get; set; }
+                    // grab the connection while we're at it
+                    Connection = value?.Command?.Connection ?? Connection;
+                }
+            }
+        }
 
         public BtrieveQuery()
         {
             Position = 0;
+            Direction = CursorDirection.Forward;
         }
 
         public void Dispose()
         {
-            Reader?.Dispose();
             Reader = null;
+        }
+
+        /// <summary>
+        ///     A delegate function that returns true if the retrieved record matches the query.
+        /// </summary>
+        /// <param name="query">Query made</param>
+        /// <param name="record">The record retrieve from the query</param>
+        /// <returns>true if the record is valid for the query</returns>
+        public delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
+
+        /// <summary>
+        ///     Moves along the cursor until we hit position
+        /// </summary>
+        private void SeekTo(uint position)
+        {
+            while (Reader.Read())
+            {
+                var cursorPosition = (uint)Reader.DataReader.GetInt32(0);
+                if (cursorPosition == position)
+                    return;
+            }
+
+            // at end, nothing left
+            Reader = null;
+        }
+
+        private void ChangeDirection(CursorDirection newDirection)
+        {
+            if (LastKey == null) // no successful prior query, so abort
+                return;
+
+            var command = new SqliteCommand() { Connection = this.Connection };
+            command.CommandText = $"SELECT id, {Key.SqliteKeyName}, data FROM data_t WHERE {Key.SqliteKeyName} ";
+            switch (newDirection)
+            {
+                case CursorDirection.Forward:
+                    command.CommandText += $">= @value ORDER BY {Key.SqliteKeyName} ASC";
+                    break;
+                case CursorDirection.Reverse:
+                    command.CommandText += $"<= @value ORDER BY {Key.SqliteKeyName} DESC";
+                    break;
+                default:
+                    throw new ArgumentException("Bad direction");
+            }
+
+            command.Parameters.AddWithValue("@value", LastKey);
+
+            Reader = new BtrieveQuery.SqliteReader()
+            {
+                DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
+                Command = command
+            };
+            Direction = newDirection;
+            // due to duplicate keys, we need to seek past the current position since we might serve
+            // data already served.
+            //
+            // For example, if you have 4 identical keys with id 1,2,3,4 and are currently at id 2
+            // and seek previous expecting id 1, sqlite might return a cursor counting from 4,3,2,1
+            // and the cursor would point to 4, returning the wrong result. This next call skips
+            // 4,3,2 until the cursor is at the proper point.
+            SeekTo(Position);
+        }
+
+        /// <summary>
+        ///     Updates Position based on the value of current Sqlite cursor.
+        ///
+        ///     <para/>If the query has ended, it invokes query.ContinuationReader to get the next
+        ///     Sqlite cursor and continues from there.
+        /// </summary>
+        /// <param name="query">Current query</param>
+        /// <param name="matcher">Delegate function for verifying results. If this matcher returns
+        ///     false, the query is aborted and returns no more results.</param>
+        /// <returns>true if the Sqlite cursor returned a valid item along with the data</returns>
+        public (bool, BtrieveRecord) Next(QueryMatcher matcher, CursorDirection cursorDirection)
+        {
+            if (Direction != cursorDirection)
+            {
+                Reader = null;
+                ChangeDirection(cursorDirection);
+            }
+
+            // out of records?
+            if (Reader == null || !Reader.Read())
+            {
+                Reader = null;
+                return (false, null);
+            }
+
+            Position = (uint)Reader.DataReader.GetInt32(0);
+            LastKey = Reader.DataReader.GetValue(1);
+
+            using var stream = Reader.DataReader.GetStream(2);
+            var data = new byte[stream.Length];
+            stream.Read(data, 0, data.Length);
+
+            var record = new BtrieveRecord(Position, data);
+
+            if (!matcher.Invoke(this, record))
+                return (false, record);
+
+            return (true, record);
         }
     }
 }
