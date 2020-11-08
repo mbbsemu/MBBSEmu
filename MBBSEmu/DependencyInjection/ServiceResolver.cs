@@ -27,39 +27,75 @@ namespace MBBSEmu.DependencyInjection
             _provider.Dispose();
         }
 
-        public ServiceResolver()
+        /// <summary>
+        ///     Constructs the service provider.
+        /// </summary>
+        /// <param name="overrides">Any objects you want to bind instead of the defaults</param>
+        public ServiceResolver(params object[] overrides)
         {
-            BuildServiceProvider();
+            BuildServiceProvider(overrides);
         }
 
-        private void BuildServiceProvider()
+        private void BuildServiceProvider(object[] overrides)
         {
             //Base Configuration Items
-            _serviceCollection.AddSingleton<AppSettings>();
-            _serviceCollection.AddSingleton<PointerDictionary<SessionBase>>();
-            _serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+            AddSingleton<AppSettings>(overrides);
+            AddSingleton<AppSettings>(overrides);
+            AddSingleton<PointerDictionary<SessionBase>>(overrides);
+            AddSingleton<IResourceManager, ResourceManager>(overrides);
+            AddSingleton<IFileUtility, FileUtility>(overrides);
             _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
-            _serviceCollection.AddSingleton<IFileUtility, FileUtility>();
 
             //FSD Items
-            _serviceCollection.AddSingleton<IGlobalCache, GlobalCache>();
+            AddSingleton<IGlobalCache, GlobalCache>(overrides);
             _serviceCollection.AddTransient<IFsdUtility, FsdUtility>();
 
             //Database Repositories
-            _serviceCollection.AddSingleton<ISessionBuilder, SessionBuilder>();
-            _serviceCollection.AddSingleton<IAccountRepository, AccountRepository>();
-            _serviceCollection.AddSingleton<IAccountKeyRepository, AccountKeyRepository>();
+            AddSingleton<ISessionBuilder, SessionBuilder>(overrides);
+            AddSingleton<IAccountRepository, AccountRepository>(overrides);
+            AddSingleton<IAccountKeyRepository, AccountKeyRepository>(overrides);
 
             //MajorBBS Host Objects
-            _serviceCollection.AddSingleton<IHostRoutine, MenuRoutines>();
-            _serviceCollection.AddSingleton<IHostRoutine, FsdRoutines>();
-            _serviceCollection.AddSingleton<IGlobalRoutine, UsersOnlineGlobal>();
-            _serviceCollection.AddSingleton<IGlobalRoutine, PageUserGlobal>();
-            _serviceCollection.AddSingleton<IGlobalRoutine, SysopGlobal>();
-            _serviceCollection.AddSingleton<IMbbsHost, MbbsHost>();
+            AddSingleton<IHostRoutine, MenuRoutines>(overrides);
+            AddSingleton<IHostRoutine, FsdRoutines>(overrides);
+            AddSingleton<IGlobalRoutine, UsersOnlineGlobal>(overrides);
+            AddSingleton<IGlobalRoutine, PageUserGlobal>(overrides);
+            AddSingleton<IGlobalRoutine, SysopGlobal>(overrides);
+            AddSingleton<IMbbsHost, MbbsHost>(overrides);
             _serviceCollection.AddTransient<ISocketServer, SocketServer>();
 
             _provider = _serviceCollection.BuildServiceProvider();
+        }
+
+        private void AddSingleton<TService, TImplementation>(object[] overrides)
+            where TService : class
+            where TImplementation : class, TService
+        {
+            foreach (var obj in overrides)
+            {
+                if (obj is TService)
+                {
+                    _serviceCollection.AddSingleton<TService>((TService) obj);
+                    return;
+                }
+            }
+
+            _serviceCollection.AddSingleton<TService, TImplementation>();
+        }
+
+        private void AddSingleton<TServiceAndImplementation>(object[] overrides)
+            where TServiceAndImplementation : class
+        {
+            foreach (var obj in overrides)
+            {
+                if (obj is TServiceAndImplementation)
+                {
+                    _serviceCollection.AddSingleton<TServiceAndImplementation>((TServiceAndImplementation) obj);
+                    return;
+                }
+            }
+
+            _serviceCollection.AddSingleton<TServiceAndImplementation>();
         }
 
         public void SetServiceProvider(ServiceProvider serviceProvider) => _provider = serviceProvider;

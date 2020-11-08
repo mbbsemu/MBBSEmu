@@ -4,6 +4,8 @@ using MBBSEmu.Database.Session;
 using MBBSEmu.Resources;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
+using System;
 
 namespace MBBSEmu.Database.Repositories
 {
@@ -12,35 +14,38 @@ namespace MBBSEmu.Database.Repositories
     ///
     ///     Holds common Dapper Functionality for executing Queries
     /// </summary>
-    public abstract class RepositoryBase : IRepositoryBase
+    public abstract class RepositoryBase : IRepositoryBase, IDisposable
     {
         private readonly IResourceManager _resourceManager;
-        private readonly ISessionBuilder _sessionBuilder;
+
+        private readonly DbConnection _connection;
+
+        public void Dispose()
+        {
+            _connection.Close();
+            _connection.Dispose();
+        }
 
         protected RepositoryBase(ISessionBuilder sessionBuilder, IResourceManager resourceManager)
         {
-            _sessionBuilder = sessionBuilder;
+            _connection = sessionBuilder.GetConnection();
             _resourceManager = resourceManager;
         }
 
         public IEnumerable<T> Query<T>(object enumQuery, object parameters)
         {
-            using var connection = _sessionBuilder.GetConnection();
-            return connection.Query<T>(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
-            
+            return _connection.Query<T>(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
         }
 
         public IEnumerable<dynamic> Query(object enumQuery, object parameters)
         {
-            using var connection = _sessionBuilder.GetConnection();
             var sql = _resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}");
-            return connection.Query(sql, parameters);
+            return _connection.Query(sql, parameters);
         }
 
         public IEnumerable<dynamic> Exec(string storedProcName, object parameters)
         {
-            using var connection = _sessionBuilder.GetConnection();
-            return connection.Query(storedProcName, parameters, commandType: CommandType.StoredProcedure);
+            return _connection.Query(storedProcName, parameters, commandType: CommandType.StoredProcedure);
         }
     }
 }
