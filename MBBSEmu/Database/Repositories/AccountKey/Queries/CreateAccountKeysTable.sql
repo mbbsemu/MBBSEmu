@@ -1,7 +1,7 @@
 ﻿CREATE TABLE AccountKeys (
 	accountKeyId INTEGER PRIMARY KEY,
 	accountId INTEGER NOT NULL,
-	accountKey TEXT NOT NULL,
+	accountKey TEXT NOT NULL COLLATE NOCASE,
 	createDate TEXT NOT NULL,
 	updateDate TEXT NOT NULL
 );

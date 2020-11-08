@@ -3,4 +3,4 @@
 FROM
 	Accounts
 WHERE
-	userName = @userName;
+	userName = @userName COLLATE NOCASE;
