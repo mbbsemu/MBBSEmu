@@ -38,7 +38,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void nullCompareTest()
+        public void emptyCompareTest()
         {
             //Reset State
             Reset();
