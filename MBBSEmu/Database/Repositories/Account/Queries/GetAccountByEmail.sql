@@ -3,4 +3,4 @@
 FROM
 	Accounts
 WHERE
-	email = @email
+	email = @email COLLATE NOCASE
