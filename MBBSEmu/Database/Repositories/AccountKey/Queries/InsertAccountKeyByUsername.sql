@@ -11,6 +11,6 @@ SELECT
 FROM 
 	Accounts A 
 WHERE 
-	userName = @userName;
+	userName = @userName COLLATE NOCASE;
 
 SELECT last_insert_rowid();
