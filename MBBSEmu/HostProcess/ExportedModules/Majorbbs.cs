@@ -2356,21 +2356,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return false;
 
             if (!destinationRecordBuffer.Equals(IntPtr16.Empty))
-            {
                 Module.Memory.SetArray(destinationRecordBuffer,record.Data);
-            }
 
             var bbPointer = Module.Memory.GetPointer("BB");
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bbPointer, BtvFileStruct.Size));
-            if (keyNumber > 0)
+            if (keyNumber >= 0)
             {
                 btvStruct.lastkn = (ushort)keyNumber;
                 Module.Memory.SetArray(bbPointer, btvStruct.Data);
             }
+            else
+            {
+                keyNumber = (short)btvStruct.lastkn;
+            }
 
             Module.Memory.SetArray(btvStruct.data, record.Data);
 
-            if (keyNumber > 0)
+            if (keyNumber >= 0)
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
 
             return true;
@@ -4930,8 +4932,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var record = currentBtrieveFile.GetRecordByOffset((uint)absolutePosition);
-
             UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, (short)keynum);
         }
 
@@ -5711,9 +5711,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set Record Pointer to Result
             if (result)
             {
-                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(Module.Memory.GetPointer("BB"), BtvFileStruct.Size));
-
-                UpdateBB(currentBtrieveFile, IntPtr16.Empty, btvStruct.lastkn);
+                UpdateBB(currentBtrieveFile, IntPtr16.Empty, -1);
             }
 
             Registers.AX = result ? (ushort)1 : (ushort)0;
