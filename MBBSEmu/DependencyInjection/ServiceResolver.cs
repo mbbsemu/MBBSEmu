@@ -1,19 +1,20 @@
-using System;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Fsd;
+using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
+using MBBSEmu.Session;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
-using MBBSEmu.HostProcess.GlobalRoutines;
-using MBBSEmu.Session;
+using System.Collections.Generic;
+using System;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -36,7 +37,7 @@ namespace MBBSEmu.DependencyInjection
             BuildServiceProvider(overrides);
         }
 
-        private void BuildServiceProvider(object[] overrides)
+        private void BuildServiceProvider(IEnumerable<object> overrides)
         {
             //Base Configuration Items
             AddSingleton<AppSettings>(overrides);
@@ -67,15 +68,15 @@ namespace MBBSEmu.DependencyInjection
             _provider = _serviceCollection.BuildServiceProvider();
         }
 
-        private void AddSingleton<TService, TImplementation>(object[] overrides)
+        private void AddSingleton<TService, TImplementation>(IEnumerable<object> overrides)
             where TService : class
             where TImplementation : class, TService
         {
             foreach (var obj in overrides)
             {
-                if (obj is TService)
+                if (obj is TService service)
                 {
-                    _serviceCollection.AddSingleton<TService>((TService) obj);
+                    _serviceCollection.AddSingleton(service);
                     return;
                 }
             }
@@ -83,14 +84,14 @@ namespace MBBSEmu.DependencyInjection
             _serviceCollection.AddSingleton<TService, TImplementation>();
         }
 
-        private void AddSingleton<TServiceAndImplementation>(object[] overrides)
+        private void AddSingleton<TServiceAndImplementation>(IEnumerable<object> overrides)
             where TServiceAndImplementation : class
         {
             foreach (var obj in overrides)
             {
-                if (obj is TServiceAndImplementation)
+                if (obj is TServiceAndImplementation service)
                 {
-                    _serviceCollection.AddSingleton<TServiceAndImplementation>((TServiceAndImplementation) obj);
+                    _serviceCollection.AddSingleton(service);
                     return;
                 }
             }
