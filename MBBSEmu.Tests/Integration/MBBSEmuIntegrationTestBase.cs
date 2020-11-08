@@ -17,8 +17,11 @@ namespace MBBSEmu.Tests.Integration
         protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
         protected TestSession _session;
 
+        private protected readonly ServiceResolver _serviceResolver;
+
         public MBBSEmuIntegrationTestBase()
         {
+            _serviceResolver = new ServiceResolver();
             Directory.CreateDirectory(_modulePath);
         }
 
@@ -59,17 +62,15 @@ namespace MBBSEmu.Tests.Integration
 
         protected void ExecuteTest(TestLogic testLogic)
         {
-            using var serviceResolver = new ServiceResolver();
-
             //Setup Generic Database
-            var resourceManager = serviceResolver.GetService<IResourceManager>();
+            var resourceManager = _serviceResolver.GetService<IResourceManager>();
             File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
             File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
             //Setup and Run Host with only the MBBSEMU module
-            var host = serviceResolver.GetService<IMbbsHost>();
+            var host = _serviceResolver.GetService<IMbbsHost>();
             var moduleConfigurations = new List<ModuleConfiguration>
             {
                 new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = null}
