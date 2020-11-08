@@ -36,5 +36,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void nullCompareTest()
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var strNullPointer = mbbsEmuMemoryCore.AllocateVariable("STR1", 1);
+            mbbsEmuMemoryCore.SetArray(strNullPointer, null);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCMP_ORDINAL,
+                new List<IntPtr16> { strNullPointer, strNullPointer });
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+
+        }
     }
 }
