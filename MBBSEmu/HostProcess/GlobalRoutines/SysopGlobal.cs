@@ -1,13 +1,14 @@
 ﻿using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Extensions;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
@@ -18,13 +19,15 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountKeyRepository _accountKeyRepository;
+        private readonly IGlobalCache _globalCache;
         private PointerDictionary<SessionBase> _sessions;
         private ushort _channelNumber;
 
-        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository)
+        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache)
         {
             _accountRepository = accountRepository;
             _accountKeyRepository = accountKeyRepository;
+            _globalCache = globalCache;
         }
 
         public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
@@ -72,6 +75,21 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                         ListKeys(commandSequence);
                         break;
                     }
+                case "CLEANUP":
+                    {
+                        _globalCache.Set("SYSOPGLOBAL-CLEANUP", true);
+                        break;
+                    }
+                case "BROADCAST":
+                    {
+                        Broadcast(commandSequence);
+                        break;
+                    }
+                case "KICK":
+                    {
+                        Kick(commandSequence);
+                        break;
+                    }
                 case "HELP":
                     {
                         Help();
@@ -106,7 +124,10 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Sysop Commands:\r\n------------------------------------------------------------\r\n".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"ADDKEY <USER> <KEY>",-30} Adds a Key to a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"REMOVEKEY <USER> <KEY>",-30} Removes a Key from a User".EncodeToANSIString());
-            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User\r\n".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"BROADCAST <MESSAGE>",-30} Broadcasts message to all users online".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"KICK <USER>",-30} Kick user".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup\r\n".EncodeToANSIString());
         }
 
         /// <summary>
@@ -197,6 +218,63 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _accountKeyRepository.DeleteAccountKeyByUsernameAndAccountKey(userName, key);
 
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed Key {key} from User {userName}|RESET|\r\n".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to broadcast a message to all users
+        ///
+        ///     Syntax: /SYSOP BROADCAST MESSAGE
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void Broadcast(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count() < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP BROADCAST <MESSAGE>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var message = string.Join(" ", commandSequence.Skip(2));
+            
+            foreach (var c in _sessions)
+                if (c.Value.Channel != _channelNumber)
+                    _sessions[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|SYSOP BROADCAST: {message}|RESET|\r\n".EncodeToANSIArray());
+        }
+
+        /// <summary>
+        ///     Sysop Command to kick the specified user
+        ///
+        ///     Syntax: /SYSOP KICK USER
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void Kick(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count() < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP KICK <USER>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var userName = commandSequence[2];
+
+            if (_sessions.Values.Any(
+                s => string.Equals(s.Username, userName, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                var channelToKick = _sessions.Values.FirstOrDefault(u =>
+                    u.Username.Equals(userName, StringComparison.InvariantCultureIgnoreCase));
+
+                //Not sure i need this second check -- IDE was worried?
+                if (channelToKick != null)
+                {
+                    _sessions[channelToKick.Channel]
+                        .SendToClient("\r\n|RESET||RED||B|SYSOP HAS LOGGED YOU OFF\r\n|RESET|".EncodeToANSIString());
+                    _sessions[channelToKick.Channel].SessionState = EnumSessionState.LoggingOffDisplay;
+                }
+            }
+            else
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{userName} not found online -- Syntax: /SYSOP KICK <USER>|RESET|\r\n".EncodeToANSIString());
+            }
         }
     }
 }

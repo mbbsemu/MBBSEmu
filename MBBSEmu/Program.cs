@@ -199,6 +199,9 @@ namespace MBBSEmu
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
 
+                //Set default manual cleanup flag
+                globalCache.Set("SYSOPGLOBAL-CLEANUP", false);
+
                 //Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))
                 {
