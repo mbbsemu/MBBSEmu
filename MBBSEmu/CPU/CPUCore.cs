@@ -553,6 +553,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fsin:
                     Op_Fsin();
                     break;
+                case Mnemonic.Fcos:
+                    Op_Fcos();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -3321,7 +3324,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point SIN (x87)
+        ///     Floating Point Sine (x87)
         /// </summary>
         private void Op_Fsin()
         {
@@ -3337,6 +3340,27 @@ namespace MBBSEmu.CPU
             }
             
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Floating Point Cosine (x87)
+        /// </summary>
+        private void Op_Fcos()
+        {
+            var valueToCos = FpuStack[Registers.Fpu.GetStackTop()];
+
+            switch (valueToCos)
+            {
+                case double.PositiveInfinity:
+                case double.NegativeInfinity:
+                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                case double.NaN:
+                    return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(valueToCos);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
         /// <summary>

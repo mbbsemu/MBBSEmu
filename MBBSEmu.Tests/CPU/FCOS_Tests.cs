@@ -1,19 +1,19 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public class FSIN_Tests : CpuTestBase
+    public class FCOS_Tests : CpuTestBase
     {
         [Theory]
-        [InlineData(1d, 0.8414709848078965, false)]
-        [InlineData(-1d, -0.8414709848078965, false)]
+        [InlineData(1d, 0.5403023058681398, false)]
+        [InlineData(-1d, 0.5403023058681398, false)]
         [InlineData(double.NaN, double.NaN, false)]
         [InlineData(double.PositiveInfinity, double.PositiveInfinity, true)]
-        [InlineData(0, 0, false)]
+        [InlineData(0, 1, false)]
         [InlineData(double.NegativeInfinity, double.NegativeInfinity, true)]
-        public void FSIN_Tets(double ST0Value, double expectedValue, bool throwsException)
+        public void FCOS_Tets(double ST0Value, double expectedValue, bool throwsException)
         {
             Reset();
 
@@ -22,7 +22,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()] = ST0Value; //ST0
 
             var instructions = new Assembler(16);
-            instructions.fsin();
+            instructions.fcos();
             CreateCodeSegment(instructions);
 
             if (throwsException)
@@ -35,7 +35,7 @@ namespace MBBSEmu.Tests.CPU
                 Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
                 Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.ControlWord);
             }
-            
+
         }
     }
 }
