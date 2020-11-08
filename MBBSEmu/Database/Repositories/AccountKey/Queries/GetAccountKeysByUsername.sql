@@ -6,4 +6,4 @@ INNER JOIN
 	Accounts A ON
 	A.accountId = AK.accountId
 WHERE
-	A.userName = @userName
+	A.userName = @userName COLLATE NOCASE
