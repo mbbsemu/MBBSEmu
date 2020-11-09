@@ -5214,8 +5214,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stricmp()
         {
-            var string1 = GetParameterString(0, stripNull: true);
-            var string2 = GetParameterString(2, stripNull: true);
+            var string1 = GetParameterPointer(0) == IntPtr16.Empty ? string.Empty : GetParameterString(0, stripNull: true);
+            var string2 = GetParameterPointer(2) == IntPtr16.Empty ? string.Empty : GetParameterString(2, stripNull: true);
 
             Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
         }

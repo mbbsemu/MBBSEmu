@@ -36,5 +36,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void emptyCompareTest()
+        {
+            //Reset State
+            Reset();
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRICMP_ORDINAL,
+                new List<IntPtr16> { IntPtr16.Empty, IntPtr16.Empty });
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+
+        }
     }
 }
