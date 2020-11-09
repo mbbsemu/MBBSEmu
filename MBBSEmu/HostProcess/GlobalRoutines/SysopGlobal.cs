@@ -236,9 +236,8 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var message = string.Join(" ", commandSequence.Skip(2));
             
-            foreach (var c in _sessions)
-                if (c.Value.Channel != _channelNumber)
-                    _sessions[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|SYSOP BROADCAST: {message}|RESET|\r\n".EncodeToANSIArray());
+            foreach (var c in _sessions.Where(c => c.Value.Channel != _channelNumber))
+                _sessions[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|SYSOP BROADCAST: {message}|RESET|\r\n".EncodeToANSIArray());
         }
 
         /// <summary>
