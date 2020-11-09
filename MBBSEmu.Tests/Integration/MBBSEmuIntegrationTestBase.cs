@@ -6,6 +6,7 @@ using MBBSEmu.Session;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.Database.Session;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 
@@ -23,7 +24,7 @@ namespace MBBSEmu.Tests.Integration
 
         public MBBSEmuIntegrationTestBase()
         {
-            _serviceResolver = new ServiceResolver();
+            _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
 
             _serviceResolver.GetService<IAccountRepository>().Reset("sysop");
             _serviceResolver.GetService<IAccountKeyRepository>().Reset();

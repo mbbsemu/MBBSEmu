@@ -23,12 +23,22 @@ namespace MBBSEmu.Database.Session
             _connectionString = $"Data Source={dbFile};";
         }
 
+        private SessionBuilder(string databaseName)
+        {
+            _connectionString = $"Data Source={databaseName};Mode=Memory;Cache=Shared";
+        }
+
+        public static SessionBuilder ForTest(string databaseName)
+        {
+            return new SessionBuilder(databaseName);
+        }
+
         /// <summary>
         ///     Returns a new SqlConnection object in an Open state
         /// </summary>
         /// <param name="connectionString"></param>
         /// <returns></returns>
-        public DbConnection GetConnection(string connectionString)
+        private DbConnection GetConnection(string connectionString)
         {
             var connection = new SqliteConnection(connectionString);
             connection.Open();
