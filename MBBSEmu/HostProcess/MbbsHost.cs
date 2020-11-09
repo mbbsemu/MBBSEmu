@@ -1017,11 +1017,9 @@ namespace MBBSEmu.HostProcess
 
         private void ProcessNightlyCleanup()
         {
-            //Check to see if manual cleanup was called
-            var globalCleanup = (_globalCache.Get("SYSOPGLOBAL-CLEANUP") as bool?).GetValueOrDefault();
-            if (globalCleanup)
+            if (_globalCache.ContainsKey("SYSOPGLOBAL-CLEANUP"))
             {
-                _globalCache.Set("SYSOPGLOBAL-CLEANUP", false);
+                _globalCache.Remove("SYSOPGLOBAL-CLEANUP");
                 _performCleanup = true;
             }
 

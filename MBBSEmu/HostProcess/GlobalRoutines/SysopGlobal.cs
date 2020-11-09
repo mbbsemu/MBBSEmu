@@ -257,24 +257,16 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var userName = commandSequence[2];
 
-            if (_sessions.Values.Any(
-                s => string.Equals(s.Username, userName, StringComparison.CurrentCultureIgnoreCase)))
-            {
-                var channelToKick = _sessions.Values.FirstOrDefault(u =>
-                    u.Username.Equals(userName, StringComparison.InvariantCultureIgnoreCase));
+            var channelToKick = _sessions.Values.FirstOrDefault(u => u.Username.Equals(userName, StringComparison.InvariantCultureIgnoreCase));
 
-                //Not sure i need this second check -- IDE was worried?
-                if (channelToKick != null)
-                {
-                    _sessions[channelToKick.Channel]
-                        .SendToClient("\r\n|RESET||RED||B|SYSOP HAS LOGGED YOU OFF\r\n|RESET|".EncodeToANSIString());
-                    _sessions[channelToKick.Channel].SessionState = EnumSessionState.LoggingOffDisplay;
-                }
-            }
-            else
+            if (channelToKick == null)
             {
                 _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{userName} not found online -- Syntax: /SYSOP KICK <USER>|RESET|\r\n".EncodeToANSIString());
+                return;
             }
+
+            _sessions[channelToKick.Channel].SendToClient("\r\n|RESET||RED||B|SYSOP HAS LOGGED YOU OFF\r\n|RESET|".EncodeToANSIString());
+            _sessions[channelToKick.Channel].SessionState = EnumSessionState.LoggingOffDisplay;
         }
     }
 }
