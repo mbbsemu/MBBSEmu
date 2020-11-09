@@ -256,7 +256,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             }
 
             var userName = commandSequence[2];
-
             var channelToKick = _sessions.Values.FirstOrDefault(u => u.Username.Equals(userName, StringComparison.InvariantCultureIgnoreCase));
 
             if (channelToKick == null)
