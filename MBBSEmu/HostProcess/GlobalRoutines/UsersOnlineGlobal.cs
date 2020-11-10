@@ -1,11 +1,11 @@
-﻿using System;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
@@ -76,7 +76,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                             break;
 
                     }
-                    sessions[channelNumber].SendToClient($"|YELLOW||B| {s.Channel:D2}   {userName.PadRight(31, ' ')}... {userOptionSelected}|RESET|\r\n".EncodeToANSIArray());
+                    sessions[channelNumber].SendToClient($"|YELLOW||B| {s.Channel:D2}   {userName,-31}... {userOptionSelected}|RESET|\r\n".EncodeToANSIArray());
                 }
 
                 return true;
