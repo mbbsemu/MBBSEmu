@@ -89,7 +89,7 @@ namespace MBBSEmu.Server.Socket
                         }
 
                         _logger.Info($"Accepting incoming Rlogin connection from {client.RemoteEndPoint}...");
-                        var session = new RloginSession(_host, _logger, client, _channelDictionary, _moduleIdentifier);
+                        var session = new RloginSession(_host, _logger, client, _channelDictionary, _configuration, _moduleIdentifier);
                         _host.AddSession(session);
                         session.Start();
                         break;
