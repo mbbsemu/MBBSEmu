@@ -289,10 +289,12 @@ namespace MBBSEmu.HostProcess.HostRoutines
             if (account == null)
             {
                 EchoToClient(session, "\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
+                session.Username = "";
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
 
+            session.Username = account.userName;
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
         }
