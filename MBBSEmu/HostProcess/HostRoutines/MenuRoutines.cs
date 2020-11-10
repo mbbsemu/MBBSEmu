@@ -206,6 +206,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LoginUsernameDisplay(SessionBase session)
         {
+            //Check to see if there is an available channel
+            if (_channelDictionary.Count > _configuration.BBSChannels)
+            {
+                EchoToClient(session, $"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|".EncodeToANSIArray());
+                session.InputBuffer.SetLength(0);
+                session.SessionState = EnumSessionState.LoggedOff;
+                return;
+            }
+
             EchoToClient(session, "\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
                 .EncodeToANSIArray());
             EchoToClient(session, "|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
@@ -253,6 +262,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
+            //Check to see if user is already logged in
             if (_channelDictionary.Values.Any(s => string.Equals(s.Username, inputValue, StringComparison.CurrentCultureIgnoreCase)))
             {
                 EchoToClient(session, $"\r\n|RED||B|{inputValue} is already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
