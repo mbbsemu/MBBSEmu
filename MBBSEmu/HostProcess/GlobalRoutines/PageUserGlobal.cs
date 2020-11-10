@@ -1,12 +1,12 @@
-﻿using System;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
