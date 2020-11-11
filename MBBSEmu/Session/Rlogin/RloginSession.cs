@@ -19,16 +19,18 @@ namespace MBBSEmu.Session.Rlogin
     {
         private readonly IMbbsHost _host;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
+        private readonly AppSettings _configuration;
         private readonly List<string> rloginStrings = new List<string>();
         private readonly MemoryStream memoryStream = new MemoryStream(1024);
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, string moduleIdentifier = null) : base(logger, rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(logger, rloginConnection)
         {
             _host = host;
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;
+            _configuration = configuration;
             SessionType = EnumSessionType.Rlogin;
             SessionState = EnumSessionState.Negotiating;
         }
@@ -58,6 +60,17 @@ namespace MBBSEmu.Session.Rlogin
 
             if (rloginStrings.Count < 3 || rloginStrings.Count(s => !string.IsNullOrEmpty(s)) < 2 )
             {
+                return false;
+            }
+
+            //Check to see if there is an available channel
+            if (_channelDictionary.Count > _configuration.BBSChannels)
+            {
+                var channelFullMsg =
+                    $"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|"
+                        .EncodeToANSIArray();
+                Send(channelFullMsg);
+                SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
 

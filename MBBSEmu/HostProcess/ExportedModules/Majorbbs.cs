@@ -51,7 +51,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private readonly List<IntPtr16> _margnPointers;
 
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
-        private const ushort NUMBER_OF_CHANNELS = 0x4;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
 
@@ -97,6 +96,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousBtrieveFile = new Stack<IntPtr16>(10);
             _highResolutionTimer.Start();
 
+            //Add extra channel for "system full" message
+            var _numberOfChannels = _configuration.BBSChannels + 1;
 
             //Setup Memory for Variables
             Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
@@ -104,7 +105,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
             Module.Memory.SetWord("OUTBSZ", OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
-            Module.Memory.AllocateVariable("USER", (User.Size * NUMBER_OF_CHANNELS), true);
+            Module.Memory.AllocateVariable("USER", (ushort)(User.Size * _numberOfChannels), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
@@ -113,18 +114,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("MARGV", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
             Module.Memory.AllocateVariable("USRNUM", 0x2);
-            var usraccPointer = Module.Memory.AllocateVariable("USRACC", (UserAccount.Size * NUMBER_OF_CHANNELS), true);
+            var usraccPointer = Module.Memory.AllocateVariable("USRACC", (ushort)(UserAccount.Size * _numberOfChannels), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.Data);
 
-            var usrExtPointer = Module.Memory.AllocateVariable("EXTUSR", (ExtUser.Size * NUMBER_OF_CHANNELS), true);
+            var usrExtPointer = Module.Memory.AllocateVariable("EXTUSR", (ushort)(ExtUser.Size * _numberOfChannels), true);
             var extPtrPointer = Module.Memory.AllocateVariable("EXTPTR", 0x4);
             Module.Memory.SetArray(extPtrPointer, usrExtPointer.Data);
 
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, (ushort) _configuration.BBSChannels); // Number of channels from Settings
+            Module.Memory.SetWord(ntermsPointer, (ushort) _numberOfChannels); // Number of channels from Settings
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
