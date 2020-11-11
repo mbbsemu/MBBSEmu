@@ -122,7 +122,7 @@
         public static bool UsesPreviousQuery(this EnumBtrieveOperationCodes code)
         {
             var memberInstance = code.GetType().GetMember(code.ToString());
-            if (memberInstance == null || memberInstance.Length <= 0) return false;
+            if (memberInstance.Length <= 0) return false;
 
             return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(UsesPreviousQuery)) != null;
         }
@@ -130,7 +130,7 @@
         public static bool AcquiresData(this EnumBtrieveOperationCodes code)
         {
             var memberInstance = code.GetType().GetMember(code.ToString());
-            if (memberInstance == null || memberInstance.Length <= 0) return false;
+            if (memberInstance.Length <= 0) return false;
 
             return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(AcquiresData)) != null;
         }
