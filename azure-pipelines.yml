@@ -27,12 +27,12 @@ steps:
 
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
 
-- task: VSBuild@2
+- task: MSBuild@1
   displayName: 'Building MBBSEmu'
-  inputs: 
+  inputs:
     configuration: $(buildConfiguration)
 
-- task: VSTest@3
+- task: VSTest@2
   inputs:
     testSelector: 'testAssemblies'
     testAssemblyVer2: '**\MBBSEmu.Tests\bin\$(buildConfiguration)\MBBSEmu.Tests.dll'
@@ -43,7 +43,7 @@ steps:
     publishRunAttachments: false
     rerunFailedTests: true
 
-- task: DotNetCoreCLI@4
+- task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -51,7 +51,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@4
+- task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -59,7 +59,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --configuration $(buildConfiguration) --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@4
+- task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -67,7 +67,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --configuration $(buildConfiguration) --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@4
+- task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -75,7 +75,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --configuration $(buildConfiguration) --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@4
+- task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -83,7 +83,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --configuration $(buildConfiguration) --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: ArchiveFiles@4
+- task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64\MBBSEmu'
     includeRootFolder: false
@@ -92,7 +92,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@5
+- task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86\MBBSEmu'
     includeRootFolder: false
@@ -101,7 +101,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@5
+- task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64\MBBSEmu'
     includeRootFolder: false
@@ -110,7 +110,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@5
+- task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm\MBBSEmu'
     includeRootFolder: false
@@ -119,7 +119,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@5
+- task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64\MBBSEmu'
     includeRootFolder: false
@@ -128,7 +128,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: AzureFileCopy@6
+- task: AzureFileCopy@3
   inputs:
     SourcePath: '$(Build.BinariesDirectory)\publish\zipped'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
