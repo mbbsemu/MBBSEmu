@@ -18,7 +18,7 @@ variables:
   buildNumber: $(currentDate)-$(currentBuildCounter)
 
 steps:
-- task: UseDotNet@2
+- task: UseDotNet@1
   displayName: 'Install .NET Core SDK'
   inputs:
     version: 5.0.x
@@ -26,19 +26,24 @@ steps:
     includePreviewVersions: false # Required for preview versions
 
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
 
-- task: VSTest@2
+- task: VSBuild@2
+  displayName: 'Building MBBSEmu'
+  inputs: 
+    configuration: $(buildConfiguration)
+
+- task: VSTest@3
   inputs:
     testSelector: 'testAssemblies'
-    testAssemblyVer2: '**\MBBSEmu.Tests\bin\**\MBBSEmu.Tests.dll'
+    testAssemblyVer2: '**\MBBSEmu.Tests\bin\$(buildConfiguration)\MBBSEmu.Tests.dll'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     runTestsInIsolation: true
+    runTestsInParallel: true
     codeCoverageEnabled: true
     publishRunAttachments: false
+    rerunFailedTests: true
 
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@4
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -46,7 +51,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@4
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -54,7 +59,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --configuration $(buildConfiguration) --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@4
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -62,7 +67,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --configuration $(buildConfiguration) --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@4
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -70,7 +75,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --configuration $(buildConfiguration) --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: DotNetCoreCLI@2
+- task: DotNetCoreCLI@4
   inputs:
     command: 'publish'
     publishWebProjects: false
@@ -78,7 +83,7 @@ steps:
     arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --configuration $(buildConfiguration) --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
-- task: ArchiveFiles@2
+- task: ArchiveFiles@4
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x64\MBBSEmu'
     includeRootFolder: false
@@ -87,7 +92,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@2
+- task: ArchiveFiles@5
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\win-x86\MBBSEmu'
     includeRootFolder: false
@@ -96,7 +101,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@2
+- task: ArchiveFiles@5
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-x64\MBBSEmu'
     includeRootFolder: false
@@ -105,7 +110,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@2
+- task: ArchiveFiles@5
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\linux-arm\MBBSEmu'
     includeRootFolder: false
@@ -114,7 +119,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: ArchiveFiles@2
+- task: ArchiveFiles@5
   inputs:
     rootFolderOrFile: '$(Build.BinariesDirectory)\publish\osx-x64\MBBSEmu'
     includeRootFolder: false
@@ -123,7 +128,7 @@ steps:
     replaceExistingArchive: true
     verbose: true
 
-- task: AzureFileCopy@3
+- task: AzureFileCopy@6
   inputs:
     SourcePath: '$(Build.BinariesDirectory)\publish\zipped'
     azureSubscription: 'Primary Azure Subscription(95c13f74-9879-4506-b31c-224e0bcf5230)'
