@@ -639,7 +639,10 @@ namespace MBBSEmu.Btrieve
                 EnumBtrieveOperationCodes.AcquireLessOrEqual => GetByKeyLess(currentQuery, "<="),
                 EnumBtrieveOperationCodes.QueryLessOrEqual => GetByKeyLess(currentQuery, "<="),
 
+                EnumBtrieveOperationCodes.AcquireNext => GetByKeyNext(currentQuery),
                 EnumBtrieveOperationCodes.QueryNext => GetByKeyNext(currentQuery),
+
+                EnumBtrieveOperationCodes.AcquirePrevious => GetByKeyPrevious(currentQuery),
                 EnumBtrieveOperationCodes.QueryPrevious => GetByKeyPrevious(currentQuery),
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
