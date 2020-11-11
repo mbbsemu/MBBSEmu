@@ -244,7 +244,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the first Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepFirst()
+        private bool StepFirst()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id LIMIT 1", _connection);
@@ -258,7 +258,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepNext()
+        private bool StepNext()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} ORDER BY id LIMIT 1;", _connection);
@@ -280,7 +280,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the previous logical record in the loaded Btrieve File.
         /// </summary>
-        public bool StepPrevious()
+        private bool StepPrevious()
         {
             using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
                 _connection);
@@ -302,7 +302,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the last Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepLast()
+        private bool StepLast()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);

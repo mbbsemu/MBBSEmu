@@ -1,11 +1,20 @@
 ﻿namespace MBBSEmu.Btrieve.Enums
 {
+    /// <summary>
+    ///     Specifies whether the operation code operates on a previous query.
+    /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
     public class UsesPreviousQuery : System.Attribute {}
 
+    /// <summary>
+    ///     Specifies whether the operation code results in data being acquired.
+    /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
     public class AcquiresData : System.Attribute {}
 
+    /// <summary>
+    ///     Specifies whether the operation code results in key data being queried.
+    /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
     public class QueryOnly : System.Attribute {}
 
@@ -21,22 +30,30 @@
         // Acquire Operations
         [AcquiresData]
         AcquireEqual = 0x5,
+
         [AcquiresData]
         [UsesPreviousQuery]
         AcquireNext = 0x6,
+
         [AcquiresData]
         [UsesPreviousQuery]
         AcquirePrevious = 0x7,
+
         [AcquiresData]
         AcquireGreater = 0x8,
+
         [AcquiresData]
         AcquireGreaterOrEqual = 0x9,
+
         [AcquiresData]
         AcquireLess = 0xA,
+
         [AcquiresData]
         AcquireLessOrEqual = 0xB,
+
         [AcquiresData]
         AcquireFirst = 0xC,
+
         [AcquiresData]
         AcquireLast = 0xD,
 
@@ -47,18 +64,22 @@
         // Step Operations, operates on physical offset not keys
         [AcquiresData]
         StepFirst = 0x21,
+
         [AcquiresData]
         StepLast = 0x22,
+
         [AcquiresData]
         [UsesPreviousQuery]
         StepNext = 0x18,
+
         [AcquiresData]
         [UsesPreviousQuery]
-
         StepNextExtended = 0x26,
+
         [AcquiresData]
         [UsesPreviousQuery]
         StepPrevious = 0x23,
+
         [AcquiresData]
         [UsesPreviousQuery]
         StepPreviousExtended = 0x27,
@@ -66,22 +87,30 @@
         // Query Operations
         [QueryOnly]
         QueryEqual = 0x37,
+
         [QueryOnly]
         [UsesPreviousQuery]
         QueryNext = 0x38,
+
         [QueryOnly]
         [UsesPreviousQuery]
         QueryPrevious = 0x39,
+
         [QueryOnly]
         QueryGreater = 0x3A,
+
         [QueryOnly]
         QueryGreaterOrEqual = 0x3B,
+
         [QueryOnly]
         QueryLess = 0x3C,
+
         [QueryOnly]
         QueryLessOrEqual = 0x3D,
+
         [QueryOnly]
         QueryFirst = 0x3E,
+
         [QueryOnly]
         QueryLast = 0x3F,
 
