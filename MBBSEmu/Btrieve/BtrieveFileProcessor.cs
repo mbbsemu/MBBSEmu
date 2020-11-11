@@ -595,11 +595,6 @@ namespace MBBSEmu.Btrieve
                     KeyData = key == null ? null : new byte[key.Length],
                 };
 
-                /*
-                 * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
-                 * There are modules that define in their btrieve file a STRING key of length 1, but pass in a char*
-                 * So for the time being, we just make the key length we're looking for whatever was passed in.
-                 */
                 if (key != null)
                 {
                     Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
