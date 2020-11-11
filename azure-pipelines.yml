@@ -30,6 +30,7 @@ steps:
 - task: VSBuild@1
   displayName: 'Building MBBSEmu'
   inputs:
+    vsVersion: "16.8.0" # todo change to latest when safe
     configuration: $(buildConfiguration)
 
 - task: VSTest@2
