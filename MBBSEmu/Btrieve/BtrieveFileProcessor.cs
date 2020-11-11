@@ -38,7 +38,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     The Previous Query that was executed.
         /// </summary>
-        private BtrieveQuery PreviousQuery { get; set; }
+        public BtrieveQuery PreviousQuery { get; set; }
 
         /// <summary>
         ///     The length in bytes of each record.
@@ -568,16 +568,30 @@ namespace MBBSEmu.Btrieve
         /// <param name="key">The key data to query against</param>
         /// <param name="btrieveOperationCode">Which query to perform</param>
         /// <param name="newQuery">true to start a new query, false to continue a prior one</param>
-        public bool SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode,
-            bool newQuery = true)
+        public bool PerformOperation(int keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode)
         {
+            switch (btrieveOperationCode)
+            {
+                case EnumBtrieveOperationCodes.StepFirst:
+                    return StepFirst();
+                case EnumBtrieveOperationCodes.StepLast:
+                    return StepLast();
+                case EnumBtrieveOperationCodes.StepNext:
+                case EnumBtrieveOperationCodes.StepNextExtended:
+                    return StepNext();
+                case EnumBtrieveOperationCodes.StepPrevious:
+                case EnumBtrieveOperationCodes.StepPreviousExtended:
+                    return StepPrevious();
+            }
+
+            var newQuery = !btrieveOperationCode.UsesPreviousQuery();
             BtrieveQuery currentQuery;
 
             if (newQuery || PreviousQuery == null)
             {
                 currentQuery = new BtrieveQuery
                 {
-                    Key = Keys[keyNumber],
+                    Key = Keys[(ushort)keyNumber],
                     KeyData = key == null ? null : new byte[key.Length],
                 };
 
@@ -595,6 +609,10 @@ namespace MBBSEmu.Btrieve
                 PreviousQuery?.Dispose();
                 PreviousQuery = currentQuery;
             }
+            else if (PreviousQuery == null)
+            {
+                return false;
+            }
             else
             {
                 currentQuery = PreviousQuery;
@@ -602,27 +620,27 @@ namespace MBBSEmu.Btrieve
 
             return btrieveOperationCode switch
             {
-                EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
+                EnumBtrieveOperationCodes.AcquireEqual => GetByKeyEqual(currentQuery),
+                EnumBtrieveOperationCodes.QueryEqual => GetByKeyEqual(currentQuery),
 
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.AcquireFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.QueryFirst => GetByKeyFirst(currentQuery),
 
-                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.AcquireLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.QueryLast => GetByKeyLast(currentQuery),
 
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
-                EnumBtrieveOperationCodes.GetKeyGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+                EnumBtrieveOperationCodes.AcquireGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.QueryGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.AcquireGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+                EnumBtrieveOperationCodes.QueryGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
 
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
-                EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
+                EnumBtrieveOperationCodes.AcquireLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.QueryLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.AcquireLessOrEqual => GetByKeyLess(currentQuery, "<="),
+                EnumBtrieveOperationCodes.QueryLessOrEqual => GetByKeyLess(currentQuery, "<="),
 
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyPrevious => GetByKeyPrevious(currentQuery),
+                EnumBtrieveOperationCodes.QueryNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.QueryPrevious => GetByKeyPrevious(currentQuery),
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
