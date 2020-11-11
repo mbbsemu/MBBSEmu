@@ -1,48 +1,138 @@
 ﻿namespace MBBSEmu.Btrieve.Enums
 {
     /// <summary>
+    ///     Specifies whether the operation code operates on a previous query.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Field)]
+    public class UsesPreviousQuery : System.Attribute {}
+
+    /// <summary>
+    ///     Specifies whether the operation code results in data being acquired.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Field)]
+    public class AcquiresData : System.Attribute {}
+
+    /// <summary>
+    ///     Specifies whether the operation code results in key data being queried.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Field)]
+    public class QueryOnly : System.Attribute {}
+
+    /// <summary>
     ///     Btrieve Operation Codes that are passed into Btrieve
     /// </summary>
     public enum EnumBtrieveOperationCodes : ushort
     {
-        //Utility
+        // Utility
         Open = 0x0,
         Close = 0x1,
 
-        //Get Operations
-        GetEqual = 0x5,
-        GetNext = 0x6,
-        GetPrevious = 0x7,
-        GetGreater = 0x8,
-        GetGreaterOrEqual = 0x9,
-        GetLess = 0xA,
-        GetLessOrEqual = 0xB,
-        GetFirst = 0xC,
-        GetLast = 0xD,
+        // Acquire Operations
+        [AcquiresData]
+        AcquireEqual = 0x5,
 
-        //Information Operations
+        [AcquiresData]
+        [UsesPreviousQuery]
+        AcquireNext = 0x6,
+
+        [AcquiresData]
+        [UsesPreviousQuery]
+        AcquirePrevious = 0x7,
+
+        [AcquiresData]
+        AcquireGreater = 0x8,
+
+        [AcquiresData]
+        AcquireGreaterOrEqual = 0x9,
+
+        [AcquiresData]
+        AcquireLess = 0xA,
+
+        [AcquiresData]
+        AcquireLessOrEqual = 0xB,
+
+        [AcquiresData]
+        AcquireFirst = 0xC,
+
+        [AcquiresData]
+        AcquireLast = 0xD,
+
+        // Information Operations
         Stat = 0xF,
         SetOwner = 0x1D,
 
-        //Step Operations
+        // Step Operations, operates on physical offset not keys
+        [AcquiresData]
         StepFirst = 0x21,
+
+        [AcquiresData]
         StepLast = 0x22,
+
+        [AcquiresData]
+        [UsesPreviousQuery]
         StepNext = 0x18,
+
+        [AcquiresData]
+        [UsesPreviousQuery]
         StepNextExtended = 0x26,
+
+        [AcquiresData]
+        [UsesPreviousQuery]
         StepPrevious = 0x23,
+
+        [AcquiresData]
+        [UsesPreviousQuery]
         StepPreviousExtended = 0x27,
 
-        //Get Key Operations
-        GetKeyEqual = 0x37,
-        GetKeyNext = 0x38,
-        GetKeyPrevious = 0x39,
-        GetKeyGreater = 0x3A,
-        GetKeyGreaterOrEqual = 0x3B,
-        GetKeyLess = 0x3C,
-        GetKeyLessOrEqual = 0x3D,
-        GetKeyFirst = 0x3E,
-        GetKeyLast = 0x3F,
+        // Query Operations
+        [QueryOnly]
+        QueryEqual = 0x37,
+
+        [QueryOnly]
+        [UsesPreviousQuery]
+        QueryNext = 0x38,
+
+        [QueryOnly]
+        [UsesPreviousQuery]
+        QueryPrevious = 0x39,
+
+        [QueryOnly]
+        QueryGreater = 0x3A,
+
+        [QueryOnly]
+        QueryGreaterOrEqual = 0x3B,
+
+        [QueryOnly]
+        QueryLess = 0x3C,
+
+        [QueryOnly]
+        QueryLessOrEqual = 0x3D,
+
+        [QueryOnly]
+        QueryFirst = 0x3E,
+
+        [QueryOnly]
+        QueryLast = 0x3F,
 
         None = ushort.MaxValue
+    }
+
+    public static class Extensions
+    {
+        public static bool UsesPreviousQuery(this EnumBtrieveOperationCodes code)
+        {
+            var memberInstance = code.GetType().GetMember(code.ToString());
+            if (memberInstance.Length <= 0) return false;
+
+            return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(UsesPreviousQuery)) != null;
+        }
+
+        public static bool AcquiresData(this EnumBtrieveOperationCodes code)
+        {
+            var memberInstance = code.GetType().GetMember(code.ToString());
+            if (memberInstance.Length <= 0) return false;
+
+            return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(AcquiresData)) != null;
+        }
     }
 }

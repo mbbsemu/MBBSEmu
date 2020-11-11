@@ -38,7 +38,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     The Previous Query that was executed.
         /// </summary>
-        private BtrieveQuery PreviousQuery { get; set; }
+        public BtrieveQuery PreviousQuery { get; set; }
 
         /// <summary>
         ///     The length in bytes of each record.
@@ -244,7 +244,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the first Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepFirst()
+        private bool StepFirst()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id LIMIT 1", _connection);
@@ -258,7 +258,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the next logical Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepNext()
+        private bool StepNext()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} ORDER BY id LIMIT 1;", _connection);
@@ -280,7 +280,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the previous logical record in the loaded Btrieve File.
         /// </summary>
-        public bool StepPrevious()
+        private bool StepPrevious()
         {
             using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
                 _connection);
@@ -302,7 +302,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Sets Position to the offset of the last Record in the loaded Btrieve File.
         /// </summary>
-        public bool StepLast()
+        private bool StepLast()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
             using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", _connection);
@@ -568,24 +568,33 @@ namespace MBBSEmu.Btrieve
         /// <param name="key">The key data to query against</param>
         /// <param name="btrieveOperationCode">Which query to perform</param>
         /// <param name="newQuery">true to start a new query, false to continue a prior one</param>
-        public bool SeekByKey(ushort keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode,
-            bool newQuery = true)
+        public bool PerformOperation(int keyNumber, ReadOnlySpan<byte> key, EnumBtrieveOperationCodes btrieveOperationCode)
         {
+            switch (btrieveOperationCode)
+            {
+                case EnumBtrieveOperationCodes.StepFirst:
+                    return StepFirst();
+                case EnumBtrieveOperationCodes.StepLast:
+                    return StepLast();
+                case EnumBtrieveOperationCodes.StepNext:
+                case EnumBtrieveOperationCodes.StepNextExtended:
+                    return StepNext();
+                case EnumBtrieveOperationCodes.StepPrevious:
+                case EnumBtrieveOperationCodes.StepPreviousExtended:
+                    return StepPrevious();
+            }
+
+            var newQuery = !btrieveOperationCode.UsesPreviousQuery();
             BtrieveQuery currentQuery;
 
             if (newQuery || PreviousQuery == null)
             {
                 currentQuery = new BtrieveQuery
                 {
-                    Key = Keys[keyNumber],
+                    Key = Keys[(ushort)keyNumber],
                     KeyData = key == null ? null : new byte[key.Length],
                 };
 
-                /*
-                 * TODO -- It appears MajorBBS/WG don't respect the Btrieve length for the key, as it's just part of a struct.
-                 * There are modules that define in their btrieve file a STRING key of length 1, but pass in a char*
-                 * So for the time being, we just make the key length we're looking for whatever was passed in.
-                 */
                 if (key != null)
                 {
                     Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
@@ -595,6 +604,10 @@ namespace MBBSEmu.Btrieve
                 PreviousQuery?.Dispose();
                 PreviousQuery = currentQuery;
             }
+            else if (PreviousQuery == null)
+            {
+                return false;
+            }
             else
             {
                 currentQuery = PreviousQuery;
@@ -602,27 +615,30 @@ namespace MBBSEmu.Btrieve
 
             return btrieveOperationCode switch
             {
-                EnumBtrieveOperationCodes.GetEqual => GetByKeyEqual(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyEqual => GetByKeyEqual(currentQuery),
+                EnumBtrieveOperationCodes.AcquireEqual => GetByKeyEqual(currentQuery),
+                EnumBtrieveOperationCodes.QueryEqual => GetByKeyEqual(currentQuery),
 
-                EnumBtrieveOperationCodes.GetFirst => GetByKeyFirst(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.AcquireFirst => GetByKeyFirst(currentQuery),
+                EnumBtrieveOperationCodes.QueryFirst => GetByKeyFirst(currentQuery),
 
-                EnumBtrieveOperationCodes.GetLast => GetByKeyLast(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.AcquireLast => GetByKeyLast(currentQuery),
+                EnumBtrieveOperationCodes.QueryLast => GetByKeyLast(currentQuery),
 
-                EnumBtrieveOperationCodes.GetGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetKeyGreater => GetByKeyGreater(currentQuery, ">"),
-                EnumBtrieveOperationCodes.GetGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
-                EnumBtrieveOperationCodes.GetKeyGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+                EnumBtrieveOperationCodes.AcquireGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.QueryGreater => GetByKeyGreater(currentQuery, ">"),
+                EnumBtrieveOperationCodes.AcquireGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
+                EnumBtrieveOperationCodes.QueryGreaterOrEqual => GetByKeyGreater(currentQuery, ">="),
 
-                EnumBtrieveOperationCodes.GetLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetKeyLess => GetByKeyLess(currentQuery, "<"),
-                EnumBtrieveOperationCodes.GetLessOrEqual => GetByKeyLess(currentQuery, "<="),
-                EnumBtrieveOperationCodes.GetKeyLessOrEqual => GetByKeyLess(currentQuery, "<="),
+                EnumBtrieveOperationCodes.AcquireLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.QueryLess => GetByKeyLess(currentQuery, "<"),
+                EnumBtrieveOperationCodes.AcquireLessOrEqual => GetByKeyLess(currentQuery, "<="),
+                EnumBtrieveOperationCodes.QueryLessOrEqual => GetByKeyLess(currentQuery, "<="),
 
-                EnumBtrieveOperationCodes.GetKeyNext => GetByKeyNext(currentQuery),
-                EnumBtrieveOperationCodes.GetKeyPrevious => GetByKeyPrevious(currentQuery),
+                EnumBtrieveOperationCodes.AcquireNext => GetByKeyNext(currentQuery),
+                EnumBtrieveOperationCodes.QueryNext => GetByKeyNext(currentQuery),
+
+                EnumBtrieveOperationCodes.AcquirePrevious => GetByKeyPrevious(currentQuery),
+                EnumBtrieveOperationCodes.QueryPrevious => GetByKeyPrevious(currentQuery),
 
                 _ => throw new Exception($"Unsupported Operation Code: {btrieveOperationCode}")
             };
