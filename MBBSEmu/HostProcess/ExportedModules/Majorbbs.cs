@@ -2527,8 +2527,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new OutOfMemoryException(
                     $"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
 
-            var index = _sprIndex++ & 0x3;
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"SPR-{index}", 1024);
+            _sprIndex++;
+            _sprIndex &= 0x3;
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"SPR-{_sprIndex}", 1024);
 
             Module.Memory.SetArray(variablePointer, formattedMessage);
 
