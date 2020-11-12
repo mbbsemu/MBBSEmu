@@ -14,7 +14,6 @@ using MBBSEmu.Session.Enums;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -47,9 +46,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<IntPtr16> _previousBtrieveFile;
 
-        private readonly List<IntPtr16> _margvPointers;
-        private readonly List<IntPtr16> _margnPointers;
-
         private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
@@ -78,6 +74,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly IAccountRepository _accountRepository;
 
+        /// <summary>
+        ///     Index for SPR Variable
+        /// </summary>
+        private int _sprIndex;
+
         public void Dispose()
         {
             foreach (var f in FilePointerDictionary)
@@ -90,8 +91,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
-            _margvPointers = new List<IntPtr16>();
-            _margnPointers = new List<IntPtr16>();
             _previousMcvFile = new Stack<IntPtr16>(10);
             _previousBtrieveFile = new Stack<IntPtr16>(10);
             _highResolutionTimer.Start();
@@ -2524,15 +2523,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            if (formattedMessage.Length > 0x400)
+            if (formattedMessage.Length > 1024)
                 throw new OutOfMemoryException(
                     $"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
 
-            if (!Module.Memory.TryGetVariablePointer("SPR", out var variablePointer))
-            {
-                //allocate 1k for the SPR buffer
-                variablePointer = base.Module.Memory.AllocateVariable("SPR", 0x400);
-            }
+            var index = _sprIndex++ & 0x3;
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"SPR-{index}", 1024);
 
             Module.Memory.SetArray(variablePointer, formattedMessage);
 
