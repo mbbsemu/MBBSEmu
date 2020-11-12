@@ -97,6 +97,7 @@ namespace MBBSEmu.Session.Rlogin
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
                 CurrentModule = _host.GetModule(ModuleIdentifier);
+                InputBuffer.WriteByte((byte)CurrentModule.MenuOptionKey[0]);
                 SessionState = EnumSessionState.RloginEnteringModule;
             }
             else

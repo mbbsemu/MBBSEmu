@@ -509,8 +509,10 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            Run(session.CurrentModule.ModuleIdentifier,
-                session.CurrentModule.EntryPoints["lonrou"], session.Channel);
+            var entryPoint = session.CurrentModule.EntryPoints["lonrou"];
+
+            if (entryPoint != IntPtr16.Empty)
+                Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
             session.OutputEnabled = true;
