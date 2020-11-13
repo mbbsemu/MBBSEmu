@@ -76,6 +76,54 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
+        protected ushort f_printf(IntPtr16 filep, string formatString, params object[] values)
+        {
+            var fprintfParameters = new List<ushort> {filep.Offset, filep.Segment};
+
+            //Add Formatted String
+            var inputStingParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(formatString.Length + 1));
+            mbbsEmuMemoryCore.SetArray(inputStingParameterPointer, Encoding.ASCII.GetBytes(formatString));
+            fprintfParameters.Add(inputStingParameterPointer.Offset);
+            fprintfParameters.Add(inputStingParameterPointer.Segment);
+
+            //Add Parameters
+            foreach (var v in values)
+            {
+                switch (v)
+                {
+                    case string @parameterString:
+                    {
+                        var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
+                        mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
+                        fprintfParameters.Add(stringParameterPointer.Offset);
+                        fprintfParameters.Add(stringParameterPointer.Segment);
+                        break;
+                    }
+                    case uint @parameterULong:
+                    {
+                        var longBytes = BitConverter.GetBytes(@parameterULong);
+                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                        break;
+                    }
+                    case int @parameterLong:
+                    {
+                        var longBytes = BitConverter.GetBytes(@parameterLong);
+                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                        break;
+                    }
+                    case ushort @parameterInt:
+                        fprintfParameters.Add(@parameterInt);
+                        break;
+                }
+            }
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FPRINTF_ORDINAL, fprintfParameters);
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
         protected string CreateTextFile(string filename, string contents)
         {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);

@@ -13,6 +13,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         private const ushort HASKEY_ORDINAL = 334;
         private const ushort HASMKEY_ORDINAL = 335;
+        private const ushort UIDKEY_ORDINAL = 609;
 
         [Fact]
         public void haskey_Test()
@@ -94,6 +95,29 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<IntPtr16> { stringPointer });
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+
+        }
+
+        [Fact]
+        public void uidkey_Test()
+        {
+            //Reset State
+            Reset();
+
+            //Set the test Username
+            var username = "guest";
+            var key = "NORMAL";
+
+            //Set Argument Values to be Passed In
+            var usernamePointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(username.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(username));
+            var keyPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING2", (ushort)(key.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING2", Encoding.ASCII.GetBytes(key));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<IntPtr16> { usernamePointer, keyPointer });
 
             Assert.Equal(1, mbbsEmuCpuRegisters.AX);
 
