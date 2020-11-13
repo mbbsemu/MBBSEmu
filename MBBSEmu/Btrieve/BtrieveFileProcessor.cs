@@ -26,6 +26,8 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
+        const int CURRENT_VERSION = 1;
+
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
         private readonly IFileUtility _fileFinder;
@@ -170,14 +172,15 @@ namespace MBBSEmu.Btrieve
             _connection.Open();
 
             LoadSqliteMetadata();
+            LoadSqliteKeys();
         }
 
         /// <summary>
-        ///     Loads metadata from the loaded Sqlite table, such as RecordLength and all the key metadata.
+        ///     Loads metadata from the loaded Sqlite database into memory
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records FROM metadata_t;", _connection))
+            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version FROM metadata_t;", _connection))
             {
                 using var reader = cmd.ExecuteReader();
                 try
@@ -188,13 +191,23 @@ namespace MBBSEmu.Btrieve
                     RecordLength = reader.GetInt32(0);
                     PageLength = reader.GetInt32(1);
                     VariableLengthRecords = reader.GetBoolean(2);
+
+                    var version = reader.GetInt32(3);
+                    if (version != CURRENT_VERSION)
+                        throw new ArgumentException($"Unable to load database, expected version {CURRENT_VERSION}, found {version}. Please delete the database so it can be regenerated");
                 }
                 finally
                 {
                     reader.Close();
                 }
             }
+        }
 
+        /// <summary>
+        ///     Loads all the key data from keys_t into memory
+        /// </summary>
+        private void LoadSqliteKeys()
+        {
             using (var cmd =
                 new SqliteCommand(
                     "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment;",
@@ -901,18 +914,19 @@ namespace MBBSEmu.Btrieve
         private void CreateSqliteMetadataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
             const string statement =
-                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL)";
+                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL)";
 
             using var cmd = new SqliteCommand(statement, connection);
             cmd.ExecuteNonQuery();
 
             using var insertCmd = new SqliteCommand() { Connection = connection };
             cmd.CommandText =
-                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records)";
+                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version)";
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
             cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
             cmd.Parameters.AddWithValue("@variable_length_records", btrieveFile.VariableLengthRecords ? 1 : 0);
+            cmd.Parameters.AddWithValue("@version", CURRENT_VERSION);
             cmd.ExecuteNonQuery();
         }
 
