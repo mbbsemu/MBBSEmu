@@ -6979,8 +6979,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void uidkey()
         {
-            // no key support for now, so everybody has the key
-            Registers.AX = 1;
+            var userName = GetParameterString(0, true);
+            var accountLock = GetParameterString(2, true);
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(userName) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(userName);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = (ushort) (keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? 1
+                : 0);
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Info($"Returning {Registers.AX} for uidkey({userName}, {lockName})");
+#endif
         }
 
         /// <summary>
