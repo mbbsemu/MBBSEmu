@@ -3865,7 +3865,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
-            var output = Module.Memory.GetString(sourcePointer);
+            var output = Module.Memory.GetString(sourcePointer, true);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 4);
