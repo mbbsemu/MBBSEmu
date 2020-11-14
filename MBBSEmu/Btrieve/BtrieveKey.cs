@@ -62,6 +62,16 @@ namespace MBBSEmu.Btrieve
         public bool IsNullable { get => PrimarySegment.IsNullable; }
 
         /// <summary>
+        ///     Whether this key requires ACS.
+        /// </summary>
+        public bool RequiresACS { get => PrimarySegment.RequiresACS; }
+
+        /// <summary>
+        ///     The ACS table of this key.
+        /// </summary>
+        public byte[] ACS { get => PrimarySegment.ACS; }
+
+        /// <summary>
         ///     The total length in bytes of the key.
         /// </summary>
         public int Length => Segments.Sum(segment => segment.Length);

@@ -58,6 +58,16 @@ namespace MBBSEmu.Btrieve
         public ushort Position => (ushort)(Offset + 1);
 
         /// <summary>
+        ///     Whether this key uses the ACS table.
+        /// </summary>
+        public bool RequiresACS => Attributes.HasFlag(EnumKeyAttributeMask.NumberedACS);
+
+        /// <summary>
+        ///     The ACS table used by this key.
+        /// </summary>
+        public byte[] ACS { get; set; }
+
+        /// <summary>
         ///     Whether the key inside the record can be modified after being inserted.
         /// </summary>
         public bool IsModifiable => Attributes.HasFlag(EnumKeyAttributeMask.Modifiable);

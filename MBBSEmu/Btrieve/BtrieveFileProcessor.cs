@@ -27,6 +27,7 @@ namespace MBBSEmu.Btrieve
     public class BtrieveFileProcessor : IDisposable
     {
         const int CURRENT_VERSION = 1;
+        const int ACS_LENGTH = 256;
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
 
@@ -54,6 +55,8 @@ namespace MBBSEmu.Btrieve
         ///     record size is RecordLength + some variable length
         /// </summary>
         public bool VariableLengthRecords { get; set; }
+
+        public byte[] ACS { get; set; }
 
         /// <summary>
         ///     The active connection to the Sqlite database.
@@ -180,7 +183,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version FROM metadata_t;", _connection))
+            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t;", _connection))
             {
                 using var reader = cmd.ExecuteReader();
                 try
@@ -195,6 +198,15 @@ namespace MBBSEmu.Btrieve
                     var version = reader.GetInt32(3);
                     if (version != CURRENT_VERSION)
                         throw new ArgumentException($"Unable to load database, expected version {CURRENT_VERSION}, found {version}. Please delete the database so it can be regenerated");
+
+                    if (!reader.IsDBNull(4))
+                    {
+                        using var acsStream = reader.GetStream(4);
+                        if (acsStream.Length != ACS_LENGTH)
+                            throw new ArgumentException($"The ACS length is not 256 in the database. This is corrupt. {FullPath}");
+
+                        ACS = BtrieveUtil.ReadEntireStream(acsStream);
+                    }
                 }
                 finally
                 {
@@ -227,6 +239,14 @@ namespace MBBSEmu.Btrieve
                         Offset = (ushort)reader.GetInt32(4),
                         Length = (ushort)reader.GetInt32(5),
                     };
+
+                    if (btrieveKeyDefinition.RequiresACS)
+                    {
+                        if (ACS == null)
+                            throw new ArgumentException($"Key {btrieveKeyDefinition.Number} requires ACS, but none was read. This database is likely corrupt: {FullPath}");
+
+                        btrieveKeyDefinition.ACS = ACS;
+                    }
 
                     if (!Keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
                     {
@@ -350,8 +370,7 @@ namespace MBBSEmu.Btrieve
                     return null;
 
                 using var stream = reader.GetStream(0);
-                var data = new byte[stream.Length];
-                stream.Read(data, 0, data.Length);
+                var data = BtrieveUtil.ReadEntireStream(stream);
 
                 record = new BtrieveRecord(offset, data);
                 _cache[offset] = record;
@@ -908,25 +927,30 @@ namespace MBBSEmu.Btrieve
             transaction.Commit();
         }
 
+        private static object SqliteNullable(object o)
+            => o == null ? DBNull.Value : o;
+
         /// <summary>
         ///     Creates the Sqlite metadata_t table.
         /// </summary>
         private void CreateSqliteMetadataTable(SqliteConnection connection, BtrieveFile btrieveFile)
         {
             const string statement =
-                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL)";
+                "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL, acs_name STRING, acs BLOB)";
 
             using var cmd = new SqliteCommand(statement, connection);
             cmd.ExecuteNonQuery();
 
             using var insertCmd = new SqliteCommand() { Connection = connection };
             cmd.CommandText =
-                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version)";
+                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version, acs_name, acs) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version, @acs_name, @acs)";
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
             cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
             cmd.Parameters.AddWithValue("@variable_length_records", btrieveFile.VariableLengthRecords ? 1 : 0);
             cmd.Parameters.AddWithValue("@version", CURRENT_VERSION);
+            cmd.Parameters.AddWithValue("@acs_name", SqliteNullable(btrieveFile.ACSName));
+            cmd.Parameters.AddWithValue("@acs", SqliteNullable(btrieveFile.ACS));
             cmd.ExecuteNonQuery();
         }
 
