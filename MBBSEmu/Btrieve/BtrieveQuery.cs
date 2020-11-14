@@ -27,7 +27,9 @@ namespace MBBSEmu.Btrieve
             }
         }
 
-        public enum CursorDirection {
+        public enum CursorDirection
+        {
+            Seek,
             Forward,
             Reverse
         }
@@ -92,14 +94,6 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     A delegate function that returns true if the retrieved record matches the query.
-        /// </summary>
-        /// <param name="query">Query made</param>
-        /// <param name="record">The record retrieve from the query</param>
-        /// <returns>true if the record is valid for the query</returns>
-        public delegate bool QueryMatcher(BtrieveQuery query, BtrieveRecord record);
-
-        /// <summary>
         ///     Moves along the cursor until we hit position
         /// </summary>
         private void SeekTo(uint position)
@@ -159,10 +153,8 @@ namespace MBBSEmu.Btrieve
         ///     Sqlite cursor and continues from there.
         /// </summary>
         /// <param name="query">Current query</param>
-        /// <param name="matcher">Delegate function for verifying results. If this matcher returns
-        ///     false, the query is aborted and returns no more results.</param>
-        /// <returns>true if the Sqlite cursor returned a valid item along with the data</returns>
-        public (bool, BtrieveRecord) Next(QueryMatcher matcher, CursorDirection cursorDirection)
+        /// <returns>The found record</returns>
+        public BtrieveRecord Next(CursorDirection cursorDirection)
         {
             if (Direction != cursorDirection)
             {
@@ -174,7 +166,7 @@ namespace MBBSEmu.Btrieve
             if (Reader == null || !Reader.Read())
             {
                 Reader = null;
-                return (false, null);
+                return null;
             }
 
             Position = (uint)Reader.DataReader.GetInt32(0);
@@ -184,12 +176,7 @@ namespace MBBSEmu.Btrieve
             var data = new byte[stream.Length];
             stream.Read(data, 0, data.Length);
 
-            var record = new BtrieveRecord(Position, data);
-
-            if (!matcher.Invoke(this, record))
-                return (false, record);
-
-            return (true, record);
+            return new BtrieveRecord(Position, data);
         }
     }
 }

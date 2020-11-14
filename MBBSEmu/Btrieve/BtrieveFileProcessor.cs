@@ -703,54 +703,24 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyPrevious(BtrieveQuery query) => NextReader(query, BtrieveQuery.CursorDirection.Reverse);
 
         /// <summary>
-        ///     Calls NextReader with an always-true query matcher.
-        /// </summary>
-        private bool NextReader(BtrieveQuery query, BtrieveQuery.CursorDirection cursorDirection) =>
-            NextReader(query, (query, record) => true, cursorDirection);
-
-        /// <summary>
         ///     Updates Position based on the value of current Sqlite cursor.
         ///
         ///     <para/>If the query has ended, it invokes query.ContinuationReader to get the next
         ///     Sqlite cursor and continues from there.
         /// </summary>
         /// <param name="query">Current query</param>
-        /// <param name="matcher">Delegate function for verifying results. If this matcher returns
-        ///     false, the query is aborted and returns no more results.</param>
         /// <param name="cursorDirection">Which direction to move along the query results</param>
         /// <returns>true if the Sqlite cursor returned a valid item</returns>
-        private bool NextReader(BtrieveQuery query, BtrieveQuery.QueryMatcher matcher, BtrieveQuery.CursorDirection cursorDirection)
+        private bool NextReader(BtrieveQuery query, BtrieveQuery.CursorDirection cursorDirection)
         {
-            var (success, record) = query.Next(matcher, cursorDirection);
+            var record = query.Next(cursorDirection);
 
-            if (success)
-                Position = query.Position;
+            if (record == null)
+                return false;
 
-            if (record != null)
-                _cache[query.Position] = record;
-
-            return success;
-        }
-
-        /// <summary>
-        ///     Returns true if the retrievedRecord has equal keyData for the specified key.
-        /// </summary>
-        private static bool RecordMatchesKey(BtrieveRecord retrievedRecord, BtrieveKey key, byte[] keyData)
-        {
-            var keyA = key.ExtractKeyDataFromRecord(retrievedRecord.Data);
-            var keyB = keyData;
-
-            switch (key.PrimarySegment.DataType)
-            {
-                case EnumKeyDataType.String:
-                case EnumKeyDataType.Lstring:
-                case EnumKeyDataType.Zstring:
-                case EnumKeyDataType.OldAscii:
-                    return string.Equals(BtrieveKey.ExtractNullTerminatedString(keyA),
-                        BtrieveKey.ExtractNullTerminatedString(keyB));
-                default:
-                    return keyA.SequenceEqual(keyB);
-            }
+            Position = query.Position;
+            _cache[query.Position] = record;
+            return true;
         }
 
         /// <summary>
@@ -758,8 +728,6 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool GetByKeyEqual(BtrieveQuery query)
         {
-            BtrieveQuery.QueryMatcher initialMatcher = (query, record) => RecordMatchesKey(record, query.Key, query.KeyData);
-
             var sqliteObject = query.Key.KeyDataToSqliteObject(query.KeyData);
             var command = new SqliteCommand() { Connection = _connection };
             if (sqliteObject == null)
@@ -768,7 +736,7 @@ namespace MBBSEmu.Btrieve
             }
             else
             {
-                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} >= @value ORDER BY {query.Key.SqliteKeyName} ASC";
+                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} = @value ORDER BY {query.Key.SqliteKeyName} ASC";
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
             }
 
@@ -777,7 +745,8 @@ namespace MBBSEmu.Btrieve
                 DataReader = command.ExecuteReader(System.Data.CommandBehavior.KeyInfo),
                 Command = command
             };
-            return NextReader(query, initialMatcher, BtrieveQuery.CursorDirection.Forward);
+            query.Direction = BtrieveQuery.CursorDirection.Seek;
+            return NextReader(query, BtrieveQuery.CursorDirection.Seek);
         }
 
         /// <summary>
