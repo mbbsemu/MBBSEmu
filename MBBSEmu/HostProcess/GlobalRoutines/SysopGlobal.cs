@@ -188,8 +188,8 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             }
             
             var userAccount = _accountRepository.GetAccountByUsername(userName);
-            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
 
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
             _accountRepository.DeleteAccountById(userAccount.accountId);
         }
 
@@ -257,7 +257,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         }
 
         /// <summary>
-        ///     Sysop Command to remove the specified key to the specified user
+        ///     Sysop Command to remove the specified key from the specified user
         ///
         ///     Syntax: /SYSOP REMOVEKEY USER KEY
         /// </summary>
