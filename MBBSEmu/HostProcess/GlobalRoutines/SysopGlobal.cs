@@ -149,8 +149,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void ListAccounts()
         {
-
-            
             _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Username-------------------------Email------------------------------Create Date-\r\n".EncodeToANSIString());
 
             foreach (var a in _accountRepository.GetAccounts())
