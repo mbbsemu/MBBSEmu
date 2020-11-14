@@ -50,6 +50,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
 
+        private readonly Random _random = new Random(Guid.NewGuid().GetHashCode());
+
         private AgentStruct _galacticommClientServerAgent;
 
         /// <summary>
@@ -2081,7 +2083,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void rand()
         {
-            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(1, short.MaxValue);
+            var randomValue = _random.Next(1, short.MaxValue);
 
 #if DEBUG
             //_logger.Info($"Generated random number {randomValue} and saved it to AX");
@@ -5914,7 +5916,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var min = GetParameter(0);
             var max = GetParameter(1);
 
-            var randomValue = (ushort)new Random(Guid.NewGuid().GetHashCode()).Next(min, max);
+            var randomValue = (ushort)_random.Next(min, max);
 
 #if DEBUG
             _logger.Info($"Generated Random Number: {randomValue}");
@@ -6950,7 +6952,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var min = GetParameterLong(0);
             var max = GetParameterLong(2);
-            var randomValue = new Random(Guid.NewGuid().GetHashCode()).Next(min, max);
+            var randomValue = _random.Next(min, max);
 
             Registers.DX = (ushort)(randomValue >> 16);
             Registers.AX = (ushort)(randomValue & 0xFFFF);
