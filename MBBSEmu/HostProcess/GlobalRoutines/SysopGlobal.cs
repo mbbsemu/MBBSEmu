@@ -197,10 +197,12 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             var userAccount = _accountRepository.GetAccountByUsername(userName);
             _accountRepository.DeleteAccountById(userAccount.accountId);
 
-            //Remove the User from the BBS Btrieve User Database
+            //Remove the User from the BBSUSR Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
-            _accountBtrieve.Delete();
+            var result = _accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
+
+            if (result)
+                _accountBtrieve.Delete();
 
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
         }
