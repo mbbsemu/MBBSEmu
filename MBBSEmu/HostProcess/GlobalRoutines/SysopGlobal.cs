@@ -1,4 +1,6 @@
-﻿using MBBSEmu.Database.Repositories.Account;
+﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
@@ -9,9 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Btrieve;
-using MBBSEmu.Btrieve.Enums;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
