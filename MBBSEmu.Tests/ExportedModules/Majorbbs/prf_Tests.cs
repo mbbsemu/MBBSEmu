@@ -35,37 +35,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             parameters.Add(inputStingParameterPointer.Offset);
             parameters.Add(inputStingParameterPointer.Segment);
 
-            foreach (var v in values)
-            {
-                switch (v)
-                {
-                    case string @parameterString:
-                    {
-                        var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
-                        mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
-                        parameters.Add(stringParameterPointer.Offset);
-                        parameters.Add(stringParameterPointer.Segment);
-                        break;
-                    }
-                    case uint @parameterULong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterULong);
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
-                    case int @parameterLong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterLong);
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
-                    case ushort @parameterInt:
-                        parameters.Add(@parameterInt);
-                        break;
-                }
-            }
+            var parameterList = GenerateParameters(values);
+            foreach (var p in parameterList)
+                parameters.Add(p);
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PRF_ORDINAL, parameters);
 

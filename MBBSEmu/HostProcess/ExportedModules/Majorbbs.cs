@@ -124,7 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
             Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
-            Module.Memory.SetWord(ntermsPointer, (ushort) _numberOfChannels); // Number of channels from Settings
+            Module.Memory.SetWord(ntermsPointer, (ushort)_numberOfChannels); // Number of channels from Settings
 
             Module.Memory.AllocateVariable("OTHUSN", 0x2); //Set by onsys() or instat()
             Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
@@ -2371,7 +2371,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Module.Memory.SetArray(btvStruct.data, record.Data);
                 if (!destinationRecordBuffer.Equals(IntPtr16.Empty))
-                    Module.Memory.SetArray(destinationRecordBuffer,record.Data);
+                    Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
             if (keyNumber >= 0)
@@ -2466,7 +2466,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort) currentBtrieveFile.RecordLength);
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
             return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
         }
@@ -3865,7 +3865,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
-            var output = Module.Memory.GetString(sourcePointer);
+            var output = Module.Memory.GetString(sourcePointer, true);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 4);
@@ -3882,6 +3882,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Wrote {formattedMessage.Length} bytes to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
+
+            Registers.AX = (ushort)formattedMessage.Length;
         }
 
         /// <summary>
@@ -5601,7 +5603,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void qnpbtv()
         {
-            var queryOption = (EnumBtrieveOperationCodes) GetParameter(0);
+            var queryOption = (EnumBtrieveOperationCodes)GetParameter(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.PreviousQuery.Key.Number, currentBtrieveFile.PreviousQuery.KeyData, queryOption);
@@ -5891,7 +5893,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (char.IsUpper((char)inputString[i]))
                     inputString[i] = (byte)char.ToLower((char)inputString[i]);
 
-                if (inputString[i] == (byte) ' ')
+                if (inputString[i] == (byte)' ')
                     isSpace = true;
 
                 if (char.IsLower((char)inputString[i]) && isSpace)
@@ -6979,8 +6981,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void uidkey()
         {
-            // no key support for now, so everybody has the key
-            Registers.AX = 1;
+            var userName = GetParameterString(0, true);
+            var accountLock = GetParameterString(2, true);
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(userName) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(userName);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = (ushort)(keys.Any(k =>
+               string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? 1
+                : 0);
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Info($"Returning {Registers.AX} for uidkey({userName}, {lockName})");
+#endif
         }
 
         /// <summary>
