@@ -87,37 +87,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             fprintfParameters.Add(inputStingParameterPointer.Segment);
 
             //Add Parameters
-            foreach (var v in values)
-            {
-                switch (v)
-                {
-                    case string @parameterString:
-                    {
-                        var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
-                        mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
-                        fprintfParameters.Add(stringParameterPointer.Offset);
-                        fprintfParameters.Add(stringParameterPointer.Segment);
-                        break;
-                    }
-                    case uint @parameterULong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterULong);
-                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
-                    case int @parameterLong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterLong);
-                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        fprintfParameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
-                    case ushort @parameterInt:
-                        fprintfParameters.Add(@parameterInt);
-                        break;
-                }
-            }
+            var parameterList = GenerateParameters(values);
+            fprintfParameters.AddRange(parameterList);
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FPRINTF_ORDINAL, fprintfParameters);
 

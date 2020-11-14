@@ -100,15 +100,38 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         }
 
-        [Fact]
-        public void uidkey_Test()
+        [Theory]
+        [InlineData("guest", "NORMAL", 1)]
+        [InlineData("guest", "DERP", 0)]
+        [InlineData("derp", "NORMAL", 1)]
+        [InlineData("guest", "", 1)]
+        public void uidkey_Test(string username, string key, ushort expectedResult)
         {
             //Reset State
             Reset();
 
-            //Set the test Username
+            //Set Argument Values to be Passed In
+            var usernamePointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(username.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(username));
+            var keyPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING2", (ushort)(key.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING2", Encoding.ASCII.GetBytes(key));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<IntPtr16> { usernamePointer, keyPointer });
+
+            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+
+        }
+
+        [Fact]
+        public void uidkey_Custom_Test()
+        {
+            //Reset State
+            Reset();
+
+            _serviceResolver.GetService<IAccountKeyRepository>().InsertAccountKeyByUsername("guest", "DERP");
             var username = "guest";
-            var key = "NORMAL";
+            var key = "DERP";
 
             //Set Argument Values to be Passed In
             var usernamePointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(username.Length + 1));

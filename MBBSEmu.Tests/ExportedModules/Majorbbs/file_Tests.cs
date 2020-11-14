@@ -1,5 +1,4 @@
 using MBBSEmu.Memory;
-using NLog;
 using System;
 using System.IO;
 using System.Text;
