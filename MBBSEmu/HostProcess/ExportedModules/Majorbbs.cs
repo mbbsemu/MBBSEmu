@@ -5914,6 +5914,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var min = GetParameter(0);
             var max = GetParameter(1);
 
+            if (max < min)
+                max = min;
+
             var randomValue = (ushort)new Random(Guid.NewGuid().GetHashCode()).Next(min, max);
 
 #if DEBUG

@@ -19,12 +19,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData('*', '*')]
         [InlineData('1', '1')]
 
-        public void ToLowerTest(char inputCharString, ushort expectedValue)
+        public void ToLowerTest(char inputChar, ushort expectedValue)
         {
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TOLOWER_ORDINAL, new List<ushort> { inputCharString });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TOLOWER_ORDINAL, new List<ushort> { inputChar });
 
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
@@ -38,12 +38,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData('%', '%')]
         [InlineData('*', '*')]
         [InlineData('1', '1')]
-        public void ToUpperTest(char inputCharString, ushort expectedValue)
+        public void ToUpperTest(char inputChar, ushort expectedValue)
         {
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TOUPPER_ORDINAL, new List<ushort> { inputCharString });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TOUPPER_ORDINAL, new List<ushort> { inputChar });
 
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
