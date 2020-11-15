@@ -35,7 +35,7 @@ namespace MBBSEmu
         public string BBSTitle => GetBBSTitleSettings("BBS.Title");
         public int BBSChannels => GetAppSettings<int>(ConfigurationRoot["BBS.Channels"], "BBS.Channels");
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
-        public string GSBLActivation => GetGSBLActivationSettings("GSBL.Activation");
+        public string GSBLBTURNO => GetGSBLBTURNOSettings("GSBL.BTURNO");
         public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
         public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
         public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
@@ -47,7 +47,7 @@ namespace MBBSEmu
         public string DatabaseFile => GetStringAppSettings("Database.File");
 
         //Optional Keys
-        public string GetActivation(string moduleId) => ConfigurationRoot[$"GSBL.Activation.{moduleId}"];
+        public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
         public string ANSILogin => ConfigurationRoot["ANSI.Login"];
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
@@ -187,11 +187,11 @@ namespace MBBSEmu
         /// <summary>
         ///     Sets a default GSBL value if none provided
         /// </summary>
-        /// <param name="key">GSBL.Activation</param>
+        /// <param name="key">GSBL.BTURNO</param>
         /// <returns></returns>
-        private string GetGSBLActivationSettings(string key)
+        private string GetGSBLBTURNOSettings(string key)
         {
-            var result = "11111111";
+            var result = "00000000";
 
             if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
@@ -200,7 +200,7 @@ namespace MBBSEmu
             }
             else
             {
-                Console.WriteLine($"GSBL.Activation not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
+                Console.WriteLine($"GSBL.BTURNO not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
             }
 
             return result;
