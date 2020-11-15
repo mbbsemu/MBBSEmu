@@ -131,26 +131,26 @@ namespace MBBSEmu.Btrieve
 
         private ReadOnlySpan<byte> ApplyACS(ReadOnlySpan<byte> keyData)
         {
-            if (ACS == null || !RequiresACS)
+            if (!RequiresACS)
                 return keyData;
 
             var dst = new byte[Length];
             var offset = 0;
             foreach (var segment in Segments)
             {
-                var dstSpan = dst.AsSpan().Slice(offset);
-
+                var dstSpan = dst.AsSpan().Slice(offset, segment.Length);
+                var key = keyData.Slice(offset, segment.Length);
                 if (segment.RequiresACS)
                 {
                     for (var i = 0; i < segment.Length; ++i)
                     {
-                        dstSpan[i] = segment.ACS[keyData[i]];
+                        dstSpan[i] = segment.ACS[key[i]];
                     }
                 }
                 else
                 {
                     // simple copy
-                    keyData.Slice(offset, segment.Length).CopyTo(dstSpan);
+                    key.CopyTo(dstSpan);
                 }
 
                 offset += segment.Length;

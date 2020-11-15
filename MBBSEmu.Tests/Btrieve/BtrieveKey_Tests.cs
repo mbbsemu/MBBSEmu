@@ -224,8 +224,7 @@ namespace MBBSEmu.Tests.Btrieve
             sqlLiteObject.Should().Be(DBNull.Value);
         }
 
-        [Fact]
-        public void ACSReplacement_SingleKey()
+        private static byte[] UpperACS()
         {
             byte[] acs = new byte[256];
             for (var i = 0; i < acs.Length; ++i)
@@ -233,6 +232,14 @@ namespace MBBSEmu.Tests.Btrieve
             // make uppercase
             for (char i = 'a'; i <= 'z'; ++i)
                 acs[i] = (byte)Char.ToUpper(i);
+
+            return acs;
+        }
+
+        [Fact]
+        public void ACSReplacement_SingleKey()
+        {
+            var acs = UpperACS();
 
             var key = new BtrieveKey() {
               Segments = new List<BtrieveKeyDefinition>() {
@@ -264,15 +271,13 @@ namespace MBBSEmu.Tests.Btrieve
         }
 
         [Theory]
-        [InlineData("testing", "TESTING")]
+        [InlineData("b", "B")]
+        [InlineData("test", "TEST")]
+        [InlineData("1234567890", "1234567890")]
+        [InlineData("test1234test4321", "TEST1234TEST4321")]
         public void ACSReplacement_MultiKey(string input, string expected)
         {
-            byte[] acs = new byte[256];
-            for (var i = 0; i < acs.Length; ++i)
-                acs[i] = (byte)i;
-            // make uppercase
-            for (char i = 'a'; i <= 'z'; ++i)
-                acs[i] = (byte)Char.ToUpper(i);
+            var acs = UpperACS();
 
             var key = new BtrieveKey() {
               Segments = new List<BtrieveKeyDefinition>() {
@@ -301,12 +306,53 @@ namespace MBBSEmu.Tests.Btrieve
             };
 
             var record = new byte[128];
-            Array.Fill(record, (byte)0xFF, 0, record.Length);
-            // first segment is all spaces i.e. null
+            Array.Fill(record, (byte)0x0, 0, record.Length);
             Array.Copy(Encoding.ASCII.GetBytes(input), 0, record, 2, input.Length);
-            record[2 + input.Length] = 0;
 
-            var sqlLiteObject = key.ExtractKeyInRecordToSqliteObject(record);
+            var sqlLiteObject = Encoding.ASCII.GetString((byte[])key.ExtractKeyInRecordToSqliteObject(record)).TrimEnd((char)0);
+            sqlLiteObject.Should().Be(expected);
+        }
+
+        [Theory]
+        [InlineData("b", "b")]
+        [InlineData("test", "test")]
+        [InlineData("1234567890", "1234567890")]
+        [InlineData("test1234test4321", "test1234TEST4321")]
+        public void ACSReplacement_ACSOnlyOnSecondKey(string input, string expected)
+        {
+            var acs = UpperACS();
+
+            var key = new BtrieveKey()
+            {
+                Segments = new List<BtrieveKeyDefinition>() {
+                  new BtrieveKeyDefinition() {
+                      Number = 0,
+                      Offset = 2,
+                      Length = 8,
+                      DataType = EnumKeyDataType.Zstring,
+                      Attributes = EnumKeyAttributeMask.UseExtendedDataType,
+                      Segment = true,
+                      SegmentIndex = 0,
+                      NullValue = 0,
+                  },
+                  new BtrieveKeyDefinition() {
+                      Number = 0,
+                      Offset = 10,
+                      Length = 8,
+                      DataType = EnumKeyDataType.Zstring,
+                      Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.NumberedACS,
+                      ACS = acs,
+                      Segment = false,
+                      SegmentIndex = 1,
+                      NullValue = 0,
+                  }}
+            };
+
+            var record = new byte[128];
+            Array.Fill(record, (byte)0x0, 0, record.Length);
+            Array.Copy(Encoding.ASCII.GetBytes(input), 0, record, 2, input.Length);
+
+            var sqlLiteObject = Encoding.ASCII.GetString((byte[])key.ExtractKeyInRecordToSqliteObject(record)).TrimEnd((char)0);
             sqlLiteObject.Should().Be(expected);
         }
     }
