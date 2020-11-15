@@ -57,7 +57,7 @@ namespace MBBSEmu
             get
             {
                 if (!ConfigurationRoot.GetSection("Account.DefaultKeys").Exists())
-                    return new[] { "DEMO", "NORMAL" };
+                    return new[] { "DEMO", "NORMAL", "USER" };
 
                 return ConfigurationRoot.GetSection("Account.DefaultKeys").GetChildren()
                     .ToArray().Select(c => c.Value).ToArray();
