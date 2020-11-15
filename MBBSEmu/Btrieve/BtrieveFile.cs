@@ -416,7 +416,7 @@ namespace MBBSEmu.Btrieve
 
             // read the acs data
             ACSName = Encoding.ASCII.GetString(data.Slice(7, 9)).TrimEnd((char)0);
-            ACS = data.Slice(0x10, 256).ToArray();
+            ACS = data.Slice(0xF, 256).ToArray();
             return true;
         }
 
