@@ -121,6 +121,7 @@ namespace MBBSEmu.HostProcess.Structs
 
             UserClass = 6;
             Minut4 = 0xA00;
+            Baud = 38400;
         }
     }
 }
