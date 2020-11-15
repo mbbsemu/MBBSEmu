@@ -191,7 +191,8 @@ namespace MBBSEmu
         /// <returns></returns>
         private string GetGSBLBTURNOSettings(string key)
         {
-            var result = "00000000";
+            var rnd = new Random();
+            var result = rnd.Next(1,9).ToString("10000000");
 
             if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
@@ -200,7 +201,7 @@ namespace MBBSEmu
             }
             else
             {
-                Console.WriteLine($"GSBL.BTURNO not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
+                Console.WriteLine($"GSBL.BTURNO not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting random value: {result}");
             }
 
             return result;
