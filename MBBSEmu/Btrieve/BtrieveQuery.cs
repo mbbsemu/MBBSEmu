@@ -125,7 +125,7 @@ namespace MBBSEmu.Btrieve
                     command.CommandText += $"<= @value ORDER BY {Key.SqliteKeyName} DESC";
                     break;
                 default:
-                    throw new ArgumentException("Bad direction");
+                    throw new ArgumentException($"Bad direction: {newDirection}");
             }
 
             command.Parameters.AddWithValue("@value", LastKey);
@@ -173,8 +173,7 @@ namespace MBBSEmu.Btrieve
             LastKey = Reader.DataReader.GetValue(1);
 
             using var stream = Reader.DataReader.GetStream(2);
-            var data = new byte[stream.Length];
-            stream.Read(data, 0, data.Length);
+            var data = BtrieveUtil.ReadEntireStream(stream);
 
             return new BtrieveRecord(Position, data);
         }

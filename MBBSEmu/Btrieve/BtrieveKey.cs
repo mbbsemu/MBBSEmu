@@ -64,7 +64,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Whether this key requires ACS.
         /// </summary>
-        public bool RequiresACS { get => PrimarySegment.RequiresACS; }
+        public bool RequiresACS { get => Segments.Any(segment => segment.RequiresACS); }
 
         /// <summary>
         ///     The ACS table of this key.
@@ -129,6 +129,36 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public object ExtractKeyInRecordToSqliteObject(ReadOnlySpan<byte> data) => KeyDataToSqliteObject(ExtractKeyDataFromRecord(data));
 
+        private ReadOnlySpan<byte> ApplyACS(ReadOnlySpan<byte> keyData)
+        {
+            if (ACS == null || !RequiresACS)
+                return keyData;
+
+            var dst = new byte[Length];
+            var offset = 0;
+            foreach (var segment in Segments)
+            {
+                var dstSpan = dst.AsSpan().Slice(offset);
+
+                if (segment.RequiresACS)
+                {
+                    for (var i = 0; i < segment.Length; ++i)
+                    {
+                        dstSpan[i] = segment.ACS[keyData[i]];
+                    }
+                }
+                else
+                {
+                    // simple copy
+                    keyData.Slice(offset, segment.Length).CopyTo(dstSpan);
+                }
+
+                offset += segment.Length;
+            }
+
+            return dst;
+        }
+
         /// <summary>
         ///     Returns an object that can be used for inserting into the data_t key column based on
         ///     the type of this key from keyData.
@@ -139,6 +169,8 @@ namespace MBBSEmu.Btrieve
             {
                 return DBNull.Value;
             }
+
+            keyData = ApplyACS(keyData);
 
             if (IsComposite)
                 return keyData.ToArray();

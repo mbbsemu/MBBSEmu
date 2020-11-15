@@ -223,5 +223,91 @@ namespace MBBSEmu.Tests.Btrieve
             var sqlLiteObject = key.ExtractKeyInRecordToSqliteObject(record);
             sqlLiteObject.Should().Be(DBNull.Value);
         }
+
+        [Fact]
+        public void ACSReplacement_SingleKey()
+        {
+            byte[] acs = new byte[256];
+            for (var i = 0; i < acs.Length; ++i)
+                acs[i] = (byte)i;
+            // make uppercase
+            for (char i = 'a'; i <= 'z'; ++i)
+                acs[i] = (byte)Char.ToUpper(i);
+
+            var key = new BtrieveKey() {
+              Segments = new List<BtrieveKeyDefinition>() {
+                  new BtrieveKeyDefinition() {
+                      Number = 0,
+                      Offset = 2,
+                      Length = 8,
+                      DataType = EnumKeyDataType.Zstring,
+                      Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.NumberedACS,
+                      ACS = acs,
+                      Segment = true,
+                      SegmentIndex = 0,
+                      NullValue = 0,
+                  }}
+            };
+
+            var record = new byte[128];
+            Array.Fill(record, (byte)0xFF, 0, record.Length);
+            // first segment is all spaces i.e. null
+            record[2] = (byte)'a';
+            record[3] = (byte)'B';
+            record[4] = (byte)'t';
+            record[5] = (byte)'Z';
+            record[6] = (byte)'%';
+            record[7] = 0;
+
+            var sqlLiteObject = key.ExtractKeyInRecordToSqliteObject(record);
+            sqlLiteObject.Should().Be("ABTZ%");
+        }
+
+        [Theory]
+        [InlineData("testing", "TESTING")]
+        public void ACSReplacement_MultiKey(string input, string expected)
+        {
+            byte[] acs = new byte[256];
+            for (var i = 0; i < acs.Length; ++i)
+                acs[i] = (byte)i;
+            // make uppercase
+            for (char i = 'a'; i <= 'z'; ++i)
+                acs[i] = (byte)Char.ToUpper(i);
+
+            var key = new BtrieveKey() {
+              Segments = new List<BtrieveKeyDefinition>() {
+                  new BtrieveKeyDefinition() {
+                      Number = 0,
+                      Offset = 2,
+                      Length = 8,
+                      DataType = EnumKeyDataType.Zstring,
+                      Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.NumberedACS,
+                      ACS = acs,
+                      Segment = true,
+                      SegmentIndex = 0,
+                      NullValue = 0,
+                  },
+                  new BtrieveKeyDefinition() {
+                      Number = 0,
+                      Offset = 10,
+                      Length = 8,
+                      DataType = EnumKeyDataType.Zstring,
+                      Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.NumberedACS,
+                      ACS = acs,
+                      Segment = false,
+                      SegmentIndex = 1,
+                      NullValue = 0,
+                  }}
+            };
+
+            var record = new byte[128];
+            Array.Fill(record, (byte)0xFF, 0, record.Length);
+            // first segment is all spaces i.e. null
+            Array.Copy(Encoding.ASCII.GetBytes(input), 0, record, 2, input.Length);
+            record[2 + input.Length] = 0;
+
+            var sqlLiteObject = key.ExtractKeyInRecordToSqliteObject(record);
+            sqlLiteObject.Should().Be(expected);
+        }
     }
 }
