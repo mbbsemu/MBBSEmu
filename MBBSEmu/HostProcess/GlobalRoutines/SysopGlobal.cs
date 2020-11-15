@@ -217,7 +217,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         {
             if (commandSequence.Count() < 5)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP RESETPW <USER> <PW> <CONFIRM PW>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP RESETPW <USER> <PW> <CONF PW>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
