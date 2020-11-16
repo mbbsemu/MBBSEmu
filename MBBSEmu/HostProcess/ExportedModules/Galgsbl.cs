@@ -39,12 +39,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _startDate = DateTime.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);
 
-            //Check for Module Specific Activation #
-            var bturno = configuration.GSBLActivation;
-            if (!string.IsNullOrEmpty(_configuration.GetActivation(Module.ModuleIdentifier)))
+            //Check for Module Specific BTURNO #
+            var bturno = configuration.GSBLBTURNO;
+            if (!string.IsNullOrEmpty(_configuration.GetBTURNO(Module.ModuleIdentifier)))
             {
-                bturno = _configuration.GetActivation(Module.ModuleIdentifier);
-                _logger.Info($"Found Module Specific Activation # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
+                bturno = _configuration.GetBTURNO(Module.ModuleIdentifier);
+                _logger.Info($"Found Module Specific BTURNO # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
             }
 
             //Sanity Check

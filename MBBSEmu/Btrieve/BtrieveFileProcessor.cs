@@ -133,10 +133,6 @@ namespace MBBSEmu.Btrieve
 
             var loadedFileName = _fileFinder.FindFile(path, fileName);
 
-            // hack for MUTANTS which tries to load a DATT file
-            if (Path.GetExtension(loadedFileName).ToUpper() == ".DATT")
-                loadedFileName = Path.ChangeExtension(loadedFileName, ".DAT");
-
             // If a .DB version exists, load it over the .DAT file
             var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
             var fullPath = Path.Combine(path, dbFileName);

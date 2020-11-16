@@ -29,7 +29,7 @@ Examples:
 appsettings.json Emulator Options:
 
 BBS.Title               String         Title (name) of your Bulletin Board, used by MAJORBBS.H
-GSBL.Activation         Number         Activation Code for MajorBBS & Worldgroup (8-Digit)
+GSBL.BTURNO             Number         BTURNO for MajorBBS & Worldgroup (8-Digit)
 Module.DoLoginRoutine   True/False     Display Module Post-Login Messages
 Telnet.Enabled          True/False     Enable Telnet Service
 Telnet.Port             Number         Port Number for Telnet to listen on
