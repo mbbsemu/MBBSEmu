@@ -154,7 +154,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
-        private byte[] Data { get; set; }
+        public byte[] Data { get; set; }
 
         /// <summary>
         ///     Btrieve Records

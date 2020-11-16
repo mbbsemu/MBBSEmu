@@ -1,12 +1,8 @@
 using FluentAssertions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
-using MBBSEmu.DependencyInjection;
-using MBBSEmu.Resources;
-using NLog;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using Xunit;
 

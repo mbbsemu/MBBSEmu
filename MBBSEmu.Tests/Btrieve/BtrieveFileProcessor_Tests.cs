@@ -1062,6 +1062,111 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.PerformOperation(1, BitConverter.GetBytes(-2_000_000_000), EnumBtrieveOperationCodes.QueryLessOrEqual).Should().BeFalse();
         }
 
+        private const int ACS_RECORD_LENGTH = 128;
+
+        private static byte[] CreateRecord(string username)
+        {
+            var usernameBytes = Encoding.ASCII.GetBytes(username);
+            var record = new byte[ACS_RECORD_LENGTH];
+
+            Array.Fill(record, (byte)0xFF);
+
+            Array.Copy(usernameBytes, 0, record, 2, usernameBytes.Length);
+            record[2 + usernameBytes.Length] = 0;
+
+            return record;
+        }
+
+        private static BtrieveFile CreateACSBtrieveFile()
+        {
+            // all upper case acs
+            var acs = new byte[256];
+            for (var i = 0; i < acs.Length; ++i)
+                acs[i] = (byte)i;
+            for (var i = 'a'; i <= 'z'; ++i)
+                acs[i] = (byte)Char.ToUpper(i);
+
+            var btrieveFile = new BtrieveFile()
+            {
+                RecordLength = ACS_RECORD_LENGTH,
+                FileName = "TEST.DAT",
+                RecordCount = 0,
+                ACSName = "ALLCAPS",
+                ACS = acs,
+            };
+
+            var key = new BtrieveKey();
+            key.Segments.Add(new BtrieveKeyDefinition()
+                {
+                    Number = 0,
+                    Attributes = EnumKeyAttributeMask.NumberedACS | EnumKeyAttributeMask.UseExtendedDataType,
+                    DataType = EnumKeyDataType.Zstring,
+                    Offset = 2,
+                    Length = 30,
+                    Segment = false,
+                    ACS = acs
+                });
+
+            btrieveFile.Keys.Add(0, key);
+
+            btrieveFile.Records.Add(new BtrieveRecord(1, CreateRecord("Sysop")));
+            btrieveFile.Records.Add(new BtrieveRecord(2, CreateRecord("Paladine")));
+            btrieveFile.Records.Add(new BtrieveRecord(3, CreateRecord("Testing")));
+            return btrieveFile;
+        }
+
+        [Fact]
+        public void CreatesACS()
+        {
+            var btrieve = new BtrieveFileProcessor();
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
+
+            btrieve.GetRecordCount().Should().Be(3);
+            btrieve.GetKeyLength(0).Should().Be(30);
+
+            // validate acs
+            using var cmd = new SqliteCommand("SELECT acs_name, acs, LENGTH(acs) FROM metadata_t", btrieve.Connection);
+            using var reader = cmd.ExecuteReader();
+            reader.Read().Should().BeTrue();
+            reader.GetString(0).Should().Be("ALLCAPS");
+            reader.GetInt32(2).Should().Be(256);
+        }
+
+        [Fact]
+        public void ACSSeekByKey()
+        {
+            var btrieve = new BtrieveFileProcessor();
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
+
+            var key = new byte[30];
+            Array.Copy(Encoding.ASCII.GetBytes("paladine"), key, 8);
+
+            btrieve.PerformOperation(0, key, EnumBtrieveOperationCodes.QueryEqual).Should().BeTrue();
+            var record = btrieve.GetRecord(btrieve.Position);
+            record.Should().NotBeNull();
+            record.Offset.Should().Be(2);
+            // we searched by paladine but the actual data is Paladine
+            record.Data[2].Should().Be((byte)'P');
+        }
+
+        [Fact]
+        public void ACSInsertDuplicateFails()
+        {
+            var btrieve = new BtrieveFileProcessor();
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
+
+            var record = new byte[ACS_RECORD_LENGTH];
+            Array.Copy(Encoding.ASCII.GetBytes("paladine"), 0, record, 2, 8);
+
+            btrieve.Insert(record).Should().Be(0);
+        }
+
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
         private static byte[] MakeSmaller(byte[] data, int cutOff)
         {

@@ -69,7 +69,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     The ACS table of this key.
         /// </summary>
-        public byte[] ACS { get => PrimarySegment.ACS; }
+        public byte[] ACS { get => Segments.Where(segment => segment.ACS != null).DefaultIfEmpty(null).Select(segment => segment.ACS).First(); }
 
         /// <summary>
         ///     The total length in bytes of the key.
