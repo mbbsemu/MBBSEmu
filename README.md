@@ -2,7 +2,7 @@
 ![](http://forthebadge.com/images/badges/made-with-c-sharp.svg)
 ![](http://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)
 
-[Home](https://www.mbbsemu.com) | [Wiki](https://github.com/enusbaum/MBBSEmu/wiki) | [Issue Tracker](https://github.com/enusbaum/MBBSEmu/issues) | [Releases](https://github.com/enusbaum/MBBSEmu/releases) | [Automated Builds](https://www.mbbsemu.com/Downloads) | [Building MBBSEmu](./documents/development-tips.md) | [Modules](https://www.mbbsemu.com/Modules) | [Discord](https://discord.gg/BgjxMD5)
+[Home](https://www.mbbsemu.com) | [Wiki](https://wiki.mbbsemu.com) | [Issue Tracker](https://github.com/enusbaum/MBBSEmu/issues) | [Releases](https://github.com/enusbaum/MBBSEmu/releases) | [Automated Builds](https://www.mbbsemu.com/Downloads) | [Building MBBSEmu](./documents/development-tips.md) | [Modules](https://www.mbbsemu.com/Modules) | [Discord](https://discord.gg/BgjxMD5)
 
 ![The MajorBBS Emulation Project Screenshot](./images/mbbsemu.png)
 

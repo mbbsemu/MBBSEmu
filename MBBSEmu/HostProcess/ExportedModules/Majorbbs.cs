@@ -5918,13 +5918,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var min = GetParameter(0);
             var max = GetParameter(1);
 
-            var randomValue = (ushort)_random.Next(min, max);
+            if (max < min)
+                max = min;
 
-#if DEBUG
-            _logger.Info($"Generated Random Number: {randomValue}");
-#endif
-
-            Registers.AX = randomValue;
+            Registers.AX = (ushort)_random.Next(min, max);
         }
 
         /// <summary>
