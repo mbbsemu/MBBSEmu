@@ -192,7 +192,7 @@ namespace MBBSEmu
         private string GetGSBLBTURNOSettings(string key)
         {
             var rnd = new Random();
-            var result = rnd.Next(1,9).ToString("10000000");
+            var result = rnd.Next(10000000, 99999999).ToString();
 
             if (!string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
