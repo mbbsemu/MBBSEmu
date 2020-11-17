@@ -1,8 +1,8 @@
 {
   "Modules": [
     {
-      "Identifier": "ELWSAFE",
-      "Path": "c:\\dos\\modules\\elwsafe\\"
+      "Identifier": "HVSXROAD",
+      "Path": "c:\\dos\\modules\\xroads100k\\"
     }
   ]
 }

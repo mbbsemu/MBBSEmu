@@ -263,8 +263,8 @@ namespace MBBSEmu.CPU
 #endif
             InstructionCounter++;
 
-            //Jump Table
-            Switch:
+        //Jump Table
+        Switch:
             switch (_currentInstruction.Mnemonic)
             {
                 case Mnemonic.INVALID:
@@ -1659,12 +1659,23 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosw()
         {
-            while (Registers.CX > 0)
+            Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
+            
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
-                Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
-                Registers.DI += 2;
-                Registers.CX--;
+                Registers.DI -= 2;
             }
+            else
+            {
+                Registers.DI += 2;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                Op_Stosw();
+            }
+
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2885,17 +2896,21 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosb()
         {
-            Memory.SetByte(Registers.DS, Registers.SI, Registers.AL);
+            Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
-                Registers.SI--;
                 Registers.DI--;
             }
             else
             {
-                Registers.SI++;
                 Registers.DI++;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                Op_Stosb();
             }
         }
 
@@ -3338,7 +3353,7 @@ namespace MBBSEmu.CPU
                 case double.NaN:
                     return;
             }
-            
+
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
@@ -3564,12 +3579,12 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.SF);
-                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
         }
