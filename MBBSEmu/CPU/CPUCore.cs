@@ -556,6 +556,15 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fcos:
                     Op_Fcos();
                     break;
+                case Mnemonic.Lodsw:
+                    Op_Lodsw();
+                    break;
+                case Mnemonic.Popf:
+                    Op_Popf();
+                    break;
+                case Mnemonic.Iret:
+                    Op_Iret();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -3376,6 +3385,41 @@ namespace MBBSEmu.CPU
 
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(valueToCos);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Load String Operand
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Lodsw()
+        {
+            Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
+
+            if (Registers.F.IsFlagSet((ushort) EnumFlags.DF))
+            {
+                Registers.SI -= 2;
+            }
+            else
+            {
+                Registers.SI += 2;
+            }
+        }
+
+        /// <summary>
+        ///     Pop from Stack into the Flags Register 
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Popf()
+        {
+            Registers.F = Pop();
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Iret()
+        {
+            Registers.IP = Pop();
+            Registers.CS = Pop();
+            Registers.F = Pop();
         }
 
         /// <summary>
