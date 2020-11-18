@@ -6,6 +6,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Resources;
 using Microsoft.Data.Sqlite;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Xunit;
@@ -1210,6 +1211,18 @@ namespace MBBSEmu.Tests.Btrieve
             Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("paladine");
 
             btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepNext).Should().BeFalse();
+        }
+
+        [Fact]
+        public void KeylessDataQueryFails()
+        {
+            var btrieve = new BtrieveFileProcessor();
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateKeylessBtrieveFile());
+
+            Action act = () => btrieve.PerformOperation(0, Encoding.ASCII.GetBytes("test"), EnumBtrieveOperationCodes.QueryEqual);
+            act.Should().Throw<KeyNotFoundException>();
         }
 
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
