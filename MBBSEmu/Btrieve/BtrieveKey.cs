@@ -22,54 +22,45 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Represents the key number, starting from 0. Each database has at least one key.
         /// </summary>
-        public ushort Number
-        {
-            get => PrimarySegment.Number;
-        }
+        public ushort Number => PrimarySegment.Number;
 
         /// <summary>
         ///     The primary segment in a key. Always first in the list of Segments.
         /// </summary>
-        public BtrieveKeyDefinition PrimarySegment
-        {
-            get => Segments[0];
-        }
+        public BtrieveKeyDefinition PrimarySegment => Segments[0];
 
         /// <summary>
         ///     Whether the key is a composite key - composed of two or more segments.
         /// </summary>
-        public bool IsComposite
-        {
-            get => Segments.Count > 1;
-        }
+        public bool IsComposite => Segments.Count > 1;
 
         /// <summary>
         ///     Whether the key data in the record can be modified once inserted.
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsModifiable { get => PrimarySegment.IsModifiable; }
+        public bool IsModifiable => PrimarySegment.IsModifiable;
 
         /// <summary>
         ///     Whether the key data in the record is unique (no duplicates allowed).
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsUnique { get => PrimarySegment.IsUnique; }
+        public bool IsUnique => PrimarySegment.IsUnique;
 
         /// <summary>
         ///     Whether the key data in the record is nullable.
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsNullable { get => PrimarySegment.IsNullable; }
+        public bool IsNullable => PrimarySegment.IsNullable;
 
         /// <summary>
         ///     Whether this key requires ACS.
         /// </summary>
-        public bool RequiresACS { get => Segments.Any(segment => segment.RequiresACS); }
+        public bool RequiresACS => Segments.Any(segment => segment.RequiresACS);
 
         /// <summary>
         ///     The ACS table of this key.
         /// </summary>
-        public byte[] ACS { get => Segments.Where(segment => segment.ACS != null).DefaultIfEmpty(null).Select(segment => segment.ACS).First(); }
+        public byte[] ACS => Segments.Where(segment => segment.ACS != null).DefaultIfEmpty(null).Select(segment => segment.ACS).First();
 
         /// <summary>
         ///     The total length in bytes of the key.

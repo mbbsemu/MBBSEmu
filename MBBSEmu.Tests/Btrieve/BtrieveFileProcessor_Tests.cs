@@ -1084,7 +1084,7 @@ namespace MBBSEmu.Tests.Btrieve
             for (var i = 0; i < acs.Length; ++i)
                 acs[i] = (byte)i;
             for (var i = 'a'; i <= 'z'; ++i)
-                acs[i] = (byte)Char.ToUpper(i);
+                acs[i] = (byte)char.ToUpper(i);
 
             var btrieveFile = new BtrieveFile()
             {
