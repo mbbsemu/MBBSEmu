@@ -3453,19 +3453,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Fchs()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            switch (Math.Sign(ST0))
-            {
-                case -1: //Negative
-                    ST0 = Math.Abs(ST0);
-                    break;
-                case 1: //Positive
-                    ST0 = ST0 * -1;
-                    break;
-            }
-
-            FpuStack[Registers.Fpu.GetStackTop()] = ST0;
+            FpuStack[Registers.Fpu.GetStackTop()] = -FpuStack[Registers.Fpu.GetStackTop()];
         }
 
         /// <summary>

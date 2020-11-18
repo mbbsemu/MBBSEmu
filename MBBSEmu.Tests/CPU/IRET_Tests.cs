@@ -10,6 +10,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuMemoryCore.AddSegment(0);
+            var entrySP = mbbsEmuCpuRegisters.SP;
             mbbsEmuCpuCore.Push(0xFFFF);
             mbbsEmuCpuCore.Push(0xFFFE);
             mbbsEmuCpuCore.Push(0xFFFD);
@@ -24,6 +25,7 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(0xFFFD, mbbsEmuCpuRegisters.IP);
             Assert.Equal(0xFFFE, mbbsEmuCpuRegisters.CS);
             Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.F);
+            Assert.Equal(entrySP, mbbsEmuCpuRegisters.SP);
         }
     }
 }

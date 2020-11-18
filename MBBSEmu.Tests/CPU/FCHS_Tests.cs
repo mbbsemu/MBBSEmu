@@ -8,6 +8,8 @@ namespace MBBSEmu.Tests.CPU
         [Theory]
         [InlineData(-1, 1)]
         [InlineData(1, -1)]
+        [InlineData(double.MinValue, double.MaxValue)]
+        [InlineData(double.MaxValue, double.MinValue)]
         public void FCHS_Test(double ST0Value, double expectedValue)
         {
             Reset();
