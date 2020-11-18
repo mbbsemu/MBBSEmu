@@ -323,6 +323,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Loope:
                     Op_Loope();
                     return;
+                case Mnemonic.Iret:
+                    Op_Iret();
+                    return;
 
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Wait:
@@ -562,8 +565,11 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Popf:
                     Op_Popf();
                     break;
-                case Mnemonic.Iret:
-                    Op_Iret();
+                case Mnemonic.Fsubp:
+                    Op_Fsubp();
+                    break;
+                case Mnemonic.Fchs:
+                    Op_Fchs();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1668,6 +1674,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosw()
         {
+            stosw:
             Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
             
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
@@ -1682,7 +1689,7 @@ namespace MBBSEmu.CPU
             if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
             {
                 Registers.CX--;
-                Op_Stosw();
+                goto stosw;
             }
 
         }
@@ -2898,13 +2905,13 @@ namespace MBBSEmu.CPU
             }
         }
 
-
         /// <summary>
         ///     Store AL at address ES:(E)DI.
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosb()
         {
+            stosb:
             Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
@@ -2919,7 +2926,7 @@ namespace MBBSEmu.CPU
             if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
             {
                 Registers.CX--;
-                Op_Stosb();
+                goto stosb;
             }
         }
 
@@ -3420,6 +3427,45 @@ namespace MBBSEmu.CPU
             Registers.IP = Pop();
             Registers.CS = Pop();
             Registers.F = Pop();
+        }
+
+        /// <summary>
+        ///     Floating Subtract ST0 from ST1
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fsubp()
+        {
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = STdestination - STsource;
+
+            //Store result at ST1
+            WriteToDestination(result);
+
+            //ST(1) becomes ST(0)
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Change Sign of value in ST(0)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fchs()
+        {
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+
+            switch (Math.Sign(ST0))
+            {
+                case -1: //Negative
+                    ST0 = Math.Abs(ST0);
+                    break;
+                case 1: //Positive
+                    ST0 = ST0 * -1;
+                    break;
+            }
+
+            FpuStack[Registers.Fpu.GetStackTop()] = ST0;
         }
 
         /// <summary>
