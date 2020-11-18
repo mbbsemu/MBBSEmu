@@ -265,9 +265,6 @@ namespace MBBSEmu.Btrieve
             if (PageLength < 512 || (PageLength & 0x1FF) != 0)
                 return (false, $"Invalid PageLength, must be multiple of 512 {FileName}");
 
-            if (KeyCount <= 0)
-                return (false, $"NO KEYS defined in {FileName}");
-
             var accelFlags = BitConverter.ToUInt16(Data.AsSpan().Slice(0xA, 2));
             if (accelFlags != 0)
                 return (false, $"Valid accel flags, expected 0, got {accelFlags}! {FileName}");

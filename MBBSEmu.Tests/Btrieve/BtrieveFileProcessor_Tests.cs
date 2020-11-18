@@ -1167,6 +1167,51 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Insert(record).Should().Be(0);
         }
 
+        private static BtrieveFile CreateKeylessBtrieveFile()
+        {
+            var btrieveFile = new BtrieveFile()
+            {
+                RecordLength = ACS_RECORD_LENGTH,
+                FileName = "TEST.DAT",
+                RecordCount = 0,
+            };
+
+            btrieveFile.Records.Add(new BtrieveRecord(1, CreateRecord("Sysop")));
+            btrieveFile.Records.Add(new BtrieveRecord(2, CreateRecord("Paladine")));
+            btrieveFile.Records.Add(new BtrieveRecord(3, CreateRecord("Testing")));
+            return btrieveFile;
+        }
+
+        [Fact]
+        public void KeylessDatabaseEnumeration()
+        {
+            var btrieve = new BtrieveFileProcessor();
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateKeylessBtrieveFile());
+
+            var record = new byte[ACS_RECORD_LENGTH];
+            Array.Copy(Encoding.ASCII.GetBytes("paladine"), 0, record, 2, 8);
+
+            btrieve.Insert(record).Should().Be(4);
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepFirst).Should().BeTrue();
+            Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("Sysop");
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepPrevious).Should().BeFalse();
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepNext).Should().BeTrue();
+            Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("Paladine");
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepNext).Should().BeTrue();
+            Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("Testing");
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepNext).Should().BeTrue();
+            Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("paladine");
+
+            btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepNext).Should().BeFalse();
+        }
+
         /// <summary>Creates a copy of data shrunk by cutOff bytes at the end</summary>
         private static byte[] MakeSmaller(byte[] data, int cutOff)
         {
