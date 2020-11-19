@@ -2364,7 +2364,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 btvStruct.lastkn = (ushort)keyNumber;
                 Module.Memory.SetArray(bbPointer, btvStruct.Data);
             }
-            else
+            else if (currentBtrieveFile.Keys.Count > 0)
             {
                 keyNumber = (short)btvStruct.lastkn;
             }
@@ -2376,7 +2376,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
-            if (keyNumber >= 0)
+            if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
 
             return true;
