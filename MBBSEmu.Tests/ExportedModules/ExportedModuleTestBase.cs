@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Database.Session;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -13,12 +9,18 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
-using NLog.LayoutRenderers.Wrappers;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System;
 
 namespace MBBSEmu.Tests.ExportedModules
 {
     public abstract class ExportedModuleTestBase : TestBase
     {
+        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
+
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
@@ -29,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver();
+        protected ServiceResolver _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
@@ -114,7 +116,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
                 testSessions);
-            
+
         }
 
         /// <summary>

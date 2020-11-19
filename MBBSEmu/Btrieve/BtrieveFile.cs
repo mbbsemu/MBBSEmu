@@ -4,6 +4,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.Btrieve
 {
@@ -139,9 +141,20 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     The ACS table name used by the database. null if there is none
+        /// </summary>
+        /// <value></value>
+        public string ACSName { get; set; }
+
+        /// <summary>
+        ///     The ACS table for the database. null if there is none
+        /// </summary>
+        public byte[] ACS { get; set; }
+
+        /// <summary>
         ///     Raw contents of Btrieve File
         /// </summary>
-        private byte[] Data { get; set; }
+        public byte[] Data { get; set; }
 
         /// <summary>
         ///     Btrieve Records
@@ -152,8 +165,6 @@ namespace MBBSEmu.Btrieve
         ///     Btrieve Keys
         /// </summary>
         public Dictionary<ushort, BtrieveKey> Keys { get; set; }
-
-        private ILogger _logger;
 
         /// <summary>
         ///     Log Key is an internal value used by the Btrieve engine to track unique
@@ -202,8 +213,6 @@ namespace MBBSEmu.Btrieve
 
         public void LoadFile(ILogger logger, string fullPath)
         {
-            _logger = logger;
-
             var fileName = Path.GetFileName(fullPath);
             var fileData = File.ReadAllBytes(fullPath);
 
@@ -219,7 +228,9 @@ namespace MBBSEmu.Btrieve
 #endif
             DeletedRecordOffsets = GetRecordPointerList(GetRecordPointer(0x10));
 
+            LoadACS(logger);
             LoadBtrieveKeyDefinitions(logger);
+
             //Only load records if there are any present
             if (RecordCount > 0)
                 LoadBtrieveRecords(logger);
@@ -342,6 +353,14 @@ namespace MBBSEmu.Btrieve
                     NullValue = data[0x1D],
                   };
 
+                if (keyDefinition.RequiresACS)
+                {
+                    if (ACS == null)
+                        throw new ArgumentException($"Key {keyDefinition.Number} requires ACS, but none was read. This database is likely corrupt: {FileName}");
+
+                    keyDefinition.ACS = ACS;
+                }
+
                 //If it's a segmented key, don't increment so the next key gets added to the same ordinal as an additional segment
                 if (!keyDefinition.Segment)
                     currentKeyNumber++;
@@ -381,6 +400,24 @@ namespace MBBSEmu.Btrieve
                     segment.SegmentIndex = i++;
                 }
             }
+        }
+
+        private readonly byte[] ACS_PAGE_HEADER = { 0, 0, 1, 0, 0, 0, 0xAC };
+
+        private bool LoadACS(ILogger logger)
+        {
+            // ACS page immediately follows FCR (the first)
+            var offset = PageLength;
+            var data = Data.AsSpan().Slice(offset);
+
+            var pageHeader = data.Slice(0, ACS_PAGE_HEADER.Length);
+            if (!pageHeader.SequenceEqual(ACS_PAGE_HEADER))
+                return false;
+
+            // read the acs data
+            ACSName = Encoding.ASCII.GetString(data.Slice(7, 9)).TrimEnd((char)0);
+            ACS = data.Slice(0xF, 256).ToArray();
+            return true;
         }
 
         /// <summary>
