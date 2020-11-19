@@ -6951,6 +6951,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var min = GetParameterLong(0);
             var max = GetParameterLong(2);
+
+            if (max < min)
+                max = min;
+
             var randomValue = _random.Next(min, max);
 
             Registers.DX = (ushort)(randomValue >> 16);
