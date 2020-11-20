@@ -43,7 +43,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(1, 1000000)]
         [InlineData(10000, 80000)]
         [InlineData(10, 32000)]
-        [InlineData(32767, 65500)]
+        [InlineData(32767, 2500000)]
         [InlineData(70000, 100000)]
         public void lngrndTest(int valueMin, int valueMax)
         {
