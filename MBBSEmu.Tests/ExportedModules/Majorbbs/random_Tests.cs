@@ -40,12 +40,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
-        [InlineData(1, 65000)]
-        [InlineData(10000, 65000)]
-        [InlineData(10, 20)]
-        [InlineData(11, 12)]
+        [InlineData(1, 1000000)]
+        [InlineData(10000, 80000)]
+        [InlineData(10, 32000)]
         [InlineData(32767, 65500)]
-        public void lngrndTest(ushort valueMin, ushort valueMax)
+        [InlineData(70000, 100000)]
+        public void lngrndTest(int valueMin, int valueMax)
         {
             Reset();
 
@@ -60,9 +60,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             Reset();
 
-            var valueMin = 32000;
+            var valueMin = 1000000;
             var valueMax = 16000;
-            var expectedValue = 32000;
+            var expectedValue = 1000000;
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, LNGRND_ORDINAL, new List<ushort> { (ushort)(valueMin & 0xFFFF), (ushort)(valueMin >> 16), (ushort)(valueMax & 0xFFFF), (ushort)(valueMax >> 16) });
 

@@ -18,7 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(2147418111, "2147418111")]
         [InlineData(32767, "32767")]
         [InlineData(2147418112, "2147418112")]
-        public void L2ASTest(long inputValue, string expectedValue)
+        public void L2ASTest(int inputValue, string expectedValue)
         {
             //Reset State
             Reset();

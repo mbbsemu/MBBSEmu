@@ -6949,8 +6949,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void lngrnd()
         {
-            var min = GetParameterLong(0);
-            var max = GetParameterLong(2);
+            var minLow = GetParameterLong(0);
+            var minHigh = GetParameterLong(1);
+            var maxLow = GetParameterLong(2);
+            var maxHigh = GetParameterLong(3);
+
+            var min = minHigh << 16 | minLow;
+            var max = maxHigh << 16 | maxLow;
 
             if (max < min)
                 max = min;
