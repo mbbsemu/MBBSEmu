@@ -411,11 +411,18 @@ namespace MBBSEmu.Btrieve
                 return false;
             }
 
-            var sb = new StringBuilder("UPDATE data_t SET data=@data, ");
-            sb.Append(
-                string.Join(", ", Keys.Values.Select(key => $"{key.SqliteKeyName}=@{key.SqliteKeyName}").ToList()));
-            sb.Append(" WHERE id=@id;");
-            updateCmd.CommandText = sb.ToString();
+            if (Keys.Count > 0)
+            {
+                var sb = new StringBuilder("UPDATE data_t SET data=@data, ");
+                sb.Append(
+                    string.Join(", ", Keys.Values.Select(key => $"{key.SqliteKeyName}=@{key.SqliteKeyName}").ToList()));
+                sb.Append(" WHERE id=@id;");
+                updateCmd.CommandText = sb.ToString();
+            }
+            else
+            {
+                updateCmd.CommandText = "UPDATE data_t SET data=@data WHERE id=@id";
+            }
 
             updateCmd.Parameters.AddWithValue("@id", offset);
             updateCmd.Parameters.AddWithValue("@data", recordData);
@@ -528,12 +535,19 @@ namespace MBBSEmu.Btrieve
                 return 0;
             }
 
-            var sb = new StringBuilder("INSERT INTO data_t(data, ");
-            sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
-            sb.Append(") VALUES(@data, ");
-            sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
-            sb.Append(");");
-            insertCmd.CommandText = sb.ToString();
+            if (Keys.Count > 0)
+            {
+                var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                sb.Append(") VALUES(@data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                sb.Append(");");
+                insertCmd.CommandText = sb.ToString();
+            }
+            else
+            {
+                insertCmd.CommandText = "INSERT INTO data_t(data) VALUES (@data)";
+            }
 
             insertCmd.Parameters.AddWithValue("@data", record);
             foreach (var key in Keys.Values)
@@ -867,13 +881,20 @@ namespace MBBSEmu.Btrieve
                     Transaction = transaction
                 };
 
-                var sb = new StringBuilder("INSERT INTO data_t(data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
-                sb.Append(") VALUES(@data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
-                sb.Append(");");
+                if (Keys.Count > 0)
+                {
+                    var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                    sb.Append(") VALUES(@data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                    sb.Append(");");
+                    insertCmd.CommandText = sb.ToString();
+                }
+                else
+                {
+                    insertCmd.CommandText = "INSERT INTO data_t(data) VALUES (@data)";
+                }
 
-                insertCmd.CommandText = sb.ToString();
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
                 foreach (var key in btrieveFile.Keys.Values)
                     insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
