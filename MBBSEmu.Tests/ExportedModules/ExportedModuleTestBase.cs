@@ -19,6 +19,17 @@ namespace MBBSEmu.Tests.ExportedModules
 {
     public abstract class ExportedModuleTestBase : TestBase
     {
+        // list of ordinals that use the __stdcall convention, which means the callee cleans up the
+        // stack.
+        // __cdecl convention has the caller cleaning up the stack.
+        private static readonly HashSet<ushort> STDCALL_ORDINALS = new HashSet<ushort> {
+            654, // f_ldiv
+            656, // f_ludiv
+            665, // f_scopy
+            655, // f_lmod
+            657, // f_lumod
+        };
+
         private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
 
         protected const ushort STACK_SEGMENT = 0;
@@ -157,9 +168,12 @@ namespace MBBSEmu.Tests.ExportedModules
             //Process Instruction, e.g. call the method
             mbbsEmuCpuCore.Tick();
 
-            foreach (var a in apiArguments)
-                mbbsEmuCpuCore.Pop();
+            if (isCdeclOrdinal(apiOrdinal))
+                foreach (var a in apiArguments)
+                    mbbsEmuCpuCore.Pop();
         }
+
+        private static bool isCdeclOrdinal(ushort ordinal) => !STDCALL_ORDINALS.Contains(ordinal);
 
         /// <summary>
         ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
