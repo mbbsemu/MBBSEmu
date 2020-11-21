@@ -199,11 +199,14 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort Pop()
         {
-            var value = Memory.GetWord(Registers.SS, (ushort)(Registers.SP + 1));
+
+            var value = Memory.GetWord(Registers.SS, Registers.SP);
+
 #if DEBUG
             if (_showDebug)
-                _logger.Info($"Popped {value:X4} from {Registers.SP + 1:X4}");
+                _logger.Debug($"Popped {value:X4} to {Registers.SP:X4}");
 #endif
+
             Registers.SP += 2;
             return value;
         }
@@ -215,13 +218,14 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(ushort value)
         {
-            Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
+            Registers.SP -= 2;
+            Memory.SetWord(Registers.SS, Registers.SP, value);
 
 #if DEBUG
             if (_showDebug)
-                _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+                _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
 #endif
-            Registers.SP -= 2;
+
         }
 
         /// <summary>
@@ -251,11 +255,12 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x1 && Registers.IP == 0xc93)
-            //    Debugger.Break();
+            //if (Registers.CS == 0x2 && Registers.IP == 0xB27)
+                //Debugger.Break();
 
             //Show Debugging
-            //_showDebug = Registers.CS == 0x2 && Registers.IP >= 0xA50 && Registers.IP <= 0x0E6D;
+            //_showDebug = true;
+            //_showDebug = Registers.CS == 0x4 && Registers.IP >= 0x2953 && Registers.IP <= 0x298C;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -862,7 +867,7 @@ namespace MBBSEmu.CPU
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                                 {
 
-                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
@@ -877,7 +882,7 @@ namespace MBBSEmu.CPU
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
                                 {
                                     result = (ushort)(Registers.BP + Registers.DI +
-                                                       _currentInstruction.MemoryDisplacement + 1);
+                                                       _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
@@ -1674,9 +1679,9 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosw()
         {
-            stosw:
+        stosw:
             Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
-            
+
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
                 Registers.DI -= 2;
@@ -2911,7 +2916,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosb()
         {
-            stosb:
+        stosb:
             Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
@@ -3402,7 +3407,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
 
-            if (Registers.F.IsFlagSet((ushort) EnumFlags.DF))
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
                 Registers.SI -= 2;
             }
