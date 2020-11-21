@@ -22,6 +22,8 @@ namespace MBBSEmu.Tests.CPU
             Reset();
             mbbsEmuMemoryCore.AddSegment(0); //Stack Segment
             mbbsEmuCpuCore.Push(ushort.MaxValue);
+            mbbsEmuCpuCore.Push(ushort.MaxValue - 1);
+            Assert.Equal(ushort.MaxValue - 1, mbbsEmuCpuCore.Pop());
             Assert.Equal(ushort.MaxValue, mbbsEmuCpuCore.Pop());
         }
     }
