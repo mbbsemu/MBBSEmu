@@ -164,7 +164,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private protected ushort GetParameterOffset(int parameterOrdinal) => (ushort)(Registers.BP + 7 + (2 * parameterOrdinal));
+        private protected ushort GetParameterOffset(int parameterOrdinal) =>
+            (ushort) (Registers.BP + 6 + (2 * parameterOrdinal));
 
         /// <summary>
         ///     Gets a string Parameter
@@ -830,18 +831,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected void RealignStack(ushort bytesToRealign)
         {
             //Get Previous State Values off the Stack
-            var previousBP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 1));
-            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 3));
-            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 5));
+            var previousBP = Module.Memory.GetWord(Registers.SS, Registers.BP);
+            var previousIP = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 2));
+            var previousCS = Module.Memory.GetWord(Registers.SS, (ushort)(Registers.BP + 4));
 
             //Set stack back to entry state, minus parameters
-            Registers.SP += (ushort)(bytesToRealign + 6); //6 bytes for the BP, IP, SP in addition to variables passed in
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousCS);
+            Registers.SP += (ushort)(6 + bytesToRealign); //6 bytes for the BP, IP, SP in addition to variables passed in
             Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousIP);
+            Module.Memory.SetWord(Registers.SS, Registers.SP, previousCS);
             Registers.SP -= 2;
-            Module.Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), previousBP);
+            Module.Memory.SetWord(Registers.SS, Registers.SP, previousIP);
             Registers.SP -= 2;
+            Module.Memory.SetWord(Registers.SS, Registers.SP, previousBP);
             Registers.BP = Registers.SP;
         }
 
