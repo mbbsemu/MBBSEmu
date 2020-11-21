@@ -418,8 +418,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 if (isVsPrintf)
                                 {
                                     var stringPointer = Module.Memory.GetPointer(vsPrintfBase);
-                                    parameter = Module.Memory.GetString(stringPointer);
-                                    vsPrintfBase.Offset += 4;
+
+                                    if (Module.Memory.HasSegment(stringPointer.Segment))
+                                    {
+                                        parameter = Module.Memory.GetString(stringPointer);
+                                        vsPrintfBase.Offset += 4;
+                                    }
+                                    else
+                                    {
+                                        parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
+                                        _logger.Error($"Invalid Pointer: {stringPointer}");
+                                    }
                                 }
                                 else
                                 {
