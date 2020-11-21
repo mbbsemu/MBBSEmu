@@ -76,7 +76,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Default Value for the SP Register (Stack Pointer)
         /// </summary>
-        public const ushort STACK_BASE = 0xFFFF;
+        public const ushort STACK_BASE = 0xFFFE;
 
         /// <summary>
         ///     Default Segment for the Stack in Memory
