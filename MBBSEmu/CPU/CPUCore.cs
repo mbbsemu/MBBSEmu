@@ -204,7 +204,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             if (_showDebug)
-                _logger.Debug($"Popped {value:X4} to {Registers.SP:X4}");
+                _logger.Debug($"Popped {value:X4} from {Registers.SP:X4}");
 #endif
 
             Registers.SP += 2;
