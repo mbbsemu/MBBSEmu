@@ -76,7 +76,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Default Value for the SP Register (Stack Pointer)
         /// </summary>
-        public const ushort STACK_BASE = 0xFFFF;
+        public const ushort STACK_BASE = 0xFFFE;
 
         /// <summary>
         ///     Default Segment for the Stack in Memory
@@ -1676,7 +1676,7 @@ namespace MBBSEmu.CPU
         {
             stosw:
             Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
-            
+
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
                 Registers.DI -= 2;
@@ -3413,7 +3413,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Pop from Stack into the Flags Register 
+        ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Popf()
