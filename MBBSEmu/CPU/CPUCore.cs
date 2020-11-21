@@ -875,7 +875,7 @@ namespace MBBSEmu.CPU
                                 {
 
                                     result = (ushort)(Registers.BP + Registers.SI +
-                                                       _currentInstruction.MemoryDisplacement + 1);
+                                                       _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
