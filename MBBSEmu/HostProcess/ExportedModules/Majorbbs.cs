@@ -102,7 +102,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Setup Memory for Variables
             Module.Memory.AllocateVariable("PRFBUF", 0x4000, true); //Output buffer, 8kb
-            Module.Memory.AllocateVariable("PRFPTR", 0x4);
+            Module.Memory.AllocateVariable("PRFPTR", IntPtr16.Size);
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
             Module.Memory.SetWord("OUTBSZ", OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
@@ -123,8 +123,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var extPtrPointer = Module.Memory.AllocateVariable("EXTPTR", 0x4);
             Module.Memory.SetArray(extPtrPointer, usrExtPointer.Data);
 
-            Module.Memory.AllocateVariable("OTHUAP", 0x04, true); //Pointer to OTHER user
-            Module.Memory.AllocateVariable("OTHEXP", 0x04, true); //Pointer to OTHER user
+            Module.Memory.AllocateVariable("OTHUAP", IntPtr16.Size, true); //Pointer to OTHER user
+            Module.Memory.AllocateVariable("OTHEXP", IntPtr16.Size, true); //Pointer to OTHER user
             var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2); //ushort number of lines
             Module.Memory.SetWord(ntermsPointer, (ushort)_numberOfChannels); // Number of channels from Settings
 
@@ -134,13 +134,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
             Module.Memory.AllocateVariable("NMODS", 0x2); //Number of Modules Installed
             Module.Memory.SetWord("NMODS", 0x1); //set this to 1 for now
-            var modulePointer = Module.Memory.AllocateVariable("MODULE", 0x4); //Pointer to Registered Module
-            var modulePointerPointer =
-                Module.Memory.AllocateVariable("MODULE-POINTER", 0x4); //Pointer to the Module Pointer
-            Module.Memory.SetArray(modulePointerPointer, modulePointer.Data);
-            Module.Memory.AllocateVariable("UACOFF", 0x4);
-            Module.Memory.AllocateVariable("EXTOFF", 0x4);
-            Module.Memory.AllocateVariable("VDAPTR", 0x4);
+            Module.Memory.AllocateVariable("MODULE", (IntPtr16.Size * 0xFF), true); //Array of Module Info Pointers
+            Module.Memory.AllocateVariable("**MODULE", IntPtr16.Size);
+            Module.Memory.SetPointer("**MODULE", Module.Memory.GetPointer("*MODULE"));
+            Module.Memory.AllocateVariable("UACOFF", IntPtr16.Size);
+            Module.Memory.AllocateVariable("EXTOFF", IntPtr16.Size);
+            Module.Memory.AllocateVariable("VDAPTR", IntPtr16.Size);
             Module.Memory.AllocateVariable("VDATMP", VOLATILE_DATA_SIZE, true);
             Module.Memory.SetWord(Module.Memory.AllocateVariable("VDASIZ", 0x2), VOLATILE_DATA_SIZE);
             Module.Memory.AllocateVariable("BBSTTL", 0x32, true); //50 bytes for BBS Title
@@ -296,10 +295,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), currentExtUserAccPointer.Data);
 
-            //Write Blank Input
-            var inputMemory = Module.Memory.GetVariablePointer("INPUT");
-            Module.Memory.SetByte(inputMemory.Segment, inputMemory.Offset, 0x0);
-            Module.Memory.SetArray(Module.Memory.GetVariablePointer("NXTCMD"), inputMemory.Data);
+            //Reset NXTCMD
+            Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
 
             //Reset PRFPTR
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
@@ -1404,17 +1401,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void register_module()
         {
             var destinationPointer = GetParameterPointer(0);
-            Module.Memory.SetArray(Module.Memory.GetVariablePointer("MODULE"), destinationPointer.Data);
 
             var moduleStruct = Module.Memory.GetArray(destinationPointer, 61);
 
             //Description for Main Menu
             var moduleDescription = Encoding.Default.GetString(moduleStruct.ToArray(), 0, 25);
             Module.ModuleDescription = moduleDescription;
-#if DEBUG
-            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE")}) set to {destinationPointer}");
-            _logger.Info($"Module Description set to {moduleDescription}");
-#endif
 
             var moduleRoutines = new[]
                 {"lonrou", "sttrou", "stsrou", "injrou", "lofrou", "huprou", "mcurou", "dlarou", "finrou"};
@@ -1438,7 +1430,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
-            if (string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = Module.StateCode.ToString();
+
+            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode *2), destinationPointer);
+
+#if DEBUG
+            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {destinationPointer}");
+            _logger.Info($"Module Description set to {moduleDescription}");
+#endif
+
+            if (string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = (Module.StateCode + 1).ToString();
         }
 
         /// <summary>
@@ -2591,18 +2591,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void vsprintf()
         {
-            var targetOffset = GetParameter(0);
-            var targetSegment = GetParameter(1);
-            var formatOffset = GetParameter(2);
-            var formatSegment = GetParameter(3);
-
-            var formatString = Module.Memory.GetString(formatSegment, formatOffset);
+            var targetPointer = GetParameterPointer(0);
+            var formatPointer = GetParameterPointer(2);
 
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(formatString, 4, true);
+            var formattedMessage = FormatPrintf(Module.Memory.GetString(formatPointer), 4, true);
 
-
-            Module.Memory.SetArray(targetSegment, targetOffset, formattedMessage);
+            Module.Memory.SetArray(targetPointer, formattedMessage);
 
             Registers.AX = (ushort)formattedMessage.Length;
         }
@@ -4459,7 +4454,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Pointer -> Pointer -> Struct
         /// </summary>
-        private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("MODULE-POINTER").Data;
+        private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("**MODULE").Data;
 
         /// <summary>
         ///     Long Arithmatic Shift Left (Borland C++ Implicit Function)
