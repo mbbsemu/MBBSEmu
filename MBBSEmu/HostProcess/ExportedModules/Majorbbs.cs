@@ -1101,7 +1101,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     fsdapr();
                     break;
                 case 586:
-                    strol();
+                    strtol();
                     break;
                 case 238:
                     fsdbkg();
@@ -6450,7 +6450,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: long strtol(const char *strP, char **suffixPP, int radix);
         /// </summary>
-        private void strol()
+        private void strtol()
         {
             var stringPointer = GetParameterPointer(0);
             var suffixPointer = GetParameterPointer(2);
