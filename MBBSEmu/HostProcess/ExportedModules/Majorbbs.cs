@@ -1402,31 +1402,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var destinationPointer = GetParameterPointer(0);
 
-            var moduleStruct = Module.Memory.GetArray(destinationPointer, 61);
+            var moduleStruct = new ModuleStruct(Module.Memory.GetArray(destinationPointer, ModuleStruct.Size));
 
-            //Description for Main Menu
-            var moduleDescription = Encoding.Default.GetString(moduleStruct.ToArray(), 0, 25);
-            Module.ModuleDescription = moduleDescription;
-
-            var moduleRoutines = new[]
-                {"lonrou", "sttrou", "stsrou", "injrou", "lofrou", "huprou", "mcurou", "dlarou", "finrou"};
-
-            for (var i = 0; i < 9; i++)
-            {
-                var currentOffset = (ushort)(25 + (i * 4));
-
-                var routineEntryPoint = new byte[4];
-                Array.Copy(moduleStruct.ToArray(), currentOffset, routineEntryPoint, 0, 4);
-
-                //Setup the Entry Points in the Module
-                Module.EntryPoints[moduleRoutines[i]] = new IntPtr16(BitConverter.ToUInt16(routineEntryPoint, 2),
-                    BitConverter.ToUInt16(routineEntryPoint, 0));
-
-#if DEBUG
-                _logger.Info(
-                    $"Routine {moduleRoutines[i]} set to {BitConverter.ToUInt16(routineEntryPoint, 2):X4}:{BitConverter.ToUInt16(routineEntryPoint, 0):X4}");
-#endif
-            }
+            //Set Module Values from Struct
+            Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
+            Module.EntryPoints.Add("lonrou", moduleStruct.lonrou);
+            Module.EntryPoints.Add("sttrou", moduleStruct.sttrou);
+            Module.EntryPoints.Add("stsrou", moduleStruct.stsrou);
+            Module.EntryPoints.Add("injrou", moduleStruct.injrou);
+            Module.EntryPoints.Add("lofrou", moduleStruct.lofrou);
+            Module.EntryPoints.Add("huprou", moduleStruct.huprou);
+            Module.EntryPoints.Add("mcurou", moduleStruct.mcurou);
+            Module.EntryPoints.Add("dlarou", moduleStruct.dlarou);
+            Module.EntryPoints.Add("finrou", moduleStruct.finrou);
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
@@ -1435,7 +1423,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {destinationPointer}");
-            _logger.Info($"Module Description set to {moduleDescription}");
+            _logger.Info($"Module Description set to {Module.ModuleDescription}");
 #endif
 
             if (string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = (Module.StateCode + 1).ToString();
