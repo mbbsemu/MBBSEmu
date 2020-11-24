@@ -1404,6 +1404,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var moduleStruct = new ModuleStruct(Module.Memory.GetArray(destinationPointer, ModuleStruct.Size));
 
+            //We create a copy in Variable Memory in case the MODULE pointer that was passed in was on the stack
+            var localModuleStructPointer = Module.Memory.AllocateVariable("MODULE-LOCAL", ModuleStruct.Size);
+            Module.Memory.SetArray("MODULE-LOCAL", moduleStruct.Data);
+
             //Set Module Values from Struct
             Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
             Module.EntryPoints.Add("lonrou", moduleStruct.lonrou);
@@ -1419,10 +1423,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
 
-            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode *2), destinationPointer);
+            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode *2), localModuleStructPointer);
 
 #if DEBUG
-            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {destinationPointer}");
+            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {localModuleStructPointer}");
             _logger.Info($"Module Description set to {Module.ModuleDescription}");
 #endif
 
