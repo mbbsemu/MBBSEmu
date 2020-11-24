@@ -36,6 +36,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 });
 
             //Verify Results
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(expected, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("STRDST", true)));
         }
     }
