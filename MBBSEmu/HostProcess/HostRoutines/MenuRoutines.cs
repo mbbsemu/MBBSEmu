@@ -376,6 +376,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
             else
             {
+                session.InputBuffer.SetLength(1);
                 session.CurrentModule = selectedMenuItem;
                 session.SessionState = EnumSessionState.EnteringModule;
                 session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
