@@ -5313,8 +5313,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 //Base Pointer is pushed and set on the simulated ENTER
                 //remove the parameter to set stack prior to the call
-                bp = Module.Memory.GetWord(Registers.SS,
-                    (ushort)(Registers.BP + 1)),
+                bp = Module.Memory.GetWord(Registers.SS, Registers.BP),
                 cs = Registers.CS,
                 di = Registers.DI,
                 ds = Registers.DS,
