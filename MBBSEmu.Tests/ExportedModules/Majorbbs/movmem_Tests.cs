@@ -38,8 +38,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             var dstArray = mbbsEmuMemoryCore.GetArray("DST", (ushort) expected.Length);
 
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(expected, dstArray.ToArray());
         }
 
