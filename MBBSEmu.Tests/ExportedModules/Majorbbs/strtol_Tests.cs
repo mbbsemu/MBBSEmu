@@ -11,6 +11,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Theory]
         [InlineData("123456 Hello some text", 7, 10, 123456)]
         [InlineData("2345678 YESSS", 7, 10, 2345678)]
+        [InlineData("78 A", 7, 10, 78)]
+        [InlineData("0x23CACE A very big number", 1, 16, 2345678)]
         public void strtol_Test(string srcString, ushort ushortPtr, ushort numBase, int expectedValue)
         {
             //Reset State
