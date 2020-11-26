@@ -3499,7 +3499,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Sets the first num bytes of the block of memory with the specified value
         ///
-        ///     Signature: void memset(void *ptr, int value, size_t num);
+        ///     Signature: void _FAR * _RTLENTRYF _EXPFUNC memset(void _FAR *__s, int __c, size_t __n);
         /// </summary>
         private void memset()
         {
@@ -3513,6 +3513,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     (byte)valueToFill);
             }
 
+            Registers.SetPointer(destinationPointer);
 #if DEBUG
             _logger.Info($"Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
 #endif
