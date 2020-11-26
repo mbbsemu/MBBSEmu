@@ -815,7 +815,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     parsin();
                     break;
                 case 420:
-                    movemem();
+                    movmem();
                     break;
                 case 267:
                     ftell();
@@ -1977,6 +1977,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             output += "\0";
 
             Module.Memory.SetArray(string1Pointer, Encoding.Default.GetBytes(output));
+            Registers.SetPointer(string1Pointer);
 
 #if DEBUG
             _logger.Info(
@@ -3485,7 +3486,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Sets the first num bytes of the block of memory with the specified value
         ///
-        ///     Signature: void memset(void *ptr, int value, size_t num);
+        ///     Signature: void _FAR * _RTLENTRYF _EXPFUNC memset(void _FAR *__s, int __c, size_t __n);
         /// </summary>
         private void memset()
         {
@@ -3499,6 +3500,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     (byte)valueToFill);
             }
 
+            Registers.SetPointer(destinationPointer);
 #if DEBUG
             _logger.Info($"Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
 #endif
@@ -4045,14 +4047,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Copies the values of num bytes from the location pointed by source to the memory block pointed by destination.
-        ///     Copying takes place as if an intermediate buffer were used, allowing the destination and source to overlap
+        ///     Move a block of memory
         ///
-        ///     Signature: void * memmove ( void * destination, const void * source, size_t num )
-        ///
-        ///     More Info: http://www.cplusplus.com/reference/cstring/memmove/
+        ///     Signature: void movmem(char *source, char *destination, unsigned nbytes)
         /// </summary>
-        private void movemem()
+        private void movmem()
         {
             var sourcePointer = GetParameterPointer(0);
             var destinationPointer = GetParameterPointer(2);
