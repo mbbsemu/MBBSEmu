@@ -44,8 +44,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
-        [InlineData(1, new byte[] { 0x54, 0x45, 0x53, 0x54 }, new byte[] { 0x45, 0x53, 0x54, 0x54 })]
-        public void movmem_samepointer_Test(ushort moveLength, byte[] source, byte[] expected)
+        [InlineData(3, 1, new byte[] { 0x54, 0x45, 0x53, 0x54 }, new byte[] { 0x45, 0x53, 0x54, 0x54 })]
+        [InlineData(3, 2, new byte[] { 0x54, 0x45, 0x53, 0x54 }, new byte[] { 0x53, 0x54, 0x0, 0x54 })]
+        [InlineData(1, 2, new byte[] { 0x40, 0x41, 0x42, 0x41 }, new byte[] { 0x42, 0x41, 0x42, 0x41 })]
+        [InlineData(2, 1, new byte[] { 0x56, 0x40, 0x40, 0x58 }, new byte[] { 0x40, 0x40, 0x40, 0x58 })]
+        [InlineData(0, 0, new byte[] { }, new byte[] { })]
+        public void movmem_samepointer_Test(ushort moveLength, ushort bufferShift, byte[] source, byte[] expected)
         {
             //Reset State
             Reset();
@@ -60,7 +64,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, MOVMEM_ORDINAL,
                 new List<ushort>
                 {
-                    srcPointer.Offset,
+                    (ushort) (srcPointer.Offset + bufferShift),
                     srcPointer.Segment,
                     dstPointer.Offset,
                     dstPointer.Segment,
