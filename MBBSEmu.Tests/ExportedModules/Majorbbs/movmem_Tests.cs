@@ -74,8 +74,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             var dstArray = mbbsEmuMemoryCore.GetArray("POINTER", (ushort)expected.Length);
 
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(expected, dstArray.ToArray());
         }
     }

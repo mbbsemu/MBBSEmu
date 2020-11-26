@@ -1985,6 +1985,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             output += "\0";
 
             Module.Memory.SetArray(string1Pointer, Encoding.Default.GetBytes(output));
+            Registers.SetPointer(string1Pointer);
 
 #if DEBUG
             _logger.Info(

@@ -42,8 +42,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             
             var dstArray = mbbsEmuMemoryCore.GetArray("SETMEMORY", memSize);
 
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(expected, dstArray.ToArray());
         }
     }
