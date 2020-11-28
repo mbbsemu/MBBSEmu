@@ -15,6 +15,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(new[] { "Hello", "my", "name", "is" }, new[] { "Hello", "is", "my", "name" })]
         [InlineData(new[] { "Hello", "Anger" }, new[] { "Anger", "Hello" })]
         [InlineData(new[] { "zzzz", "BBBB", "CCCC", "aaaa", "000AAA" }, new[] { "000AAA", "aaaa", "BBBB", "CCCC", "zzzz" })]
+        [InlineData(new[] { "zzzz", "BBBB", "CCCC", "aaaa", "000AAA", "111ZZZ", "!!!XXX" }, new[] { "!!!XXX", "000AAA", "111ZZZ", "aaaa", "BBBB", "CCCC", "zzzz" })]
         public void sortstgs_Test(string[] inputArray, string[] expectedArray)
         {
             //Reset State
@@ -30,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 mbbsEmuMemoryCore.SetArray("INPUT_STRING"+ i, Encoding.ASCII.GetBytes(inputArray[i]));
 
             var stringPointerArray = stringPointer.ToArray();
-            var arrayPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_ARRAY", (IntPtr16.Size * 4), true);
+            var arrayPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_ARRAY", (ushort)(IntPtr16.Size * inputArray.Length), true);
             
             for (var i = 0; i < inputArray.Length; i++)
                 mbbsEmuMemoryCore.SetPointer(arrayPointer + (i * IntPtr16.Size), stringPointerArray[i]);
