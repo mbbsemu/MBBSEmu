@@ -45,27 +45,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                     (ushort) inputArray.Length
                 });
 
+            //Return Values
             var resultPointer = new IntPtr16[inputArray.Length];
             var resultString = new string[inputArray.Length];
 
             for (var i = 0; i < inputArray.Length; i++)
                 resultPointer[i] = mbbsEmuMemoryCore.GetPointer(arrayPointer + (i * IntPtr16.Size));
 
-
-            // var resultPointer1 = mbbsEmuMemoryCore.GetPointer(arrayPointer + (0 * IntPtr16.Size));
-            // var resultPointer2 = mbbsEmuMemoryCore.GetPointer(arrayPointer + (1 * IntPtr16.Size));
-            // var resultPointer3 = mbbsEmuMemoryCore.GetPointer(arrayPointer + (2 * IntPtr16.Size));
-            // var resultPointer4 = mbbsEmuMemoryCore.GetPointer(arrayPointer + (3 * IntPtr16.Size));
-
             for (var i = 0; i < inputArray.Length; i++)
                 resultString[i] = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer[i]));
 
-            // var resultString1 = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer1));
-            // var resultString2 = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer2));
-            // var resultString3 = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer3));
-            // var resultString4 = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer4));
-
-            //var resultStringArray = new [] { resultString1, resultString2, resultString3, resultString4 };
             var resultStringArray = resultString.ToArray();
 
             //Verify Results
