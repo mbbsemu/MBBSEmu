@@ -6447,16 +6447,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Registers.DX = 0;
                 Registers.AX = 0;
+
+                if (suffixPointer != IntPtr16.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new IntPtr16(stringPointer.Segment, stringPointer.Offset));
+                
                 return;
             }
 
             var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
-            var longToParseLength = longToParse.Length; //We do this as length might change with logic below
+            var longToParseLength = longToParse.Length + (stringContainingLongs.Length - stringContainingLongs.TrimStart(' ').Length); //We do this as length might change with logic below and add back in leading spaces
 
             if (longToParseLength == 0 || !longToParse.Any(char.IsDigit))
             {
                 Registers.DX = 0;
                 Registers.AX = 0;
+
+                if (suffixPointer != IntPtr16.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new IntPtr16(stringPointer.Segment, stringPointer.Offset));
+
                 return;
             }
 
@@ -6473,6 +6481,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var isNegative = false;
+
             if (radix != 10 && longToParse.StartsWith('-'))
             {
                 longToParse = longToParse.TrimStart('-');
