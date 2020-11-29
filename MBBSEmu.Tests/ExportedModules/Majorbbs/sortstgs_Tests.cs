@@ -16,6 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(new[] { "Hello", "Anger" }, new[] { "Anger", "Hello" })]
         [InlineData(new[] { "zzzz", "BBBB", "CCCC", "aaaa", "000AAA" }, new[] { "000AAA", "aaaa", "BBBB", "CCCC", "zzzz" })]
         [InlineData(new[] { "zzzz", "BBBB", "CCCC", "aaaa", "000AAA", "111ZZZ", "!!!XXX" }, new[] { "!!!XXX", "000AAA", "111ZZZ", "aaaa", "BBBB", "CCCC", "zzzz" })]
+        [InlineData(new string[] { }, new string[] { })]
         public void sortstgs_Test(string[] inputArray, string[] expectedArray)
         {
             //Reset State
@@ -25,10 +26,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var stringPointer = new IntPtr16[inputArray.Length];
 
             for (var i = 0; i < inputArray.Length; i++)
-                stringPointer[i] = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING"+ i, (ushort)(inputArray[i].Length + 1));
-
-            for (var i = 0; i < inputArray.Length; i++)
-                mbbsEmuMemoryCore.SetArray("INPUT_STRING"+ i, Encoding.ASCII.GetBytes(inputArray[i]));
+            {
+                stringPointer[i] = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING" + i, (ushort) (inputArray[i].Length + 1));
+                mbbsEmuMemoryCore.SetArray("INPUT_STRING" + i, Encoding.ASCII.GetBytes(inputArray[i]));
+            }
 
             var stringPointerArray = stringPointer.ToArray();
             var arrayPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_ARRAY", (ushort)(IntPtr16.Size * inputArray.Length), true);
@@ -50,10 +51,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var resultString = new string[inputArray.Length];
 
             for (var i = 0; i < inputArray.Length; i++)
+            {
                 resultPointer[i] = mbbsEmuMemoryCore.GetPointer(arrayPointer + (i * IntPtr16.Size));
-
-            for (var i = 0; i < inputArray.Length; i++)
                 resultString[i] = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer[i]));
+            }
 
             var resultStringArray = resultString.ToArray();
 
