@@ -47,6 +47,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
             Assert.Equal((ushort)(expectedValue >> 16), mbbsEmuCpuRegisters.DX);
+            Assert.Equal(sourceStringPointer.Segment, returnedSuffixPointer.Segment);
             Assert.Equal(sourceStringPointer.Offset + ushortPtr, returnedSuffixPointer.Offset);
         }
 
