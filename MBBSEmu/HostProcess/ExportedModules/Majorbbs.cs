@@ -6443,10 +6443,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull: true));
 
-            var longToParse = stringContainingLongs.Split(' ')[0];
+            if (stringContainingLongs == "")
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+                return;
+            }
+
+            var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
             var longToParseLength = longToParse.Length; //We do this as length might change with logic below
 
-            if (longToParseLength == 0)
+            if (longToParseLength == 0 || !longToParse.Any(char.IsDigit))
             {
                 Registers.DX = 0;
                 Registers.AX = 0;
