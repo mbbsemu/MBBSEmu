@@ -13,6 +13,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  netVersion: 'netcoreapp5.0'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
   currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime), 1)]
   buildNumber: $(currentDate)-$(currentBuildCounter)
@@ -41,7 +42,7 @@ steps:
 - task: VSTest@2
   inputs:
     testSelector: 'testAssemblies'
-    testAssemblyVer2: '**\MBBSEmu.Tests\bin\$(buildConfiguration)\MBBSEmu.Tests.dll'
+    testAssemblyVer2: '**\MBBSEmu.Tests\bin\$(buildConfiguration)\$(netVersion)\MBBSEmu.Tests.dll'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     runTestsInIsolation: true
     runTestsInParallel: true
