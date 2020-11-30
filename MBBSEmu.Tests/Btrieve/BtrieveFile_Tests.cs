@@ -12,7 +12,7 @@ namespace MBBSEmu.Tests.Btrieve
 {
     public class BtrieveFile_Tests : TestBase, IDisposable
     {
-        private static readonly Random RANDOM = new Random();
+        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
 
         private readonly string[] _btrieveFiles = { "MBBSEMU.DAT" };
 

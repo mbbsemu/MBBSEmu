@@ -1,5 +1,4 @@
 using MBBSEmu.Memory;
-using NLog;
 using System;
 using System.IO;
 using System.Text;
@@ -244,6 +243,26 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(0, fclose(filep));
 
             Assert.Equal(elementSize * numElements, new FileInfo(Path.Join(mbbsModule.ModulePath, "FILE.TXT")).Length);
+        }
+
+        [Fact]
+        public void fopen_write_fprintf_new_file()
+        {
+            //Reset State
+            Reset();
+            
+            var filep = fopen("FILE.TXT", "w");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            var controlString = "%s";
+            var numberOfCharacters = 100;
+
+            Assert.Equal(numberOfCharacters, f_printf(filep, controlString, LOREM_IPSUM.Substring(0, numberOfCharacters)));
+
+            Assert.Equal(0, fclose(filep));
+
+            Assert.Equal(numberOfCharacters, new FileInfo(Path.Join(mbbsModule.ModulePath, "FILE.TXT")).Length);
         }
 
         [Theory]

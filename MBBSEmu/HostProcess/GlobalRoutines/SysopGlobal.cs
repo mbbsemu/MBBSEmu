@@ -1,4 +1,6 @@
-﻿using MBBSEmu.Database.Repositories.Account;
+﻿using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
@@ -60,6 +62,21 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             switch (commandSequence[1].ToUpper())
             {
+                case "LISTACCOUNTS":
+                    {
+                        ListAccounts();
+                        break;
+                    }
+                case "REMOVEACCOUNT":
+                    {
+                        RemoveAccount(commandSequence);
+                        break;
+                    }
+                case "RESETPW":
+                    {
+                        ResetPassword(commandSequence);
+                        break;
+                    }
                 case "ADDKEY":
                     {
                         AddKey(commandSequence);
@@ -122,12 +139,106 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         private void Help()
         {
             _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Sysop Commands:\r\n------------------------------------------------------------\r\n".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTACCOUNTS",-30} List all accounts".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"REMOVEACCOUNT <USER>",-30} Removes account".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"RESETPW <USER> <PW> <CONF PW>",-30} Resets password for an account".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"ADDKEY <USER> <KEY>",-30} Adds a Key to a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"REMOVEKEY <USER> <KEY>",-30} Removes a Key from a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"BROADCAST <MESSAGE>",-30} Broadcasts message to all users online".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"KICK <USER>",-30} Kick user".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup\r\n".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to list all accounts
+        ///
+        ///     Syntax: /SYSOP LISTACCOUNTS
+        /// </summary>
+        private void ListAccounts()
+        {
+            _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Username-------------------------Email------------------------------Create Date-\r\n".EncodeToANSIString());
+
+            foreach (var a in _accountRepository.GetAccounts())
+            {
+                _sessions[_channelNumber].SendToClient($"{a.userName,-33}{a.email,-35}{a.createDate.ToShortDateString()}\r\n");
+            }
+
+            _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to delete an account
+        ///
+        ///     Syntax: /SYSOP REMOVEACCOUNT USER
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void RemoveAccount(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count() < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP REMOVEACCOUNT <USER>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var userName = commandSequence[2];
+            
+            //Verify the Account Exists
+            if (!IsValidUser(userName))
+                return;
+
+            if (_sessions.Values.Any(s => string.Equals(s.Username, userName, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Cannot remove logged in user: {userName}|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+            
+            //Remove the User from MBBSEmu User Database
+            var userAccount = _accountRepository.GetAccountByUsername(userName);
+            _accountRepository.DeleteAccountById(userAccount.accountId);
+
+            //Remove the User from the BBSUSR Database
+            var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            var result = _accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
+
+            if (result)
+                _accountBtrieve.Delete();
+
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to reset the password for an account
+        ///
+        ///     Syntax: /SYSOP RESETPW USER PASSWORD PASSWORD
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void ResetPassword(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count() < 5)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP RESETPW <USER> <PW> <CONF PW>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var userName = commandSequence[2];
+            var password1 = commandSequence[3];
+            var password2 = commandSequence[4];
+
+            //Verify the Account Exists
+            if (!IsValidUser(userName))
+                return;
+
+            if (password1 != password2)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Passwords do not match, please try again|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var userAccount = _accountRepository.GetAccountByUsername(userName);
+
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Reset Password for account: {userName}|RESET|\r\n".EncodeToANSIString());
+            _accountRepository.UpdateAccountById(userAccount.accountId, userAccount.userName, password1, userAccount.email);
         }
 
         /// <summary>
@@ -193,6 +304,12 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient($"--------------------\r\n|RESET|".EncodeToANSIString());
         }
 
+        /// <summary>
+        ///     Sysop Command to remove the specified key from the specified user
+        ///
+        ///     Syntax: /SYSOP REMOVEKEY USER KEY
+        /// </summary>
+        /// <param name="commandSequence"></param>
         private void RemoveKey(IReadOnlyList<string> commandSequence)
         {
             if (commandSequence.Count() < 4)

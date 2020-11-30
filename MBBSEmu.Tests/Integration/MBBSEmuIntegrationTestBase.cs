@@ -70,8 +70,8 @@ namespace MBBSEmu.Tests.Integration
         {
             //Setup Generic Database
             var resourceManager = _serviceResolver.GetService<IResourceManager>();
-            File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
-            File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
+            File.WriteAllBytes(Path.Combine(_modulePath, "BBSGEN.DB"), resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
+            File.WriteAllBytes(Path.Combine(_modulePath, "BBSUSR.DB"), resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 

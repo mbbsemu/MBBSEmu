@@ -76,7 +76,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Default Value for the SP Register (Stack Pointer)
         /// </summary>
-        public const ushort STACK_BASE = 0xFFFF;
+        public const ushort STACK_BASE = 0xFFFE;
 
         /// <summary>
         ///     Default Segment for the Stack in Memory
@@ -199,11 +199,14 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort Pop()
         {
-            var value = Memory.GetWord(Registers.SS, (ushort)(Registers.SP + 1));
+
+            var value = Memory.GetWord(Registers.SS, Registers.SP);
+
 #if DEBUG
             if (_showDebug)
-                _logger.Info($"Popped {value:X4} from {Registers.SP + 1:X4}");
+                _logger.Debug($"Popped {value:X4} from {Registers.SP:X4}");
 #endif
+
             Registers.SP += 2;
             return value;
         }
@@ -215,13 +218,14 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(ushort value)
         {
-            Memory.SetWord(Registers.SS, (ushort)(Registers.SP - 1), value);
+            Registers.SP -= 2;
+            Memory.SetWord(Registers.SS, Registers.SP, value);
 
 #if DEBUG
             if (_showDebug)
-                _logger.Info($"Pushed {value:X4} to {Registers.SP - 1:X4}");
+                _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
 #endif
-            Registers.SP -= 2;
+
         }
 
         /// <summary>
@@ -251,11 +255,12 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x1 && Registers.IP == 0xc93)
-            //    Debugger.Break();
+            //if (Registers.CS == 0x2 && Registers.IP == 0xB27)
+                //Debugger.Break();
 
             //Show Debugging
-            //_showDebug = Registers.CS == 0x2 && Registers.IP >= 0xA50 && Registers.IP <= 0x0E6D;
+            //_showDebug = true;
+            //_showDebug = Registers.CS == 0x4 && Registers.IP >= 0x2953 && Registers.IP <= 0x298C;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -263,8 +268,8 @@ namespace MBBSEmu.CPU
 #endif
             InstructionCounter++;
 
-            //Jump Table
-            Switch:
+        //Jump Table
+        Switch:
             switch (_currentInstruction.Mnemonic)
             {
                 case Mnemonic.INVALID:
@@ -322,6 +327,9 @@ namespace MBBSEmu.CPU
                     return;
                 case Mnemonic.Loope:
                     Op_Loope();
+                    return;
+                case Mnemonic.Iret:
+                    Op_Iret();
                     return;
 
                 //Instructions that do not set IP -- we'll just increment
@@ -555,6 +563,18 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fcos:
                     Op_Fcos();
+                    break;
+                case Mnemonic.Lodsw:
+                    Op_Lodsw();
+                    break;
+                case Mnemonic.Popf:
+                    Op_Popf();
+                    break;
+                case Mnemonic.Fsubp:
+                    Op_Fsubp();
+                    break;
+                case Mnemonic.Fchs:
+                    Op_Fchs();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -847,7 +867,7 @@ namespace MBBSEmu.CPU
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                                 {
 
-                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement + 1);
+                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
@@ -855,14 +875,14 @@ namespace MBBSEmu.CPU
                                 {
 
                                     result = (ushort)(Registers.BP + Registers.SI +
-                                                       _currentInstruction.MemoryDisplacement + 1);
+                                                       _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
                                 {
                                     result = (ushort)(Registers.BP + Registers.DI +
-                                                       _currentInstruction.MemoryDisplacement + 1);
+                                                       _currentInstruction.MemoryDisplacement);
                                     break;
                                 }
 
@@ -1659,12 +1679,24 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosw()
         {
-            while (Registers.CX > 0)
+        stosw:
+            Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
+
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
-                Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
-                Registers.DI += 2;
-                Registers.CX--;
+                Registers.DI -= 2;
             }
+            else
+            {
+                Registers.DI += 2;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                goto stosw;
+            }
+
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2878,24 +2910,28 @@ namespace MBBSEmu.CPU
             }
         }
 
-
         /// <summary>
         ///     Store AL at address ES:(E)DI.
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Stosb()
         {
-            Memory.SetByte(Registers.DS, Registers.SI, Registers.AL);
+        stosb:
+            Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
-                Registers.SI--;
                 Registers.DI--;
             }
             else
             {
-                Registers.SI++;
                 Registers.DI++;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                goto stosb;
             }
         }
 
@@ -3338,7 +3374,7 @@ namespace MBBSEmu.CPU
                 case double.NaN:
                     return;
             }
-            
+
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
@@ -3361,6 +3397,68 @@ namespace MBBSEmu.CPU
 
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(valueToCos);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Load String Operand
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Lodsw()
+        {
+            Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
+
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            {
+                Registers.SI -= 2;
+            }
+            else
+            {
+                Registers.SI += 2;
+            }
+        }
+
+        /// <summary>
+        ///     Pop from Stack into the Flags Register 
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Popf()
+        {
+            Registers.F = Pop();
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Iret()
+        {
+            Registers.IP = Pop();
+            Registers.CS = Pop();
+            Registers.F = Pop();
+        }
+
+        /// <summary>
+        ///     Floating Subtract ST0 from ST1
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fsubp()
+        {
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = STdestination - STsource;
+
+            //Store result at ST1
+            WriteToDestination(result);
+
+            //ST(1) becomes ST(0)
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Change Sign of value in ST(0)
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Fchs()
+        {
+            FpuStack[Registers.Fpu.GetStackTop()] = -FpuStack[Registers.Fpu.GetStackTop()];
         }
 
         /// <summary>
@@ -3564,12 +3662,12 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.SF);
-                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort) EnumFlags.ZF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
         }

@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Database.Session;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -12,11 +9,29 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using NLog;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System;
 
 namespace MBBSEmu.Tests.ExportedModules
 {
     public abstract class ExportedModuleTestBase : TestBase
     {
+        // list of ordinals that use the __stdcall convention, which means the callee cleans up the
+        // stack.
+        // __cdecl convention has the caller cleaning up the stack.
+        private static readonly HashSet<ushort> STDCALL_ORDINALS = new HashSet<ushort> {
+            654, // f_ldiv
+            656, // f_ludiv
+            665, // f_scopy
+            655, // f_lmod
+            657, // f_lumod
+        };
+
+        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
+
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
@@ -27,7 +42,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver();
+        protected ServiceResolver _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
@@ -112,7 +127,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
                 testSessions);
-            
+
         }
 
         /// <summary>
@@ -153,9 +168,12 @@ namespace MBBSEmu.Tests.ExportedModules
             //Process Instruction, e.g. call the method
             mbbsEmuCpuCore.Tick();
 
-            foreach (var a in apiArguments)
-                mbbsEmuCpuCore.Pop();
+            if (isCdeclOrdinal(apiOrdinal))
+                foreach (var a in apiArguments)
+                    mbbsEmuCpuCore.Pop();
         }
+
+        private static bool isCdeclOrdinal(ushort ordinal) => !STDCALL_ORDINALS.Contains(ordinal);
 
         /// <summary>
         ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
@@ -186,5 +204,54 @@ namespace MBBSEmu.Tests.ExportedModules
         /// </summary>
         /// <param name="apiOrdinal"></param>
         protected ReadOnlySpan<byte> ExecutePropertyTest(ushort apiOrdinal) => majorbbs.Invoke(apiOrdinal);
+
+        /// <summary>
+        ///     Generates Parameters that can be passed into a method
+        ///
+        ///     Memory must be Reset() between runs or else string will remain allocated in the heap
+        /// </summary>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        protected List<ushort> GenerateParameters(object[] values)
+        {
+            var parameters = new List<ushort>();
+            foreach (var v in values)
+            {
+                switch (v)
+                {
+                    case string @parameterString:
+                    {
+                        var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
+                        mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
+                        parameters.Add(stringParameterPointer.Offset);
+                        parameters.Add(stringParameterPointer.Segment);
+                        break;
+                    }
+                    case uint @parameterULong:
+                    {
+                        var longBytes = BitConverter.GetBytes(@parameterULong);
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                        break;
+                    }
+                    case int @parameterLong:
+                    {
+                        var longBytes = BitConverter.GetBytes(@parameterLong);
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                        break;
+                    }
+                    case ushort @parameterUInt:
+                        parameters.Add(@parameterUInt);
+                        break;
+
+                    case short @parameterInt:
+                        parameters.Add((ushort)@parameterInt);
+                        break;
+                }
+            }
+
+            return parameters;
+        }
     }
 }

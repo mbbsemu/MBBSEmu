@@ -22,44 +22,45 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Represents the key number, starting from 0. Each database has at least one key.
         /// </summary>
-        public ushort Number
-        {
-            get => PrimarySegment.Number;
-        }
+        public ushort Number => PrimarySegment.Number;
 
         /// <summary>
         ///     The primary segment in a key. Always first in the list of Segments.
         /// </summary>
-        public BtrieveKeyDefinition PrimarySegment
-        {
-            get => Segments[0];
-        }
+        public BtrieveKeyDefinition PrimarySegment => Segments[0];
 
         /// <summary>
         ///     Whether the key is a composite key - composed of two or more segments.
         /// </summary>
-        public bool IsComposite
-        {
-            get => Segments.Count > 1;
-        }
+        public bool IsComposite => Segments.Count > 1;
 
         /// <summary>
         ///     Whether the key data in the record can be modified once inserted.
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsModifiable { get => PrimarySegment.IsModifiable; }
+        public bool IsModifiable => PrimarySegment.IsModifiable;
 
         /// <summary>
         ///     Whether the key data in the record is unique (no duplicates allowed).
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsUnique { get => PrimarySegment.IsUnique; }
+        public bool IsUnique => PrimarySegment.IsUnique;
 
         /// <summary>
         ///     Whether the key data in the record is nullable.
         ///     <para/>All segmented keys in a composite key must have the same value.
         /// </summary>
-        public bool IsNullable { get => PrimarySegment.IsNullable; }
+        public bool IsNullable => PrimarySegment.IsNullable;
+
+        /// <summary>
+        ///     Whether this key requires ACS.
+        /// </summary>
+        public bool RequiresACS => Segments.Any(segment => segment.RequiresACS);
+
+        /// <summary>
+        ///     The ACS table of this key.
+        /// </summary>
+        public byte[] ACS => Segments.Where(segment => segment.ACS != null).DefaultIfEmpty(null).Select(segment => segment.ACS).First();
 
         /// <summary>
         ///     The total length in bytes of the key.
@@ -119,6 +120,36 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public object ExtractKeyInRecordToSqliteObject(ReadOnlySpan<byte> data) => KeyDataToSqliteObject(ExtractKeyDataFromRecord(data));
 
+        private ReadOnlySpan<byte> ApplyACS(ReadOnlySpan<byte> keyData)
+        {
+            if (!RequiresACS)
+                return keyData;
+
+            var dst = new byte[Length];
+            var offset = 0;
+            foreach (var segment in Segments)
+            {
+                var dstSpan = dst.AsSpan().Slice(offset, segment.Length);
+                var key = keyData.Slice(offset, segment.Length);
+                if (segment.RequiresACS)
+                {
+                    for (var i = 0; i < segment.Length; ++i)
+                    {
+                        dstSpan[i] = segment.ACS[key[i]];
+                    }
+                }
+                else
+                {
+                    // simple copy
+                    key.CopyTo(dstSpan);
+                }
+
+                offset += segment.Length;
+            }
+
+            return dst;
+        }
+
         /// <summary>
         ///     Returns an object that can be used for inserting into the data_t key column based on
         ///     the type of this key from keyData.
@@ -129,6 +160,8 @@ namespace MBBSEmu.Btrieve
             {
                 return DBNull.Value;
             }
+
+            keyData = ApplyACS(keyData);
 
             if (IsComposite)
                 return keyData.ToArray();

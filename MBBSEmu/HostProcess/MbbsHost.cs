@@ -509,8 +509,10 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            Run(session.CurrentModule.ModuleIdentifier,
-                session.CurrentModule.EntryPoints["lonrou"], session.Channel);
+            var entryPoint = session.CurrentModule.EntryPoints["lonrou"];
+
+            if (entryPoint != IntPtr16.Empty)
+                Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
             session.OutputEnabled = true;
@@ -766,7 +768,7 @@ namespace MBBSEmu.HostProcess
             module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
 
             //Add it to the Module Dictionary
-            module.StateCode = (short)(_modules.Count + 1);
+            module.StateCode = (short)_modules.Count;
             _modules[module.ModuleIdentifier] = module;
 
             //Run INIT
