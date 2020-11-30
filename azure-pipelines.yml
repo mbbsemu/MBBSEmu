@@ -27,6 +27,11 @@ steps:
 
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
 
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**\*.sln'
+
 - task: VSBuild@1
   displayName: 'Building MBBSEmu'
   inputs:
