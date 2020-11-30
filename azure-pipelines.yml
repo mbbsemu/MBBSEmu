@@ -5,7 +5,7 @@
 
 trigger:
   branches:
-    include: 
+    include:
       - master
 
 pool:
@@ -19,13 +19,6 @@ variables:
   buildNumber: $(currentDate)-$(currentBuildCounter)
 
 steps:
-#- task: UseDotNet@1
-  #displayName: 'Install .NET Core SDK'
-  #inputs:
-  #  version: 5.0.x
-  #  performMultiLevelLookup: true
-  #  includePreviewVersions: false # Required for preview versions
-
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
 
 - task: NuGetCommand@2
