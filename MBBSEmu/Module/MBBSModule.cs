@@ -48,7 +48,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Menu Option Key of Module
         /// </summary>
-        public string MenuOptionKey;
+        public string MenuOptionKey { get; set; }
 
         /// <summary>
         ///     Module DLL

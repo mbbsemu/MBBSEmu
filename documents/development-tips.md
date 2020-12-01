@@ -8,12 +8,12 @@ We expect the overall process to remain the same; however some steps may shift s
 
 ### Prerequisites
 
-* .NET Core SDK 3.1
-  * 3.1.302 at the time of this writing
+* .NET Core SDK 5.0
+  * 5.0.100 at the time of this writing
   * x64 was used; not sure about other versions
   * Windows
     * Installed via [chocolatey](https://chocolatey.org/) - [chocolately .NET Core SDK](https://chocolatey.org/packages/dotnetcore-sdk)
-    * `choco install dotnetcore-sdk --version 3.1.302`
+    * `choco install dotnetcore-sdk --version 5.0.100`
   * macOS
     * Installed via [Homebrew](https://brew.sh) - [Homebrew .NET Core SDK](https://formulae.brew.sh/cask/dotnet-sdk)
     * `brew cask install dotnet-sdk`
@@ -24,10 +24,10 @@ We expect the overall process to remain the same; however some steps may shift s
 * Debug
   * `dotnet build`
     * Yep, that's it!
-  * Artifacts are dumped to `MBBSEmu\bin\Debug\netcoreapp3.1`
+  * Artifacts are dumped to `MBBSEmu\bin\Debug\netcoreapp5.0`
 * Release
   * `dotnet build --configuration Release`
-  * Artifacts are dumped to `MBBSEmu\bin\Release\netcoreapp3.1`
+  * Artifacts are dumped to `MBBSEmu\bin\Release\netcoreapp5.0`
 
 ## Run the tests
 
