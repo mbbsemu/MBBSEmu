@@ -4,9 +4,11 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using MBBSEmu.CPU.Interrupts;
 
 namespace MBBSEmu.CPU
 {
@@ -103,13 +105,6 @@ namespace MBBSEmu.CPU
         public long InstructionCounter { get; set; }
 
         /// <summary>
-        ///     INT 21h defined Disk Transfer Area
-        ///
-        ///     Buffer used to hold information on the current Disk / IO operation
-        /// </summary>
-        private IntPtr16 DiskTransferArea;
-
-        /// <summary>
         ///     Default Compiler Hints for use on methods within the CPU
         ///
         ///     AggressiveOptimization == The method contains a hot path and should be optimized
@@ -122,12 +117,18 @@ namespace MBBSEmu.CPU
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        public CpuCore(ILogger logger)
+        private Dictionary<int, IInterruptHandler> _interruptHandlers;
+
+        public CpuCore(ILogger logger) : this()
         {
             _logger = logger;
         }
 
-        public CpuCore() { }
+        public CpuCore()
+        {
+            _interruptHandlers = new Dictionary<int, IInterruptHandler> {{0x21, new Int21h(Registers, Memory)}};
+
+        }
 
         /// <summary>
         ///     Resets the CPU back to a starting state
@@ -1058,96 +1059,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Int()
         {
-            switch (_currentInstruction.Immediate8)
-            {
-                case 0x21:
-                    Op_Int_21h();
-                    return;
-                case 0x3E:
-                    //Borland Interrupt -- ignored
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown INT: {_currentInstruction.Immediate8:X2}");
-            }
-        }
-
-        [MethodImpl(CompilerOptimizations)]
-        private void Op_Int_21h()
-        {
-            switch (Registers.AH)
-            {
-                case 0x19:
-                    {
-                        //DOS - GET DEFAULT DISK NUMBER
-                        //Return: AL = Drive Number
-                        Registers.AL = 2; //C:
-                        return;
-                    }
-                case 0x1A:
-                    {
-                        //Specifies the memory area to be used for subsequent FCB operations.
-                        //DS:DX = Segment:offset of DTA
-                        DiskTransferArea = new IntPtr16(Registers.DS, Registers.DX);
-                        return;
-                    }
-                case 0x2A:
-                    {
-                        //DOS - GET CURRENT DATE
-                        //Return: DL = day, DH = month, CX = year
-                        //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
-                        Registers.DL = (byte)DateTime.Now.Day;
-                        Registers.DH = (byte)DateTime.Now.Month;
-                        Registers.CX = (ushort)DateTime.Now.Year;
-                        Registers.AL = (byte)DateTime.Now.DayOfWeek;
-                        return;
-                    }
-                case 0x2F:
-                    {
-                        //Get DTA address
-                        /*
-                         *  Action:	Returns the segment:offset of the current DTA for read/write operations.
-                            On entry:	AH = 2Fh
-                            Returns:	ES:BX = Segment.offset of current DTA
-                         */
-                        if (DiskTransferArea == null && !Memory.TryGetVariablePointer("Int21h-DTA", out DiskTransferArea))
-                            DiskTransferArea = Memory.AllocateVariable("Int21h-DTA", 0xFF);
-
-                        Registers.ES = DiskTransferArea.Segment;
-                        Registers.BX = DiskTransferArea.Offset;
-                        return;
-                    }
-                case 0x47:
-                    {
-                        /*
-                            DOS 2+ - GET CURRENT DIRECTORY
-                            DL = drive (0=default, 1=A, etc.)
-                            DS:DI points to 64-byte buffer area
-                            Return: CF set on error
-                            AX = error code
-                            Note: the returned path does not include the initial backslash
-                         */
-                        Memory.SetArray(Registers.DS, Registers.SI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
-                        Registers.AX = 0;
-                        Registers.DL = 0;
-                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        return;
-                    }
-                case 0x62:
-                    {
-                        /*
-                            INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
-                            Return: BX = segment address of PSP
-                            We allocate 0xFFFF to ensure it has it's own segment in memory
-                         */
-                        if (!Memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
-                            pspPointer = Memory.AllocateVariable("Int21h-PSP", 0xFFFF);
-
-                        Registers.BX = pspPointer.Segment;
-                        return;
-                    }
-                default:
-                    throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
-            }
+            _interruptHandlers[_currentInstruction.Immediate8].Handle();
         }
 
         [MethodImpl(CompilerOptimizations)]
