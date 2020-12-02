@@ -1429,8 +1429,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {localModuleStructPointer}");
             _logger.Info($"Module Description set to {Module.ModuleDescription}");
 #endif
-
-            if (string.IsNullOrEmpty(Module.MenuOptionKey)) Module.MenuOptionKey = (Module.StateCode + 1).ToString();
         }
 
         /// <summary>
