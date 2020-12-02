@@ -322,7 +322,12 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public ushort GetWord(ushort segment, ushort offset) => BitConverter.ToUInt16(_memorySegments[segment], offset);
+        public unsafe ushort GetWord(ushort segment, ushort offset) {
+            fixed (byte *p = _memorySegments[segment]) {
+                ushort* ptr = (ushort*)(p + offset);
+                return *ptr;
+            }
+        }
 
         /// <summary>
         ///     Returns a pointer stored at the specified pointer
@@ -460,12 +465,12 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetWord(ushort segment, ushort offset, ushort value)
+        public unsafe void SetWord(ushort segment, ushort offset, ushort value)
         {
-            _ = new Span<byte>(_memorySegments[segment])
-            {
-                [offset] = (byte) (value & 0xFF), [offset + 1] = (byte) (value >> 8)
-            };
+            fixed (byte *dst = _memorySegments[segment]) {
+                ushort *ptr = (ushort*)(dst + offset);
+                *ptr = value;
+            }
         }
 
         /// <summary>
@@ -488,11 +493,8 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
-            var destinationSpan = new Span<byte>(_memorySegments[segment]);
-            for (var i = 0; i < array.Length; i++)
-            {
-                destinationSpan[offset++] = array[i];
-            }
+            var destinationSpan = _memorySegments[segment].AsSpan(offset);
+            array.CopyTo(destinationSpan);
         }
 
         /// <summary>
