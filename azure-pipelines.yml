@@ -5,7 +5,7 @@
 
 trigger:
   branches:
-    include: 
+    include:
       - master
 
 pool:
@@ -13,30 +13,41 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  netVersion: 'net5.0'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
   currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime), 1)]
   buildNumber: $(currentDate)-$(currentBuildCounter)
 
 steps:
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
+
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**\*.sln'
+
+- task: VSBuild@1
+  displayName: 'Building MBBSEmu'
+  inputs:
+    configuration: $(buildConfiguration)
 
 - task: VSTest@2
   inputs:
     testSelector: 'testAssemblies'
-    testAssemblyVer2: '**\MBBSEmu.Tests\bin\**\MBBSEmu.Tests.dll'
+    testAssemblyVer2: '**\MBBSEmu.Tests\bin\$(buildConfiguration)\$(netVersion)\MBBSEmu.Tests.dll'
     searchFolder: '$(System.DefaultWorkingDirectory)'
     runTestsInIsolation: true
+    runTestsInParallel: true
     codeCoverageEnabled: true
     publishRunAttachments: false
+    rerunFailedTests: true
 
 - task: DotNetCoreCLI@2
   inputs:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x64\ --configuration $(buildConfiguration) --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -44,7 +55,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --configuration $(buildConfiguration) --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\win-x86\ --configuration $(buildConfiguration) --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -52,7 +63,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --configuration $(buildConfiguration) --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-x64\ --configuration $(buildConfiguration) --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -60,7 +71,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --configuration $(buildConfiguration) --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\linux-arm\ --configuration $(buildConfiguration) --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: DotNetCoreCLI@2
@@ -68,7 +79,7 @@ steps:
     command: 'publish'
     publishWebProjects: false
     projects: '**\MBBSEmu.csproj'
-    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --configuration $(buildConfiguration) --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true /p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
+    arguments: '--output $(Build.BinariesDirectory)\publish\osx-x64\ --configuration $(buildConfiguration) --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n'
     zipAfterPublish: false
 
 - task: ArchiveFiles@2
