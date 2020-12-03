@@ -11,9 +11,7 @@ namespace MBBSEmu.Disassembler
         private readonly MZHeader _mzHeader;
         private readonly string _exeFile;
         private readonly byte[] _exeFileData;
-
         public readonly List<Segment> Segments;
-
         public readonly List<IntPtr16> RelocationRecords;
 
         public IntPtr16 StartingPointer = new IntPtr16(1 + 0x10, 0); //PSP+10h for Segment
@@ -35,16 +33,17 @@ namespace MBBSEmu.Disassembler
         {
             //Get EXE Contents
             var contentSpan = new ReadOnlySpan<byte>(_exeFileData);
-            var segment = new Segment
-            {
-                Data = contentSpan.Slice(_mzHeader.HeaderSize, _mzHeader.ProgramSize).ToArray(),
-                Flag = (ushort) EnumSegmentFlags.Code
-            };
-            Segments.Add(segment);
-
+            var programData = contentSpan.Slice(_mzHeader.HeaderSize, _mzHeader.ProgramSize);
 
             //Parse Relocation Records
-            LoadRelocationRecords(); 
+            LoadRelocationRecords();
+
+            //Get First Instruction
+            var dataSegmentStart = BitConverter.ToUInt16(programData.ToArray(), RelocationRecords[0].Offset);
+            dataSegmentStart <<= 4;
+
+            Segments.Add(new Segment() { Data = programData.Slice(0, dataSegmentStart).ToArray(), Flag = (ushort)EnumSegmentFlags.Code, Ordinal = 1 });
+            Segments.Add(new Segment() { Data = programData.Slice(dataSegmentStart).ToArray(), Flag = (ushort)EnumSegmentFlags.Data, Ordinal = 2 });
         }
 
         /// <summary>
@@ -57,7 +56,7 @@ namespace MBBSEmu.Disassembler
                 var relocationAddress = _mzHeader.RelocationOffset + (4 * i);
 
                 var offset = BitConverter.ToUInt16(_exeFileData, relocationAddress);
-                var segment = BitConverter.ToUInt16(_exeFileData, relocationAddress+2);
+                var segment = BitConverter.ToUInt16(_exeFileData, relocationAddress + 2);
 
                 RelocationRecords.Add(new IntPtr16(segment, offset));
             }
