@@ -260,16 +260,33 @@ namespace MBBSEmu
                 }
                 else if (_isModuleConfigFile)
                 {
+                    //Load Menu Option Keys
+                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789".ToCharArray().ToList();
+
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
                         .AddJsonFile(_moduleConfigFileName, optional: false, reloadOnChange: true).Build();
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
-                        //Check for Non Character MenuOptionKey or duplicate MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0]) || _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"])))
+                        //Check for available MenuOptionKeys
+                        if (menuOptionKeyList.Count < 1)
                         {
-                            _logger.Error($"Invalid menu option key for {m["Identifier"]}, module not loaded");
+                            _logger.Error($"Maximum module limit reached -- {m["Identifier"]} not loaded");
+                            continue;
+                        }
+                        
+                        //Check for Non Character MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0])))
+                        {
+                            _logger.Error($"Invalid menu option key (NOT A-Z) for {m["Identifier"]}, module not loaded");
+                            continue;
+                        }
+
+                        //Check for duplicate MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"]))
+                        {
+                            _logger.Error($"Duplicate menu option key for {m["Identifier"]}, module not loaded");
                             continue;
                         }
 
@@ -278,6 +295,17 @@ namespace MBBSEmu
                         {
                             _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
                             continue;
+                        }
+
+                        //If MenuOptionKey, remove from allowable list
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]))
+                            menuOptionKeyList.Remove(char.Parse(m["MenuOptionKey"]));
+                        
+                        //Check for missing MenuOptionKey, assign, remove from allowable list
+                        if (string.IsNullOrEmpty(m["MenuOptionKey"]))
+                        {
+                            m["MenuOptionKey"] = menuOptionKeyList[0].ToString();
+                            menuOptionKeyList.RemoveAt(0);
                         }
 
                         //Load Modules

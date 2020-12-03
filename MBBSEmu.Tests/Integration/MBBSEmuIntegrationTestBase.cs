@@ -79,7 +79,7 @@ namespace MBBSEmu.Tests.Integration
             var host = _serviceResolver.GetService<IMbbsHost>();
             var moduleConfigurations = new List<ModuleConfiguration>
             {
-                new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = null}
+                new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = "A"}
             };
 
             host.Start(moduleConfigurations);

@@ -3330,7 +3330,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Pop from Stack into the Flags Register 
+        ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Popf()
