@@ -216,7 +216,7 @@ namespace MBBSEmu
                 if (_doExe)
                 {
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeRuntime(mzFile, null);
+                    var exe = new ExeRuntime(mzFile, null, _logger);
                     exe.Load();
                     exe.Run();
                     return;

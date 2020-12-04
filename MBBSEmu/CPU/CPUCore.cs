@@ -1093,7 +1093,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                var result = (byte)(0 - destination);
+                var result = (byte)-destination;
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
@@ -1107,7 +1107,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                var result = (ushort)(0 - destination);
+                var result = (ushort)-destination;
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);

@@ -113,6 +113,43 @@ namespace MBBSEmu.DOS.Interrupts
                         _registers.BX = _registers.AL;
                         return;
                     }
+                case 0x40:
+                {
+                        /*
+                          INT 21 - AH = 40h DOS 2+ - WRITE TO FILE WITH HANDLE
+                            BX = file handle
+                            CX = number of bytes to write
+                            DS:DX -> buffer
+
+                            Return: CF set on error
+                             AX = error code
+
+                            CF clear if successful
+                             AX = number of bytes written
+
+                            Note: if CX is zero, no data is written, and the file is truncated or extended
+                             to the current position
+                         */
+                        var fileHandle = _registers.BX;
+                        var numberOfBytes = _registers.CX;
+                        var bufferPointer = new IntPtr16(_registers.DS, _registers.DX);
+
+                        var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
+
+                        /*
+                             DOS Default/Predefined Handles:
+                             0 - Standard Input Device - can be redirected (STDIN)
+	                         1 - Standard Output Device - can be redirected (STDOUT)
+	                         2 - Standard Error Device - can be redirected (STDERR)
+	                         3 - Standard Auxiliary Device (STDAUX)
+	                         4 - Standard Printer Device (STDPRN)
+                         */
+
+                        if (fileHandle <= 2)
+                            Console.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+
+                        break;
+                }
                 case 0x47:
                     {
                         /*
@@ -129,6 +166,17 @@ namespace MBBSEmu.DOS.Interrupts
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
+                case 0x4C:
+                {
+                        /*
+                            INT 21 - AH = 4Ch DOS 2+ - QUIT WITH EXIT CODE (EXIT)
+                            AL = exit code
+                            Return: never returns
+                         */
+                        Console.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+                        _registers.Halt = true;
+                        break;
+                }
                 case 0x62:
                     {
                         /*

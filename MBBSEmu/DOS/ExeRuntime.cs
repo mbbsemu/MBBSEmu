@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using NLog;
 
 namespace MBBSEmu.DOS
 {
@@ -17,6 +18,7 @@ namespace MBBSEmu.DOS
         public IMemoryCore Memory;
         public ICpuCore Cpu;
         public CpuRegisters Registers;
+        private ILogger _logger;
 
         /// <summary>
         ///     Segment which holds the Environment Variables
@@ -32,11 +34,12 @@ namespace MBBSEmu.DOS
 
         private readonly List<string> _environmentVariables;
 
-        public ExeRuntime(MZFile file, List<string> environmentVariables)
+        public ExeRuntime(MZFile file, List<string> environmentVariables, ILogger logger)
         {
+            _logger = logger;
             File = file;
             Memory = new MemoryCore();
-            Cpu = new CpuCore();
+            Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory) });
             _environmentVariables = environmentVariables;
@@ -59,7 +62,7 @@ namespace MBBSEmu.DOS
 
         public void Run()
         {
-            while (true)
+            while (!Registers.Halt)
                 Cpu.Tick();
         }
 
