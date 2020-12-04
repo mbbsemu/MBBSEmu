@@ -23,7 +23,7 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private IntPtr16 DiskTransferArea;
 
-        public ushort Vector => 21;
+        public ushort Vector => 0x21;
 
         public Int21h(CpuRegisters registers, IMemoryCore memory)
         {
