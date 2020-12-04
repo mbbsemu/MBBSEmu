@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MBBSEmu.CPU;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
 using NLog;
@@ -40,7 +41,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate);
+            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory)});
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)

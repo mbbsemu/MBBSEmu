@@ -1,15 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
+using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 
-namespace MBBSEmu.CPU.Interrupts
+namespace MBBSEmu.DOS.Interrupts
 {
+    /// <summary>
+    ///     Interrupt Vector 21h which handles the main DOS APIs
+    ///
+    ///     This is implemented within the DOS Kernel
+    /// </summary>
     public class Int21h : IInterruptHandler
     {
-        private CpuRegisters _registers;
-        private IMemoryCore _memory;
+        private readonly CpuRegisters _registers;
+        private readonly IMemoryCore _memory;
 
         /// <summary>
         ///     INT 21h defined Disk Transfer Area
@@ -17,6 +22,8 @@ namespace MBBSEmu.CPU.Interrupts
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
         private IntPtr16 DiskTransferArea;
+
+        public ushort Vector => 21;
 
         public Int21h(CpuRegisters registers, IMemoryCore memory)
         {
@@ -42,6 +49,17 @@ namespace MBBSEmu.CPU.Interrupts
                         DiskTransferArea = new IntPtr16(_registers.DS, _registers.DX);
                         return;
                     }
+                case 0x25:
+                {
+                    /*
+                        INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
+                        AL = interrupt number
+                        DS:DX = new vector to be used for specified interrupt
+                     */
+
+                    //TODO -- Implement, ignore for now
+                    return;
+                }
                 case 0x2A:
                     {
                         //DOS - GET CURRENT DATE
@@ -66,6 +84,33 @@ namespace MBBSEmu.CPU.Interrupts
 
                         _registers.ES = DiskTransferArea.Segment;
                         _registers.BX = DiskTransferArea.Offset;
+                        return;
+                    }
+                case 0x30:
+                    {
+                        /*  DOS 2+ - GET DOS VERSION
+                            AH = 30h
+                            Return: AL = Major Version number (0 for DOS 1.x)
+                            AH = Minor Version number
+                            BH = OEM number
+                             00h IBM
+                             16h DEC
+                            BL:CX = 24-bit user number
+                         */
+                        _registers.AL = 6;
+                        _registers.AH = 22;
+                        return;
+
+                    }
+                case 0x35:
+                    {
+                        /*
+                           INT 21 - AH = 35h DOS 2+ - GET INTERRUPT VECTOR
+                           AL = interrupt number
+                           Return: ES:BX = value of interrupt vector
+                         */
+                        _registers.ES = 0xFFFF;
+                        _registers.BX = _registers.AL;
                         return;
                     }
                 case 0x47:

@@ -20,7 +20,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using MBBSEmu.Disassembler;
-using MBBSEmu.Exe;
+using MBBSEmu.DOS;
 
 namespace MBBSEmu
 {
@@ -216,7 +216,9 @@ namespace MBBSEmu
                 if (_doExe)
                 {
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeFile(mzFile);
+                    var exe = new ExeRuntime(mzFile, null);
+                    exe.Load();
+                    exe.Run();
                     return;
                 }
 

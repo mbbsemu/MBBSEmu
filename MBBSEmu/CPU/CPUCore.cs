@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.CPU.Interrupts;
+using MBBSEmu.DOS.Interrupts;
 
 namespace MBBSEmu.CPU
 {
@@ -117,7 +117,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        private Dictionary<int, IInterruptHandler> _interruptHandlers;
+        private Dictionary<int, IInterruptHandler> _interruptHandlers = new Dictionary<int, IInterruptHandler>();
 
         public CpuCore(ILogger logger) : this()
         {
@@ -126,7 +126,6 @@ namespace MBBSEmu.CPU
 
         public CpuCore()
         {
-            _interruptHandlers = new Dictionary<int, IInterruptHandler> {{0x21, new Int21h(Registers, Memory)}};
 
         }
 
@@ -137,7 +136,7 @@ namespace MBBSEmu.CPU
         /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
-            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate)
+            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
         {
             //Setup Debug Pointers
             _currentInstructionPointer = IntPtr16.Empty;
@@ -146,6 +145,9 @@ namespace MBBSEmu.CPU
 
             //Setup Delegate Call
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
+
+            foreach (var h in interruptHandlers)
+                _interruptHandlers.Add(h.Vector, h);
 
             //Setup Memory Space
             Memory = memoryCore;
@@ -158,6 +160,9 @@ namespace MBBSEmu.CPU
             Registers.SS = STACK_SEGMENT;
             Registers.ES = EXTRA_SEGMENT;
             Registers.Halt = false;
+
+            //Setup Interrupt Handlers
+            _interruptHandlers = new Dictionary<int, IInterruptHandler> { { 0x21, new Int21h(Registers, Memory) } };
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
@@ -2866,10 +2871,6 @@ namespace MBBSEmu.CPU
         {
             var destination = Registers.AL;
             var source = Memory.GetByte(Registers.ES, Registers.DI);
-
-#if DEBUG
-            _logger.Info($"Comparing {(char)destination} to {(char)source}");
-#endif
 
             unchecked
             {

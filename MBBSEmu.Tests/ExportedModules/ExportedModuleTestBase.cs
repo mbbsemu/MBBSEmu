@@ -75,7 +75,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 mbbsModule,
                 testSessions);
 
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate, null);
         }
 
         private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
