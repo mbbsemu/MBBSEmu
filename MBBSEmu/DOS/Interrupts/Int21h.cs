@@ -50,16 +50,18 @@ namespace MBBSEmu.DOS.Interrupts
                         return;
                     }
                 case 0x25:
-                {
-                    /*
-                        INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
-                        AL = interrupt number
-                        DS:DX = new vector to be used for specified interrupt
-                     */
+                    {
+                        /*
+                            INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
+                            AL = interrupt number
+                            DS:DX = new vector to be used for specified interrupt
+                         */
 
-                    //TODO -- Implement, ignore for now
-                    return;
-                }
+                        //TODO -- Implement, ignore for now
+                        var interruptVector = _registers.AL;
+                        var newVectorPointer = new IntPtr16(_registers.DS, _registers.DX);
+                        return;
+                    }
                 case 0x2A:
                     {
                         //DOS - GET CURRENT DATE
@@ -114,7 +116,7 @@ namespace MBBSEmu.DOS.Interrupts
                         return;
                     }
                 case 0x40:
-                {
+                    {
                         /*
                           INT 21 - AH = 40h DOS 2+ - WRITE TO FILE WITH HANDLE
                             BX = file handle
@@ -149,7 +151,47 @@ namespace MBBSEmu.DOS.Interrupts
                             Console.WriteLine(Encoding.ASCII.GetString(dataToWrite));
 
                         break;
-                }
+                    }
+                case 0x44:
+                    {
+                        /*
+                            INT 21 - AH = 44H DOS Get Device Information
+                            
+                            Sub-Function Definition is in AL
+                         */
+                        switch (_registers.AL)
+                        {
+
+                            case 0x0:
+                                {
+                                    /*
+                                        INT 21 - AX = 4400h DOS 2+ - IOCTL - GET DEVICE INFORMATION
+                                        BX = file or device handle
+                                        Return: CF set on error
+                                         AX = error code
+                                        CF clear if successful
+                                         DX = device info
+                                     */
+
+                                    //Device
+                                    if (_registers.BX <= 2)
+                                    {
+                                        _registers.DX = 0;
+
+                                        _registers.DX |= 1; //STD Input
+                                        _registers.DX |= 1 << 1; //STD Output
+                                        _registers.DX |= 1 << 4; //Reserved? DOSBox sets it
+                                        _registers.DX |= 1 << 6; //Not EOF
+                                        _registers.DX |= 1 << 7; //It's a Device
+                                        _registers.DX |= 1 << 7; //IS Device
+                                        _registers.DX |= 1 << 15; //Reserved? DOSBox sets it
+                                    }
+                                }
+                                break;
+                        }
+
+                        break;
+                    }
                 case 0x47:
                     {
                         /*
@@ -166,8 +208,30 @@ namespace MBBSEmu.DOS.Interrupts
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
+                case 0x4A:
+                    {
+                        /*
+                            INT 21 - AH = 4Ah DOS 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)
+                            ES = Segment address of block to change
+                            BX = New size in paragraphs
+                            Return: CF set on error
+                            AX = error code
+                            BX = maximum size possible for the block
+
+                            Because MBBSEmu allocates blocks as 0xFFFF in length, we ignore this and proceed
+                         */
+
+                        var segmentToAdjust = _registers.ES;
+                        var newSize = _registers.BX;
+
+                        if (!_memory.HasSegment(segmentToAdjust))
+                            _memory.AddSegment(segmentToAdjust);
+
+                        _registers.BX = 0xFFFF;
+                        break;
+                    }
                 case 0x4C:
-                {
+                    {
                         /*
                             INT 21 - AH = 4Ch DOS 2+ - QUIT WITH EXIT CODE (EXIT)
                             AL = exit code
@@ -176,7 +240,7 @@ namespace MBBSEmu.DOS.Interrupts
                         Console.WriteLine($"Exiting With Exit Code: {_registers.AL}");
                         _registers.Halt = true;
                         break;
-                }
+                    }
                 case 0x62:
                     {
                         /*

@@ -41,7 +41,7 @@ namespace MBBSEmu.DOS
             Memory = new MemoryCore();
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory) });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory), new Int1Ah(Registers, Memory) });
             _environmentVariables = environmentVariables;
             PSP_SEGMENT = (ushort)(file.Segments.Count + 0x10);
 
@@ -113,7 +113,7 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP()
         {
-            var psp = new PSPStruct { NextSeg = 3, EnvSeg = ENVIRONMENT_SEGMENT };
+            var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = ENVIRONMENT_SEGMENT };
             Memory.AddSegment(PSP_SEGMENT);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
         }

@@ -22,7 +22,7 @@ namespace MBBSEmu.DOS.Structs
         ///
         ///     Offset: 0x2
         /// </summary>
-        public ushort NextSeg { get; set; }
+        public ushort NextSegOffset { get; set; }
 
         /// <summary>
         ///     Reserved
@@ -116,7 +116,7 @@ namespace MBBSEmu.DOS.Structs
             get
             {
                 Array.Copy(BitConverter.GetBytes(Int20), 0, _data, 0, sizeof(ushort));
-                Array.Copy(BitConverter.GetBytes(NextSeg), 0, _data, 2, sizeof(ushort));
+                Array.Copy(BitConverter.GetBytes(NextSegOffset), 0, _data, 2, sizeof(ushort));
                 Array.Copy(Dispatcher, 0, _data, 5, Dispatcher.Length);
                 Array.Copy(TerminateAddress?.Data ?? IntPtr16.Empty.Data, 0, _data, 0xA, IntPtr16.Size);
                 Array.Copy(CtrlBrkAddress?.Data ?? IntPtr16.Empty.Data, 0, _data, 0xE, IntPtr16.Size);

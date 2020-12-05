@@ -117,11 +117,12 @@ namespace MBBSEmu.CPU
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        private Dictionary<int, IInterruptHandler> _interruptHandlers = new Dictionary<int, IInterruptHandler>();
+        private readonly Dictionary<int, IInterruptHandler> _interruptHandlers;
 
         public CpuCore(ILogger logger) : this()
         {
             _logger = logger;
+            _interruptHandlers = new Dictionary<int, IInterruptHandler>();
         }
 
         public CpuCore()
@@ -160,9 +161,6 @@ namespace MBBSEmu.CPU
             Registers.SS = STACK_SEGMENT;
             Registers.ES = EXTRA_SEGMENT;
             Registers.Halt = false;
-
-            //Setup Interrupt Handlers
-            _interruptHandlers = new Dictionary<int, IInterruptHandler> { { 0x21, new Int21h(Registers, Memory) } };
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
@@ -261,11 +259,11 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x2 && Registers.IP == 0xB27)
-                //Debugger.Break();
+            if (Registers.CS == 0x1 && Registers.IP == 0xDC6)
+                Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true;
+            _showDebug = true;
             //_showDebug = Registers.CS == 0x4 && Registers.IP >= 0x2953 && Registers.IP <= 0x298C;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -1094,7 +1092,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)-destination;
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F = destination == 0 ? Registers.F.ClearFlag((ushort)EnumFlags.CF) : Registers.F.SetFlag((ushort)EnumFlags.CF);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1108,7 +1106,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)-destination;
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F = destination == 0 ? Registers.F.ClearFlag((ushort)EnumFlags.CF) : Registers.F.SetFlag((ushort)EnumFlags.CF);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2376,6 +2374,25 @@ namespace MBBSEmu.CPU
                         //Push the IP of the **NEXT** instruction to the stack
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
                         Registers.IP = _currentInstruction.NearBranch16;
+                        break;
+                    }
+                case OpKind.Memory:
+                    {
+                        //Pointer calling a SEG:OFF based on a pointer in memory
+                        var offset = GetOperandOffset(OpKind.Memory);
+                        if (_currentInstruction.IsCallNearIndirect)
+                        {
+                            Push((ushort)(Registers.IP + _currentInstruction.Length));
+                            var destinationOffset =
+                                Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+                            Registers.IP = destinationOffset;
+                            
+                        }
+                        else
+                        {
+                            throw new ArgumentOutOfRangeException($"Unknown CALL Memory");
+                        }
+
                         break;
                     }
                 default:
