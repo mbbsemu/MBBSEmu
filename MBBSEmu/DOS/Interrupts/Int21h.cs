@@ -1,8 +1,9 @@
-﻿using System;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
 {
@@ -25,10 +26,13 @@ namespace MBBSEmu.DOS.Interrupts
 
         public ushort Vector => 0x21;
 
+        private readonly Dictionary<byte, IntPtr16> _interruptVectors;
+
         public Int21h(CpuRegisters registers, IMemoryCore memory)
         {
             _registers = registers;
             _memory = memory;
+            _interruptVectors = new Dictionary<byte, IntPtr16>();
         }
 
         public void Handle()
@@ -60,6 +64,9 @@ namespace MBBSEmu.DOS.Interrupts
                         //TODO -- Implement, ignore for now
                         var interruptVector = _registers.AL;
                         var newVectorPointer = new IntPtr16(_registers.DS, _registers.DX);
+
+                        _interruptVectors[interruptVector] = newVectorPointer;
+
                         return;
                     }
                 case 0x2A:
@@ -111,9 +118,19 @@ namespace MBBSEmu.DOS.Interrupts
                            AL = interrupt number
                            Return: ES:BX = value of interrupt vector
                          */
-                        _registers.ES = 0xFFFF;
-                        _registers.BX = _registers.AL;
+
+                        if (!_interruptVectors.TryGetValue(_registers.AL, out var resultVector))
+                        {
+                            _registers.ES = 0xFFFF;
+                            _registers.BX = _registers.AL;
+                        }
+                        else
+                        {
+                            _registers.ES = resultVector.Segment;
+                            _registers.BX = resultVector.Offset;
+                        }
                         return;
+
                     }
                 case 0x40:
                     {
@@ -182,7 +199,6 @@ namespace MBBSEmu.DOS.Interrupts
                                         _registers.DX |= 1 << 1; //STD Output
                                         _registers.DX |= 1 << 4; //Reserved? DOSBox sets it
                                         _registers.DX |= 1 << 6; //Not EOF
-                                        _registers.DX |= 1 << 7; //It's a Device
                                         _registers.DX |= 1 << 7; //IS Device
                                         _registers.DX |= 1 << 15; //Reserved? DOSBox sets it
                                     }

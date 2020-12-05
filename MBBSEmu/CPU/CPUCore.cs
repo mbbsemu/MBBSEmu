@@ -259,11 +259,11 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            if (Registers.CS == 0x1 && Registers.IP == 0xDC6)
-                Debugger.Break();
+            //if (Registers.CS == 0x1 && Registers.IP == 0x319)
+                //Debugger.Break();
 
             //Show Debugging
-            _showDebug = true;
+            //_showDebug = true;
             //_showDebug = Registers.CS == 0x4 && Registers.IP >= 0x2953 && Registers.IP <= 0x298C;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -579,6 +579,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fchs:
                     Op_Fchs();
+                    break;
+                case Mnemonic.Movsw:
+                    Op_Movsw();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
@@ -1589,6 +1592,11 @@ namespace MBBSEmu.CPU
         private void Op_Ret()
         {
             Registers.IP = Pop();
+
+            //Pop N bytes (N/2 words) that were Pushed before the CALL
+            if (_currentInstruction.Op0Kind == OpKind.Immediate16)
+                for (var i = 0; i < GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination)/2; i++)
+                    Pop();
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2886,6 +2894,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Scasb()
         {
+            scasb:
             var destination = Registers.AL;
             var source = Memory.GetByte(Registers.ES, Registers.DI);
 
@@ -2903,6 +2912,18 @@ namespace MBBSEmu.CPU
                 else
                 {
                     Registers.DI++;
+                }
+
+                if (_currentInstruction.HasRepnePrefix && Registers.CX > 0 &&  result != 0)
+                {
+                    Registers.CX--;
+                    goto scasb;
+                }
+
+                if (_currentInstruction.HasRepePrefix && Registers.CX > 0 && result == 0)
+                {
+                    Registers.CX--;
+                    goto scasb;
                 }
             }
         }
@@ -3345,6 +3366,31 @@ namespace MBBSEmu.CPU
             {
                 Registers.SI += 2;
             }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Movsw()
+        {
+            stosw:
+            Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
+
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            {
+                Registers.DI -= 2;
+                Registers.SI -= 2;
+            }
+            else
+            {
+                Registers.DI += 2;
+                Registers.SI += 2;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                goto stosw;
+            }
+
         }
 
         /// <summary>
