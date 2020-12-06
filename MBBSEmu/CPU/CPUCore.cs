@@ -147,8 +147,9 @@ namespace MBBSEmu.CPU
             //Setup Delegate Call
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
-            foreach (var h in interruptHandlers)
-                _interruptHandlers.Add(h.Vector, h);
+            if (interruptHandlers != null)
+                foreach (var h in interruptHandlers)
+                    _interruptHandlers.Add(h.Vector, h);
 
             //Setup Memory Space
             Memory = memoryCore;
@@ -260,7 +261,7 @@ namespace MBBSEmu.CPU
 
             //Breakpoint
             //if (Registers.CS == 0x1 && Registers.IP == 0x319)
-                //Debugger.Break();
+            //Debugger.Break();
 
             //Show Debugging
             //_showDebug = true;
@@ -1595,7 +1596,7 @@ namespace MBBSEmu.CPU
 
             //Pop N bytes (N/2 words) that were Pushed before the CALL
             if (_currentInstruction.Op0Kind == OpKind.Immediate16)
-                for (var i = 0; i < GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination)/2; i++)
+                for (var i = 0; i < GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination) / 2; i++)
                     Pop();
         }
 
@@ -2394,7 +2395,7 @@ namespace MBBSEmu.CPU
                             var destinationOffset =
                                 Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             Registers.IP = destinationOffset;
-                            
+
                         }
                         else
                         {
@@ -2894,7 +2895,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Scasb()
         {
-            scasb:
+        scasb:
             var destination = Registers.AL;
             var source = Memory.GetByte(Registers.ES, Registers.DI);
 
@@ -2914,7 +2915,7 @@ namespace MBBSEmu.CPU
                     Registers.DI++;
                 }
 
-                if (_currentInstruction.HasRepnePrefix && Registers.CX > 0 &&  result != 0)
+                if (_currentInstruction.HasRepnePrefix && Registers.CX > 0 && result != 0)
                 {
                     Registers.CX--;
                     goto scasb;
@@ -3371,7 +3372,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Movsw()
         {
-            stosw:
+        stosw:
             Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
