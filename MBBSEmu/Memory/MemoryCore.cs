@@ -507,6 +507,28 @@ namespace MBBSEmu.Memory
             SetArray(GetVariablePointer(variableName), value);
 
         /// <summary>
+        ///     Writes the specified byte the specified number of times starting at the specified pointer
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        public void SetArray(ushort segment, ushort offset, ushort count, byte value)
+        {
+            for (var i = 0; i < count; i++)
+                _memorySegments[segment][offset + i] = value;
+        }
+
+        /// <summary>
+        ///     Writes the specified byte the specified number of times starting at the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        public void SetArray(IntPtr16 pointer, ushort count, byte value) =>
+            SetArray(pointer.Segment, pointer.Offset, count, value);
+
+        /// <summary>
         ///     Sets the specified pointer value at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>

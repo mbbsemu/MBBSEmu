@@ -80,8 +80,9 @@ namespace MBBSEmu
         /// </summary>
         private bool _isConsoleSession;
 
-        private bool _doExe;
-
+        /// <summary>
+        ///     EXE File to be Executed
+        /// </summary>
         private string _exeFile;
 
         /// <summary>
@@ -112,7 +113,6 @@ namespace MBBSEmu
                     {
                         case "-EXE":
                             {
-                                _doExe = true;
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
                                     _exeFile = args[i + 1];
@@ -210,10 +210,10 @@ namespace MBBSEmu
                 }
 
                 _serviceResolver = new ServiceResolver();
-
                 _logger = _serviceResolver.GetService<ILogger>();
 
-                if (_doExe)
+                //EXE File Execution
+                if (!string.IsNullOrEmpty(_exeFile))
                 {
                     var mzFile = new MZFile(_exeFile);
                     var exe = new ExeRuntime(mzFile, null, _logger);
@@ -221,7 +221,6 @@ namespace MBBSEmu
                     exe.Run();
                     return;
                 }
-
 
                 var configuration = _serviceResolver.GetService<AppSettings>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();

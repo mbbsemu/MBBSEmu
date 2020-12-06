@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
@@ -7,8 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text;
-using MBBSEmu.DOS.Interrupts;
 
 namespace MBBSEmu.CPU
 {
@@ -136,6 +135,7 @@ namespace MBBSEmu.CPU
         /// <param name="memoryCore"></param>
         /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
+        /// <param name="interruptHandlers"></param>
         public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
         {
@@ -3372,7 +3372,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Movsw()
         {
-        stosw:
+        movsw:
             Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
@@ -3389,7 +3389,7 @@ namespace MBBSEmu.CPU
             if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
             {
                 Registers.CX--;
-                goto stosw;
+                goto movsw;
             }
 
         }

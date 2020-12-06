@@ -294,6 +294,23 @@ namespace MBBSEmu.Memory
         void SetArray(string variableName, ReadOnlySpan<byte> array);
 
         /// <summary>
+        ///     Writes the specified byte the specified number of times starting at the specified pointer
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        void SetArray(ushort segment, ushort offset, ushort count, byte value);
+
+        /// <summary>
+        ///     Writes the specified byte the specified number of times starting at the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        void SetArray(IntPtr16 pointer, ushort count, byte value);
+
+        /// <summary>
         ///     Sets the specified pointer value at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
