@@ -6455,7 +6455,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
             var longToParseLength = longToParse.Length + (stringContainingLongs.Length - stringContainingLongs.TrimStart(' ').Length); //We do this as length might change with logic below and add back in leading spaces
 
-            if (longToParseLength == 0 || !longToParse.Any(char.IsDigit))
+            if (longToParseLength == 0 || (radix == 10 && !longToParse.Any(char.IsDigit)))
             {
                 Registers.DX = 0;
                 Registers.AX = 0;

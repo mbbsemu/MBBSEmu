@@ -16,7 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("78 A", 3, 10, 78)]
         [InlineData("0x23CACE A very big number", 9, 16, 2345678)]
         [InlineData("-2345678 A very big number", 9, 10, -2345678)]
-        [InlineData("0xFFFFF is my favorite number", 8, 16, 1048575)]
+        [InlineData("FFFFF is my favorite number", 6, 16, 1048575)]
         [InlineData("0x7FFFFFFF is pretty big", 11, 16, int.MaxValue)]
         [InlineData("", 0, 10, 0)]
         [InlineData("ThereIsNoNumberHere", 0, 10, 0)]
