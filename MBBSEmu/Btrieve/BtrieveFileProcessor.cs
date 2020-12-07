@@ -26,7 +26,7 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
-        const int CURRENT_VERSION = 1;
+        const int CURRENT_VERSION = 2;
         const int ACS_LENGTH = 256;
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
@@ -69,15 +69,29 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
 
+        private Dictionary<ushort, BtrieveKey> _keys;
+
         /// <summary>
         ///     The list of keys in this database, keyed by key number.
         /// </summary>
-        public Dictionary<ushort, BtrieveKey> Keys { get; set; }
+        public Dictionary<ushort, BtrieveKey> Keys
+        {
+            get => _keys;
+            set
+            {
+                _keys = value;
+                _autoincrementedKeys = _keys.Values
+                    .Where(key => key.PrimarySegment.DataType == EnumKeyDataType.AutoInc)
+                    .ToList();
+            }
+        }
 
         /// <summary>
-        ///     The list of autoincremented keys in this database, keyed by key number.
+        ///     The list of autoincremented keys in this database.
+        ///
+        ///     <para/>Created when Keys is set as a property
         /// </summary>
-        private Dictionary<ushort, BtrieveKey> AutoincrementedKeys { get; set; }
+        private List<BtrieveKey> _autoincrementedKeys;
 
         /// <summary>
         ///     The length of each page in the original Btrieve database.
@@ -106,11 +120,7 @@ namespace MBBSEmu.Btrieve
             _cache.Clear();
         }
 
-        public BtrieveFileProcessor()
-        {
-            Keys = new Dictionary<ushort, BtrieveKey>();
-            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
-        }
+        public BtrieveFileProcessor() {}
 
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
@@ -121,9 +131,6 @@ namespace MBBSEmu.Btrieve
         public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
         {
             _fileFinder = fileUtility;
-
-            Keys = new Dictionary<ushort, BtrieveKey>();
-            AutoincrementedKeys = new Dictionary<ushort, BtrieveKey>();
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -171,7 +178,7 @@ namespace MBBSEmu.Btrieve
             Connection.Open();
 
             LoadSqliteMetadata();
-            LoadSqliteKeys();
+            Keys = LoadSqliteKeys();
         }
 
         /// <summary>
@@ -191,10 +198,6 @@ namespace MBBSEmu.Btrieve
                     PageLength = reader.GetInt32(1);
                     VariableLengthRecords = reader.GetBoolean(2);
 
-                    var version = reader.GetInt32(3);
-                    if (version != CURRENT_VERSION)
-                        throw new ArgumentException($"Unable to load database, expected version {CURRENT_VERSION}, found {version}. Please delete the database so it can be regenerated");
-
                     if (!reader.IsDBNull(4))
                     {
                         using var acsStream = reader.GetStream(4);
@@ -202,6 +205,12 @@ namespace MBBSEmu.Btrieve
                             throw new ArgumentException($"The ACS length is not 256 in the database. This is corrupt. {FullPath}");
 
                         ACS = BtrieveUtil.ReadEntireStream(acsStream);
+                    }
+
+                    var version = reader.GetInt32(3);
+                    if (version != CURRENT_VERSION)
+                    {
+                        UpgradeDatabaseFromVersion(version);
                     }
                 }
                 finally
@@ -212,14 +221,61 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Upgrades a database to the current version. Updating metadata_t.version should be done within a transaction.
+        /// </summary>
+        /// <param name="oldVersion"></param>
+        private void UpgradeDatabaseFromVersion(int oldVersion)
+        {
+            switch (oldVersion)
+            {
+                case 1:
+                    UpgradeDatabaseFromVersion1To2();
+                    break;
+                default:
+                    throw new ArgumentException("Invalid old version");
+            }
+
+            LoadSqliteMetadata();
+        }
+
+        /// <summary>
+        ///     Upgrades the sqlite DB from version 1 to 2.
+        ///
+        ///     <para/>2 adds the non_modifiable triggers
+        /// </summary>
+        private void UpgradeDatabaseFromVersion1To2()
+        {
+            var transaction = Connection.BeginTransaction();
+            // creates the missing triggers
+            var keys = LoadSqliteKeys(transaction);
+            CreateSqliteTriggers(Connection, transaction, keys.Values);
+
+            // and bump the version
+            using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
+            cmd.ExecuteNonQuery();
+
+            try
+            {
+                transaction.Commit();
+            }
+            catch (Exception)
+            {
+                transaction.Rollback();
+            }
+        }
+
+        /// <summary>
         ///     Loads all the key data from keys_t into memory
         /// </summary>
-        private void LoadSqliteKeys()
+        private Dictionary<ushort, BtrieveKey> LoadSqliteKeys(SqliteTransaction transaction = null)
         {
+            var keys = new Dictionary<ushort, BtrieveKey>();
+
             using (var cmd =
                 new SqliteCommand(
                     "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment;",
-                    Connection))
+                    Connection,
+                    transaction))
             {
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
@@ -244,21 +300,20 @@ namespace MBBSEmu.Btrieve
                         btrieveKeyDefinition.ACS = ACS;
                     }
 
-                    if (!Keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
+                    if (!keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
                     {
                         btrieveKey = new BtrieveKey();
-                        Keys[btrieveKeyDefinition.Number] = btrieveKey;
+                        keys[btrieveKeyDefinition.Number] = btrieveKey;
                     }
 
                     var index = btrieveKey.Segments.Count;
                     btrieveKeyDefinition.SegmentIndex = index;
                     btrieveKey.Segments.Add(btrieveKeyDefinition);
-
-                    if (btrieveKeyDefinition.DataType == EnumKeyDataType.AutoInc)
-                        AutoincrementedKeys[btrieveKeyDefinition.Number] = btrieveKey;
                 }
                 reader.Close();
             }
+
+            return keys;
         }
 
         /// <summary>
@@ -442,7 +497,16 @@ namespace MBBSEmu.Btrieve
                 return false;
             }
 
-            transaction.Commit();
+            try
+            {
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"Failed to commit during update record because {ex.Message}");
+                transaction.Rollback();
+                queryResult = 0;
+            }
 
             if (queryResult == 0)
                 return false;
@@ -467,7 +531,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool InsertAutoincrementValues(SqliteTransaction transaction, byte[] record)
         {
-            var zeroedKeys = AutoincrementedKeys.Values
+            var zeroedKeys = _autoincrementedKeys
                 .Where(key => key.KeyInRecordIsAllZero(record))
                 .Select(key => $"(MAX({key.SqliteKeyName}) + 1)")
                 .ToList();
@@ -490,7 +554,7 @@ namespace MBBSEmu.Btrieve
                 }
 
                 var i = 0;
-                foreach (var segment in AutoincrementedKeys.Values.SelectMany(x => x.Segments))
+                foreach (var segment in _autoincrementedKeys.SelectMany(x => x.Segments))
                 {
                     var b = segment.Length switch
                     {
@@ -570,7 +634,16 @@ namespace MBBSEmu.Btrieve
 
             var lastInsertRowId = Convert.ToUInt32(new SqliteCommand("SELECT last_insert_rowid()", Connection, transaction).ExecuteScalar());
 
-            transaction.Commit();
+            try
+            {
+                transaction.Commit();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"Failed to commit during insert: {ex.Message}");
+                transaction.Rollback();
+                queryResult = 0;
+            }
 
             if (queryResult == 0)
                 return 0;
@@ -867,6 +940,33 @@ namespace MBBSEmu.Btrieve
             }
         }
 
+        private void CreateSqliteTriggers(SqliteConnection connection, ICollection<BtrieveKey> keys)
+            => CreateSqliteTriggers(connection, transaction: null, keys);
+
+        private void CreateSqliteTriggers(SqliteConnection connection, SqliteTransaction transaction, ICollection<BtrieveKey> keys)
+        {
+            var nonModifiableKeys = keys.Where(key => !key.IsModifiable).ToList();
+            if (nonModifiableKeys.Count == 0)
+                return;
+
+            StringBuilder builder = new StringBuilder("CREATE TRIGGER non_modifiable "
+                + "BEFORE UPDATE ON data_t "
+                + "BEGIN "
+                + "SELECT "
+                + "CASE ");
+
+            foreach (var key in nonModifiableKeys)
+            {
+                builder.Append($"WHEN NEW.{key.SqliteKeyName} != OLD.{key.SqliteKeyName} THEN " +
+                    $"RAISE (ABORT,'You modified a non-modifiable {key.SqliteKeyName}!') ");
+            }
+
+            builder.Append("END; END;");
+
+            using var command = new SqliteCommand(builder.ToString(), connection, transaction);
+            command.ExecuteNonQuery();
+        }
+
         /// <summary>
         ///     Fills in the Sqlite data_t table with all the data from btrieveFile.
         /// </summary>
@@ -910,7 +1010,14 @@ namespace MBBSEmu.Btrieve
                 }
             }
 
-            transaction.Commit();
+            try
+            {
+                transaction.Commit();
+            }
+            catch (Exception)
+            {
+                transaction.Rollback();
+            }
         }
 
         private static object SqliteNullable(object o)
@@ -996,17 +1103,14 @@ namespace MBBSEmu.Btrieve
 
             RecordLength = btrieveFile.RecordLength;
             PageLength = btrieveFile.PageLength;
+            VariableLengthRecords = btrieveFile.VariableLengthRecords;
             Keys = btrieveFile.Keys;
-            foreach (var key in btrieveFile.Keys.Where(key =>
-                key.Value.PrimarySegment.DataType == EnumKeyDataType.AutoInc))
-            {
-                AutoincrementedKeys.Add(key.Value.PrimarySegment.Number, key.Value);
-            }
 
             CreateSqliteMetadataTable(Connection, btrieveFile);
             CreateSqliteKeysTable(Connection, btrieveFile);
             CreateSqliteDataTable(Connection, btrieveFile);
             CreateSqliteDataIndices(Connection, btrieveFile);
+            CreateSqliteTriggers(Connection, Keys.Values);
             PopulateSqliteDataTable(Connection, btrieveFile);
         }
     }

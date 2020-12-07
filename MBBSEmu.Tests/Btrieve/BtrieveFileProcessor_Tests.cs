@@ -499,15 +499,15 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
-
-            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
+            var record = new MBBSEmuRecord { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
 
             btrieve.Update(1, record.Data).Should().BeTrue();
 
             record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);
-            record.Key0.Should().Be("Paladine");
+            record.Key0.Should().Be("Sysop");
             record.Key1.Should().Be(31337);
             record.Key2.Should().Be("In orbe terrarum, optimus sum");
+            record.Key3.Should().Be(1);
 
             btrieve.GetRecordCount().Should().Be(4);
         }
@@ -522,19 +522,23 @@ namespace MBBSEmu.Tests.Btrieve
 
             var record = new MBBSEmuRecord
             {
-                Key0 = "Paladine",
+                Key0 = "Sysop",
                 Key1 = 31337,
                 Key2 = "In orbe terrarum, optimus sum",
                 Key3 = 2
             };
 
-            btrieve.Update(2, MakeSmaller(record.Data, 14)).Should().BeTrue();
+            // we shorten the data by 3 bytes, meaning Key3 data is still valid, and is a single byte of 2.
+            // The code will upsize to the full 74 bytes, filling in 0 for the rest of Key3 data,
+            // so Key3 starts as 0x02 but grows to 0x02000000 (little endian == 2)
+            // We have to keep Key3 as 2 since this key is marked non-modifiable
+            btrieve.Update(2, MakeSmaller(record.Data, 3)).Should().BeTrue();
 
             record = new MBBSEmuRecord(btrieve.GetRecord(2)?.Data);
-            record.Key0.Should().Be("Paladine");
+            record.Key0.Should().Be("Sysop");
             record.Key1.Should().Be(31337);
-            record.Key2.Should().Be("In orbe terrarum, opti");
-            record.Key3.Should().Be(5); // regenerated
+            record.Key2.Should().Be("In orbe terrarum, optimus sum");
+            record.Key3.Should().Be(2);
 
             btrieve.GetRecordCount().Should().Be(4);
         }
@@ -547,7 +551,7 @@ namespace MBBSEmu.Tests.Btrieve
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
+            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
             // constraint failure here
 
             btrieve.Update(1, record.Data).Should().BeFalse();
