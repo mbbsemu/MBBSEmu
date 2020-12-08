@@ -116,6 +116,9 @@ namespace MBBSEmu.DOS
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = ENVIRONMENT_SEGMENT };
             Memory.AddSegment(PSP_SEGMENT);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
+
+            Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
+            Memory.SetWord("Int21h-PSP", PSP_SEGMENT);
         }
 
         /// <summary>

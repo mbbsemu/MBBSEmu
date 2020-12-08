@@ -262,12 +262,14 @@ namespace MBBSEmu.DOS.Interrupts
                         /*
                             INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
                             Return: BX = segment address of PSP
-                            We allocate 0xFFFF to ensure it has it's own segment in memory
+                            
+                            This is only set when an EXE is running, thus should only be called from
+                            an EXE.
                          */
                         if (!_memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
-                            pspPointer = _memory.AllocateVariable("Int21h-PSP", 0xFFFF);
+                            throw new Exception("No PSP has been defined");
 
-                        _registers.BX = pspPointer.Segment;
+                        _registers.BX = _memory.GetWord(pspPointer);
                         return;
                     }
                 default:
