@@ -30,7 +30,7 @@ namespace MBBSEmu.DOS
         ///
         ///     Normally +10h beyond the last segment of the EXE
         /// </summary>
-        private readonly ushort PSP_SEGMENT;
+        private ushort PSP_SEGMENT { get; init; }
 
         private readonly List<string> _environmentVariables;
 

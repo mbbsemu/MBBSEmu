@@ -14,8 +14,8 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
-        private readonly CpuRegisters _registers;
-        private readonly IMemoryCore _memory;
+        private CpuRegisters _registers { get; init; }
+        private IMemoryCore _memory { get; init; }
 
         /// <summary>
         ///     INT 21h defined Disk Transfer Area
@@ -24,7 +24,7 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private IntPtr16 DiskTransferArea;
 
-        public ushort Vector => 0x21;
+        public byte Vector => 0x21;
 
         private readonly Dictionary<byte, IntPtr16> _interruptVectors;
 
@@ -61,7 +61,6 @@ namespace MBBSEmu.DOS.Interrupts
                             DS:DX = new vector to be used for specified interrupt
                          */
 
-                        //TODO -- Implement, ignore for now
                         var interruptVector = _registers.AL;
                         var newVectorPointer = new IntPtr16(_registers.DS, _registers.DX);
 
@@ -88,9 +87,8 @@ namespace MBBSEmu.DOS.Interrupts
                             On entry:	AH = 2Fh
                             Returns:	ES:BX = Segment.offset of current DTA
                          */
-                        if (DiskTransferArea == null && !_memory.TryGetVariablePointer("Int21h-DTA", out DiskTransferArea))
-                            DiskTransferArea = _memory.AllocateVariable("Int21h-DTA", 0xFF);
-
+                        DiskTransferArea = _memory.GetOrAllocateVariablePointer("Int21h-DTA", 0xFF);
+                        
                         _registers.ES = DiskTransferArea.Segment;
                         _registers.BX = DiskTransferArea.Offset;
                         return;
@@ -164,7 +162,7 @@ namespace MBBSEmu.DOS.Interrupts
 	                         4 - Standard Printer Device (STDPRN)
                          */
 
-                        if (fileHandle <= 2)
+                        if (fileHandle == 1 || fileHandle == 2)
                             Console.WriteLine(Encoding.ASCII.GetString(dataToWrite));
 
                         break;

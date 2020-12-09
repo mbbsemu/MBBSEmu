@@ -2,7 +2,7 @@
 {
     public interface IInterruptHandler
     {
-        ushort Vector { get; }
+        byte Vector { get; }
         void Handle();
     }
 }

@@ -47,7 +47,7 @@ namespace MBBSEmu.Disassembler
         }
 
         /// <summary>
-        ///     Starting at the 
+        ///     Applies Relocation Records to the EXE data at load time
         /// </summary>
         private void LoadRelocationRecords()
         {

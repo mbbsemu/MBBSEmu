@@ -1,8 +1,6 @@
-﻿using System;
-using System.Text;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Memory;
+using System;
 
 namespace MBBSEmu.DOS.Interrupts
 {
@@ -11,10 +9,10 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int1Ah : IInterruptHandler
     {
-        private readonly CpuRegisters _registers;
-        private readonly IMemoryCore _memory;
+        private CpuRegisters _registers { get; init; }
+        private IMemoryCore _memory { get; init; }
 
-        public ushort Vector => 0x1A;
+        public byte Vector => 0x1A;
 
         public Int1Ah(CpuRegisters registers, IMemoryCore memory)
         {
@@ -35,13 +33,14 @@ namespace MBBSEmu.DOS.Interrupts
                              within the current 24-hour period
                              Otherwise, AL > 0
 
-                            There are 18.2 Clock Ticker Per Second, so this is:
+                            There are 18.2 Clock Ticks Per Second, so this is:
                             Number of Seconds Since Midnight * 18.2
                          */
 
                         var secondsSinceMidnight =
                             (uint)((DateTime.Now - new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day)).TotalSeconds * 18.2);
 
+                        _registers.AL = 0;
                         _registers.CX = (ushort) (secondsSinceMidnight & 0xFFFF);
                         _registers.DX = (ushort)(secondsSinceMidnight >> 8);
                         break;

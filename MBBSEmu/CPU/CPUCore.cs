@@ -1596,8 +1596,7 @@ namespace MBBSEmu.CPU
 
             //Pop N bytes (N/2 words) that were Pushed before the CALL
             if (_currentInstruction.Op0Kind == OpKind.Immediate16)
-                for (var i = 0; i < GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination) / 2; i++)
-                    Pop();
+                Registers.SP += GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination);
         }
 
         [MethodImpl(CompilerOptimizations)]
