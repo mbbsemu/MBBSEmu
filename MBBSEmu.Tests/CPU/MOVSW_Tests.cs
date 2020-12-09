@@ -43,8 +43,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 3;
             mbbsEmuCpuRegisters.DI = 0;
             mbbsEmuCpuRegisters.CX = 10;
-            mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
-            mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);
+            mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
+            mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);
 
             var instructions = new Assembler(16);
 
@@ -77,8 +77,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.CX = 10;
             mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort) EnumFlags.DF);
 
-            mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
-            mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);
+            mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
+            mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);
 
             var instructions = new Assembler(16);
 
