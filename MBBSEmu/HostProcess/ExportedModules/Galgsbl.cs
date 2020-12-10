@@ -1024,8 +1024,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             initialStackValues.Enqueue(channelNumber);
 
             //Get Variable Entry Point
-            var resultRegisters = Module.Execute(channel.CharacterInterceptor, ChannelNumber, true, true, initialStackValues, 0xD000);
-            var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
+            //var resultRegisters = Module.Execute(channel.CharacterInterceptor, ChannelNumber, true, true, initialStackValues, 0xD000);
+
+            //Clear Input
+            channel.InputBuffer.WriteByte(character);
+
+            _logger.Debug($"Adding {character:X2} to input buffer");
         }
     }
 }

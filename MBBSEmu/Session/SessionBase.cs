@@ -282,7 +282,7 @@ namespace MBBSEmu.Session
                     break;
                 default:
                     {
-                        InputBuffer.WriteByte(clientData);
+                        //InputBuffer.WriteByte(clientData);
                         DataToProcess = true;
                         break;
                     }

@@ -119,7 +119,7 @@ namespace MBBSEmu.HostProcess
             _accountRepository = accountRepository;
 
             Logger.Info("Constructing MBBSEmu Host...");
-            
+
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
@@ -136,7 +136,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
+                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
@@ -201,6 +201,10 @@ namespace MBBSEmu.HostProcess
                 {
                     //Process a single incoming byte from the client session
                     session.ProcessDataFromClient();
+
+
+                    ProcessGSBLInputEvents(session);
+
 
                     //Global Command Handler
                     if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
@@ -268,27 +272,7 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-                                //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-                                if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
-                                {
-                                    ProcessEchoEmptyInvoke(session);
-                                }
 
-                                //Invoke BTUCHI registered routine if one exists
-                                else if (session.DataToProcess)
-                                {
-                                    session.DataToProcess = false;
-
-                                    if (session.CharacterInterceptor != null)
-                                    {
-                                        if (ProcessBTUCHI(session) == 0)
-                                            continue;
-                                    }
-
-                                    //If the client is in transparent mode, don't echo
-                                    if (!session.TransparentMode && (session.Status == 1 || session.Status == 192))
-                                        session.SendToClient(new[] { session.LastCharacterReceived });
-                                }
 
                                 //Did BTUCHI or a previous command cause a status change?
                                 if (session.StatusChange && (session.Status == 240 || session.Status == 5))
@@ -344,7 +328,8 @@ namespace MBBSEmu.HostProcess
             Logger.Info("SHUTTING DOWN");
 
             // kill all active sessions
-            foreach (var session in _channelDictionary.Values) {
+            foreach (var session in _channelDictionary.Values)
+            {
                 session.Stop();
             }
 
@@ -361,7 +346,8 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
+        {
             foreach (var m in _modules.Values)
             {
                 if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
@@ -587,8 +573,8 @@ namespace MBBSEmu.HostProcess
             result &= 0xFF;
 
             //Result replaces the character in the buffer
-            if (session.InputBuffer.Length > 0 && result != 0xD)
-                session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
+            //if (session.InputBuffer.Length > 0 && result != 0xD)
+            //    session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
 
             //Ignore
             if (result == 0)
@@ -737,6 +723,37 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        private void ProcessGSBLInputEvents(SessionBase session)
+        {
+            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
+            if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+            {
+                ProcessEchoEmptyInvoke(session);
+            }
+
+            //Invoke BTUCHI registered routine if one exists
+            else if (session.DataToProcess)
+            {
+                session.DataToProcess = false;
+
+                //First run it through BTUCHI?
+                if (session.CharacterInterceptor != null)
+                {
+                    if (ProcessBTUCHI(session) == 0)
+                        return;
+                }
+                else
+                {
+                    //No routine registered, just write it as is
+                    session.InputBuffer.WriteByte(session.LastCharacterReceived);
+                }
+
+                //If the client is in transparent mode, don't echo
+                if (!session.TransparentMode && (session.Status == 0 || session.Status == 1 || session.Status == 192))
+                    session.SendToClient(new[] { session.LastCharacterReceived });
+            }
+        }
+
         /// <summary>
         ///     Adds the specified module to the MBBS Host
         ///
@@ -799,7 +816,8 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        public bool RemoveSession(ushort channel) {
+        public bool RemoveSession(ushort channel)
+        {
             if (!_channelDictionary.ContainsKey(channel))
             {
                 return false;
@@ -1053,7 +1071,7 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-               foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
 
