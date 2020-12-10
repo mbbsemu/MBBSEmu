@@ -6,6 +6,7 @@ using MBBSEmu.Server;
 using MBBSEmu.Session;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -220,6 +221,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 22:
                     btuinp();
+                    break;
+                case 62:
+                    chiinp();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
@@ -974,7 +978,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     The line terminator for the command is replaced by a NULL (\0), but since we don't write the newline
         ///     in SessionBase, we just NULL terminate the input.
         ///
-        ///     Signature: void chiinp(int chan,char c);
+
         /// </summary>
         private void btuinp()
         {
@@ -994,6 +998,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Clear the Buffer
             channel.InputBuffer.SetLength(0);
+        }
+
+        /// <summary>
+        ///     Reads a single character from the specified channel and handles it immediately through the chain of
+        ///     events. For MBBSEmu, this will reading the character and invoking the method registered with
+        ///     BTUCHI (if defined).
+        /// 
+        ///     Signature: void chiinp(int chan,char c);
+        /// </summary>
+        private void chiinp()
+        {
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            //Create Parameters for BTUCHI Routine
+            var initialStackValues = new Queue<ushort>(2);
+            initialStackValues.Enqueue(character);
+            initialStackValues.Enqueue(channelNumber);
+
+            //Get Variable Entry Point
+            var resultRegisters = Module.Execute(channel.CharacterInterceptor, ChannelNumber, true, true, initialStackValues, 0xD000);
+            var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
         }
     }
 }
