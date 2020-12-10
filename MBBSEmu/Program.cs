@@ -235,8 +235,8 @@ namespace MBBSEmu
                 }
                 else if (_isModuleConfigFile)
                 {
-                    //Load Menu Option Keys
-                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789".ToCharArray().ToList();
+                    //Load Menu Option Keys - 35 total
+                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWYZ0123456789".ToCharArray().ToList(); //Exclude X for logoff
 
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
