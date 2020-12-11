@@ -189,17 +189,19 @@ namespace MBBSEmu.Session
         public bool EchoEmptyInvokeEnabled { get; set; }
 
         /// <summary>
-        ///     Helper Method to enqueue data to be sent to the client Async
+        ///     Specifies if ECHSEC has been set/still enabled
         /// </summary>
-        /// <param name="dataToSend"></param>
-        public bool SendToClientAsync(byte[] dataToSend)
-        {
-            if (OutputEnabled)
-            {
-                return DataToClient.TryAdd(dataToSend.Where(shouldSendToClient).ToArray());
-            }
-            return true;
-        }
+        public bool EchoSecureEnabled { get; set; }
+
+        /// <summary>
+        ///     Specifies the maximum width for the ECHSEC masked Input
+        /// </summary>
+        public ushort EchoSecuredLength { get; set; }
+
+        /// <summary>
+        ///     Character used to mask input for ECHSEC
+        /// </summary>
+        public byte EchoSecuredCharacter { get; set; }
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously

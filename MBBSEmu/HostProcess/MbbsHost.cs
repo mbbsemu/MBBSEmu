@@ -208,7 +208,6 @@ namespace MBBSEmu.HostProcess
                     //Handle Character based Events
                     if (session.DataToProcess)
                     {
-                        session.DataToProcess = false;
                         ProcessIncomingCharacter(session);
                     }
 
@@ -259,20 +258,20 @@ namespace MBBSEmu.HostProcess
                         case EnumSessionState.RloginEnteringModule:
                             {
                                 ProcessLONROU_FromRlogin(session);
-                                continue;
+                                break;
                             }
                         //Initial call to STTROU when a User is Entering a Module
                         case EnumSessionState.EnteringModule:
                             {
                                 ProcessSTTROU_EnteringModule(session);
-                                continue;
+                                break;
                             }
 
                         //Post-Login Display Routine
                         case EnumSessionState.LoginRoutines:
                             {
                                 ProcessLONROU(session);
-                                continue;
+                                break;
                             }
 
                         //User is in the module, process all the in-module type of events
@@ -284,7 +283,7 @@ namespace MBBSEmu.HostProcess
                                 if (session.StatusChange && (session.Status == 240 || session.Status == 5))
                                 {
                                     ProcessSTSROU(session);
-                                    continue;
+                                    break;
                                 }
 
                                 //User Input Available? Invoke *STTROU
@@ -317,7 +316,11 @@ namespace MBBSEmu.HostProcess
                             }
                             break;
                     }
+
+                    //Mark Data Processing for this Channel as Complete
+                    session.DataToProcess = false;
                 }
+                
 
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
@@ -750,6 +753,7 @@ namespace MBBSEmu.HostProcess
                         //Set Status == 3, which means there is a Command Ready
                         session.SendToClient(new byte[] { 0xD, 0xA });
                         session.Status = 3;
+                        session.EchoSecureEnabled = false;
                         break;
                     }
                 
@@ -761,8 +765,15 @@ namespace MBBSEmu.HostProcess
                         session.InputBuffer.WriteByte(session.LastCharacterReceived);
 
                         //If the client is in transparent mode, don't echo
-                        if (!session.TransparentMode && (session.Status == 0 || session.Status == 1 || session.Status == 192))
-                            session.SendToClient(new[] { session.LastCharacterReceived });
+                        if (!session.TransparentMode &&
+                            (session.Status == 0 || session.Status == 1 || session.Status == 192))
+                        {
+                            //Check for Secure Echo being Enabled
+                            if(session.EchoSecureEnabled && session.InputBuffer.Length <= session.EchoSecuredLength)
+                                session.SendToClient(new[] { session.EchoSecuredCharacter });
+                            else
+                                session.SendToClient(new[] {session.LastCharacterReceived});
+                        }
 
                         break;
                     }
