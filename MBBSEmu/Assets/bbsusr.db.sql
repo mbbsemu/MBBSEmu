@@ -18,6 +18,6 @@ CREATE TRIGGER non_modifiable BEFORE UPDATE ON data_t
     SELECT
       CASE
         WHEN NEW.key_0 != OLD.key_0 THEN
-          RAISE (ABORT,'You modified a non-modifiable {key.SqliteKeyName}!')
+          RAISE (ABORT,'You modified a non-modifiable key_0!')
         END;
   END;
