@@ -1098,7 +1098,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     fsdapr();
                     break;
                 case 586:
-                    strol();
+                    strtol();
                     break;
                 case 238:
                     fsdbkg();
@@ -6433,7 +6433,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: long strtol(const char *strP, char **suffixPP, int radix);
         /// </summary>
-        private void strol()
+        private void strtol()
         {
             var stringPointer = GetParameterPointer(0);
             var suffixPointer = GetParameterPointer(2);
@@ -6441,13 +6441,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull: true));
 
-            var longToParse = stringContainingLongs.Split(' ')[0];
-            var longToParseLength = longToParse.Length; //We do this as length might change with logic below
-
-            if (longToParseLength == 0)
+            if (stringContainingLongs == "")
             {
                 Registers.DX = 0;
                 Registers.AX = 0;
+
+                if (suffixPointer != IntPtr16.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new IntPtr16(stringPointer.Segment, stringPointer.Offset));
+                
+                return;
+            }
+
+            var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+            var longToParseLength = longToParse.Length + (stringContainingLongs.Length - stringContainingLongs.TrimStart(' ').Length); //We do this as length might change with logic below and add back in leading spaces
+
+            if (longToParseLength == 0 || (radix == 10 && !longToParse.Any(char.IsDigit)))
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+
+                if (suffixPointer != IntPtr16.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new IntPtr16(stringPointer.Segment, stringPointer.Offset));
+
                 return;
             }
 
@@ -6464,6 +6479,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var isNegative = false;
+
             if (radix != 10 && longToParse.StartsWith('-'))
             {
                 longToParse = longToParse.TrimStart('-');
