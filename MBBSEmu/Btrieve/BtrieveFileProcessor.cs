@@ -26,7 +26,7 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
-        const int CURRENT_VERSION = 2;
+        public const int CURRENT_VERSION = 2;
         const int ACS_LENGTH = 256;
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));

@@ -159,14 +159,31 @@ namespace MBBSEmu.Tests.Btrieve
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
 
+            using (var stmt = new SqliteCommand("SELECT version FROM metadata_t", connection))
+                stmt.ExecuteScalar().Should().Be(BtrieveFileProcessor.CURRENT_VERSION);
+
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'metadata_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_METADATA_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_METADATA_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'keys_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_KEYS_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_KEYS_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'data_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_DATA_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_DATA_T_SQL);
+
+            using (var stmt = new SqliteCommand("SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'trigger';", connection))
+            {
+                using var reader = stmt.ExecuteReader();
+                reader.Read().Should().BeTrue();
+                reader.GetString(0).Should().Be("non_modifiable");
+                reader.GetString(1).Should().Be("data_t");
+                reader.GetString(2).Should().Be("CREATE TRIGGER non_modifiable BEFORE UPDATE ON data_t " +
+                    "BEGIN SELECT CASE " +
+                    "WHEN NEW.key_0 != OLD.key_0 " +
+                    "THEN RAISE (ABORT,'You modified a non-modifiable key_0!') " +
+                    "WHEN NEW.key_3 != OLD.key_3 " +
+                    "THEN RAISE (ABORT,'You modified a non-modifiable key_3!') END; END");
+            }
         }
 
         [Fact]
