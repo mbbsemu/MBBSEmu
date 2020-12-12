@@ -1001,9 +1001,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Reads a single character from the specified channel and handles it immediately through the chain of
-        ///     events. For MBBSEmu, this will reading the character and invoking the method registered with
-        ///     BTUCHI (if defined).
+        ///     Takes the specified character and adds it directly to the channel input buffer
         /// 
         ///     Signature: void chiinp(int chan,char c);
         /// </summary>
@@ -1018,15 +1016,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            //Create Parameters for BTUCHI Routine
-            var initialStackValues = new Queue<ushort>(2);
-            initialStackValues.Enqueue(character);
-            initialStackValues.Enqueue(channelNumber);
-
-            //Get Variable Entry Point
-            //var resultRegisters = Module.Execute(channel.CharacterInterceptor, ChannelNumber, true, true, initialStackValues, 0xD000);
-
-            //Clear Input
             channel.InputBuffer.WriteByte(character);
 
             _logger.Debug($"Adding {character:X2} to input buffer");
