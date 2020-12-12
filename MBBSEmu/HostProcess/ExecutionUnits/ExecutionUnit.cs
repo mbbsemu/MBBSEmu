@@ -41,7 +41,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory)});
+            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory) });
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)
