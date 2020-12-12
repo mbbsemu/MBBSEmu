@@ -54,7 +54,8 @@ namespace MBBSEmu.Server.Socket
             _listenerSocket.Close();
         }
 
-        private void OnNewConnection(IAsyncResult asyncResult) {
+        private void OnNewConnection(IAsyncResult asyncResult) 
+        {
             System.Net.Sockets.Socket client;
             try
             {
@@ -72,6 +73,28 @@ namespace MBBSEmu.Server.Socket
             {
                 case EnumSessionType.Telnet:
                     {
+                        if (_configuration.IPLocationAllow != null)
+                        {
+                            //Convert incoming IP to a double
+                            var ipAddressValue = Dot2LongIP(((IPEndPoint)client.RemoteEndPoint).Address.ToString());
+                            var ipAllowed = false;
+
+                            //Check valid ip ranges
+                            for (var i = 0; i < _configuration.AllowedIPStartRange.Count; i++)
+                                if (ipAddressValue >= double.Parse(_configuration.AllowedIPStartRange[i]) &&
+                                    ipAddressValue <= double.Parse(_configuration.AllowedIPEndRange[i]))
+                                    ipAllowed = true;
+
+                            //Deny connection if not a valid IP range
+                            if (!ipAllowed)
+                            {
+                                _logger.Info(
+                                    $"Rejecting incoming telnet connection from unauthorized country -- Allowed: {_configuration.IPLocationAllow}, Remote Host: {client.RemoteEndPoint}");
+                                client.Close();
+                                return;
+                            }
+                        }
+
                         _logger.Info($"Accepting incoming Telnet connection from {client.RemoteEndPoint}...");
                         var session = new TelnetSession(_logger, client, _configuration);
                         _host.AddSession(session);
@@ -80,7 +103,7 @@ namespace MBBSEmu.Server.Socket
                     }
                 case EnumSessionType.Rlogin:
                     {
-                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration.RloginoRemoteIP)
+                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration.RloginRemoteIP)
                         {
                             _logger.Info(
                                 $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
@@ -97,6 +120,24 @@ namespace MBBSEmu.Server.Socket
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+        private static double Dot2LongIP(string dottedIP)
+        {
+            double num = 0;
+
+            if (dottedIP == "")
+            {
+                return 0;
+            }
+
+            var arrDec = dottedIP.Split(".");
+
+            for (var i = arrDec.Length - 1; i >= 0; i--)
+            {
+                num += int.Parse(arrDec[i]) % 256 * Math.Pow(256, (3 - i));
+            }
+            return num;
         }
     }
 }

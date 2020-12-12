@@ -42,12 +42,13 @@ namespace MBBSEmu
         public bool TelnetHeartbeat => GetAppSettings<bool>(ConfigurationRoot["Telnet.Heartbeat"], "Telnet.Heartbeat");
         public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
         public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
-        public string RloginoRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
+        public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
 
         //Optional Keys
         public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
+        public string IPLocationAllow => ConfigurationRoot["IPLocation.Allow"];
         public string ANSILogin => ConfigurationRoot["ANSI.Login"];
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
@@ -70,6 +71,10 @@ namespace MBBSEmu
         public string BBSAddress2 = "Fort Lauderdale, FL 33314\0";
         public string BBSDataPhone = "(305) 583-7808\0";
         public string BBSVoicePhone = "(305) 583-5990\0";
+
+        //IP Allowed Ranges
+        public List<string> AllowedIPStartRange = new List<string>();
+        public List<string> AllowedIPEndRange = new List<string>();
 
         public static T GetAppSettings<T>(object value, string valueName)
         {

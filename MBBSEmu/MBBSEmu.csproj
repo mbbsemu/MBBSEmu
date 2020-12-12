@@ -83,6 +83,9 @@
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
+    <None Update="IP2LOCATION-LITE-DB1.CSV">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="modules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
