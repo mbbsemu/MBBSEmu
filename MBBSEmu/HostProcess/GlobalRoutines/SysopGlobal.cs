@@ -35,11 +35,11 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
         {
             //Fast Return
-            if (command.Length < 6)
+            if (command.Length < 5)
                 return false;
 
             //Verify it's a /SYSOP command
-            if (!Encoding.ASCII.GetString(command).ToUpper().StartsWith("/SYSOP"))
+            if (!Encoding.ASCII.GetString(command).ToUpper().StartsWith("/SYS") || Encoding.ASCII.GetString(command).ToUpper().StartsWith("/SYSO"))
                 return false;
 
             //Verify the user has SYSOP key
