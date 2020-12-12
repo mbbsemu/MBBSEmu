@@ -1,4 +1,6 @@
-﻿using MBBSEmu.Memory;
+﻿using System.Collections.Generic;
+using MBBSEmu.DOS.Interrupts;
+using MBBSEmu.Memory;
 
 namespace MBBSEmu.CPU
 {
@@ -13,8 +15,9 @@ namespace MBBSEmu.CPU
         /// <param name="memoryCore"></param>
         /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
+        /// <param name="interruptHandlers"></param>
         void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
-            CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate);
+            CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers);
 
         /// <summary>
         ///     Resets the CPU to a startup state

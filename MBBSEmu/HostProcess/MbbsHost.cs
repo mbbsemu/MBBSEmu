@@ -119,7 +119,7 @@ namespace MBBSEmu.HostProcess
             _accountRepository = accountRepository;
 
             Logger.Info("Constructing MBBSEmu Host...");
-            
+
             _modules = new Dictionary<string, MbbsModule>();
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
@@ -136,7 +136,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) {MenuOptionKey = m.MenuOptionKey});
+                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
@@ -202,6 +202,13 @@ namespace MBBSEmu.HostProcess
                     //Process a single incoming byte from the client session
                     session.ProcessDataFromClient();
 
+                    //Handle GSBL Chain of Events
+                    ProcessGSBLInputEvents(session);
+
+                    //Handle Character based Events
+                    if (session.DataToProcess)
+                        ProcessIncomingCharacter(session);
+
                     //Global Command Handler
                     if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
                     {
@@ -249,52 +256,32 @@ namespace MBBSEmu.HostProcess
                         case EnumSessionState.RloginEnteringModule:
                             {
                                 ProcessLONROU_FromRlogin(session);
-                                continue;
+                                break;
                             }
                         //Initial call to STTROU when a User is Entering a Module
                         case EnumSessionState.EnteringModule:
                             {
                                 ProcessSTTROU_EnteringModule(session);
-                                continue;
+                                break;
                             }
 
                         //Post-Login Display Routine
                         case EnumSessionState.LoginRoutines:
                             {
                                 ProcessLONROU(session);
-                                continue;
+                                break;
                             }
 
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-                                //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-                                if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
-                                {
-                                    ProcessEchoEmptyInvoke(session);
-                                }
 
-                                //Invoke BTUCHI registered routine if one exists
-                                else if (session.DataToProcess)
-                                {
-                                    session.DataToProcess = false;
-
-                                    if (session.CharacterInterceptor != null)
-                                    {
-                                        if (ProcessBTUCHI(session) == 0)
-                                            continue;
-                                    }
-
-                                    //If the client is in transparent mode, don't echo
-                                    if (!session.TransparentMode && (session.Status == 1 || session.Status == 192))
-                                        session.SendToClient(new[] { session.LastCharacterReceived });
-                                }
 
                                 //Did BTUCHI or a previous command cause a status change?
                                 if (session.StatusChange && (session.Status == 240 || session.Status == 5))
                                 {
                                     ProcessSTSROU(session);
-                                    continue;
+                                    break;
                                 }
 
                                 //User Input Available? Invoke *STTROU
@@ -327,7 +314,11 @@ namespace MBBSEmu.HostProcess
                             }
                             break;
                     }
+
+                    //Mark Data Processing for this Channel as Complete
+                    session.DataToProcess = false;
                 }
+
 
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
@@ -344,7 +335,8 @@ namespace MBBSEmu.HostProcess
             Logger.Info("SHUTTING DOWN");
 
             // kill all active sessions
-            foreach (var session in _channelDictionary.Values) {
+            foreach (var session in _channelDictionary.Values)
+            {
                 session.Stop();
             }
 
@@ -361,7 +353,8 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue) {
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
+        {
             foreach (var m in _modules.Values)
             {
                 if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
@@ -570,7 +563,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort ProcessBTUCHI(SessionBase session)
+        private void ProcessBTUCHI(SessionBase session)
         {
             //Create Parameters for BTUCHI Routine
             var initialStackValues = new Queue<ushort>(2);
@@ -586,27 +579,7 @@ namespace MBBSEmu.HostProcess
             //would clear out AH before assigning AL
             result &= 0xFF;
 
-            //Result replaces the character in the buffer
-            if (session.InputBuffer.Length > 0 && result != 0xD)
-                session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
-
-            //Ignore
-            if (result == 0)
-                return result;
-
-            //If the new character is a carriage return, null terminate it and set status
-            if (result == 0xD)
-            {
-                session.Status = 3;
-                session.InputBuffer.WriteByte(0x0);
-            }
-            else
-            {
-                session.InputBuffer.WriteByte((byte)result);
-                session.LastCharacterReceived = (byte)result;
-            }
-
-            return result;
+            session.LastCharacterReceived = (byte)result;
         }
 
         /// <summary>
@@ -738,6 +711,91 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     Processes the incoming character from a channel through the GSBL series of events.
+        ///
+        ///     In an actual MBBS System, these events are all triggered before MBBS even "gets" the character
+        ///     from the serial channel.
+        /// </summary>
+        /// <param name="session"></param>
+        private void ProcessGSBLInputEvents(SessionBase session)
+        {
+            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
+            if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+            {
+                ProcessEchoEmptyInvoke(session);
+            }
+            //Invoke BTUCHI registered routine if one exists
+            else if (session.DataToProcess)
+            {
+                //First run it through BTUCHI?
+                if (session.CharacterInterceptor != null)
+                {
+                    ProcessBTUCHI(session);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Processes the incoming character from a given channel and takes specific action depending on the
+        ///     character and the current state of the channel.
+        ///
+        ///     Echoing of the character back to the channel is also handled within this method
+        /// </summary>
+        /// <param name="session"></param>
+        private void ProcessIncomingCharacter(SessionBase session)
+        {
+            //Handling Incoming Characters
+            switch (session.LastCharacterReceived)
+            {
+                //Backspace
+                case 127 when session.SessionState == EnumSessionState.InModule:
+                case 0x8:
+                    {
+                        if (session.InputBuffer.Length > 0)
+                        {
+                            session.SendToClient(new byte[] { 0x08, 0x20, 0x08 });
+                            session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
+                        }
+                        break;
+                    }
+
+                //Enter or Return
+                case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
+                    {
+                        //Set Status == 3, which means there is a Command Ready
+                        session.SendToClient(new byte[] { 0xD, 0xA });
+                        session.Status = 3;
+                        session.EchoSecureEnabled = false;
+                        break;
+                    }
+
+                case 0xA: //Ignore Linefeed
+                case 0x0: //Ignore Null
+                    break;
+                default:
+                    {
+                        //If Secure Echo is on, enforce maximum length
+                        if (session.EchoSecureEnabled && session.InputBuffer.Length >= session.ExtUsrAcc.wid)
+                            break;
+
+                        session.InputBuffer.WriteByte(session.LastCharacterReceived);
+
+                        //If the client is in transparent mode, don't echo
+                        if (!session.TransparentMode &&
+                            (session.Status == 0 || session.Status == 1 || session.Status == 192))
+                        {
+                            //Check for Secure Echo being Enabled
+                            session.SendToClient(session.EchoSecureEnabled
+                                ? new[] {session.ExtUsrAcc.ech}
+                                : new[] {session.LastCharacterReceived});
+                        }
+
+                        break;
+                    }
+            }
+        }
+
+        /// <summary>
         ///     Adds the specified module to the MBBS Host
         ///
         ///     This includes:
@@ -799,7 +857,8 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        public bool RemoveSession(ushort channel) {
+        public bool RemoveSession(ushort channel)
+        {
             if (!_channelDictionary.ContainsKey(channel))
             {
                 return false;
@@ -1053,7 +1112,7 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-               foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
 

@@ -19,6 +19,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Disassembler;
+using MBBSEmu.DOS;
 
 namespace MBBSEmu
 {
@@ -79,6 +81,11 @@ namespace MBBSEmu
         private bool _isConsoleSession;
 
         /// <summary>
+        ///     EXE File to be Executed
+        /// </summary>
+        private string _exeFile;
+
+        /// <summary>
         ///     Module Configuration
         /// </summary>
         private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
@@ -93,7 +100,8 @@ namespace MBBSEmu
             new Program().Run(args);
         }
 
-        private void Run(string[] args) {
+        private void Run(string[] args)
+        {
             try
             {
                 if (args.Length == 0)
@@ -103,6 +111,16 @@ namespace MBBSEmu
                 {
                     switch (args[i].ToUpper())
                     {
+                        case "-EXE":
+                            {
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    _exeFile = args[i + 1];
+                                    i++;
+                                }
+
+                                break;
+                            }
                         case "-DBRESET":
                             {
                                 _doResetDatabase = true;
@@ -163,7 +181,7 @@ namespace MBBSEmu
                                 //If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
-                                    _settingsFileName =  args[i + 1];
+                                    _settingsFileName = args[i + 1];
 
                                     if (!File.Exists(_settingsFileName))
                                     {
@@ -181,19 +199,29 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-CONSOLE":
-                        {
-                            _isConsoleSession = true;
-                            break;
-                        }
+                            {
+                                _isConsoleSession = true;
+                                break;
+                            }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
                     }
                 }
-                
-                _serviceResolver = new ServiceResolver();
 
+                _serviceResolver = new ServiceResolver();
                 _logger = _serviceResolver.GetService<ILogger>();
+
+                //EXE File Execution
+                if (!string.IsNullOrEmpty(_exeFile))
+                {
+                    var mzFile = new MZFile(_exeFile);
+                    var exe = new ExeRuntime(mzFile, null, _logger);
+                    exe.Load();
+                    exe.Run();
+                    return;
+                }
+
                 var configuration = _serviceResolver.GetService<AppSettings>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
@@ -249,12 +277,12 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     //Load Command Line
-                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey});
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey });
                 }
                 else if (_isModuleConfigFile)
                 {
-                    //Load Menu Option Keys
-                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789".ToCharArray().ToList();
+                    //Load Menu Option Keys - 35 total
+                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWYZ0123456789".ToCharArray().ToList(); //Exclude X for logoff
 
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
@@ -303,7 +331,7 @@ namespace MBBSEmu
 
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"]});
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"] });
                     }
                 }
                 else
@@ -370,7 +398,7 @@ namespace MBBSEmu
 
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
-                if(_isConsoleSession)
+                if (_isConsoleSession)
                     _ = new LocalConsoleSession(_logger, "CONSOLE", host);
             }
             catch (Exception e)
@@ -413,7 +441,7 @@ namespace MBBSEmu
         private void DatabaseReset()
         {
             _logger.Info("Resetting Database...");
-            
+
 
             if (string.IsNullOrEmpty(_newSysopPassword))
             {
@@ -445,7 +473,7 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>")}.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
             _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
 
             _logger.Info("Database Reset!");

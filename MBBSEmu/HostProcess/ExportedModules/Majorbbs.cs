@@ -1229,6 +1229,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 211:
                     filelength();
                     break;
+                case 811:
+                    echsec();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -7479,6 +7482,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Sets Secure Echo to ON for the specified number of input characters. Characters within
+        ///     the specified width are echo'd as the secure character.
+        /// 
+        ///     Signature: void echsec(char c, int width);
+        /// </summary>
+        private void echsec()
+        {
+            ChannelDictionary[ChannelNumber].EchoSecureEnabled = true;
+            ChannelDictionary[ChannelNumber].ExtUsrAcc.ech = (byte)GetParameter(0);
+            ChannelDictionary[ChannelNumber].ExtUsrAcc.wid = (byte)GetParameter(1);
+
+#if DEBUG
+            _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
+#endif
         }
     }
 }
