@@ -207,9 +207,7 @@ namespace MBBSEmu.HostProcess
 
                     //Handle Character based Events
                     if (session.DataToProcess)
-                    {
                         ProcessIncomingCharacter(session);
-                    }
 
                     //Global Command Handler
                     if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
@@ -712,6 +710,13 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Processes the incoming character from a channel through the GSBL series of events.
+        ///
+        ///     In an actual MBBS System, these events are all triggered before MBBS even "gets" the character
+        ///     from the serial channel.
+        /// </summary>
+        /// <param name="session"></param>
         private void ProcessGSBLInputEvents(SessionBase session)
         {
             //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
@@ -730,6 +735,13 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Processes the incoming character from a given channel and takes specific action depending on the
+        ///     character and the current state of the channel.
+        ///
+        ///     Echoing of the character back to the channel is also handled within this method
+        /// </summary>
+        /// <param name="session"></param>
         private void ProcessIncomingCharacter(SessionBase session)
         {
             //Handling Incoming Characters
@@ -762,7 +774,6 @@ namespace MBBSEmu.HostProcess
                     break;
                 default:
                     {
-
                         //If Secure Echo is on, enforce maximum length
                         if (session.EchoSecureEnabled && session.InputBuffer.Length >= session.ExtUsrAcc.wid)
                             break;

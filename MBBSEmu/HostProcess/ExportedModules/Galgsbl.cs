@@ -1017,8 +1017,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             channel.InputBuffer.WriteByte(character);
-
-            _logger.Debug($"Adding {character:X2} to input buffer");
         }
     }
 }
