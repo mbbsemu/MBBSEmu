@@ -206,6 +206,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             session.SendToClient("|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
+            session.ExtUsrAcc.wid = 0xFF;
+            session.ExtUsrAcc.ech = (byte)'*';
+            session.EchoSecureEnabled = true;
         }
 
         private void LoginPasswordInput(SessionBase session)
@@ -424,6 +427,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SendToClient("and will only use on this system.\r\n|RESET|".EncodeToANSIArray());
             session.SendToClient("\r\n|CYAN||B|Please enter a strong Password:|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupPasswordInput;
+            session.ExtUsrAcc.wid = 0xFF;
+            session.ExtUsrAcc.ech = (byte)'*';
+            session.EchoSecureEnabled = true;
         }
 
         private void SignupPasswordInput(SessionBase session)
@@ -461,6 +467,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             session.SendToClient("\r\n|CYAN||B|Please re-enter your password to confirm:|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupPasswordConfirmInput;
+            session.ExtUsrAcc.wid = 0xFF;
+            session.ExtUsrAcc.ech = (byte)'*';
+            session.EchoSecureEnabled = true;
         }
 
         private void SignupPasswordConfirmInput(SessionBase session)
