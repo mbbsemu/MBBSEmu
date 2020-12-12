@@ -159,14 +159,31 @@ namespace MBBSEmu.Tests.Btrieve
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
 
+            using (var stmt = new SqliteCommand("SELECT version FROM metadata_t", connection))
+                stmt.ExecuteScalar().Should().Be(BtrieveFileProcessor.CURRENT_VERSION);
+
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'metadata_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_METADATA_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_METADATA_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'keys_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_KEYS_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_KEYS_T_SQL);
 
             using (var stmt = new SqliteCommand("SELECT sql FROM sqlite_master WHERE name = 'data_t';", connection))
-                ((string)stmt.ExecuteScalar()).Should().Be(EXPECTED_DATA_T_SQL);
+                stmt.ExecuteScalar().Should().Be(EXPECTED_DATA_T_SQL);
+
+            using (var stmt = new SqliteCommand("SELECT name, tbl_name, sql FROM sqlite_master WHERE type = 'trigger';", connection))
+            {
+                using var reader = stmt.ExecuteReader();
+                reader.Read().Should().BeTrue();
+                reader.GetString(0).Should().Be("non_modifiable");
+                reader.GetString(1).Should().Be("data_t");
+                reader.GetString(2).Should().Be("CREATE TRIGGER non_modifiable BEFORE UPDATE ON data_t " +
+                    "BEGIN SELECT CASE " +
+                    "WHEN NEW.key_0 != OLD.key_0 " +
+                    "THEN RAISE (ABORT,'You modified a non-modifiable key_0!') " +
+                    "WHEN NEW.key_3 != OLD.key_3 " +
+                    "THEN RAISE (ABORT,'You modified a non-modifiable key_3!') END; END");
+            }
         }
 
         [Fact]
@@ -499,15 +516,15 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
-
-            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
+            var record = new MBBSEmuRecord { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
 
             btrieve.Update(1, record.Data).Should().BeTrue();
 
             record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);
-            record.Key0.Should().Be("Paladine");
+            record.Key0.Should().Be("Sysop");
             record.Key1.Should().Be(31337);
             record.Key2.Should().Be("In orbe terrarum, optimus sum");
+            record.Key3.Should().Be(1);
 
             btrieve.GetRecordCount().Should().Be(4);
         }
@@ -522,19 +539,23 @@ namespace MBBSEmu.Tests.Btrieve
 
             var record = new MBBSEmuRecord
             {
-                Key0 = "Paladine",
+                Key0 = "Sysop",
                 Key1 = 31337,
                 Key2 = "In orbe terrarum, optimus sum",
                 Key3 = 2
             };
 
-            btrieve.Update(2, MakeSmaller(record.Data, 14)).Should().BeTrue();
+            // we shorten the data by 3 bytes, meaning Key3 data is still valid, and is a single byte of 2.
+            // The code will upsize to the full 74 bytes, filling in 0 for the rest of Key3 data,
+            // so Key3 starts as 0x02 but grows to 0x02000000 (little endian == 2)
+            // We have to keep Key3 as 2 since this key is marked non-modifiable
+            btrieve.Update(2, MakeSmaller(record.Data, 3)).Should().BeTrue();
 
             record = new MBBSEmuRecord(btrieve.GetRecord(2)?.Data);
-            record.Key0.Should().Be("Paladine");
+            record.Key0.Should().Be("Sysop");
             record.Key1.Should().Be(31337);
-            record.Key2.Should().Be("In orbe terrarum, opti");
-            record.Key3.Should().Be(5); // regenerated
+            record.Key2.Should().Be("In orbe terrarum, optimus sum");
+            record.Key3.Should().Be(2);
 
             btrieve.GetRecordCount().Should().Be(4);
         }
@@ -547,10 +568,33 @@ namespace MBBSEmu.Tests.Btrieve
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
+            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
             // constraint failure here
-
             btrieve.Update(1, record.Data).Should().BeFalse();
+
+            // assert update didn't occur
+            record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);
+            record.Key0.Should().Be("Sysop");
+            record.Key1.Should().Be(3444);
+            record.Key2.Should().Be("3444");
+            record.Key3.Should().Be(1);
+        }
+
+        [Fact]
+        public void UpdateTestNonModifiableKeyModifiedFailed()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            var serviceResolver = new ServiceResolver();
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 333333 };
+
+            // non-modifiable trigger failure here
+            Action action = () => btrieve.Update(1, record.Data).Should().BeFalse();
+            action.Should().Throw<SqliteException>()
+                .Where(ex => ex.SqliteErrorCode == BtrieveFileProcessor.SQLITE_CONSTRAINT)
+                .Where(ex => ex.SqliteExtendedErrorCode == BtrieveFileProcessor.SQLITE_CONSTRAINT_TRIGGER);
 
             // assert update didn't occur
             record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);

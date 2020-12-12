@@ -345,8 +345,6 @@ namespace MBBSEmu.Tests.Integration
                     "Press X to exit.",
                 };
 
-                foreach (var line in lines) host.Logger.Error(line);
-
                 lines.Should().BeEquivalentTo(expected);
 
                 session.SendToModule(Encoding.ASCII.GetBytes("x\r\nx\r\nx\r\nx\r\nY\r\n"));
@@ -380,8 +378,6 @@ namespace MBBSEmu.Tests.Integration
                     "\r\n" +
                     "Press X to exit.",
                 };
-
-                foreach (var line in lines) host.Logger.Error(line);
 
                 lines.Should().BeEquivalentTo(expected);
 
