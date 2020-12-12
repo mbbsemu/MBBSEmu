@@ -7493,11 +7493,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void echsec()
         {
             ChannelDictionary[ChannelNumber].EchoSecureEnabled = true;
-            ChannelDictionary[ChannelNumber].EchoSecuredCharacter = (byte)GetParameter(0);
-            ChannelDictionary[ChannelNumber].EchoSecuredLength = GetParameter(1);
+            ChannelDictionary[ChannelNumber].ExtUsrAcc.ech = (byte)GetParameter(0);
+            ChannelDictionary[ChannelNumber].ExtUsrAcc.wid = (byte)GetParameter(1);
 
 #if DEBUG
-            _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].EchoSecuredLength} characters with the character {(char)ChannelDictionary[ChannelNumber].EchoSecuredCharacter}");
+            _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
 #endif
         }
     }

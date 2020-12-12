@@ -194,14 +194,9 @@ namespace MBBSEmu.Session
         public bool EchoSecureEnabled { get; set; }
 
         /// <summary>
-        ///     Specifies the maximum width for the ECHSEC masked Input
+        ///     
         /// </summary>
-        public ushort EchoSecuredLength { get; set; }
-
-        /// <summary>
-        ///     Character used to mask input for ECHSEC
-        /// </summary>
-        public byte EchoSecuredCharacter { get; set; }
+        public byte InputMaximumLength { get; set; }
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously

@@ -25,6 +25,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte wid
         {
+            set => Data[3] = value;
             get => Data[3];
         }
 
@@ -33,6 +34,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public byte ech
         {
+            set => Data[4] = value;
             get => Data[4];
         }
 

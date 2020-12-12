@@ -320,7 +320,7 @@ namespace MBBSEmu.HostProcess
                     //Mark Data Processing for this Channel as Complete
                     session.DataToProcess = false;
                 }
-                
+
 
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
@@ -581,7 +581,7 @@ namespace MBBSEmu.HostProcess
             //would clear out AH before assigning AL
             result &= 0xFF;
 
-            session.LastCharacterReceived = (byte) result;
+            session.LastCharacterReceived = (byte)result;
         }
 
         /// <summary>
@@ -756,12 +756,17 @@ namespace MBBSEmu.HostProcess
                         session.EchoSecureEnabled = false;
                         break;
                     }
-                
+
                 case 0xA: //Ignore Linefeed
                 case 0x0: //Ignore Null
                     break;
                 default:
                     {
+
+                        //If Secure Echo is on, enforce maximum length
+                        if (session.EchoSecureEnabled && session.InputBuffer.Length >= session.ExtUsrAcc.wid)
+                            break;
+
                         session.InputBuffer.WriteByte(session.LastCharacterReceived);
 
                         //If the client is in transparent mode, don't echo
@@ -769,10 +774,9 @@ namespace MBBSEmu.HostProcess
                             (session.Status == 0 || session.Status == 1 || session.Status == 192))
                         {
                             //Check for Secure Echo being Enabled
-                            if(session.EchoSecureEnabled && session.InputBuffer.Length <= session.EchoSecuredLength)
-                                session.SendToClient(new[] { session.EchoSecuredCharacter });
-                            else
-                                session.SendToClient(new[] {session.LastCharacterReceived});
+                            session.SendToClient(session.EchoSecureEnabled
+                                ? new[] {session.ExtUsrAcc.ech}
+                                : new[] {session.LastCharacterReceived});
                         }
 
                         break;
