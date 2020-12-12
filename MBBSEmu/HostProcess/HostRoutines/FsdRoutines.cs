@@ -55,70 +55,6 @@ namespace MBBSEmu.HostProcess.HostRoutines
             return true;
         }
 
-        private void ProcessCharacter(SessionBase session, bool secure = false)
-        {
-            //Check to see if there's anything that needs doing
-            if (!session.DataToProcess) return;
-
-            session.DataToProcess = false;
-            switch (session.LastCharacterReceived)
-            {
-                case 0x8:
-                case 0x7F:
-                    EchoToClient(session, new byte[] { 0x08, 0x20, 0x08 });
-                    break;
-                default:
-                    EchoToClient(session, secure ? (byte)0x2A : session.LastCharacterReceived);
-                    break;
-            }
-
-            HandleBackspace(session, session.LastCharacterReceived);
-        }
-
-        private void EchoToClient(SessionBase session, ReadOnlySpan<byte> dataToEcho)
-        {
-            foreach (var t in dataToEcho)
-                EchoToClient(session, t);
-        }
-
-        /// <summary>
-        ///     Data to Echo to client
-        ///
-        ///     This will handle cases like properly doing backspaces, etc.
-        /// </summary>
-        /// <param name="session"></param>
-        /// <param name="dataToEcho"></param>
-        private void EchoToClient(SessionBase session, byte dataToEcho)
-        {
-            //Handle Backspace or Delete
-            if (dataToEcho == 0x8 || dataToEcho == 0x7F)
-            {
-                session.SendToClient(new byte[] { 0x08, 0x20, 0x08 });
-                return;
-            }
-
-            session.SendToClient(new[] { dataToEcho });
-        }
-
-        /// <summary>
-        ///     Applies Backspace from the Client to the Input Buffer
-        /// </summary>
-        /// <param name="session"></param>
-        /// <param name="inputFromUser"></param>
-        /// <returns></returns>
-        private void HandleBackspace(SessionBase session, byte inputFromUser)
-        {
-            if (inputFromUser != 0x8 && inputFromUser != 0x7F)
-                return;
-
-            //If its backspace and the buffer is already empty, do nothing
-            if (session.InputBuffer.Length <= 0)
-                return;
-
-            //Because position starts at 0, it's an easy -1 on length
-            session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
-        }
-
         /// <summary>
         ///     Sets the Cursor Position to the Specified X & Y
         /// </summary>
@@ -559,10 +495,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             if (_fsdFields[session.Channel].SelectedField.FsdFieldType == EnumFsdFieldType.Numeric && !char.IsNumber((char)_userInput))
                                 break;
 
-                            ProcessCharacter(session);
                             _fsdFields[session.Channel].SelectedField.Value += (char)_userInput;
-
-
 
                             break;
                         }
@@ -613,7 +546,6 @@ namespace MBBSEmu.HostProcess.HostRoutines
                         {
                             if (_fsdFields[session.Channel].SelectedField.Value.Length > 0)
                             {
-                                ProcessCharacter(session);
                                 _fsdFields[session.Channel].SelectedField.Value =
                                     _fsdFields[session.Channel].SelectedField.Value.Substring(0, _fsdFields[session.Channel].SelectedField.Value.Length - 1);
                             }

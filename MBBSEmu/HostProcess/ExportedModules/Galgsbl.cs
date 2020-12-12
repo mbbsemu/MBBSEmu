@@ -6,6 +6,7 @@ using MBBSEmu.Server;
 using MBBSEmu.Session;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -220,6 +221,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 22:
                     btuinp();
+                    break;
+                case 62:
+                    chiinp();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
@@ -974,7 +978,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     The line terminator for the command is replaced by a NULL (\0), but since we don't write the newline
         ///     in SessionBase, we just NULL terminate the input.
         ///
-        ///     Signature: void chiinp(int chan,char c);
+
         /// </summary>
         private void btuinp()
         {
@@ -994,6 +998,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Clear the Buffer
             channel.InputBuffer.SetLength(0);
+        }
+
+        /// <summary>
+        ///     Takes the specified character and adds it directly to the channel input buffer
+        /// 
+        ///     Signature: void chiinp(int chan,char c);
+        /// </summary>
+        private void chiinp()
+        {
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.InputBuffer.WriteByte(character);
         }
     }
 }

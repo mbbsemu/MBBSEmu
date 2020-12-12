@@ -265,7 +265,7 @@ namespace MBBSEmu.CPU
 
             //Show Debugging
             //_showDebug = true;
-            //_showDebug = Registers.CS == 0x4 && Registers.IP >= 0x2953 && Registers.IP <= 0x298C;
+            //_showDebug = Registers.CS == 0x2 && Registers.IP >= 0x85F1 && Registers.IP <= 0x8621;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
