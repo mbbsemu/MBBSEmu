@@ -568,10 +568,33 @@ namespace MBBSEmu.Tests.Btrieve
             var serviceResolver = new ServiceResolver();
             using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
 
-            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
+            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
             // constraint failure here
-
             btrieve.Update(1, record.Data).Should().BeFalse();
+
+            // assert update didn't occur
+            record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);
+            record.Key0.Should().Be("Sysop");
+            record.Key1.Should().Be(3444);
+            record.Key2.Should().Be("3444");
+            record.Key3.Should().Be(1);
+        }
+
+        [Fact]
+        public void UpdateTestNonModifiableKeyModifiedFailed()
+        {
+            CopyFilesToTempPath("MBBSEMU.DB");
+
+            var serviceResolver = new ServiceResolver();
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+
+            var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 333333 };
+
+            // non-modifiable trigger failure here
+            Action action = () => btrieve.Update(1, record.Data).Should().BeFalse();
+            action.Should().Throw<SqliteException>()
+                .Where(ex => ex.SqliteErrorCode == BtrieveFileProcessor.SQLITE_CONSTRAINT)
+                .Where(ex => ex.SqliteExtendedErrorCode == BtrieveFileProcessor.SQLITE_CONSTRAINT_TRIGGER);
 
             // assert update didn't occur
             record = new MBBSEmuRecord(btrieve.GetRecord(1)?.Data);

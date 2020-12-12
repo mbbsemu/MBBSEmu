@@ -26,7 +26,15 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
+        public const int SQLITE_CONSTRAINT = 19;
+        public const int SQLITE_CONSTRAINT_UNIQUE = 2067;
+        public const int SQLITE_CONSTRAINT_TRIGGER = 1811;
+
+        /// <summary>
+        ///     The current version of the database schema, stored inside metadata_t.version
+        /// </summary>
         public const int CURRENT_VERSION = 2;
+
         const int ACS_LENGTH = 256;
 
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
@@ -492,9 +500,15 @@ namespace MBBSEmu.Btrieve
             }
             catch (SqliteException ex)
             {
-                _logger.Warn(ex, $"Failed to update record because {ex.Message}");
+                _logger.Warn(ex, $"Failed to update record because {ex.SqliteErrorCode} {ex.SqliteExtendedErrorCode} {ex.Message}");
                 transaction.Rollback();
-                return false;
+
+                // emulating strange MBBS behavior here. If an update fails on a constraint check,
+                // it returns 0. If a key is modified, it catastro's
+                if (ex.SqliteErrorCode == SQLITE_CONSTRAINT && ex.SqliteExtendedErrorCode == SQLITE_CONSTRAINT_UNIQUE)
+                    return false;
+
+                throw;
             }
 
             try
