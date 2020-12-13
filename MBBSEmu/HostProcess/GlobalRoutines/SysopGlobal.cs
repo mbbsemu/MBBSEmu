@@ -38,7 +38,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             if (command.Length < 5)
                 return false;
 
-            //Verify it's a /SYSOP command
+            //Verify it's a /SYS command
             if (!Encoding.ASCII.GetString(command).ToUpper().StartsWith("/SYS") || Encoding.ASCII.GetString(command).ToUpper().StartsWith("/SYSO"))
                 return false;
 
@@ -153,7 +153,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to list all accounts
         ///
-        ///     Syntax: /SYSOP LISTACCOUNTS
+        ///     Syntax: /SYS LISTACCOUNTS
         /// </summary>
         private void ListAccounts()
         {
@@ -170,14 +170,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to delete an account
         ///
-        ///     Syntax: /SYSOP REMOVEACCOUNT USER
+        ///     Syntax: /SYS REMOVEACCOUNT USER
         /// </summary>
         /// <param name="commandSequence"></param>
         private void RemoveAccount(IReadOnlyList<string> commandSequence)
         {
             if (commandSequence.Count() < 3)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP REMOVEACCOUNT <USER>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS REMOVEACCOUNT <USER>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -198,11 +198,11 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _accountRepository.DeleteAccountById(userAccount.accountId);
 
             //Remove the User from the BBSUSR Database
-            var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            var result = _accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
+            var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            var result = accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
 
             if (result)
-                _accountBtrieve.Delete();
+                accountBtrieve.Delete();
 
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
         }
@@ -210,14 +210,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to reset the password for an account
         ///
-        ///     Syntax: /SYSOP RESETPW USER PASSWORD PASSWORD
+        ///     Syntax: /SYS RESETPW USER PASSWORD PASSWORD
         /// </summary>
         /// <param name="commandSequence"></param>
         private void ResetPassword(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 5)
+            if (commandSequence.Count < 5)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP RESETPW <USER> <PW> <CONF PW>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS RESETPW <USER> <PW> <CONF PW>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -244,14 +244,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to add the specified key to the specified user
         ///
-        ///     Syntax: /SYSOP ADDKEY USER KEY
+        ///     Syntax: /SYS ADDKEY USER KEY
         /// </summary>
         /// <param name="commandSequence"></param>
         private void AddKey(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 4)
+            if (commandSequence.Count < 4)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP ADDKEY <USER> <KEY>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS ADDKEY <USER> <KEY>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -277,14 +277,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to list the keys assigned to the specified user
         ///
-        ///     Syntax: /SYSOP LISTKEYS USER
+        ///     Syntax: /SYS LISTKEYS USER
         /// </summary>
         /// <param name="commandSequence"></param>
         private void ListKeys(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 3)
+            if (commandSequence.Count < 3)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP LISTKEYS <USER>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS LISTKEYS <USER>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -307,14 +307,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to remove the specified key from the specified user
         ///
-        ///     Syntax: /SYSOP REMOVEKEY USER KEY
+        ///     Syntax: /SYS REMOVEKEY USER KEY
         /// </summary>
         /// <param name="commandSequence"></param>
         private void RemoveKey(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 4)
+            if (commandSequence.Count < 4)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP REMOVEKEY <USER> <KEY>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS REMOVEKEY <USER> <KEY>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -340,14 +340,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to broadcast a message to all users
         ///
-        ///     Syntax: /SYSOP BROADCAST MESSAGE
+        ///     Syntax: /SYS BROADCAST MESSAGE
         /// </summary>
         /// <param name="commandSequence"></param>
         private void Broadcast(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 3)
+            if (commandSequence.Count < 3)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP BROADCAST <MESSAGE>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS BROADCAST <MESSAGE>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -360,14 +360,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <summary>
         ///     Sysop Command to kick the specified user
         ///
-        ///     Syntax: /SYSOP KICK USER
+        ///     Syntax: /SYS KICK USER
         /// </summary>
         /// <param name="commandSequence"></param>
         private void Kick(IReadOnlyList<string> commandSequence)
         {
-            if (commandSequence.Count() < 3)
+            if (commandSequence.Count < 3)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYSOP KICK <USER>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS KICK <USER>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
@@ -376,7 +376,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             if (channelToKick == null)
             {
-                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{userName} not found online -- Syntax: /SYSOP KICK <USER>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{userName} not found online -- Syntax: /SYS KICK <USER>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
