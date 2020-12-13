@@ -127,7 +127,7 @@ namespace MBBSEmu.Server.Socket
         private string GetIP2Location(string ipAddress)
         {
             const string url = "https://api.ip2location.com/v2/";
-            var urlParameters = $"?ip={ipAddress}&key=demo&package=WS1";
+            var urlParameters = $"?ip={ipAddress}&key={_configuration.IPLocationAllowKey}&package=WS1";
             var client = new HttpClient();
             var ip2LocationResponse = new IP2Location();
             
@@ -141,7 +141,7 @@ namespace MBBSEmu.Server.Socket
             }
             else
             {
-                _logger.Info($"{(int)response.StatusCode} ({response.ReasonPhrase})");
+                _logger.Info($"{(int)response.StatusCode} ({response.ReasonPhrase}) -- allowing connection");
                 ip2LocationResponse.country_code = "-"; // Fail open
             }
 
