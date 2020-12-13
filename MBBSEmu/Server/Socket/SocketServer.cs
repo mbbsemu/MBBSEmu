@@ -4,9 +4,12 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
+using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 
 namespace MBBSEmu.Server.Socket
@@ -75,15 +78,14 @@ namespace MBBSEmu.Server.Socket
                     {
                         if (_configuration.IPLocationAllow != null)
                         {
-                            //Convert incoming IP to a double
-                            var ipAddressValue = Dot2LongIP(((IPEndPoint)client.RemoteEndPoint).Address.ToString());
+                            var ipAddressValue = ((IPEndPoint)client.RemoteEndPoint).Address.ToString();
                             var ipAllowed = false;
 
-                            //Check valid ip ranges
-                            for (var i = 0; i < _configuration.AllowedIPStartRange.Count; i++)
-                                if (ipAddressValue >= double.Parse(_configuration.AllowedIPStartRange[i]) &&
-                                    ipAddressValue <= double.Parse(_configuration.AllowedIPEndRange[i]))
-                                    ipAllowed = true;
+                            var ipCountry = GetIP2Location(ipAddressValue);
+                            _logger.Info($"Response from IP2LOCATION: {ipCountry}");
+
+                            if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-") // "-" allows private ranges 10.x, 192.168.x etc.
+                                ipAllowed = true;
 
                             //Deny connection if not a valid IP range
                             if (!ipAllowed)
@@ -122,22 +124,36 @@ namespace MBBSEmu.Server.Socket
             }
         }
 
-        private static double Dot2LongIP(string dottedIP)
+        private string GetIP2Location(string ipAddress)
         {
-            double num = 0;
-
-            if (dottedIP == "")
+            const string url = "https://api.ip2location.com/v2/";
+            var urlParameters = $"?ip={ipAddress}&key=demo&package=WS1";
+            var client = new HttpClient();
+            var ip2LocationResponse = new IP2Location();
+            
+            client.BaseAddress = new Uri(url);
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            var response = client.GetAsync(urlParameters).Result;
+            
+            if (response.IsSuccessStatusCode)
             {
-                return 0;
+                ip2LocationResponse = JsonConvert.DeserializeObject<IP2Location>(response.Content.ReadAsStringAsync().Result);
+            }
+            else
+            {
+                _logger.Info($"{(int)response.StatusCode} ({response.ReasonPhrase})");
+                ip2LocationResponse.country_code = "-"; // Fail open
             }
 
-            var arrDec = dottedIP.Split(".");
+            client.Dispose();
+            return ip2LocationResponse.country_code;
+        }
 
-            for (var i = arrDec.Length - 1; i >= 0; i--)
-            {
-                num += int.Parse(arrDec[i]) % 256 * Math.Pow(256, (3 - i));
-            }
-            return num;
+        // JSON from IP2LOCATION
+        public class IP2Location
+        {
+            public string country_code { get; set; }
+            public int credits_consumed { get; set; }
         }
     }
 }

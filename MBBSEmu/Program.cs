@@ -255,24 +255,6 @@ namespace MBBSEmu
                     DatabaseReset();
                 }
 
-                //Load IPLocation list if enabled
-                if (configuration.IPLocationAllow != null)
-                {
-                    using var reader = new StreamReader("IP2LOCATION-LITE-DB1.CSV");
-
-                    while (!reader.EndOfStream)
-                    {
-                        var line = reader.ReadLine();
-                        var values = line.Split(',');
-
-                        if (values[2].Trim('"') == configuration.IPLocationAllow || values[2].Trim('"') == "-")
-                        {
-                            configuration.AllowedIPStartRange.Add(values[0].Trim('"'));
-                            configuration.AllowedIPEndRange.Add(values[1].Trim('"'));
-                        }
-                    }
-                }
-
                 //Setup Modules
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
