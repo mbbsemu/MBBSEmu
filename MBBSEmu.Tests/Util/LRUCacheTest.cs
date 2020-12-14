@@ -86,6 +86,7 @@ namespace MBBSEmu.Tests.Util
       cache.ListCount.Should().Be(3);
       cache.MostRecentlyUsed.Should().Be(8);
       cache[8].Should().Be("test4");
+      cache.MostRecentlyUsed.Should().Be(8);
       cache[7].Should().Be("test3");
       cache.MostRecentlyUsed.Should().Be(7);
       cache[6].Should().Be("test2");
@@ -103,6 +104,7 @@ namespace MBBSEmu.Tests.Util
       cache[6].Should().Be("test2");
       cache.MostRecentlyUsed.Should().Be(6);
       cache.ContainsKey(8).Should().BeFalse();
+      cache.ContainsKey(9).Should().BeTrue();
     }
   }
 }
