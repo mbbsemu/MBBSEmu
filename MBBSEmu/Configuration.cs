@@ -49,7 +49,7 @@ namespace MBBSEmu
         //Optional Keys
         public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
         public string IPLocationAllow => ConfigurationRoot["IPLocation.Allow"];
-        public string IPLocationAllowKey => ConfigurationRoot["IPLocation.AllowKey"];
+        public string IPLocationKey => ConfigurationRoot["IPLocation.Key"];
         public string ANSILogin => ConfigurationRoot["ANSI.Login"];
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];

@@ -82,7 +82,7 @@ namespace MBBSEmu.Server.Socket
                             var ipCountry = GetIP2Location(((IPEndPoint)client.RemoteEndPoint).Address.ToString());
                             _logger.Info($"Response from IP2LOCATION: {ipCountry}");
 
-                            if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-") // "-" allows private ranges 10.x, 192.168.x etc.
+                            if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-" || ipCountry == null) // "-" allows private ranges 10.x, 192.168.x etc., fail open
                                 ipAllowed = true;
 
                             //Deny connection if not a valid IP range
@@ -125,7 +125,7 @@ namespace MBBSEmu.Server.Socket
         private string GetIP2Location(string ipAddress)
         {
             const string url = "https://api.ip2location.com/v2/";
-            var urlParameters = $"?ip={ipAddress}&key={_configuration.IPLocationAllowKey}&package=WS1";
+            var urlParameters = $"?ip={ipAddress}&key={_configuration.IPLocationKey}&package=WS1";
             var client = new HttpClient();
             var ip2LocationResponse = new IP2Location();
             
@@ -140,18 +140,17 @@ namespace MBBSEmu.Server.Socket
             else
             {
                 _logger.Info($"{(int)response.StatusCode} ({response.ReasonPhrase}) -- allowing connection");
-                ip2LocationResponse.country_code = "-"; // Fail open
             }
 
             client.Dispose();
-            return ip2LocationResponse.country_code;
+            if (ip2LocationResponse != null) return ip2LocationResponse.CountryCode;
         }
 
         // JSON from IP2LOCATION
         private class IP2Location
         {
-            public string country_code { get; set; }
-            public int credits_consumed { get; set; }
+            public string CountryCode { get; set; }
+            public int CreditsConsumed { get; set; }
         }
     }
 }
