@@ -103,7 +103,7 @@ namespace MBBSEmu.Server.Socket
                     }
                 case EnumSessionType.Rlogin:
                     {
-                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration.RloginRemoteIP)
+                        if (((IPEndPoint)client.RemoteEndPoint).Address.ToString() != _configuration.RloginoRemoteIP)
                         {
                             _logger.Info(
                                 $"Rejecting incoming Rlogin connection from unauthorized Remote Host: {client.RemoteEndPoint}");
