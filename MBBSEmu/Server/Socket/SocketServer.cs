@@ -4,12 +4,12 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
-using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Net.Sockets;
 
 namespace MBBSEmu.Server.Socket
@@ -78,10 +78,8 @@ namespace MBBSEmu.Server.Socket
                     {
                         if (_configuration.IPLocationAllow != null)
                         {
-                            var ipAddressValue = ((IPEndPoint)client.RemoteEndPoint).Address.ToString();
                             var ipAllowed = false;
-
-                            var ipCountry = GetIP2Location(ipAddressValue);
+                            var ipCountry = GetIP2Location(((IPEndPoint)client.RemoteEndPoint).Address.ToString());
                             _logger.Info($"Response from IP2LOCATION: {ipCountry}");
 
                             if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-") // "-" allows private ranges 10.x, 192.168.x etc.
@@ -137,7 +135,7 @@ namespace MBBSEmu.Server.Socket
             
             if (response.IsSuccessStatusCode)
             {
-                ip2LocationResponse = JsonConvert.DeserializeObject<IP2Location>(response.Content.ReadAsStringAsync().Result);
+                ip2LocationResponse = JsonSerializer.Deserialize<IP2Location>(response.Content.ReadAsStringAsync().Result);
             }
             else
             {
@@ -150,7 +148,7 @@ namespace MBBSEmu.Server.Socket
         }
 
         // JSON from IP2LOCATION
-        public class IP2Location
+        private class IP2Location
         {
             public string country_code { get; set; }
             public int credits_consumed { get; set; }
