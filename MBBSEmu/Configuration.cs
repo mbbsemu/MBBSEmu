@@ -1,12 +1,11 @@
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 
 namespace MBBSEmu
 {
@@ -220,10 +219,10 @@ namespace MBBSEmu
             {
                 try
                 {
-                    JToken.Parse(strInput);
+                    JsonDocument.Parse(strInput);
                     return true;
                 }
-                catch (JsonReaderException jex)
+                catch (JsonException jex)
                 {
                     //Exception in parsing json
                     Console.WriteLine($"JSON Parsing Error: {jex.Message}");
