@@ -384,6 +384,7 @@ namespace MBBSEmu.HostProcess.Structs
             creds = 31337;
             scnwid = 80; //Screen Width to 80 Columns
             scnfse = 24; //Screen Height to 24 Lines
+            scnbrk = 24; //Screen Page Break Height
             Array.Copy(BitConverter.GetBytes((ushort) 1), 0, access, 0, 2);
         }
 

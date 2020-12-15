@@ -1,7 +1,7 @@
-﻿using System;
-using MBBSEmu.Memory;
+﻿using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using System;
 using System.Collections.Generic;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
