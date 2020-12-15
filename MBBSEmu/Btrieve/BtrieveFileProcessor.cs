@@ -131,7 +131,7 @@ namespace MBBSEmu.Btrieve
 
         public BtrieveFileProcessor()
         {
-            _cache =  new LRUCache<uint, BtrieveRecord>(0);
+            _cache = new LRUCache<uint, BtrieveRecord>(0);
         }
 
         /// <summary>
