@@ -91,9 +91,22 @@ namespace MBBSEmu.Util
       }
     }
 
+    /// <summary>
+    ///   The number of items currently inside this cache.
+    /// </summary>
     public int Count { get => _data.Count; }
 
+    /// <summary>
+    ///   The number of items tracked inside _recentlyUsedList. You probably want to use Count instead.
+    ///
+    ///   <para/>This is mostly a test-only property, don't rely on this value in real code.
+    /// </summary>
+    /// <value></value>
     public int ListCount { get => _recentlyUsedList.Count; }
+
+    /// <summary>
+    ///   The most recently used key.
+    /// </summary>
     public TKey MostRecentlyUsed { get => _recentlyUsedList.First.Value; }
 
     public bool IsReadOnly { get => false; }
@@ -103,25 +116,37 @@ namespace MBBSEmu.Util
     public System.Collections.Generic.ICollection<TValue> Values { get => throw new NotSupportedException(); }
 
     public void Add(KeyValuePair<TKey,TValue> item) => this[item.Key] = item.Value;
-
-    public void Clear() => _data.Clear();
-
-    public bool Contains(KeyValuePair<TKey, TValue> item) => _data.ContainsKey(item.Key);
-
-    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => throw new NotSupportedException();
-
-    public bool Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
-
     public void Add(TKey key, TValue value) => this[key] = value;
+
+    public void Clear()
+    {
+      _data.Clear();
+      _recentlyUsedList.Clear();
+    }
+
+    public bool Contains(KeyValuePair<TKey, TValue> item)
+      => TryGetValue(item.Key, out var value) && value.Equals(item.Value);
 
     public bool ContainsKey(TKey key) => _data.ContainsKey(key);
 
-    public bool Remove(TKey key) => throw new NotSupportedException();
+    public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => throw new NotSupportedException();
+
+    public bool Remove(KeyValuePair<TKey, TValue> item)
+      => Contains(item) && Remove(item.Key);
+
+    public bool Remove(TKey key)
+    {
+      var ret = _data.Remove(key, out var v);
+      if (v != null)
+        _recentlyUsedList.Remove(v._recentlyUsedNode);
+
+      return ret;
+    }
 
     public bool TryGetValue(TKey key, out TValue value)
     {
       var ret = _data.TryGetValue(key, out var v);
-      value = v._data;
+      value = v != null ? v._data : default(TValue);
       return ret;
     }
 

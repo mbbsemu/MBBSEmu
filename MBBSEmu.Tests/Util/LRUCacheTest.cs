@@ -106,5 +106,100 @@ namespace MBBSEmu.Tests.Util
       cache.ContainsKey(8).Should().BeFalse();
       cache.ContainsKey(9).Should().BeTrue();
     }
+
+    [Fact]
+    public void clearRemovesAll()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+      cache.Count.Should().Be(3);
+      cache.ListCount.Should().Be(3);
+      cache.MostRecentlyUsed.Should().Be(8);
+
+      cache.Clear();
+
+      cache.Count.Should().Be(0);
+      cache.ListCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void containsKey()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+
+      cache.ContainsKey(6).Should().BeTrue();
+      cache.ContainsKey(7).Should().BeTrue();
+      cache.ContainsKey(8).Should().BeTrue();
+      cache.ContainsKey(9).Should().BeFalse();
+    }
+
+    [Fact]
+    public void contains()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+
+      cache.Contains(KeyValuePair.Create<int, string>(6, "test2")).Should().BeTrue();
+      cache.Contains(KeyValuePair.Create<int, string>(6, "test3")).Should().BeFalse();
+
+      cache.Contains(KeyValuePair.Create<int, string>(7, "test3")).Should().BeTrue();
+      cache.Contains(KeyValuePair.Create<int, string>(7, "test4")).Should().BeFalse();
+
+      cache.Contains(KeyValuePair.Create<int, string>(8, "test4")).Should().BeTrue();
+      cache.Contains(KeyValuePair.Create<int, string>(8, "test5")).Should().BeFalse();
+
+      cache.Contains(KeyValuePair.Create<int, string>(9, "test2")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void remove()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+
+      cache.Remove(6).Should().BeTrue();
+      cache.Count.Should().Be(2);
+      cache.ListCount.Should().Be(2);
+
+      cache.Remove(6).Should().BeFalse();
+      cache.Count.Should().Be(2);
+      cache.ListCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void removeInvalid()
+    {
+      LRUCache<int, string> cache = new(3);
+
+      cache.Remove(6).Should().BeFalse();
+      cache.Count.Should().Be(0);
+      cache.ListCount.Should().Be(0);
+    }
+
+    [Fact]
+    public void removeByKeyValuePair()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+
+      cache.Remove(KeyValuePair.Create<int, string>(6, "test2")).Should().BeTrue();
+      cache.Count.Should().Be(2);
+      cache.ListCount.Should().Be(2);
+
+      cache.Remove(KeyValuePair.Create<int, string>(7, "test2")).Should().BeFalse();
+      cache.Count.Should().Be(2);
+      cache.ListCount.Should().Be(2);
+    }
   }
 }
