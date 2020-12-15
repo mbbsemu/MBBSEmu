@@ -2294,7 +2294,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
             var fileName = Encoding.ASCII.GetString(btrieveFilename);
 
-            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName);
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
@@ -6451,7 +6451,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 if (suffixPointer != IntPtr16.Empty)
                     Module.Memory.SetPointer(suffixPointer, new IntPtr16(stringPointer.Segment, stringPointer.Offset));
-                
+
                 return;
             }
 
@@ -7487,7 +7487,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Sets Secure Echo to ON for the specified number of input characters. Characters within
         ///     the specified width are echo'd as the secure character.
-        /// 
+        ///
         ///     Signature: void echsec(char c, int width);
         /// </summary>
         private void echsec()

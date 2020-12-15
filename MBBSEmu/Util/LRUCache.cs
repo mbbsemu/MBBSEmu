@@ -50,8 +50,8 @@ namespace MBBSEmu.Util
 
     public LRUCache(int maxSize)
     {
-      if (maxSize <= 0)
-        throw new ArgumentException("LRUCache needs to have size > 0");
+      if (maxSize < 0)
+        throw new ArgumentException("LRUCache needs to have size >= 0");
 
       MaxSize = maxSize;
     }
@@ -78,6 +78,9 @@ namespace MBBSEmu.Util
       }
       set
       {
+        if (MaxSize == 0)
+          return;
+
         var newValue = _data.AddOrUpdate(key, key => InsertNewItem(key, value), (key, oldValue) => {
           if (oldValue != null)
             _recentlyUsedList.Remove(oldValue._recentlyUsedNode);

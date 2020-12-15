@@ -32,18 +32,20 @@ namespace MBBSEmu
 
         //Validate Config File
         public string BBSTitle => GetBBSTitleSettings("BBS.Title");
-        public int BBSChannels => GetAppSettings<int>(ConfigurationRoot["BBS.Channels"], "BBS.Channels");
+        public int BBSChannels => GetAppSettingsFromConfiguration<int>("BBS.Channels");
         public TimeSpan CleanupTime => GetCleanUpTimeSettings("Cleanup.Time");
         public string GSBLBTURNO => GetGSBLBTURNOSettings("GSBL.BTURNO");
-        public bool ModuleDoLoginRoutine => GetAppSettings<bool>(ConfigurationRoot["Module.DoLoginRoutine"], "Module.DoLoginRoutine");
-        public bool TelnetEnabled => GetAppSettings<bool>(ConfigurationRoot["Telnet.Enabled"],"Telnet.Enabled");
-        public int TelnetPort => GetAppSettings<int>(ConfigurationRoot["Telnet.Port"],"Telnet.Port");
-        public bool TelnetHeartbeat => GetAppSettings<bool>(ConfigurationRoot["Telnet.Heartbeat"], "Telnet.Heartbeat");
-        public bool RloginEnabled => GetAppSettings<bool>(ConfigurationRoot["Rlogin.Enabled"], "Rlogin.Enabled");
-        public int RloginPort => GetAppSettings<int>(ConfigurationRoot["Rlogin.Port"],"Rlogin.Port");
+        public bool ModuleDoLoginRoutine => GetAppSettingsFromConfiguration<bool>("Module.DoLoginRoutine");
+        public bool TelnetEnabled => GetAppSettingsFromConfiguration<bool>("Telnet.Enabled");
+        public int TelnetPort => GetAppSettingsFromConfiguration<int>("Telnet.Port");
+        public bool TelnetHeartbeat => GetAppSettingsFromConfiguration<bool>("Telnet.Heartbeat");
+        public bool RloginEnabled => GetAppSettingsFromConfiguration<bool>("Rlogin.Enabled");
+        public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
         public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
-        public bool RloginPortPerModule => GetAppSettings<bool>(ConfigurationRoot["Rlogin.PortPerModule"],"Rlogin.PortPerModule");
+        public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
+
+        public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
 
         //Optional Keys
         public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
@@ -62,6 +64,8 @@ namespace MBBSEmu
                     .ToArray().Select(c => c.Value).ToArray();
             }
         }
+
+        public T GetAppSettingsFromConfiguration<T>(string valueName) => GetAppSettings<T>(ConfigurationRoot[valueName], valueName);
 
         //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
@@ -118,6 +122,10 @@ namespace MBBSEmu
                         return (T)value;
                     case "Rlogin.PortPerModule":
                         value = false;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
+                    case "Btrieve.CacheSize":
+                        value = 4;
                         Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
                         return (T)value;
                     default:

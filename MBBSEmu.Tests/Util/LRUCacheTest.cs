@@ -12,6 +12,7 @@ namespace MBBSEmu.Tests.Util
     public void invalidKey()
     {
       LRUCache<int, string> cache = new(1);
+      cache.MaxSize.Should().Be(1);
       cache.Count.Should().Be(0);
       cache.ListCount.Should().Be(0);
       Action action = () => cache[0].Should().Be("test");
@@ -215,6 +216,43 @@ namespace MBBSEmu.Tests.Util
       cache.TryGetValue(6, out v).Should().Be(true);
       v.Should().BeEquivalentTo("test2");
       cache.MostRecentlyUsed.Should().Be(6);
+    }
+
+    [Fact]
+    public void negativeSize()
+    {
+      Action action = () => new LRUCache<int, string>(-1);
+      action.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void zeroSizeAdd()
+    {
+      LRUCache<int, string> cache = new(0);
+
+      cache.MaxSize.Should().Be(0);
+
+      cache[0] = "test";
+      cache.Count.Should().Be(0);
+      cache.TryGetValue(0, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void zeroSizeRemove()
+    {
+      LRUCache<int, string> cache = new(0);
+
+      cache.Remove(0).Should().BeFalse();
+      cache.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public void zeroSizeClear()
+    {
+      LRUCache<int, string> cache = new(0);
+
+      cache.Clear();
+      cache.Count.Should().Be(0);
     }
   }
 }
