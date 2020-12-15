@@ -201,5 +201,20 @@ namespace MBBSEmu.Tests.Util
       cache.Count.Should().Be(2);
       cache.ListCount.Should().Be(2);
     }
+
+    [Fact]
+    public void tryGetValue()
+    {
+      LRUCache<int, string> cache = new(3);
+      cache[6] = "test2";
+      cache[7] = "test3";
+      cache[8] = "test4";
+      cache.MostRecentlyUsed.Should().Be(8);
+
+      string v;
+      cache.TryGetValue(6, out v).Should().Be(true);
+      v.Should().BeEquivalentTo("test2");
+      cache.MostRecentlyUsed.Should().Be(6);
+    }
   }
 }

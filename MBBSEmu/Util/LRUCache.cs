@@ -73,8 +73,7 @@ namespace MBBSEmu.Util
       get
       {
         var data = _data[key];
-        _recentlyUsedList.Remove(data._recentlyUsedNode);
-        _recentlyUsedList.AddFirst(data._recentlyUsedNode);
+        SetMostRecentlyUsed(data);
         return data._data;
       }
       set
@@ -146,12 +145,27 @@ namespace MBBSEmu.Util
     public bool TryGetValue(TKey key, out TValue value)
     {
       var ret = _data.TryGetValue(key, out var v);
-      value = v != null ? v._data : default(TValue);
+      if (ret)
+      {
+        SetMostRecentlyUsed(v);
+
+        value = v._data;
+      }
+      else
+      {
+        value = default(TValue);
+      }
       return ret;
     }
 
     public IEnumerator<KeyValuePair<TKey,TValue>> GetEnumerator() => throw new NotSupportedException();
 
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => throw new NotSupportedException();
+
+    private void SetMostRecentlyUsed(Data data)
+    {
+      _recentlyUsedList.Remove(data._recentlyUsedNode);
+      _recentlyUsedList.AddFirst(data._recentlyUsedNode);
+    }
   }
 }
