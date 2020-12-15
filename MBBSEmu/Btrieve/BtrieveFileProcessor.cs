@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
 using NLog;
 using System;
@@ -75,7 +76,7 @@ namespace MBBSEmu.Btrieve
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
         ///     lookups.
         /// </summary>
-        private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
+        private readonly IDictionary<uint, BtrieveRecord> _cache = new LRUCache<uint, BtrieveRecord>(8);
 
         private Dictionary<ushort, BtrieveKey> _keys;
 
