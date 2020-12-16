@@ -82,7 +82,7 @@ namespace MBBSEmu.Server.Socket
                             var ipCountry = GetIP2Location(((IPEndPoint)client.RemoteEndPoint).Address.ToString());
                             _logger.Info($"Response from IP2LOCATION: {ipCountry}");
 
-                            if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-" || ipCountry == null) // "-" allows private ranges 10.x, 192.168.x etc., fail open
+                            if (ipCountry == _configuration.IPLocationAllow || ipCountry == "-") // "-" allows private ranges 10.x, 192.168.x etc.
                                 ipAllowed = true;
 
                             //Deny connection if not a valid IP range
@@ -143,7 +143,7 @@ namespace MBBSEmu.Server.Socket
             }
 
             client.Dispose();
-            if (ip2LocationResponse != null) return ip2LocationResponse.CountryCode;
+            return ip2LocationResponse != null ? ip2LocationResponse.CountryCode : "-"; //fail open
         }
 
         // JSON from IP2LOCATION
