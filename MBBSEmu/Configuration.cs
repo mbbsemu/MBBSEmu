@@ -44,7 +44,6 @@ namespace MBBSEmu
         public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
-
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
 
         //Optional Keys
