@@ -5,11 +5,12 @@ using System;
 namespace MBBSEmu.Util
 {
   /// <summary>
-  ///   An Least Recently Used cache. Stores data up to MaxSize elements, and any attempts to add
+  ///   A Least Recently Used cache. Stores data up to MaxSize elements, and any attempts to add
   ///   new items will purge the least recently used/accessed item.
   /// </summary>
-  /// <typeparam name="TKey"></typeparam>
-  /// <typeparam name="TValue"></typeparam>
+  /// <remarks>not thread safe</remarks>
+  /// <typeparam name="TKey">key type</typeparam>
+  /// <typeparam name="TValue">value type</typeparam>
   public class LRUCache<TKey, TValue> : IDictionary<TKey,TValue>
   {
     /// <summary>
@@ -56,13 +57,17 @@ namespace MBBSEmu.Util
       MaxSize = maxSize;
     }
 
-    private Data InsertNewItem(TKey key, TValue value)
+    private Data InsertNewItem(TKey key, TValue value, out bool shouldRemoveData, out LinkedListNode<TKey> nodeToRemove)
     {
       if (Count >= MaxSize)
       {
-        // purge an item
-        _data.Remove(_recentlyUsedList.Last.Value, out _);
-        _recentlyUsedList.RemoveLast();
+        shouldRemoveData = true;
+        nodeToRemove = _recentlyUsedList.Last;
+      }
+      else
+      {
+        shouldRemoveData = false;
+        nodeToRemove = null;
       }
 
       return new Data(key, value);
@@ -81,13 +86,22 @@ namespace MBBSEmu.Util
         if (MaxSize == 0)
           return;
 
-        var newValue = _data.AddOrUpdate(key, key => InsertNewItem(key, value), (key, oldValue) => {
-          if (oldValue != null)
-            _recentlyUsedList.Remove(oldValue._recentlyUsedNode);
+        LinkedListNode<TKey> listItemToRemove = null;
+        bool shouldRemoveData = false;
+        var newValue = _data.AddOrUpdate(
+          key,
+          key => InsertNewItem(key, value, out shouldRemoveData, out listItemToRemove),
+          (key, oldValue) =>
+          {
+            listItemToRemove = oldValue._recentlyUsedNode;
+            oldValue._data = value;
+            return oldValue;
+          });
 
-          oldValue._data = value;
-          return oldValue;
-        });
+        if (shouldRemoveData)
+          _data.Remove(listItemToRemove.Value, out _);
+        if (listItemToRemove != null)
+          _recentlyUsedList.Remove(listItemToRemove);
 
         _recentlyUsedList.AddFirst(newValue._recentlyUsedNode);
       }
