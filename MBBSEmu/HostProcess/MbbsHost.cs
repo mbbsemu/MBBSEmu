@@ -760,10 +760,12 @@ namespace MBBSEmu.HostProcess
                     }
 
                 //Enter or Return
-                case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
+                case 0xD when session.SessionState != EnumSessionState.InFullScreenDisplay:
                     {
+                        if(!session.TransparentMode)
+                            session.SendToClient(new byte[] { 0xD, 0xA });
+
                         //Set Status == 3, which means there is a Command Ready
-                        session.SendToClient(new byte[] { 0xD, 0xA });
                         session.Status = 3;
                         session.EchoSecureEnabled = false;
                         break;
