@@ -1,7 +1,6 @@
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
 using NLog;
 using System;
@@ -27,14 +26,6 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
-        enum Query {
-            LoadSqliteMetadata = 0,
-        }
-
-        private readonly SqliteCommand[] _sqlCommands = {
-            new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t;"),
-        };
-
         public const int SQLITE_CONSTRAINT = 19;
         public const int SQLITE_CONSTRAINT_UNIQUE = 2067;
         public const int SQLITE_CONSTRAINT_TRIGGER = 1811;
@@ -75,27 +66,16 @@ namespace MBBSEmu.Btrieve
 
         public byte[] ACS { get; set; }
 
-        private SqliteConnection _connection;
         /// <summary>
         ///     The active connection to the Sqlite database.
         /// </summary>
-        public SqliteConnection Connection
-        {
-            get => _connection;
-            set
-            {
-                foreach(var cmd in _sqlCommands)
-                    cmd.Connection = value;
-
-                _connection = value;
-            }
-        }
+        public SqliteConnection Connection;
 
         /// <summary>
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
         ///     lookups.
         /// </summary>
-        private readonly IDictionary<uint, BtrieveRecord> _cache;
+        private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
 
         private Dictionary<ushort, BtrieveKey> _keys;
 
@@ -148,10 +128,7 @@ namespace MBBSEmu.Btrieve
             _cache.Clear();
         }
 
-        public BtrieveFileProcessor()
-        {
-            _cache = new LRUCache<uint, BtrieveRecord>(0);
-        }
+        public BtrieveFileProcessor() {}
 
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
@@ -159,10 +136,9 @@ namespace MBBSEmu.Btrieve
         /// <param name="fileUtility"></param>
         /// <param name="path"></param>
         /// <param name="fileName"></param>
-        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName, int cacheSize)
+        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
         {
             _fileFinder = fileUtility;
-            _cache = new LRUCache<uint, BtrieveRecord>(cacheSize);
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -218,7 +194,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            using (var cmd = _sqlCommands[(int)Query.LoadSqliteMetadata])
+            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t;", Connection))
             {
                 using var reader = cmd.ExecuteReader();
                 try
@@ -240,9 +216,6 @@ namespace MBBSEmu.Btrieve
                     }
 
                     var version = reader.GetInt32(3);
-
-                    reader.Close();
-
                     if (version != CURRENT_VERSION)
                     {
                         UpgradeDatabaseFromVersion(version);
