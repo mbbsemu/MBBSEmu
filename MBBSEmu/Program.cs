@@ -233,7 +233,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
                     File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT"));
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT", configuration.BtrieveCacheSize));
 
                 //Setup User Database
                 if (!File.Exists($"BBSUSR.DB"))
@@ -241,7 +241,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
                     File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT"));
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT", configuration.BtrieveCacheSize));
 
                 //Database Reset
                 if (_doResetDatabase)
@@ -278,7 +278,7 @@ namespace MBBSEmu
                             _logger.Error($"Maximum module limit reached -- {m["Identifier"]} not loaded");
                             continue;
                         }
-                        
+
                         //Check for Non Character MenuOptionKey
                         if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0])))
                         {
@@ -303,7 +303,7 @@ namespace MBBSEmu
                         //If MenuOptionKey, remove from allowable list
                         if (!string.IsNullOrEmpty(m["MenuOptionKey"]))
                             menuOptionKeyList.Remove(char.Parse(m["MenuOptionKey"]));
-                        
+
                         //Check for missing MenuOptionKey, assign, remove from allowable list
                         if (string.IsNullOrEmpty(m["MenuOptionKey"]))
                         {

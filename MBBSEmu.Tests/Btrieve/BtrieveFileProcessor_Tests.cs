@@ -15,6 +15,7 @@ namespace MBBSEmu.Tests.Btrieve
 {
     public class BtrieveFileProcessor_Tests : TestBase, IDisposable
     {
+        const int CACHE_SIZE = 8;
         const int RECORD_LENGTH = 74;
 
         private const string EXPECTED_METADATA_T_SQL = "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL, acs_name STRING, acs BLOB)";
@@ -95,7 +96,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
 
-            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.Keys.Count.Should().Be(4);
             btrieve.RecordLength.Should().Be(RECORD_LENGTH);
@@ -193,7 +194,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
 
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.Keys.Count.Should().Be(4);
             btrieve.RecordLength.Should().Be(RECORD_LENGTH);
@@ -248,7 +249,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepFirst).Should().BeTrue();
             btrieve.Position.Should().Be(1);
@@ -276,7 +277,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepLast).Should().BeTrue();
             btrieve.Position.Should().Be(4);
@@ -304,7 +305,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord(btrieve.GetRecord(4)?.Data);
             record.Key0.Should().Be("Sysop");
@@ -325,7 +326,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.GetRecord(5).Should().BeNull();
             btrieve.GetRecord(0).Should().BeNull();
@@ -343,7 +344,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.GetRecordCount().Should().Be(4);
         }
@@ -355,7 +356,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve =
-                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE)
                 {
                     Position = 3
                 };
@@ -375,7 +376,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve =
-                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE)
                 {
                     Position = 2
                 };
@@ -395,7 +396,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var serviceResolver = new ServiceResolver();
             using var btrieve =
-                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT")
+                new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE)
                 {
                     Position = 2
                 };
@@ -423,7 +424,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
@@ -445,7 +446,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord
             {
@@ -473,7 +474,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
@@ -494,7 +495,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord
             {
@@ -515,7 +516,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
             var record = new MBBSEmuRecord { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
 
             btrieve.Update(1, record.Data).Should().BeTrue();
@@ -535,7 +536,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord
             {
@@ -566,7 +567,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
             // constraint failure here
@@ -586,7 +587,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord { Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 333333 };
 
@@ -610,7 +611,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             var record = new MBBSEmuRecord { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
@@ -623,7 +624,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(0, Encoding.ASCII.GetBytes("Sysop"), EnumBtrieveOperationCodes.QueryEqual).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -647,7 +648,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
             var key = Encoding.ASCII.GetBytes("Sysop");
 
             btrieve.PerformOperation(0, key, EnumBtrieveOperationCodes.QueryEqual).Should().BeTrue();
@@ -690,7 +691,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
             var key = Encoding.ASCII.GetBytes("StringValue");
 
             btrieve.PerformOperation(2, key, EnumBtrieveOperationCodes.QueryEqual).Should().BeTrue();
@@ -718,7 +719,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
             var key = BitConverter.GetBytes(1052234073);
 
             btrieve.PerformOperation(1, key, EnumBtrieveOperationCodes.QueryEqual).Should().BeTrue();
@@ -742,7 +743,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
             var key = Encoding.ASCII.GetBytes("Sysop2");
 
             btrieve.PerformOperation(0, key, EnumBtrieveOperationCodes.QueryEqual).Should().BeFalse();
@@ -757,7 +758,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, null, EnumBtrieveOperationCodes.QueryFirst).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -787,7 +788,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, null, EnumBtrieveOperationCodes.QueryFirst).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
@@ -817,7 +818,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.DeleteAll();
 
@@ -830,7 +831,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, null, EnumBtrieveOperationCodes.QueryLast).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
@@ -849,7 +850,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, null, EnumBtrieveOperationCodes.QueryLast).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
@@ -868,7 +869,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.DeleteAll();
 
@@ -881,7 +882,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.QueryGreater).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(3);
@@ -901,7 +902,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.QueryGreater).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
@@ -921,7 +922,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(2_000_000_000), EnumBtrieveOperationCodes.QueryGreater).Should().BeFalse();
         }
@@ -932,7 +933,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.QueryGreaterOrEqual).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
@@ -956,7 +957,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(3444), EnumBtrieveOperationCodes.QueryGreaterOrEqual).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -980,7 +981,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.DeleteAll();
 
@@ -993,7 +994,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.QueryLess).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -1021,7 +1022,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(7776), EnumBtrieveOperationCodes.QueryLess).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
@@ -1045,7 +1046,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(-2_000_000_000), EnumBtrieveOperationCodes.QueryLess).Should().BeFalse();
         }
@@ -1056,7 +1057,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(2, Encoding.ASCII.GetBytes("7776"), EnumBtrieveOperationCodes.QueryLessOrEqual).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
@@ -1080,7 +1081,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.PerformOperation(1, BitConverter.GetBytes(7776), EnumBtrieveOperationCodes.QueryLessOrEqual).Should().BeTrue();
             btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(2);
@@ -1100,7 +1101,7 @@ namespace MBBSEmu.Tests.Btrieve
             CopyFilesToTempPath("MBBSEMU.DB");
 
             var serviceResolver = new ServiceResolver();
-            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT");
+            using var btrieve = new BtrieveFileProcessor(serviceResolver.GetService<IFileUtility>(), _modulePath, "MBBSEMU.DAT", CACHE_SIZE);
 
             btrieve.DeleteAll();
 

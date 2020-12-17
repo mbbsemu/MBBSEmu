@@ -1072,7 +1072,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Some Btrieve Processors can be declared elsewhere in the system, so verify the processor doesn't already exist before creating
             if (!_globalCache.ContainsKey($"{variableName}-PROCESSOR"))
-                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, Directory.GetCurrentDirectory(), fileName));
+                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, Directory.GetCurrentDirectory(), fileName, _configuration.BtrieveCacheSize));
 
             //Setup the Pointer to the Global Address -- ensuring each module is referencing the same Pointer & Processor
             if (!_globalCache.ContainsKey($"{variableName}-POINTER"))
