@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
 using NLog;
 using System;
@@ -75,7 +76,7 @@ namespace MBBSEmu.Btrieve
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
         ///     lookups.
         /// </summary>
-        private readonly Dictionary<uint, BtrieveRecord> _cache = new Dictionary<uint, BtrieveRecord>();
+        private readonly IDictionary<uint, BtrieveRecord> _cache;
 
         private Dictionary<ushort, BtrieveKey> _keys;
 
@@ -128,7 +129,10 @@ namespace MBBSEmu.Btrieve
             _cache.Clear();
         }
 
-        public BtrieveFileProcessor() {}
+        public BtrieveFileProcessor()
+        {
+            _cache = new LRUCache<uint, BtrieveRecord>(0);
+        }
 
         /// <summary>
         ///     Constructor to load the specified Btrieve File at the given Path
@@ -136,9 +140,10 @@ namespace MBBSEmu.Btrieve
         /// <param name="fileUtility"></param>
         /// <param name="path"></param>
         /// <param name="fileName"></param>
-        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName)
+        public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName, int cacheSize)
         {
             _fileFinder = fileUtility;
+            _cache = new LRUCache<uint, BtrieveRecord>(cacheSize);
 
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
