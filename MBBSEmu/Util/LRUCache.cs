@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections;
 using System;
 
 namespace MBBSEmu.Util
@@ -87,11 +88,11 @@ namespace MBBSEmu.Util
           return;
 
         LinkedListNode<TKey> listItemToRemove = null;
-        bool shouldRemoveData = false;
+        var shouldRemoveData = false;
         var newValue = _data.AddOrUpdate(
           key,
           key => InsertNewItem(key, value, out shouldRemoveData, out listItemToRemove),
-          (key, oldValue) =>
+          (_, oldValue) =>
           {
             listItemToRemove = oldValue._recentlyUsedNode;
             oldValue._data = value;
@@ -110,7 +111,7 @@ namespace MBBSEmu.Util
     /// <summary>
     ///   The number of items currently inside this cache.
     /// </summary>
-    public int Count { get => _data.Count; }
+    public int Count => _data.Count;
 
     /// <summary>
     ///   The number of items tracked inside _recentlyUsedList. You probably want to use Count instead.
@@ -118,18 +119,18 @@ namespace MBBSEmu.Util
     ///   <para/>This is mostly a test-only property, don't rely on this value in real code.
     /// </summary>
     /// <value></value>
-    public int ListCount { get => _recentlyUsedList.Count; }
+    public int ListCount => _recentlyUsedList.Count;
 
     /// <summary>
     ///   The most recently used key.
     /// </summary>
-    public TKey MostRecentlyUsed { get => _recentlyUsedList.First.Value; }
+    public TKey MostRecentlyUsed => _recentlyUsedList.First.Value;
 
-    public bool IsReadOnly { get => false; }
+    public bool IsReadOnly => false;
 
-    public System.Collections.Generic.ICollection<TKey> Keys { get => _data.Keys; }
+    public ICollection<TKey> Keys => _data.Keys;
 
-    public System.Collections.Generic.ICollection<TValue> Values { get => throw new NotSupportedException(); }
+    public ICollection<TValue> Values => throw new NotSupportedException();
 
     public void Add(KeyValuePair<TKey,TValue> item) => this[item.Key] = item.Value;
     public void Add(TKey key, TValue value) => this[key] = value;
@@ -170,14 +171,14 @@ namespace MBBSEmu.Util
       }
       else
       {
-        value = default(TValue);
+        value = default;
       }
       return ret;
     }
 
     public IEnumerator<KeyValuePair<TKey,TValue>> GetEnumerator() => throw new NotSupportedException();
 
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => throw new NotSupportedException();
+    IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
 
     private void SetMostRecentlyUsed(Data data)
     {
