@@ -1232,6 +1232,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 811:
                     echsec();
                     break;
+                case 137:
+                    condex();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -7499,6 +7502,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
 #endif
+        }
+
+        /// <summary>
+        ///     Conditional exit to parent menu for after handling concatenated commands
+        ///
+        ///     Signature: void condex();
+        /// </summary>
+        private void condex()
+        {
+            if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet(1 << 11)) return;
+            Registers.Halt = true;
+            ChannelDictionary[ChannelNumber].Status = 0;
         }
     }
 }
