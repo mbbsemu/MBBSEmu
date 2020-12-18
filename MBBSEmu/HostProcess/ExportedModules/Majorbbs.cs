@@ -7511,7 +7511,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void condex()
         {
-            if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet(1 << 11)) return;
+            if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet((ushort)EnumRuntimeFlags.Concex)) return;
             Registers.Halt = true;
             ChannelDictionary[ChannelNumber].Status = 0;
         }
