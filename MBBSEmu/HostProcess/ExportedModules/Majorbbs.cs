@@ -186,7 +186,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("DIGALW", 1);
             Module.Memory.AllocateVariable("_8087", sizeof(ushort));
             Module.Memory.SetWord("_8087", 3);
-            Module.Memory.AllocateVariable("UIDXRF", 0x34, true); //52 bytes for uixrf struct
+            Module.Memory.AllocateVariable("UIDXRF", 0x34, true); //52 bytes for uidxrf struct
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
