@@ -7530,17 +7530,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void hdluid()
         {
             var searchUserName = GetParameterString(0, true);
-            var userXref = new IntPtr16(Module.Memory.GetVariablePointer("UIDXRF").Data);
+            var userXrefPointer = new IntPtr16(Module.Memory.GetVariablePointer("UIDXRF").Data);
+            var userXref = new UidxrefStruct(Module.Memory.GetArray(userXrefPointer, UidxrefStruct.Size));
 
             //Look up user ID
             var userAccount = _accountRepository.GetAccounts().ToList().Find(item => item.userName.Contains(searchUserName));
             
             if (userAccount.userName != null)
             {
-                userXref.Offset += (ushort)(UserAccount.Size);
-                userXref.Data = Encoding.ASCII.GetBytes(userAccount.userName);
-                Module.Memory.SetArray(Module.Memory.GetVariablePointer("UIDXRF"), userXref.Data);
-                Registers.AX = (ushort)0;
+                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName);
+                userXref.userid = Encoding.ASCII.GetBytes(userAccount.userName);
+                Module.Memory.SetArray(userXrefPointer, userXref.Data);
+                Registers.AX = 0;
             }
 
         }
