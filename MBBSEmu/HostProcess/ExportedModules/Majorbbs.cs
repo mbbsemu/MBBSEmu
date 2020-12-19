@@ -186,6 +186,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("DIGALW", 1);
             Module.Memory.AllocateVariable("_8087", sizeof(ushort));
             Module.Memory.SetWord("_8087", 3);
+            Module.Memory.AllocateVariable("UIDXRF", 0x34, true); //52 bytes for uixrf struct
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -512,6 +513,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return accbb;
                 case 737:
                     return _8087;
+                case 610:
+                    return uidxrf;
             }
 
             if (offsetsOnly)
@@ -1235,6 +1238,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 137:
                     condex();
                     break;
+                case 338:
+                    hdluid();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -1721,7 +1727,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Property with the User Number (Channel) of the user currently being serviced
         ///
         ///     Signature: int usrnum
-        ///     Retrurns: int == User Number (Channel)
+        ///     Returns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
         private ReadOnlySpan<byte> usrnum => base.Module.Memory.GetVariablePointer("USRNUM").Data;
@@ -7515,5 +7521,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.Halt = true;
             ChannelDictionary[ChannelNumber].Status = 0;
         }
+
+        /// <summary>
+        ///     Handle the entering of a User-Id
+        ///
+        ///     Signature: int hdluid(char *stg);
+        /// </summary>
+        private void hdluid()
+        {
+            var searchUserName = GetParameterString(0, true);
+            var userXref = new IntPtr16(Module.Memory.GetVariablePointer("UIDXRF").Data);
+
+            //Look up user ID
+            var userAccount = _accountRepository.GetAccounts().ToList().Find(item => item.userName.Contains(searchUserName));
+            
+            if (userAccount.userName != null)
+            {
+                userXref.Offset += (ushort)(UserAccount.Size);
+                userXref.Data = Encoding.ASCII.GetBytes(userAccount.userName);
+                Module.Memory.SetArray(Module.Memory.GetVariablePointer("UIDXRF"), userXref.Data);
+                Registers.AX = (ushort)0;
+            }
+
+        }
+
+        /// <summary>
+        ///     User-id cross reference structure
+        ///
+        ///     Signature: struct uidxrf;
+        /// </summary>
+        public ReadOnlySpan<byte> uidxrf => Module.Memory.GetVariablePointer("UIDXRF").Data;
     }
 }
