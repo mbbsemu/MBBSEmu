@@ -7534,14 +7534,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userXref = new UidxrefStruct(Module.Memory.GetArray(userXrefPointer, UidxrefStruct.Size));
 
             //Look up user ID
-            var userAccount = _accountRepository.GetAccounts().ToList().Find(item => item.userName.Contains(searchUserName));
+            var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName));
             
-            if (userAccount.userName != null)
+            if (userAccount != null)
             {
                 userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName);
                 userXref.userid = Encoding.ASCII.GetBytes(userAccount.userName);
                 Module.Memory.SetArray(userXrefPointer, userXref.Data);
                 Registers.AX = 0;
+            }
+            else
+            {
+                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName);
+                userXref.userid = Encoding.ASCII.GetBytes(searchUserName);
+                Module.Memory.SetArray(userXrefPointer, userXref.Data);
+                Registers.AX = 0xFFFF;
             }
 
         }
