@@ -16,31 +16,19 @@ namespace MBBSEmu.HostProcess.Structs
 
         public byte[] xrfstg
         {
-            get
-            {
-                ReadOnlySpan<byte> xrfstgSpan = Data;
-                return xrfstgSpan.Slice(0, XRFSIZ + 1).ToArray();
-            }
+            get => new ReadOnlySpan<byte>(Data).Slice(0, XRFSIZ + 1).ToArray();
             set => Array.Copy(value, 0, Data, 0, value.Length);
         }
 
         public byte[] userid
         {
-            get
-            {
-                ReadOnlySpan<byte> useridSpan = Data;
-                return useridSpan.Slice(0, UIDSIZ).ToArray();
-            }
+            get => new ReadOnlySpan<byte>(Data).Slice(16, UIDSIZ).ToArray();
             set => Array.Copy(value, 0, Data, 16, value.Length);
         }
 
         public byte[] xrfspare
         {
-            get
-            {
-                ReadOnlySpan<byte> xrfspareSpan = Data;
-                return xrfspareSpan.Slice(0, SPARESIZ).ToArray();
-            }
+            get => new ReadOnlySpan<byte>(Data).Slice(46, SPARESIZ).ToArray();
             set => Array.Copy(value, 0, Data, 46, value.Length);
         }
 
