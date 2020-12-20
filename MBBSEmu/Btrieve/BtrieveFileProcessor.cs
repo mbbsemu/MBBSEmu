@@ -204,7 +204,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            var cmd = GetSqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t");
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t", Connection);
             using var reader = cmd.ExecuteReader();
             try
             {
@@ -270,8 +271,8 @@ namespace MBBSEmu.Btrieve
             CreateSqliteTriggers(transaction, keys.Values);
 
             // and bump the version
-            var cmd = GetSqliteCommand("UPDATE metadata_t SET version = 2", transaction);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction).ExecuteNonQuery();
 
             try
             {
