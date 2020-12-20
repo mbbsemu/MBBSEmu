@@ -23,7 +23,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             _serviceResolver.GetService<IAccountRepository>();
-            
 
             //Set Argument Values to be Passed In
             var usernamePointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(usernamePartial.Length + 1));
@@ -32,6 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HDLUID_ORDINAL, new List<IntPtr16> { usernamePointer });
 
+            //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
         }
 
