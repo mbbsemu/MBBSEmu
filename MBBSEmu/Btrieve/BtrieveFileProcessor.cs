@@ -85,21 +85,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     The active connection to the Sqlite database.
         /// </summary>
-<<<<<<< HEAD
-        public SqliteConnection Connection
-        {
-            get => _connection;
-            set
-            {
-                foreach(var cmd in _sqlCommands)
-                    cmd.Connection = value;
-
-                _connection = value;
-            }
-        }
-=======
         public SqliteConnection Connection;
->>>>>>> Back to master
 
         /// <summary>
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
@@ -232,13 +218,9 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-<<<<<<< HEAD
-            using (var cmd = _sqlCommands[(int)Query.LoadSqliteMetadata])
-=======
             var cmd = GetSqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t");
             using var reader = cmd.ExecuteReader();
             try
->>>>>>> Store prepared sqlite commands for reuse
             {
                 if (!reader.Read())
                     throw new ArgumentException($"Can't read metadata_t from {FullPath}");
@@ -260,20 +242,7 @@ namespace MBBSEmu.Btrieve
 
                 reader.Close();
 
-<<<<<<< HEAD
-                    var version = reader.GetInt32(3);
-
-                    reader.Close();
-
-                    if (version != CURRENT_VERSION)
-                    {
-                        UpgradeDatabaseFromVersion(version);
-                    }
-                }
-                finally
-=======
                 if (version != CURRENT_VERSION)
->>>>>>> Store prepared sqlite commands for reuse
                 {
                     UpgradeDatabaseFromVersion(version);
                 }
@@ -282,7 +251,6 @@ namespace MBBSEmu.Btrieve
             {
                 reader.Close();
             }
-
         }
 
         /// <summary>
