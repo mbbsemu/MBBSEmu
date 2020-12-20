@@ -7534,9 +7534,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var userXref = new UidxrefStruct(Module.Memory.GetArray(userXrefPointer, UidxrefStruct.Size));
 
             //Look up user ID
-            var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName));
+            var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName, StringComparison.CurrentCultureIgnoreCase));
             
-            if (userAccount != null)
+            if (userAccount != null && searchUserName != "")
             {
                 userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName);
                 userXref.userid = Encoding.ASCII.GetBytes(userAccount.userName);
