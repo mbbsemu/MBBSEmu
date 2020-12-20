@@ -23,7 +23,6 @@ namespace MBBSEmu.Btrieve
             public void Dispose()
             {
                 DataReader?.Dispose();
-                Command?.Dispose();
             }
         }
 
@@ -35,9 +34,9 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     The SqliteConnection associated with this query
+        ///     The BtrieveFileProcessor associated with this query
         /// </summary>
-        public SqliteConnection Connection { get; set; }
+        public BtrieveFileProcessor Processor { get; init; }
 
         /// <summary>
         ///     The direction this cursor is currently moving along.
@@ -67,7 +66,8 @@ namespace MBBSEmu.Btrieve
         public uint Position { get; set; }
 
         private SqliteReader _reader;
-        public SqliteReader Reader {
+        public SqliteReader Reader
+        {
             get => _reader;
             set // overloaded so that we can call Dispose() on Reader when changed/nulled
             {
@@ -75,17 +75,15 @@ namespace MBBSEmu.Btrieve
                 {
                     _reader?.Dispose();
                     _reader = value;
-
-                    // grab the connection while we're at it
-                    Connection = value?.Command?.Connection ?? Connection;
                 }
             }
         }
 
-        public BtrieveQuery()
+        public BtrieveQuery(BtrieveFileProcessor processor)
         {
             Position = 0;
             Direction = CursorDirection.Forward;
+            Processor = processor;
         }
 
         public void Dispose()
@@ -114,20 +112,20 @@ namespace MBBSEmu.Btrieve
             if (LastKey == null) // no successful prior query, so abort
                 return;
 
-            var command = new SqliteCommand() { Connection = this.Connection };
-            command.CommandText = $"SELECT id, {Key.SqliteKeyName}, data FROM data_t WHERE {Key.SqliteKeyName} ";
+            var sql = $"SELECT id, {Key.SqliteKeyName}, data FROM data_t WHERE {Key.SqliteKeyName} ";
             switch (newDirection)
             {
                 case CursorDirection.Forward:
-                    command.CommandText += $">= @value ORDER BY {Key.SqliteKeyName} ASC";
+                    sql += $">= @value ORDER BY {Key.SqliteKeyName} ASC";
                     break;
                 case CursorDirection.Reverse:
-                    command.CommandText += $"<= @value ORDER BY {Key.SqliteKeyName} DESC";
+                    sql += $"<= @value ORDER BY {Key.SqliteKeyName} DESC";
                     break;
                 default:
                     throw new ArgumentException($"Bad direction: {newDirection}");
             }
 
+            var command = Processor.GetSqliteCommand(sql);
             command.Parameters.AddWithValue("@value", LastKey);
 
             Reader = new BtrieveQuery.SqliteReader()

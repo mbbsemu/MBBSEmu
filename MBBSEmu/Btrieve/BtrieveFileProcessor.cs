@@ -28,14 +28,14 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
-        private SqliteCommand GetSqliteCommand(string sql)
+        public SqliteCommand GetSqliteCommand(string sql)
         {
             var cmd = _sqlCommands.GetOrAdd(sql, sql => new SqliteCommand(sql, Connection));
             cmd.Prepare();
             cmd.Parameters.Clear();
             return cmd;
         }
-        private SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction)
+        public SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction)
         {
             var cmd = GetSqliteCommand(sql);
             cmd.Transaction = transaction;
@@ -351,8 +351,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public int GetRecordCount()
         {
-            var stmt = GetSqliteCommand("SELECT COUNT(*) FROM data_t");
-            return (int)(long)stmt.ExecuteScalar();
+            var cmd = GetSqliteCommand("SELECT COUNT(*) FROM data_t");
+            return (int)(long)cmd.ExecuteScalar();
         }
 
         /// <summary>
@@ -739,7 +739,7 @@ namespace MBBSEmu.Btrieve
 
             if (newQuery || PreviousQuery == null)
             {
-                currentQuery = new BtrieveQuery
+                currentQuery = new BtrieveQuery(this)
                 {
                     Key = Keys[(ushort)keyNumber],
                     KeyData = key == null ? null : new byte[key.Length],
