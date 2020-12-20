@@ -7545,8 +7545,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             else
             {
-                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName);
-                userXref.userid = Encoding.ASCII.GetBytes(searchUserName);
+                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName + "\0");
+                userXref.userid = Encoding.ASCII.GetBytes(searchUserName + "\0");
                 Module.Memory.SetArray(userXrefPointer, userXref.Data);
                 Registers.AX = 0xFFFF;
             }
