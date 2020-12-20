@@ -186,6 +186,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("DIGALW", 1);
             Module.Memory.AllocateVariable("_8087", sizeof(ushort));
             Module.Memory.SetWord("_8087", 3);
+            Module.Memory.AllocateVariable("UIDXRF", UidxrefStruct.Size, true);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -512,6 +513,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return accbb;
                 case 737:
                     return _8087;
+                case 610:
+                    return uidxrf;
             }
 
             if (offsetsOnly)
@@ -1232,6 +1235,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 811:
                     echsec();
                     break;
+                case 137:
+                    condex();
+                    break;
+                case 338:
+                    hdluid();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -1718,7 +1727,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Property with the User Number (Channel) of the user currently being serviced
         ///
         ///     Signature: int usrnum
-        ///     Retrurns: int == User Number (Channel)
+        ///     Returns: int == User Number (Channel)
         /// </summary>
         /// <returns></returns>
         private ReadOnlySpan<byte> usrnum => base.Module.Memory.GetVariablePointer("USRNUM").Data;
@@ -7500,5 +7509,55 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
 #endif
         }
+
+        /// <summary>
+        ///     Conditional exit to parent menu for after handling concatenated commands
+        ///
+        ///     Signature: void condex();
+        /// </summary>
+        private void condex()
+        {
+            if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet((ushort)EnumRuntimeFlags.Concex)) return;
+            Registers.Halt = true;
+            ChannelDictionary[ChannelNumber].Status = 0;
+        }
+
+        /// <summary>
+        ///     Handle the entering of a User-Id
+        ///
+        ///     Signature: int hdluid(char *stg);
+        /// </summary>
+        private void hdluid()
+        {
+            var searchUserName = GetParameterString(0, true);
+            var userXrefPointer = new IntPtr16(Module.Memory.GetVariablePointer("UIDXRF").Data);
+            var userXref = new UidxrefStruct(Module.Memory.GetArray(userXrefPointer, UidxrefStruct.Size));
+
+            //Look up user ID
+            var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName, StringComparison.CurrentCultureIgnoreCase));
+            
+            if (userAccount != null && searchUserName != "")
+            {
+                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName + "\0");
+                userXref.userid = Encoding.ASCII.GetBytes(userAccount.userName + "\0");
+                Module.Memory.SetArray(userXrefPointer, userXref.Data);
+                Registers.AX = 0;
+            }
+            else
+            {
+                userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName + "\0");
+                userXref.userid = Encoding.ASCII.GetBytes(searchUserName + "\0");
+                Module.Memory.SetArray(userXrefPointer, userXref.Data);
+                Registers.AX = 0xFFFF;
+            }
+
+        }
+
+        /// <summary>
+        ///     User-id cross reference structure
+        ///
+        ///     Signature: struct uidxrf;
+        /// </summary>
+        public ReadOnlySpan<byte> uidxrf => Module.Memory.GetVariablePointer("UIDXRF").Data;
     }
 }
