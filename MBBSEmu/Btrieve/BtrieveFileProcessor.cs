@@ -82,21 +82,10 @@ namespace MBBSEmu.Btrieve
 
         public byte[] ACS { get; set; }
 
-        private SqliteConnection _connection;
         /// <summary>
         ///     The active connection to the Sqlite database.
         /// </summary>
-        public SqliteConnection Connection
-        {
-            get => _connection;
-            set
-            {
-                foreach(var cmd in _sqlCommands.Values)
-                    cmd.Connection = value;
-
-                _connection = value;
-            }
-        }
+        public SqliteConnection Connection;
 
         /// <summary>
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
