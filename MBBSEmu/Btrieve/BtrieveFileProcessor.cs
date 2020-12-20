@@ -28,20 +28,6 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
-        public SqliteCommand GetSqliteCommand(string sql)
-        {
-            var cmd = _sqlCommands.GetOrAdd(sql, sql => new SqliteCommand(sql, Connection));
-            cmd.Prepare();
-            cmd.Parameters.Clear();
-            return cmd;
-        }
-        public SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction)
-        {
-            var cmd = GetSqliteCommand(sql);
-            cmd.Transaction = transaction;
-            return cmd;
-        }
-
         public const int SQLITE_CONSTRAINT = 19;
         public const int SQLITE_CONSTRAINT_UNIQUE = 2067;
         public const int SQLITE_CONSTRAINT_TRIGGER = 1811;
@@ -953,6 +939,7 @@ namespace MBBSEmu.Btrieve
 
             sb.Append(");");
 
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
             new SqliteCommand(sb.ToString(), Connection).ExecuteNonQuery();
         }
 
@@ -964,6 +951,7 @@ namespace MBBSEmu.Btrieve
             foreach (var key in btrieveFile.Keys.Values)
             {
                 var possiblyUnique = key.IsUnique ? "UNIQUE" : "";
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
                 var command = new SqliteCommand(
                     $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})", Connection);
                 command.ExecuteNonQuery();
@@ -993,7 +981,8 @@ namespace MBBSEmu.Btrieve
 
             builder.Append("END; END;");
 
-            GetSqliteCommand(builder.ToString(), transaction).ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(builder.ToString(), Connection, transaction).ExecuteNonQuery();
         }
 
         /// <summary>
@@ -1018,7 +1007,9 @@ namespace MBBSEmu.Btrieve
                 insertSql = "INSERT INTO data_t(data) VALUES (@data)";
             }
 
-            var insertCmd = GetSqliteCommand(insertSql, transaction);
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
+            insertCmd.Prepare();
 
             foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
             {
@@ -1056,14 +1047,16 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void CreateSqliteMetadataTable(BtrieveFile btrieveFile)
         {
-            const string statement =
+            const string createTableStatement =
                 "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL, acs_name STRING, acs BLOB)";
 
-            var cmd = GetSqliteCommand(statement);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
 
-            cmd = GetSqliteCommand(
-                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version, acs_name, acs) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version, @acs_name, @acs)");
+            const string insertIntoTableStatement =
+                "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version, acs_name, acs) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version, @acs_name, @acs)";
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
 
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
@@ -1080,14 +1073,17 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void CreateSqliteKeysTable(BtrieveFile btrieveFile)
         {
-            const string statement =
+            const string createTableStatement =
                 "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, null_value INTEGER NOT NULL, UNIQUE(number, segment))";
 
-            var cmd = GetSqliteCommand(statement);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
 
-            cmd = GetSqliteCommand(
-                "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)");
+            const string insertIntoTableStatement =
+                "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
+
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
 
             foreach (var keyDefinition in btrieveFile.Keys.SelectMany(key => key.Value.Segments))
             {
@@ -1139,6 +1135,18 @@ namespace MBBSEmu.Btrieve
             CreateSqliteDataIndices(btrieveFile);
             CreateSqliteTriggers(Keys.Values);
             PopulateSqliteDataTable(btrieveFile);
+        }
+
+        public SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction = null)
+        {
+            var cmd = _sqlCommands.GetOrAdd(sql, sql => {
+                var cmd = new SqliteCommand(sql, Connection);
+                cmd.Prepare();
+                return cmd;
+            });
+            cmd.Transaction = transaction;
+            cmd.Parameters.Clear();
+            return cmd;
         }
     }
 }
