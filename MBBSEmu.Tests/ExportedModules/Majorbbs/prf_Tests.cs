@@ -18,6 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%u", "1", (ushort)1)]
         [InlineData("%u", "0", (ushort)0)]
         [InlineData("%u", "65535", (ushort)0xFFFF)]
+        [InlineData("ITEM%3.3d", "ITEM010", (ushort)10)]
         [InlineData("%s-%d", "TEST-1", "TEST", (ushort)1)]
         [InlineData("%s-%ld", "TEST-2147483647", "TEST", 2147483647)]
         [InlineData("%s-%ld-%d-%s", "TEST-2147483647-1-FOO", "TEST", 2147483647, (ushort)1, "FOO")]
