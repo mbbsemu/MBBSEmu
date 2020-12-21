@@ -391,6 +391,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         continue;
                     }
 
+                    var padCharacter = ' ';
+
                     switch ((char)stringToParse[i])
                     {
                         //Character
@@ -456,6 +458,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'd':
                         case 'u':
                             {
+                                padCharacter = '0';
+
                                 long value;
                                 if (isVsPrintf)
                                 {
@@ -545,7 +549,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             {
                                 //Pad at the end
                                 while (msFormattedValue.Length < stringWidth)
-                                    msFormattedValue.WriteByte((byte)' ');
+                                    msFormattedValue.WriteByte((byte)padCharacter);
                             }
                             else
                             {
@@ -553,7 +557,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 var valueCache = msFormattedValue.ToArray();
                                 msFormattedValue.SetLength(0);
                                 while (msFormattedValue.Length < stringWidth - valueCache.Length)
-                                    msFormattedValue.WriteByte((byte)' ');
+                                    msFormattedValue.WriteByte((byte)padCharacter);
 
                                 msFormattedValue.Write(valueCache);
                             }
