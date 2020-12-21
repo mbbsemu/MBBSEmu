@@ -5,6 +5,7 @@ using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using System;
@@ -112,6 +113,11 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                         Help();
                         break;
                     }
+                case "VERSION":
+                    {
+                        Version();
+                        break;
+                    }
                 default:
                     return false;
             }
@@ -147,7 +153,16 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"BROADCAST <MESSAGE>",-30} Broadcasts message to all users online".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"KICK <USER>",-30} Kick user".EncodeToANSIString());
-            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup\r\n".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"VERSION",-30} Displays MBBSEmu Version\r\n".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Displays MBBSEmu Version
+        /// </summary>
+        private void Version()
+        {
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Version: |RESET||RED||B|{ new ResourceManager().GetString("MBBSEmu.Assets.version.txt") }".EncodeToANSIString());
         }
 
         /// <summary>
