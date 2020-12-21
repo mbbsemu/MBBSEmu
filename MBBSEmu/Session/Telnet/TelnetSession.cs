@@ -3,6 +3,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 
 namespace MBBSEmu.Session.Telnet
@@ -15,9 +16,7 @@ namespace MBBSEmu.Session.Telnet
         private int _iacPhase;
 
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
-        private static readonly byte[] ANSI_ERASE_DISPLAY = {0x1B, 0x5B, 0x32, 0x4A};
-        private static readonly byte[] ANSI_RESET_CURSOR = {0x1B, 0x5B, 0x48};
-        
+
         private readonly bool _heartbeat;
         private readonly AppSettings _configuration;
 
@@ -25,8 +24,8 @@ namespace MBBSEmu.Session.Telnet
         private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
 
         private class TelnetOptionsValue {
-            public bool Local { get; set; }
-            public bool Remote { get; set; }
+            public bool Local { get; init; }
+            public bool Remote { get; init; }
 
             public EnumIacVerbs GetLocalStatusVerb() => Local ? EnumIacVerbs.WILL : EnumIacVerbs.WONT;
 
@@ -34,7 +33,7 @@ namespace MBBSEmu.Session.Telnet
         }
 
         private readonly Dictionary<EnumIacOptions, TelnetOptionsValue> _localOptions =
-            new Dictionary<EnumIacOptions, TelnetOptionsValue>()
+            new()
             {
                 {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue { Local = true, Remote = true}},
                 {EnumIacOptions.Echo, new TelnetOptionsValue { Local = true, Remote = false}},
@@ -54,14 +53,6 @@ namespace MBBSEmu.Session.Telnet
 
             _heartbeat = _configuration.TelnetHeartbeat;
 
-        }
-
-        public override void Start()
-        {
-            base.Start();
-
-            base.Send(ANSI_ERASE_DISPLAY);
-            base.Send(ANSI_RESET_CURSOR);
         }
 
         /// <summary>
@@ -127,7 +118,7 @@ namespace MBBSEmu.Session.Telnet
         }
 
         /// <summary>
-        ///     Initiates server side IAC negotation
+        ///     Initiates server side IAC negotiation
         /// </summary>
         private void TriggerIACNegotiation() {
             _iacPhase = 1;
@@ -136,10 +127,10 @@ namespace MBBSEmu.Session.Telnet
 
         private void AddInitialNegotiations(HashSet<IacResponse> responses)
         {
-            foreach(var entry in _localOptions)
+            foreach(var (key, value) in _localOptions)
             {
-                responses.Add(new IacResponse(entry.Value.GetLocalStatusVerb(), entry.Key));
-                responses.Add(new IacResponse(entry.Value.GetRemoteCommandVerb(), entry.Key));
+                responses.Add(new IacResponse(value.GetLocalStatusVerb(), key));
+                responses.Add(new IacResponse(value.GetRemoteCommandVerb(), key));
             }
         }
 
@@ -179,13 +170,10 @@ namespace MBBSEmu.Session.Telnet
             }
 
             using var msIacToSend = new MemoryStream(128);
-            foreach (var resp in iacResponses)
+            foreach (var resp in iacResponses.Where(resp => _iacSentResponses.Add(resp)))
             {
-                if (_iacSentResponses.Add(resp))
-                {
-                    _logger.Debug($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option}");
-                    msIacToSend.Write(resp.ToArray());
-                }
+                _logger.Debug($"<< Channel {Channel}: IAC {resp.Verb} {resp.Option}");
+                msIacToSend.Write(resp.ToArray());
             }
 
             if (msIacToSend.Length > 0)

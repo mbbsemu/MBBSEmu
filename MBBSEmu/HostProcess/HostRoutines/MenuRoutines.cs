@@ -29,6 +29,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly IGlobalCache _globalCache;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
+        private static readonly byte[] ANSI_ERASE_DISPLAY = { 0x1B, 0x5B, 0x32, 0x4A };
+        private static readonly byte[] ANSI_RESET_CURSOR = { 0x1B, 0x5B, 0x48 };
+
         public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             _resourceManager = resourceManager;
@@ -118,8 +121,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// <param name="session"></param>
         private void WelcomeScreenDisplay(SessionBase session)
         {
-            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
-            session.SendToClient(new byte[] { 0x1B, 0x5B, 0x48 });
+            session.SendToClient(ANSI_ERASE_DISPLAY);
+            session.SendToClient(ANSI_RESET_CURSOR);
             //Load File if specified in appsettings.json and display if it exists, else display default
             var ansiLoginFileName = _configuration.ANSILogin;
             session.SendToClient(
