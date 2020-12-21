@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const ushort CONDEX_ORDINAL = 137;
 
         [Fact]
-        public void condex_Test()
+        public void condexSet_Test()
         {
             Reset();
 
@@ -24,6 +24,21 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.True(mbbsEmuCpuRegisters.Halt);
             Assert.Equal(0,testSessions[0].Status);
+        }
+
+        [Fact]
+        public void condexNotSet_Test()
+        {
+            Reset();
+
+            //Concex flag not set
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CONDEX_ORDINAL, new List<IntPtr16>());
+
+            //Verify Results
+            Assert.False(mbbsEmuCpuRegisters.Halt);
+            Assert.Equal(0, testSessions[0].Status);
         }
     }
 }
