@@ -1241,6 +1241,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 338:
                     hdluid();
                     break;
+                case 128:
+                    cncsig();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -7210,7 +7213,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Expect a Word from the user (character from the current command)
         ///
-        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separators
         ///     in the string with spaces once again.
         /// </summary>
         private void cncwrd()
@@ -7559,5 +7562,74 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct uidxrf;
         /// </summary>
         public ReadOnlySpan<byte> uidxrf => Module.Memory.GetVariablePointer("UIDXRF").Data;
+
+        /// <summary>
+        ///     Expect a forum name, with or without '/' prefix
+        ///
+        ///     Signature: char *signam=cncsig();
+        /// </summary>
+        private void cncsig()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCSIG", 0xA); //max length is 10 characters
+            Registers.SetPointer(returnPointer);
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                //Write null to output
+                Module.Memory.SetByte(returnPointer, 0);
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+            var returnedSig = new MemoryStream(remainingCharactersInCommand + 1); //allow for leading slash
+
+            //Add leading slash if missing
+            if (inputString[0] != (byte)'/')
+                returnedSig.WriteByte((byte)'/');
+            
+            //Build Return Sig stopping when a space is encountered
+            foreach (var b in inputString)
+            {
+                if (b == ' ' || b == 0)
+                    break;
+
+                returnedSig.WriteByte(b);
+            }
+
+            //Truncate to 9 bytes
+            if (returnedSig.Length > 9)
+                returnedSig.SetLength(9);
+
+            returnedSig.WriteByte(0);
+
+            Module.Memory.SetArray(returnPointer, returnedSig.ToArray());
+
+            //Modify the Counters
+            remainingCharactersInCommand -= (int)returnedSig.Length;
+            nxtcmdPointer.Offset += (ushort)returnedSig.Length;
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
     }
 }
