@@ -7595,9 +7595,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
-            var returnedSig = new MemoryStream(remainingCharactersInCommand + 1); //allow for leading slash
 
-            //Add leading slash if missing
+            //Make room for leading forward slash (SIGIDC) if missing
+            if (inputString[0] != (byte) '/')
+                remainingCharactersInCommand += 1;
+
+            var returnedSig = new MemoryStream(remainingCharactersInCommand);
+
+            //Add leading forward slash (SIGIDC) if missing
             if (inputString[0] != (byte)'/')
                 returnedSig.WriteByte((byte)'/');
             
