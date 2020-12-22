@@ -17,7 +17,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(" /MyUser\0", 0, "/MyUser", 9)]
         [InlineData("/MyUser\0", 0, "/MyUser", 8)]
         [InlineData("/MyUserNameIsTooLong\0", 0, "/MyUserNa", 10)]
-        [InlineData("123456789012345678901234567890\0", 0, "/12345678", 10)] //Test Truncation
+        [InlineData("123456789012345678901234567890\0", 0, "/12345678", 10)]
         [InlineData("\0", 0, "", 0)]
         public void cncsig_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
         {
