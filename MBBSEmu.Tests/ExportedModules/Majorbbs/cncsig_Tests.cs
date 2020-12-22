@@ -10,16 +10,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int CNCSIG_ORDINAL = 128;
 
         [Theory]
-        [InlineData("FIRST SECOND\0", 0, "/FIRST", 7)]
-        [InlineData("FIRST SECOND\0", 6, "/SECOND", 14)]
-        [InlineData("FIRST SECOND THIRD\0", 1, "/IRST", 7)]
-        [InlineData("FIRST SECOND THIRD\0", 13, "/THIRD", 20)]
-        [InlineData(" /MyUser\0", 0, "/MyUser", 9)]
-        [InlineData("/MyUser\0", 0, "/MyUser", 8)]
-        [InlineData("/MyUserNameIsTooLong\0", 0, "/MyUserNa", 10)]
-        [InlineData("123456789012345678901234567890\0", 0, "/12345678", 10)]
-        [InlineData("\0", 0, "", 0)]
-        public void cncsig_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
+        [InlineData("FIRST SECOND\0", 0, "/FIRST", 7, " SECOND")]
+        [InlineData("FIRST SECOND\0", 6, "/SECOND", 14, "")]
+        [InlineData("FIRST SECOND THIRD\0", 1, "/IRST", 7, "T SECOND THIRD")]
+        [InlineData("FIRST SECOND THIRD\0", 13, "/THIRD", 20, "")]
+        [InlineData(" /MyUser\0", 0, "/MyUser", 9, "")]
+        [InlineData("/MyUser\0", 0, "/MyUser", 8, "")]
+        [InlineData("/MyUserNameIsTooLong\0", 0, "/MyUserNa", 10, "meIsTooLong")]
+        [InlineData("123456789012345678901234567890\0", 0, "/12345678", 10, "9012345678901234567890")]
+        [InlineData("\0", 0, "", 0, "")]
+        public void cncsig_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset, string expectedNxtcmdRemaining)
         {
             //Reset State
             Reset();
@@ -41,6 +41,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             var expectedResultPointer = mbbsEmuMemoryCore.GetVariablePointer("INPUT");
             expectedResultPointer.Offset += expectedNxtcmdOffset;
+            Assert.Equal(expectedNxtcmdRemaining, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("INPUT", true)));
             Assert.Equal(expectedResult, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuCore.Registers.DX, mbbsEmuCpuCore.Registers.AX, true)));
             Assert.Equal(expectedResultPointer, mbbsEmuMemoryCore.GetPointer("NXTCMD"));
         }
