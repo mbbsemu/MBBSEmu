@@ -5,6 +5,7 @@ using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -78,6 +79,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private readonly IDictionary<uint, BtrieveRecord> _cache;
 
+        private readonly ConcurrentDictionary<string, SqliteCommand> _sqlCommands = new();
         private Dictionary<ushort, BtrieveKey> _keys;
 
         /// <summary>
@@ -121,6 +123,9 @@ namespace MBBSEmu.Btrieve
             _logger.Info($"Closing sqlite DB {FullPath}");
 
             PreviousQuery?.Dispose();
+
+            foreach(var cmd in _sqlCommands.Values)
+                cmd.Dispose();
 
             Connection.Close();
             Connection.Dispose();
@@ -199,37 +204,39 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqliteMetadata()
         {
-            using (var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t;", Connection))
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t", Connection);
+            using var reader = cmd.ExecuteReader();
+            try
             {
-                using var reader = cmd.ExecuteReader();
-                try
+                if (!reader.Read())
+                    throw new ArgumentException($"Can't read metadata_t from {FullPath}");
+
+                RecordLength = reader.GetInt32(0);
+                PageLength = reader.GetInt32(1);
+                VariableLengthRecords = reader.GetBoolean(2);
+
+                if (!reader.IsDBNull(4))
                 {
-                    if (!reader.Read())
-                        throw new ArgumentException($"Can't read metadata_t from {FullPath}");
+                    using var acsStream = reader.GetStream(4);
+                    if (acsStream.Length != ACS_LENGTH)
+                        throw new ArgumentException($"The ACS length is not 256 in the database. This is corrupt. {FullPath}");
 
-                    RecordLength = reader.GetInt32(0);
-                    PageLength = reader.GetInt32(1);
-                    VariableLengthRecords = reader.GetBoolean(2);
-
-                    if (!reader.IsDBNull(4))
-                    {
-                        using var acsStream = reader.GetStream(4);
-                        if (acsStream.Length != ACS_LENGTH)
-                            throw new ArgumentException($"The ACS length is not 256 in the database. This is corrupt. {FullPath}");
-
-                        ACS = BtrieveUtil.ReadEntireStream(acsStream);
-                    }
-
-                    var version = reader.GetInt32(3);
-                    if (version != CURRENT_VERSION)
-                    {
-                        UpgradeDatabaseFromVersion(version);
-                    }
+                    ACS = BtrieveUtil.ReadEntireStream(acsStream);
                 }
-                finally
+
+                var version = reader.GetInt32(3);
+
+                reader.Close();
+
+                if (version != CURRENT_VERSION)
                 {
-                    reader.Close();
+                    UpgradeDatabaseFromVersion(version);
                 }
+            }
+            finally
+            {
+                reader.Close();
             }
         }
 
@@ -261,11 +268,11 @@ namespace MBBSEmu.Btrieve
             var transaction = Connection.BeginTransaction();
             // creates the missing triggers
             var keys = LoadSqliteKeys(transaction);
-            CreateSqliteTriggers(Connection, transaction, keys.Values);
+            CreateSqliteTriggers(transaction, keys.Values);
 
             // and bump the version
-            using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction).ExecuteNonQuery();
 
             try
             {
@@ -284,47 +291,44 @@ namespace MBBSEmu.Btrieve
         {
             var keys = new Dictionary<ushort, BtrieveKey>();
 
-            using (var cmd =
-                new SqliteCommand(
-                    "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment;",
-                    Connection,
-                    transaction))
+            var cmd =
+                GetSqliteCommand(
+                    "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment",
+                    transaction);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                var number = reader.GetInt32(0);
+                var btrieveKeyDefinition = new BtrieveKeyDefinition()
                 {
-                    var number = reader.GetInt32(0);
-                    var btrieveKeyDefinition = new BtrieveKeyDefinition()
-                    {
-                        Number = (ushort)number,
-                        Segment = reader.GetInt32(1) != 0,
-                        SegmentOf = reader.GetInt32(1) != 0 ? (ushort)number : (ushort)0,
-                        Attributes = (EnumKeyAttributeMask)reader.GetInt32(2),
-                        DataType = (EnumKeyDataType)reader.GetInt32(3),
-                        Offset = (ushort)reader.GetInt32(4),
-                        Length = (ushort)reader.GetInt32(5),
-                    };
+                    Number = (ushort)number,
+                    Segment = reader.GetInt32(1) != 0,
+                    SegmentOf = reader.GetInt32(1) != 0 ? (ushort)number : (ushort)0,
+                    Attributes = (EnumKeyAttributeMask)reader.GetInt32(2),
+                    DataType = (EnumKeyDataType)reader.GetInt32(3),
+                    Offset = (ushort)reader.GetInt32(4),
+                    Length = (ushort)reader.GetInt32(5),
+                };
 
-                    if (btrieveKeyDefinition.RequiresACS)
-                    {
-                        if (ACS == null)
-                            throw new ArgumentException($"Key {btrieveKeyDefinition.Number} requires ACS, but none was read. This database is likely corrupt: {FullPath}");
+                if (btrieveKeyDefinition.RequiresACS)
+                {
+                    if (ACS == null)
+                        throw new ArgumentException($"Key {btrieveKeyDefinition.Number} requires ACS, but none was read. This database is likely corrupt: {FullPath}");
 
-                        btrieveKeyDefinition.ACS = ACS;
-                    }
-
-                    if (!keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
-                    {
-                        btrieveKey = new BtrieveKey();
-                        keys[btrieveKeyDefinition.Number] = btrieveKey;
-                    }
-
-                    var index = btrieveKey.Segments.Count;
-                    btrieveKeyDefinition.SegmentIndex = index;
-                    btrieveKey.Segments.Add(btrieveKeyDefinition);
+                    btrieveKeyDefinition.ACS = ACS;
                 }
-                reader.Close();
+
+                if (!keys.TryGetValue(btrieveKeyDefinition.Number, out var btrieveKey))
+                {
+                    btrieveKey = new BtrieveKey();
+                    keys[btrieveKeyDefinition.Number] = btrieveKey;
+                }
+
+                var index = btrieveKey.Segments.Count;
+                btrieveKeyDefinition.SegmentIndex = index;
+                btrieveKey.Segments.Add(btrieveKeyDefinition);
             }
+            reader.Close();
 
             return keys;
         }
@@ -334,8 +338,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public int GetRecordCount()
         {
-            using var stmt = new SqliteCommand("SELECT COUNT(*) FROM data_t;", Connection);
-            return (int)(long)stmt.ExecuteScalar();
+            var cmd = GetSqliteCommand("SELECT COUNT(*) FROM data_t");
+            return (int)(long)cmd.ExecuteScalar();
         }
 
         /// <summary>
@@ -344,7 +348,7 @@ namespace MBBSEmu.Btrieve
         private bool StepFirst()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
-            using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id LIMIT 1", Connection);
+            var cmd = GetSqliteCommand("SELECT id FROM data_t ORDER BY id LIMIT 1");
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
@@ -358,7 +362,8 @@ namespace MBBSEmu.Btrieve
         private bool StepNext()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
-            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id > {Position} ORDER BY id LIMIT 1;", Connection);
+            var cmd = GetSqliteCommand("SELECT id FROM data_t WHERE id > @position ORDER BY id LIMIT 1");
+            cmd.Parameters.AddWithValue("@position", Position);
             using var reader = cmd.ExecuteReader();
             try
             {
@@ -379,8 +384,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool StepPrevious()
         {
-            using var cmd = new SqliteCommand($"SELECT id FROM data_t WHERE id < {Position} ORDER BY id DESC LIMIT 1;",
-                Connection);
+            var cmd = GetSqliteCommand("SELECT id FROM data_t WHERE id < @position ORDER BY id DESC LIMIT 1");
+            cmd.Parameters.AddWithValue("@position", Position);
             using var reader = cmd.ExecuteReader();
             try
             {
@@ -402,7 +407,7 @@ namespace MBBSEmu.Btrieve
         private bool StepLast()
         {
             // TODO consider grabbing data at the same time and prepopulating the cache
-            using var cmd = new SqliteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1;", Connection);
+            var cmd = GetSqliteCommand("SELECT id FROM data_t ORDER BY id DESC LIMIT 1");
             using var reader = cmd.ExecuteReader();
 
             Position = reader.Read() ? (uint)reader.GetInt32(0) : 0;
@@ -426,7 +431,8 @@ namespace MBBSEmu.Btrieve
             if (_cache.TryGetValue(offset, out var record))
                 return record;
 
-            using var cmd = new SqliteCommand($"SELECT data FROM data_t WHERE id = {offset}", Connection);
+            var cmd = GetSqliteCommand("SELECT data FROM data_t WHERE id = @offset");
+            cmd.Parameters.AddWithValue("@offset", offset);
             using var reader = cmd.ExecuteReader(System.Data.CommandBehavior.KeyInfo);
             try
             {
@@ -467,11 +473,6 @@ namespace MBBSEmu.Btrieve
             }
 
             using var transaction = Connection.BeginTransaction();
-            using var updateCmd = new SqliteCommand()
-            {
-                Connection = Connection,
-                Transaction = transaction
-            };
 
             if (!InsertAutoincrementValues(transaction, recordData))
             {
@@ -479,19 +480,21 @@ namespace MBBSEmu.Btrieve
                 return false;
             }
 
+            string updateSql;
             if (Keys.Count > 0)
             {
                 var sb = new StringBuilder("UPDATE data_t SET data=@data, ");
                 sb.Append(
                     string.Join(", ", Keys.Values.Select(key => $"{key.SqliteKeyName}=@{key.SqliteKeyName}").ToList()));
                 sb.Append(" WHERE id=@id;");
-                updateCmd.CommandText = sb.ToString();
+                updateSql = sb.ToString();
             }
             else
             {
-                updateCmd.CommandText = "UPDATE data_t SET data=@data WHERE id=@id";
+                updateSql = "UPDATE data_t SET data=@data WHERE id=@id";
             }
 
+            var updateCmd = GetSqliteCommand(updateSql, transaction);
             updateCmd.Parameters.AddWithValue("@id", offset);
             updateCmd.Parameters.AddWithValue("@data", recordData);
             foreach (var key in Keys.Values)
@@ -562,7 +565,7 @@ namespace MBBSEmu.Btrieve
             sb.Append(string.Join(", ", zeroedKeys));
             sb.Append(" FROM data_t;");
 
-            using var cmd = new SqliteCommand(sb.ToString(), Connection, transaction);
+            var cmd = GetSqliteCommand(sb.ToString(), transaction);
             using var reader = cmd.ExecuteReader();
             try
             {
@@ -609,8 +612,6 @@ namespace MBBSEmu.Btrieve
             }
 
             using var transaction = Connection.BeginTransaction();
-            using var insertCmd = new SqliteCommand() { Connection = Connection };
-            insertCmd.Transaction = transaction;
 
             if (!InsertAutoincrementValues(transaction, record))
             {
@@ -618,6 +619,7 @@ namespace MBBSEmu.Btrieve
                 return 0;
             }
 
+            string insertSql;
             if (Keys.Count > 0)
             {
                 var sb = new StringBuilder("INSERT INTO data_t(data, ");
@@ -625,13 +627,14 @@ namespace MBBSEmu.Btrieve
                 sb.Append(") VALUES(@data, ");
                 sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
                 sb.Append(");");
-                insertCmd.CommandText = sb.ToString();
+                insertSql = sb.ToString();
             }
             else
             {
-                insertCmd.CommandText = "INSERT INTO data_t(data) VALUES (@data)";
+                insertSql = "INSERT INTO data_t(data) VALUES (@data)";
             }
 
+            var insertCmd = GetSqliteCommand(insertSql, transaction);
             insertCmd.Parameters.AddWithValue("@data", record);
             foreach (var key in Keys.Values)
             {
@@ -651,7 +654,7 @@ namespace MBBSEmu.Btrieve
                 return 0;
             }
 
-            var lastInsertRowId = Convert.ToUInt32(new SqliteCommand("SELECT last_insert_rowid()", Connection, transaction).ExecuteScalar());
+            var lastInsertRowId = Convert.ToUInt32(GetSqliteCommand("SELECT last_insert_rowid()", transaction).ExecuteScalar());
 
             try
             {
@@ -678,7 +681,8 @@ namespace MBBSEmu.Btrieve
         {
             _cache.Remove(Position);
 
-            using var cmd = new SqliteCommand($"DELETE FROM data_t WHERE id={Position};", Connection);
+            var cmd = GetSqliteCommand("DELETE FROM data_t WHERE id=@position");
+            cmd.Parameters.AddWithValue("@position", Position);
             return cmd.ExecuteNonQuery() > 0;
         }
 
@@ -691,8 +695,7 @@ namespace MBBSEmu.Btrieve
 
             Position = 0;
 
-            using var cmd = new SqliteCommand($"DELETE FROM data_t;", Connection);
-            return cmd.ExecuteNonQuery() > 0;
+            return GetSqliteCommand("DELETE FROM data_t").ExecuteNonQuery() > 0;
         }
 
         /// <summary>
@@ -723,7 +726,7 @@ namespace MBBSEmu.Btrieve
 
             if (newQuery || PreviousQuery == null)
             {
-                currentQuery = new BtrieveQuery
+                currentQuery = new BtrieveQuery(this)
                 {
                     Key = Keys[(ushort)keyNumber],
                     KeyData = key == null ? null : new byte[key.Length],
@@ -831,14 +834,14 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyEqual(BtrieveQuery query)
         {
             var sqliteObject = query.Key.KeyDataToSqliteObject(query.KeyData);
-            var command = new SqliteCommand() { Connection = Connection };
+            SqliteCommand command;
             if (sqliteObject == null)
             {
-                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} IS NULL";
+                command = GetSqliteCommand($"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} IS NULL");
             }
             else
             {
-                command.CommandText = $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} = @value ORDER BY {query.Key.SqliteKeyName} ASC";
+                command = GetSqliteCommand($"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} = @value ORDER BY {query.Key.SqliteKeyName} ASC");
                 command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
             }
 
@@ -858,9 +861,8 @@ namespace MBBSEmu.Btrieve
         /// <param name="oprator">Which operator to use, valid values are ">" and ">="</param>
         private bool GetByKeyGreater(BtrieveQuery query, string oprator)
         {
-            var command = new SqliteCommand(
-                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC",
-                Connection);
+            var command = GetSqliteCommand(
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} ASC");
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
             query.Reader = new BtrieveQuery.SqliteReader()
@@ -879,9 +881,8 @@ namespace MBBSEmu.Btrieve
         private bool GetByKeyLess(BtrieveQuery query, string oprator)
         {
             // this query finds the first item less than
-            var command = new SqliteCommand(
-                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC",
-                Connection);
+            var command = GetSqliteCommand(
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t WHERE {query.Key.SqliteKeyName} {oprator} @value ORDER BY {query.Key.SqliteKeyName} DESC");
             command.Parameters.AddWithValue("@value", query.Key.KeyDataToSqliteObject(query.KeyData));
 
             query.Reader = new BtrieveQuery.SqliteReader()
@@ -898,8 +899,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool GetByKeyFirst(BtrieveQuery query)
         {
-            var command = new SqliteCommand(
-                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC", Connection);
+            var command = GetSqliteCommand(
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} ASC");
 
             query.Reader = new BtrieveQuery.SqliteReader()
             {
@@ -914,9 +915,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private bool GetByKeyLast(BtrieveQuery query)
         {
-            var command = new SqliteCommand(
-                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC",
-                Connection);
+            var command = GetSqliteCommand(
+                $"SELECT id, {query.Key.SqliteKeyName}, data FROM data_t ORDER BY {query.Key.SqliteKeyName} DESC");
 
             query.Reader = new BtrieveQuery.SqliteReader()
             {
@@ -930,7 +930,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite data_t table.
         /// </summary>
-        private void CreateSqliteDataTable(SqliteConnection connection, BtrieveFile btrieveFile)
+        private void CreateSqliteDataTable(BtrieveFile btrieveFile)
         {
             var sb = new StringBuilder("CREATE TABLE data_t(id INTEGER PRIMARY KEY, data BLOB NOT NULL");
             foreach (var key in btrieveFile.Keys.Values)
@@ -940,29 +940,29 @@ namespace MBBSEmu.Btrieve
 
             sb.Append(");");
 
-            using var cmd = new SqliteCommand(sb.ToString(), connection);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(sb.ToString(), Connection).ExecuteNonQuery();
         }
 
         /// <summary>
         ///     Creates the Sqlite data_t indices.
         /// </summary>
-        private void CreateSqliteDataIndices(SqliteConnection connection, BtrieveFile btrieveFile)
+        private void CreateSqliteDataIndices(BtrieveFile btrieveFile)
         {
             foreach (var key in btrieveFile.Keys.Values)
             {
                 var possiblyUnique = key.IsUnique ? "UNIQUE" : "";
-                using var command = new SqliteCommand(
-                    $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})",
-                    Connection);
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
+                var command = new SqliteCommand(
+                    $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})", Connection);
                 command.ExecuteNonQuery();
             }
         }
 
-        private void CreateSqliteTriggers(SqliteConnection connection, ICollection<BtrieveKey> keys)
-            => CreateSqliteTriggers(connection, transaction: null, keys);
+        private void CreateSqliteTriggers(ICollection<BtrieveKey> keys)
+            => CreateSqliteTriggers(transaction: null, keys);
 
-        private void CreateSqliteTriggers(SqliteConnection connection, SqliteTransaction transaction, ICollection<BtrieveKey> keys)
+        private void CreateSqliteTriggers(SqliteTransaction transaction, ICollection<BtrieveKey> keys)
         {
             var nonModifiableKeys = keys.Where(key => !key.IsModifiable).ToList();
             if (nonModifiableKeys.Count == 0)
@@ -982,38 +982,39 @@ namespace MBBSEmu.Btrieve
 
             builder.Append("END; END;");
 
-            using var command = new SqliteCommand(builder.ToString(), connection, transaction);
-            command.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(builder.ToString(), Connection, transaction).ExecuteNonQuery();
         }
 
         /// <summary>
         ///     Fills in the Sqlite data_t table with all the data from btrieveFile.
         /// </summary>
-        private void PopulateSqliteDataTable(SqliteConnection connection, BtrieveFile btrieveFile)
+        private void PopulateSqliteDataTable(BtrieveFile btrieveFile)
         {
-            using var transaction = connection.BeginTransaction();
+            using var transaction = Connection.BeginTransaction();
+
+            string insertSql;
+            if (Keys.Count > 0)
+            {
+                var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                sb.Append(") VALUES(@data, ");
+                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                sb.Append(");");
+                insertSql = sb.ToString();
+            }
+            else
+            {
+                insertSql = "INSERT INTO data_t(data) VALUES (@data)";
+            }
+
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
+            insertCmd.Prepare();
+
             foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
             {
-                using var insertCmd = new SqliteCommand()
-                {
-                    Connection = Connection,
-                    Transaction = transaction
-                };
-
-                if (Keys.Count > 0)
-                {
-                    var sb = new StringBuilder("INSERT INTO data_t(data, ");
-                    sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
-                    sb.Append(") VALUES(@data, ");
-                    sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
-                    sb.Append(");");
-                    insertCmd.CommandText = sb.ToString();
-                }
-                else
-                {
-                    insertCmd.CommandText = "INSERT INTO data_t(data) VALUES (@data)";
-                }
-
+                insertCmd.Parameters.Clear();
                 insertCmd.Parameters.AddWithValue("@data", record.Data);
                 foreach (var key in btrieveFile.Keys.Values)
                     insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
@@ -1045,17 +1046,19 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite metadata_t table.
         /// </summary>
-        private void CreateSqliteMetadataTable(SqliteConnection connection, BtrieveFile btrieveFile)
+        private void CreateSqliteMetadataTable(BtrieveFile btrieveFile)
         {
-            const string statement =
+            const string createTableStatement =
                 "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL, acs_name STRING, acs BLOB)";
 
-            using var cmd = new SqliteCommand(statement, connection);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
 
-            using var insertCmd = new SqliteCommand() { Connection = connection };
-            cmd.CommandText =
+            const string insertIntoTableStatement =
                 "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version, acs_name, acs) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version, @acs_name, @acs)";
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
+
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
             cmd.Parameters.AddWithValue("@page_length", btrieveFile.PageLength);
@@ -1069,17 +1072,19 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite keys_t table.
         /// </summary>
-        private void CreateSqliteKeysTable(SqliteConnection connection, BtrieveFile btrieveFile)
+        private void CreateSqliteKeysTable(BtrieveFile btrieveFile)
         {
-            const string statement =
+            const string createTableStatement =
                 "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, null_value INTEGER NOT NULL, UNIQUE(number, segment))";
 
-            using var cmd = new SqliteCommand(statement, connection);
-            cmd.ExecuteNonQuery();
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
 
-            using var insertCmd = new SqliteCommand() { Connection = connection };
-            cmd.CommandText =
+            const string insertIntoTableStatement =
                 "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
+
+            // not using GetSqliteCommand since this is used once and caching it provides no benefit
+            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
 
             foreach (var keyDefinition in btrieveFile.Keys.SelectMany(key => key.Value.Segments))
             {
@@ -1125,12 +1130,24 @@ namespace MBBSEmu.Btrieve
             VariableLengthRecords = btrieveFile.VariableLengthRecords;
             Keys = btrieveFile.Keys;
 
-            CreateSqliteMetadataTable(Connection, btrieveFile);
-            CreateSqliteKeysTable(Connection, btrieveFile);
-            CreateSqliteDataTable(Connection, btrieveFile);
-            CreateSqliteDataIndices(Connection, btrieveFile);
-            CreateSqliteTriggers(Connection, Keys.Values);
-            PopulateSqliteDataTable(Connection, btrieveFile);
+            CreateSqliteMetadataTable(btrieveFile);
+            CreateSqliteKeysTable(btrieveFile);
+            CreateSqliteDataTable(btrieveFile);
+            CreateSqliteDataIndices(btrieveFile);
+            CreateSqliteTriggers(Keys.Values);
+            PopulateSqliteDataTable(btrieveFile);
+        }
+
+        public SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction = null)
+        {
+            var cmd = _sqlCommands.GetOrAdd(sql, sql => {
+                var cmd = new SqliteCommand(sql, Connection);
+                cmd.Prepare();
+                return cmd;
+            });
+            cmd.Transaction = transaction;
+            cmd.Parameters.Clear();
+            return cmd;
         }
     }
 }
