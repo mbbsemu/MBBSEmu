@@ -115,6 +115,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Gets the boolean parameter by ordinal passed into the routine
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected bool GetParameterBool(int parameterOrdinal) => GetParameter(parameterOrdinal) != 0;
+
+        /// <summary>
         ///     Gets the parameter pointer by ordinal passed into the routine
         /// </summary>
         /// <param name="parameterOrdinal"></param>

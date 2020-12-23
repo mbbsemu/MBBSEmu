@@ -1266,7 +1266,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void anpbtvl()
         {
             var recordPointer = GetParameterPointer(0);
-            var caseSensitive = GetParameter(2) == 0 ? false : true;
+            var caseSensitive = GetParameterBool(2);
             var operation = (EnumBtrieveOperationCodes) GetParameter(3);
 
             Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
