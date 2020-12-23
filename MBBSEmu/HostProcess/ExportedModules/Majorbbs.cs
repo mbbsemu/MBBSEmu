@@ -7603,9 +7603,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var returnedSig = new MemoryStream(remainingCharactersInCommand);
 
             //Add leading forward slash (SIGIDC) if missing
-            if (inputString[0] != (byte)'/')
-                returnedSig.WriteByte((byte)'/');
-            
+            if (inputString[0] != (byte) '/')
+            {
+                returnedSig.WriteByte((byte) '/');
+                nxtcmdPointer--;
+            }
+
             //Build Return Sig stopping when a space is encountered
             foreach (var b in inputString)
             {
@@ -7617,7 +7620,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Truncate to 9 bytes
             if (returnedSig.Length > 9)
+            {
                 returnedSig.SetLength(9);
+                nxtcmdPointer--;
+            }
 
             returnedSig.WriteByte(0);
 
