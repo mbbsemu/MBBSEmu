@@ -2347,10 +2347,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
-            AllocateBB(btrieveFile, maxRecordLength, fileName);
+            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, fileName);
+
+            Registers.SetPointer(btvFileStructPointer);
         }
 
-        public void AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
+        /// <summary>
+        ///     Allocates a new BtvFileStruct and associated it with btrieveFile.
+        /// </summary>
+        /// <returns>A pointer to the allocated BtvFileStruct</returns>
+        public IntPtr16 AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
             var btvFileNamePointer =
@@ -2370,7 +2376,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
 #endif
-            Registers.SetPointer(btvFileStructPointer);
+            return btvFileStructPointer;
         }
 
         /// <summary>

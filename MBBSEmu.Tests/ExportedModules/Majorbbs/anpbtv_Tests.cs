@@ -2,13 +2,17 @@ using FluentAssertions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using System.Collections.Generic;
+using System.Text;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
     public class anpbtv_Tests : ExportedModuleTestBase
     {
-        const ushort RECORD_LENGTH = 80;
+        private const ushort RECORD_LENGTH = 80;
+        private const int ABSBTV = 53;
+        private const int QRYBTV = 485;
         private const int ANPBTV = 70;
 
         [Fact]
@@ -28,9 +32,26 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
           AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { 0, 0, 0});
+          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("test"));
 
-          mbbsEmuCpuRegisters.AX.Should().Be(0);
+          // have to query first, seek to "test"
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryEqual });
+          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+
+          // verify absolute position
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
+          mbbsEmuCpuRegisters.GetLong().Should().Be(2);
+
+          // do the actual test now, which seeks next to "yyz"
+          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
+          mbbsEmuCpuRegisters.AX.Should().Be(1);
+          Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(record, 4)).Should().BeEquivalentTo("yyz\0");
+
+          // verify absolute position
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
+          mbbsEmuCpuRegisters.GetLong().Should().Be(3);
         }
 
         private BtrieveFile CreateBtrieveFile()
@@ -39,7 +60,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             {
                 RecordLength = RECORD_LENGTH,
                 FileName = $"{RANDOM.Next() % 100_000_000}.DAT",
-                RecordCount = 0,
+                RecordCount = 3,
             };
 
             var key = new BtrieveKey();
@@ -55,11 +76,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             btrieveFile.Keys.Add(0, key);
 
-            //btrieveFile.Records.Add(new BtrieveRecord(1, CreateRecord("Sysop")));
-            //btrieveFile.Records.Add(new BtrieveRecord(2, CreateRecord("Paladine")));
-            //btrieveFile.Records.Add(new BtrieveRecord(3, CreateRecord("Testing")));
+            btrieveFile.Records.Add(new BtrieveRecord(1, CreateRecord("abc")));
+            btrieveFile.Records.Add(new BtrieveRecord(2, CreateRecord("test")));
+            btrieveFile.Records.Add(new BtrieveRecord(3, CreateRecord("yyz")));
 
             return btrieveFile;
+        }
+
+        private static byte[] CreateRecord(string value)
+        {
+          var ret = new byte[RECORD_LENGTH];
+          Array.Copy(Encoding.ASCII.GetBytes(value), ret, value.Length);
+          return ret;
         }
     }
 }

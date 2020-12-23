@@ -260,11 +260,10 @@ namespace MBBSEmu.Tests.ExportedModules
         /// </summary>
         protected void AllocateBB(BtrieveFile btrieveFile, ushort maxRecordLength)
         {
-            var btrieve = new BtrieveFileProcessor();
+            var btrieve = new BtrieveFileProcessor() { FullPath = Path.Combine(mbbsModule.ModulePath, btrieveFile.FileName) };
             var connectionString = "Data Source=acs.db;Mode=Memory";
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, btrieveFile);
-
             majorbbs.AllocateBB(btrieve, maxRecordLength, Path.GetFileName(btrieve.FullPath));
         }
     }
