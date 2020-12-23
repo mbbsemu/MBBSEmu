@@ -2650,8 +2650,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!recordFound)
                 Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
 
-            Registers.AX = variablePointer.Offset;
-            Registers.DX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -7575,7 +7574,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
 
 
-            if (inputBuffer[0] == 0x0 || sourceStringPointer == IntPtr16.Empty)
+            if (sourceStringPointer == IntPtr16.Empty)
             {
                 Module.Memory.SetByte(destinationAllocatedPointer, 0);
 #if DEBUG

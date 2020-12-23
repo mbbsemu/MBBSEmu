@@ -22,11 +22,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DESTINATION_STRING", 0xFF);
-            mbbsEmuMemoryCore.SetArray("DESTINATION_STRING", Encoding.ASCII.GetBytes(new string('X', 0xFF)));
-
             var sourceStringPointer = IntPtr16.Empty;
-            if (!string.IsNullOrEmpty(sourceString))
+            if (sourceString != null)
             {
                 sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SOURCE_STRING", (ushort)(sourceString.Length + 1));
                 mbbsEmuMemoryCore.SetArray("SOURCE_STRING", Encoding.ASCII.GetBytes(sourceString));
