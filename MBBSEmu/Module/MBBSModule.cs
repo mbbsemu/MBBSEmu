@@ -23,10 +23,9 @@ namespace MBBSEmu.Module
     ///     - Full 16-Bit Memory Space for the Module (hence no relocation required)
     ///     - Execution Units for the Module (Multiple CPUs accessing shared memory space, used for subroutines)
     /// </summary>
-    public class MbbsModule
+    public class MbbsModule : MbbsDll
     {
-        private protected readonly ILogger _logger;
-        private protected readonly IFileUtility _fileUtility;
+        
 
         /// <summary>
         ///     State returned by REGISTER_MODULE
@@ -50,10 +49,6 @@ namespace MBBSEmu.Module
         /// </summary>
         public string MenuOptionKey { get; set; }
 
-        /// <summary>
-        ///     Module DLL
-        /// </summary>
-        public readonly NEFile File;
 
         /// <summary>
         ///     Module MSG File
@@ -64,16 +59,6 @@ namespace MBBSEmu.Module
         ///     Module MDF File
         /// </summary>
         public readonly MdfFile Mdf;
-
-        /// <summary>
-        ///     Module Memory Manager
-        /// </summary>
-        public readonly IMemoryCore Memory;
-
-        /// <summary>
-        ///     Entry Points for the Module, as defined by register_module()
-        /// </summary>
-        public Dictionary<string, IntPtr16> EntryPoints { get; set; }
 
         /// <summary>
         ///     Routine definitions for functions registered via RTKICK
@@ -101,48 +86,29 @@ namespace MBBSEmu.Module
         public List<IntPtr16> GlobalCommandHandlers { get; set; }
 
         /// <summary>
-        ///     Executions Units (EU's) for the Module
-        ///
-        ///     Execution Units are how subroutines get called without having to mess around with saving/resetting CPU state.
-        ///     This way, we can have an execution chain of:
-        ///     EU0 -> MAJORBBS.H -> EU1 -> Text Variable Function
-        ///
-        ///     At no point is the state of EU0 modified (registers), even though they share a common memory core, allowing the stack
-        ///     to unwind gracefully and execution to continue without much fuss.
-        ///
-        ///     Most modules will ever need 1-2 EU's
-        /// </summary>
-        public Queue<ExecutionUnit> ExecutionUnits { get; set; }
-
-        /// <summary>
-        ///     Exported Modules used by the given MajorBBS Module
-        ///
-        ///     Exported Modules are the libraries exposed by the host process (MAJORBBS) that contain
-        ///     the statically linked methods that are imported into the DLL and invoked via EXTERN calls.
-        ///
-        ///     Each module gets its own set of these Exported Modules since each module as it's own 16-bit address space,
-        ///     thus keeping things nice and clean.
-        /// </summary>
-        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
-
-        /// <summary>
         ///     Description of the Module as Defined by REGISTER_MODULE
         /// </summary>
         public string ModuleDescription { get; set; }
+        
+        /// <summary>
+        ///     Required DLL's are DLL Files that are referenced by the Module
+        /// </summary>
+        public Dictionary<ushort, MbbsDll> RequiredDlls { get; set; }
 
         /// <summary>
         ///     Constructor for MbbsModule
-        ///
+        /// 
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
+        /// <param name="logger"></param>
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        /// <param name="fileUtility"></param>
+        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null) : base(fileUtility, logger)
         {
-            _fileUtility = fileUtility;
-            _logger = logger;
             ModuleIdentifier = moduleIdentifier;
+            RequiredDlls = new Dictionary<ushort, MbbsDll>();
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
@@ -171,10 +137,17 @@ namespace MBBSEmu.Module
 
                 Mdf = new MdfFile(fullMdfFilePath);
 
-                var trimmedDll = Mdf.DLLFiles[0].Trim();
-                var neFile = fileUtility.FindFile(ModulePath, $"{trimmedDll}.DLL");
-                var fullNeFilePath = Path.Combine(ModulePath, neFile);
-                File = new NEFile(_logger, fullNeFilePath);
+                Load(Mdf.DLLFiles[0].Trim(), ModulePath);
+            }
+
+            if (Mdf.Requires.Count > 0)
+            {
+                for (var i = 0; i < Mdf.Requires.Count; i++)
+                {
+                    var requiredDLL = new MbbsDll(fileUtility, logger);
+                    requiredDLL.Load(Mdf.Requires[i].Trim(), ModulePath);
+                    RequiredDlls.Add((ushort) (0xFFF0 + i), requiredDLL);
+                }
             }
 
             if (Mdf.MSGFiles.Count > 0)
