@@ -11,6 +11,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -2356,6 +2357,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Allocates a new BtvFileStruct and associated it with btrieveFile.
         /// </summary>
         /// <returns>A pointer to the allocated BtvFileStruct</returns>
+        [VisibleForTesting]
         public IntPtr16 AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);

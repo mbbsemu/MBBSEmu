@@ -46,7 +46,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
           // do the actual test now, which seeks next to "yyz"
           var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
           ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().Be(1);
+          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
           Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(record, 4)).Should().BeEquivalentTo("yyz\0");
 
           // verify absolute position
