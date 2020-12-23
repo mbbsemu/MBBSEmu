@@ -2343,15 +2343,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveFilenamePointer = GetParameterPointer(0);
             var maxRecordLength = GetParameter(2);
-            var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
-            var fileName = Encoding.ASCII.GetString(btrieveFilename);
+            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btrieveFilenamePointer, true));
 
             var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
+            AllocateBB(btrieveFile, maxRecordLength, fileName);
+        }
+
+        public void AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
             var btvFileNamePointer =
-                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(btrieveFilename.Length + 1));
+                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
             var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", maxRecordLength);
             var btvKeyPointer = Module.Memory.AllocateVariable($"{fileName}-KEY", maxRecordLength);
 
@@ -2361,7 +2364,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 newBtvStruct.SetKeyLength(key.Number, (ushort)key.Length);
             BtrieveSaveProcessor(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
-            Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
+            Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName));
             Module.Memory.SetPointer("BB", btvFileStructPointer);
 
 #if DEBUG
