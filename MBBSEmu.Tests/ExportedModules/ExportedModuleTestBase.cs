@@ -37,6 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
+        protected FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
@@ -53,7 +54,7 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<IClock>(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));

@@ -20,6 +20,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             ExecutePropertyTest(DAYTODAY_ORDINAL);
 
+            fakeClock.Now = new DateTime(1979, 3, 8);
             //Expected Results based on the Day of the Week
             var expectedResult = DateTime.Now.DayOfWeek switch
             {
