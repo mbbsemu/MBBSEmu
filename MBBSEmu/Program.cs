@@ -258,6 +258,8 @@ namespace MBBSEmu
                 //Setup Modules
                 if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
+                    _menuOptionKey ??= "A";
+
                     //Load Command Line
                     _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey });
                 }

@@ -1241,6 +1241,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 338:
                     hdluid();
                     break;
+                case 64:
+                    alcdup();
+                    break;
                 case 128:
                     cncsig();
                     break;
@@ -2650,8 +2653,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!recordFound)
                 Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
 
-            Registers.DX = variablePointer.Offset;
-            Registers.AX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -7562,6 +7564,40 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct uidxrf;
         /// </summary>
         public ReadOnlySpan<byte> uidxrf => Module.Memory.GetVariablePointer("UIDXRF").Data;
+
+        /// <summary>
+        ///     Allocate new space for a string
+        ///
+        ///     Signature: char *alcdup(char *stg);
+        /// </summary>
+        private void alcdup()
+        {
+            var sourceStringPointer = GetParameterPointer(0);
+            var inputBuffer = Module.Memory.GetString(sourceStringPointer);
+            var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
+
+
+            if (sourceStringPointer == IntPtr16.Empty)
+            {
+                Module.Memory.SetByte(destinationAllocatedPointer, 0);
+#if DEBUG
+                _logger.Warn($"Source ({sourceStringPointer}) is NULL");
+#endif
+            }
+            else
+            {
+                Module.Memory.SetArray(destinationAllocatedPointer, inputBuffer);
+#if DEBUG
+                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+#endif
+            }
+
+#if DEBUG
+            _logger.Info($"Allocated {inputBuffer.Length} bytes starting at {destinationAllocatedPointer}");
+#endif
+
+            Registers.SetPointer(destinationAllocatedPointer);
+        }
 
         /// <summary>
         ///     Expect a forum name, with or without '/' prefix
