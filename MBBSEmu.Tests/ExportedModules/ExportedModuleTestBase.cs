@@ -3,6 +3,7 @@ using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
+using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -52,13 +53,14 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<IClock>(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
             testSessions.Allocate(new TestSession(null));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -69,6 +71,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -112,6 +115,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -122,6 +126,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),

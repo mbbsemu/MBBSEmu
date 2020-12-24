@@ -1,5 +1,6 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -63,6 +64,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
+        private protected readonly IClock _clock;
         private protected readonly AppSettings _configuration;
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
@@ -88,8 +90,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
 
 
-        private protected ExportedModuleBase(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
+        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
+            _clock = clock;
             _logger = logger;
             _configuration = configuration;
             _fileFinder = fileUtility;
@@ -641,7 +644,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         break;
 
                     case "DATE":
-                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(DateTime.Now.ToString("MM/dd/yyyy")));
+                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(_clock.Now.ToString("MM/dd/yyyy")));
                         break;
 
                     //Registered Variables

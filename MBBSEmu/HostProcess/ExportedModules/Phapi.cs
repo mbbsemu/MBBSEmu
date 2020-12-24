@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -21,8 +22,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
-        internal Phapi(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
-            logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        internal Phapi(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
         }
 
