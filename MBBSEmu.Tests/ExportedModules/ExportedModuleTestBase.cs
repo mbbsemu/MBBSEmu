@@ -1,3 +1,4 @@
+using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
@@ -30,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules
             657, // f_lumod
         };
 
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
+        protected static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
 
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
@@ -252,6 +253,18 @@ namespace MBBSEmu.Tests.ExportedModules
             }
 
             return parameters;
+        }
+
+        /// <summary>
+        ///     Sets the current btrieve file (BB value) based on btrieveFile
+        /// </summary>
+        protected void AllocateBB(BtrieveFile btrieveFile, ushort maxRecordLength)
+        {
+            var btrieve = new BtrieveFileProcessor() { FullPath = Path.Combine(mbbsModule.ModulePath, btrieveFile.FileName) };
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, btrieveFile);
+            majorbbs.AllocateBB(btrieve, maxRecordLength, Path.GetFileName(btrieve.FullPath));
         }
     }
 }

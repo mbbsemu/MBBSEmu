@@ -11,6 +11,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -1066,9 +1067,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 386:
                     listing();
                     break;
-                case 70:
-                    anpbtv();
-                    break;
                 case 607:
                 case 461: //otstscrd -- always return true
                     tstcrd();
@@ -1241,6 +1239,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 338:
                     hdluid();
                     break;
+                case 70:
+                    anpbtv();
+                    break;
+                case 913: // anpbtvl
+                case 998: // anpbtvlk
+                    anpbtvl();
+                    break;
                 case 64:
                     alcdup();
                     break;
@@ -1250,6 +1255,45 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     Acquire next/previous. Does some weird string comparison between the data and the
+        ///         retrieved key based on chkcas
+        ///
+        ///     Signature: int anpbtvl(void *recptr, int chkcas, int anpopt, int optional_loktyp)
+        ///         recptr - where to store the results
+        ///         chkcas - check case in strcmp() operation?
+        ///         anpopt - operation to perform
+        ///         loktyp - lock type - unsupported in mbbsemu
+        ///     Return: 1 if successful, 0 on failure
+        private void anpbtvl()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var caseSensitive = GetParameterBool(2);
+            var operation = (EnumBtrieveOperationCodes) GetParameter(3);
+
+            Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
+        }
+
+        private bool anpbtv(IntPtr16 recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
+        {
+            var currentBtrieveFile = Module.Memory.GetPointer("BB");
+            if (currentBtrieveFile.IsNull())
+            {
+                return false;
+            }
+
+            var ret = false;
+            if (obtainBtv(recordPointer, IntPtr16.Empty, 0xFFFF, operationCodes))
+            {
+                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(currentBtrieveFile, BtvFileStruct.Size));
+                var keyString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.key, stripNull: true));
+                var dataString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.data, stripNull: true));
+                ret = string.Compare(keyString, dataString, ignoreCase: !caseSensitive) == 0;
+            }
+
+            return ret;
         }
 
         /// <summary>
@@ -2303,15 +2347,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveFilenamePointer = GetParameterPointer(0);
             var maxRecordLength = GetParameter(2);
-            var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
-            var fileName = Encoding.ASCII.GetString(btrieveFilename);
+            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btrieveFilenamePointer, true));
 
             var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
+            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, fileName);
+
+            Registers.SetPointer(btvFileStructPointer);
+        }
+
+        /// <summary>
+        ///     Allocates a new BtvFileStruct and associated it with btrieveFile.
+        /// </summary>
+        /// <returns>A pointer to the allocated BtvFileStruct</returns>
+        [VisibleForTesting]
+        public IntPtr16 AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
             var btvFileNamePointer =
-                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(btrieveFilename.Length + 1));
+                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
             var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", maxRecordLength);
             var btvKeyPointer = Module.Memory.AllocateVariable($"{fileName}-KEY", maxRecordLength);
 
@@ -2321,13 +2375,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 newBtvStruct.SetKeyLength(key.Number, (ushort)key.Length);
             BtrieveSaveProcessor(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
-            Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
+            Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName));
             Module.Memory.SetPointer("BB", btvFileStructPointer);
 
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
 #endif
-            Registers.SetPointer(btvFileStructPointer);
+            return btvFileStructPointer;
         }
 
         /// <summary>
@@ -2792,9 +2846,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var keyNumber = GetParameter(4);
             var obtopt = (EnumBtrieveOperationCodes)GetParameter(5);
 
-            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var keyValue = Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength(keyNumber));
+            return obtainBtv(recordPointer, keyPointer, keyNumber, obtopt);
+        }
 
+        private bool obtainBtv(IntPtr16 recordPointer, IntPtr16 keyPointer, int keyNumber, EnumBtrieveOperationCodes obtopt)
+        {
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var keyValue = !keyPointer.IsNull() ? Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength((ushort)keyNumber)) : null;
             var result = currentBtrieveFile.PerformOperation(keyNumber, keyValue, obtopt);
             if (result)
                 UpdateBB(currentBtrieveFile, recordPointer, obtopt, (short)keyNumber);
@@ -6236,13 +6295,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-
-            var result = currentBtrieveFile.PerformOperation(-1, ReadOnlySpan<byte>.Empty, btrieveOperation);
-            if (result)
-                UpdateBB(currentBtrieveFile, recordPointer, btrieveOperation, keyNumber: -1);
-
-            Registers.AX = result ? (ushort)1 : (ushort)0;
+            Registers.AX = anpbtv(recordPointer, false, btrieveOperation) ? 1 : 0;
         }
 
         /// <summary>
@@ -7537,7 +7590,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Look up user ID
             var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName, StringComparison.CurrentCultureIgnoreCase));
-            
+
             if (userAccount != null && searchUserName != "")
             {
                 userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName + "\0");

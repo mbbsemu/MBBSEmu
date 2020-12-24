@@ -12,7 +12,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected const int FWRITE_ORDINAL = 312;
         protected const int FPRINTF_ORDINAL = 226;
         protected const int FCLOSE_ORDINAL = 205;
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
 
         protected FileTestBase() : base(Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}"))
         {
