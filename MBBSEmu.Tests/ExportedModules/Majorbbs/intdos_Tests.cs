@@ -1,5 +1,5 @@
-﻿using MBBSEmu.Memory;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
+using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -211,26 +211,99 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Fact]
         public void intdos_0x47_Test()
         {
-            //TODO
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters();
+            testRegisters.AH = 0x47;
+
+            var dirPointer = mbbsEmuMemoryCore.AllocateVariable("DIR-POINTER", 10);
+            testRegisters.DS = dirPointer.Segment;
+            testRegisters.SI = dirPointer.Offset;
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results
+            Assert.Equal(0, testRegisters.AX);
+            Assert.Equal(0, testRegisters.DL);
+            Assert.Equal(4096, testRegisters.DS);
+            Assert.Equal(40238, testRegisters.SI);
         }
 
         [Fact]
         public void intdos_0x4A_Test()
         {
-            //TODO
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters();
+            testRegisters.AH = 0x4A;
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results
+            Assert.Equal(0xFFFF, testRegisters.BX);
         }
 
         [Fact]
         public void intdos_0x4C_Test()
         {
-            //TODO
+            // TODO
         }
 
         [Fact]
         public void intdos_0x62_Test()
         {
-            //TODO
-        }
+            //Reset State
+            Reset();
 
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters();
+            testRegisters.AH = 0x62;
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Allocate PSP variable
+            var pspPointer = mbbsEmuMemoryCore.AllocateVariable("INT21h-PSP", 0xFF);
+            mbbsEmuMemoryCore.SetArray("INT21h-PSP", Encoding.ASCII.GetBytes("8"));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results
+            Assert.Equal(56, testRegisters.BX);
+        }
     }
 }
