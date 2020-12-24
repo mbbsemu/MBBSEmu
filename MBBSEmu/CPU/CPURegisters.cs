@@ -1,6 +1,6 @@
-﻿using MBBSEmu.Extensions;
+﻿using Iced.Intel;
+using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
-using Iced.Intel;
 using System;
 
 namespace MBBSEmu.CPU
