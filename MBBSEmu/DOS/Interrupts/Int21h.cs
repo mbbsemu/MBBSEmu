@@ -79,6 +79,16 @@ namespace MBBSEmu.DOS.Interrupts
                         _registers.AL = (byte)DateTime.Now.DayOfWeek;
                         return;
                     }
+                case 0x2C:
+                    {
+                        //DOS - GET CURRENT TIME
+                        //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
+                        _registers.CH = (byte) DateTime.Now.Hour;
+                        _registers.CL = (byte) DateTime.Now.Minute;
+                        _registers.DH = (byte) DateTime.Now.Second;
+                        _registers.DL = (byte) (DateTime.Now.Millisecond / 100);
+                        return;
+                    }
                 case 0x2F:
                     {
                         //Get DTA address

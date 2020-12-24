@@ -3,6 +3,7 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
@@ -3753,27 +3754,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset1 = GetParameterPointer(0);
             var parameterOffset2 = GetParameterPointer(2);
 
-            //Get the AH value to determine the function being called
+            //Load registers and pass to Int21h
             var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
-            switch (registers.AH)
-            {
-                case 0x2C:
-                    //Get Time
-                    {
-                        var returnValue = new CpuRegisters
-                        {
-                            CH = (byte)DateTime.Now.Hour,
-                            CL = (byte)DateTime.Now.Minute,
-                            DH = (byte)DateTime.Now.Second,
-                            DL = (byte)(DateTime.Now.Millisecond / 100)
-                        };
-                        Module.Memory.SetArray(parameterOffset2, returnValue.ToRegs());
-                        return;
-                    }
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown DOS INT21 API: {registers.AH:X2}");
-            }
+            new Int21h(registers, Module.Memory).Handle();
+
+            Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }
 
         /// <summary>
