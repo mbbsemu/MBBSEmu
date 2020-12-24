@@ -15,26 +15,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
+            fakeClock.Now = new DateTime(1979, 4, 1); // Sunday (0)
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
 
-            //Verify Results
-            ExecutePropertyTest(DAYTODAY_ORDINAL);
-
-            fakeClock.Now = new DateTime(1979, 3, 8);
-            //Expected Results based on the Day of the Week
-            var expectedResult = DateTime.Now.DayOfWeek switch
-            {
-                DayOfWeek.Sunday => 0,
-                DayOfWeek.Monday => 1,
-                DayOfWeek.Tuesday => 2,
-                DayOfWeek.Wednesday => 3,
-                DayOfWeek.Thursday => 4,
-                DayOfWeek.Friday => 5,
-                DayOfWeek.Saturday => 6,
-                _ => throw new ArgumentOutOfRangeException()
-            };
-
-            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+            fakeClock.Now = new DateTime(1979, 4, 2); // Monday (1)
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
         }
     }
 }
