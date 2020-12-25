@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS.Interrupts;
@@ -34,14 +35,14 @@ namespace MBBSEmu.DOS
 
         private readonly List<string> _environmentVariables;
 
-        public ExeRuntime(MZFile file, List<string> environmentVariables, ILogger logger)
+        public ExeRuntime(MZFile file, List<string> environmentVariables, IClock clock, ILogger logger)
         {
             _logger = logger;
             File = file;
             Memory = new MemoryCore();
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory), new Int1Ah(Registers, Memory), new Int3Eh() });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
             _environmentVariables = environmentVariables;
             PSP_SEGMENT = (ushort)(file.Segments.Count + 0x10);
 

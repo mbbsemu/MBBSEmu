@@ -1,4 +1,5 @@
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -26,6 +27,7 @@ namespace MBBSEmu.Module
     public class MbbsModule
     {
         private protected readonly ILogger _logger;
+        private protected readonly IClock _clock;
         private protected readonly IFileUtility _fileUtility;
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace MBBSEmu.Module
         ///     Directory Path of Module
         /// </summary>
         public readonly string ModulePath;
-        
+
         /// <summary>
         ///     Menu Option Key of Module
         /// </summary>
@@ -138,9 +140,10 @@ namespace MBBSEmu.Module
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
+            _clock = clock;
             _logger = logger;
             ModuleIdentifier = moduleIdentifier;
 
@@ -251,7 +254,7 @@ namespace MBBSEmu.Module
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
                 _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary, _logger);
+                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger);
             }
 
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
