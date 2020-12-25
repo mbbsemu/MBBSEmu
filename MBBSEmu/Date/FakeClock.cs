@@ -7,12 +7,11 @@ namespace MBBSEmu.Date
   /// </summary>
   public class FakeClock : IClock
   {
-    private DateTime _now = DateTime.Now;
+    public DateTime Now { get; set; }
 
-    public DateTime Now
+    public FakeClock()
     {
-      get => _now;
-      set => _now = value;
+      Now = DateTime.Now;
     }
   }
 }
