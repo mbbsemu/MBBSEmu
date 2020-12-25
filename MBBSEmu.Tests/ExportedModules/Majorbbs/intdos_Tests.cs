@@ -91,8 +91,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(0, testRegisters.DX);
         }
 
-        [Fact]
-        public void intdos_0x2A_GetCurrentDate_Test()
+        [Theory]
+        [InlineData(1979, 1, 1)]
+        [InlineData(1981, 2, 2)]
+        [InlineData(2020, 3, 3)]
+        [InlineData(1985, 5, 4)]
+        [InlineData(1987, 6, 5)]
+        [InlineData(1995, 8, 6)]
+        [InlineData(1999, 10, 7)]
+        [InlineData(2000, 12, 8)]
+        public void intdos_0x2A_GetCurrentDate_Test(int year, int month, int day)
         {
             //Reset State
             Reset();
@@ -100,6 +108,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Set Argument Values to be Passed In
             var testRegisters = new CpuRegisters {AH = 0x2A};
 
+            fakeClock.Now = new DateTime(year, month, day);
+
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
             var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
@@ -114,14 +124,22 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort) testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.Equal(DateTime.Now.Day, testRegisters.DL);
-            Assert.Equal(DateTime.Now.Month, testRegisters.DH);
-            Assert.Equal(DateTime.Now.Year, testRegisters.CX);
-            Assert.Equal((byte) DateTime.Now.DayOfWeek, testRegisters.AL);
+            Assert.Equal(fakeClock.Now.Day, testRegisters.DL);
+            Assert.Equal(fakeClock.Now.Month, testRegisters.DH);
+            Assert.Equal(fakeClock.Now.Year, testRegisters.CX);
+            Assert.Equal((byte) fakeClock.Now.DayOfWeek, testRegisters.AL);
         }
 
-        [Fact]
-        public void intdos_0x2C_GetCurrentTime_Test()
+        [Theory]
+        [InlineData(2, 1, 1, 0)]
+        [InlineData(4, 2, 2, 100)]
+        [InlineData(6, 3, 3, 200)]
+        [InlineData(10, 5, 10, 400)]
+        [InlineData(12, 6, 25, 620)]
+        [InlineData(14, 8, 45, 750)]
+        [InlineData(22, 10, 50, 819)]
+        [InlineData(23, 59, 59, 900)]
+        public void intdos_0x2C_GetCurrentTime_Test(int hour, int minute, int seconds, int milliseconds)
         {
             //Reset State
             Reset();
@@ -129,6 +147,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Set Argument Values to be Passed In
             var testRegisters = new CpuRegisters {AH = 0x2C};
 
+            fakeClock.Now = new DateTime(2020, 1, 6, hour, minute, seconds, milliseconds);
+
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
             var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
@@ -143,8 +163,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort) testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.Equal(DateTime.Now.Hour, testRegisters.CH);
-            Assert.Equal(DateTime.Now.Minute, testRegisters.CL);
+            Assert.Equal(fakeClock.Now.Hour, testRegisters.CH);
+            Assert.Equal(fakeClock.Now.Minute, testRegisters.CL);
+            Assert.Equal(fakeClock.Now.Second, testRegisters.DH);
+            Assert.Equal((fakeClock.Now.Millisecond / 100), testRegisters.DL);
         }
 
         [Fact]
