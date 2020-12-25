@@ -1,6 +1,7 @@
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
+using MBBSEmu.Date;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.GlobalRoutines;
@@ -64,6 +65,9 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IGlobalRoutine, SysopGlobal>(overrides);
             AddSingleton<IMbbsHost, MbbsHost>(overrides);
             _serviceCollection.AddTransient<ISocketServer, SocketServer>();
+
+            //System clock
+            AddSingleton<IClock, SystemClock>(overrides);
 
             _provider = _serviceCollection.BuildServiceProvider();
         }

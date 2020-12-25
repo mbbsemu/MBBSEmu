@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Memory;
 using System;
 
@@ -11,13 +12,15 @@ namespace MBBSEmu.DOS.Interrupts
     {
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
+        private IClock _clock { get; init; }
 
         public byte Vector => 0x1A;
 
-        public Int1Ah(CpuRegisters registers, IMemoryCore memory)
+        public Int1Ah(CpuRegisters registers, IMemoryCore memory, IClock clock)
         {
             _registers = registers;
             _memory = memory;
+            _clock = clock;
         }
 
         public void Handle()
@@ -38,7 +41,7 @@ namespace MBBSEmu.DOS.Interrupts
                          */
 
                         var secondsSinceMidnight =
-                            (uint)((DateTime.Now - new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day)).TotalSeconds * 18.2);
+                            (uint)((_clock.Now - new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day)).TotalSeconds * 18.2);
 
                         _registers.AL = 0;
                         _registers.CX = (ushort) (secondsSinceMidnight & 0xFFFF);

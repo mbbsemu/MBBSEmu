@@ -3,6 +3,7 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
@@ -90,8 +91,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
-            logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
@@ -1310,7 +1311,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void time()
         {
             //For now, ignore the input pointer for time_t
-            var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            var passedSeconds = (int)(_clock.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
 
             Registers.DX = (ushort)(passedSeconds >> 16);
             Registers.AX = (ushort)(passedSeconds & 0xFFFF);
@@ -1729,7 +1730,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
-            var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + ((DateTime.Now.Year - 1980) << 9);
+            var packedDate = (_clock.Now.Month << 5) + _clock.Now.Day + ((_clock.Now.Year - 1980) << 9);
 
 #if DEBUG
             _logger.Info($"Returned packed date: {packedDate}");
@@ -2721,7 +2722,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
-            var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+            var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
 
 #if DEBUG
             _logger.Info($"Returned packed time: {packedTime}");
@@ -3989,7 +3990,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
-            //var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+            //var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
 
             var packedTime = GetParameter(0);
 
@@ -3997,7 +3998,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var unpackedMinutes = (packedTime >> 5 & 0x1F);
             var unpackedSeconds = packedTime & 0xF;
 
-            var unpackedTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, unpackedHour,
+            var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
@@ -5919,7 +5920,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var datePointer = GetParameterPointer(0);
 
-            var dateStruct = new DateStruct(DateTime.Now);
+            var dateStruct = new DateStruct(_clock.Now);
 
             Module.Memory.SetArray(datePointer, dateStruct.Data);
         }
@@ -6423,7 +6424,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) + (info.CreationTime.Second >> 1));
             var packedTimeData = BitConverter.GetBytes(packedTime);
 
-            var packedDate = (ushort)(((DateTime.Now.Year - 1980) << 9) + (DateTime.Now.Month << 5) + DateTime.Now.Day);
+            var packedDate = (ushort)(((_clock.Now.Year - 1980) << 9) + (_clock.Now.Month << 5) + _clock.Now.Day);
             var packedDateData = BitConverter.GetBytes(packedDate);
 
             var ftimeStruct = new byte[4];
@@ -7371,7 +7372,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public void daytoday()
         {
-            Registers.AX = (ushort)DateTime.Now.DayOfWeek;
+            Registers.AX = (ushort)_clock.Now.DayOfWeek;
         }
 
         /// <summary>

@@ -1,5 +1,6 @@
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -34,7 +35,8 @@ namespace MBBSEmu.HostProcess
     /// </summary>
     public class MbbsHost : IMbbsHost
     {
-        public ILogger Logger { get; set; }
+        public ILogger Logger { get; init; }
+        public IClock Clock { get; init; }
 
         /// <summary>
         ///     Dictionary containing all active Channels
@@ -106,9 +108,10 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             Logger = logger;
+            Clock = clock;
             _globalCache = globalCache;
             _fileUtility = fileUtility;
             _mbbsRoutines = mbbsRoutines;
@@ -136,7 +139,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
@@ -910,12 +913,12 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
-                    "GALGSBL" => new Galgsbl(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "DOSCALLS" => new Doscalls(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALME" => new Galme(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "PHAPI" => new Phapi(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALMSG" => new Galmsg(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "MAJORBBS" => new Majorbbs(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
+                    "GALGSBL" => new Galgsbl(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "DOSCALLS" => new Doscalls(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALME" => new Galme(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "PHAPI" => new Phapi(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALMSG" => new Galmsg(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 
@@ -1125,7 +1128,7 @@ namespace MBBSEmu.HostProcess
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            var waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
+            var waitTime = _cleanupTime - Clock.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
