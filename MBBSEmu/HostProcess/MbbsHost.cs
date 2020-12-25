@@ -90,6 +90,7 @@ namespace MBBSEmu.HostProcess
         ///     Timer that triggers when nightly cleanup should occur
         /// </summary>
         private readonly Timer _timer;
+        private readonly Timer _tickTimer;
 
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
@@ -126,6 +127,10 @@ namespace MBBSEmu.HostProcess
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = _configuration.CleanupTime;
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+
+            int hertz = 100;
+            _tickTimer = new Timer(unused => timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / hertz));
+
             Logger.Info("Constructed MBBSEmu Host!");
         }
 
@@ -180,6 +185,14 @@ namespace MBBSEmu.HostProcess
             _workerThread.Join();
         }
 
+        private EventWaitHandle timerEvent = new AutoResetEvent(false);
+
+        private bool WaitForNextTick()
+        {
+            timerEvent.WaitOne();
+            return true;
+        }
+
         /// <summary>
         ///     This is the main MajorBBS/Worldgroup loop similar to how it actually functions with the software itself.
         ///
@@ -188,7 +201,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void WorkerThread()
         {
-            while (_isRunning)
+            while (_isRunning && WaitForNextTick())
             {
                 ProcessNightlyCleanup();
 
