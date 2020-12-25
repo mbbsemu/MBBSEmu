@@ -9,19 +9,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         private const int DAYTODAY_ORDINAL = 155;
 
-        [Fact]
-        public void daytoday_Test()
+        [Theory]
+        [InlineData(1979, 4, 1, DayOfWeek.Sunday)]
+        [InlineData(1979, 4, 2, DayOfWeek.Monday)]
+        [InlineData(1979, 4, 3, DayOfWeek.Tuesday)]
+        [InlineData(1979, 4, 4, DayOfWeek.Wednesday)]
+        [InlineData(1979, 4, 5, DayOfWeek.Thursday)]
+        [InlineData(1979, 4, 6, DayOfWeek.Friday)]
+        [InlineData(1979, 4, 7, DayOfWeek.Saturday)]
+        [InlineData(1979, 4, 8, DayOfWeek.Sunday)]
+        public void daytoday_Test(int year, int month, int day, DayOfWeek expectedDayOfWeek)
         {
             //Reset State
             Reset();
 
-            fakeClock.Now = new DateTime(1979, 4, 1); // Sunday (0)
+            fakeClock.Now = new DateTime(year, month, day);
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
-
-            fakeClock.Now = new DateTime(1979, 4, 2); // Monday (1)
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
-            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal((int)expectedDayOfWeek, mbbsEmuCpuRegisters.AX);
         }
     }
 }

@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
-        protected FakeClock fakeClock = new FakeClock();
+        protected readonly FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
@@ -45,12 +45,14 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+        protected readonly ServiceResolver _serviceResolver;
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
         protected ExportedModuleTestBase(string modulePath)
         {
+            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
