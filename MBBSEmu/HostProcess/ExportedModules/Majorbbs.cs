@@ -1287,7 +1287,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (bb.IsNull())
                 return false;
 
-            var btrieveFileProcessor = BtrieveGetProcessor(bb);
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bb, BtvFileStruct.Size));
             var lastKeyAsString = Encoding.ASCII.GetString(
                 Module.Memory.GetString(btvStruct.key, stripNull: true));
