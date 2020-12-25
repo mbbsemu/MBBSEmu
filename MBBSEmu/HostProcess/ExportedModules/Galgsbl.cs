@@ -1,4 +1,5 @@
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -6,7 +7,6 @@ using MBBSEmu.Server;
 using MBBSEmu.Session;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -34,10 +34,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
 
-        public Galgsbl(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
-            logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        public Galgsbl(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
-            _startDate = DateTime.Now;
+            _startDate = clock.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);
 
             //Check for Module Specific BTURNO #
@@ -87,7 +87,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             // completed. This crashes the test.
             if (Module.Memory.TryGetVariablePointer("TICKER", out var tickerPointer))
             {
-                var seconds = (ushort)((DateTime.Now - _startDate).TotalSeconds % 0xFFFF);
+                var seconds = (ushort)((_clock.Now - _startDate).TotalSeconds % 0xFFFF);
                 Module.Memory.SetWord(tickerPointer, seconds);
             }
         }
@@ -1002,7 +1002,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Takes the specified character and adds it directly to the channel input buffer
-        /// 
+        ///
         ///     Signature: void chiinp(int chan,char c);
         /// </summary>
         private void chiinp()
