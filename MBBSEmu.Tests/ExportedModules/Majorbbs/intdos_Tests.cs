@@ -12,7 +12,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int INTDOS_ORDINAL = 355;
 
         [Fact]
-        public void intdos_0x19_Test()
+        public void intdos_0x19_GetDefaultDisk_Test()
         {
             //Reset State
             Reset();
@@ -38,13 +38,34 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x1A_Test()
+        public void intdos_0x1A_FCBMemory_Test()
         {
-            //TODO
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters { AH = 0x1A, DS = 0xFF, DX = 0xFF };
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results
+            Assert.Equal(0xFF, testRegisters.DS);
+            Assert.Equal(0xFF, testRegisters.DX);
         }
 
         [Fact]
-        public void intdos_0x25_Test()
+        public void intdos_0x25_SetInterruptVector_Test()
         {
             //Reset State
             Reset();
@@ -71,7 +92,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x2A_Test()
+        public void intdos_0x2A_GetCurrentDate_Test()
         {
             //Reset State
             Reset();
@@ -100,7 +121,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x2C_Test()
+        public void intdos_0x2C_GetCurrentTime_Test()
         {
             //Reset State
             Reset();
@@ -127,7 +148,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x2F_Test()
+        public void intdos_0x2F_GetDTAAddress_Test()
         {
             //Reset State
             Reset();
@@ -152,12 +173,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort) testRegistersArrayData.Length));
 
             //Verify Results
-            //Assert.Equal(dtaPointer.Segment, testRegisters.ES); -- DOESN'T WORK!, comes back as 0
+            //Assert.Equal(dtaPointer.Segment, testRegisters.ES); -- TODO DOESN'T WORK!, comes back as 0
             Assert.Equal(dtaPointer.Offset, testRegisters.BX);
         }
 
         [Fact]
-        public void intdos_0x30_Test()
+        public void intdos_0x30_GetDOSVersion_Test()
         {
             //Reset State
             Reset();
@@ -183,20 +204,43 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(22, testRegisters.AH);
         }
 
+        [Theory]
+        [InlineData(0x8, 0x0, 0x8)]
+        [InlineData(0x0, 0x0, 0x0)]
+        public void intdos_0x35_GetInterruptVector_Test(ushort registerALvalue, ushort registerESvalue, ushort registerBXvalue)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters { AH = 0x35, AL = (byte)registerALvalue };
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results -- TODO not sure this is right
+            Assert.Equal(registerESvalue, testRegisters.ES);
+            Assert.Equal(registerBXvalue, testRegisters.BX);
+        }
+
         [Fact]
-        public void intdos_0x35_Test()
+        public void intdos_0x40_WriteToFile_Test()
         {
             //TODO
         }
 
         [Fact]
-        public void intdos_0x40_Test()
-        {
-            //TODO
-        }
-
-        [Fact]
-        public void intdos_0x44_Test()
+        public void intdos_0x44_GetDeviceInformation_Test()
         {
             //Reset State
             Reset();
@@ -222,7 +266,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x47_Test()
+        public void intdos_0x47_GetCurrentDirectory_Test()
         {
             //Reset State
             Reset();
@@ -255,7 +299,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x4A_Test()
+        public void intdos_0x4A_AdjustMemoryBlockSize_Test()
         {
             //Reset State
             Reset();
@@ -281,13 +325,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void intdos_0x4C_Test()
+        public void intdos_0x4C_QuitWithExitCode_Test()
         {
             // TODO
         }
 
         [Fact]
-        public void intdos_0x62_Test()
+        public void intdos_0x62_GetPSPAddress_Test()
         {
             //Reset State
             Reset();
