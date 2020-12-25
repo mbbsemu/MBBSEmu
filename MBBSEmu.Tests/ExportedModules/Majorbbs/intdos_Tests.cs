@@ -18,8 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x19;
+            var testRegisters = new CpuRegisters {AH = 0x19};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -51,9 +50,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x25;
-            testRegisters.AL = 0x8;
+            var testRegisters = new CpuRegisters {AH = 0x25, AL = 0x8};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -80,8 +77,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x2A;
+            var testRegisters = new CpuRegisters {AH = 0x2A};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -110,8 +106,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x2C;
+            var testRegisters = new CpuRegisters {AH = 0x2C};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -138,8 +133,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x2F;
+            var testRegisters = new CpuRegisters {AH = 0x2F};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -169,8 +163,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x30;
+            var testRegisters = new CpuRegisters {AH = 0x30};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -205,7 +198,27 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Fact]
         public void intdos_0x44_Test()
         {
-            //TODO
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var testRegisters = new CpuRegisters {AH = 0x44, AL = 0};
+
+            //Allocate some memory to hold the test data
+            var testRegistersArrayData = testRegisters.ToRegs();
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+
+            //Data returned in memory, so we need to reload testRegisters from memory
+            testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
+                (ushort)testRegistersArrayData.Length));
+
+            //Verify Results
+            Assert.Equal(0, testRegisters.BX);
         }
 
         [Fact]
@@ -215,8 +228,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x47;
+            var testRegisters = new CpuRegisters {AH = 0x47};
 
             var dirPointer = mbbsEmuMemoryCore.AllocateVariable("DIR-POINTER", 10);
             testRegisters.DS = dirPointer.Segment;
@@ -249,8 +261,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x4A;
+            var testRegisters = new CpuRegisters {AH = 0x4A};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -282,8 +293,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters();
-            testRegisters.AH = 0x62;
+            var testRegisters = new CpuRegisters {AH = 0x62};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
