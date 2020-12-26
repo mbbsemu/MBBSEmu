@@ -21,11 +21,6 @@ namespace MBBSEmu.Module
         public NEFile File;
 
         /// <summary>
-        ///     Module Memory Manager
-        /// </summary>
-        public IMemoryCore Memory;
-
-        /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
         public Dictionary<string, IntPtr16> EntryPoints { get; set; }
@@ -54,6 +49,15 @@ namespace MBBSEmu.Module
         ///     thus keeping things nice and clean.
         /// </summary>
         public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
+        
+        /// <summary>
+        ///     The Segment Offset in the Memory Core that the DLL will be loaded in
+        ///
+        ///     Segment 1 of the DLL will become SegmentOffset, Segment 2 will be SegmentOffset + 1, etc.
+        ///
+        ///     This value will be used during relocation patching so CALL FAR calls will be within the same Memory Space
+        /// </summary>
+        public ushort SegmentOffset { get; set; }
 
         public MbbsDll(IFileUtility fileUtility, ILogger logger)
         {

@@ -765,7 +765,7 @@ namespace MBBSEmu.HostProcess
                 //Enter or Return
                 case 0xD when session.SessionState != EnumSessionState.InFullScreenDisplay:
                     {
-                        if(!session.TransparentMode)
+                        if (!session.TransparentMode)
                             session.SendToClient(new byte[] { 0xD, 0xA });
 
                         //Set Status == 3, which means there is a Command Ready
@@ -791,8 +791,8 @@ namespace MBBSEmu.HostProcess
                         {
                             //Check for Secure Echo being Enabled
                             session.SendToClient(session.EchoSecureEnabled
-                                ? new[] {session.ExtUsrAcc.ech}
-                                : new[] {session.LastCharacterReceived});
+                                ? new[] { session.ExtUsrAcc.ech }
+                                : new[] { session.LastCharacterReceived });
                         }
 
                         break;
@@ -821,6 +821,16 @@ namespace MBBSEmu.HostProcess
             {
                 module.Memory.AddSegment(seg);
                 Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+            }
+
+            foreach (var dll in module.RequiredDlls)
+            {
+                foreach (var seg in dll.File.SegmentTable)
+                {
+                    seg.Ordinal += dll.SegmentOffset;
+                    module.Memory.AddSegment(seg);
+                    Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+                }
             }
 
             //Setup Exported Modules
@@ -958,124 +968,158 @@ namespace MBBSEmu.HostProcess
             var phapiFunctions = GetFunctions(module, "PHAPI");
             var galmsgFunctions = GetFunctions(module, "GALMSG");
 
-            foreach (var s in module.File.SegmentTable)
-            {
-                if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)
-                    continue;
+            var dllList = new List<MbbsDll> { module };
+            dllList.AddRange(module.RequiredDlls);
 
-                foreach (var relocationRecord in s.RelocationRecords.Values)
+            foreach (var dll in dllList)
+            {
+                foreach (var s in dll.File.SegmentTable)
                 {
-                    //Ignored Relocation Record
-                    if (relocationRecord.TargetTypeValueTuple == null)
+                    if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)
                         continue;
 
-                    switch (relocationRecord.TargetTypeValueTuple.Item1)
+                    foreach (var relocationRecord in s.RelocationRecords.Values)
                     {
-                        case EnumRecordsFlag.ImportOrdinalAdditive:
-                        case EnumRecordsFlag.ImportOrdinal:
-                            {
-                                var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                                var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
+                        //Ignored Relocation Record
+                        if (relocationRecord.TargetTypeValueTuple == null)
+                            continue;
 
-                                var relocationResult = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                        switch (relocationRecord.TargetTypeValueTuple.Item1)
+                        {
+                            case EnumRecordsFlag.ImportOrdinalAdditive:
+                            case EnumRecordsFlag.ImportOrdinal:
                                 {
-                                    "MAJORBBS" => majorbbsHostFunctions.Invoke(functionOrdinal, true),
-                                    "GALGSBL" => galsblHostFunctions.Invoke(functionOrdinal, true),
-                                    "DOSCALLS" => doscallsHostFunctions.Invoke(functionOrdinal, true),
-                                    "GALME" => galmeFunctions.Invoke(functionOrdinal, true),
-                                    "PHAPI" => phapiFunctions.Invoke(functionOrdinal, true),
-                                    "GALMSG" => galmsgFunctions.Invoke(functionOrdinal, true),
-                                    _ => throw new Exception(
-                                        $"Unknown or Unimplemented Imported Library: {module.File.ImportedNameTable[nametableOrdinal].Name}")
-                                };
+                                    var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                                    var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
 
-                                var relocationPointer = new IntPtr16(relocationResult);
+                                    var relocationPointer = IntPtr16.Empty;
+                                    switch (dll.File.ImportedNameTable[nametableOrdinal].Name)
+                                    {
+                                        case "MAJORBBS":
+                                            relocationPointer = new IntPtr16(majorbbsHostFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case "GALGSBL":
+                                            relocationPointer = new IntPtr16(galsblHostFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case "DOSCALLS":
+                                            relocationPointer = new IntPtr16(doscallsHostFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case "GALME":
+                                            relocationPointer = new IntPtr16(galmeFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case "PHAPI":
+                                            relocationPointer = new IntPtr16(phapiFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case "GALMSG":
+                                            relocationPointer = new IntPtr16(galmsgFunctions.Invoke(functionOrdinal, true));
+                                            break;
+                                        case var importedName
+                                            when module.RequiredDlls.Any(m =>
+                                                m.File.FileName.Split('.')[0].ToUpper() == importedName):
+                                            {
+                                                //Find the Imported DLL in the List of Required
+                                                var importedDll = module.RequiredDlls.First(m =>
+                                                    m.File.FileName.Split('.')[0].ToUpper() == importedName);
 
-                                //32-Bit Pointer
-                                if (relocationRecord.SourceType == 3)
-                                {
-                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
-                                    continue;
+                                                //Get The Entry Point based on the Ordinal
+                                                var initEntryPoint =
+                                                    importedDll.File.EntryTable.First(x => x.Ordinal == functionOrdinal);
+                                                relocationPointer = new IntPtr16((ushort)(initEntryPoint.SegmentNumber + importedDll.SegmentOffset),
+                                                    initEntryPoint.Offset);
+                                                break;
+                                            }
+                                        default:
+                                            throw new Exception(
+                                                $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
+                                    }
+
+                                    //32-Bit Pointer
+                                    if (relocationRecord.SourceType == 3)
+                                    {
+                                        Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
+                                        continue;
+                                    }
+
+                                    //16-Bit Values
+                                    var result = relocationRecord.SourceType switch
+                                    {
+                                        //Offset
+                                        2 => relocationPointer.Segment,
+                                        5 => relocationPointer.Offset,
+                                        _ => throw new ArgumentOutOfRangeException(
+                                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                                    };
+
+                                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
+                                        result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+
+                                    Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
+                                    break;
                                 }
-
-                                //16-Bit Values
-                                var result = relocationRecord.SourceType switch
+                            case EnumRecordsFlag.InternalRef when relocationRecord.SourceType == 3:
                                 {
-                                    //Offset
-                                    2 => relocationPointer.Segment,
-                                    5 => relocationPointer.Offset,
-                                    _ => throw new ArgumentOutOfRangeException(
-                                        $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                                };
-
-                                if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
-                                    result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
-
-                                Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                                break;
-                            }
-                        case EnumRecordsFlag.InternalRef:
-                            {
-
-                                //32-Bit Pointer
-                                if (relocationRecord.SourceType == 3)
-                                {
-                                    var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
+                                    var relocationPointer = new IntPtr16(
+                                        (ushort)(relocationRecord.TargetTypeValueTuple.Item2 + dll.SegmentOffset),
                                         relocationRecord.TargetTypeValueTuple.Item4);
 
                                     Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
                                     break;
                                 }
-                                Array.Copy(BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2), 0, s.Data, relocationRecord.Offset, 2);
-                                break;
-                            }
-
-                        case EnumRecordsFlag.ImportNameAdditive:
-                        case EnumRecordsFlag.ImportName:
-                            {
-                                var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                                var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
-
-                                var newSegment = module.File.ImportedNameTable[nametableOrdinal].Name switch
+                            case EnumRecordsFlag.InternalRef:
                                 {
-                                    "MAJORBBS" => Majorbbs.Segment,
-                                    "GALGSBL" => Galgsbl.Segment,
-                                    "PHAPI" => Phapi.Segment,
-                                    "GALME" => Galme.Segment,
-                                    "DOSCALLS" => Doscalls.Segment,
-                                    _ => throw new Exception(
-                                        $"Unknown or Unimplemented Imported Module: {module.File.ImportedNameTable[nametableOrdinal].Name}")
-
-                                };
-
-                                var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
-
-                                //32-Bit Pointer
-                                if (relocationRecord.SourceType == 3)
-                                {
-                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
-                                    continue;
+                                    Array.Copy(
+                                        BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2 +
+                                                              dll.SegmentOffset), 0,
+                                        s.Data, relocationRecord.Offset, 2);
+                                    break;
                                 }
-
-                                //16-Bit Values
-                                var result = relocationRecord.SourceType switch
+                            case EnumRecordsFlag.ImportNameAdditive:
+                            case EnumRecordsFlag.ImportName:
                                 {
-                                    //Offset
-                                    2 => relocationPointer.Segment,
-                                    5 => relocationPointer.Offset,
-                                    _ => throw new ArgumentOutOfRangeException(
-                                        $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                                };
+                                    var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
+                                    var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
 
-                                if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
-                                    result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+                                    var newSegment = dll.File.ImportedNameTable[nametableOrdinal].Name switch
+                                    {
+                                        "MAJORBBS" => Majorbbs.Segment,
+                                        "GALGSBL" => Galgsbl.Segment,
+                                        "PHAPI" => Phapi.Segment,
+                                        "GALME" => Galme.Segment,
+                                        "DOSCALLS" => Doscalls.Segment,
+                                        _ => throw new Exception(
+                                            $"Unknown or Unimplemented Imported Module: {dll.File.ImportedNameTable[nametableOrdinal].Name}")
 
-                                Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                                break;
+                                    };
 
-                            }
-                        default:
-                            throw new Exception("Unsupported Records Flag for Relocation Value");
+                                    var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+
+                                    //32-Bit Pointer
+                                    if (relocationRecord.SourceType == 3)
+                                    {
+                                        Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
+                                        continue;
+                                    }
+
+                                    //16-Bit Values
+                                    var result = relocationRecord.SourceType switch
+                                    {
+                                        //Offset
+                                        2 => relocationPointer.Segment,
+                                        5 => relocationPointer.Offset,
+                                        _ => throw new ArgumentOutOfRangeException(
+                                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
+                                    };
+
+                                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
+                                        result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
+
+                                    Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
+                                    break;
+
+                                }
+                            default:
+                                throw new Exception("Unsupported Records Flag for Relocation Value");
+                        }
                     }
                 }
             }

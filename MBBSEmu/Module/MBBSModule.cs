@@ -26,9 +26,12 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MbbsModule : MbbsDll
     {
-        private protected readonly ILogger _logger;
         private protected readonly IClock _clock;
-        private protected readonly IFileUtility _fileUtility;
+
+        /// <summary>
+        ///     Module Memory Manager
+        /// </summary>
+        public IMemoryCore Memory;
 
         /// <summary>
         ///     State returned by REGISTER_MODULE
@@ -92,11 +95,11 @@ namespace MBBSEmu.Module
         ///     Description of the Module as Defined by REGISTER_MODULE
         /// </summary>
         public string ModuleDescription { get; set; }
-        
+
         /// <summary>
         ///     Required DLL's are DLL Files that are referenced by the Module
         /// </summary>
-        public Dictionary<ushort, MbbsDll> RequiredDlls { get; set; }
+        public List<MbbsDll> RequiredDlls { get; set; }
 
         /// <summary>
         ///     Constructor for MbbsModule
@@ -110,11 +113,9 @@ namespace MBBSEmu.Module
         /// <param name="fileUtility"></param>
         public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null) : base(fileUtility, logger)
         {
-            _fileUtility = fileUtility;
             _clock = clock;
-            _logger = logger;
             ModuleIdentifier = moduleIdentifier;
-            RequiredDlls = new Dictionary<ushort, MbbsDll>();
+            RequiredDlls = new List<MbbsDll>();
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
@@ -150,9 +151,10 @@ namespace MBBSEmu.Module
             {
                 for (var i = 0; i < Mdf.Requires.Count; i++)
                 {
-                    var requiredDLL = new MbbsDll(fileUtility, logger);
-                    requiredDLL.Load(Mdf.Requires[i].Trim(), ModulePath);
-                    RequiredDlls.Add((ushort) (0xFFF0 + i), requiredDLL);
+                    var requiredDll = new MbbsDll(fileUtility, logger);
+                    requiredDll.Load(Mdf.Requires[i].Trim(), ModulePath);
+                    requiredDll.SegmentOffset = (ushort)(0x100 * (i + 1));
+                    RequiredDlls.Add(requiredDll);
                 }
             }
 
