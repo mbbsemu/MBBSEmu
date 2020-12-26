@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -21,14 +20,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
-
-            //Set Argument Values to be Passed In
-            var expectedDate = ((year - 1980) << 9) | (month << 5) | day;
-
+            
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DATOFC_ORDINAL, new List<ushort> { numDays });
 
             //Verify Results
+            var expectedDate = ((year - 1980) << 9) | (month << 5) | day;
             Assert.Equal(expectedDate, mbbsEmuCpuRegisters.AX);
         }
     }
