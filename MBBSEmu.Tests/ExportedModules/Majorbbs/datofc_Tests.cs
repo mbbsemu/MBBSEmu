@@ -16,6 +16,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(11023, 2010, 3, 7)]
         [InlineData(14952, 2020, 12, 8)]
         [InlineData(0, 1980, 1, 1)]
+        [InlineData(16437, 2025, 1, 1)]
+        [InlineData(25568, 2050, 1, 1)]
         public void datofc_Test(ushort numDays, int year, int month, int day)
         {
             //Reset State
