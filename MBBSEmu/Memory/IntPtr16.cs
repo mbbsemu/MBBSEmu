@@ -51,6 +51,8 @@ namespace MBBSEmu.Memory
             Data = intPtr16Span.ToArray();
         }
 
+        public bool IsNull() => IntPtr16.Empty.Equals(this);
+
         /// <summary>
         ///     Returns the int16:int16 pointer as a 32-bit value
         /// </summary>

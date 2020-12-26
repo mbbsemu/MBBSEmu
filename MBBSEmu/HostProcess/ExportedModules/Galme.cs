@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -16,8 +17,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFC;
 
-        internal Galme(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
-            logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        internal Galme(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             var txtlenPointer = Module.Memory.AllocateVariable("TXTLEN", 0x2);
             Module.Memory.SetWord(txtlenPointer, 0x400);

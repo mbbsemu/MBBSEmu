@@ -1,7 +1,9 @@
+using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
+using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -30,11 +32,12 @@ namespace MBBSEmu.Tests.ExportedModules
             657, // f_lumod
         };
 
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
+        protected static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
 
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
+        protected readonly FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
@@ -42,22 +45,25 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+        protected readonly ServiceResolver _serviceResolver;
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
         protected ExportedModuleTestBase(string modulePath)
         {
+            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
             testSessions.Allocate(new TestSession(null));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -68,6 +74,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -111,6 +118,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -121,6 +129,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -252,6 +261,18 @@ namespace MBBSEmu.Tests.ExportedModules
             }
 
             return parameters;
+        }
+
+        /// <summary>
+        ///     Sets the current btrieve file (BB value) based on btrieveFile
+        /// </summary>
+        protected void AllocateBB(BtrieveFile btrieveFile, ushort maxRecordLength)
+        {
+            var btrieve = new BtrieveFileProcessor() { FullPath = Path.Combine(mbbsModule.ModulePath, btrieveFile.FileName) };
+            var connectionString = "Data Source=acs.db;Mode=Memory";
+
+            btrieve.CreateSqliteDBWithConnectionString(connectionString, btrieveFile);
+            majorbbs.AllocateBB(btrieve, maxRecordLength, Path.GetFileName(btrieve.FullPath));
         }
     }
 }

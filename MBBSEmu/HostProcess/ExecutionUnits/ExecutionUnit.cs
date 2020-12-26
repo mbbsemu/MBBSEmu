@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Memory;
@@ -34,14 +35,14 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         /// </summary>
         public readonly Dictionary<ushort, IExportedModule> ExportedModuleDictionary;
 
-        public ExecutionUnit(IMemoryCore moduleMemory, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger)
+        public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger)
         {
             ModuleCpu = new CpuCore(logger);
             ModuleCpuRegisters = new CpuRegisters();
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory) });
+            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)

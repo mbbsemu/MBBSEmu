@@ -1,4 +1,5 @@
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -25,7 +26,9 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MbbsModule : MbbsDll
     {
-        
+        private protected readonly ILogger _logger;
+        private protected readonly IClock _clock;
+        private protected readonly IFileUtility _fileUtility;
 
         /// <summary>
         ///     State returned by REGISTER_MODULE
@@ -43,7 +46,7 @@ namespace MBBSEmu.Module
         ///     Directory Path of Module
         /// </summary>
         public readonly string ModulePath;
-        
+
         /// <summary>
         ///     Menu Option Key of Module
         /// </summary>
@@ -105,8 +108,11 @@ namespace MBBSEmu.Module
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null) : base(fileUtility, logger)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null) : base(fileUtility, logger)
         {
+            _fileUtility = fileUtility;
+            _clock = clock;
+            _logger = logger;
             ModuleIdentifier = moduleIdentifier;
             RequiredDlls = new Dictionary<ushort, MbbsDll>();
 
@@ -224,7 +230,7 @@ namespace MBBSEmu.Module
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
                 _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary, _logger);
+                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger);
             }
 
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);

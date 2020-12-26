@@ -3,6 +3,8 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Date;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
@@ -11,6 +13,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -88,8 +91,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        public Majorbbs(ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
-            logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
@@ -1066,9 +1069,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 386:
                     listing();
                     break;
-                case 70:
-                    anpbtv();
-                    break;
                 case 607:
                 case 461: //otstscrd -- always return true
                     tstcrd();
@@ -1241,12 +1241,66 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 338:
                     hdluid();
                     break;
+                case 70:
+                    anpbtv();
+                    break;
+                case 913: // anpbtvl
+                case 998: // anpbtvlk
+                    anpbtvl();
+                    break;
+                case 64:
+                    alcdup();
+                    break;
+                case 128:
+                    cncsig();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     Acquire next/previous, verifying the next key matches the prior one.
+        ///
+        ///     <para/>Useful for querying across duplicate keys.
+        ///
+        ///     Signature: int anpbtvl(void *recptr, int chkcas, int anpopt, int optional_loktyp)
+        ///         recptr - where to store the results
+        ///         chkcas - check case in strcmp() operation for key comparison
+        ///         anpopt - operation to perform
+        ///         loktyp - lock type - unsupported in mbbsemu
+        ///     Return: 1 if successful, 0 on failure
+        private void anpbtvl()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var caseSensitive = GetParameterBool(2);
+            var operation = (EnumBtrieveOperationCodes) GetParameter(3);
+
+            Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
+        }
+
+        private bool anpbtv(IntPtr16 recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
+        {
+            var bb = Module.Memory.GetPointer("BB");
+            if (bb.IsNull())
+                return false;
+
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bb, BtvFileStruct.Size));
+            var lastKeyAsString = Encoding.ASCII.GetString(
+                Module.Memory.GetString(btvStruct.key, stripNull: true));
+
+            var ret = false;
+            if (obtainBtv(recordPointer, IntPtr16.Empty, 0xFFFF, operationCodes))
+            {
+                var nextKeyAsString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.key, stripNull: true));
+
+                ret = string.Compare(lastKeyAsString, nextKeyAsString, ignoreCase: !caseSensitive) == 0;
+            }
+
+            return ret;
         }
 
         /// <summary>
@@ -1259,7 +1313,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void time()
         {
             //For now, ignore the input pointer for time_t
-            var passedSeconds = (int)(DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            var passedSeconds = (int)(_clock.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
 
             Registers.DX = (ushort)(passedSeconds >> 16);
             Registers.AX = (ushort)(passedSeconds & 0xFFFF);
@@ -1678,7 +1732,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dddate(mon,day,year) (((mon)<<5)+(day)+(((year)-1980)<<9))
-            var packedDate = (DateTime.Now.Month << 5) + DateTime.Now.Day + ((DateTime.Now.Year - 1980) << 9);
+            var packedDate = (_clock.Now.Month << 5) + _clock.Now.Day + ((_clock.Now.Year - 1980) << 9);
 
 #if DEBUG
             _logger.Info($"Returned packed date: {packedDate}");
@@ -2300,15 +2354,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var btrieveFilenamePointer = GetParameterPointer(0);
             var maxRecordLength = GetParameter(2);
-            var btrieveFilename = Module.Memory.GetString(btrieveFilenamePointer, true);
-            var fileName = Encoding.ASCII.GetString(btrieveFilename);
+            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btrieveFilenamePointer, true));
 
             var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
+            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, fileName);
+
+            Registers.SetPointer(btvFileStructPointer);
+        }
+
+        /// <summary>
+        ///     Allocates a new BtvFileStruct and associated it with btrieveFile.
+        /// </summary>
+        /// <returns>A pointer to the allocated BtvFileStruct</returns>
+        [VisibleForTesting]
+        public IntPtr16 AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName) {
             //Setup Pointers
             var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
             var btvFileNamePointer =
-                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(btrieveFilename.Length + 1));
+                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
             var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", maxRecordLength);
             var btvKeyPointer = Module.Memory.AllocateVariable($"{fileName}-KEY", maxRecordLength);
 
@@ -2318,13 +2382,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 newBtvStruct.SetKeyLength(key.Number, (ushort)key.Length);
             BtrieveSaveProcessor(btvFileStructPointer, btrieveFile);
             Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
-            Module.Memory.SetArray(btvFileNamePointer, btrieveFilename);
+            Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName));
             Module.Memory.SetPointer("BB", btvFileStructPointer);
 
 #if DEBUG
             _logger.Info($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
 #endif
-            Registers.SetPointer(btvFileStructPointer);
+            return btvFileStructPointer;
         }
 
         /// <summary>
@@ -2374,9 +2438,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (acquiresData)
             {
-                Module.Memory.SetArray(btvStruct.data, record.Data);
-                if (!destinationRecordBuffer.Equals(IntPtr16.Empty))
-                    Module.Memory.SetArray(destinationRecordBuffer, record.Data);
+                if (destinationRecordBuffer.IsNull())
+                    destinationRecordBuffer = btvStruct.data;
+
+                Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
@@ -2647,8 +2712,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!recordFound)
                 Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
 
-            Registers.DX = variablePointer.Offset;
-            Registers.AX = variablePointer.Segment;
+            Registers.SetPointer(variablePointer);
         }
 
         /// <summary>
@@ -2661,7 +2725,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
-            var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+            var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
 
 #if DEBUG
             _logger.Info($"Returned packed time: {packedTime}");
@@ -2790,9 +2854,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var keyNumber = GetParameter(4);
             var obtopt = (EnumBtrieveOperationCodes)GetParameter(5);
 
-            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var keyValue = Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength(keyNumber));
+            return obtainBtv(recordPointer, keyPointer, keyNumber, obtopt);
+        }
 
+        private bool obtainBtv(IntPtr16 recordPointer, IntPtr16 keyPointer, int keyNumber, EnumBtrieveOperationCodes obtopt)
+        {
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var keyValue = !keyPointer.IsNull() ? Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength((ushort)keyNumber)) : null;
             var result = currentBtrieveFile.PerformOperation(keyNumber, keyValue, obtopt);
             if (result)
                 UpdateBB(currentBtrieveFile, recordPointer, obtopt, (short)keyNumber);
@@ -3689,27 +3758,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset1 = GetParameterPointer(0);
             var parameterOffset2 = GetParameterPointer(2);
 
-            //Get the AH value to determine the function being called
+            //Load registers and pass to Int21h
             var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
-            switch (registers.AH)
-            {
-                case 0x2C:
-                    //Get Time
-                    {
-                        var returnValue = new CpuRegisters
-                        {
-                            CH = (byte)DateTime.Now.Hour,
-                            CL = (byte)DateTime.Now.Minute,
-                            DH = (byte)DateTime.Now.Second,
-                            DL = (byte)(DateTime.Now.Millisecond / 100)
-                        };
-                        Module.Memory.SetArray(parameterOffset2, returnValue.ToRegs());
-                        return;
-                    }
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown DOS INT21 API: {registers.AH:X2}");
-            }
+            new Int21h(registers, Module.Memory, _clock).Handle();
+
+            Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }
 
         /// <summary>
@@ -3939,7 +3993,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //From DOSFACE.H:
             //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
-            //var packedTime = (DateTime.Now.Hour << 11) + (DateTime.Now.Minute << 5) + (DateTime.Now.Second >> 1);
+            //var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
 
             var packedTime = GetParameter(0);
 
@@ -3947,7 +4001,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var unpackedMinutes = (packedTime >> 5 & 0x1F);
             var unpackedSeconds = packedTime & 0xF;
 
-            var unpackedTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, unpackedHour,
+            var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
@@ -5605,9 +5659,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.PreviousQuery.Key.Number, currentBtrieveFile.PreviousQuery.KeyData, queryOption);
             if (result)
-            {
                 UpdateBB(currentBtrieveFile, IntPtr16.Empty, queryOption, keyNumber: -1);
-            }
 
             Registers.AX = result ? (ushort)1 : (ushort)0;
         }
@@ -5869,7 +5921,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var datePointer = GetParameterPointer(0);
 
-            var dateStruct = new DateStruct(DateTime.Now);
+            var dateStruct = new DateStruct(_clock.Now);
 
             Module.Memory.SetArray(datePointer, dateStruct.Data);
         }
@@ -6234,13 +6286,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-
-            var result = currentBtrieveFile.PerformOperation(-1, ReadOnlySpan<byte>.Empty, btrieveOperation);
-            if (result)
-                UpdateBB(currentBtrieveFile, recordPointer, btrieveOperation, keyNumber: -1);
-
-            Registers.AX = result ? (ushort)1 : (ushort)0;
+            Registers.AX = anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0;
         }
 
         /// <summary>
@@ -6379,7 +6425,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) + (info.CreationTime.Second >> 1));
             var packedTimeData = BitConverter.GetBytes(packedTime);
 
-            var packedDate = (ushort)(((DateTime.Now.Year - 1980) << 9) + (DateTime.Now.Month << 5) + DateTime.Now.Day);
+            var packedDate = (ushort)(((_clock.Now.Year - 1980) << 9) + (_clock.Now.Month << 5) + _clock.Now.Day);
             var packedDateData = BitConverter.GetBytes(packedDate);
 
             var ftimeStruct = new byte[4];
@@ -7210,7 +7256,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Expect a Word from the user (character from the current command)
         ///
-        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     cncwrd() is executed after begincnc(), which runs rstrin() replacing the null separators
         ///     in the string with spaces once again.
         /// </summary>
         private void cncwrd()
@@ -7327,7 +7373,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public void daytoday()
         {
-            Registers.AX = (ushort)DateTime.Now.DayOfWeek;
+            Registers.AX = (ushort)_clock.Now.DayOfWeek;
         }
 
         /// <summary>
@@ -7535,7 +7581,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Look up user ID
             var userAccount = _accountRepository.GetAccounts().ToList().FirstOrDefault(item => item.userName.Contains(searchUserName, StringComparison.CurrentCultureIgnoreCase));
-            
+
             if (userAccount != null && searchUserName != "")
             {
                 userXref.xrfstg = Encoding.ASCII.GetBytes(searchUserName + "\0");
@@ -7559,5 +7605,119 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct uidxrf;
         /// </summary>
         public ReadOnlySpan<byte> uidxrf => Module.Memory.GetVariablePointer("UIDXRF").Data;
+
+        /// <summary>
+        ///     Allocate new space for a string
+        ///
+        ///     Signature: char *alcdup(char *stg);
+        /// </summary>
+        private void alcdup()
+        {
+            var sourceStringPointer = GetParameterPointer(0);
+            var inputBuffer = Module.Memory.GetString(sourceStringPointer);
+            var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
+
+
+            if (sourceStringPointer == IntPtr16.Empty)
+            {
+                Module.Memory.SetByte(destinationAllocatedPointer, 0);
+#if DEBUG
+                _logger.Warn($"Source ({sourceStringPointer}) is NULL");
+#endif
+            }
+            else
+            {
+                Module.Memory.SetArray(destinationAllocatedPointer, inputBuffer);
+#if DEBUG
+                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+#endif
+            }
+
+#if DEBUG
+            _logger.Info($"Allocated {inputBuffer.Length} bytes starting at {destinationAllocatedPointer}");
+#endif
+
+            Registers.SetPointer(destinationAllocatedPointer);
+        }
+
+        /// <summary>
+        ///     Expect a forum name, with or without '/' prefix
+        ///
+        ///     Signature: char *signam=cncsig();
+        /// </summary>
+        private void cncsig()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCSIG", 0xA); //max length is 10 characters
+            Registers.SetPointer(returnPointer);
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0 || Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                //Write null to output
+                Module.Memory.SetByte(returnPointer, 0);
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+
+            //Make room for leading forward slash (SIGIDC) if missing
+            if (inputString[0] != (byte) '/')
+                remainingCharactersInCommand += 1;
+
+            var returnedSig = new MemoryStream(remainingCharactersInCommand);
+
+            //Add leading forward slash (SIGIDC) if missing
+            if (inputString[0] != (byte) '/')
+            {
+                returnedSig.WriteByte((byte) '/');
+                nxtcmdPointer--;
+            }
+
+            //Build Return Sig stopping when a space is encountered
+            foreach (var b in inputString)
+            {
+                if (b == ' ' || b == 0)
+                    break;
+
+                returnedSig.WriteByte(b);
+            }
+
+            //Truncate to 9 bytes
+            if (returnedSig.Length > 9)
+            {
+                returnedSig.SetLength(9);
+                nxtcmdPointer--;
+            }
+
+            returnedSig.WriteByte(0);
+
+            Module.Memory.SetArray(returnPointer, returnedSig.ToArray());
+
+            //Modify the Counters
+            remainingCharactersInCommand -= (int)returnedSig.Length;
+            nxtcmdPointer.Offset += (ushort)returnedSig.Length;
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == ' ' && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new IntPtr16(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
     }
 }

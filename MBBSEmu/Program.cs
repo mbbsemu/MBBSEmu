@@ -1,6 +1,7 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Structs;
@@ -216,7 +217,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_exeFile))
                 {
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeRuntime(mzFile, null, _logger);
+                    var exe = new ExeRuntime(mzFile, null, _serviceResolver.GetService<IClock>(), _logger);
                     exe.Load();
                     exe.Run();
                     return;
