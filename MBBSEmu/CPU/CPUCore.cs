@@ -2339,7 +2339,7 @@ namespace MBBSEmu.CPU
                         Registers.IP = pointer.Offset;
                         break;
                     }
-                case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0xFF:
+                case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0x0F00:
                     {
                         //Far call to another Segment
                         Push(Registers.CS);
