@@ -23,8 +23,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
+            //Set fake clock
             fakeClock.Now = new DateTime(year, month, day);
+            
+            //Execute test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
+            
+            //Verify results
             Assert.Equal((int)expectedDayOfWeek, mbbsEmuCpuRegisters.AX);
         }
     }
