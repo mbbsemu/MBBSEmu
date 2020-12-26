@@ -35,4 +35,3 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
     }
 }
-
