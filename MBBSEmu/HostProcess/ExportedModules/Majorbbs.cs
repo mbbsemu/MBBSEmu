@@ -1262,12 +1262,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Acquire next/previous. Does some weird string comparison between the data and the
-        ///         retrieved key based on chkcas
+        ///     Acquire next/previous, verifying the next key matches the prior one.
+        ///
+        ///     <para/>Useful for querying across duplicate keys.
         ///
         ///     Signature: int anpbtvl(void *recptr, int chkcas, int anpopt, int optional_loktyp)
         ///         recptr - where to store the results
-        ///         chkcas - check case in strcmp() operation?
+        ///         chkcas - check case in strcmp() operation for key comparison
         ///         anpopt - operation to perform
         ///         loktyp - lock type - unsupported in mbbsemu
         ///     Return: 1 if successful, 0 on failure
@@ -1282,19 +1283,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private bool anpbtv(IntPtr16 recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
         {
-            var currentBtrieveFile = Module.Memory.GetPointer("BB");
-            if (currentBtrieveFile.IsNull())
-            {
+            var bb = Module.Memory.GetPointer("BB");
+            if (bb.IsNull())
                 return false;
-            }
+
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bb, BtvFileStruct.Size));
+            var lastKeyAsString = Encoding.ASCII.GetString(
+                Module.Memory.GetString(btvStruct.key, stripNull: true));
 
             var ret = false;
             if (obtainBtv(recordPointer, IntPtr16.Empty, 0xFFFF, operationCodes))
             {
-                var btvStruct = new BtvFileStruct(Module.Memory.GetArray(currentBtrieveFile, BtvFileStruct.Size));
-                var keyString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.key, stripNull: true));
-                var dataString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.data, stripNull: true));
-                ret = string.Compare(keyString, dataString, ignoreCase: !caseSensitive) == 0;
+                var nextKeyAsString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.key, stripNull: true));
+
+                ret = string.Compare(lastKeyAsString, nextKeyAsString, ignoreCase: !caseSensitive) == 0;
             }
 
             return ret;
@@ -2435,9 +2437,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (acquiresData)
             {
-                Module.Memory.SetArray(btvStruct.data, record.Data);
-                if (!destinationRecordBuffer.Equals(IntPtr16.Empty))
-                    Module.Memory.SetArray(destinationRecordBuffer, record.Data);
+                if (destinationRecordBuffer.IsNull())
+                    destinationRecordBuffer = btvStruct.data;
+
+                Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
@@ -5670,9 +5673,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.PreviousQuery.Key.Number, currentBtrieveFile.PreviousQuery.KeyData, queryOption);
             if (result)
-            {
                 UpdateBB(currentBtrieveFile, IntPtr16.Empty, queryOption, keyNumber: -1);
-            }
 
             Registers.AX = result ? (ushort)1 : (ushort)0;
         }
@@ -6299,7 +6300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            Registers.AX = anpbtv(recordPointer, false, btrieveOperation) ? 1 : 0;
+            Registers.AX = anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0;
         }
 
         /// <summary>
