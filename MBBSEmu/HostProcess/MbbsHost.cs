@@ -142,7 +142,7 @@ namespace MBBSEmu.HostProcess
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
+            foreach (var (_, value) in _modules.Where(m => m.Value.ModuleDlls[0].EntryPoints.Count == 1))
             {
                 Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
@@ -360,7 +360,7 @@ namespace MBBSEmu.HostProcess
         {
             foreach (var m in _modules.Values)
             {
-                if (!m.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
+                if (!m.ModuleDlls[0].EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
 
                 if (routineEntryPoint.Segment != 0 &&
                     routineEntryPoint.Offset != 0)
@@ -452,7 +452,7 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
 
             var result = Run(session.CurrentModule.ModuleIdentifier,
-                session.CurrentModule.EntryPoints["sttrou"], session.Channel);
+                session.CurrentModule.ModuleDlls[0].EntryPoints["sttrou"], session.Channel);
 
             //Finally, display prompt character if one is set
             if (session.PromptCharacter > 0)
@@ -505,7 +505,7 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            var entryPoint = session.CurrentModule.EntryPoints["lonrou"];
+            var entryPoint = session.CurrentModule.ModuleDlls[0].EntryPoints["lonrou"];
 
             if (entryPoint != IntPtr16.Empty)
                 Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
@@ -597,7 +597,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTSROU(SessionBase session)
         {
             session.StatusChange = false;
-            Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.EntryPoints["stsrou"],
+            Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.ModuleDlls[0].EntryPoints["stsrou"],
                 session.Channel);
         }
 
@@ -630,16 +630,15 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var (key, value) in module.RtkickRoutines.ToList())
                 {
-                    if (!value.Executed && value.Elapsed.ElapsedMilliseconds > (value.Delay * 1000))
+                    if (!value.Executed && value.Elapsed.ElapsedMilliseconds > value.Delay * 1000)
                     {
 #if DEBUG
-                        Logger.Info($"Running RTKICK-{key}: {module.EntryPoints[$"RTKICK-{key}"]}");
+                        Logger.Info($"Running RTKICK-{key}: {value}");
 #endif
-                        Run(module.ModuleIdentifier, module.EntryPoints[$"RTKICK-{key}"], ushort.MaxValue);
+                        Run(module.ModuleIdentifier, value, ushort.MaxValue);
 
                         value.Elapsed.Stop();
                         value.Executed = true;
-                        module.EntryPoints.Remove($"RTKICK-{key}");
                         module.RtkickRoutines.Remove(key);
                     }
                 }
@@ -668,7 +667,7 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var r in m.RtihdlrRoutines)
                 {
-                    Run(m.ModuleIdentifier, m.EntryPoints[$"RTIHDLR-{r.Key}"], ushort.MaxValue);
+                    Run(m.ModuleIdentifier, r.Value, ushort.MaxValue);
                 }
             }
 
@@ -708,7 +707,7 @@ namespace MBBSEmu.HostProcess
                     //Create Parameters for BTUCHI Routine
                     var initialStackValues = new Queue<ushort>(1);
                     initialStackValues.Enqueue((ushort)r.Key);
-                    Run(m.ModuleIdentifier, m.EntryPoints[$"TASK-{r.Key}"], ushort.MaxValue, false, initialStackValues);
+                    Run(m.ModuleIdentifier, r.Value, ushort.MaxValue, false, initialStackValues);
                 }
             }
         }
@@ -813,17 +812,18 @@ namespace MBBSEmu.HostProcess
         {
             Logger.Info($"Adding Module {module.ModuleIdentifier}...");
 
+            //Setup Exported Modules
+            module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
+            module.ExportedModuleDictionary.Add(Galgsbl.Segment, GetFunctions(module, "GALGSBL"));
+            module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
+            module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
+            module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
+
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
 
             //Run Segments through AOT Decompiler & add them to Memory
-            foreach (var seg in module.File.SegmentTable)
-            {
-                module.Memory.AddSegment(seg);
-                Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
-            }
-
-            foreach (var dll in module.RequiredDlls)
+            foreach (var dll in module.ModuleDlls)
             {
                 foreach (var seg in dll.File.SegmentTable)
                 {
@@ -833,19 +833,18 @@ namespace MBBSEmu.HostProcess
                 }
             }
 
-            //Setup Exported Modules
-            module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
-            module.ExportedModuleDictionary.Add(Galgsbl.Segment, GetFunctions(module, "GALGSBL"));
-            module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
-            module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
-            module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
-
             //Add it to the Module Dictionary
             module.StateCode = (short)_modules.Count;
             _modules[module.ModuleIdentifier] = module;
 
             //Run INIT
-            Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
+            foreach (var dll in module.ModuleDlls.OrderBy(m => m.File.FileName))
+            {
+                if (!dll.EntryPoints.TryGetValue("_INIT_", out var entryPointer))
+                    continue;
+
+                Run(module.ModuleIdentifier, entryPointer, ushort.MaxValue);
+            }
 
             Logger.Info($"Module {module.ModuleIdentifier} added!");
         }
@@ -960,18 +959,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         private void PatchRelocation(MbbsModule module)
         {
-            //Declare Host Functions
-            var majorbbsHostFunctions = GetFunctions(module, "MAJORBBS");
-            var galsblHostFunctions = GetFunctions(module, "GALGSBL");
-            var doscallsHostFunctions = GetFunctions(module, "DOSCALLS");
-            var galmeFunctions = GetFunctions(module, "GALME");
-            var phapiFunctions = GetFunctions(module, "PHAPI");
-            var galmsgFunctions = GetFunctions(module, "GALMSG");
 
-            var dllList = new List<MbbsDll> { module };
-            dllList.AddRange(module.RequiredDlls);
-
-            foreach (var dll in dllList)
+            foreach (var dll in module.ModuleDlls)
             {
                 foreach (var s in dll.File.SegmentTable)
                 {
@@ -996,29 +985,29 @@ namespace MBBSEmu.HostProcess
                                     switch (dll.File.ImportedNameTable[nametableOrdinal].Name)
                                     {
                                         case "MAJORBBS":
-                                            relocationPointer = new IntPtr16(majorbbsHostFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Majorbbs.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALGSBL":
-                                            relocationPointer = new IntPtr16(galsblHostFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galgsbl.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "DOSCALLS":
-                                            relocationPointer = new IntPtr16(doscallsHostFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Doscalls.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALME":
-                                            relocationPointer = new IntPtr16(galmeFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galme.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "PHAPI":
-                                            relocationPointer = new IntPtr16(phapiFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Phapi.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALMSG":
-                                            relocationPointer = new IntPtr16(galmsgFunctions.Invoke(functionOrdinal, true));
+                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galmsg.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case var importedName
-                                            when module.RequiredDlls.Any(m =>
+                                            when module.ModuleDlls.Any(m =>
                                                 m.File.FileName.Split('.')[0].ToUpper() == importedName):
                                             {
                                                 //Find the Imported DLL in the List of Required
-                                                var importedDll = module.RequiredDlls.First(m =>
+                                                var importedDll = module.ModuleDlls.First(m =>
                                                     m.File.FileName.Split('.')[0].ToUpper() == importedName);
 
                                                 //Get The Entry Point based on the Ordinal
@@ -1029,8 +1018,10 @@ namespace MBBSEmu.HostProcess
                                                 break;
                                             }
                                         default:
-                                            throw new Exception(
-                                                $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
+                                            Logger.Error($"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
+                                            continue;
+                                            //throw new Exception(
+                                            //    $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                     }
 
                                     //32-Bit Pointer

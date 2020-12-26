@@ -11,9 +11,9 @@ namespace MBBSEmu.Module
 {
     public class MbbsDll
     {
-        protected readonly ILogger _logger;
+        private readonly ILogger _logger;
 
-        protected readonly IFileUtility _fileUtility;
+        private readonly IFileUtility _fileUtility;
 
         /// <summary>
         ///     Module DLL
@@ -25,31 +25,6 @@ namespace MBBSEmu.Module
         /// </summary>
         public Dictionary<string, IntPtr16> EntryPoints { get; set; }
 
-        /// <summary>
-        ///     Executions Units (EU's) for the Module
-        ///
-        ///     Execution Units are how subroutines get called without having to mess around with saving/resetting CPU state.
-        ///     This way, we can have an execution chain of:
-        ///     EU0 -> MAJORBBS.H -> EU1 -> Text Variable Function
-        ///
-        ///     At no point is the state of EU0 modified (registers), even though they share a common memory core, allowing the stack
-        ///     to unwind gracefully and execution to continue without much fuss.
-        ///
-        ///     Most modules will ever need 1-2 EU's
-        /// </summary>
-        public Queue<ExecutionUnit> ExecutionUnits { get; set; }
-
-        /// <summary>
-        ///     Exported Modules used by the given MajorBBS Module
-        ///
-        ///     Exported Modules are the libraries exposed by the host process (MAJORBBS) that contain
-        ///     the statically linked methods that are imported into the DLL and invoked via EXTERN calls.
-        ///
-        ///     Each module gets its own set of these Exported Modules since each module as it's own 16-bit address space,
-        ///     thus keeping things nice and clean.
-        /// </summary>
-        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
-        
         /// <summary>
         ///     The Segment Offset in the Memory Core that the DLL will be loaded in
         ///
@@ -63,6 +38,10 @@ namespace MBBSEmu.Module
         {
             _fileUtility = fileUtility;
             _logger = logger;
+            
+            EntryPoints = new Dictionary<string, IntPtr16>();
+            
+            
         }
         
         public void Load(string file, string path)

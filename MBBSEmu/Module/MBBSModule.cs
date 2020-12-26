@@ -24,8 +24,10 @@ namespace MBBSEmu.Module
     ///     - Full 16-Bit Memory Space for the Module (hence no relocation required)
     ///     - Execution Units for the Module (Multiple CPUs accessing shared memory space, used for subroutines)
     /// </summary>
-    public class MbbsModule : MbbsDll
+    public class MbbsModule
     {
+        protected readonly ILogger _logger;
+        protected readonly IFileUtility _fileUtility;
         private protected readonly IClock _clock;
 
         /// <summary>
@@ -99,7 +101,33 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Required DLL's are DLL Files that are referenced by the Module
         /// </summary>
-        public List<MbbsDll> RequiredDlls { get; set; }
+        public List<MbbsDll> ModuleDlls { get; set; }
+
+
+        /// <summary>
+        ///     Executions Units (EU's) for the Module
+        ///
+        ///     Execution Units are how subroutines get called without having to mess around with saving/resetting CPU state.
+        ///     This way, we can have an execution chain of:
+        ///     EU0 -> MAJORBBS.H -> EU1 -> Text Variable Function
+        ///
+        ///     At no point is the state of EU0 modified (registers), even though they share a common memory core, allowing the stack
+        ///     to unwind gracefully and execution to continue without much fuss.
+        ///
+        ///     Most modules will ever need 1-2 EU's
+        /// </summary>
+        public Queue<ExecutionUnit> ExecutionUnits { get; set; }
+
+        /// <summary>
+        ///     Exported Modules used by the given MajorBBS Module
+        ///
+        ///     Exported Modules are the libraries exposed by the host process (MAJORBBS) that contain
+        ///     the statically linked methods that are imported into the DLL and invoked via EXTERN calls.
+        ///
+        ///     Each module gets its own set of these Exported Modules since each module as it's own 16-bit address space,
+        ///     thus keeping things nice and clean.
+        /// </summary>
+        public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
 
         /// <summary>
         ///     Constructor for MbbsModule
@@ -111,11 +139,14 @@ namespace MBBSEmu.Module
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null) : base(fileUtility, logger)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
+            _fileUtility = fileUtility;
+            _logger = logger;
             _clock = clock;
+            
             ModuleIdentifier = moduleIdentifier;
-            RequiredDlls = new List<MbbsDll>();
+            ModuleDlls = new List<MbbsDll>();
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
@@ -130,7 +161,7 @@ namespace MBBSEmu.Module
             if (string.IsNullOrEmpty(ModuleIdentifier))
             {
                 Mdf = MdfFile.createForTest();
-                File = NEFile.createForTest();
+                ModuleDlls.Add(new MbbsDll(fileUtility, logger) { File = NEFile.createForTest() });
             }
             else
             {
@@ -143,8 +174,9 @@ namespace MBBSEmu.Module
                 }
 
                 Mdf = new MdfFile(fullMdfFilePath);
-
-                Load(Mdf.DLLFiles[0].Trim(), ModulePath);
+                var moduleDll = new MbbsDll(fileUtility, logger);
+                moduleDll.Load(Mdf.DLLFiles[0].Trim(), ModulePath);
+                ModuleDlls.Add(moduleDll);
             }
 
             if (Mdf.Requires.Count > 0)
@@ -154,7 +186,7 @@ namespace MBBSEmu.Module
                     var requiredDll = new MbbsDll(fileUtility, logger);
                     requiredDll.Load(Mdf.Requires[i].Trim(), ModulePath);
                     requiredDll.SegmentOffset = (ushort)(0x100 * (i + 1));
-                    RequiredDlls.Add(requiredDll);
+                    ModuleDlls.Add(requiredDll);
                 }
             }
 
@@ -168,48 +200,54 @@ namespace MBBSEmu.Module
             }
 
             //Set Initial Values
-            EntryPoints = new Dictionary<string, IntPtr16>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
             TaskRoutines = new PointerDictionary<RealTimeRoutine>();
             TextVariables = new Dictionary<string, IntPtr16>();
-            ExecutionUnits = new Queue<ExecutionUnit>(2);
-            ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);
             GlobalCommandHandlers = new List<IntPtr16>();
+            ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
+            ExecutionUnits = new Queue<ExecutionUnit>(2);
+            
             Memory = memoryCore ?? new MemoryCore();
 
-            //If it's a Test, setup a fake _INIT_
-            if (string.IsNullOrEmpty(ModuleIdentifier))
+            //Find _INIT_ values if any
+            foreach (var dll in ModuleDlls)
             {
-                EntryPoints["_INIT_"] = null;
-                return;
+                //If it's a Test, setup a fake _INIT_
+                if (string.IsNullOrEmpty(ModuleIdentifier))
+                {
+                    dll.EntryPoints["_INIT_"] = null;
+                    return;
+                }
+
+                //Setup _INIT_ Entrypoint
+                IntPtr16 initEntryPointPointer;
+                var initResidentName = dll.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
+                if (initResidentName == null)
+                {
+                    //This only happens with MajorMUD -- I have no idea why it's a special little snowflake ¯\_(ツ)_/¯
+                    _logger.Warn("Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
+
+                    var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
+
+                    if (initNonResidentName == null)
+                        throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
+
+                    var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
+                    
+                    initEntryPointPointer = new IntPtr16((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                    
+                }
+                else
+                {
+                    var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+                    initEntryPointPointer = new IntPtr16((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                }
+
+
+                _logger.Info($"Located _INIT__: {initEntryPointPointer}");
+                dll.EntryPoints["_INIT_"] = initEntryPointPointer;
             }
-
-            //Setup _INIT_ Entrypoint
-            IntPtr16 initEntryPointPointer;
-            var initResidentName = File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
-            if (initResidentName == null)
-            {
-                //This only happens with MajorMUD -- I have no idea why it's a special little snowflake ¯\_(ツ)_/¯
-                _logger.Warn("Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
-
-                var initNonResidentName = File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
-
-                if (initNonResidentName == null)
-                    throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
-
-                var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
-                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
-            }
-            else
-            {
-                var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
-            }
-
-
-            _logger.Info($"Located _INIT__: {initEntryPointPointer}");
-            EntryPoints["_INIT_"] = initEntryPointPointer;
         }
 
         /// <summary>

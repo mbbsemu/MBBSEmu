@@ -1476,15 +1476,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Set Module Values from Struct
             Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
-            Module.EntryPoints.Add("lonrou", moduleStruct.lonrou);
-            Module.EntryPoints.Add("sttrou", moduleStruct.sttrou);
-            Module.EntryPoints.Add("stsrou", moduleStruct.stsrou);
-            Module.EntryPoints.Add("injrou", moduleStruct.injrou);
-            Module.EntryPoints.Add("lofrou", moduleStruct.lofrou);
-            Module.EntryPoints.Add("huprou", moduleStruct.huprou);
-            Module.EntryPoints.Add("mcurou", moduleStruct.mcurou);
-            Module.EntryPoints.Add("dlarou", moduleStruct.dlarou);
-            Module.EntryPoints.Add("finrou", moduleStruct.finrou);
+            Module.ModuleDlls[0].EntryPoints.Add("lonrou", moduleStruct.lonrou);
+            Module.ModuleDlls[0].EntryPoints.Add("sttrou", moduleStruct.sttrou);
+            Module.ModuleDlls[0].EntryPoints.Add("stsrou", moduleStruct.stsrou);
+            Module.ModuleDlls[0].EntryPoints.Add("injrou", moduleStruct.injrou);
+            Module.ModuleDlls[0].EntryPoints.Add("lofrou", moduleStruct.lofrou);
+            Module.ModuleDlls[0].EntryPoints.Add("huprou", moduleStruct.huprou);
+            Module.ModuleDlls[0].EntryPoints.Add("mcurou", moduleStruct.mcurou);
+            Module.ModuleDlls[0].EntryPoints.Add("dlarou", moduleStruct.dlarou);
+            Module.ModuleDlls[0].EntryPoints.Add("finrou", moduleStruct.finrou);
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.StateCode;
@@ -2256,14 +2256,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rtihdlr()
         {
-            var routinePointerOffset = GetParameter(0);
-            var routinePointerSegment = GetParameter(1);
+            var routinePointer = GetParameterPointer(0);
 
-            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
-            var routineNumber = Module.RtihdlrRoutines.Allocate(routine);
-            Module.EntryPoints.Add($"RTIHDLR-{routineNumber}", routine);
+            var routine = new RealTimeRoutine(routinePointer);
+            Module.RtihdlrRoutines.Allocate(routine);
 #if DEBUG
-            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+            _logger.Info($"Registered routine {routinePointer}");
 #endif
         }
 
@@ -2278,10 +2276,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var delaySeconds = GetParameter(0);
             var routinePointer = GetParameterPointer(1);
 
-            var routine = new RealTimeRoutine(routinePointer.Segment, routinePointer.Offset, delaySeconds);
-            var routineNumber = Module.RtkickRoutines.Allocate(routine);
-
-            Module.EntryPoints.Add($"RTKICK-{routineNumber}", routine);
+            var routine = new RealTimeRoutine(routinePointer, delaySeconds);
+            Module.RtkickRoutines.Allocate(routine);
 
 #if DEBUG
             _logger.Info($"Registered routine {routinePointer} to execute every {delaySeconds} seconds");
@@ -6987,14 +6983,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void initask()
         {
-            var routinePointerOffset = GetParameter(0);
-            var routinePointerSegment = GetParameter(1);
+            var routinePointer = GetParameterPointer(0);
 
-            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
+            var routine = new RealTimeRoutine(routinePointer);
             var routineNumber = Module.TaskRoutines.Allocate(routine);
-            Module.EntryPoints.Add($"TASK-{routineNumber}", routine);
 #if DEBUG
-            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+            _logger.Info($"Registered routine {routinePointer}");
 #endif
             Registers.AX = (ushort)routineNumber;
         }
