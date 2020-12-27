@@ -2202,7 +2202,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{day:D2}/{month:D2}/{year % 100:D2}\0";
+            var outputDate = $"{day:D2}/{month:D2}/{(year % 100):D2}\0";
 
             if (!Module.Memory.TryGetVariablePointer("NCEDAT", out var variablePointer))
                 variablePointer = Module.Memory.AllocateVariable("NCEDAT", (ushort)outputDate.Length);
