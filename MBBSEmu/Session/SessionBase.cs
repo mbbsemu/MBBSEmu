@@ -244,7 +244,7 @@ namespace MBBSEmu.Session
             InputCommand = new byte[] { 0x0 };
 
             _enumSessionState = startingSessionState;
-            OnSessionStateChanged += (a, b) => mbbsHost.TriggerProcessing();
+            OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
         }
 
         public void ProcessDataFromClient()

@@ -92,7 +92,12 @@ namespace MBBSEmu.HostProcess
         ///     Timer that triggers when nightly cleanup should occur
         /// </summary>
         private readonly Timer _timer;
+        /// <summary>
+        ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
+        /// </summary>
         private readonly Timer _tickTimer;
+        private EventWaitHandle _timerEvent;
+
 
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
@@ -194,8 +199,6 @@ namespace MBBSEmu.HostProcess
         {
             _workerThread.Join();
         }
-
-        private EventWaitHandle _timerEvent;
 
         private void WaitForNextTick()
         {
