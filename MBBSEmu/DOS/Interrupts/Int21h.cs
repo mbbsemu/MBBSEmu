@@ -277,7 +277,7 @@ namespace MBBSEmu.DOS.Interrupts
                             This is only set when an EXE is running, thus should only be called from
                             an EXE.
                          */
-                        if (!_memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
+                        if (!_memory.TryGetVariablePointer("Int21h-PSP", out var pspPointer))
                             throw new Exception("No PSP has been defined");
 
                         _registers.BX = _memory.GetWord(pspPointer);
