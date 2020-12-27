@@ -61,7 +61,7 @@ namespace MBBSEmu.Session.LocalConsole
                     EchoEmptyInvoke = true;
             }, this, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500));
 
-            Console.Clear();
+            if (!Console.IsOutputRedirected) Console.Clear();
 
             Console.OutputEncoding = Encoding.Unicode;
 
@@ -118,7 +118,7 @@ namespace MBBSEmu.Session.LocalConsole
             _timer.Dispose();
             _host.Stop();
 
-            Console.Clear();
+            if (!Console.IsOutputRedirected) Console.Clear();
             // the thread is stuck in ReadKey, the user needs to free that thread to end the
             // program cleanly
             Console.WriteLine("Press a key to quit");
