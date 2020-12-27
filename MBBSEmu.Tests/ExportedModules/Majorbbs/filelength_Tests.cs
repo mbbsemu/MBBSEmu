@@ -37,33 +37,33 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             using var sw = File.Create(filePath);
             sw.Write(Encoding.ASCII.GetBytes(FILE_CONTENTS));
             sw.Close();
-            
+
             //Set Argument Values to be Passed In
             var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(fileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(fileName));
 
             var modePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(fileMode.Length + 1));
             mbbsEmuMemoryCore.SetArray(modePointer, Encoding.ASCII.GetBytes(fileMode));
-            
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OPEN_ORDINAL, new List<IntPtr16> { filenamePointer, modePointer });
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OPEN_ORDINAL, new List<FarPtr> { filenamePointer, modePointer });
 
             var fileHandle = mbbsEmuCpuRegisters.GetPointer();
-            
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<IntPtr16> { fileHandle });
-            
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<FarPtr> { fileHandle });
+
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
             Assert.Equal((ushort)(expectedValue >> 16), mbbsEmuCpuRegisters.DX);
-            
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLOSE_ORDINAL,new List<IntPtr16> { fileHandle });
-            
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLOSE_ORDINAL,new List<FarPtr> { fileHandle });
+
             File.Delete(filePath);
-            
+
             //Test -1 return, use deleted file handle which won't exist
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<IntPtr16> { fileHandle });
-            
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<FarPtr> { fileHandle });
+
             Assert.Equal((ushort)(failedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
             Assert.Equal((ushort)(failedValue >> 16), mbbsEmuCpuRegisters.DX);
-            
+
         }
     }
 }

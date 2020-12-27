@@ -1,4 +1,5 @@
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -26,6 +27,7 @@ namespace MBBSEmu.Module
     public class MbbsModule
     {
         private protected readonly ILogger _logger;
+        private protected readonly IClock _clock;
         private protected readonly IFileUtility _fileUtility;
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace MBBSEmu.Module
         ///     Directory Path of Module
         /// </summary>
         public readonly string ModulePath;
-        
+
         /// <summary>
         ///     Menu Option Key of Module
         /// </summary>
@@ -73,7 +75,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
-        public Dictionary<string, IntPtr16> EntryPoints { get; set; }
+        public Dictionary<string, FarPtr> EntryPoints { get; set; }
 
         /// <summary>
         ///     Routine definitions for functions registered via RTKICK
@@ -93,12 +95,12 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Text Variable definitions for variables registered via REGISTER_VARIABLE
         /// </summary>
-        public Dictionary<string, IntPtr16> TextVariables { get; set; }
+        public Dictionary<string, FarPtr> TextVariables { get; set; }
 
         /// <summary>
         ///     Global Command Handler Definitions for modules that register global commands
         /// </summary>
-        public List<IntPtr16> GlobalCommandHandlers { get; set; }
+        public List<FarPtr> GlobalCommandHandlers { get; set; }
 
         /// <summary>
         ///     Executions Units (EU's) for the Module
@@ -138,9 +140,10 @@ namespace MBBSEmu.Module
         /// <param name="moduleIdentifier">Will be null in a test</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
+            _clock = clock;
             _logger = logger;
             ModuleIdentifier = moduleIdentifier;
 
@@ -187,14 +190,14 @@ namespace MBBSEmu.Module
             }
 
             //Set Initial Values
-            EntryPoints = new Dictionary<string, IntPtr16>();
+            EntryPoints = new Dictionary<string, FarPtr>();
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
             TaskRoutines = new PointerDictionary<RealTimeRoutine>();
-            TextVariables = new Dictionary<string, IntPtr16>();
+            TextVariables = new Dictionary<string, FarPtr>();
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(4);
-            GlobalCommandHandlers = new List<IntPtr16>();
+            GlobalCommandHandlers = new List<FarPtr>();
             Memory = memoryCore ?? new MemoryCore();
 
             //If it's a Test, setup a fake _INIT_
@@ -205,7 +208,7 @@ namespace MBBSEmu.Module
             }
 
             //Setup _INIT_ Entrypoint
-            IntPtr16 initEntryPointPointer;
+            FarPtr initEntryPointPointer;
             var initResidentName = File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
             if (initResidentName == null)
             {
@@ -218,12 +221,12 @@ namespace MBBSEmu.Module
                     throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
 
                 var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
-                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+                initEntryPointPointer = new FarPtr(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
             }
             else
             {
                 var initEntryPoint = File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-                initEntryPointPointer = new IntPtr16(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
+                initEntryPointPointer = new FarPtr(initEntryPoint.SegmentNumber, initEntryPoint.Offset);
             }
 
 
@@ -244,14 +247,14 @@ namespace MBBSEmu.Module
         ///     stack pointer enough to where the stack on the nested call won't overlap with the stack on the parent caller.
         /// </param>
         /// <returns></returns>
-        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
+        public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
                 _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, ExportedModuleDictionary, _logger);
+                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger);
             }
 
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);

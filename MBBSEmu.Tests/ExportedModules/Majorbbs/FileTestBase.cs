@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             Directory.Delete(mbbsModule.ModulePath,  recursive: true);
         }
 
-        protected IntPtr16 fopen(string filename, string mode) {
+        protected FarPtr fopen(string filename, string mode) {
             //Set Argument Values to be Passed In
             var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(filename.Length + 1));
             mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(filename));
@@ -33,19 +33,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             var modePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(mode.Length + 1));
             mbbsEmuMemoryCore.SetArray(modePointer, Encoding.ASCII.GetBytes(mode));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FOPEN_ORDINAL, new List<IntPtr16> { filenamePointer, modePointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FOPEN_ORDINAL, new List<FarPtr> { filenamePointer, modePointer });
 
             return mbbsEmuCpuRegisters.GetPointer();
         }
 
-        protected short fclose(IntPtr16 filep)
+        protected short fclose(FarPtr filep)
         {
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FCLOSE_ORDINAL, new List<IntPtr16> { filep });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FCLOSE_ORDINAL, new List<FarPtr> { filep });
 
             return (short) mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort fread(IntPtr16 destPtr, ushort size, ushort count, IntPtr16 filep)
+        protected ushort fread(FarPtr destPtr, ushort size, ushort count, FarPtr filep)
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FREAD_ORDINAL, new List<ushort>
             {
@@ -60,7 +60,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort fwrite(IntPtr16 destPtr, ushort size, ushort count, IntPtr16 filep)
+        protected ushort fwrite(FarPtr destPtr, ushort size, ushort count, FarPtr filep)
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FWRITE_ORDINAL, new List<ushort>
             {
@@ -75,7 +75,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort f_printf(IntPtr16 filep, string formatString, params object[] values)
+        protected ushort f_printf(FarPtr filep, string formatString, params object[] values)
         {
             var fprintfParameters = new List<ushort> {filep.Offset, filep.Segment};
 

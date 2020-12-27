@@ -41,7 +41,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             int lines = 0;
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<IntPtr16> {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<FarPtr> {
                     filep, formatPointer, intPointer1, intPointer2, intPointer3, strPointer1, strPointer2
                 });
             Assert.Equal(5, mbbsEmuCpuRegisters.AX);
@@ -56,7 +56,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 Assert.Equal("testing", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(strPointer1, stripNull: true)));
                 Assert.Equal("abc", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(strPointer2, stripNull: true)));
 
-                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<IntPtr16> {
+                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<FarPtr> {
                     filep, formatPointer, intPointer1, intPointer2, intPointer3, strPointer1, strPointer2
                 });
             }

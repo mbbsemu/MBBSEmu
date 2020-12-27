@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
             mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PARSIN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PARSIN_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             var expectedParsedInput = Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0'));
@@ -52,8 +52,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             for (var i = 0; i < expectedMargc; i++)
             {
-                var currentMargvPointer = mbbsEmuMemoryCore.GetPointer(margvPointer.Segment, (ushort)(margvPointer.Offset + (ushort)(i * IntPtr16.Size)));
-                var currentMargnPointer = mbbsEmuMemoryCore.GetPointer(margnPointer.Segment, (ushort)(margnPointer.Offset + (ushort)(i * IntPtr16.Size)));
+                var currentMargvPointer = mbbsEmuMemoryCore.GetPointer(margvPointer.Segment, (ushort)(margvPointer.Offset + (ushort)(i * FarPtr.Size)));
+                var currentMargnPointer = mbbsEmuMemoryCore.GetPointer(margnPointer.Segment, (ushort)(margnPointer.Offset + (ushort)(i * FarPtr.Size)));
 
                 //Since we split the input on null, we'll strip null from the string
                 var currentArg = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(currentMargvPointer, true));

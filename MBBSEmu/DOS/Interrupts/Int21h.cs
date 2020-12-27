@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
@@ -16,23 +17,25 @@ namespace MBBSEmu.DOS.Interrupts
     {
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
+        private IClock _clock { get; init; }
 
         /// <summary>
         ///     INT 21h defined Disk Transfer Area
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private IntPtr16 DiskTransferArea;
+        private FarPtr DiskTransferArea;
 
         public byte Vector => 0x21;
 
-        private readonly Dictionary<byte, IntPtr16> _interruptVectors;
+        private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory)
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock)
         {
             _registers = registers;
             _memory = memory;
-            _interruptVectors = new Dictionary<byte, IntPtr16>();
+            _clock = clock;
+            _interruptVectors = new Dictionary<byte, FarPtr>();
         }
 
         public void Handle()
@@ -50,7 +53,7 @@ namespace MBBSEmu.DOS.Interrupts
                     {
                         //Specifies the memory area to be used for subsequent FCB operations.
                         //DS:DX = Segment:offset of DTA
-                        DiskTransferArea = new IntPtr16(_registers.DS, _registers.DX);
+                        DiskTransferArea = new FarPtr(_registers.DS, _registers.DX);
                         return;
                     }
                 case 0x25:
@@ -62,7 +65,7 @@ namespace MBBSEmu.DOS.Interrupts
                          */
 
                         var interruptVector = _registers.AL;
-                        var newVectorPointer = new IntPtr16(_registers.DS, _registers.DX);
+                        var newVectorPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         _interruptVectors[interruptVector] = newVectorPointer;
 
@@ -73,10 +76,20 @@ namespace MBBSEmu.DOS.Interrupts
                         //DOS - GET CURRENT DATE
                         //Return: DL = day, DH = month, CX = year
                         //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
-                        _registers.DL = (byte)DateTime.Now.Day;
-                        _registers.DH = (byte)DateTime.Now.Month;
-                        _registers.CX = (ushort)DateTime.Now.Year;
-                        _registers.AL = (byte)DateTime.Now.DayOfWeek;
+                        _registers.DL = (byte)_clock.Now.Day;
+                        _registers.DH = (byte)_clock.Now.Month;
+                        _registers.CX = (ushort)_clock.Now.Year;
+                        _registers.AL = (byte)_clock.Now.DayOfWeek;
+                        return;
+                    }
+                case 0x2C:
+                    {
+                        //DOS - GET CURRENT TIME
+                        //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
+                        _registers.CH = (byte) _clock.Now.Hour;
+                        _registers.CL = (byte) _clock.Now.Minute;
+                        _registers.DH = (byte) _clock.Now.Second;
+                        _registers.DL = (byte) (_clock.Now.Millisecond / 100);
                         return;
                     }
                 case 0x2F:
@@ -88,7 +101,7 @@ namespace MBBSEmu.DOS.Interrupts
                             Returns:	ES:BX = Segment.offset of current DTA
                          */
                         DiskTransferArea = _memory.GetOrAllocateVariablePointer("Int21h-DTA", 0xFF);
-                        
+
                         _registers.ES = DiskTransferArea.Segment;
                         _registers.BX = DiskTransferArea.Offset;
                         return;
@@ -149,7 +162,7 @@ namespace MBBSEmu.DOS.Interrupts
                          */
                         var fileHandle = _registers.BX;
                         var numberOfBytes = _registers.CX;
-                        var bufferPointer = new IntPtr16(_registers.DS, _registers.DX);
+                        var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
 
@@ -171,7 +184,7 @@ namespace MBBSEmu.DOS.Interrupts
                     {
                         /*
                             INT 21 - AH = 44H DOS Get Device Information
-                            
+
                             Sub-Function Definition is in AL
                          */
                         switch (_registers.AL)
@@ -260,7 +273,7 @@ namespace MBBSEmu.DOS.Interrupts
                         /*
                             INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
                             Return: BX = segment address of PSP
-                            
+
                             This is only set when an EXE is running, thus should only be called from
                             an EXE.
                          */

@@ -75,22 +75,22 @@ namespace MBBSEmu.HostProcess.Structs
         }
 
         //Data transfer buffer [8-11]
-        public IntPtr16 buffer
+        public FarPtr buffer
         {
             get
             {
                 ReadOnlySpan<byte> fileSpan = Data;
-                return new IntPtr16(fileSpan.Slice(8,4));
+                return new FarPtr(fileSpan.Slice(8,4));
             }
             set => Array.Copy(value.Data, 0, Data, 8, 4);
         }
 
         //Current active pointer [12-15]
-        public IntPtr16 curp {
+        public FarPtr curp {
             get
             {
                 ReadOnlySpan<byte> fileSpan = Data;
-                return new IntPtr16(fileSpan.Slice(12, 4));
+                return new FarPtr(fileSpan.Slice(12, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 12, 4);
         }

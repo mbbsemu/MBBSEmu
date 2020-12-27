@@ -1,5 +1,6 @@
-﻿using MBBSEmu.Memory;
-using Iced.Intel;
+﻿using Iced.Intel;
+using MBBSEmu.Extensions;
+using MBBSEmu.Memory;
 using System;
 
 namespace MBBSEmu.CPU
@@ -382,7 +383,8 @@ namespace MBBSEmu.CPU
             Array.Copy(BitConverter.GetBytes(DX), 0, output, 6, 2);
             Array.Copy(BitConverter.GetBytes(SI), 0, output, 8, 2);
             Array.Copy(BitConverter.GetBytes(DI), 0, output, 10, 2);
-            //TODO -- Determine if we needs FLAGS
+            Array.Copy(BitConverter.GetBytes(F.IsFlagSet((ushort)EnumFlags.CF) ? 1 : 0), 0, output, 12, 2);
+            Array.Copy(BitConverter.GetBytes(F), 0, output, 14, 2);
             return output;
         }
 
@@ -398,6 +400,7 @@ namespace MBBSEmu.CPU
             DX = BitConverter.ToUInt16(regs.Slice(6, 2));
             SI = BitConverter.ToUInt16(regs.Slice(8, 2));
             DI = BitConverter.ToUInt16(regs.Slice(10, 2));
+            F  = BitConverter.ToUInt16(regs.Slice(14, 2));
         }
 
         /// <summary>
@@ -421,15 +424,15 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Returns an IntPtr16 populated from DX:AX
         /// </summary>
-        public IntPtr16 GetPointer()
+        public FarPtr GetPointer()
         {
-            return new IntPtr16(segment: DX, offset: AX);
+            return new FarPtr(segment: DX, offset: AX);
         }
 
         /// <summary>
         ///     Sets DX:AX to the value from ptr
         /// </summary>
-        public void SetPointer(IntPtr16 ptr)
+        public void SetPointer(FarPtr ptr)
         {
             DX = ptr.Segment;
             AX = ptr.Offset;

@@ -1,8 +1,8 @@
+using MBBSEmu.Date;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
 using NLog;
-using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -69,6 +69,8 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void GenerateAPIReport();
 
-        public ILogger Logger { get; set; }
+        public ILogger Logger { get; init; }
+
+        public IClock Clock { get; init; }
     }
 }

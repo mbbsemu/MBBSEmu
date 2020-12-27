@@ -3,6 +3,7 @@ using MBBSEmu.CPU;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
+using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
@@ -36,6 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 
+        protected readonly FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
         protected MemoryCore mbbsEmuMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
@@ -43,22 +45,25 @@ namespace MBBSEmu.Tests.ExportedModules
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
         protected PointerDictionary<SessionBase> testSessions;
-        protected ServiceResolver _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+        protected readonly ServiceResolver _serviceResolver;
 
         protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
 
         protected ExportedModuleTestBase(string modulePath)
         {
+            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null));
             testSessions.Allocate(new TestSession(null));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -69,6 +74,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -112,6 +118,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -122,6 +129,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>());
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
                 _serviceResolver.GetService<AppSettings>(),
                 _serviceResolver.GetService<IFileUtility>(),
@@ -182,7 +190,7 @@ namespace MBBSEmu.Tests.ExportedModules
         /// <param name="exportedModuleSegment"></param>
         /// <param name="apiOrdinal"></param>
         /// <param name="apiArguments"></param>
-        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
+        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<FarPtr> apiArguments)
         {
             var argumentsList = new List<ushort>(apiArguments.Count() * 2);
 

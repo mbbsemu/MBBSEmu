@@ -106,17 +106,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             _parameters.Add(stringParameterPointer.Offset);
             _parameters.Add(stringParameterPointer.Segment);
 
-            var pointers = new List<IntPtr16>();
+            var pointers = new List<FarPtr>();
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
             pointers.Add(mbbsEmuCpuRegisters.GetPointer());
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
-            pointers.Add(mbbsEmuCpuRegisters.GetPointer()); 
+            pointers.Add(mbbsEmuCpuRegisters.GetPointer());
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
-            pointers.Add(mbbsEmuCpuRegisters.GetPointer()); 
+            pointers.Add(mbbsEmuCpuRegisters.GetPointer());
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
             pointers.Add(mbbsEmuCpuRegisters.GetPointer());
             Assert.Equal(pointers.Count, pointers.GroupBy(x=> x).Count());
-            
+
             //Test the variable pointer rolls over to the first
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
             pointers.Add(mbbsEmuCpuRegisters.GetPointer());

@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("STRING2", Encoding.ASCII.GetBytes(string2));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRSTR_ORDINAL, new List<IntPtr16> {string1Pointer, string2Pointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRSTR_ORDINAL, new List<FarPtr> {string1Pointer, string2Pointer});
 
             //Verify Results
             if (expectedOffset < 0) {

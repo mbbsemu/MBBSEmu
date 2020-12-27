@@ -1,5 +1,6 @@
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
+using MBBSEmu.Date;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -34,7 +35,8 @@ namespace MBBSEmu.HostProcess
     /// </summary>
     public class MbbsHost : IMbbsHost
     {
-        public ILogger Logger { get; set; }
+        public ILogger Logger { get; init; }
+        public IClock Clock { get; init; }
 
         /// <summary>
         ///     Dictionary containing all active Channels
@@ -107,9 +109,10 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
 
-        public MbbsHost(ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             Logger = logger;
+            Clock = clock;
             _globalCache = globalCache;
             _fileUtility = fileUtility;
             _mbbsRoutines = mbbsRoutines;
@@ -148,7 +151,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.EntryPoints.Count == 1))
@@ -330,7 +333,7 @@ namespace MBBSEmu.HostProcess
                                     ProcessPollingRoutine(session);
 
                                     //Keep the user in Polling Status if the polling routine is still there
-                                    if (session.PollingRoutine != IntPtr16.Empty)
+                                    if (session.PollingRoutine != FarPtr.Empty)
                                         session.Status = 192;
                                 }
 
@@ -538,7 +541,7 @@ namespace MBBSEmu.HostProcess
 
             var entryPoint = session.CurrentModule.EntryPoints["lonrou"];
 
-            if (entryPoint != IntPtr16.Empty)
+            if (entryPoint != FarPtr.Empty)
                 Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
@@ -714,7 +717,7 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.Values)
             {
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
-                if (syscycPointer == IntPtr16.Empty) continue;
+                if (syscycPointer == FarPtr.Empty) continue;
 
                 Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
             }
@@ -921,7 +924,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="channelNumber"></param>
         /// <param name="simulateCallFar"></param>
         /// <param name="initialStackValues"></param>
-        private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
+        private ushort Run(string moduleName, FarPtr routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
             var resultRegisters = _modules[moduleName].Execute(routine, channelNumber, simulateCallFar, false, initialStackValues);
             return resultRegisters.AX;
@@ -944,12 +947,12 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[key] = exportedModule switch
                 {
-                    "MAJORBBS" => new Majorbbs(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
-                    "GALGSBL" => new Galgsbl(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "DOSCALLS" => new Doscalls(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALME" => new Galme(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "PHAPI" => new Phapi(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALMSG" => new Galmsg(Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "MAJORBBS" => new Majorbbs(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository),
+                    "GALGSBL" => new Galgsbl(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "DOSCALLS" => new Doscalls(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALME" => new Galme(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "PHAPI" => new Phapi(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALMSG" => new Galmsg(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
                     _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 
@@ -1020,7 +1023,7 @@ namespace MBBSEmu.HostProcess
                                         $"Unknown or Unimplemented Imported Library: {module.File.ImportedNameTable[nametableOrdinal].Name}")
                                 };
 
-                                var relocationPointer = new IntPtr16(relocationResult);
+                                var relocationPointer = new FarPtr(relocationResult);
 
                                 //32-Bit Pointer
                                 if (relocationRecord.SourceType == 3)
@@ -1051,7 +1054,7 @@ namespace MBBSEmu.HostProcess
                                 //32-Bit Pointer
                                 if (relocationRecord.SourceType == 3)
                                 {
-                                    var relocationPointer = new IntPtr16(relocationRecord.TargetTypeValueTuple.Item2,
+                                    var relocationPointer = new FarPtr(relocationRecord.TargetTypeValueTuple.Item2,
                                         relocationRecord.TargetTypeValueTuple.Item4);
 
                                     Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
@@ -1079,7 +1082,7 @@ namespace MBBSEmu.HostProcess
 
                                 };
 
-                                var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+                                var relocationPointer = new FarPtr(newSegment, functionOrdinal);
 
                                 //32-Bit Pointer
                                 if (relocationRecord.SourceType == 3)
@@ -1159,7 +1162,7 @@ namespace MBBSEmu.HostProcess
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            var waitTime = _cleanupTime - DateTime.Now.TimeOfDay;
+            var waitTime = _cleanupTime - Clock.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
