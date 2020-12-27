@@ -16,11 +16,12 @@ Addresses in the Active Memory Map can be accessed and manipulated during progra
 |Start|End|Size|Definition|
 |--|--|--|--|
 |0x0000:0x0000|0x0000:0xFFFF|65KB|CPU Stack|
-|0x0001:0x0000|0x00FF:0xFFFF|~16MB|Code/Data Segments|
+|0x0001:0x0000|0x0FFF:0xFFFF|~256MB|Code/Data Segments|
 |0x1000:0x0000|0x1FFF:0xFFFF|256MB|Variable Data|
 |0x2000:0x0000|0x2FFF:0xFFFF|256MB|Real Mode Data|
 |0x3000:0x0000|0x3000:0x00C0|192B|GENBB Btrieve Struct (Set in MAJORBBS.CS)|
 |0x3001:0x0000|0x3001:0x00C0|192B|ACCBB Btrieve Struct (Set in MAJORBBS.CS)|
+|0x4000:0x0000|0x4000:0xFFFF|65K|PSP Memory Segment for INT 21h Calls (Modules)|
 
 ## Virtual Memory Map
 Virtual Memory Addresses are used to denote a translation to another function within MBBSEmu.
@@ -36,4 +37,6 @@ During relocation, records in the Imported Name Table are replaced with Segments
 
 **Segment 0xFFFC** - Corresponds to the Exported Module **GALME**, where the offset of the address corresponds to the ordinal of the function/property being used.
 
-**Segment 0xFFFC** - Corresponds to the Exported Module **DOSCALLS**, where the offset of the address corresponds to the ordinal of the function/property being used.
+**Segment 0xFFFB** - Corresponds to the Exported Module **DOSCALLS**, where the offset of the address corresponds to the ordinal of the function/property being used.
+
+**Segment 0xFFFA** - Corresponds to the Exported Module **GALMSG**, where the offset of the address corresponds to the ordinal of the function/property being used.

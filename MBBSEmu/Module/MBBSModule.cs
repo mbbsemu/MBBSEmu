@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MBBSEmu.DOS.Structs;
 
 namespace MBBSEmu.Module
 {
@@ -209,6 +210,14 @@ namespace MBBSEmu.Module
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             
             Memory = memoryCore ?? new MemoryCore();
+
+            //Declare PSP Segment
+            var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
+            Memory.AddSegment(0x4000);
+            Memory.SetArray(0x4000, 0, psp.Data);
+
+            Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
+            Memory.SetWord("Int21h-PSP", 0x4000);
 
             //Find _INIT_ values if any
             foreach (var dll in ModuleDlls)
