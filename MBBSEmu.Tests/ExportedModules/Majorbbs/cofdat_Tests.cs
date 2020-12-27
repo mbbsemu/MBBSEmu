@@ -17,6 +17,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(2020, 12, 8, 14952)]
         [InlineData(2025, 1, 1, 16437)]
         [InlineData(2050, 1, 1, 25568)]
+        [InlineData(1980, 0, 0, 0)]
         public void cofdat_Test(int year, int month, int day, int expectedNumDays)
         {
             //Reset State
@@ -30,19 +31,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.Equal(expectedNumDays, mbbsEmuCpuRegisters.AX);
-        }
-
-        [Fact]
-        public void cofdat_empty_Test()
-        {
-            //Reset State
-            Reset();
-
-            //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, COFDAT_ORDINAL, new List<ushort>());
-
-            //Verify Results
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
         }
     }
 }
