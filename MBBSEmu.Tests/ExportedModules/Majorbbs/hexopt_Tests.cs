@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var mcvPointer = (ushort)majorbbs.McvPointerDictionary.Allocate(new McvFile("TEST.MCV",
                 new Dictionary<int, byte[]> { { 0, Encoding.ASCII.GetBytes(input) } }));
 
-            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new IntPtr16(0xFFFF, mcvPointer));
+            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
             try
             {
                 ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HEXOPT_ORDINAL, new List<ushort> { 0, min, max });

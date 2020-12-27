@@ -51,17 +51,17 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Pointer to the current instruction CS:IP (for debugging)
         /// </summary>
-        private IntPtr16 _currentInstructionPointer { get; set; }
+        private FarPtr _currentInstructionPointer { get; set; }
 
         /// <summary>
         ///     Pointer to the previous instruction CS:IP (for debugging)
         /// </summary>
-        private IntPtr16 _previousInstructionPointer { get; set; }
+        private FarPtr _previousInstructionPointer { get; set; }
 
         /// <summary>
         ///     Previous Location of a CALL into the current function
         /// </summary>
-        private IntPtr16 _previousCallPointer { get; set; }
+        private FarPtr _previousCallPointer { get; set; }
 
         /// <summary>
         ///     Defines if additional debug (disassembly, registers, etc.) is to be displayed with
@@ -140,9 +140,9 @@ namespace MBBSEmu.CPU
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
         {
             //Setup Debug Pointers
-            _currentInstructionPointer = IntPtr16.Empty;
-            _previousInstructionPointer = IntPtr16.Empty;
-            _previousCallPointer = IntPtr16.Empty;
+            _currentInstructionPointer = FarPtr.Empty;
+            _previousInstructionPointer = FarPtr.Empty;
+            _previousCallPointer = FarPtr.Empty;
 
             //Setup Delegate Call
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
@@ -1845,7 +1845,7 @@ namespace MBBSEmu.CPU
                     var destinationPointerData = Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment),
                         offsetToDestinationValue, 4);
 
-                    var destinationPointer = new IntPtr16(destinationPointerData);
+                    var destinationPointer = new FarPtr(destinationPointerData);
 
                     Registers.IP = destinationPointer.Offset;
                     Registers.CS = destinationPointer.Segment;

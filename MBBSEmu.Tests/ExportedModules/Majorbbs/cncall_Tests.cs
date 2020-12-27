@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCALL_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCALL_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             var expectedResultPointer = mbbsEmuMemoryCore.GetVariablePointer("INPUT");

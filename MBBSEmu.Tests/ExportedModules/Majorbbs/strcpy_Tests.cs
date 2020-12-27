@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DESTINATION_STRING", 0xFF);
             mbbsEmuMemoryCore.SetArray("DESTINATION_STRING", Encoding.ASCII.GetBytes(new string('X', 0xFF)));
 
-            var sourceStringPointer = IntPtr16.Empty;
+            var sourceStringPointer = FarPtr.Empty;
             if (!string.IsNullOrEmpty(sourceString))
             {
                 sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SOURCE_STRING", (ushort)(sourceString.Length + 1));
@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCPY_ORDINAL, new List<IntPtr16> { destinationStringPointer, sourceStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCPY_ORDINAL, new List<FarPtr> { destinationStringPointer, sourceStringPointer });
 
             //Verify Results
             Assert.Equal(expectedDestination, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("DESTINATION_STRING")));

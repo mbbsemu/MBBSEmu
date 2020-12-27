@@ -12,14 +12,14 @@ namespace MBBSEmu.Disassembler
         private readonly string _exeFile;
         private readonly byte[] _exeFileData;
         public readonly List<Segment> Segments;
-        public readonly List<IntPtr16> RelocationRecords;
+        public readonly List<FarPtr> RelocationRecords;
 
-        public IntPtr16 StartingPointer = new IntPtr16(1 + 0x10, 0); //PSP+10h for Segment
+        public FarPtr StartingPointer = new FarPtr(1 + 0x10, 0); //PSP+10h for Segment
 
         public MZFile(string exeFile)
         {
             Segments = new List<Segment>();
-            RelocationRecords = new List<IntPtr16>();
+            RelocationRecords = new List<FarPtr>();
 
             _exeFile = exeFile;
             _exeFileData = File.ReadAllBytes(_exeFile);
@@ -58,7 +58,7 @@ namespace MBBSEmu.Disassembler
                 var offset = BitConverter.ToUInt16(_exeFileData, relocationAddress);
                 var segment = BitConverter.ToUInt16(_exeFileData, relocationAddress + 2);
 
-                RelocationRecords.Add(new IntPtr16(segment, offset));
+                RelocationRecords.Add(new FarPtr(segment, offset));
             }
         }
 

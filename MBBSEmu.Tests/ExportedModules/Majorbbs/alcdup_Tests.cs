@@ -22,7 +22,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var sourceStringPointer = IntPtr16.Empty;
+            var sourceStringPointer = FarPtr.Empty;
             if (sourceString != null)
             {
                 sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SOURCE_STRING", (ushort)(sourceString.Length + 1));
@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ALCDUP_ORDINAL, new List<IntPtr16> { sourceStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ALCDUP_ORDINAL, new List<FarPtr> { sourceStringPointer });
 
             //Verify Results
             Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.GetPointer())));

@@ -42,21 +42,21 @@ namespace MBBSEmu.DOS.Structs
         ///     Terminate Address (See Int 22h)
         ///     Offset: 0xA
         /// </summary>
-        public IntPtr16 TerminateAddress { get; set; }
+        public FarPtr TerminateAddress { get; set; }
 
         /// <summary>
         ///     Ctrl-Break Handler Address (See Int 23h)
-        /// 
+        ///
         ///     Offset: 0xE
         /// </summary>
-        public IntPtr16 CtrlBrkAddress { get; set; }
+        public FarPtr CtrlBrkAddress { get; set; }
 
         /// <summary>
         ///     Critical Error Handler Address (See Int 24h)
         ///
         ///     Offset: 0x12
         /// </summary>
-        public IntPtr16 CritErrorAddress { get; set; }
+        public FarPtr CritErrorAddress { get; set; }
 
         /// <summary>
         ///     DOS Reserved Area
@@ -118,9 +118,9 @@ namespace MBBSEmu.DOS.Structs
                 Array.Copy(BitConverter.GetBytes(Int20), 0, _data, 0, sizeof(ushort));
                 Array.Copy(BitConverter.GetBytes(NextSegOffset), 0, _data, 2, sizeof(ushort));
                 Array.Copy(Dispatcher, 0, _data, 5, Dispatcher.Length);
-                Array.Copy(TerminateAddress?.Data ?? IntPtr16.Empty.Data, 0, _data, 0xA, IntPtr16.Size);
-                Array.Copy(CtrlBrkAddress?.Data ?? IntPtr16.Empty.Data, 0, _data, 0xE, IntPtr16.Size);
-                Array.Copy(CritErrorAddress?.Data ?? IntPtr16.Empty.Data, 0, _data, 0x12, IntPtr16.Size);
+                Array.Copy(TerminateAddress?.Data ?? FarPtr.Empty.Data, 0, _data, 0xA, FarPtr.Size);
+                Array.Copy(CtrlBrkAddress?.Data ?? FarPtr.Empty.Data, 0, _data, 0xE, FarPtr.Size);
+                Array.Copy(CritErrorAddress?.Data ?? FarPtr.Empty.Data, 0, _data, 0x12, FarPtr.Size);
                 Array.Copy(BitConverter.GetBytes(EnvSeg), 0, _data, 0x2C, sizeof(ushort));
                 Array.Copy(FCB_1, 0, _data, 0x5C, FCB_1.Length);
                 Array.Copy(FCB_2, 0, _data, 0x6C, FCB_2.Length);

@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SKPWRD_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SKPWRD_ORDINAL, new List<FarPtr> { stringPointer });
 
             //Verify Results
             Assert.Equal(expectedString,
