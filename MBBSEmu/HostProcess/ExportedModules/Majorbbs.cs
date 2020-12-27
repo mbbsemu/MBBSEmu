@@ -1273,6 +1273,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///         anpopt - operation to perform
         ///         loktyp - lock type - unsupported in mbbsemu
         ///     Return: 1 if successful, 0 on failure
+        /// </summary>
         private void anpbtvl()
         {
             var recordPointer = GetParameterPointer(0);
