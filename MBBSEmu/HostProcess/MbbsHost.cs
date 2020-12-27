@@ -179,6 +179,8 @@ namespace MBBSEmu.HostProcess
             _isRunning = false;
             _timer.Dispose();
             _tickTimer?.Dispose();
+            // this set must come after _isRunning is set to false, to trigger the exit of the
+            // worker thread.
             _timerEvent?.Set();
         }
 
@@ -198,7 +200,7 @@ namespace MBBSEmu.HostProcess
         private void WaitForNextTick()
         {
             if (_timerEvent == null ||
-                _channelDictionary.Values.Where(session => session.Status == 3 || session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
+                _channelDictionary.Values.Where(session => session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
                 return;
 
             _timerEvent.WaitOne();
