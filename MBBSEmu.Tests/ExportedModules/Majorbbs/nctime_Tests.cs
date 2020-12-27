@@ -10,15 +10,15 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int NCTIME_ORDINAL = 430;
 
         [Theory]
-        [InlineData(12, 4, 1, "12:04:01", true)]
+        [InlineData(12, 4, 10, "12:04:10", true)]
         [InlineData(3, 9, 2, "03:09:02", false)]
-        [InlineData(4, 11, 3, "04:11:03", true)]
+        [InlineData(4, 11, 16, "04:11:16", true)]
         [InlineData(7, 5, 4, "07:05:04", false)]
-        [InlineData(10, 1, 5, "10:01:05", true)]
-        [InlineData(14, 3, 7, "14:03:07", false)]
+        [InlineData(10, 1, 28, "10:01:28", true)]
+        [InlineData(14, 3, 36, "14:03:36", false)]
         [InlineData(18, 12, 8, "18:12:08", true)]
-        [InlineData(23, 1, 1, "23:01:01", false)]
-        [InlineData(23, 59, 59, "23:59:59", true)]
+        [InlineData(23, 1, 44, "23:01:44", false)]
+        [InlineData(23, 59, 58, "23:59:58", true)]
         public void nctime_Test(int hour, int minutes, int seconds, string expectedTime, bool allocateNCTIME)
         {
             //Reset State
