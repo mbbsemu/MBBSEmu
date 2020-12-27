@@ -24,14 +24,14 @@ namespace MBBSEmu.Memory
 
         public FarPtr() { }
 
-        public FarPtr(ReadOnlySpan<byte> intPtr16Span)
+        public FarPtr(ReadOnlySpan<byte> farPtrSpan)
         {
-            FromSpan(intPtr16Span);
+            FromSpan(farPtrSpan);
         }
 
-        public FarPtr(ReadOnlySpan<byte> intPtr16Span, int startIndex)
+        public FarPtr(ReadOnlySpan<byte> farPtrSpan, int startIndex)
         {
-            FromSpan(intPtr16Span.Slice(startIndex, 4));
+            FromSpan(farPtrSpan.Slice(startIndex, 4));
         }
 
         public FarPtr(ushort segment, ushort offset)
@@ -46,9 +46,9 @@ namespace MBBSEmu.Memory
             Offset = pointer.Offset;
         }
 
-        public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
+        public void FromSpan(ReadOnlySpan<byte> farPtrSpan)
         {
-            Data = intPtr16Span.ToArray();
+            Data = farPtrSpan.ToArray();
         }
 
         public bool IsNull() => FarPtr.Empty.Equals(this);
@@ -121,6 +121,7 @@ namespace MBBSEmu.Memory
         }
 
         public static FarPtr Empty => new FarPtr(0, 0);
+        public static FarPtr Null => Empty;
 
         public static FarPtr operator +(FarPtr i, ushort v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
         public static FarPtr operator +(FarPtr i, int v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
