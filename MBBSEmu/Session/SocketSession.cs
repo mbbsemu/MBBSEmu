@@ -127,7 +127,6 @@ namespace MBBSEmu.Session
             int bytesReceived;
             SocketError socketError;
 
-            // TODO rework trigger processing call
             try {
                 bytesReceived = _socket.EndReceive(asyncResult, out socketError);
                 if (bytesReceived == 0) {
@@ -137,7 +136,6 @@ namespace MBBSEmu.Session
                 }
             } catch (ObjectDisposedException) {
                 SessionState = EnumSessionState.LoggedOff;
-                _mbbsHost.TriggerProcessing();
                 return;
             }
 

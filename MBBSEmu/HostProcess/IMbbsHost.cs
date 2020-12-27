@@ -60,7 +60,7 @@ namespace MBBSEmu.HostProcess
         public void WaitForShutdown();
 
         /// <summary>
-        ///     TODO
+        ///    Causes the main worker thread to execute
         /// </summary>
         public void TriggerProcessing();
 
