@@ -4021,7 +4021,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Returns a pointer to the first occurence of character in the C string str
+        ///     Returns a pointer to the first occurrence of character in the C string str
         ///
         ///     Signature: char * strchr ( const char * str, int character )
         ///
