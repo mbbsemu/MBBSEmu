@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
             mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RSTRIN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RSTRIN_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             //Simulate rstrin by replacing nulls with spaces, ensuring last character is null

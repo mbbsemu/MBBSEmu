@@ -13,46 +13,46 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     Field Specifications String
         /// </summary>
-        public IntPtr16 fldspc
+        public FarPtr fldspc
         {
-            get => new IntPtr16(Data);
-            set => Array.Copy(value.Data, 0, Data, 0, IntPtr16.Size);
+            get => new FarPtr(Data);
+            set => Array.Copy(value.Data, 0, Data, 0, FarPtr.Size);
         }
 
         /// <summary>
         ///     Room for fsdppc() to put array of field info
         /// </summary>
-        public IntPtr16 flddat
+        public FarPtr flddat
         {
-            get => new IntPtr16(Data, 4);
-            set => Array.Copy(value.Data, 0, Data, 4, IntPtr16.Size);
+            get => new FarPtr(Data, 4);
+            set => Array.Copy(value.Data, 0, Data, 4, FarPtr.Size);
         }
 
         /// <summary>
         ///     room for fsdppc() to put embedded punctuation templts
         /// </summary>
-        public IntPtr16 mbpunc
+        public FarPtr mbpunc
         {
-            get => new IntPtr16(Data, 8);
-            set => Array.Copy(value.Data, 0, Data, 8, IntPtr16.Size);
+            get => new FarPtr(Data, 8);
+            set => Array.Copy(value.Data, 0, Data, 8, FarPtr.Size);
         }
 
         /// <summary>
         ///     Room for fsdans(), etc. to put answer output
         /// </summary>
-        public IntPtr16 newans
+        public FarPtr newans
         {
-            get => new IntPtr16(Data, 12);
-            set => Array.Copy(value.Data, 0, Data, 12, IntPtr16.Size);
+            get => new FarPtr(Data, 12);
+            set => Array.Copy(value.Data, 0, Data, 12, FarPtr.Size);
         }
 
         /// <summary>
         ///     Field verify routine, or NULL
         /// </summary>
-        public IntPtr16 fldvfy
+        public FarPtr fldvfy
         {
-            get => new IntPtr16(Data, 16);
-            set => Array.Copy(value.Data, 0, Data, 16, IntPtr16.Size);
+            get => new FarPtr(Data, 16);
+            set => Array.Copy(value.Data, 0, Data, 16, FarPtr.Size);
         }
 
         /// <summary>
@@ -238,10 +238,10 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     Pointer into field template of current (entfld) field
         /// </summary>
-        public IntPtr16 ftmptr
+        public FarPtr ftmptr
         {
-            get => new IntPtr16(Data, 153);
-            set => Array.Copy(value.Data, 0, Data, 153, IntPtr16.Size);
+            get => new FarPtr(Data, 153);
+            set => Array.Copy(value.Data, 0, Data, 153, FarPtr.Size);
         }
 
         /// <summary>
@@ -256,10 +256,10 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     Keeps track of multiple choice options
         /// </summary>
-        public IntPtr16 altptr
+        public FarPtr altptr
         {
-            get => new IntPtr16(Data, 158);
-            set => Array.Copy(value.Data, 0, Data, 158, IntPtr16.Size);
+            get => new FarPtr(Data, 158);
+            set => Array.Copy(value.Data, 0, Data, 158, FarPtr.Size);
         }
 
         /// <summary>

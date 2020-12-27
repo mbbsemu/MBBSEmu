@@ -190,7 +190,7 @@ namespace MBBSEmu.Tests.ExportedModules
         /// <param name="exportedModuleSegment"></param>
         /// <param name="apiOrdinal"></param>
         /// <param name="apiArguments"></param>
-        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<IntPtr16> apiArguments)
+        protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<FarPtr> apiArguments)
         {
             var argumentsList = new List<ushort>(apiArguments.Count() * 2);
 

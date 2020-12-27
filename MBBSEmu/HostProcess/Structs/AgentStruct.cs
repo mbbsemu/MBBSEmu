@@ -13,10 +13,10 @@ namespace MBBSEmu.HostProcess.Structs
     public class AgentStruct
     {
         public ReadOnlySpan<byte> appid => ((ReadOnlySpan<byte>) Data).Slice(0, 9);
-        public IntPtr16 read => new IntPtr16(((ReadOnlySpan<byte>)Data).Slice(9, 4));
-        public IntPtr16 write => new IntPtr16(((ReadOnlySpan<byte>)Data).Slice(13, 4));
-        public IntPtr16 xferdone => new IntPtr16(((ReadOnlySpan<byte>)Data).Slice(17, 4));
-        public IntPtr16 abort => new IntPtr16(((ReadOnlySpan<byte>)Data).Slice(21, 4));
+        public FarPtr read => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(9, 4));
+        public FarPtr write => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(13, 4));
+        public FarPtr xferdone => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(17, 4));
+        public FarPtr abort => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(21, 4));
 
         public byte[] Data;
 

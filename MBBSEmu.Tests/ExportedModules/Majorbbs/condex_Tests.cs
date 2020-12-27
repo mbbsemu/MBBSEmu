@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             testSessions[0].UsrPtr.Flags = testSessions[0].UsrPtr.Flags.SetFlag((ushort)EnumRuntimeFlags.Concex);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CONDEX_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CONDEX_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             Assert.True(mbbsEmuCpuRegisters.Halt);
@@ -34,7 +34,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Concex flag not set
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CONDEX_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CONDEX_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             Assert.False(mbbsEmuCpuRegisters.Halt);

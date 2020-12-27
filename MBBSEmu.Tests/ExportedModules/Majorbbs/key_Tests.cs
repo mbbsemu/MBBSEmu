@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<FarPtr> { stringPointer });
 
             Assert.Equal(1, mbbsEmuCpuRegisters.AX);
 
@@ -49,7 +49,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var mcvPointer = (ushort)majorbbs.McvPointerDictionary.Allocate(new McvFile("TEST.MCV",
                 new Dictionary<int, byte[]> { { 0, Encoding.ASCII.GetBytes(key) } }));
 
-            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new IntPtr16(0xFFFF, mcvPointer));
+            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASMKEY_ORDINAL, new List<ushort> { 0 });
@@ -70,7 +70,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var mcvPointer = (ushort)majorbbs.McvPointerDictionary.Allocate(new McvFile("TEST.MCV",
                 new Dictionary<int, byte[]> { { 0, new byte[] { 0 } } }));
 
-            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new IntPtr16(0xFFFF, mcvPointer));
+            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASMKEY_ORDINAL, new List<ushort> { 0 });
@@ -94,7 +94,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<FarPtr> { stringPointer });
 
             Assert.Equal(1, mbbsEmuCpuRegisters.AX);
 
@@ -117,7 +117,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING2", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<IntPtr16> { usernamePointer, keyPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<FarPtr> { usernamePointer, keyPointer });
 
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
 
@@ -140,7 +140,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING2", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<IntPtr16> { usernamePointer, keyPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<FarPtr> { usernamePointer, keyPointer });
 
             Assert.Equal(1, mbbsEmuCpuRegisters.AX);
 

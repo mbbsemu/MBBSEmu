@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     public class sortstgs_Tests : ExportedModuleTestBase
     {
         private const int SORTSTGS_ORDINAL = 558;
-        
+
         [Theory]
         [InlineData(new[] { "This", "is", "an", "array" }, new[] { "an", "array", "is", "This" })]
         [InlineData(new[] { "Hello", "my", "name", "is" }, new[] { "Hello", "is", "my", "name" })]
@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var stringPointer = new IntPtr16[inputArray.Length];
+            var stringPointer = new FarPtr[inputArray.Length];
 
             for (var i = 0; i < inputArray.Length; i++)
             {
@@ -32,10 +32,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             }
 
             var stringPointerArray = stringPointer.ToArray();
-            var arrayPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_ARRAY", (ushort)(IntPtr16.Size * inputArray.Length), true);
-            
+            var arrayPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_ARRAY", (ushort)(FarPtr.Size * inputArray.Length), true);
+
             for (var i = 0; i < inputArray.Length; i++)
-                mbbsEmuMemoryCore.SetPointer(arrayPointer + (i * IntPtr16.Size), stringPointerArray[i]);
+                mbbsEmuMemoryCore.SetPointer(arrayPointer + (i * FarPtr.Size), stringPointerArray[i]);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SORTSTGS_ORDINAL,
@@ -47,12 +47,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 });
 
             //Return Values
-            var resultPointer = new IntPtr16[inputArray.Length];
+            var resultPointer = new FarPtr[inputArray.Length];
             var resultString = new string[inputArray.Length];
 
             for (var i = 0; i < inputArray.Length; i++)
             {
-                resultPointer[i] = mbbsEmuMemoryCore.GetPointer(arrayPointer + (i * IntPtr16.Size));
+                resultPointer[i] = mbbsEmuMemoryCore.GetPointer(arrayPointer + (i * FarPtr.Size));
                 resultString[i] = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer[i]));
             }
 

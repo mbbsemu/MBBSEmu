@@ -28,7 +28,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ONSYS_ORDINAL, new List<IntPtr16> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ONSYS_ORDINAL, new List<FarPtr> { stringPointer });
 
             Assert.Equal(isOnline, mbbsEmuCpuRegisters.AX == 1);
 

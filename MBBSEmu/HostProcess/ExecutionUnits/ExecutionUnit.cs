@@ -68,7 +68,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         /// <param name="initialStackValues">Values to be on the stack at the start of emulation (arguments passed in)</param>
         /// <param name="initialStackPointer">Initial SP offset (used to shift SP as to not overlap memory space on nested execution)</param>
         /// <returns></returns>
-        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
+        public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Reset Registers to Startup State for the CPU
             ModuleCpu.Reset(initialStackPointer);

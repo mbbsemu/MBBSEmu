@@ -6,7 +6,7 @@ namespace MBBSEmu.Module
     /// <summary>
     ///     Defines a Real Time Routine as registered by RTKICK, RTIHDLR, or INITASK
     /// </summary>
-    public class RealTimeRoutine : IntPtr16
+    public class RealTimeRoutine : FarPtr
     {
         /// <summary>
         ///     The delay in seconds between routine execution

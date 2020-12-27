@@ -33,8 +33,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort) (input.Length + 1));
             mbbsEmuMemoryCore.SetArray(inputStringPointer, Encoding.ASCII.GetBytes(input));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ATOL_ORDINAL, new List<IntPtr16> { inputStringPointer}); 
-            
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ATOL_ORDINAL, new List<FarPtr> { inputStringPointer});
+
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
             Assert.Equal((ushort)(expectedValue >> 16), mbbsEmuCpuRegisters.DX);

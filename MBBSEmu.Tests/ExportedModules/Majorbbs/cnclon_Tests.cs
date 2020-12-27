@@ -44,7 +44,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCLON_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCLON_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuCore.Registers.GetLong());
@@ -85,7 +85,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("NXTCMD", currentNxtcmd);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCINT_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCINT_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             Assert.Equal(expectedResult, (short) mbbsEmuCpuCore.Registers.AX);
