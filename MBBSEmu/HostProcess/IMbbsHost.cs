@@ -60,6 +60,11 @@ namespace MBBSEmu.HostProcess
         public void WaitForShutdown();
 
         /// <summary>
+        ///     TODO
+        /// </summary>
+        public void TriggerProcessing();
+
+        /// <summary>
         ///     Generates API Report
         /// </summary>
         public void GenerateAPIReport();

@@ -1,3 +1,4 @@
+using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Enums;
 using NLog;
 using System;
@@ -9,14 +10,15 @@ namespace MBBSEmu.Session
     public abstract class SocketSession : SessionBase
     {
         protected readonly ILogger _logger;
-
+        protected readonly IMbbsHost _mbbsHost;
         protected readonly Socket _socket;
         protected readonly Thread _senderThread;
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        protected SocketSession(ILogger logger, Socket socket) : base(socket.RemoteEndPoint.ToString())
+        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket) : base(socket.RemoteEndPoint.ToString())
         {
+            _mbbsHost = mbbsHost;
             _logger = logger;
 
             _socket = socket;
@@ -126,20 +128,26 @@ namespace MBBSEmu.Session
         {
             int bytesReceived;
             SocketError socketError;
+
+            // TODO rework trigger processing call
             try {
                 bytesReceived = _socket.EndReceive(asyncResult, out socketError);
                 if (bytesReceived == 0) {
                     CloseSocket("Client disconnected");
+                    _mbbsHost.TriggerProcessing();
                     return;
                 }
             } catch (ObjectDisposedException) {
                 SessionState = EnumSessionState.LoggedOff;
+                _mbbsHost.TriggerProcessing();
                 return;
             }
 
             ValidateSocketState(socketError);
             ProcessIncomingClientData(bytesReceived);
             ListenForData();
+
+            _mbbsHost.TriggerProcessing();
         }
 
         /// <summary>

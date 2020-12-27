@@ -128,8 +128,15 @@ namespace MBBSEmu.HostProcess
             _cleanupTime = _configuration.CleanupTime;
             _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
 
-            int hertz = 100;
-            _tickTimer = new Timer(unused => timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / hertz));
+            if (_configuration.TimerHertz > 0)
+            {
+                _timerEvent = new AutoResetEvent(true);
+                _tickTimer = new Timer(unused => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
+            }
+            else
+            {
+                _timerEvent = new ManualResetEvent(true);
+            }
 
             Logger.Info("Constructed MBBSEmu Host!");
         }
@@ -172,6 +179,8 @@ namespace MBBSEmu.HostProcess
         {
             _isRunning = false;
             _timer.Dispose();
+            _tickTimer?.Dispose();
+            _timerEvent.Set();
         }
 
         public void ScheduleNightlyShutdown(EventWaitHandle eventWaitHandle)
@@ -185,13 +194,17 @@ namespace MBBSEmu.HostProcess
             _workerThread.Join();
         }
 
-        private EventWaitHandle timerEvent = new AutoResetEvent(false);
+        private EventWaitHandle _timerEvent;
 
         private bool WaitForNextTick()
         {
-            timerEvent.WaitOne();
-            return true;
+            if (_channelDictionary.Values.Where(session => session.Status == 3 || session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
+                return true;
+            //WaitHandle.WaitAny()
+            return _timerEvent.WaitOne();
         }
+
+        public void TriggerProcessing() => _timerEvent.Set();
 
         /// <summary>
         ///     This is the main MajorBBS/Worldgroup loop similar to how it actually functions with the software itself.
