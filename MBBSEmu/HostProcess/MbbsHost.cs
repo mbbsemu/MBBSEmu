@@ -196,15 +196,21 @@ namespace MBBSEmu.HostProcess
 
         private EventWaitHandle _timerEvent;
 
-        private bool WaitForNextTick()
+        private void WaitForNextTick()
         {
             if (_channelDictionary.Values.Where(session => session.Status == 3 || session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
-                return true;
+                return;
             //WaitHandle.WaitAny()
-            return _timerEvent.WaitOne();
+            Logger.Debug("Sleeping");
+            _timerEvent.WaitOne();
+            Logger.Debug("Awakened");
         }
 
-        public void TriggerProcessing() => _timerEvent.Set();
+        public void TriggerProcessing()
+        {
+            Logger.Debug("Setting timer event to signaled");
+            _timerEvent.Set();
+        }
 
         /// <summary>
         ///     This is the main MajorBBS/Worldgroup loop similar to how it actually functions with the software itself.
@@ -214,8 +220,10 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void WorkerThread()
         {
-            while (_isRunning && WaitForNextTick())
+            while (_isRunning)
             {
+                WaitForNextTick();
+
                 ProcessNightlyCleanup();
 
                 //Handle Channels

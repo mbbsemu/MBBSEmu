@@ -1,4 +1,5 @@
 using System;
+using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -70,10 +71,17 @@ namespace MBBSEmu.Session
         /// </summary>
         public bool StatusChange { get; set; }
 
-        /// <summary>
-        ///     Current State of this Users Session
-        /// </summary>
-        public virtual EnumSessionState SessionState { get; set; }
+        private EnumSessionState _enumSessionState;
+
+        public event EventHandler<EnumSessionState> OnSessionStateChanged;
+
+        public EnumSessionState SessionState {
+            get => _enumSessionState;
+            set {
+                _enumSessionState = value;
+                OnSessionStateChanged?.Invoke(this, value);
+            }
+        }
 
         /// <summary>
         ///     GSBL Echo Buffer
@@ -194,9 +202,11 @@ namespace MBBSEmu.Session
         public bool EchoSecureEnabled { get; set; }
 
         /// <summary>
-        ///     
+        ///
         /// </summary>
         public byte InputMaximumLength { get; set; }
+
+        protected readonly IMbbsHost _mbbsHost;
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
@@ -216,8 +226,9 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
-        protected SessionBase(string sessionId)
+        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState)
         {
+            _mbbsHost = mbbsHost;
             SessionId = sessionId;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
@@ -231,6 +242,9 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream(1024);
 
             InputCommand = new byte[] { 0x0 };
+
+            _enumSessionState = startingSessionState;
+            OnSessionStateChanged += (a, b) => mbbsHost.TriggerProcessing();
         }
 
         public void ProcessDataFromClient()

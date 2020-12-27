@@ -10,15 +10,13 @@ namespace MBBSEmu.Session
     public abstract class SocketSession : SessionBase
     {
         protected readonly ILogger _logger;
-        protected readonly IMbbsHost _mbbsHost;
         protected readonly Socket _socket;
         protected readonly Thread _senderThread;
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket) : base(socket.RemoteEndPoint.ToString())
+        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating)
         {
-            _mbbsHost = mbbsHost;
             _logger = logger;
 
             _socket = socket;
