@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(src));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCAT_ORDINAL, new List<IntPtr16> { destinationStringPointer, sourceStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCAT_ORDINAL, new List<FarPtr> { destinationStringPointer, sourceStringPointer });
 
             //Verify Results
             Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);

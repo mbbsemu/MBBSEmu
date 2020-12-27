@@ -15,11 +15,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, LANGUAGES_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, LANGUAGES_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             var returnedPointer = ExecutePropertyTest(LANGUAGES_ORDINAL);
-            var pointerToLanguages = mbbsEmuMemoryCore.GetPointer(new IntPtr16(returnedPointer));
+            var pointerToLanguages = mbbsEmuMemoryCore.GetPointer(new FarPtr(returnedPointer));
             var actualValue = mbbsEmuMemoryCore.GetPointer(pointerToLanguages);
 
             var actualLanguageValue = mbbsEmuMemoryCore.GetString(actualValue, true);

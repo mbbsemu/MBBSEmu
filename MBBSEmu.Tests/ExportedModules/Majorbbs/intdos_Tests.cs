@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -53,7 +53,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -80,7 +80,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -117,7 +117,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -156,7 +156,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -188,7 +188,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -215,7 +215,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -244,7 +244,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -277,7 +277,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -307,7 +307,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -336,7 +336,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
@@ -372,7 +372,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<IntPtr16> { testRegistersPointer, testRegistersPointer });
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,

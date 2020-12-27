@@ -11,7 +11,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Pointer to the char* routine that sets the value of the Text Variable
         /// </summary>
-        public IntPtr16 Pointer { get; set; }
+        public FarPtr Pointer { get; set; }
 
         /// <summary>
         ///     Variable Name

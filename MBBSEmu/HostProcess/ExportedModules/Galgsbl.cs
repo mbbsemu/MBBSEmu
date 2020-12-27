@@ -104,7 +104,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (offsetsOnly)
             {
-                var methodPointer = new IntPtr16(0xFFFE, ordinal);
+                var methodPointer = new FarPtr(0xFFFE, ordinal);
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
@@ -445,7 +445,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            ChannelDictionary[channel].CharacterInterceptor = new IntPtr16(routinePointer.Data);
+            ChannelDictionary[channel].CharacterInterceptor = new FarPtr(routinePointer.Data);
 
 #if DEBUG
             _logger.Info($"Assigned Character Interceptor Routine {ChannelDictionary[channel].CharacterInterceptor} to Channel {channel}");

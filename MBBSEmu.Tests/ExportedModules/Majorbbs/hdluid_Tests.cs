@@ -29,7 +29,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(usernamePartial));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HDLUID_ORDINAL, new List<IntPtr16> { usernamePointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HDLUID_ORDINAL, new List<FarPtr> { usernamePointer });
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);

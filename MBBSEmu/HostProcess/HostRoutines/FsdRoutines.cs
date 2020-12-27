@@ -142,7 +142,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var fsdscbStruct = GetFsdscbStruct(session);
 
             //If null, then return that it looks A-OK
-            if (fsdscbStruct.fldvfy == IntPtr16.Empty)
+            if (fsdscbStruct.fldvfy == FarPtr.Empty)
                 return true;
 
             //Save Current Answer -- if not already allocated, allocate 255 bytes

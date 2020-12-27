@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             fakeClock.Now = new DateTime(year, month, day);
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DAYTODAY_ORDINAL, new List<FarPtr>());
             Assert.Equal((int)expectedDayOfWeek, mbbsEmuCpuRegisters.AX);
         }
     }
