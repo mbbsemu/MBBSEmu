@@ -29,7 +29,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var dateStringPointer = mbbsEmuMemoryCore.AllocateVariable("DATE_STRING", (DateStruct.Size));
             
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GETDATE_ORDINAL, new List<IntPtr16> { dateStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GETDATE_ORDINAL, new List<FarPtr> { dateStringPointer });
 
             //Verify Results
             var expectedDateStruct = new DateStruct(mbbsEmuMemoryCore.GetArray(dateStringPointer, DateStruct.Size));

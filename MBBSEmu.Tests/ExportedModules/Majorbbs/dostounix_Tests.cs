@@ -36,7 +36,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(timeStringPointer, inputTimeStruct.Data);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DOSTOUNIX_ORDINAL, new List<IntPtr16> { dateStringPointer, timeStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DOSTOUNIX_ORDINAL, new List<FarPtr> { dateStringPointer, timeStringPointer });
 
             //Verify Results
             Assert.Equal(expectedUnixDate >> 16, mbbsEmuCpuRegisters.DX);
