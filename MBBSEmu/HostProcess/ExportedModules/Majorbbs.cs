@@ -1552,7 +1552,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetNumeric(msgnum);
 
             //Validate
-            if (outputValue < floor || outputValue > ceiling)
+            if (outputValue < floor || (ceiling > 0 && outputValue > ceiling))
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
