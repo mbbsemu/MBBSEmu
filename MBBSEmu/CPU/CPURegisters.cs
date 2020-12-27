@@ -32,21 +32,31 @@ namespace MBBSEmu.CPU
          * General Registers
          */
 
+        public uint EAX { get; set; }
+        
         /// <summary>
         ///     AX Register
         /// </summary>
-        public ushort AX { get; set; }
+        public ushort AX
+        {
+            get => (ushort)(EAX & 0xFFFF);
+            set
+            {
+                EAX &= 0xFFFF0000;
+                EAX |= value;
+            }
+        }
 
         /// <summary>
         ///     AX Low Byte
         /// </summary>
         public byte AL
         {
-            get => (byte) (AX & 0xFF);
+            get => (byte) (EAX & 0xFF);
             set
             {
-                AX &= 0xFF00;
-                AX |= value;
+                EAX &= 0xFFFFFF00;
+                EAX |= value;
             }
         }
 
@@ -55,29 +65,39 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte AH
         {
-            get => (byte) (AX >> 8);
+            get => (byte) (EAX >> 8);
             set
             {
-                AX &= 0x00FF;
-                AX |= (ushort)(value << 8);
+                EAX &= 0xFFFF00FF;
+                EAX |= (ushort)(value << 8);
             }
         }
 
+        public uint EBX { get; set; }
+        
         /// <summary>
         ///     Base Register
         /// </summary>
-        public ushort BX { get; set; }
+        public ushort BX
+        {
+            get => (ushort)(EBX & 0xFFFF);
+            set
+            {
+                EBX &= 0xFFFF0000;
+                EBX |= value;
+            }
+        }
 
         /// <summary>
         ///     BX Low Byte
         /// </summary>
         public byte BL
         {
-            get => (byte) (BX & 0xFF);
+            get => (byte) (EBX & 0xFF);
             set
             {
-                BX &= 0xFF00;
-                BX |= value;
+                EBX &= 0xFFFFFF00;
+                EBX |= value;
             }
         }
 
@@ -86,29 +106,39 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte BH
         {
-            get => (byte) (BX >> 8);
+            get => (byte) (EBX >> 8);
             set
             {
-                BX &= 0x00FF;
-                BX |= (ushort)(value << 8);
+                EBX &= 0xFFFF00FF;
+                EBX |= (ushort)(value << 8);
             }
         }
 
+        public uint ECX { get; set; }
+        
         /// <summary>
         ///     Counter Register
         /// </summary>
-        public ushort CX { get; set; }
+        public ushort CX
+        {
+            get => (ushort)(ECX & 0xFFFF);
+            set
+            {
+                ECX &= 0xFFFF0000;
+                ECX |= value;
+            }
+        }
 
         /// <summary>
         ///     CX Low Byte
         /// </summary>
         public byte CL
         {
-            get => (byte) (CX & 0xFF);
+            get => (byte) (ECX & 0xFF);
             set
             {
-                CX &= 0xFF00;
-                CX |= value;
+                ECX &= 0xFFFFFF00;
+                ECX |= value;
             }
         }
 
@@ -117,29 +147,39 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte CH
         {
-            get => (byte) (CX >> 8);
+            get => (byte) (ECX >> 8);
             set
             {
-                CX &= 0x00FF;
-                CX |= (ushort)(value << 8);
+                ECX &= 0xFFFF00FF;
+                ECX |= (ushort)(value << 8);
             }
         }
 
+        public uint EDX { get; set; }
+        
         /// <summary>
         ///     Data Register
         /// </summary>
-        public ushort DX { get; set; }
+        public ushort DX
+        {
+            get => (ushort)(EDX & 0xFFFF);
+            set
+            {
+                EDX &= 0xFFFF0000;
+                EDX |= value;
+            }
+        }
 
         /// <summary>
         ///     DX Low Byte
         /// </summary>
         public byte DL
         {
-            get => (byte) (DX & 0xFF);
+            get => (byte) (EDX & 0xFF);
             set
             {
-                DX &= 0xFF00;
-                DX |= value;
+                EDX &= 0xFFFFFF00;
+                EDX |= value;
             }
         }
 
@@ -148,11 +188,11 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte DH
         {
-            get => (byte) (DX >> 8);
+            get => (byte) (EDX >> 8);
             set
             {
-                DX &= 0x00FF;
-                DX |= (ushort)(value << 8);
+                EDX &= 0xFFFF00FF;
+                EDX |= (ushort)(value << 8);
             }
         }
 
@@ -318,51 +358,6 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Returns the size of the given Register
-        /// </summary>
-        /// <param name="register"></param>
-        /// <returns></returns>
-        public byte GetSize(Register register)
-        {
-            return register switch
-            {
-                Register.AL => 8,
-                Register.AH => 8,
-                Register.BL => 8,
-                Register.BH => 8,
-                Register.CL => 8,
-                Register.CH => 8,
-                Register.DL => 8,
-                Register.DH => 8,
-                Register.AX => 16,
-                Register.BX => 16,
-                Register.CX => 16,
-                Register.DX => 16,
-                Register.SP => 16,
-                Register.BP => 16,
-                Register.SI => 16,
-                Register.DI => 16,
-                Register.ES => 16,
-                Register.CS => 16,
-                Register.SS => 16,
-                Register.DS => 16,
-                Register.EIP => 16,
-                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
-            };
-        }
-
-        /// <summary>
-        ///     Gets a Long (32-bit) value by combining the two specified Registers
-        /// </summary>
-        /// <param name="highBytes"></param>
-        /// <param name="lowBytes"></param>
-        /// <returns></returns>
-        public int GetLong(Register highBytes, Register lowBytes)
-        {
-            return (GetValue(highBytes) << 16) | GetValue(lowBytes);
-        }
-
-        /// <summary>
         ///     Returns a 32-bit long from DX:AX
         /// </summary>
         public int GetLong()
@@ -424,10 +419,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Returns an IntPtr16 populated from DX:AX
         /// </summary>
-        public IntPtr16 GetPointer()
-        {
-            return new IntPtr16(segment: DX, offset: AX);
-        }
+        public IntPtr16 GetPointer() => new(segment: DX, offset: AX);
 
         /// <summary>
         ///     Sets DX:AX to the value from ptr

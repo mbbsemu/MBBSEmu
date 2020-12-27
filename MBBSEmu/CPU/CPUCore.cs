@@ -2019,6 +2019,9 @@ namespace MBBSEmu.CPU
                 case 2:
                     Op_Sub_16();
                     return;
+                case 4:
+                    Op_Sub_32();
+                    return;
                 default:
                     throw new Exception("Unsupported Operation Size");
             }
@@ -2062,6 +2065,22 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination - source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Sub_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind);
+
+            unchecked
+            {
+                var result = destination - source;
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
@@ -2341,6 +2360,14 @@ namespace MBBSEmu.CPU
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0x0F00:
                     {
+
+                        if (_currentInstruction.FarBranchSelector % 0x100 == 1 && _currentInstruction.FarBranch16 < 0x1A8)
+                        {
+                            _logger.Warn("Call to PHAPI Static Link -- Ignoring");
+                            Registers.IP = (ushort) (Registers.IP + _currentInstruction.Length);
+                            break;
+                        }
+                        
                         //Far call to another Segment
                         Push(Registers.CS);
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
@@ -3498,6 +3525,36 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Evaluates the given 32-bit operation and parameters to evaluate the status of the Carry Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateCarry(EnumArithmeticOperation arithmeticOperation, uint result = 0,
+            uint destination = 0, uint source = 0)
+        {
+            var setFlag = arithmeticOperation switch
+            {
+                EnumArithmeticOperation.Addition => ((ulong)source + destination) > uint.MaxValue,
+                EnumArithmeticOperation.Subtraction => result > destination,
+                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                    "Unsupported Carry Flag Operation for Evaluation")
+            };
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+        }
+
+        /// <summary>
         ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Overflow Flag
         /// </summary>
         /// <param name="arithmeticOperation"></param>
@@ -3619,14 +3676,66 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            if (setFlag)
+            Registers.F = setFlag ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+        }
+
+        /// <summary>
+        ///     Evaluates the given 32-bit operation and parameters to evaluate the status of the Overflow Flag
+        /// </summary>
+        /// <param name="arithmeticOperation"></param>
+        /// <param name="result"></param>
+        /// <param name="destination"></param>
+        /// <param name="source"></param>
+        [MethodImpl(CompilerOptimizations)]
+        public void Flags_EvaluateOverflow(EnumArithmeticOperation arithmeticOperation, uint result = 0,
+            uint destination = 0, uint source = 0)
+        {
+            var setFlag = false;
+            switch (arithmeticOperation)
             {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
+                case EnumArithmeticOperation.Addition:
+                    {
+                        //positive+positive==negative
+                        if (!destination.IsNegative() && !source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        //negative+negative==positive
+                        if (destination.IsNegative() && source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                case EnumArithmeticOperation.Subtraction:
+                    {
+
+                        // negative-positive==positive
+                        if (destination.IsNegative() && !source.IsNegative() &&
+                            !result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        // positive-negative==negative
+                        if (!destination.IsNegative() && source.IsNegative() &&
+                            result.IsNegative())
+                        {
+                            setFlag = true;
+                        }
+
+                        break;
+                    }
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
+                        "Unsupported Carry Flag Operation for Evaluation");
             }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-            }
+
+            Registers.F = setFlag ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
         }
 
         /// <summary>
@@ -3654,6 +3763,25 @@ namespace MBBSEmu.CPU
         /// <param name="result"></param>
         [MethodImpl(CompilerOptimizations)]
         private void Flags_EvaluateSignZero(ushort result)
+        {
+            if (result == 0)
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+            }
+        }
+
+        /// <summary>
+        ///     Evaluates and sets the value of both the Carry and Zero Flag based upon the specified result
+        /// </summary>
+        /// <param name="result"></param>
+        [MethodImpl(CompilerOptimizations)]
+        private void Flags_EvaluateSignZero(uint result)
         {
             if (result == 0)
             {
