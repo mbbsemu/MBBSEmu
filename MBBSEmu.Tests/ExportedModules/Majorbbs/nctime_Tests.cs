@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using Xunit;
 
@@ -35,7 +34,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.Equal(expectedTime, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("NCTIME", true)));
-
         }
     }
 }
