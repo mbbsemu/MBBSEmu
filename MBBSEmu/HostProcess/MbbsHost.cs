@@ -136,10 +136,6 @@ namespace MBBSEmu.HostProcess
                 _timerEvent = new AutoResetEvent(true);
                 _tickTimer = new Timer(unused => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
             }
-            else
-            {
-                _timerEvent = new ManualResetEvent(true);
-            }
 
             Logger.Info("Constructed MBBSEmu Host!");
         }
@@ -183,7 +179,7 @@ namespace MBBSEmu.HostProcess
             _isRunning = false;
             _timer.Dispose();
             _tickTimer?.Dispose();
-            _timerEvent.Set();
+            _timerEvent?.Set();
         }
 
         public void ScheduleNightlyShutdown(EventWaitHandle eventWaitHandle)
@@ -201,19 +197,14 @@ namespace MBBSEmu.HostProcess
 
         private void WaitForNextTick()
         {
-            if (_channelDictionary.Values.Where(session => session.Status == 3 || session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
+            if (_timerEvent == null ||
+                _channelDictionary.Values.Where(session => session.Status == 3 || session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
                 return;
-            //WaitHandle.WaitAny()
-            Logger.Debug("Sleeping");
+
             _timerEvent.WaitOne();
-            Logger.Debug("Awakened");
         }
 
-        public void TriggerProcessing()
-        {
-            Logger.Debug("Setting timer event to signaled");
-            _timerEvent.Set();
-        }
+        public void TriggerProcessing() => _timerEvent?.Set();
 
         /// <summary>
         ///     This is the main MajorBBS/Worldgroup loop similar to how it actually functions with the software itself.
