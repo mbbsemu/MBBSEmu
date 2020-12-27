@@ -1,5 +1,4 @@
-﻿using MBBSEmu.Memory;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Xunit;
 
@@ -29,8 +28,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TIME_ORDINAL, new List<ushort> ());
 
             //Verify Results
-            Assert.Equal(expectedUnixDate >> 16, mbbsEmuCpuRegisters.DX);
-            Assert.Equal(expectedUnixDate & 0xFFFF, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedUnixDate, mbbsEmuCpuRegisters.GetLong());
         }
     }
 }

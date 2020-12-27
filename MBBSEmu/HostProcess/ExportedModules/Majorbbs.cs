@@ -4005,11 +4005,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
-
-            if (!Module.Memory.TryGetVariablePointer("NCTIME", out var variablePointer))
-            {
-                variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
-            }
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCTIME", (ushort) timeString.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(timeString));
