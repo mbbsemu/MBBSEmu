@@ -32,7 +32,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (offsetsOnly)
             {
-                var methodPointer = new IntPtr16(0xFFFC, ordinal);
+                var methodPointer = new FarPtr(0xFFFC, ordinal);
 #if DEBUG
                 //_logger.Info($"Returning Method Offset {methodPointer.Segment:X4}:{methodPointer.Offset:X4}");
 #endif
@@ -171,7 +171,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     var btvFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
 
                                     //Setup Pointers
-                                    var btvFileStructPointer = new IntPtr16(btvda.posblkseg, btvda.posblkoff);
+                                    var btvFileStructPointer = new FarPtr(btvda.posblkseg, btvda.posblkoff);
                                     var btvFileNamePointer =
                                         Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
                                     var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", (ushort) btvFile.RecordLength);

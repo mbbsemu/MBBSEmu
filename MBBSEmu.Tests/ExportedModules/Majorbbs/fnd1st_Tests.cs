@@ -113,7 +113,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(new List<string>() { "dog.txt", "man.txt" }, files);
         }
 
-        private string GetFileFromFndblk(IntPtr16 fndblkPointer)
+        private string GetFileFromFndblk(FarPtr fndblkPointer)
         {
             var fbs = new FndblkStruct(mbbsEmuMemoryCore.GetArray(fndblkPointer, FndblkStruct.StructSize));
             Assert.Equal(9, fbs.Size);

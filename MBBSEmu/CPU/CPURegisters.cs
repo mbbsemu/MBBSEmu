@@ -424,15 +424,15 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Returns an IntPtr16 populated from DX:AX
         /// </summary>
-        public IntPtr16 GetPointer()
+        public FarPtr GetPointer()
         {
-            return new IntPtr16(segment: DX, offset: AX);
+            return new FarPtr(segment: DX, offset: AX);
         }
 
         /// <summary>
         ///     Sets DX:AX to the value from ptr
         /// </summary>
-        public void SetPointer(IntPtr16 ptr)
+        public void SetPointer(FarPtr ptr)
         {
             DX = ptr.Segment;
             AX = ptr.Offset;

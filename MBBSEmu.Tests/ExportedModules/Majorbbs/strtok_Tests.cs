@@ -22,23 +22,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var delimPointer = mbbsEmuMemoryCore.AllocateVariable("DELIM", 0xF);
             mbbsEmuMemoryCore.SetArray("DELIM", Encoding.ASCII.GetBytes(":?"));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { stringPointer, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { stringPointer, delimPointer });
             Assert.Equal("This is a cool", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { IntPtr16.Empty, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
             Assert.Equal("Test of the system", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { IntPtr16.Empty, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
             Assert.Equal("More padding", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { IntPtr16.Empty, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
             Assert.Equal("Sure Why not", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { IntPtr16.Empty, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
             Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(0, mbbsEmuCpuRegisters.AX);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<IntPtr16> { IntPtr16.Empty, delimPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
             Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(0, mbbsEmuCpuRegisters.AX);
         }

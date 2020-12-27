@@ -22,7 +22,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.NotEqual(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(0, mbbsEmuCpuRegisters.AX);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARFREE_ORDINAL, new List<IntPtr16> { mbbsEmuCpuRegisters.GetPointer() });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARFREE_ORDINAL, new List<FarPtr> { mbbsEmuCpuRegisters.GetPointer() });
         }
     }
 }

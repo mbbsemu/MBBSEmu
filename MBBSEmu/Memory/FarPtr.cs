@@ -3,9 +3,9 @@
 namespace MBBSEmu.Memory
 {
     /// <summary>
-    ///     Represents an Int16:Int16 Pointer
+    ///     Represents a far Int16:Int16 Pointer, containing segment + offset.
     /// </summary>
-    public class IntPtr16 : IEquatable<IntPtr16>
+    public class FarPtr : IEquatable<FarPtr>
     {
         public ushort Segment { get; set; }
         public ushort Offset { get; set; }
@@ -22,36 +22,36 @@ namespace MBBSEmu.Memory
 
         public const ushort Size = 4;
 
-        public IntPtr16() { }
+        public FarPtr() { }
 
-        public IntPtr16(ReadOnlySpan<byte> intPtr16Span)
+        public FarPtr(ReadOnlySpan<byte> farPtrSpan)
         {
-            FromSpan(intPtr16Span);
+            FromSpan(farPtrSpan);
         }
 
-        public IntPtr16(ReadOnlySpan<byte> intPtr16Span, int startIndex)
+        public FarPtr(ReadOnlySpan<byte> farPtrSpan, int startIndex)
         {
-            FromSpan(intPtr16Span.Slice(startIndex, 4));
+            FromSpan(farPtrSpan.Slice(startIndex, 4));
         }
 
-        public IntPtr16(ushort segment, ushort offset)
+        public FarPtr(ushort segment, ushort offset)
         {
             Segment = segment;
             Offset = offset;
         }
 
-        public IntPtr16(IntPtr16 pointer)
+        public FarPtr(FarPtr pointer)
         {
             Segment = pointer.Segment;
             Offset = pointer.Offset;
         }
 
-        public void FromSpan(ReadOnlySpan<byte> intPtr16Span)
+        public void FromSpan(ReadOnlySpan<byte> farPtrSpan)
         {
-            Data = intPtr16Span.ToArray();
+            Data = farPtrSpan.ToArray();
         }
 
-        public bool IsNull() => IntPtr16.Empty.Equals(this);
+        public bool IsNull() => FarPtr.Empty.Equals(this);
 
         /// <summary>
         ///     Returns the int16:int16 pointer as a 32-bit value
@@ -65,7 +65,7 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         public override string ToString() => $"{Segment:X4}:{Offset:X4}";
 
-        public bool Equals(IntPtr16 other)
+        public bool Equals(FarPtr other)
         {
             if (other == null)
                 return false;
@@ -79,14 +79,14 @@ namespace MBBSEmu.Memory
             return true;
         }
 
-        public override bool Equals(object obj) => Equals(obj as IntPtr16);
+        public override bool Equals(object obj) => Equals(obj as FarPtr);
 
         public override int GetHashCode()
         {
             return (Segment << 16) | Offset;
         }
 
-        public static bool operator ==(IntPtr16 left, IntPtr16 right)
+        public static bool operator ==(FarPtr left, FarPtr right)
         {
             if (left is null && right is null)
                 return true;
@@ -103,7 +103,7 @@ namespace MBBSEmu.Memory
             return true;
         }
 
-        public static bool operator !=(IntPtr16 left, IntPtr16 right)
+        public static bool operator !=(FarPtr left, FarPtr right)
         {
             if (left is null && right is null)
                 return false;
@@ -120,20 +120,21 @@ namespace MBBSEmu.Memory
             return false;
         }
 
-        public static IntPtr16 Empty => new IntPtr16(0, 0);
+        public static FarPtr Empty => new FarPtr(0, 0);
+        public static FarPtr Null => Empty;
 
-        public static IntPtr16 operator +(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset + v));
-        public static IntPtr16 operator +(IntPtr16 i, int v) => new IntPtr16(i.Segment, (ushort)(i.Offset + v));
-        public static IntPtr16 operator -(IntPtr16 i, ushort v) => new IntPtr16(i.Segment, (ushort)(i.Offset - v));
-        public static IntPtr16 operator -(IntPtr16 i, int v) => new IntPtr16(i.Segment, (ushort)(i.Offset - v));
+        public static FarPtr operator +(FarPtr i, ushort v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
+        public static FarPtr operator +(FarPtr i, int v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
+        public static FarPtr operator -(FarPtr i, ushort v) => new FarPtr(i.Segment, (ushort)(i.Offset - v));
+        public static FarPtr operator -(FarPtr i, int v) => new FarPtr(i.Segment, (ushort)(i.Offset - v));
 
-        public static IntPtr16 operator ++(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset + 1));
-        public static IntPtr16 operator --(IntPtr16 i) => new IntPtr16(i.Segment, (ushort)(i.Offset - 1));
+        public static FarPtr operator ++(FarPtr i) => new FarPtr(i.Segment, (ushort)(i.Offset + 1));
+        public static FarPtr operator --(FarPtr i) => new FarPtr(i.Segment, (ushort)(i.Offset - 1));
 
-        public static bool operator >(IntPtr16 l, IntPtr16 r) => l.ToInt32() > r.ToInt32();
-        public static bool operator >=(IntPtr16 l, IntPtr16 r) => l.ToInt32() >= r.ToInt32();
+        public static bool operator >(FarPtr l, FarPtr r) => l.ToInt32() > r.ToInt32();
+        public static bool operator >=(FarPtr l, FarPtr r) => l.ToInt32() >= r.ToInt32();
 
-        public static bool operator <(IntPtr16 l, IntPtr16 r) => l.ToInt32() < r.ToInt32();
-        public static bool operator <=(IntPtr16 l, IntPtr16 r) => l.ToInt32() <= r.ToInt32();
+        public static bool operator <(FarPtr l, FarPtr r) => l.ToInt32() < r.ToInt32();
+        public static bool operator <=(FarPtr l, FarPtr r) => l.ToInt32() <= r.ToInt32();
     }
 }

@@ -33,7 +33,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 2);
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, intPointer });
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
@@ -63,7 +63,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 4);
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, intPointer });
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
@@ -107,7 +107,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var secondStringPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 2);
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, firstStringPointer, intPointer, secondStringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, firstStringPointer, intPointer, secondStringPointer });
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
@@ -132,7 +132,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 2);
             //Execute Test & Assert
             Assert.Throws<ArgumentException>(() =>
-                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<IntPtr16> { stringPointer, formatPointer, intPointer }));
+                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, intPointer }));
         }
     }
 }
