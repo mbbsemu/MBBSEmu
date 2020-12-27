@@ -6166,7 +6166,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void datofc()
         {
             var days = GetParameter(0);
-            var dtDateTime = new DateTime(1980, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddDays(days);
+            var dtDateTime = new DateTime(1980, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddDays(days);
 
             var packedDate = (dtDateTime.Month << 5) + dtDateTime.Day + ((dtDateTime.Year - 1980) << 9);
 
