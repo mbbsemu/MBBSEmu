@@ -1273,6 +1273,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///         anpopt - operation to perform
         ///         loktyp - lock type - unsupported in mbbsemu
         ///     Return: 1 if successful, 0 on failure
+        /// </summary>
         private void anpbtvl()
         {
             var recordPointer = GetParameterPointer(0);
@@ -2201,10 +2202,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{day:D2}/{month:D2}/{year % 100}\0";
+            var outputDate = $"{day:D2}/{month:D2}/{year % 100:D2}\0";
 
-            if (!Module.Memory.TryGetVariablePointer("NCEDAT", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable("NCEDAT", (ushort)outputDate.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCEDAT", (ushort) outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
@@ -4017,7 +4017,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Returns a pointer to the first occurence of character in the C string str
+        ///     Returns a pointer to the first occurrence of character in the C string str
         ///
         ///     Signature: char * strchr ( const char * str, int character )
         ///
