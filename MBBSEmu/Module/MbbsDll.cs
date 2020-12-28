@@ -23,7 +23,7 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Entry Points for the Module, as defined by register_module()
         /// </summary>
-        public Dictionary<string, IntPtr16> EntryPoints { get; set; }
+        public Dictionary<string, FarPtr> EntryPoints { get; set; }
 
         /// <summary>
         ///     The Segment Offset in the Memory Core that the DLL will be loaded in
@@ -39,7 +39,7 @@ namespace MBBSEmu.Module
             _fileUtility = fileUtility;
             _logger = logger;
             
-            EntryPoints = new Dictionary<string, IntPtr16>();
+            EntryPoints = new Dictionary<string, FarPtr>();
             
             
         }

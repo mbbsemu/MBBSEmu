@@ -204,8 +204,8 @@ namespace MBBSEmu.Module
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
             TaskRoutines = new PointerDictionary<RealTimeRoutine>();
-            TextVariables = new Dictionary<string, IntPtr16>();
-            GlobalCommandHandlers = new List<IntPtr16>();
+            TextVariables = new Dictionary<string, FarPtr>();
+            GlobalCommandHandlers = new List<FarPtr>();
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
             
@@ -230,7 +230,7 @@ namespace MBBSEmu.Module
                 }
 
                 //Setup _INIT_ Entrypoint
-                IntPtr16 initEntryPointPointer;
+                FarPtr initEntryPointPointer;
                 var initResidentName = dll.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
                 if (initResidentName == null)
                 {
@@ -244,13 +244,13 @@ namespace MBBSEmu.Module
 
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
                     
-                    initEntryPointPointer = new IntPtr16((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                    initEntryPointPointer = new FarPtr((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
                     
                 }
                 else
                 {
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-                    initEntryPointPointer = new IntPtr16((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                    initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
                 }
 
 

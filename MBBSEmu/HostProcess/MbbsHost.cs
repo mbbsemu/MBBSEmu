@@ -981,26 +981,26 @@ namespace MBBSEmu.HostProcess
                                     var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
                                     var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
 
-                                    var relocationPointer = IntPtr16.Empty;
+                                    var relocationPointer = FarPtr.Empty;
                                     switch (dll.File.ImportedNameTable[nametableOrdinal].Name)
                                     {
                                         case "MAJORBBS":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Majorbbs.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Majorbbs.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALGSBL":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galgsbl.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galgsbl.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "DOSCALLS":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Doscalls.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Doscalls.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALME":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galme.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galme.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "PHAPI":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Phapi.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Phapi.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case "GALMSG":
-                                            relocationPointer = new IntPtr16(module.ExportedModuleDictionary[Galmsg.Segment].Invoke(functionOrdinal, true));
+                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galmsg.Segment].Invoke(functionOrdinal, true));
                                             break;
                                         case var importedName
                                             when module.ModuleDlls.Any(m =>
@@ -1013,7 +1013,7 @@ namespace MBBSEmu.HostProcess
                                                 //Get The Entry Point based on the Ordinal
                                                 var initEntryPoint =
                                                     importedDll.File.EntryTable.First(x => x.Ordinal == functionOrdinal);
-                                                relocationPointer = new IntPtr16((ushort)(initEntryPoint.SegmentNumber + importedDll.SegmentOffset),
+                                                relocationPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + importedDll.SegmentOffset),
                                                     initEntryPoint.Offset);
                                                 break;
                                             }
@@ -1049,7 +1049,7 @@ namespace MBBSEmu.HostProcess
                                 }
                             case EnumRecordsFlag.InternalRef when relocationRecord.SourceType == 3:
                                 {
-                                    var relocationPointer = new IntPtr16(
+                                    var relocationPointer = new FarPtr(
                                         (ushort)(relocationRecord.TargetTypeValueTuple.Item2 + dll.SegmentOffset),
                                         relocationRecord.TargetTypeValueTuple.Item4);
 
@@ -1082,7 +1082,7 @@ namespace MBBSEmu.HostProcess
 
                                     };
 
-                                    var relocationPointer = new IntPtr16(newSegment, functionOrdinal);
+                                    var relocationPointer = new FarPtr(newSegment, functionOrdinal);
 
                                     //32-Bit Pointer
                                     if (relocationRecord.SourceType == 3)
