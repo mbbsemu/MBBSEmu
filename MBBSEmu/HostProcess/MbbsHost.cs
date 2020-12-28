@@ -134,12 +134,12 @@ namespace MBBSEmu.HostProcess
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = _configuration.CleanupTime;
-            _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            _timer = new Timer(_ => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
 
             if (_configuration.TimerHertz > 0)
             {
                 _timerEvent = new AutoResetEvent(true);
-                _tickTimer = new Timer(unused => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
+                _tickTimer = new Timer(_ => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
             }
 
             Logger.Info("Constructed MBBSEmu Host!");
@@ -203,7 +203,7 @@ namespace MBBSEmu.HostProcess
         private void WaitForNextTick()
         {
             if (_timerEvent == null ||
-                _channelDictionary.Values.Where(session => session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess).Any())
+                _channelDictionary.Values.Any(session => session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess))
                 return;
 
             _timerEvent.WaitOne();
