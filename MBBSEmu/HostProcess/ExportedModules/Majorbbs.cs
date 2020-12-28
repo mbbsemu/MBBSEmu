@@ -3998,18 +3998,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedTime = GetParameter(0);
 
             var unpackedHour = (packedTime >> 11) & 0x1F;
-            var unpackedMinutes = (packedTime >> 5 & 0x1F);
-            var unpackedSeconds = packedTime & 0xF;
+            var unpackedMinutes = (packedTime >> 5) & 0x3F;
+            var unpackedSeconds = (packedTime << 1) & 0x3E;
 
             var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
-
-            if (!Module.Memory.TryGetVariablePointer("NCTIME", out var variablePointer))
-            {
-                variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
-            }
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCTIME", (ushort) timeString.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(timeString));
