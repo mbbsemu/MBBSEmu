@@ -200,9 +200,16 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-CONSOLE":
+                        {
+                            //Check to see if running Windows and earlier then Windows 8.0
+                            if (OperatingSystem.IsWindows() && !OperatingSystem.IsWindowsVersionAtLeast(6, 2))
                             {
-                                _isConsoleSession = true;
+                                Console.WriteLine("Console not supported on versions of Windows earlier then 8.0");
                                 break;
+                            }
+                            
+                            _isConsoleSession = true;
+                            break;
                             }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
