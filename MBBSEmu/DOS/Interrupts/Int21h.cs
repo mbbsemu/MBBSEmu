@@ -24,18 +24,18 @@ namespace MBBSEmu.DOS.Interrupts
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private IntPtr16 DiskTransferArea;
+        private FarPtr DiskTransferArea;
 
         public byte Vector => 0x21;
 
-        private readonly Dictionary<byte, IntPtr16> _interruptVectors;
+        private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
         public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock)
         {
             _registers = registers;
             _memory = memory;
             _clock = clock;
-            _interruptVectors = new Dictionary<byte, IntPtr16>();
+            _interruptVectors = new Dictionary<byte, FarPtr>();
         }
 
         public void Handle()
@@ -53,7 +53,7 @@ namespace MBBSEmu.DOS.Interrupts
                     {
                         //Specifies the memory area to be used for subsequent FCB operations.
                         //DS:DX = Segment:offset of DTA
-                        DiskTransferArea = new IntPtr16(_registers.DS, _registers.DX);
+                        DiskTransferArea = new FarPtr(_registers.DS, _registers.DX);
                         return;
                     }
                 case 0x25:
@@ -65,7 +65,7 @@ namespace MBBSEmu.DOS.Interrupts
                          */
 
                         var interruptVector = _registers.AL;
-                        var newVectorPointer = new IntPtr16(_registers.DS, _registers.DX);
+                        var newVectorPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         _interruptVectors[interruptVector] = newVectorPointer;
 
@@ -162,7 +162,7 @@ namespace MBBSEmu.DOS.Interrupts
                          */
                         var fileHandle = _registers.BX;
                         var numberOfBytes = _registers.CX;
-                        var bufferPointer = new IntPtr16(_registers.DS, _registers.DX);
+                        var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
 

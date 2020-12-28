@@ -98,12 +98,12 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte LastCharacterReceived { get; set; }
 
-        public IntPtr16 CharacterInterceptor { get; set; }
+        public FarPtr CharacterInterceptor { get; set; }
 
         /// <summary>
         ///     Routine that is called by BEGIN_POLLING for this user number
         /// </summary>
-        public IntPtr16 PollingRoutine { get; set; }
+        public FarPtr PollingRoutine { get; set; }
 
         /// <summary>
         ///     Prompt Character set by BTUPMT
@@ -194,7 +194,7 @@ namespace MBBSEmu.Session
         public bool EchoSecureEnabled { get; set; }
 
         /// <summary>
-        ///     
+        ///
         /// </summary>
         public byte InputMaximumLength { get; set; }
 

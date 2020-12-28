@@ -22,12 +22,12 @@ namespace MBBSEmu.Memory
         private readonly Segment[] _segments = new Segment[0x10000];
         private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
 
-        private readonly Dictionary<string, IntPtr16> _variablePointerDictionary;
-        private IntPtr16 _currentVariablePointer;
+        private readonly Dictionary<string, FarPtr> _variablePointerDictionary;
+        private FarPtr _currentVariablePointer;
         private const ushort VARIABLE_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
-        private IntPtr16 _currentRealModePointer;
+        private FarPtr _currentRealModePointer;
         private const ushort REALMODE_BASE_SEGMENT = 0x2000; //0x2000->0x2FFF == 256MB
-        private readonly PointerDictionary<Dictionary<ushort, IntPtr16>> _bigMemoryBlocks;
+        private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks;
 
         /// <summary>
         ///     Default Compiler Hints for use on methods within the MemoryCore
@@ -39,10 +39,10 @@ namespace MBBSEmu.Memory
 
         public MemoryCore()
         {
-            _variablePointerDictionary = new Dictionary<string, IntPtr16>();
-            _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
-            _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
-            _bigMemoryBlocks = new PointerDictionary<Dictionary<ushort, IntPtr16>>();
+            _variablePointerDictionary = new Dictionary<string, FarPtr>();
+            _currentVariablePointer = new FarPtr(VARIABLE_BASE_SEGMENT, 0);
+            _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
+            _bigMemoryBlocks = new PointerDictionary<Dictionary<ushort, FarPtr>>();
 
             //Add Segment 0 by default, stack segment
             AddSegment(0);
@@ -58,8 +58,8 @@ namespace MBBSEmu.Memory
             Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
 
             _variablePointerDictionary.Clear();
-            _currentVariablePointer = new IntPtr16(VARIABLE_BASE_SEGMENT, 0);
-            _currentRealModePointer = new IntPtr16(REALMODE_BASE_SEGMENT, 0);
+            _currentVariablePointer = new FarPtr(VARIABLE_BASE_SEGMENT, 0);
+            _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
             _bigMemoryBlocks.Clear();
         }
 
@@ -70,7 +70,7 @@ namespace MBBSEmu.Memory
         /// <param name="size"></param>
         /// <param name="declarePointer"></param>
         /// <returns></returns>
-        public IntPtr16 AllocateVariable(string name, ushort size, bool declarePointer = false)
+        public FarPtr AllocateVariable(string name, ushort size, bool declarePointer = false)
         {
             if (!string.IsNullOrEmpty(name) && _variablePointerDictionary.ContainsKey(name))
             {
@@ -97,7 +97,7 @@ namespace MBBSEmu.Memory
             var currentOffset = _currentVariablePointer.Offset;
             _currentVariablePointer.Offset += (ushort)(size + 1);
 
-            var newPointer = new IntPtr16(_currentVariablePointer.Segment, currentOffset);
+            var newPointer = new FarPtr(_currentVariablePointer.Segment, currentOffset);
 
             if (declarePointer && string.IsNullOrEmpty(name))
                 throw new Exception("Unsupported operation, declaring pointer type for NULL named variable");
@@ -121,7 +121,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public IntPtr16 GetVariablePointer(string name)
+        public FarPtr GetVariablePointer(string name)
         {
             if (!TryGetVariablePointer(name, out var result))
                 throw new ArgumentException($"Unknown Variable: {name}");
@@ -137,7 +137,7 @@ namespace MBBSEmu.Memory
         /// <param name="name"></param>
         /// <param name="pointer"></param>
         /// <returns></returns>
-        public bool TryGetVariablePointer(string name, out IntPtr16 pointer)
+        public bool TryGetVariablePointer(string name, out FarPtr pointer)
         {
             if (!_variablePointerDictionary.TryGetValue(name, out var result))
             {
@@ -159,7 +159,7 @@ namespace MBBSEmu.Memory
         ///     desired variable of NAME of SIZE, but also a 2 byte variable named "*NAME" which holds a pointer to NAME
         /// </param>
         /// <returns></returns>
-        public IntPtr16 GetOrAllocateVariablePointer(string name, ushort size = 0x0, bool declarePointer = false)
+        public FarPtr GetOrAllocateVariablePointer(string name, ushort size = 0x0, bool declarePointer = false)
         {
             if (_variablePointerDictionary.TryGetValue(name, out var result))
                 return result;
@@ -288,7 +288,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public byte GetByte(IntPtr16 pointer) => GetByte(pointer.Segment, pointer.Offset);
+        public byte GetByte(FarPtr pointer) => GetByte(pointer.Segment, pointer.Offset);
 
         /// <summary>
         ///     Returns a single byte from the specified segment:offset
@@ -313,7 +313,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public ushort GetWord(IntPtr16 pointer) => GetWord(pointer.Segment, pointer.Offset);
+        public ushort GetWord(FarPtr pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         /// <summary>
         ///     Returns an unsigned word from the specified segment:offset
@@ -335,7 +335,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public IntPtr16 GetPointer(IntPtr16 pointer) => new IntPtr16(GetArray(pointer, 4));
+        public FarPtr GetPointer(FarPtr pointer) => new FarPtr(GetArray(pointer, 4));
 
         /// <summary>
         ///     Returns a pointer stored at the specified defined variable
@@ -343,7 +343,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public IntPtr16 GetPointer(string variableName) => new IntPtr16(GetArray(GetVariablePointer(variableName), 4));
+        public FarPtr GetPointer(string variableName) => new FarPtr(GetArray(GetVariablePointer(variableName), 4));
 
         /// <summary>
         ///     Returns a pointer stored at the specified segment:offset
@@ -352,7 +352,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public IntPtr16 GetPointer(ushort segment, ushort offset) => new IntPtr16(GetArray(segment, offset, 4));
+        public FarPtr GetPointer(ushort segment, ushort offset) => new FarPtr(GetArray(segment, offset, 4));
 
         /// <summary>
         ///     Returns an array with desired count from the specified pointer
@@ -361,7 +361,7 @@ namespace MBBSEmu.Memory
         /// <param name="count"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetArray(IntPtr16 pointer, ushort count) =>
+        public ReadOnlySpan<byte> GetArray(FarPtr pointer, ushort count) =>
             GetArray(pointer.Segment, pointer.Offset, count);
 
         /// <summary>
@@ -392,7 +392,7 @@ namespace MBBSEmu.Memory
         /// <param name="stripNull"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetString(IntPtr16 pointer, bool stripNull = false) =>
+        public ReadOnlySpan<byte> GetString(FarPtr pointer, bool stripNull = false) =>
             GetString(pointer.Segment, pointer.Offset, stripNull);
 
         /// <summary>
@@ -439,7 +439,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetByte(IntPtr16 pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
+        public void SetByte(FarPtr pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified byte at the desired segment:offset
@@ -456,7 +456,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetWord(IntPtr16 pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
+        public void SetWord(FarPtr pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified word at the desired segment:offset
@@ -487,7 +487,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="array"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetArray(IntPtr16 pointer, ReadOnlySpan<byte> array) =>
+        public void SetArray(FarPtr pointer, ReadOnlySpan<byte> array) =>
             SetArray(pointer.Segment, pointer.Offset, array);
 
         [MethodImpl(CompilerOptimizations)]
@@ -524,7 +524,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="count"></param>
         /// <param name="value"></param>
-        public void FillArray(IntPtr16 pointer, ushort count, byte value) =>
+        public void FillArray(FarPtr pointer, ushort count, byte value) =>
             FillArray(pointer.Segment, pointer.Offset, count, value);
 
         /// <summary>
@@ -533,7 +533,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(IntPtr16 pointer, IntPtr16 value) => SetArray(pointer, value.Data);
+        public void SetPointer(FarPtr pointer, FarPtr value) => SetArray(pointer, value.Data);
 
         /// <summary>
         ///     Sets the specified pointer value at the defined variable
@@ -541,7 +541,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(string variableName, IntPtr16 value) =>
+        public void SetPointer(string variableName, FarPtr value) =>
             SetArray(GetVariablePointer(variableName), value.Data);
 
         /// <summary>
@@ -551,7 +551,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(ushort segment, ushort offset, IntPtr16 value) => SetArray(segment, offset, value.Data);
+        public void SetPointer(ushort segment, ushort offset, FarPtr value) => SetArray(segment, offset, value.Data);
 
         /// <summary>
         ///     Zeroes out the memory at the specified pointer for the desired number of bytes
@@ -559,7 +559,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="length"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetZero(IntPtr16 pointer, int length)
+        public void SetZero(FarPtr pointer, int length)
         {
             var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);
             destinationSpan.Fill(0);
@@ -571,15 +571,15 @@ namespace MBBSEmu.Memory
         /// <param name="quantity"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public IntPtr16 AllocateBigMemoryBlock(ushort quantity, ushort size)
+        public FarPtr AllocateBigMemoryBlock(ushort quantity, ushort size)
         {
-            var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, IntPtr16>());
+            var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, FarPtr>());
 
             //Fill the Region
             for (ushort i = 0; i < quantity; i++)
                 _bigMemoryBlocks[newBlockOffset].Add(i, AllocateVariable($"ALCBLOK-{newBlockOffset}-{i}", size));
 
-            return new IntPtr16(0xFFFF, (ushort)newBlockOffset);
+            return new FarPtr(0xFFFF, (ushort)newBlockOffset);
         }
 
         /// <summary>
@@ -589,16 +589,16 @@ namespace MBBSEmu.Memory
         /// <param name="index"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public IntPtr16 GetBigMemoryBlock(IntPtr16 block, ushort index) => _bigMemoryBlocks[block.Offset][index];
+        public FarPtr GetBigMemoryBlock(FarPtr block, ushort index) => _bigMemoryBlocks[block.Offset][index];
 
         /// <summary>
         ///     Returns a newly allocated Segment in "Real Mode" memory
         /// </summary>
         /// <returns></returns>
-        public IntPtr16 AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue)
+        public FarPtr AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue)
         {
             _currentRealModePointer.Segment++;
-            var realModeSegment = new IntPtr16(_currentRealModePointer);
+            var realModeSegment = new FarPtr(_currentRealModePointer);
             AddSegment(realModeSegment.Segment, segmentSize);
             return realModeSegment;
         }

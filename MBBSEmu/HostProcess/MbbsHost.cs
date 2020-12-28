@@ -299,7 +299,7 @@ namespace MBBSEmu.HostProcess
                                     ProcessPollingRoutine(session);
 
                                     //Keep the user in Polling Status if the polling routine is still there
-                                    if (session.PollingRoutine != IntPtr16.Empty)
+                                    if (session.PollingRoutine != FarPtr.Empty)
                                         session.Status = 192;
                                 }
 
@@ -507,7 +507,7 @@ namespace MBBSEmu.HostProcess
 
             var entryPoint = session.CurrentModule.ModuleDlls[0].EntryPoints["lonrou"];
 
-            if (entryPoint != IntPtr16.Empty)
+            if (entryPoint != FarPtr.Empty)
                 Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
@@ -682,7 +682,7 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.Values)
             {
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
-                if (syscycPointer == IntPtr16.Empty) continue;
+                if (syscycPointer == FarPtr.Empty) continue;
 
                 Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
             }
@@ -899,7 +899,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="channelNumber"></param>
         /// <param name="simulateCallFar"></param>
         /// <param name="initialStackValues"></param>
-        private ushort Run(string moduleName, IntPtr16 routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
+        private ushort Run(string moduleName, FarPtr routine, ushort channelNumber, bool simulateCallFar = false, Queue<ushort> initialStackValues = null)
         {
             var resultRegisters = _modules[moduleName].Execute(routine, channelNumber, simulateCallFar, false, initialStackValues);
             return resultRegisters.AX;

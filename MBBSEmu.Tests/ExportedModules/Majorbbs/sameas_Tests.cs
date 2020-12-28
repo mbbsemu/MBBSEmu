@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(str2Pointer, Encoding.ASCII.GetBytes(b));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SAMEAS_ORDINAL, new List<IntPtr16> {str1Pointer, str2Pointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SAMEAS_ORDINAL, new List<FarPtr> {str1Pointer, str2Pointer});
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }

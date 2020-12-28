@@ -15,10 +15,10 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 0, sizeof(short));
         }
 
-        public IntPtr16 Keys
+        public FarPtr Keys
         {
-            get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(2,4));
-            set => Array.Copy(value.Data, 0, Data, 2, IntPtr16.Size);
+            get => new FarPtr(new ReadOnlySpan<byte>(Data).Slice(2,4));
+            set => Array.Copy(value.Data, 0, Data, 2, FarPtr.Size);
         }
 
         public short State
@@ -93,16 +93,16 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 30, sizeof(short));
         }
 
-        public IntPtr16 Clsptr
+        public FarPtr Clsptr
         {
-            get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(32, 4));
-            set => Array.Copy(value.Data, 0, Data, 32, IntPtr16.Size);
+            get => new FarPtr(new ReadOnlySpan<byte>(Data).Slice(32, 4));
+            set => Array.Copy(value.Data, 0, Data, 32, FarPtr.Size);
         }
 
-        public IntPtr16 Polrou
+        public FarPtr Polrou
         {
-            get => new IntPtr16(new ReadOnlySpan<byte>(Data).Slice(36, 4));
-            set => Array.Copy(value.Data, 0, Data, 36, IntPtr16.Size);
+            get => new FarPtr(new ReadOnlySpan<byte>(Data).Slice(36, 4));
+            set => Array.Copy(value.Data, 0, Data, 36, FarPtr.Size);
         }
 
         public byte lcstat

@@ -42,12 +42,12 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     file name
         /// </summary>
-        public IntPtr16 filenam
+        public FarPtr filenam
         {
             get
             {
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
-                return new IntPtr16(btvFileStructSpan.Slice(128, 4));
+                return new FarPtr(btvFileStructSpan.Slice(128, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 128, 4);
         }
@@ -64,12 +64,12 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     key for searching, etc.
         /// </summary>
-        public IntPtr16 key
+        public FarPtr key
         {
             get
             {
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
-                return new IntPtr16(btvFileStructSpan.Slice(134, 4));
+                return new FarPtr(btvFileStructSpan.Slice(134, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 134, 4);
         }
@@ -77,12 +77,12 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     actual record contents
         /// </summary>
-        public IntPtr16 data
+        public FarPtr data
         {
             get
             {
                 ReadOnlySpan<byte> btvFileStructSpan = Data;
-                return new IntPtr16(btvFileStructSpan.Slice(138, 4));
+                return new FarPtr(btvFileStructSpan.Slice(138, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 138, 4);
         }

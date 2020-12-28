@@ -87,12 +87,12 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Text Variable definitions for variables registered via REGISTER_VARIABLE
         /// </summary>
-        public Dictionary<string, IntPtr16> TextVariables { get; set; }
+        public Dictionary<string, FarPtr> TextVariables { get; set; }
 
         /// <summary>
         ///     Global Command Handler Definitions for modules that register global commands
         /// </summary>
-        public List<IntPtr16> GlobalCommandHandlers { get; set; }
+        public List<FarPtr> GlobalCommandHandlers { get; set; }
 
         /// <summary>
         ///     Description of the Module as Defined by REGISTER_MODULE
@@ -272,7 +272,7 @@ namespace MBBSEmu.Module
         ///     stack pointer enough to where the stack on the nested call won't overlap with the stack on the parent caller.
         /// </param>
         /// <returns></returns>
-        public CpuRegisters Execute(IntPtr16 entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
+        public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Try to dequeue an execution unit, if one doesn't exist, create a new one

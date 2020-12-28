@@ -34,14 +34,14 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     application's tagspec handler routine
         /// </summary>
-        public IntPtr16 tshndl
+        public FarPtr tshndl
         {
             get
             {
                 ReadOnlySpan<byte> dataSpan = Data;
-                return new IntPtr16(dataSpan.Slice(18,4));
+                return new FarPtr(dataSpan.Slice(18,4));
             }
-            set => Array.Copy(value.Data, 0, Data, 18, IntPtr16.Size);
+            set => Array.Copy(value.Data, 0, Data, 18, FarPtr.Size);
         }
 
         public readonly byte[] Data;

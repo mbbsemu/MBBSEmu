@@ -129,9 +129,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private protected IntPtr16 GetParameterPointer(int parameterOrdinal)
+        private protected FarPtr GetParameterPointer(int parameterOrdinal)
         {
-            return new IntPtr16(GetParameter(parameterOrdinal + 1), GetParameter(parameterOrdinal));
+            return new FarPtr(GetParameter(parameterOrdinal + 1), GetParameter(parameterOrdinal));
         }
 
         /// <summary>
@@ -224,7 +224,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
 
-            var vsPrintfBase = new IntPtr16();
+            var vsPrintfBase = new FarPtr();
             if (isVsPrintf)
             {
                 vsPrintfBase = GetParameterPointer(currentParameter);
@@ -1035,7 +1035,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="btrievePointer"></param>
         /// <param name="btrieveFileProcessor"></param>
-        private protected void BtrieveSaveProcessor(IntPtr16 btrievePointer, BtrieveFileProcessor btrieveFileProcessor) =>
+        private protected void BtrieveSaveProcessor(FarPtr btrievePointer, BtrieveFileProcessor btrieveFileProcessor) =>
             _globalCache.Set(BtrieveCacheKey(btrievePointer),
                 btrieveFileProcessor);
 
@@ -1044,10 +1044,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="btrievePointer"></param>
         /// <returns></returns>
-        private protected BtrieveFileProcessor BtrieveGetProcessor(IntPtr16 btrievePointer) =>
+        private protected BtrieveFileProcessor BtrieveGetProcessor(FarPtr btrievePointer) =>
             _globalCache.Get<BtrieveFileProcessor>(BtrieveCacheKey(btrievePointer));
 
-        private protected bool BtrieveDeleteProcessor(IntPtr16 btrievePointer)
+        private protected bool BtrieveDeleteProcessor(FarPtr btrievePointer)
         {
             var key = BtrieveCacheKey(btrievePointer);
 
@@ -1066,7 +1066,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="btrievePointer"></param>
         /// <returns></returns>
-        private string BtrieveCacheKey(IntPtr16 btrievePointer) =>
+        private string BtrieveCacheKey(FarPtr btrievePointer) =>
             $"{Module.ModuleIdentifier}-Btrieve-{btrievePointer}";
 
         /// <summary>
@@ -1079,9 +1079,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected void BtrieveSetupGlobalPointer(string variableName, string fileName, ushort baseSegment)
         {
             //Construct Pointer for Btrieve Struct and Name/Data pointers
-            var btrievePointer = new IntPtr16(baseSegment, 0x0); //Btrieve Struct
-            var btrieveNamePointer = new IntPtr16(baseSegment, 0x100); //File Name Pointer
-            var btrieveDataPointer = new IntPtr16(baseSegment, 0x200); //Record Data Pointer
+            var btrievePointer = new FarPtr(baseSegment, 0x0); //Btrieve Struct
+            var btrieveNamePointer = new FarPtr(baseSegment, 0x100); //File Name Pointer
+            var btrieveDataPointer = new FarPtr(baseSegment, 0x200); //Record Data Pointer
 
             //Some Btrieve Processors can be declared elsewhere in the system, so verify the processor doesn't already exist before creating
             if (!_globalCache.ContainsKey($"{variableName}-PROCESSOR"))
@@ -1112,7 +1112,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             BtrieveSaveProcessor(btrievePointer, _globalCache.Get<BtrieveFileProcessor>($"{variableName}-PROCESSOR"));
 
             //Local Variable that will hold the pointer to the GENBB-POINTER
-            var localPointer = Module.Memory.GetOrAllocateVariablePointer(variableName, IntPtr16.Size);
+            var localPointer = Module.Memory.GetOrAllocateVariablePointer(variableName, FarPtr.Size);
             Module.Memory.SetPointer(localPointer, btrievePointer);
         }
 

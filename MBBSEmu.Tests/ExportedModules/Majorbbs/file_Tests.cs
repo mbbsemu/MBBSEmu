@@ -250,7 +250,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
-            
+
             var filep = fopen("FILE.TXT", "w");
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
@@ -298,7 +298,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             Reset();
 
-            Assert.Equal(-1, fclose(IntPtr16.Empty));
+            Assert.Equal(-1, fclose(FarPtr.Empty));
         }
     }
 }

@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PROFAN_ORDINAL, new List<IntPtr16>());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PROFAN_ORDINAL, new List<FarPtr>());
 
             //Verify Results
             ExecutePropertyTest(PROFAN_ORDINAL);
