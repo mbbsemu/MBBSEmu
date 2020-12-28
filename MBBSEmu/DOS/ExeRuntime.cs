@@ -42,7 +42,7 @@ namespace MBBSEmu.DOS
             Memory = new MemoryCore();
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
             _environmentVariables = environmentVariables;
             PSP_SEGMENT = (ushort)(file.Segments.Count + 0x10);
 

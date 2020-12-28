@@ -33,7 +33,7 @@ namespace MBBSEmu.CPU
          */
 
         public uint EAX { get; set; }
-        
+
         /// <summary>
         ///     AX Register
         /// </summary>
@@ -52,7 +52,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte AL
         {
-            get => (byte) (EAX & 0xFF);
+            get => (byte)(EAX & 0xFF);
             set
             {
                 EAX &= 0xFFFFFF00;
@@ -65,7 +65,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte AH
         {
-            get => (byte) (EAX >> 8);
+            get => (byte)(EAX >> 8);
             set
             {
                 EAX &= 0xFFFF00FF;
@@ -74,7 +74,7 @@ namespace MBBSEmu.CPU
         }
 
         public uint EBX { get; set; }
-        
+
         /// <summary>
         ///     Base Register
         /// </summary>
@@ -93,7 +93,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte BL
         {
-            get => (byte) (EBX & 0xFF);
+            get => (byte)(EBX & 0xFF);
             set
             {
                 EBX &= 0xFFFFFF00;
@@ -106,7 +106,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte BH
         {
-            get => (byte) (EBX >> 8);
+            get => (byte)(EBX >> 8);
             set
             {
                 EBX &= 0xFFFF00FF;
@@ -115,7 +115,7 @@ namespace MBBSEmu.CPU
         }
 
         public uint ECX { get; set; }
-        
+
         /// <summary>
         ///     Counter Register
         /// </summary>
@@ -134,7 +134,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte CL
         {
-            get => (byte) (ECX & 0xFF);
+            get => (byte)(ECX & 0xFF);
             set
             {
                 ECX &= 0xFFFFFF00;
@@ -147,7 +147,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte CH
         {
-            get => (byte) (ECX >> 8);
+            get => (byte)(ECX >> 8);
             set
             {
                 ECX &= 0xFFFF00FF;
@@ -156,7 +156,7 @@ namespace MBBSEmu.CPU
         }
 
         public uint EDX { get; set; }
-        
+
         /// <summary>
         ///     Data Register
         /// </summary>
@@ -175,7 +175,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte DL
         {
-            get => (byte) (EDX & 0xFF);
+            get => (byte)(EDX & 0xFF);
             set
             {
                 EDX &= 0xFFFFFF00;
@@ -188,7 +188,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte DH
         {
-            get => (byte) (EDX >> 8);
+            get => (byte)(EDX >> 8);
             set
             {
                 EDX &= 0xFFFF00FF;
@@ -285,6 +285,37 @@ namespace MBBSEmu.CPU
             };
         }
 
+        public uint GetValue32(Register register)
+        {
+            return register switch
+            {
+                Register.EAX => EAX,
+                Register.EBX => EBX,
+                Register.ECX => ECX,
+                Register.EDX => EDX,
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
+        }
+
+        public void SetValue32(Register register, uint value)
+        {
+            switch (register)
+            {
+                case Register.EAX:
+                    EAX = value;
+                    break;
+                case Register.EBX:
+                    EBX = value;
+                    break;
+                case Register.ECX:
+                    ECX = value;
+                    break;
+                case Register.EDX:
+                    EDX = value;
+                    break;
+            }
+        }
+
         public void SetValue(Register register, ushort value)
         {
             switch (register)
@@ -293,28 +324,28 @@ namespace MBBSEmu.CPU
                     AX = value;
                     break;
                 case Register.AL:
-                    AL = (byte) value;
+                    AL = (byte)value;
                     break;
                 case Register.AH:
-                    AH = (byte) value;
+                    AH = (byte)value;
                     break;
                 case Register.CL:
-                    CL = (byte) value;
+                    CL = (byte)value;
                     break;
                 case Register.DL:
-                    DL = (byte) value;
+                    DL = (byte)value;
                     break;
                 case Register.BL:
-                    BL = (byte) value;
+                    BL = (byte)value;
                     break;
                 case Register.CH:
-                    CH = (byte) value;
+                    CH = (byte)value;
                     break;
                 case Register.DH:
-                    DH = (byte) value;
+                    DH = (byte)value;
                     break;
                 case Register.BH:
-                    BH = (byte) value;
+                    BH = (byte)value;
                     break;
                 case Register.CX:
                     CX = value;
@@ -351,6 +382,18 @@ namespace MBBSEmu.CPU
                     break;
                 case Register.EIP:
                     IP = value;
+                    break;
+                case Register.EAX:
+                    EAX = value;
+                    break;
+                case Register.EBX:
+                    EBX = value;
+                    break;
+                case Register.ECX:
+                    ECX = value;
+                    break;
+                case Register.EDX:
+                    EDX = value;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);
@@ -395,7 +438,7 @@ namespace MBBSEmu.CPU
             DX = BitConverter.ToUInt16(regs.Slice(6, 2));
             SI = BitConverter.ToUInt16(regs.Slice(8, 2));
             DI = BitConverter.ToUInt16(regs.Slice(10, 2));
-            F  = BitConverter.ToUInt16(regs.Slice(14, 2));
+            F = BitConverter.ToUInt16(regs.Slice(14, 2));
         }
 
         /// <summary>

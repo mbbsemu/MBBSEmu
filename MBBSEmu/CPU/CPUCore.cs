@@ -260,12 +260,12 @@ namespace MBBSEmu.CPU
 #if DEBUG
 
             //Breakpoint
-            //if (Registers.CS == 0x1 && Registers.IP == 0x319)
-            //Debugger.Break();
+            //if (Registers.CS == 0x102 && Registers.IP == 0x2DE)
+            //    Debugger.Break();
 
             //Show Debugging
             //_showDebug = true;
-            //_showDebug = Registers.CS == 0x2 && Registers.IP >= 0x85F1 && Registers.IP <= 0x8621;
+            _showDebug = Registers.CS == 0x101 && Registers.IP >= 0x8E0 && Registers.IP <= 0x93E;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -707,10 +707,22 @@ namespace MBBSEmu.CPU
         /// <param name="opKind"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        private uint GetOperandValueUInt32(OpKind opKind)
+        private uint GetOperandValueUInt32(OpKind opKind, EnumOperandType operandType)
         {
             switch (opKind)
             {
+                case OpKind.Register:
+                {
+                    //for ops like imul bx, etc. where AX is the implicit destination
+                    if (operandType == EnumOperandType.Source && _currentInstruction.Op1Register == Register.None)
+                    {
+                        return Registers.EAX;
+                    }
+
+                    return Registers.GetValue32(operandType == EnumOperandType.Destination
+                        ? _currentInstruction.Op0Register
+                        : _currentInstruction.Op1Register);
+                }
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
                 case OpKind.Immediate16:
@@ -2075,8 +2087,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private uint Op_Sub_32()
         {
-            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind);
-            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind);
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             unchecked
             {
@@ -2282,8 +2294,11 @@ namespace MBBSEmu.CPU
 
                 //32Bit
                 case -4:
-                    Push((ushort)(_currentInstruction.Immediate8to32 >> 16));
-                    Push((ushort)_currentInstruction.Immediate8to32);
+                    {
+                        var valueToPush = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+                        Push((ushort)(valueToPush >> 16));
+                        Push((ushort)valueToPush);
+                    }
                     return;
                 default:
                     throw new Exception(
@@ -2311,6 +2326,12 @@ namespace MBBSEmu.CPU
                             GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source));
                         return;
                     }
+                case OpKind.Register when _currentOperationSize == 4:
+                {
+                    Registers.SetValue32(_currentInstruction.Op0Register,
+                        GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                    return;
+                }
                 case OpKind.Memory when _currentOperationSize == 1:
                     {
                         Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
@@ -2329,7 +2350,7 @@ namespace MBBSEmu.CPU
                     {
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
                             GetOperandOffset(_currentInstruction.Op0Kind),
-                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind)));
+                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
                         return;
                     }
 
@@ -2360,14 +2381,6 @@ namespace MBBSEmu.CPU
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0x0F00:
                     {
-
-                        if (_currentInstruction.FarBranchSelector % 0x100 == 1 && _currentInstruction.FarBranch16 < 0x1A8)
-                        {
-                            _logger.Warn("Call to PHAPI Static Link -- Ignoring");
-                            Registers.IP = (ushort) (Registers.IP + _currentInstruction.Length);
-                            break;
-                        }
-                        
                         //Far call to another Segment
                         Push(Registers.CS);
                         Push((ushort)(Registers.IP + _currentInstruction.Length));

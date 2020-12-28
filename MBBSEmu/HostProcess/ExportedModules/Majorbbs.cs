@@ -3757,7 +3757,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Load registers and pass to Int21h
             var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
-            new Int21h(registers, Module.Memory, _clock).Handle();
+            new Int21h(registers, Module.Memory, _clock, _logger, Module.ModulePath).Handle();
 
             Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }

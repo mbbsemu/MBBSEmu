@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
 
 namespace MBBSEmu.Module
@@ -149,6 +150,7 @@ namespace MBBSEmu.Module
             ModuleIdentifier = moduleIdentifier;
             ModuleDlls = new List<MbbsDll>();
 
+
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
                 path = Directory.GetCurrentDirectory();
@@ -186,7 +188,7 @@ namespace MBBSEmu.Module
                 {
                     var requiredDll = new MbbsDll(fileUtility, logger);
                     requiredDll.Load(Mdf.Requires[i].Trim(), ModulePath);
-                    requiredDll.SegmentOffset = (ushort)(0x100 * (i + 1));
+                    requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
                     ModuleDlls.Add(requiredDll);
                 }
             }
@@ -279,7 +281,7 @@ namespace MBBSEmu.Module
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
                 _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger);
+                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger, ModulePath);
             }
 
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
