@@ -1273,6 +1273,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///         anpopt - operation to perform
         ///         loktyp - lock type - unsupported in mbbsemu
         ///     Return: 1 if successful, 0 on failure
+        /// </summary>
         private void anpbtvl()
         {
             var recordPointer = GetParameterPointer(0);
@@ -2201,10 +2202,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{day:D2}/{month:D2}/{year % 100}\0";
+            var outputDate = $"{day:D2}/{month:D2}/{year % 100:D2}\0";
 
-            if (!Module.Memory.TryGetVariablePointer("NCEDAT", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable("NCEDAT", (ushort)outputDate.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCEDAT", (ushort) outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
@@ -3998,18 +3998,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedTime = GetParameter(0);
 
             var unpackedHour = (packedTime >> 11) & 0x1F;
-            var unpackedMinutes = (packedTime >> 5 & 0x1F);
-            var unpackedSeconds = packedTime & 0xF;
+            var unpackedMinutes = (packedTime >> 5) & 0x3F;
+            var unpackedSeconds = (packedTime << 1) & 0x3E;
 
             var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = unpackedTime.ToString("HH:mm:ss");
-
-            if (!Module.Memory.TryGetVariablePointer("NCTIME", out var variablePointer))
-            {
-                variablePointer = Module.Memory.AllocateVariable("NCTIME", (ushort)timeString.Length);
-            }
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCTIME", (ushort) timeString.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(timeString));
@@ -4021,7 +4017,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Returns a pointer to the first occurence of character in the C string str
+        ///     Returns a pointer to the first occurrence of character in the C string str
         ///
         ///     Signature: char * strchr ( const char * str, int character )
         ///
