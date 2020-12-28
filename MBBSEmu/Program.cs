@@ -282,8 +282,8 @@ namespace MBBSEmu
                             continue;
                         }
 
-                        //Check for Non Character MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0])))
+                        //Check for Non Character/Digit MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetterOrDigit(m["MenuOptionKey"][0])))
                         {
                             _logger.Error($"Invalid menu option key (NOT A-Z) for {m["Identifier"]}, module not loaded");
                             continue;
