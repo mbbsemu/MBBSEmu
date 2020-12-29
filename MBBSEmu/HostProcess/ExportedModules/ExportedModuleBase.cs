@@ -72,7 +72,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public CpuRegisters Registers;
 
         public MbbsModule Module;
-        
+
         /// <summary>
         ///     Specifies Module DLL being invoked from, if multiple are present
         /// </summary>
@@ -94,7 +94,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
 
-
         private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
             _clock = clock;
@@ -109,6 +108,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary = new PointerDictionary<FileStream>(1, int.MaxValue);
             McvPointerDictionary = new PointerDictionary<McvFile>();
 
+        }
+
+        /// <summary>
+        ///     Sets the parameter by ordinal passed into the routine
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected void SetParameter(int parameterOrdinal, ushort value)
+        {
+            Module.Memory.SetWord(Registers.SS, GetParameterOffset(parameterOrdinal), value);
+        }
+
+        /// <summary>
+        ///     Sets the parameter pointer by ordinal passed into the routine
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected void SetParameterPointer(int parameterOrdinal, FarPtr value)
+        {
+            SetParameter(parameterOrdinal, value.Offset);
+            SetParameter(parameterOrdinal + 1, value.Segment);
         }
 
         /// <summary>
@@ -179,7 +203,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected ushort GetParameterOffset(int parameterOrdinal) =>
-            (ushort) (Registers.BP + 6 + (2 * parameterOrdinal));
+            (ushort)(Registers.BP + 6 + (2 * parameterOrdinal));
 
         /// <summary>
         ///     Gets a string Parameter
@@ -519,7 +543,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                         default:
                                             value = GetParameter(currentParameter++);
                                             if (stringToParse[i] != 'u')
-                                                    value = (short)value;
+                                                value = (short)value;
                                             break;
                                     }
                                 }
