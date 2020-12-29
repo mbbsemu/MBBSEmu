@@ -297,55 +297,56 @@ namespace MBBSEmu.CPU
             };
         }
 
-        public void SetValue(Register register, uint value)
+        /// <summary>
+        ///     Sets the specified Register to the specified 8-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
+        public void SetValue(Register register, byte value)
         {
             switch (register)
             {
-                case Register.EAX:
-                    EAX = value;
+                case Register.AL:
+                    AL = value;
                     break;
-                case Register.EBX:
-                    EBX = value;
+                case Register.AH:
+                    AH = value;
                     break;
-                case Register.ECX:
-                    ECX = value;
+                case Register.BH:
+                    BH = value;
                     break;
-                case Register.EDX:
-                    EDX = value;
+                case Register.BL:
+                    BL = value;
+                    break;
+                case Register.CH:
+                    CH = value;
+                    break;
+                case Register.CL:
+                    CL = value;
+                    break;
+                case Register.DH:
+                    DH = value;
+                    break;
+                case Register.DL:
+                    DL = value;
+                    break;
+                default:
+                    SetValue(register, (ushort)value);
                     break;
             }
         }
 
+        /// <summary>
+        ///     Sets the specified Register to the specified 16-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
         public void SetValue(Register register, ushort value)
         {
             switch (register)
             {
                 case Register.AX:
                     AX = value;
-                    break;
-                case Register.AL:
-                    AL = (byte)value;
-                    break;
-                case Register.AH:
-                    AH = (byte)value;
-                    break;
-                case Register.CL:
-                    CL = (byte)value;
-                    break;
-                case Register.DL:
-                    DL = (byte)value;
-                    break;
-                case Register.BL:
-                    BL = (byte)value;
-                    break;
-                case Register.CH:
-                    CH = (byte)value;
-                    break;
-                case Register.DH:
-                    DH = (byte)value;
-                    break;
-                case Register.BH:
-                    BH = (byte)value;
                     break;
                 case Register.CX:
                     CX = value;
@@ -383,6 +384,21 @@ namespace MBBSEmu.CPU
                 case Register.EIP:
                     IP = value;
                     break;
+                default:
+                    SetValue(register, (uint)value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Sets the specified Register to the specified 32-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
+        public void SetValue(Register register, uint value)
+        {
+            switch (register)
+            {
                 case Register.EAX:
                     EAX = value;
                     break;

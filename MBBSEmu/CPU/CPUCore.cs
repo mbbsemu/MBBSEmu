@@ -968,7 +968,12 @@ namespace MBBSEmu.CPU
         {
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.Register when _currentOperationSize <= 2:
+                case OpKind.Register when _currentOperationSize == 1:
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register, (byte)result);
+                        return;
+                    }
+                case OpKind.Register when _currentOperationSize == 2:
                     {
                         Registers.SetValue(_currentInstruction.Op0Register, (ushort)result);
                         return;
