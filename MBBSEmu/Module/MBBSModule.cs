@@ -176,12 +176,14 @@ namespace MBBSEmu.Module
 
             if (Mdf.Requires.Count > 0)
             {
-                for (var i = 0; i < Mdf.Requires.Count; i++)
+                foreach (var r in Mdf.Requires)
                 {
                     var requiredDll = new MbbsDll(fileUtility, logger);
-                    requiredDll.Load(Mdf.Requires[i].Trim(), ModulePath);
-                    requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
-                    ModuleDlls.Add(requiredDll);
+                    if (requiredDll.Load(r.Trim(), ModulePath))
+                    {
+                        requiredDll.SegmentOffset = (ushort) (ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
+                        ModuleDlls.Add(requiredDll);
+                    }
                 }
             }
 

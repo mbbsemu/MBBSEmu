@@ -51,11 +51,17 @@ namespace MBBSEmu.Module
             
         }
         
-        public void Load(string file, string path)
-        { 
+        public bool Load(string file, string path)
+        {
             var neFile = _fileUtility.FindFile(path, $"{file}.DLL");
             var fullNeFilePath = Path.Combine(path, neFile);
+            if (!System.IO.File.Exists(fullNeFilePath))
+            {
+                _logger.Warn($"Unable to Load {neFile}");
+                return false;
+            }
             File = new NEFile(_logger, fullNeFilePath);
+            return true;
         }
     }
 }
