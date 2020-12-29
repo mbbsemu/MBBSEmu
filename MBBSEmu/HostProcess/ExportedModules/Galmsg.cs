@@ -40,17 +40,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(ushort channelNumber)
         {
-            throw new NotImplementedException();
+            return;
         }
 
         public void SetRegisters(CpuRegisters registers)
         {
-            throw new NotImplementedException();
+            return;
         }
 
         public void UpdateSession(ushort channelNumber)
         {
-            throw new NotImplementedException();
+            return;
         }
     }
 }

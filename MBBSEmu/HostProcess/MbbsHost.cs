@@ -848,6 +848,7 @@ namespace MBBSEmu.HostProcess
             module.ExportedModuleDictionary.Add(Phapi.Segment, GetFunctions(module, "PHAPI"));
             module.ExportedModuleDictionary.Add(Galme.Segment, GetFunctions(module, "GALME"));
             module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
+            module.ExportedModuleDictionary.Add(Galmsg.Segment, GetFunctions(module, "GALMSG"));
 
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
