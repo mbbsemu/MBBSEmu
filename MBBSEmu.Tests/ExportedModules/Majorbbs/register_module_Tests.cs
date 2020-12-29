@@ -35,21 +35,21 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, REGISTER_MODULE_ORDINAL, new List<FarPtr> { modulePointer });
 
             Assert.Equal(Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0'), mbbsModule.ModuleDescription);
-            Assert.Equal(new FarPtr(0x0001, 0x0001), mbbsModule.EntryPoints["sttrou"]);
-            Assert.Equal(new FarPtr(0x0002, 0x0002), mbbsModule.EntryPoints["dlarou"]);
-            Assert.Equal(new FarPtr(0x0003, 0x0003), mbbsModule.EntryPoints["finrou"]);
-            Assert.Equal(new FarPtr(0x0004, 0x0004), mbbsModule.EntryPoints["huprou"]);
-            Assert.Equal(new FarPtr(0x0005, 0x0005), mbbsModule.EntryPoints["injrou"]);
-            Assert.Equal(new FarPtr(0x0006, 0x0006), mbbsModule.EntryPoints["lofrou"]);
-            Assert.Equal(new FarPtr(0x0007, 0x0007), mbbsModule.EntryPoints["lonrou"]);
-            Assert.Equal(new FarPtr(0x0008, 0x0008), mbbsModule.EntryPoints["mcurou"]);
-            Assert.Equal(new FarPtr(0x0009, 0x0009), mbbsModule.EntryPoints["stsrou"]);
-            Assert.NotEqual(FarPtr.Empty, mbbsEmuMemoryCore.GetPointer(mbbsEmuMemoryCore.GetVariablePointer("MODULE") + (2 * mbbsModule.StateCode)));
+            Assert.Equal(new FarPtr(0x0001, 0x0001), mbbsModule.ModuleDlls[0].EntryPoints["sttrou"]);
+            Assert.Equal(new FarPtr(0x0002, 0x0002), mbbsModule.ModuleDlls[0].EntryPoints["dlarou"]);
+            Assert.Equal(new FarPtr(0x0003, 0x0003), mbbsModule.ModuleDlls[0].EntryPoints["finrou"]);
+            Assert.Equal(new FarPtr(0x0004, 0x0004), mbbsModule.ModuleDlls[0].EntryPoints["huprou"]);
+            Assert.Equal(new FarPtr(0x0005, 0x0005), mbbsModule.ModuleDlls[0].EntryPoints["injrou"]);
+            Assert.Equal(new FarPtr(0x0006, 0x0006), mbbsModule.ModuleDlls[0].EntryPoints["lofrou"]);
+            Assert.Equal(new FarPtr(0x0007, 0x0007), mbbsModule.ModuleDlls[0].EntryPoints["lonrou"]);
+            Assert.Equal(new FarPtr(0x0008, 0x0008), mbbsModule.ModuleDlls[0].EntryPoints["mcurou"]);
+            Assert.Equal(new FarPtr(0x0009, 0x0009), mbbsModule.ModuleDlls[0].EntryPoints["stsrou"]);
+            Assert.NotEqual(FarPtr.Empty, mbbsEmuMemoryCore.GetPointer(mbbsEmuMemoryCore.GetVariablePointer("MODULE") + (2 * mbbsModule.ModuleDlls[0].StateCode)));
 
             //Verify the Local Copy
             var localModulePointer =
                 mbbsEmuMemoryCore.GetPointer(
-                    mbbsEmuMemoryCore.GetVariablePointer("MODULE") + (2 * mbbsModule.StateCode));
+                    mbbsEmuMemoryCore.GetVariablePointer("MODULE") + (2 * mbbsModule.ModuleDlls[0].StateCode));
 
             var localModuleStruct = new ModuleStruct(mbbsEmuMemoryCore.GetArray(localModulePointer, ModuleStruct.Size));
 
