@@ -272,6 +272,28 @@ namespace MBBSEmu.Memory
         void SetWord(string variableName, ushort value);
 
         /// <summary>
+        ///     Sets the specified double word at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="value"></param>
+        void SetDWord(FarPtr pointer, uint value);
+
+        /// <summary>
+        ///     Sets the specified double word at the desired segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
+        void SetDWord(ushort segment, ushort offset, uint value);
+
+        /// <summary>
+        ///     Sets the specified double word at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="value"></param>
+        void SetDWord(string variableName, uint value);
+
+        /// <summary>
         ///     Sets the specified array at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>

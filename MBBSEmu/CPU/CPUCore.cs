@@ -261,13 +261,13 @@ namespace MBBSEmu.CPU
 
             //Breakpoint
             //if (Registers.CS == 0x12 && Registers.IP == 0x53C)
-              //  Debugger.Break();
+            //  Debugger.Break();
 
             //Show Debugging
             //_showDebug = true
             //_showDebug = Registers.CS == 0x12 && Registers.IP >= 0x4E3 && Registers.IP <= 0x69A;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
-            
+
             if (_showDebug)
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
 #endif
@@ -584,6 +584,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Movsw:
                     Op_Movsw();
                     break;
+                case Mnemonic.Shld:
+                    Op_Shld();
+                    break;
+                case Mnemonic.Mul:
+                    Op_Mul();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -712,17 +718,17 @@ namespace MBBSEmu.CPU
             switch (opKind)
             {
                 case OpKind.Register:
-                {
-                    //for ops like imul bx, etc. where AX is the implicit destination
-                    if (operandType == EnumOperandType.Source && _currentInstruction.Op1Register == Register.None)
                     {
-                        return Registers.EAX;
-                    }
+                        //for ops like imul bx, etc. where AX is the implicit destination
+                        if (operandType == EnumOperandType.Source && _currentInstruction.Op1Register == Register.None)
+                        {
+                            return Registers.EAX;
+                        }
 
-                    return Registers.GetValue32(operandType == EnumOperandType.Destination
-                        ? _currentInstruction.Op0Register
-                        : _currentInstruction.Op1Register);
-                }
+                        return Registers.GetValue32(operandType == EnumOperandType.Destination
+                            ? _currentInstruction.Op0Register
+                            : _currentInstruction.Op1Register);
+                    }
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
                 case OpKind.Immediate16:
@@ -963,27 +969,33 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Register when _currentOperationSize <= 2:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register, (ushort)result);
-                    return;
-                }
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register, (ushort)result);
+                        return;
+                    }
                 case OpKind.Register when _currentOperationSize == 4:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register, result);
-                    return;
-                }
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register, result);
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 1:
-                {
-                    Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), (byte)result);
-                    return;
-                }
+                    {
+                        Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), (byte)result);
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 2:
-                {
-                    Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), (ushort)result);
-                    return;
-                }
+                    {
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), (ushort)result);
+                        return;
+                    }
+                case OpKind.Memory when _currentOperationSize == 4:
+                    {
+                        Memory.SetDWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), result);
+                        return;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Destination: {_currentInstruction.Op0Kind}");
             }
@@ -1663,6 +1675,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Inc_8(),
                 2 => Op_Inc_16(),
+                4 => Op_Inc_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1692,6 +1705,21 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination + 1);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Inc_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            unchecked
+            {
+                var result = destination + 1;
                 Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Flags_EvaluateSignZero(result);
@@ -1788,6 +1816,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Xor_8(),
                 2 => Op_Xor_16(),
+                4 => Op_Xor_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1816,6 +1845,17 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             var result = (ushort)(destination ^ source);
+            Flags_EvaluateSignZero(result);
+            return result;
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Xor_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            var result = destination ^ source;
             Flags_EvaluateSignZero(result);
             return result;
         }
@@ -2009,6 +2049,9 @@ namespace MBBSEmu.CPU
                 case 2:
                     Op_Test_16();
                     break;
+                case 4:
+                    Op_Test_32();
+                    break;
                 default:
                     throw new Exception("Unsupported Operation Size");
             }
@@ -2034,6 +2077,16 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            destination &= source;
+            Flags_EvaluateSignZero(destination);
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Test_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
             Flags_EvaluateSignZero(destination);
@@ -2133,6 +2186,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Add_8(addCarry),
                 2 => Op_Add_16(addCarry),
+                4 => Op_Add_32(addCarry),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -2163,6 +2217,25 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            unchecked
+            {
+                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                    source++;
+
+                var result = (ushort)(source + destination);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private ushort Op_Add_32(bool addCarry)
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             unchecked
             {
@@ -2219,6 +2292,7 @@ namespace MBBSEmu.CPU
             {
                 1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Destination),
                 2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Destination),
+                4 => GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Destination),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -2226,15 +2300,16 @@ namespace MBBSEmu.CPU
             {
                 1 => GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Source),
                 2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
+                4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
                 _ => throw new Exception("Unsupported Operation Size")
             };
-            ushort result;
+            uint result;
             unchecked
             {
-                result = (ushort)(operand2 * operand3);
+                result = operand2 * operand3;
             }
 
-            Registers.SetValue(_currentInstruction.Op0Register, result);
+            WriteToDestination(result);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2249,6 +2324,69 @@ namespace MBBSEmu.CPU
                     Op_Idiv_16();
                     return;
             }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Mul()
+        {
+            switch (_currentInstruction.OpCount)
+            {
+                case 1:
+                    Op_Mul_1operand();
+                    return;
+                case 2:
+                    throw new NotImplementedException("IMUL with 2 Opcodes not implemented");
+                case 3:
+                    Op_Mul_3operand();
+                    return;
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Mul_1operand()
+        {
+            var operand2 = Registers.AX;
+            var operand3 = _currentOperationSize switch
+            {
+                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination),
+                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
+                4 => GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+            uint result;
+            unchecked
+            {
+                result = operand2 * operand3;
+            }
+
+            Registers.EAX = result;
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Mul_3operand()
+        {
+            var operand2 = _currentOperationSize switch
+            {
+                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Destination),
+                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Destination),
+                4 => GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Destination),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            var operand3 = _currentOperationSize switch
+            {
+                1 => GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Source),
+                2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
+                4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+            uint result;
+            unchecked
+            {
+                result = operand2 * operand3;
+            }
+
+            WriteToDestination(result);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2351,11 +2489,11 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 case OpKind.Register when _currentOperationSize == 4:
-                {
-                    Registers.SetValue(_currentInstruction.Op0Register,
-                        GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source));
-                    return;
-                }
+                    {
+                        Registers.SetValue(_currentInstruction.Op0Register,
+                            GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source));
+                        return;
+                    }
                 case OpKind.Memory when _currentOperationSize == 1:
                     {
                         Memory.SetByte(Registers.GetValue(_currentInstruction.MemorySegment),
@@ -3499,6 +3637,44 @@ namespace MBBSEmu.CPU
         private void Op_Fchs()
         {
             FpuStack[Registers.Fpu.GetStackTop()] = -FpuStack[Registers.Fpu.GetStackTop()];
+        }
+
+        /// <summary>
+        ///     Extended Shift Left
+        /// </summary>
+        private void Op_Shld()
+        {
+            uint result = 0;
+            switch (_currentOperationSize)
+            {
+                case 4:
+                    result = Op_Shld32();
+                    break;
+                default:
+                    break;
+            }
+
+            WriteToDestination(result);
+        }
+
+        private uint Op_Shld32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            if (count > sizeof(uint))
+                return 0;
+
+            var result = destination << count;
+            result |= (source >> (sizeof(uint) - count));
+
+            Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+            Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+            Flags_EvaluateSignZero(result);
+
+            return result;
+
         }
 
         /// <summary>
