@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -1254,6 +1255,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 128:
                     cncsig();
                     break;
+                case 905:
+                    stzcat();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -1457,6 +1461,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 $"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
             Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Concatenates Two Strings with a fixed length
+        ///
+        ///     Signature: char *stzcat(char *dst,char *src,int num);
+        /// </summary>
+        private void stzcat()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+            var limit = GetParameter(4);
+
+            var stringLength = Module.Memory.GetString(destinationPointer, true).Length;
+
+            destinationPointer += stringLength;
+            limit -= (ushort)stringLength;
+            
+            SetParameterPointer(0, destinationPointer);
+            SetParameter(4, limit);
+            
+            stzcpy();
         }
 
         /// <summary>
