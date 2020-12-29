@@ -1,11 +1,9 @@
 ﻿using MBBSEmu.Disassembler;
-using MBBSEmu.HostProcess.ExecutionUnits;
-using MBBSEmu.HostProcess.ExportedModules;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.IO;
 
 namespace MBBSEmu.Module
 {
@@ -33,6 +31,15 @@ namespace MBBSEmu.Module
         ///     This value will be used during relocation patching so CALL FAR calls will be within the same Memory Space
         /// </summary>
         public ushort SegmentOffset { get; set; }
+
+        /// <summary>
+        ///     State returned by REGISTER_MODULE
+        ///
+        ///     Used to identify module within The MajorBBS/Worldgroup
+        ///
+        ///     Because sub-DLL's also have an _INIT_ routine and can call REGISTER_MODULE, this is associated at the DLL level
+        /// </summary>
+        public short StateCode { get; set; }
 
         public MbbsDll(IFileUtility fileUtility, ILogger logger)
         {

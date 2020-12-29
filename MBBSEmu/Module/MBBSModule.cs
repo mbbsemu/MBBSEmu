@@ -38,13 +38,6 @@ namespace MBBSEmu.Module
         public IMemoryCore Memory;
 
         /// <summary>
-        ///     State returned by REGISTER_MODULE
-        ///
-        ///     Used to identify module within The MajorBBS/Worldgroup
-        /// </summary>
-        public short StateCode { get; set; }
-
-        /// <summary>
         ///     The unique name of the module (same as the DLL name)
         /// </summary>
         public readonly string ModuleIdentifier;
@@ -104,7 +97,6 @@ namespace MBBSEmu.Module
         ///     Required DLL's are DLL Files that are referenced by the Module
         /// </summary>
         public List<MbbsDll> ModuleDlls { get; set; }
-
 
         /// <summary>
         ///     Executions Units (EU's) for the Module
@@ -277,6 +269,17 @@ namespace MBBSEmu.Module
         public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
+            //Set the proper DLL making the call based on the Segment
+            for (ushort i = 0; i < ModuleDlls.Count; i++)
+            {
+                var dll = ModuleDlls[i];
+                if (entryPoint.Segment >= dll.SegmentOffset &&
+                    entryPoint.Segment <= (dll.SegmentOffset + dll.File.SegmentTable.Count))
+
+                    foreach (var (_, value) in ExportedModuleDictionary)
+                        ((ExportedModuleBase)value).ModuleDll = i;
+            }
+
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {

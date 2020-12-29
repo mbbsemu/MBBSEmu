@@ -433,7 +433,7 @@ namespace MBBSEmu.HostProcess
             session.StatusChange = false;
             session.Status = 3;
             session.SessionState = EnumSessionState.InModule;
-            session.UsrPtr.State = session.CurrentModule.StateCode;
+            session.UsrPtr.State = session.CurrentModule.ModuleDlls[0].StateCode;
             ProcessSTTROU(session);
         }
 
@@ -823,19 +823,23 @@ namespace MBBSEmu.HostProcess
             PatchRelocation(module);
 
             //Run Segments through AOT Decompiler & add them to Memory
-            foreach (var dll in module.ModuleDlls)
+            for (var i = 0; i < module.ModuleDlls.Count; i++)
             {
+                var dll = module.ModuleDlls[i];
+
+                //Only add the main module to the Modules List
+                if (i == 0)
+                    _modules[module.ModuleIdentifier] = module;
+
                 foreach (var seg in dll.File.SegmentTable)
                 {
                     seg.Ordinal += dll.SegmentOffset;
                     module.Memory.AddSegment(seg);
                     Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
                 }
-            }
 
-            //Add it to the Module Dictionary
-            module.StateCode = (short)_modules.Count;
-            _modules[module.ModuleIdentifier] = module;
+                dll.StateCode = (short) (_modules.Count * 10 + i);
+            }
 
             //Run INIT
             foreach (var dll in module.ModuleDlls.OrderBy(m => m.File.FileName))

@@ -1472,28 +1472,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleStruct = new ModuleStruct(Module.Memory.GetArray(destinationPointer, ModuleStruct.Size));
 
             //We create a copy in Variable Memory in case the MODULE pointer that was passed in was on the stack
-            var localModuleStructPointer = Module.Memory.AllocateVariable("MODULE-LOCAL", ModuleStruct.Size);
-            Module.Memory.SetArray("MODULE-LOCAL", moduleStruct.Data);
+            var localModuleStructPointer = Module.Memory.AllocateVariable($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", ModuleStruct.Size);
+            Module.Memory.SetArray($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", moduleStruct.Data);
 
             //Set Module Values from Struct
             Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
-            Module.ModuleDlls[0].EntryPoints.Add("lonrou", moduleStruct.lonrou);
-            Module.ModuleDlls[0].EntryPoints.Add("sttrou", moduleStruct.sttrou);
-            Module.ModuleDlls[0].EntryPoints.Add("stsrou", moduleStruct.stsrou);
-            Module.ModuleDlls[0].EntryPoints.Add("injrou", moduleStruct.injrou);
-            Module.ModuleDlls[0].EntryPoints.Add("lofrou", moduleStruct.lofrou);
-            Module.ModuleDlls[0].EntryPoints.Add("huprou", moduleStruct.huprou);
-            Module.ModuleDlls[0].EntryPoints.Add("mcurou", moduleStruct.mcurou);
-            Module.ModuleDlls[0].EntryPoints.Add("dlarou", moduleStruct.dlarou);
-            Module.ModuleDlls[0].EntryPoints.Add("finrou", moduleStruct.finrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("lonrou", moduleStruct.lonrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("sttrou", moduleStruct.sttrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("stsrou", moduleStruct.stsrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("injrou", moduleStruct.injrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("lofrou", moduleStruct.lofrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("huprou", moduleStruct.huprou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("mcurou", moduleStruct.mcurou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("dlarou", moduleStruct.dlarou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("finrou", moduleStruct.finrou);
 
             //usrptr->state is the Module Number in use, as assigned by the host process
-            Registers.AX = (ushort)Module.StateCode;
-
-            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode *2), localModuleStructPointer);
+            Registers.AX = (ushort)Module.ModuleDlls[ModuleDll].StateCode;
+            
+            var moduleStructOffset = Module.ModuleDlls[ModuleDll].StateCode * 4;
+            
+            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset, localModuleStructPointer);
 
 #if DEBUG
-            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {localModuleStructPointer}");
+            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset}) set to {localModuleStructPointer}");
             _logger.Info($"Module Description set to {Module.ModuleDescription}");
 #endif
         }

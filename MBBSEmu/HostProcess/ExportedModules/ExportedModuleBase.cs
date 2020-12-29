@@ -72,6 +72,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public CpuRegisters Registers;
 
         public MbbsModule Module;
+        
+        /// <summary>
+        ///     Specifies Module DLL being invoked from, if multiple are present
+        /// </summary>
+        public ushort ModuleDll;
 
         /// <summary>
         ///     Current Channel Number being serviced
