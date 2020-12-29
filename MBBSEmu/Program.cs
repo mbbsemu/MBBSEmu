@@ -277,7 +277,7 @@ namespace MBBSEmu
 
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                        .AddJsonFile(_moduleConfigFileName, optional: false, reloadOnChange: true).Build();
+                        .AddJsonFile(_moduleConfigFileName, false, true).Build();
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
@@ -288,10 +288,10 @@ namespace MBBSEmu
                             continue;
                         }
 
-                        //Check for Non Character MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetter(m["MenuOptionKey"][0])))
+                        //Check for Non Character/Digit MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetterOrDigit(m["MenuOptionKey"][0])))
                         {
-                            _logger.Error($"Invalid menu option key (NOT A-Z) for {m["Identifier"]}, module not loaded");
+                            _logger.Error($"Invalid menu option key (NOT A-Z or 0-9) for {m["Identifier"]}, module not loaded");
                             continue;
                         }
 
