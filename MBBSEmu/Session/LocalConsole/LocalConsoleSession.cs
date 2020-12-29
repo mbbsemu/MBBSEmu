@@ -48,7 +48,7 @@ namespace MBBSEmu.Session.LocalConsole
                 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF  //F0
         };
 
-        public LocalConsoleSession(ILogger logger, string sessionId, IMbbsHost host) : base(sessionId)
+        public LocalConsoleSession(ILogger logger, string sessionId, IMbbsHost host) : base(host, sessionId, EnumSessionState.Unauthenticated)
         {
             _logger = logger;
             _host = host;
@@ -68,8 +68,6 @@ namespace MBBSEmu.Session.LocalConsole
             //Detect if we're on Windows and enable VT100 on the current Terminal Window
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 new Win32VT100().Enable();
-
-            SessionState = EnumSessionState.Unauthenticated;
 
             (_logger as CustomLogger)?.DisableConsoleLogging();
 

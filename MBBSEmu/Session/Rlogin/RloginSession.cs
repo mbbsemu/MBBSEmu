@@ -17,7 +17,6 @@ namespace MBBSEmu.Session.Rlogin
     /// </summary>
     public class RloginSession : SocketSession
     {
-        private readonly IMbbsHost _host;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
         private readonly AppSettings _configuration;
         private readonly List<string> rloginStrings = new List<string>();
@@ -25,9 +24,8 @@ namespace MBBSEmu.Session.Rlogin
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(logger, rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(host, logger, rloginConnection)
         {
-            _host = host;
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;
             _configuration = configuration;
@@ -86,7 +84,7 @@ namespace MBBSEmu.Session.Rlogin
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
-            
+
             // we have 3 strings, pick out username and launch appropriately
             Username = rloginStrings.First(s => !string.IsNullOrEmpty(s));
 
@@ -96,7 +94,7 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
-                CurrentModule = _host.GetModule(ModuleIdentifier);
+                CurrentModule = _mbbsHost.GetModule(ModuleIdentifier);
                 InputBuffer.WriteByte((byte)CurrentModule.MenuOptionKey[0]);
                 SessionState = EnumSessionState.RloginEnteringModule;
             }

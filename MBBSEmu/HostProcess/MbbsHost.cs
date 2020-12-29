@@ -92,6 +92,12 @@ namespace MBBSEmu.HostProcess
         ///     Timer that triggers when nightly cleanup should occur
         /// </summary>
         private readonly Timer _timer;
+        /// <summary>
+        ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
+        /// </summary>
+        private readonly Timer _tickTimer;
+        private EventWaitHandle _timerEvent;
+
 
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
@@ -128,7 +134,14 @@ namespace MBBSEmu.HostProcess
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
             _cleanupTime = _configuration.CleanupTime;
-            _timer = new Timer(unused => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            _timer = new Timer(_ => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+
+            if (_configuration.TimerHertz > 0)
+            {
+                _timerEvent = new AutoResetEvent(true);
+                _tickTimer = new Timer(_ => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
+            }
+
             Logger.Info("Constructed MBBSEmu Host!");
         }
 
@@ -170,6 +183,10 @@ namespace MBBSEmu.HostProcess
         {
             _isRunning = false;
             _timer.Dispose();
+            _tickTimer?.Dispose();
+            // this set must come after _isRunning is set to false, to trigger the exit of the
+            // worker thread.
+            _timerEvent?.Set();
         }
 
         public void ScheduleNightlyShutdown(EventWaitHandle eventWaitHandle)
@@ -183,6 +200,17 @@ namespace MBBSEmu.HostProcess
             _workerThread.Join();
         }
 
+        private void WaitForNextTick()
+        {
+            if (_timerEvent == null ||
+                _channelDictionary.Values.Any(session => session.DataFromClient.Count > 0 || session.DataToClient.Count > 0 || session.DataToProcess))
+                return;
+
+            _timerEvent.WaitOne();
+        }
+
+        public void TriggerProcessing() => _timerEvent?.Set();
+
         /// <summary>
         ///     This is the main MajorBBS/Worldgroup loop similar to how it actually functions with the software itself.
         ///
@@ -193,6 +221,8 @@ namespace MBBSEmu.HostProcess
         {
             while (_isRunning)
             {
+                WaitForNextTick();
+
                 ProcessNightlyCleanup();
 
                 //Handle Channels
