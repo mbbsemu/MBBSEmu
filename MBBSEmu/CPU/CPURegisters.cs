@@ -297,7 +297,7 @@ namespace MBBSEmu.CPU
             };
         }
 
-        public void SetValue32(Register register, uint value)
+        public void SetValue(Register register, uint value)
         {
             switch (register)
             {
