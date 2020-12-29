@@ -123,7 +123,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void DosGetModHandle()
         {
             _logger.Warn($"Getting External Modules is currently not supported");
-            Registers.AX = 0x126;
+            Registers.AX = 0;
         }
 
         /// <summary>
