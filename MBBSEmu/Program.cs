@@ -204,8 +204,7 @@ namespace MBBSEmu
                             //Check to see if running Windows and earlier then Windows 8.0
                             if (OperatingSystem.IsWindows() && !OperatingSystem.IsWindowsVersionAtLeast(6, 2))
                             {
-                                Console.WriteLine("Console not supported on versions of Windows earlier then 8.0");
-                                break;
+                                throw new ArgumentException("Console not supported on versions of Windows earlier than 8.0");
                             }
                             
                             _isConsoleSession = true;
