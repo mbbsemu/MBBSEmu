@@ -1,3 +1,4 @@
+using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Enums;
 using NLog;
 using System;
@@ -42,7 +43,7 @@ namespace MBBSEmu.Session.Telnet
 
         private readonly IacFilter _iacFilter;
 
-        public TelnetSession(ILogger logger, Socket telnetConnection, AppSettings configuration) : base(logger, telnetConnection)
+        public TelnetSession(IMbbsHost mbbsHost, ILogger logger, Socket telnetConnection, AppSettings configuration) : base(mbbsHost, logger, telnetConnection)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;

@@ -11,7 +11,7 @@ namespace MBBSEmu.Session
     {
         private readonly BlockingCollection<byte> _data = new BlockingCollection<byte>();
 
-        public TestSession(IMbbsHost host) : base("test")
+        public TestSession(IMbbsHost host) : base(host, "test", EnumSessionState.EnteringModule)
         {
             SendToClientMethod = Send;
             OutputEnabled = true;
@@ -19,22 +19,9 @@ namespace MBBSEmu.Session
             CurrentModule = host?.GetModule("MBBSEMU");
 
             SessionType = EnumSessionType.Test;
-            SessionState = EnumSessionState.EnteringModule;
 
             Username = "Sysop";
             Email  = "sysop@grnet.com";
-        }
-
-        private EnumSessionState _enumSessionState;
-
-        public event EventHandler<EnumSessionState> OnSessionStateChanged;
-
-        public override EnumSessionState SessionState {
-            get => _enumSessionState;
-            set {
-                _enumSessionState = value;
-                OnSessionStateChanged?.Invoke(this, value);
-            }
         }
 
         public override void Stop() {}

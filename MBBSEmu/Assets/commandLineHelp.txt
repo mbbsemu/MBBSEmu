@@ -11,7 +11,7 @@ Command Line Options:
                     loaded and executed
 -M <identifier>     Module Identifier (Overrides -C)
 -P <path>           Path To Module (Overrides -C)
--K <menukey>        Menu Option Key (A-Z, Overrides -C) 
+-K <menukey>        Menu Option Key (A-Z or 0-9, Overrides -C) 
 -APIREPORT          Generate API Report
                     This generates a JSON file which details the imported APIs used by the
                     module, assisting in development of MBBSEmu
@@ -67,6 +67,6 @@ Example Module Configuration JSON File Structure:
 }
 
 -----------------------------------------------------------
-Please consider supporting this project by joining our Patreon:
-https://www.patreon.com/mbbsemu
+Please consider contributing to this project by visiting:
+https://github.com/enusbaum/MBBSEmu
 -----------------------------------------------------------

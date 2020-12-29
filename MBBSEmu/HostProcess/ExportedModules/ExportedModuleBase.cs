@@ -386,6 +386,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         }
                         i++;
                     }
+
+
                     if (!string.IsNullOrEmpty(stringPrecisionValue))
                         stringPrecision = int.Parse(stringPrecisionValue);
 
@@ -496,7 +498,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'd':
                         case 'u':
                             {
-                                padCharacter = '0';
+                                if (stringPrecision > 0)
+                                    padCharacter = '0';
 
                                 long value;
                                 if (isVsPrintf)

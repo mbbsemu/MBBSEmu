@@ -45,6 +45,7 @@ namespace MBBSEmu
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
+        public int TimerHertz => GetAppSettingsFromConfiguration<int>("Timer.Hertz");
 
         //Optional Keys
         public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
@@ -125,6 +126,10 @@ namespace MBBSEmu
                         return (T)value;
                     case "Btrieve.CacheSize":
                         value = 4;
+                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
+                    case "Timer.Hertz":
+                        value = 0;
                         Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
                         return (T)value;
                     default:
