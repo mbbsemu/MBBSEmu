@@ -115,13 +115,13 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.EBX = valueToMultiply;
 
             var instructions = new Assembler(16);
-            instructions.mul(bx);
+            instructions.mul(ebx);
             CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedValue, (ulong)mbbsEmuCpuRegisters.EDX << 32 | mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(expectedValue, ((ulong)mbbsEmuCpuRegisters.EDX << 32) | mbbsEmuCpuRegisters.EAX);
             Assert.Equal(carryFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
             Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
         }
@@ -147,7 +147,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedValue, (ulong)mbbsEmuCpuRegisters.EDX << 32 | mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(expectedValue, ((ulong)mbbsEmuCpuRegisters.EDX << 32) | mbbsEmuCpuRegisters.EAX);
             Assert.Equal(carryFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
             Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
         }
