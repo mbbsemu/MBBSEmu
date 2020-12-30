@@ -45,7 +45,7 @@ namespace MBBSEmu
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetStringAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
-        public int TimerHertz => GetAppSettingsFromConfiguration<int>("Timer.Hertz");
+        public int TimerHertz => GetTimerHertz("Timer.Hertz");
 
         //Optional Keys
         public string GetBTURNO(string moduleId) => ConfigurationRoot[$"GSBL.BTURNO.{moduleId}"];
@@ -128,10 +128,6 @@ namespace MBBSEmu
                         value = 4;
                         Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
                         return (T)value;
-                    case "Timer.Hertz":
-                        value = 0;
-                        Console.WriteLine($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
-                        return (T)value;
                     default:
                         return default;
                 }
@@ -151,9 +147,19 @@ namespace MBBSEmu
             return ConfigurationRoot[key];
         }
 
+        private int GetTimerHertz(string key)
+        {
+            if (!Int32.TryParse(ConfigurationRoot[key], out var timerHertz))
+                timerHertz = 36;
+
+            if (timerHertz < 0 || timerHertz > 1000)
+                timerHertz = 0;
+
+            return timerHertz;
+        }
+
         private string GetRemoteIPAppSettings(string key)
         {
-
             if (IPAddress.TryParse(ConfigurationRoot[key], out var result))
             {
                 return result.ToString();
