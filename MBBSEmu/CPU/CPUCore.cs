@@ -753,8 +753,7 @@ namespace MBBSEmu.CPU
                                 return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             case MemorySize.Int32:
                             case MemorySize.UInt32:
-                                return BitConverter.ToUInt32(
-                                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind), 4));
+                                return Memory.GetDWord(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind));
                             default:
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }

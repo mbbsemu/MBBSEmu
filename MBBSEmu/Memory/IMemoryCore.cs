@@ -147,11 +147,33 @@ namespace MBBSEmu.Memory
         ushort GetWord(ushort segment, ushort offset);
 
         /// <summary>
-        ///     Returns an unsigned byte from the specified defined variable
+        ///     Returns an unsigned word from the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
         ushort GetWord(string variableName);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns></returns>
+        uint GetDWord(string variableName);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
+        uint GetDWord(FarPtr pointer);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        uint GetDWord(ushort segment, ushort offset);
 
         /// <summary>
         ///     Returns a pointer stored at the specified pointer
