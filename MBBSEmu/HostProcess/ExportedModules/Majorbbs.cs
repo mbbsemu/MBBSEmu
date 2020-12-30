@@ -1476,13 +1476,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringLength = Module.Memory.GetString(destinationPointer, true).Length;
 
-            destinationPointer += stringLength;
+            //Truncate Destination if LIMIT is less than DST 
+            if (stringLength > limit)
+            {
+                if(limit > 0)
+                    limit--; //subtract one for the null we're inserting
+                
+                Module.Memory.SetByte(destinationPointer.Segment, (ushort) (destinationPointer.Offset + limit), 0);
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+            
+            var newDestinationPointer = destinationPointer + stringLength;
             limit -= (ushort)stringLength;
             
-            SetParameterPointer(0, destinationPointer);
+            SetParameterPointer(0, newDestinationPointer);
             SetParameter(4, limit);
             
             stzcpy();
+            Registers.SetPointer(destinationPointer);
         }
 
         /// <summary>
