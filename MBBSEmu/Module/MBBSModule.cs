@@ -172,27 +172,28 @@ namespace MBBSEmu.Module
                 var moduleDll = new MbbsDll(fileUtility, logger);
                 moduleDll.Load(Mdf.DLLFiles[0].Trim(), ModulePath);
                 ModuleDlls.Add(moduleDll);
-            }
 
-            if (Mdf.Requires.Count > 0)
-            {
-                foreach (var r in Mdf.Requires)
+
+                if (Mdf.Requires.Count > 0)
                 {
-                    var requiredDll = new MbbsDll(fileUtility, logger);
-                    if (requiredDll.Load(r.Trim(), ModulePath))
+                    foreach (var r in Mdf.Requires)
                     {
-                        requiredDll.SegmentOffset = (ushort) (ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
-                        ModuleDlls.Add(requiredDll);
+                        var requiredDll = new MbbsDll(fileUtility, logger);
+                        if (requiredDll.Load(r.Trim(), ModulePath))
+                        {
+                            requiredDll.SegmentOffset = (ushort) (ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
+                            ModuleDlls.Add(requiredDll);
+                        }
                     }
                 }
-            }
 
-            if (Mdf.MSGFiles.Count > 0)
-            {
-                Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
-                foreach (var m in Mdf.MSGFiles)
+                if (Mdf.MSGFiles.Count > 0)
                 {
-                    Msgs.Add(new MsgFile(ModulePath, m));
+                    Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
+                    foreach (var m in Mdf.MSGFiles)
+                    {
+                        Msgs.Add(new MsgFile(ModulePath, m));
+                    }
                 }
             }
 
