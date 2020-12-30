@@ -2127,6 +2127,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Sub_8(),
                 2 => Op_Sub_16(),
+                4 => Op_Sub_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
