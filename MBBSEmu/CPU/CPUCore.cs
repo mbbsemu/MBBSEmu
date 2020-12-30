@@ -625,13 +625,15 @@ namespace MBBSEmu.CPU
                     {
                         //for ops like imul bx, etc. where AX is the implicit destination
                         if (operandType == EnumOperandType.Source && _currentInstruction.Op1Register == Register.None)
-                        {
                             return Registers.AL;
-                        }
 
-                        return (byte)Registers.GetValue(operandType == EnumOperandType.Destination
-                            ? _currentInstruction.Op0Register
-                            : _currentInstruction.Op1Register);
+                        return operandType switch
+                        {
+                            EnumOperandType.Destination => (byte)Registers.GetValue(_currentInstruction.Op0Register),
+                            EnumOperandType.Source => (byte)Registers.GetValue(_currentInstruction.Op1Register),
+                            EnumOperandType.Count => (byte)Registers.GetValue(_currentInstruction.Op2Register),
+                            _ => throw new ArgumentOutOfRangeException(nameof(operandType), operandType, null)
+                        };
                     }
                 case OpKind.Immediate8:
                     return _currentInstruction.Immediate8;
@@ -3653,7 +3655,7 @@ namespace MBBSEmu.CPU
             switch (_currentOperationSize)
             {
                 case 4:
-                    result = Op_Shld32();
+                    result = Op_Shld_32();
                     break;
                 default:
                     break;
@@ -3662,20 +3664,30 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        private uint Op_Shld32()
+        private uint Op_Shld_32()
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
-            var count = GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Count);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
 
-            if (count > sizeof(uint))
-                return 0;
+            //Make sure Count isn't > 32 bits
+            if (count >= sizeof(uint) * 8)
+                return destination;
 
             var result = destination << count;
-            result |= (source >> (sizeof(uint) - count));
+            result |= (source >> count);
 
-            Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-            Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+            //CF == the last bit shifted out of the destination
+            Registers.F = destination.IsBitSet((sizeof(uint) * 8) - count)
+                ? Registers.F.SetFlag((ushort)EnumFlags.CF)
+                : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
+            if (count == 1)
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+            else
+                Registers.F.ClearFlag((ushort)EnumFlags.OF);
+
             Flags_EvaluateSignZero(result);
 
             return result;
