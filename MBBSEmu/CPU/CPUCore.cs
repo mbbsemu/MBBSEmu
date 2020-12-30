@@ -2336,65 +2336,82 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Mul()
         {
-            switch (_currentInstruction.OpCount)
+            switch (_currentOperationSize)
             {
                 case 1:
-                    Op_Mul_1operand();
+                    Op_Mul_8();
                     return;
                 case 2:
-                    throw new NotImplementedException("IMUL with 2 Opcodes not implemented");
-                case 3:
-                    Op_Mul_3operand();
+                    Op_Mul_16();
+                    return;
+                case 4:
+                    Op_Mul_32();
                     return;
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
-        private void Op_Mul_1operand()
+        private void Op_Mul_8()
+        {
+            var operand2 = Registers.AL;
+            var operand3 = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = operand2 * operand3;
+
+            Registers.AX = (ushort)result;
+
+            if (result > byte.MaxValue)
+            {
+                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.OF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+        }
+
+        private void Op_Mul_16()
         {
             var operand2 = Registers.AX;
-            var operand3 = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                4 => GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-            uint result;
-            unchecked
-            {
-                result = operand2 * operand3;
-            }
+            var operand3 = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = operand2 * operand3;
 
-            Registers.EAX = result;
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            if (Registers.DX > 0)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
         }
 
-        [MethodImpl(CompilerOptimizations)]
-        private void Op_Mul_3operand()
+        private void Op_Mul_32()
         {
-            var operand2 = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                4 => GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
+            var operand2 = Registers.EAX;
+            var operand3 = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var result = (ulong)operand2 * operand3;
 
-            var operand3 = _currentOperationSize switch
+            Registers.EDX = (uint)(result >> 32);
+            Registers.EAX = (uint)(result & 0xFFFFFFFF);
+
+            if (Registers.EDX > 0)
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-            uint result;
-            unchecked
-            {
-                result = operand2 * operand3;
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
             }
-
-            WriteToDestination(result);
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
         }
+
 
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_8()
