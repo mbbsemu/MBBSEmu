@@ -844,7 +844,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            Logger.Info($"Adding Module {module.ModuleIdentifier}...");
+            Logger.Info($"({module.ModuleIdentifier}) Adding Module...");
 
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
@@ -853,7 +853,7 @@ namespace MBBSEmu.HostProcess
             foreach (var seg in module.File.SegmentTable)
             {
                 module.Memory.AddSegment(seg);
-                Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+                Logger.Debug($"({module.ModuleIdentifier}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
             }
 
             //Setup Exported Modules
@@ -870,7 +870,7 @@ namespace MBBSEmu.HostProcess
             //Run INIT
             Run(module.ModuleIdentifier, module.EntryPoints["_INIT_"], ushort.MaxValue);
 
-            Logger.Info($"Module {module.ModuleIdentifier} added!");
+            Logger.Info($"({module.ModuleIdentifier}) Module Added!");
         }
 
         /// <summary>

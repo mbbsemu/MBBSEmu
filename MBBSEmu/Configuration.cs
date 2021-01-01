@@ -58,6 +58,7 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
+        public string ConsoleLogLevel => GetLogLevel("Console.LogLevel");
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -166,6 +167,25 @@ namespace MBBSEmu
                 timerHertz = 36;
             }
             return timerHertz;
+        }
+
+        private string GetLogLevel(string key)
+        {
+            var consoleLogLevel = ConfigurationRoot[key];
+
+            if (string.IsNullOrEmpty(consoleLogLevel))
+            {
+                _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: Info");
+                consoleLogLevel = "Info";
+            }
+
+            if (consoleLogLevel != "Fatal" || consoleLogLevel != "Error" || consoleLogLevel != "Warn" || consoleLogLevel != "Info" || consoleLogLevel != "Debug")
+            {
+                _logger.Warn($"{key} not recognized as valid logging level (Debug, Info, Warn, Error, Fatal) -- setting default value: Info");
+                consoleLogLevel = "Info";
+            }
+
+            return consoleLogLevel;
         }
 
         private string GetRemoteIPAppSettings(string key)

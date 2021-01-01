@@ -22,6 +22,8 @@ using System.Linq;
 using System.Text;
 using MBBSEmu.Disassembler;
 using MBBSEmu.DOS;
+using MBBSEmu.Logging;
+using NLog.Config;
 
 namespace MBBSEmu
 {
@@ -233,6 +235,10 @@ namespace MBBSEmu
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
+
+                //Setup Logger from AppSettings
+                LogManager.Configuration.AddRule(LogLevel.FromString(configuration.ConsoleLogLevel), LogLevel.Fatal, "consoleLogger");
+                LogManager.ReconfigExistingLoggers();
 
                 //Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))

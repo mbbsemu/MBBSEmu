@@ -1338,7 +1338,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var allocatedMemory = Module.Memory.AllocateVariable(null, size);
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
+            _logger.Info($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
 #endif
 
             Registers.SetPointer(allocatedMemory);
@@ -1557,7 +1557,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.AX = (ushort)outputValue;
@@ -1576,7 +1576,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetBool(msgnum);
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.AX = (ushort)(outputValue ? 1 : 0);
@@ -1609,7 +1609,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.DX = (ushort)(outputValue >> 16);
@@ -1640,7 +1640,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
                 _logger.Info(
-                    $"Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
+                    $"({Module.ModuleIdentifier}) Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
 #endif
             }
 
@@ -1718,7 +1718,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.F.SetFlag((ushort)EnumFlags.CF);
 
 #if DEBUG
-                _logger.Warn($"Unable to cast {stringToLong} ({sourcePointer}) to long");
+                _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({sourcePointer}) to long");
 #endif
             }
         }
@@ -2480,7 +2480,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             if (_previousBtrieveFile.Count == 0)
             {
-                _logger.Warn($"Previous Btrieve file == null, ignoring");
+                _logger.Warn($"({Module.ModuleIdentifier}) Previous Btrieve file == null, ignoring");
                 return;
             }
 
@@ -3097,14 +3097,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
                 {
-                    _logger.Warn($"Unable to find file {fullPath}");
+                    _logger.Warn($"({Module.ModuleIdentifier}) Unable to find file {fullPath}");
                     Registers.AX = 0;
                     Registers.DX = 0;
                     return;
                 }
 
                 //Create a new file for W or A
-                _logger.Info($"Creating new file {fileName}");
+                _logger.Info($"({Module.ModuleIdentifier}) Creating new file {fileName}");
 
                 fileStream = File.Create(fullPath);
             }
@@ -3604,7 +3604,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
                 McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length,
                 variablePointer);
 #endif
@@ -3850,7 +3850,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (fileStream.Position == fileStream.Length)
             {
-                _logger.Warn("Attempting to read EOF file, returning null pointer");
+                _logger.Warn($"({Module.ModuleIdentifier}) Attempting to read EOF file, returning null pointer");
                 Registers.AX = 0;
                 Registers.DX = 0;
                 return;
@@ -4478,7 +4478,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
 #if DEBUG
-                _logger.Warn($"Invalid Channel: {newUserNumber}");
+                _logger.Debug($"({Module.ModuleIdentifier}) Invalid Channel: {newUserNumber}");
 #endif
                 return;
             }
@@ -5021,7 +5021,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
+            _logger.Info($"({Module.ModuleIdentifier})Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
                 McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length,
                 variablePointer);
 #endif
@@ -5042,7 +5042,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)[0];
 
 #if DEBUG
-            _logger.Info("Retrieved option {0} from {1} (MCV Pointer: {2}): {3}", msgnum,
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {0} from {1} (MCV Pointer: {2}): {3}", msgnum,
                 McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue);
 #endif
 
@@ -5101,7 +5101,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void farfree()
         {
             // no op, we don't support freeing yet
-            _logger.Info($"Module farfreeing {GetParameterPointer(0)}");
+            _logger.Info($"({Module.ModuleIdentifier}) Farfreeing {GetParameterPointer(0)}");
         }
 
         /// <summary>
@@ -5115,7 +5115,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var requestedSize = GetParameterULong(0);
             if (requestedSize > 0xFFFF)
-                _logger.Warn($"Module is trying to allocate {requestedSize} bytes");
+                _logger.Warn($"({Module.ModuleIdentifier}) Trying to allocate {requestedSize} bytes");
 
             // argument is ULONG size, but who cares, just return a full segment
             Registers.SetPointer(Module.Memory.AllocateRealModeSegment());
@@ -5135,7 +5135,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var allocatedMemory = Module.Memory.AllocateVariable(null, size);
 
 #if DEBUG
-            _logger.Info($"Allocated {size} bytes starting at {allocatedMemory}");
+            _logger.Info($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
 #endif
 
             Registers.SetPointer(allocatedMemory);
@@ -6368,11 +6368,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var fullPath = Path.Combine(Module.ModulePath, fileName);
 #if DEBUG
-            _logger.Debug($"Opening File: {fullPath}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
 #endif
             if (!File.Exists($"{fullPath}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
             {
-                _logger.Warn($"Unable to find file {fullPath}");
+                _logger.Warn($"({Module.ModuleIdentifier}) Unable to find file {fullPath}");
                 Registers.AX = 0xFFFF;
                 return;
             }
@@ -7358,7 +7358,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < numberOfSegments; i++)
                 Module.Memory.AllocateRealModeSegment(tsize);
 
-            _logger.Debug($"Allocated base {realSegmentBase} for {size} bytes ({numberOfSegments} segments)");
+            _logger.Debug($"({Module.ModuleIdentifier}) Allocated base {realSegmentBase} for {size} bytes ({numberOfSegments} segments)");
 
             Registers.AX = realSegmentBase.Segment;
         }
@@ -7398,7 +7398,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"Retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"{(Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.AX = outputValue;
@@ -7618,19 +7618,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Module.Memory.SetByte(destinationAllocatedPointer, 0);
 #if DEBUG
-                _logger.Warn($"Source ({sourceStringPointer}) is NULL");
+                _logger.Warn($"({Module.ModuleIdentifier}) Source ({sourceStringPointer}) is NULL");
 #endif
             }
             else
             {
                 Module.Memory.SetArray(destinationAllocatedPointer, inputBuffer);
 #if DEBUG
-                //_logger.Info($"Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+                //_logger.Info($"({Module.ModuleIdentifier}) Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
             }
 
 #if DEBUG
-            _logger.Info($"Allocated {inputBuffer.Length} bytes starting at {destinationAllocatedPointer}");
+            _logger.Info($"({Module.ModuleIdentifier}) Allocated {inputBuffer.Length} bytes starting at {destinationAllocatedPointer}");
 #endif
 
             Registers.SetPointer(destinationAllocatedPointer);

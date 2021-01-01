@@ -230,7 +230,7 @@ namespace MBBSEmu.Module
             }
 
 
-            _logger.Info($"Located _INIT__: {initEntryPointPointer}");
+            _logger.Debug($"({ModuleIdentifier}) Located _INIT__: {initEntryPointPointer}");
             EntryPoints["_INIT_"] = initEntryPointPointer;
         }
 
@@ -253,7 +253,7 @@ namespace MBBSEmu.Module
             //Try to dequeue an execution unit, if one doesn't exist, create a new one
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
-                _logger.Warn($"{ModuleIdentifier} exhausted execution Units, creating additional");
+                _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
                 executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger);
             }
 
