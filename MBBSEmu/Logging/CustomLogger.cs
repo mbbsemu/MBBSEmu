@@ -25,6 +25,7 @@ namespace MBBSEmu.Logging
                 DeleteOldFileOnStartup = true
             };
             //config.AddTarget(fileLogger);
+            config.AddRuleForAllLevels(consoleLogger);
             //config.AddRuleForAllLevels(fileLogger);
             LogManager.Configuration = config;
         }

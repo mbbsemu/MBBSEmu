@@ -235,6 +235,7 @@ namespace MBBSEmu
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
 
                 //Setup Logger from AppSettings
+                LogManager.Configuration.LoggingRules.Clear();
                 LogManager.Configuration.AddRule(LogLevel.FromString(configuration.ConsoleLogLevel), LogLevel.Fatal, "consoleLogger");
                 LogManager.ReconfigExistingLoggers();
 
