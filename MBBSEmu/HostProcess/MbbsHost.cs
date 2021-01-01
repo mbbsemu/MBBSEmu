@@ -613,6 +613,9 @@ namespace MBBSEmu.HostProcess
             result &= 0xFF;
 
             session.LastCharacterReceived = (byte)result;
+
+            if (session.LastCharacterReceived == 0xD)
+                session.Status = 3;
         }
 
         /// <summary>
@@ -792,7 +795,7 @@ namespace MBBSEmu.HostProcess
                     }
 
                 //Enter or Return
-                case 0xD when session.SessionState != EnumSessionState.InFullScreenDisplay:
+                case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
                     {
                         if (!session.TransparentMode)
                             session.SendToClient(new byte[] { 0xD, 0xA });
