@@ -1205,6 +1205,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 339:
                     hexopt();
                     break;
+                case 450: // onsysn() = same functionality as onsys(), adds invisible user parameter which we ignore
                 case 449:
                     onsys();
                     break;
