@@ -3,6 +3,8 @@ using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Disassembler;
+using MBBSEmu.DOS;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
@@ -20,10 +22,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Disassembler;
-using MBBSEmu.DOS;
-using MBBSEmu.Logging;
-using NLog.Config;
 
 namespace MBBSEmu
 {
