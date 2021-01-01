@@ -140,7 +140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //I've only seen this in TW2002, and it passes in Code Segment
             if (Module.Memory.HasSegment(moduleHandle))
             {
-                var moduleFileName = Module.ModuleDlls[0].File.FileName + '\0';
+                var moduleFileName = Module.MainModuleDll.File.FileName + '\0';
                 Module.Memory.SetArray(bufferPointer, Encoding.ASCII.GetBytes(moduleFileName));
                 Registers.AX = 0;
             }

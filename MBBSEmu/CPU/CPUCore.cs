@@ -3688,16 +3688,18 @@ namespace MBBSEmu.CPU
             var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
 
             //Make sure Count isn't > 32 bits
-            if (count >= sizeof(uint) * 8)
-                return destination;
+            count %= 32;
 
             var result = destination << count;
             result |= (source >> count);
 
-            //CF == the last bit shifted out of the destination
-            Registers.F = destination.IsBitSet((sizeof(uint) * 8) - count)
-                ? Registers.F.SetFlag((ushort)EnumFlags.CF)
-                : Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            if (count > 0)
+            {
+                //CF == the last bit shifted out of the destination
+                Registers.F = destination.IsBitSet((sizeof(uint) * 8) - count)
+                    ? Registers.F.SetFlag((ushort) EnumFlags.CF)
+                    : Registers.F.ClearFlag((ushort) EnumFlags.CF);
+            }
 
             //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
             if (count == 1)

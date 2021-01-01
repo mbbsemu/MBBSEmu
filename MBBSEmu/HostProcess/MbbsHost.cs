@@ -155,7 +155,7 @@ namespace MBBSEmu.HostProcess
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.ModuleDlls[0].EntryPoints.Count == 1))
+            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1))
             {
                 Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
@@ -390,7 +390,7 @@ namespace MBBSEmu.HostProcess
         {
             foreach (var m in _modules.Values)
             {
-                if (!m.ModuleDlls[0].EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
+                if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
 
                 if (routineEntryPoint.Segment != 0 &&
                     routineEntryPoint.Offset != 0)
@@ -463,7 +463,7 @@ namespace MBBSEmu.HostProcess
             session.StatusChange = false;
             session.Status = 3;
             session.SessionState = EnumSessionState.InModule;
-            session.UsrPtr.State = session.CurrentModule.ModuleDlls[0].StateCode;
+            session.UsrPtr.State = session.CurrentModule.MainModuleDll.StateCode;
             ProcessSTTROU(session);
         }
 
@@ -482,7 +482,7 @@ namespace MBBSEmu.HostProcess
             session.InputBuffer.SetLength(0);
 
             var result = Run(session.CurrentModule.ModuleIdentifier,
-                session.CurrentModule.ModuleDlls[0].EntryPoints["sttrou"], session.Channel);
+                session.CurrentModule.MainModuleDll.EntryPoints["sttrou"], session.Channel);
 
             //Finally, display prompt character if one is set
             if (session.PromptCharacter > 0)
@@ -535,7 +535,7 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            var entryPoint = session.CurrentModule.ModuleDlls[0].EntryPoints["lonrou"];
+            var entryPoint = session.CurrentModule.MainModuleDll.EntryPoints["lonrou"];
 
             if (entryPoint != FarPtr.Empty)
                 Run(session.CurrentModule.ModuleIdentifier, entryPoint, session.Channel);
@@ -627,7 +627,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessSTSROU(SessionBase session)
         {
             session.StatusChange = false;
-            Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.ModuleDlls[0].EntryPoints["stsrou"],
+            Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.MainModuleDll.EntryPoints["stsrou"],
                 session.Channel);
         }
 

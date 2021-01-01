@@ -99,6 +99,11 @@ namespace MBBSEmu.Module
         public List<MbbsDll> ModuleDlls { get; set; }
 
         /// <summary>
+        ///     Helper to always return the main Module DLL (loaded in 0)
+        /// </summary>
+        public MbbsDll MainModuleDll => ModuleDlls?[0];
+
+        /// <summary>
         ///     Executions Units (EU's) for the Module
         ///
         ///     Execution Units are how subroutines get called without having to mess around with saving/resetting CPU state.

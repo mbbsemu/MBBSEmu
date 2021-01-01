@@ -10,7 +10,7 @@ namespace MBBSEmu.Tests.CPU
     {
         [Theory]
         [InlineData(0xFFFFFFFF, 0x11111111, 16, 0xFFFF1111, true, false, true, false)]
-        [InlineData(0xFFFFFFFF, 0x11111111, 32, 0xFFFFFFFF, false, false, false, false)]
+        [InlineData(0xFFFFFFFF, 0x11111111, 32, 0xFFFFFFFF, false, false, true, false)]
         [InlineData(0x00001111, 0x11110000, 16, 0x11111111, false, false, false, false)]
         [InlineData(0xFFFF0000, 0xFFFF0000, 16, 0x0000FFFF, true, false, false, false)]
         [InlineData(0x7FFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, false, true, true, false)]
@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(0xFFFFFFFF, 0x11111111, 16, 0xFFFF1111, true, false, true, false)]
-        [InlineData(0xFFFFFFFF, 0x11111111, 32, 0xFFFFFFFF, false, false, false, false)]
+        [InlineData(0xFFFFFFFF, 0x11111111, 32, 0xFFFFFFFF, false, false, true, false)]
         [InlineData(0x00001111, 0x11110000, 16, 0x11111111, false, false, false, false)]
         [InlineData(0xFFFF0000, 0xFFFF0000, 16, 0x0000FFFF, true, false, false, false)]
         [InlineData(0x7FFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, false, true, true, false)]

@@ -311,7 +311,7 @@ namespace MBBSEmu.DOS.Interrupts
                         var fileUtility = new FileUtility(_logger);
                         var foundFile = fileUtility.FindFile(_path, fileName);
 
-                        if(!File.Exists($"{_path}{fileName}"))
+                        if(!File.Exists($"{_path}{foundFile}"))
                             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                         
                         break;
