@@ -869,7 +869,7 @@ namespace MBBSEmu.HostProcess
                 {
                     seg.Ordinal += dll.SegmentOffset;
                     module.Memory.AddSegment(seg);
-                    Logger.Info($"Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+                    Logger.Debug($"({module.ModuleIdentifier}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
                 }
 
                 dll.StateCode = (short) (_modules.Count * 10 + i);
@@ -884,7 +884,7 @@ namespace MBBSEmu.HostProcess
                 Run(module.ModuleIdentifier, entryPointer, ushort.MaxValue);
             }
 
-            Logger.Info($"Module {module.ModuleIdentifier} added!");
+            Logger.Info($"({module.ModuleIdentifier}) Module Added!");
         }
 
         /// <summary>
