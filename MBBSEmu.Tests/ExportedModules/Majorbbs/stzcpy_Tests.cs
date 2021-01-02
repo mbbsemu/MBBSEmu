@@ -25,6 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DST", dstLength);
+            mbbsEmuMemoryCore.FillArray(destinationStringPointer, dstLength, 0xFF);
 
             var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort) (srcString.Length));
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(srcString));
