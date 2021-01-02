@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -1255,6 +1256,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 128:
                     cncsig();
                     break;
+                case 905:
+                    stzcat();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -1461,6 +1465,40 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Concatenates Two Strings with a fixed length
+        ///
+        ///     Signature: char *stzcat(char *dst,char *src,int num);
+        /// </summary>
+        private void stzcat()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+            var destinationBufferLength = GetParameter(4);
+
+            var stringLength = Module.Memory.GetString(destinationPointer, true).Length;
+
+            //Truncate Destination if LIMIT is less than DST 
+            if (stringLength > destinationBufferLength)
+            {
+                if(destinationBufferLength > 0)
+                    destinationBufferLength--; //subtract one for the null we're inserting
+                
+                Module.Memory.SetByte(destinationPointer.Segment, (ushort) (destinationPointer.Offset + destinationBufferLength), 0);
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+            
+            var newDestinationPointer = destinationPointer + stringLength;
+            destinationBufferLength -= (ushort)stringLength;
+            
+            SetParameterPointer(0, newDestinationPointer);
+            SetParameter(4, destinationBufferLength);
+            
+            stzcpy();
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
         ///     Registers the Module with the MajorBBS system
         ///
         ///     Signature: int register_module(struct module *mod)
@@ -1473,28 +1511,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleStruct = new ModuleStruct(Module.Memory.GetArray(destinationPointer, ModuleStruct.Size));
 
             //We create a copy in Variable Memory in case the MODULE pointer that was passed in was on the stack
-            var localModuleStructPointer = Module.Memory.AllocateVariable("MODULE-LOCAL", ModuleStruct.Size);
-            Module.Memory.SetArray("MODULE-LOCAL", moduleStruct.Data);
+            var localModuleStructPointer = Module.Memory.AllocateVariable($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", ModuleStruct.Size);
+            Module.Memory.SetArray($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", moduleStruct.Data);
 
             //Set Module Values from Struct
             Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
-            Module.EntryPoints.Add("lonrou", moduleStruct.lonrou);
-            Module.EntryPoints.Add("sttrou", moduleStruct.sttrou);
-            Module.EntryPoints.Add("stsrou", moduleStruct.stsrou);
-            Module.EntryPoints.Add("injrou", moduleStruct.injrou);
-            Module.EntryPoints.Add("lofrou", moduleStruct.lofrou);
-            Module.EntryPoints.Add("huprou", moduleStruct.huprou);
-            Module.EntryPoints.Add("mcurou", moduleStruct.mcurou);
-            Module.EntryPoints.Add("dlarou", moduleStruct.dlarou);
-            Module.EntryPoints.Add("finrou", moduleStruct.finrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("lonrou", moduleStruct.lonrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("sttrou", moduleStruct.sttrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("stsrou", moduleStruct.stsrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("injrou", moduleStruct.injrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("lofrou", moduleStruct.lofrou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("huprou", moduleStruct.huprou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("mcurou", moduleStruct.mcurou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("dlarou", moduleStruct.dlarou);
+            Module.ModuleDlls[ModuleDll].EntryPoints.Add("finrou", moduleStruct.finrou);
 
             //usrptr->state is the Module Number in use, as assigned by the host process
-            Registers.AX = (ushort)Module.StateCode;
-
-            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode *2), localModuleStructPointer);
+            Registers.AX = (ushort)Module.ModuleDlls[ModuleDll].StateCode;
+            
+            var moduleStructOffset = Module.ModuleDlls[ModuleDll].StateCode * 4;
+            
+            Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset, localModuleStructPointer);
 
 #if DEBUG
-            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + (Module.StateCode * 2)}) set to {localModuleStructPointer}");
+            _logger.Info($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset}) set to {localModuleStructPointer}");
             _logger.Info($"Module Description set to {Module.ModuleDescription}");
 #endif
         }
@@ -1554,7 +1594,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetNumeric(msgnum);
 
             //Validate
-            if (outputValue < floor || outputValue > ceiling)
+            if (outputValue < floor || (ceiling > 0 && outputValue > ceiling))
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
@@ -2257,14 +2297,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rtihdlr()
         {
-            var routinePointerOffset = GetParameter(0);
-            var routinePointerSegment = GetParameter(1);
+            var routinePointer = GetParameterPointer(0);
 
-            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
-            var routineNumber = Module.RtihdlrRoutines.Allocate(routine);
-            Module.EntryPoints.Add($"RTIHDLR-{routineNumber}", routine);
+            var routine = new RealTimeRoutine(routinePointer);
+            Module.RtihdlrRoutines.Allocate(routine);
 #if DEBUG
-            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+            _logger.Info($"Registered routine {routinePointer}");
 #endif
         }
 
@@ -2279,10 +2317,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var delaySeconds = GetParameter(0);
             var routinePointer = GetParameterPointer(1);
 
-            var routine = new RealTimeRoutine(routinePointer.Segment, routinePointer.Offset, delaySeconds);
-            var routineNumber = Module.RtkickRoutines.Allocate(routine);
-
-            Module.EntryPoints.Add($"RTKICK-{routineNumber}", routine);
+            var routine = new RealTimeRoutine(routinePointer, delaySeconds);
+            Module.RtkickRoutines.Allocate(routine);
 
 #if DEBUG
             _logger.Info($"Registered routine {routinePointer} to execute every {delaySeconds} seconds");
@@ -3762,7 +3798,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Load registers and pass to Int21h
             var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
-            new Int21h(registers, Module.Memory, _clock).Handle();
+            new Int21h(registers, Module.Memory, _clock, _logger, Module.ModulePath).Handle();
 
             Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }
@@ -6984,14 +7020,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void initask()
         {
-            var routinePointerOffset = GetParameter(0);
-            var routinePointerSegment = GetParameter(1);
+            var routinePointer = GetParameterPointer(0);
 
-            var routine = new RealTimeRoutine(routinePointerSegment, routinePointerOffset);
+            var routine = new RealTimeRoutine(routinePointer);
             var routineNumber = Module.TaskRoutines.Allocate(routine);
-            Module.EntryPoints.Add($"TASK-{routineNumber}", routine);
 #if DEBUG
-            _logger.Info($"Registered routine {routinePointerSegment:X4}:{routinePointerOffset:X4}");
+            _logger.Info($"Registered routine {routinePointer}");
 #endif
             Registers.AX = (ushort)routineNumber;
         }

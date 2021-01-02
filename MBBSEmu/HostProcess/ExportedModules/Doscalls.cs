@@ -123,7 +123,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void DosGetModHandle()
         {
             _logger.Warn($"Getting External Modules is currently not supported");
-            Registers.AX = 0x126;
+            Registers.AX = 0;
         }
 
         /// <summary>
@@ -140,7 +140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //I've only seen this in TW2002, and it passes in Code Segment
             if (Module.Memory.HasSegment(moduleHandle))
             {
-                var moduleFileName = Module.File.FileName + '\0';
+                var moduleFileName = Module.MainModuleDll.File.FileName + '\0';
                 Module.Memory.SetArray(bufferPointer, Encoding.ASCII.GetBytes(moduleFileName));
                 Registers.AX = 0;
             }

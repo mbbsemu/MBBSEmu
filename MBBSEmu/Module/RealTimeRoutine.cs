@@ -37,5 +37,10 @@ namespace MBBSEmu.Module
                 Elapsed.Start();
             }
         }
+
+        public RealTimeRoutine(FarPtr pointer, ushort delay = 0) : this(pointer.Segment, pointer.Offset, delay)
+        {
+
+        }
     }
 }

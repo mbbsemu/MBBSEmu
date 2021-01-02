@@ -147,11 +147,33 @@ namespace MBBSEmu.Memory
         ushort GetWord(ushort segment, ushort offset);
 
         /// <summary>
-        ///     Returns an unsigned byte from the specified defined variable
+        ///     Returns an unsigned word from the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
         ushort GetWord(string variableName);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns></returns>
+        uint GetDWord(string variableName);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
+        uint GetDWord(FarPtr pointer);
+
+        /// <summary>
+        ///     Returns an unsigned double word from the specified segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        uint GetDWord(ushort segment, ushort offset);
 
         /// <summary>
         ///     Returns a pointer stored at the specified pointer
@@ -270,6 +292,28 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="value"></param>
         void SetWord(string variableName, ushort value);
+
+        /// <summary>
+        ///     Sets the specified double word at the desired pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <param name="value"></param>
+        void SetDWord(FarPtr pointer, uint value);
+
+        /// <summary>
+        ///     Sets the specified double word at the desired segment:offset
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="offset"></param>
+        /// <param name="value"></param>
+        void SetDWord(ushort segment, ushort offset, uint value);
+
+        /// <summary>
+        ///     Sets the specified double word at the defined variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="value"></param>
+        void SetDWord(string variableName, uint value);
 
         /// <summary>
         ///     Sets the specified array at the desired pointer

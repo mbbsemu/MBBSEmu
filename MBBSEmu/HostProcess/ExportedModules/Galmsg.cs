@@ -11,6 +11,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 {
     public class Galmsg : ExportedModuleBase, IExportedModule
     {
+
+        public const ushort Segment = 0xFFFA;
+        
         internal Galmsg(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
@@ -37,17 +40,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public void SetState(ushort channelNumber)
         {
-            throw new NotImplementedException();
+            return;
         }
 
         public void SetRegisters(CpuRegisters registers)
         {
-            throw new NotImplementedException();
+            return;
         }
 
         public void UpdateSession(ushort channelNumber)
         {
-            throw new NotImplementedException();
+            return;
         }
     }
 }
