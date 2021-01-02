@@ -17,6 +17,8 @@ using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using Microsoft.Extensions.Configuration;
 using NLog;
+using NLog.Layouts;
+using NLog.Targets;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -237,6 +239,18 @@ namespace MBBSEmu
                 //Setup Logger from AppSettings
                 LogManager.Configuration.LoggingRules.Clear();
                 LogManager.Configuration.AddRule(LogLevel.FromString(configuration.ConsoleLogLevel), LogLevel.Fatal, "consoleLogger");
+                if(!string.IsNullOrEmpty(configuration.FileLogName))
+                {
+                    var fileLogger = new FileTarget("fileLogger")
+                    {
+                        FileNameKind = 0,
+                        FileName = "${var:mbbsdir}" + configuration.FileLogName,
+                        Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
+                        DeleteOldFileOnStartup = true
+                    };
+                    LogManager.Configuration.AddTarget(fileLogger);
+                    LogManager.Configuration.AddRule(LogLevel.FromString(configuration.FileLogLevel), LogLevel.Fatal, "fileLogger");
+                }
                 LogManager.ReconfigExistingLoggers();
 
                 //Setup Generic Database

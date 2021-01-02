@@ -48,7 +48,7 @@ namespace MBBSEmu
         public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
         public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
-        public string DatabaseFile => GetStringAppSettings("Database.File");
+        public string DatabaseFile => GetFileNameAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
         public int TimerHertz => GetTimerHertz("Timer.Hertz");
 
@@ -59,6 +59,8 @@ namespace MBBSEmu
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
         public string ConsoleLogLevel => GetLogLevel("Console.LogLevel");
+        public string FileLogName => GetFileNameAppSettings("File.LogName");
+        public string FileLogLevel => GetLogLevel("File.LogLevel");
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -140,15 +142,21 @@ namespace MBBSEmu
             }
         }
 
-        private string GetStringAppSettings(string key)
+        private string GetFileNameAppSettings(string key)
         {
+            //TODO Add proper path/naming checks
             if (string.IsNullOrEmpty(ConfigurationRoot[key]))
             {
-                throw key switch
+                switch (ConfigurationRoot[key])
                 {
-                    "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
-                };
+                    case "Database.File":
+                        _logger.Warn($"No valid database filename(eg: mbbsemu.db) set in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file -- setting fault value: mbbsemu.db");
+                        return "mbbsemu.db";
+                    case "File.LogName":
+                        return "";
+                    default:
+                        return default;
+                }
             }
             return ConfigurationRoot[key];
         }
@@ -171,21 +179,21 @@ namespace MBBSEmu
 
         private string GetLogLevel(string key)
         {
-            var consoleLogLevel = ConfigurationRoot[key];
+            var logLevel = ConfigurationRoot[key];
+            var logLevels = new[] {"Debug", "Info", "Warn", "Error", "Fatal"};
 
-            if (string.IsNullOrEmpty(consoleLogLevel))
+            if (string.IsNullOrEmpty(logLevel))
             {
                 _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: Info");
-                consoleLogLevel = "Info";
+                logLevel = "Info";
             }
 
-            if (consoleLogLevel != "Fatal" || consoleLogLevel != "Error" || consoleLogLevel != "Warn" || consoleLogLevel != "Info" || consoleLogLevel != "Debug")
-            {
-                _logger.Warn($"{key} not recognized as valid logging level (Debug, Info, Warn, Error, Fatal) -- setting default value: Info");
-                consoleLogLevel = "Info";
-            }
+            if (logLevels.Any(x => logLevel.Equals(x, StringComparison.InvariantCultureIgnoreCase)))
+                return logLevel;
+            _logger.Warn($"{key} not recognized as valid logging level (Debug, Info, Warn, Error, Fatal) -- setting default value: Info");
+            logLevel = "Info";
 
-            return consoleLogLevel;
+            return logLevel;
         }
 
         private string GetRemoteIPAppSettings(string key)

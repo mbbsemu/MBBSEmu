@@ -7399,7 +7399,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new ArgumentOutOfRangeException($"{msgnum} value {outputValue} is outside specified bounds");
 
 #if DEBUG
-            _logger.Info($"{(Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
+            _logger.Info($"({Module.ModuleIdentifier}) Retrieved option {msgnum} value: {outputValue}");
 #endif
 
             Registers.AX = outputValue;

@@ -2,7 +2,7 @@ using NLog;
 using NLog.Conditions;
 using NLog.Layouts;
 using NLog.Targets;
-using SQLitePCL;
+using System.IO;
 
 namespace MBBSEmu.Logging
 {
@@ -14,20 +14,12 @@ namespace MBBSEmu.Logging
         static CustomLogger()
         {
             var config = new NLog.Config.LoggingConfiguration();
-
             var consoleLogger = CreateConsoleTarget();
-            config.AddTarget(consoleLogger);
 
-            var fileLogger = new FileTarget("fileLogger")
-            {
-                FileName = @"c:\dos\log\log.txt",
-                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
-                DeleteOldFileOnStartup = true
-            };
-            //config.AddTarget(fileLogger);
+            config.AddTarget(consoleLogger);
             config.AddRuleForAllLevels(consoleLogger);
-            //config.AddRuleForAllLevels(fileLogger);
             LogManager.Configuration = config;
+            LogManager.Configuration.Variables["mbbsdir"] = Directory.GetCurrentDirectory() + "\\";
         }
 
         static ColoredConsoleTarget CreateConsoleTarget()
