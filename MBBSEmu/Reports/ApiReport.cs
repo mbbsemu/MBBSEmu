@@ -36,22 +36,22 @@ namespace MBBSEmu.Reports
             _record = new ApiReportRecord
             {
                 UniqueIdentifier = _module.ModuleIdentifier,
-                File = _module.File.FileName,
+                File = _module.MainModuleDll.File.FileName,
                 Imports = new Dictionary<string, List<int>>()
             };
 
             //Create Imports Records
-            foreach (var nt in _module.File.ImportedNameTable.Values)
+            foreach (var nt in _module.MainModuleDll.File.ImportedNameTable.Values)
             {
                 _record.Imports.Add(nt.Name, new List<int>());
             }
 
             //Loop through each segment
-            foreach (var s in _module.File.SegmentTable.Where(seg => seg.RelocationRecords != null && seg.RelocationRecords.Count > 0))
+            foreach (var s in _module.MainModuleDll.File.SegmentTable.Where(seg => seg.RelocationRecords != null && seg.RelocationRecords.Count > 0))
             {
                 foreach (var r in s.RelocationRecords.Values.Where(relo => relo.Flag == EnumRecordsFlag.ImportName || relo.Flag == EnumRecordsFlag.ImportOrdinal))
                 {
-                    var key = _module.File.ImportedNameTable[r.TargetTypeValueTuple.Item2].Name;
+                    var key = _module.MainModuleDll.File.ImportedNameTable[r.TargetTypeValueTuple.Item2].Name;
                     var ordinal = r.TargetTypeValueTuple.Item3;
                     if(!_record.Imports[key].Contains(ordinal))
                         _record.Imports[key].Add(ordinal);

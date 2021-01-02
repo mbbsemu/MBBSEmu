@@ -367,8 +367,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Allocate PSP variable
-            var pspPointer = mbbsEmuMemoryCore.AllocateVariable("INT21h-PSP", 0xFF);
-            mbbsEmuMemoryCore.SetArray("INT21h-PSP", Encoding.ASCII.GetBytes("8"));
+            var pspPointer = mbbsEmuMemoryCore.AllocateVariable("Int21h-PSP", 0xFF);
+            mbbsEmuMemoryCore.SetArray("Int21h-PSP", Encoding.ASCII.GetBytes("8"));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,

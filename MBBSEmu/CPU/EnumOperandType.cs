@@ -6,6 +6,7 @@
     public enum EnumOperandType
     {
         Destination,
-        Source
+        Source,
+        Count
     }
 }

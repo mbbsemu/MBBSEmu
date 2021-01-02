@@ -329,6 +329,19 @@ namespace MBBSEmu.Memory
             }
         }
 
+        public uint GetDWord(string variableName) => GetDWord(GetVariablePointer(variableName));
+
+        public uint GetDWord(FarPtr pointer) => GetWord(pointer.Segment, pointer.Offset);
+
+        public unsafe uint GetDWord(ushort segment, ushort offset)
+        {
+            fixed (byte* p = _memorySegments[segment])
+            {
+                uint* ptr = (uint*)(p + offset);
+                return *ptr;
+            }
+        }
+
         /// <summary>
         ///     Returns a pointer stored at the specified pointer
         /// </summary>
@@ -480,6 +493,22 @@ namespace MBBSEmu.Memory
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
         public void SetWord(string variableName, ushort value) => SetWord(GetVariablePointer(variableName), value);
+
+        [MethodImpl(CompilerOptimizations)]
+        public void SetDWord(FarPtr pointer, uint value) => SetDWord(pointer.Segment, pointer.Offset, value);
+
+        [MethodImpl(CompilerOptimizations)]
+        public unsafe void SetDWord(ushort segment, ushort offset, uint value)
+        {
+            fixed (byte* dst = _memorySegments[segment])
+            {
+                uint* ptr = (uint*)(dst + offset);
+                *ptr = value;
+            }
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        public void SetDWord(string variableName, uint value) => SetDWord(GetVariablePointer(variableName), value);
 
         /// <summary>
         ///     Sets the specified array at the desired pointer

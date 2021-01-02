@@ -1,8 +1,8 @@
 {
   "Modules": [
     {
-      "Identifier": "HVSXROAD",
-      "Path": "c:\\dos\\modules\\xroads\\"
+      "Identifier": "FW_FTRIV",
+      "Path": "c:\\dos\\postinstall\\fwtrivia\\"
     }
   ]
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -33,6 +34,11 @@ namespace MBBSEmu.Module
         ///     Module MSG files defined in the MDF File
         /// </summary>
         public List<string> MSGFiles { get; set; }
+        
+        /// <summary>
+        ///     List of DLL files Required by this Module to be loaded
+        /// </summary>
+        public List<string> Requires { get; set; }
 
         public MdfFile(string mdfFile)
         {
@@ -70,6 +76,9 @@ namespace MBBSEmu.Module
                         break;
                     case "DEVELOPER":
                         Developer = keyValuePair[1];
+                        break;
+                    case "REQUIRES":
+                        Requires = keyValuePair[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
                         break;
                     case "DLLS":
                         DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();

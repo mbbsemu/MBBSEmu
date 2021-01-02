@@ -1,9 +1,12 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Extensions;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
+using NLog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
@@ -15,9 +18,15 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
+        private ILogger _logger { get; init; }
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
+        
+        /// <summary>
+        ///     Path of the current Execution Context
+        /// </summary>
+        private string _path { get; init; }
 
         /// <summary>
         ///     INT 21h defined Disk Transfer Area
@@ -30,12 +39,14 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock)
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, string path = "")
         {
             _registers = registers;
             _memory = memory;
             _clock = clock;
             _interruptVectors = new Dictionary<byte, FarPtr>();
+            _logger = logger;
+            _path = path;
         }
 
         public void Handle()
@@ -268,6 +279,43 @@ namespace MBBSEmu.DOS.Interrupts
                         _registers.Halt = true;
                         break;
                     }
+                case 0x4E:
+                {
+                        /*
+                         *INT 21 - AH = 4Eh DOS 2+ - FIND FIRST ASCIZ (FIND FIRST)
+                            CX = search attributes
+                            DS:DX -> ASCIZ filename
+                            Return: CF set on error
+                                AX = error code
+                                [DTA] = data block
+                                undocumented fields
+                                    PC-DOS 3.10
+                                         byte 00h: drive letter
+                                         bytes 01h-0Bh: search template
+                                         byte 0Ch: search attributes
+                                    DOS 2.x (and DOS 3.x except 3.1???)
+                                         byte 00h: search attributes
+                                         byte 01h: drive letter
+                                         bytes 02h-0Ch: search template
+                                         bytes 0Dh-0Eh: entry count within directory
+                                         bytes 0Fh-12h: reserved
+                                         bytes 13h-14h: cluster number of parent directory
+                                         byte 15h: attribute of file found
+                                         bytes 16h-17h: file time
+                                         bytes 18h-19h: file date
+                                         bytes 1Ah-1Dh: file size
+                                         bytes 1Eh-3Ah: ASCIZ filename+extension
+                         */
+                        var fileName = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, true));
+
+                        var fileUtility = new FileUtility(_logger);
+                        var foundFile = fileUtility.FindFile(_path, fileName);
+
+                        if(!File.Exists($"{_path}{foundFile}"))
+                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                        
+                        break;
+                }
                 case 0x62:
                     {
                         /*
@@ -277,7 +325,7 @@ namespace MBBSEmu.DOS.Interrupts
                             This is only set when an EXE is running, thus should only be called from
                             an EXE.
                          */
-                        if (!_memory.TryGetVariablePointer("INT21h-PSP", out var pspPointer))
+                        if (!_memory.TryGetVariablePointer("Int21h-PSP", out var pspPointer))
                             throw new Exception("No PSP has been defined");
 
                         _registers.BX = _memory.GetWord(pspPointer);
