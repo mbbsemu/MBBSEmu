@@ -144,21 +144,25 @@ namespace MBBSEmu
 
         private string GetFileNameAppSettings(string key)
         {
-            //TODO Add proper path/naming checks
-            if (string.IsNullOrEmpty(ConfigurationRoot[key]))
+            //strip paths
+            var pathFile = Path.GetFileName(ConfigurationRoot[key]);
+
+            if (!string.IsNullOrEmpty(pathFile))
+                return pathFile;
+
+            switch (key)
             {
-                switch (ConfigurationRoot[key])
-                {
-                    case "Database.File":
-                        _logger.Warn($"No valid database filename(eg: mbbsemu.db) set in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file -- setting fault value: mbbsemu.db");
-                        return "mbbsemu.db";
-                    case "File.LogName":
-                        return "";
-                    default:
-                        return default;
-                }
+                case "Database.File":
+                    _logger.Warn($"No valid database filename set in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: mbbsemu.db");
+                    pathFile = "mbbsemu.db";
+                    return pathFile;
+                case "File.LogName":
+                    _logger.Info($"No valid filename for logging, disabling");
+                    pathFile = "";
+                    return pathFile;
+                default:
+                    return default;
             }
-            return ConfigurationRoot[key];
         }
 
         private int GetTimerHertz(string key)
