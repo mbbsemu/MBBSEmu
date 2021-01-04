@@ -1163,6 +1163,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 51:
                     aabbtv();
                     break;
+                case 746: // uhskey() same signature and purpose, uidkey() is for offline users
                 case 609:
                     uidkey();
                     break;
