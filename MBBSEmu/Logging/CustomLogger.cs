@@ -67,7 +67,7 @@ namespace MBBSEmu.Logging
             {
                 LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
             }
-            catch (ArgumentException e)
+            catch (ArgumentException)
             {
                 logLevel = "Info";
                 LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
