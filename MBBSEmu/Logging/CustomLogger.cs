@@ -1,3 +1,4 @@
+using System;
 using NLog;
 using NLog.Conditions;
 using NLog.Layouts;
@@ -55,6 +56,23 @@ namespace MBBSEmu.Logging
             });
 
             return consoleLogger;
+        }
+
+        /// <summary>
+        ///     Validate/Set log level and set default if not recognized
+        /// </summary>
+        public static string AddLogLevel(string loggerTarget, string logLevel)
+        {
+            try
+            {
+                LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
+            }
+            catch (ArgumentException e)
+            {
+                logLevel = "Info";
+                LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
+            }
+            return logLevel;
         }
 
         /// <summary>

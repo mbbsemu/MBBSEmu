@@ -8,6 +8,7 @@ using MBBSEmu.DOS;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
@@ -238,8 +239,8 @@ namespace MBBSEmu
 
                 //Setup Logger from AppSettings
                 LogManager.Configuration.LoggingRules.Clear();
-                LogManager.Configuration.AddRule(LogLevel.FromString(configuration.ConsoleLogLevel), LogLevel.Fatal, "consoleLogger");
-                if(!string.IsNullOrEmpty(configuration.FileLogName))
+                CustomLogger.AddLogLevel("consoleLogger", configuration.ConsoleLogLevel);
+                if (!string.IsNullOrEmpty(configuration.FileLogName))
                 {
                     var fileLogger = new FileTarget("fileLogger")
                     {
@@ -248,7 +249,7 @@ namespace MBBSEmu
                         Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
                     };
                     LogManager.Configuration.AddTarget(fileLogger);
-                    LogManager.Configuration.AddRule(LogLevel.FromString(configuration.FileLogLevel), LogLevel.Fatal, "fileLogger");
+                    CustomLogger.AddLogLevel("fileLogger", configuration.FileLogLevel);
                 }
                 LogManager.ReconfigExistingLoggers();
 

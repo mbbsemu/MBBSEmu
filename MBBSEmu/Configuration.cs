@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
+using MBBSEmu.Logging;
 
 namespace MBBSEmu
 {
@@ -58,9 +59,9 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
-        public string ConsoleLogLevel => GetLogLevel("Console.LogLevel");
+        public string ConsoleLogLevel => ConfigurationRoot["Console.LogLevel"];
         public string FileLogName => GetFileNameAppSettings("File.LogName");
-        public string FileLogLevel => GetLogLevel("File.LogLevel");
+        public string FileLogLevel => ConfigurationRoot["File.LogLevel"];
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -179,25 +180,6 @@ namespace MBBSEmu
                 timerHertz = 36;
             }
             return timerHertz;
-        }
-
-        private string GetLogLevel(string key)
-        {
-            var logLevel = ConfigurationRoot[key];
-            var logLevels = new[] {"Debug", "Info", "Warn", "Error", "Fatal"};
-
-            if (string.IsNullOrEmpty(logLevel))
-            {
-                _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: Info");
-                logLevel = "Info";
-            }
-
-            if (logLevels.Any(x => logLevel.Equals(x, StringComparison.InvariantCultureIgnoreCase)))
-                return logLevel;
-            _logger.Warn($"{key} not recognized as valid logging level (Debug, Info, Warn, Error, Fatal) -- setting default value: Info");
-            logLevel = "Info";
-
-            return logLevel;
         }
 
         private string GetRemoteIPAppSettings(string key)
