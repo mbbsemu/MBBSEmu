@@ -1217,8 +1217,7 @@ namespace MBBSEmu.CPU
             };
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
 
             WriteToDestination(result);
         }
@@ -1801,8 +1800,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -1851,8 +1849,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2085,9 +2082,7 @@ namespace MBBSEmu.CPU
             }
 
             //Clear Overflow & Carry
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2382,13 +2377,11 @@ namespace MBBSEmu.CPU
 
             if (result > byte.MaxValue)
             {
-                Registers.F = Registers.F.SetFlag((ushort) EnumFlags.OF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
             }
         }
 
@@ -2403,13 +2396,11 @@ namespace MBBSEmu.CPU
 
             if (Registers.DX > 0)
             {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
             }
         }
 
@@ -2424,13 +2415,11 @@ namespace MBBSEmu.CPU
 
             if (Registers.EDX > 0)
             {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
             }
         }
 
@@ -2731,7 +2720,6 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Sahf()
         {
-
             if (Registers.AH.IsFlagSet((byte)EnumFlags.SF))
             {
                 Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
@@ -3272,28 +3260,22 @@ namespace MBBSEmu.CPU
 
             if (double.IsNaN(ST0) || double.IsNaN(source))
             {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 return;
             }
 
             if (ST0 > source)
             {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
             else if (ST0 < source)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
             else
             {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
             }
         }
@@ -3324,28 +3306,22 @@ namespace MBBSEmu.CPU
 
             if (double.IsNaN(ST0) || double.IsNaN(ST1))
             {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
             else
             {
                 if (ST0 > ST1)
                 {
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 }
                 else if (ST0 < ST1)
                 {
                     Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 }
                 else
                 {
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
                     Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
                 }
             }
@@ -3504,28 +3480,22 @@ namespace MBBSEmu.CPU
 
             if (double.IsNaN(ST0Value))
             {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 return;
             }
 
             if (ST0Value > 0.0d)
             {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
             else if (ST0Value < 0.0d)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code3);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
             else
             {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
             }
 
