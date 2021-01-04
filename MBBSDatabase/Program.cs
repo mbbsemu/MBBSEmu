@@ -23,31 +23,39 @@ namespace MBBSEmu
 
         private void Run(string[] args)
         {
-          var serviceResolver = new ServiceResolver();
-          var logger = serviceResolver.GetService<ILogger>();
+            var serviceResolver = new ServiceResolver();
+            var logger = serviceResolver.GetService<ILogger>();
 
-          if (args.Length == 0)
-              Console.WriteLine("Usage: MBBSDatabase [view|convert] [files]");
-
-          var convert = (args[0] == "convert");
-
-          foreach (string s in args.Skip(1))
-          {
-            BtrieveFile file = new BtrieveFile();
-            try
+            if (args.Length == 0)
             {
-              file.LoadFile(logger, s);
-              if (convert)
-              {
-                  using var processor = new BtrieveFileProcessor();
-                  processor.CreateSqliteDB(Path.ChangeExtension(s, ".DB"), file);
-              }
+                Console.WriteLine("Usage: MBBSDatabase [view|convert] [files]");
+                return;
             }
-            catch (Exception e)
+
+            var convert = (args[0] == "convert");
+
+            foreach (string s in args.Skip(1))
             {
-              logger.Error(e, $"Failed to load Btrieve file {s}: {e.Message}\n{e.StackTrace}");
+                BtrieveFile file = new BtrieveFile();
+                try
+                {
+                    file.LoadFile(logger, s);
+                    if (convert)
+                    {
+                        using var processor = new BtrieveFileProcessor();
+
+                        var dbPath = Path.ChangeExtension(s, ".DB");
+                        if (File.Exists(dbPath))
+                            File.Delete(dbPath);
+
+                        processor.CreateSqliteDB(dbPath, file);
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, $"Failed to load Btrieve file {s}: {e.Message}\n{e.StackTrace}");
+                }
             }
-          }
         }
     }
 }

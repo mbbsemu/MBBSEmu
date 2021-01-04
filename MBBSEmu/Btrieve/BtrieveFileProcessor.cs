@@ -1105,7 +1105,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Creates the Sqlite database from btrieveFile.
         /// </summary>
-        private void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
+        public void CreateSqliteDB(string fullpath, BtrieveFile btrieveFile)
         {
             _logger.Info($"Creating sqlite db {fullpath}");
 
