@@ -157,7 +157,7 @@ namespace MBBSEmu
                     pathFile = "mbbsemu.db";
                     return pathFile;
                 case "File.LogName":
-                    _logger.Info($"No valid filename for logging, disabling");
+                    //File Logging Disabled
                     pathFile = "";
                     return pathFile;
                 default:

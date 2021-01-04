@@ -19,7 +19,7 @@ namespace MBBSEmu.Logging
             config.AddTarget(consoleLogger);
             config.AddRuleForAllLevels(consoleLogger);
             LogManager.Configuration = config;
-            LogManager.Configuration.Variables["mbbsdir"] = Directory.GetCurrentDirectory() + "\\";
+            LogManager.Configuration.Variables["mbbsdir"] = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar;
         }
 
         static ColoredConsoleTarget CreateConsoleTarget()

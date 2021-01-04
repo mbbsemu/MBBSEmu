@@ -246,7 +246,6 @@ namespace MBBSEmu
                         FileNameKind = 0,
                         FileName = "${var:mbbsdir}" + configuration.FileLogName,
                         Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
-                        DeleteOldFileOnStartup = true
                     };
                     LogManager.Configuration.AddTarget(fileLogger);
                     LogManager.Configuration.AddRule(LogLevel.FromString(configuration.FileLogLevel), LogLevel.Fatal, "fileLogger");
