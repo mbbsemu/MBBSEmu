@@ -182,7 +182,7 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void LoadSqlite(string fullPath)
         {
-            _logger.Info($"Opening sqlite DB {fullPath}");
+            _logger.Debug($"Opening sqlite DB {fullPath}");
 
             FullPath = fullPath;
 

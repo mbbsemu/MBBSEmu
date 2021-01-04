@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
+using MBBSEmu.Logging;
 
 namespace MBBSEmu
 {
@@ -48,7 +49,7 @@ namespace MBBSEmu
         public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
         public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
-        public string DatabaseFile => GetStringAppSettings("Database.File");
+        public string DatabaseFile => GetFileNameAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
         public int TimerHertz => GetTimerHertz("Timer.Hertz");
 
@@ -58,6 +59,9 @@ namespace MBBSEmu
         public string ANSILogoff => ConfigurationRoot["ANSI.Logoff"];
         public string ANSISignup => ConfigurationRoot["ANSI.Signup"];
         public string ANSIMenu => ConfigurationRoot["ANSI.Menu"];
+        public string ConsoleLogLevel => ConfigurationRoot["Console.LogLevel"];
+        public string FileLogName => GetFileNameAppSettings("File.LogName");
+        public string FileLogLevel => ConfigurationRoot["File.LogLevel"];
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -139,17 +143,27 @@ namespace MBBSEmu
             }
         }
 
-        private string GetStringAppSettings(string key)
+        private string GetFileNameAppSettings(string key)
         {
-            if (string.IsNullOrEmpty(ConfigurationRoot[key]))
+            //strip paths
+            var pathFile = Path.GetFileName(ConfigurationRoot[key]);
+
+            if (!string.IsNullOrEmpty(pathFile))
+                return pathFile;
+
+            switch (key)
             {
-                throw key switch
-                {
-                    "Database.File" => new Exception($"Please set a valid database filename(eg: mbbsemu.db) in the {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} file before running MBBSEmu"),
-                    _ => new Exception($"Missing {key} in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename}"),
-                };
+                case "Database.File":
+                    _logger.Warn($"No valid database filename set in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: mbbsemu.db");
+                    pathFile = "mbbsemu.db";
+                    return pathFile;
+                case "File.LogName":
+                    //File Logging Disabled
+                    pathFile = "";
+                    return pathFile;
+                default:
+                    return default;
             }
-            return ConfigurationRoot[key];
         }
 
         private int GetTimerHertz(string key)
