@@ -1212,6 +1212,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Or_8(),
                 2 => Op_Or_16(),
+                4 => Op_Or_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1237,6 +1238,16 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            destination |= source;
+            Flags_EvaluateSignZero(destination);
+            return destination;
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Or_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
             destination |= source;
             Flags_EvaluateSignZero(destination);
             return destination;
@@ -1783,6 +1794,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_And_8(),
                 2 => Op_And_16(),
+                4 => Op_And_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1809,6 +1821,16 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            destination &= source;
+            Flags_EvaluateSignZero(destination);
+            return destination;
+        }
+
+        private uint Op_And_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             destination &= source;
             Flags_EvaluateSignZero(destination);
