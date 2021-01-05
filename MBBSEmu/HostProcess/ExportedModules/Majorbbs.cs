@@ -4212,7 +4212,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHEXP"), userExtAcc.Data);
 
 #if DEBUG
-            _logger.Debug($"User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
+            _logger.Debug($"({Module.ModuleIdentifier}) User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
 #endif
             Registers.AX = 1;
         }
@@ -7138,7 +7138,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ? (ushort)1
                 : (ushort)0;
 #if DEBUG
-            _logger.Debug($"Returning {Registers.AX} for Haskey({accountLock})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for othkey({accountLock})");
 #endif
         }
 
@@ -7313,7 +7313,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ? (ushort)1
                 : (ushort)0;
 #if DEBUG
-            _logger.Debug($"Returning {Registers.AX} for Haskey({accountLock})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for gen_haskey({accountLock})");
 #endif
         }
 
