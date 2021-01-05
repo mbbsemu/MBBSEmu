@@ -35,7 +35,7 @@ namespace MBBSEmu.Module
             FileName = $"{msgName.ToUpper()}.MSG";
             FileNameAtRuntime = $"{msgName.ToUpper()}.MCV";
 
-            _logger.Info($"Compiling MCV from {FileName}");
+            _logger.Debug($"({_moduleName}) Compiling MCV from {FileName}");
             BuildMCV();
         }
 
@@ -176,7 +176,7 @@ namespace MBBSEmu.Module
             //Write it to the disk
             File.WriteAllBytes($"{_modulePath}{FileNameAtRuntime}", msOutput.ToArray());
 
-            _logger.Info($"Compiled {FileNameAtRuntime} ({MsgValues.Count} values, {msOutput.Length} bytes)");
+            _logger.Debug($"({_moduleName}) Compiled {FileNameAtRuntime} ({MsgValues.Count} values, {msOutput.Length} bytes)");
         }
     }
 }

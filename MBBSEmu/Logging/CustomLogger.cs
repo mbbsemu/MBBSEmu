@@ -1,8 +1,9 @@
+using System;
 using NLog;
 using NLog.Conditions;
 using NLog.Layouts;
 using NLog.Targets;
-using SQLitePCL;
+using System.IO;
 
 namespace MBBSEmu.Logging
 {
@@ -14,20 +15,12 @@ namespace MBBSEmu.Logging
         static CustomLogger()
         {
             var config = new NLog.Config.LoggingConfiguration();
-
             var consoleLogger = CreateConsoleTarget();
-            config.AddTarget(consoleLogger);
 
-            var fileLogger = new FileTarget("fileLogger")
-            {
-                FileName = @"c:\dos\log\log.txt",
-                Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
-                DeleteOldFileOnStartup = true
-            };
-            //config.AddTarget(fileLogger);
+            config.AddTarget(consoleLogger);
             config.AddRuleForAllLevels(consoleLogger);
-            //config.AddRuleForAllLevels(fileLogger);
             LogManager.Configuration = config;
+            LogManager.Configuration.Variables["mbbsdir"] = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar;
         }
 
         static ColoredConsoleTarget CreateConsoleTarget()
@@ -63,6 +56,23 @@ namespace MBBSEmu.Logging
             });
 
             return consoleLogger;
+        }
+
+        /// <summary>
+        ///     Validate/Set log level and set default if not recognized
+        /// </summary>
+        public static string AddLogLevel(string loggerTarget, string logLevel)
+        {
+            try
+            {
+                LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
+            }
+            catch (ArgumentException)
+            {
+                logLevel = "Info";
+                LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
+            }
+            return logLevel;
         }
 
         /// <summary>
