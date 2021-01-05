@@ -73,7 +73,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
 
-            mbbsEmuMemoryCore.GetVariablePointer("OTHUSN");
             mbbsEmuMemoryCore.SetWord("OTHUSN", 0);
 
             //Execute Test
@@ -182,7 +181,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
 
-            mbbsEmuMemoryCore.GetVariablePointer("OTHUSN");
             mbbsEmuMemoryCore.SetWord("OTHUSN", 0);
 
             //Execute Test
