@@ -48,4 +48,4 @@ MBBSEmu works by loading the Module DLL as the original host software would, and
 
 # License / Copyright
 
-MBBSEmu is Copyright (c) 2020 Nusbaum Consulting, LLC and is licensed under the terms of the [MIT License](https://github.com/enusbaum/MBBSEmu/blob/master/LICENSE). 
+MBBSEmu is Copyright (c) 2021 Nusbaum Consulting, LLC and is licensed under the terms of the [MIT License](https://github.com/enusbaum/MBBSEmu/blob/master/LICENSE). 
