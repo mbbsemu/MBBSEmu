@@ -7111,8 +7111,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void othkey()
         {
-            // no key support for now, so everybody has the key
-            Registers.AX = 1;
+            var accountLock = GetParameterString(0, true);
+            var userChannel = Module.Memory.GetWord("OTHUSN");
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[userChannel].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[userChannel].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
+#if DEBUG
+            _logger.Debug($"Returning {Registers.AX} for Haskey({accountLock})");
+#endif
         }
 
         /// <summary>
@@ -7258,13 +7285,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void gen_haskey()
         {
-            var lockNamePointer = GetParameterPointer(0);
-            var lockNameBytes = Module.Memory.GetString(lockNamePointer, true);
+            var accountLock = GetParameterString(0, true);
+            var userChannel = GetParameter(2);
 
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[userChannel].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[userChannel].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
 #if DEBUG
-            _logger.Debug($"Returning TRUE for Haskey({Encoding.ASCII.GetString(lockNameBytes)})");
+            _logger.Debug($"Returning {Registers.AX} for Haskey({accountLock})");
 #endif
-            Registers.AX = 1;
         }
 
         /// <summary>
