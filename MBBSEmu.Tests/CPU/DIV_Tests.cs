@@ -131,5 +131,69 @@ namespace MBBSEmu.Tests.CPU
                 Assert.Equal(expectedRemainder, mbbsEmuCpuRegisters.DX);
             }
         }
+
+        [Theory]
+        [InlineData(2, 2, 1, 0)]
+        [InlineData(3, 2, 1, 1)]
+        [InlineData(ushort.MaxValue, ushort.MaxValue, 1, 0)]
+        [InlineData(0, ushort.MaxValue, 0, 0)]
+        [InlineData(ushort.MaxValue, 0, 0, 0, true)]
+        [InlineData(ulong.MaxValue, uint.MaxValue, 0, 0, false, true)]
+        [InlineData(long.MaxValue, uint.MaxValue, 2147483648, 2147483647)]
+        public void DIV_Test_M32(ulong dividend, uint divisor, uint expectedQuotient, uint expectedRemainder, bool divideByZeroException = false, bool overflowException = false)
+        {
+            Reset();
+
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuMemoryCore.SetDWord(2, 0, divisor);
+            mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuCpuRegisters.EAX = (uint)(dividend & 0xFFFFFFFF);
+            mbbsEmuCpuRegisters.EDX = (uint)(dividend >> 32);
+            var instructions = new Assembler(16);
+            instructions.div(__dword_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            if (divideByZeroException)
+                Assert.Throws<DivideByZeroException>(mbbsEmuCpuCore.Tick);
+            else if (overflowException)
+                Assert.Throws<OverflowException>(mbbsEmuCpuCore.Tick);
+            else
+            {
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedQuotient, mbbsEmuCpuRegisters.EAX);
+                Assert.Equal(expectedRemainder, mbbsEmuCpuRegisters.EDX);
+            }
+        }
+
+        [Theory]
+        [InlineData(2, 2, 1, 0)]
+        [InlineData(3, 2, 1, 1)]
+        [InlineData(ushort.MaxValue, ushort.MaxValue, 1, 0)]
+        [InlineData(0, ushort.MaxValue, 0, 0)]
+        [InlineData(ushort.MaxValue, 0, 0, 0, true)]
+        [InlineData(ulong.MaxValue, uint.MaxValue, 0, 0, false, true)]
+        [InlineData(long.MaxValue, uint.MaxValue, 2147483648, 2147483647)]
+        public void DIV_Test_R32(ulong dividend, uint divisor, uint expectedQuotient, uint expectedRemainder, bool divideByZeroException = false, bool overflowException = false)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.EBX = divisor;
+            mbbsEmuCpuRegisters.EAX = (uint)(dividend & 0xFFFFFFFF);
+            mbbsEmuCpuRegisters.EDX = (uint)(dividend >> 32);
+            var instructions = new Assembler(16);
+            instructions.div(ebx);
+            CreateCodeSegment(instructions);
+
+            if (divideByZeroException)
+                Assert.Throws<DivideByZeroException>(mbbsEmuCpuCore.Tick);
+            else if (overflowException)
+                Assert.Throws<OverflowException>(mbbsEmuCpuCore.Tick);
+            else
+            {
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedQuotient, mbbsEmuCpuRegisters.EAX);
+                Assert.Equal(expectedRemainder, mbbsEmuCpuRegisters.EDX);
+            }
+        }
     }
 }
