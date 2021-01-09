@@ -3641,8 +3641,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private ushort Op_Movsx_16()
         {
-            var oper8SourceData = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var result = oper8SourceData.ToUshortSignExtended();
+            var result = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source).ToUshortSignExtended(8);
             return result;
         }
 
@@ -3668,17 +3667,12 @@ namespace MBBSEmu.CPU
                 };
             }
 
-            switch (sourceSize)
+            result = sourceSize switch
             {
-                case (8):
-                    var oper8SourceData = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
-                    result = oper8SourceData.ToUshortSignExtended();
-                    break;
-                case (16):
-                    var oper16SourceData = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source);
-                    result = oper16SourceData.ToUintSignExtended();
-                    break;
-            }
+                (8) => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source).ToUintSignExtended(24),
+                (16) => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source).ToUintSignExtended(16),
+                _ => result
+            };
             return (int) result;
         }
 
