@@ -1698,7 +1698,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private byte Op_Inc_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1713,7 +1713,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private ushort Op_Inc_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -1728,7 +1728,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private uint Op_Inc_32()
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -2151,7 +2151,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private byte Op_Sub_8()
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -2167,7 +2167,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private ushort Op_Sub_16()
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
@@ -2183,7 +2183,7 @@ namespace MBBSEmu.CPU
             }
         }
 
-        [MethodImpl(CompilerOptimizations)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         private uint Op_Sub_32()
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
