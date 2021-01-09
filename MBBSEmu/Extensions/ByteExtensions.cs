@@ -63,5 +63,14 @@ namespace MBBSEmu.Extensions
             }
             return setBits != 0 && setBits % 2 == 0;
         }
+
+        /// <summary>
+        ///     Sign extends
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ushort ToUshortSignExtended(this byte b) => (ushort)(b);
     }
 }

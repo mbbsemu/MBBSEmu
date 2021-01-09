@@ -3641,8 +3641,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private ushort Op_Movsx_16()
         {
-            ///ffff
-            var result = (ushort) 1;
+            var oper8SourceData = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var result = oper8SourceData.ToUshortSignExtended();
             return result;
         }
 
@@ -3652,38 +3652,34 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private int Op_Movsx_32()
         {
-            var operSourceType = _currentInstruction.Op1Kind;
-            var operDestinationType = _currentInstruction.Op0Kind;
+            var result = (uint) 0;
+            var sourceSize = 0;
 
-            var result = 0;
+            if (_currentInstruction.Op1Kind == OpKind.Register)
+                sourceSize = GetSize(_currentInstruction.Op1Register);
 
-            switch (operSourceType, operDestinationType)
+            if (_currentInstruction.Op1Kind == OpKind.Memory)
             {
-                case (OpKind.Memory, OpKind.Register):
-                    switch (_currentInstruction.MemorySize)
-                    {
-                        case MemorySize.Int8:
-                            ///
-                            break;
-                        case MemorySize.Int16:
-                            var operSourceData = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source);
-                            var operDestinationData = (operSourceData >> 15) == 0 ? operSourceData : -1 ^ 0xFFF | operSourceData;
-                            Registers.SetValue(_currentInstruction.Op0Register, BitConverter.GetBytes(operDestinationData));
-                            break;
-                    }
-                    result = 0;
+                sourceSize = _currentInstruction.MemoryDisplSize switch
+                {
+                    2 => 16,
+                    1 => 8,
+                    _ => sourceSize
+                };
+            }
+
+            switch (sourceSize)
+            {
+                case (8):
+                    var oper8SourceData = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
+                    result = oper8SourceData.ToUshortSignExtended();
                     break;
-                case (OpKind.Register, OpKind.Register):
-                    result = 0;
-                    break;
-                case (OpKind.Register, OpKind.Memory):
-                    result = 0;
-                    break;
-                case (OpKind.Memory, OpKind.Memory):
-                    result = 0;
+                case (16):
+                    var oper16SourceData = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source);
+                    result = oper16SourceData.ToUintSignExtended();
                     break;
             }
-            return result;
+            return (int) result;
         }
 
         /// <summary>

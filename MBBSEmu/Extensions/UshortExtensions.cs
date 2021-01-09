@@ -67,5 +67,15 @@ namespace MBBSEmu.Extensions
 
             return setBits != 0 && setBits % 2 == 0;
         }
+
+        /// <summary>
+        ///     Sign extends
+        /// //var operDestinationData = (operSourceData >> 15) == 0 ? operSourceData : -1 ^ 0xFFF | operSourceData;
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitMask"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint ToUintSignExtended(this ushort b) => (ushort)(b);
     }
 }
