@@ -104,7 +104,12 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Last Character Received from the Client
         /// </summary>
-        public byte LastCharacterReceived { get; set; }
+        public byte CharacterReceived { get; set; }
+
+        /// <summary>
+        ///     Last Character Received after Processing
+        /// </summary>
+        public byte CharacterProcessed { get; set; }
 
         public FarPtr CharacterInterceptor { get; set; }
 
@@ -252,7 +257,8 @@ namespace MBBSEmu.Session
             if (!DataFromClient.TryTake(out var clientData, TimeSpan.FromSeconds(0)))
                 return;
 
-            LastCharacterReceived = clientData;
+            CharacterReceived = clientData;
+            CharacterProcessed = clientData;
 
             DataToProcess = true;
         }
@@ -261,7 +267,7 @@ namespace MBBSEmu.Session
 
         private static bool[] CreatePrintableCharacterArray()
         {
-            bool[] printableCharacters = Enumerable.Repeat(true, 256).ToArray();
+            var printableCharacters = Enumerable.Repeat(true, 256).ToArray();
 
             printableCharacters[0] = false; // \0
             printableCharacters[17] = false; // DC1   used by T-LORD

@@ -757,7 +757,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (MonitoredChannel2 == 0xFFFF)
                 return;
 
-            ChannelDictionary[MonitoredChannel2].LastCharacterReceived = (byte)character;
+            ChannelDictionary[MonitoredChannel2].CharacterReceived = (byte)character;
             ChannelDictionary[MonitoredChannel2].InputBuffer.WriteByte((byte)character);
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
@@ -1016,7 +1016,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            channel.InputBuffer.WriteByte(character);
+            if(character != 0xD)
+                channel.InputBuffer.WriteByte(character);
         }
     }
 }
