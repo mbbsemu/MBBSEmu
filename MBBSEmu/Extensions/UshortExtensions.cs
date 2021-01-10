@@ -69,10 +69,10 @@ namespace MBBSEmu.Extensions
         }
 
         /// <summary>
-        ///     Sign extends
+        ///     Sign extends 16bit -> 32bit
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitMask"></param>
+        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint ToUintSignExtended(this ushort b, ushort bitDifference) => (uint)(b << bitDifference >> bitDifference);

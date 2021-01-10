@@ -65,19 +65,19 @@ namespace MBBSEmu.Extensions
         }
 
         /// <summary>
-        ///     Sign extends 8bit ->16bit
+        ///     Sign extends 8bit -> 16bit
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitMask"></param>
+        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ToUshortSignExtended(this byte b, ushort bitDifference) => (ushort)(b << bitDifference >> bitDifference);
 
         /// <summary>
-        ///     Sign extends 8bit ->32bit
+        ///     Sign extends 8bit -> 32bit
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitMask"></param>
+        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint ToUintSignExtended(this byte b, ushort bitDifference) => (uint)(b << bitDifference >> bitDifference);
