@@ -3630,9 +3630,8 @@ namespace MBBSEmu.CPU
                 4 => Op_Movsx_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
-
+            
             WriteToDestination(result);
-
         }
 
         /// <summary>
@@ -3649,9 +3648,8 @@ namespace MBBSEmu.CPU
         ///     Move with Sign-Extend to 32bit destination
         /// </summary>
         [MethodImpl(CompilerOptimizations)]
-        private int Op_Movsx_32()
+        private uint Op_Movsx_32()
         {
-            var result = (uint) 0;
             var sourceSize = 0;
 
             if (_currentInstruction.Op1Kind == OpKind.Register)
@@ -3667,13 +3665,12 @@ namespace MBBSEmu.CPU
                 };
             }
 
-            result = sourceSize switch
+            var result = sourceSize switch
             {
                 (8) => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source).ToUintSignExtended(24),
                 (16) => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source).ToUintSignExtended(16),
-                _ => result
             };
-            return (int) result;
+            return result;
         }
 
         /// <summary>
