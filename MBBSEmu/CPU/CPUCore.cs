@@ -2350,6 +2350,11 @@ namespace MBBSEmu.CPU
                 case 2:
                     Op_Idiv_16();
                     return;
+                case 4:
+                    Op_Idiv_32();
+                    return;
+                default:
+                    throw new ArgumentException();
             }
         }
 
@@ -2367,6 +2372,8 @@ namespace MBBSEmu.CPU
                 case 4:
                     Op_Mul_32();
                     return;
+                default:
+                    throw new ArgumentException();
             }
         }
 
@@ -2430,31 +2437,41 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_8()
         {
-            var destination = (sbyte)GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var divisor = (sbyte)GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
 
-            var quotient = Math.DivRem((short)Registers.AX, destination, out var remainder);
-
+            var quotient = Math.DivRem((short)Registers.AX, divisor, out var remainder);
             if (quotient > sbyte.MaxValue || quotient < sbyte.MinValue)
                 throw new OverflowException("Divide Error: Quotient Overflow");
 
             Registers.AL = (byte)quotient;
             Registers.AH = (byte)remainder;
-
         }
 
         [MethodImpl(CompilerOptimizations)]
         private void Op_Idiv_16()
         {
-            var destination = (short)GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var divisor = (short)GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
 
-            var quotient = Math.DivRem(Registers.GetLong(), destination, out var remainder);
-
+            var quotient = Math.DivRem(Registers.GetLong(), divisor, out var remainder);
             if (quotient > short.MaxValue || quotient < short.MinValue)
                 throw new OverflowException("Divide Error: Quotient Overflow");
 
             Registers.AX = (ushort)quotient;
             Registers.DX = (ushort)remainder;
+        }
 
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Idiv_32()
+        {
+            var divisor = (int)GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var dividend = (long)((ulong)Registers.EDX << 32 | Registers.EAX);
+
+            var quotient = Math.DivRem(dividend, divisor, out var remainder);
+            if (quotient > int.MaxValue || quotient < int.MinValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
+
+            Registers.EAX = (uint)quotient;
+            Registers.EDX = (uint)remainder;
         }
 
         [MethodImpl(CompilerOptimizations)]
@@ -2816,6 +2833,11 @@ namespace MBBSEmu.CPU
                 case 2:
                     Op_Div_16();
                     return;
+                case 4:
+                    Op_Div_32();
+                    return;
+                default:
+                    throw new ArgumentException();
             }
         }
 
@@ -2825,10 +2847,11 @@ namespace MBBSEmu.CPU
             var divisor = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var dividend = Registers.AX;
 
-            var quotient = Math.DivRem(dividend, divisor, out var remainder);
-
+            var quotient = dividend / divisor;
             if (quotient > byte.MaxValue)
                 throw new OverflowException("Divide Error: Quotient Overflow");
+
+            var remainder = dividend % divisor;
 
             Registers.AL = (byte)quotient;
             Registers.AH = (byte)remainder;
@@ -2840,13 +2863,30 @@ namespace MBBSEmu.CPU
             var divisor = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var dividend = (uint)Registers.GetLong();
 
-            var quotient = Math.DivRem(dividend, divisor, out var remainder);
-
+            var quotient = dividend / divisor;
             if (quotient > ushort.MaxValue)
                 throw new OverflowException("Divide Error: Quotient Overflow");
 
+            var remainder = dividend % divisor;
+
             Registers.AX = (ushort)quotient;
             Registers.DX = (ushort)remainder;
+        }
+
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Div_32()
+        {
+            var divisor = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var dividend = (ulong)Registers.EDX << 32 | Registers.EAX;
+
+            var quotient = dividend / divisor;
+            if (quotient > uint.MaxValue)
+                throw new OverflowException("Divide Error: Quotient Overflow");
+
+            var remainder = dividend % divisor;
+
+            Registers.EAX = (uint)quotient;
+            Registers.EDX = (uint)remainder;
         }
 
         /// <summary>
