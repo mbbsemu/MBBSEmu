@@ -103,7 +103,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0xFF, 0xFFFF)]
         [InlineData(0x0F, 0x000F)]
         [InlineData(0xF4, 0xFFF4)]
-        public void MOVSX_R16_M8(byte dsValue, uint expectedResult)
+        public void MOVSX_R16_M8(byte dsValue, ushort expectedResult)
         {
             Reset();
 
