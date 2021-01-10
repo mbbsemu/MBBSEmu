@@ -587,6 +587,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Movsx:
                     Op_Movsx();
                     break;
+                case Mnemonic.Movzx:
+                    Op_Movzx();
+                    break;
                 case Mnemonic.Shld:
                     Op_Shld();
                     break;
@@ -3709,6 +3712,63 @@ namespace MBBSEmu.CPU
             {
                 (8) => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(24),
                 (16) => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(16),
+                _ => throw new NotImplementedException(),
+            };
+            return result;
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Movzx()
+        {
+
+            var result = _currentOperationSize switch
+            {
+                2 => Op_Movzx_16(),
+                4 => Op_Movzx_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend to 16bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private ushort Op_Movzx_16()
+        {
+            var result = (ushort) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            return result;
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend to 32bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Movzx_32()
+        {
+            var sourceSize = 0;
+
+            if (_currentInstruction.Op1Kind == OpKind.Register)
+                sourceSize = GetSize(_currentInstruction.Op1Register);
+
+            if (_currentInstruction.Op1Kind == OpKind.Memory)
+            {
+                sourceSize = _currentInstruction.MemorySize switch
+                {
+                    MemorySize.UInt16 => 16,
+                    MemorySize.UInt8 => 8,
+                    _ => throw new NotImplementedException(),
+                };
+            }
+
+            var result = sourceSize switch
+            {
+                (8) => (uint) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (16) => (uint) GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
                 _ => throw new NotImplementedException(),
             };
             return result;
