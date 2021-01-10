@@ -100,10 +100,11 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(0x80, 0x0080)]
-        [InlineData(0xFF, 0x00FF)]
-        [InlineData(0x8C, 0x008C)]
-        [InlineData(0xCC, 0x00CC)]
+        [InlineData(0x80, 0xFF80)]
+        [InlineData(0xFF, 0xFFFF)]
+        [InlineData(0x8C, 0xFF8C)]
+        [InlineData(0x60, 0x0060)]
+        [InlineData(0x0F, 0x000F)]
         public void MOVSX_R16_M8(byte dsValue, ushort expectedResult)
         {
             Reset();
@@ -124,10 +125,11 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(0x80, 0x0080)]
-        [InlineData(0xFF, 0x00FF)]
-        [InlineData(0x8C, 0x008C)]
-        [InlineData(0xCC, 0x00CC)]
+        [InlineData(0x80, 0xFF80)]
+        [InlineData(0xFF, 0xFFFF)]
+        [InlineData(0x8C, 0xFF8C)]
+        [InlineData(0x60, 0x0060)]
+        [InlineData(0x0F, 0x000F)]
         public void MOVSX_R16_R8(byte blValue, ushort expectedResult)
         {
             Reset();
