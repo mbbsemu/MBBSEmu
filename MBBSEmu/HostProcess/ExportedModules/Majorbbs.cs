@@ -3003,11 +3003,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sameto()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
+            var string1Buffer = GetParameterString(0, true);
+            var string2Buffer = GetParameterString(2, true);
 
             Registers.AX = (ushort)(string2Buffer.Contains(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
         }
@@ -3020,11 +3017,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void samend()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
+            var string1Buffer = GetParameterString(0,true);
+            var string2Buffer = GetParameterString(2, true);
 
             Registers.AX = (ushort)(string1Buffer.EndsWith(string2Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
         }
