@@ -3693,25 +3693,22 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private uint Op_Movsx_32()
         {
-            var sourceSize = 0;
-
-            if (_currentInstruction.Op1Kind == OpKind.Register)
-                sourceSize = GetSize(_currentInstruction.Op1Register);
-
-            if (_currentInstruction.Op1Kind == OpKind.Memory)
+            var sourceSize = _currentInstruction.Op1Kind switch
             {
-                sourceSize = _currentInstruction.MemorySize switch
+                OpKind.Register => GetSize(_currentInstruction.Op1Register),
+                OpKind.Memory => _currentInstruction.MemorySize switch
                 {
-                    MemorySize.Int16 => 16,
-                    MemorySize.Int8 => 8,
-                    _ => throw new NotImplementedException(),
-                };
-            }
+                    MemorySize.Int8 => 1,
+                    MemorySize.Int16 => 2,
+                    _ => throw new NotImplementedException()
+                },
+                _ => throw new NotImplementedException()
+            };
 
             var result = sourceSize switch
             {
-                (8) => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
-                (16) => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
+                (1) => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
+                (2) => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
                 _ => throw new NotImplementedException(),
             };
             return result;
@@ -3750,25 +3747,22 @@ namespace MBBSEmu.CPU
         [MethodImpl(CompilerOptimizations)]
         private uint Op_Movzx_32()
         {
-            var sourceSize = 0;
-
-            if (_currentInstruction.Op1Kind == OpKind.Register)
-                sourceSize = GetSize(_currentInstruction.Op1Register);
-
-            if (_currentInstruction.Op1Kind == OpKind.Memory)
+            var sourceSize = _currentInstruction.Op1Kind switch
             {
-                sourceSize = _currentInstruction.MemorySize switch
+                OpKind.Register => GetSize(_currentInstruction.Op1Register),
+                OpKind.Memory => _currentInstruction.MemorySize switch
                 {
-                    MemorySize.UInt16 => 16,
-                    MemorySize.UInt8 => 8,
-                    _ => throw new NotImplementedException(),
-                };
-            }
+                    MemorySize.UInt8 => 1,
+                    MemorySize.UInt16 => 2,
+                    _ => throw new NotImplementedException()
+                },
+                _ => throw new NotImplementedException()
+            };
 
             var result = sourceSize switch
             {
-                (8) => (uint) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
-                (16) => (uint) GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (1) => (uint) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (2) => (uint) GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
                 _ => throw new NotImplementedException(),
             };
             return result;
@@ -4208,31 +4202,31 @@ namespace MBBSEmu.CPU
         {
             return register switch
             {
-                Register.AL => 8,
-                Register.AH => 8,
-                Register.BL => 8,
-                Register.BH => 8,
-                Register.CL => 8,
-                Register.CH => 8,
-                Register.DL => 8,
-                Register.DH => 8,
-                Register.AX => 16,
-                Register.BX => 16,
-                Register.CX => 16,
-                Register.DX => 16,
-                Register.SP => 16,
-                Register.BP => 16,
-                Register.SI => 16,
-                Register.DI => 16,
-                Register.ES => 16,
-                Register.CS => 16,
-                Register.SS => 16,
-                Register.DS => 16,
-                Register.EIP => 16,
-                Register.EAX => 32,
-                Register.EBX => 32,
-                Register.ECX => 32,
-                Register.EDX => 32,
+                Register.AL => sizeof(byte),
+                Register.AH => sizeof(byte),
+                Register.BL => sizeof(byte),
+                Register.BH => sizeof(byte),
+                Register.CL => sizeof(byte),
+                Register.CH => sizeof(byte),
+                Register.DL => sizeof(byte),
+                Register.DH => sizeof(byte),
+                Register.AX => sizeof(ushort),
+                Register.BX => sizeof(ushort),
+                Register.CX => sizeof(ushort),
+                Register.DX => sizeof(ushort),
+                Register.SP => sizeof(ushort),
+                Register.BP => sizeof(ushort),
+                Register.SI => sizeof(ushort),
+                Register.DI => sizeof(ushort),
+                Register.ES => sizeof(ushort),
+                Register.CS => sizeof(ushort),
+                Register.SS => sizeof(ushort),
+                Register.DS => sizeof(ushort),
+                Register.EIP => sizeof(uint),
+                Register.EAX => sizeof(uint),
+                Register.EBX => sizeof(uint),
+                Register.ECX => sizeof(uint),
+                Register.EDX => sizeof(uint),
                 _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
             };
         }
