@@ -600,7 +600,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     uacoff();
                     break;
                 case 474:
-                case 787: //pmlt is just mult-lingual prf, so we just call prf
+                case 787: //pmlt is just multi-lingual prf, so we just call prf
                     prf();
                     break;
                 case 463:
