@@ -2625,7 +2625,7 @@ namespace MBBSEmu.CPU
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
 
-                        //Control Transfer Occured in the CALL, so we clean up the stack and return
+                        //Control Transfer occurred in the CALL, so we clean up the stack and return
                         if (ipBeforeCall != Registers.IP)
                             return;
 
