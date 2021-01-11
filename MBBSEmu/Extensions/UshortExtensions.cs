@@ -75,6 +75,12 @@ namespace MBBSEmu.Extensions
         /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ToUintSignExtended(this ushort b, ushort bitDifference) => (uint)(b << bitDifference >> bitDifference);
+        public static uint ToUintSignExtended(this ushort b)
+        {
+            if (b.IsNegative())
+                return (uint)(b | 0xFFFF0000);
+
+            return (uint)b;
+        }
     }
 }

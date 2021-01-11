@@ -71,13 +71,12 @@ namespace MBBSEmu.Extensions
         /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort ToUshortSignExtended(this byte b, ushort bitDifference)
+        public static ushort ToUshortSignExtended(this byte b)
         {
-            var result = (ushort)(b << bitDifference >> bitDifference);
-            if ((sbyte) b < 0)
-                result |= 0xFF00;
-            
-            return result;
+            if (b.IsNegative())
+                return (ushort)(b | 0xFF00);
+
+            return (ushort)b;
         }
 
         /// <summary>
@@ -87,6 +86,12 @@ namespace MBBSEmu.Extensions
         /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ToUintSignExtended(this byte b, ushort bitDifference) => (uint)(b << bitDifference >> bitDifference);
+        public static uint ToUintSignExtended(this byte b)
+        {
+            if (b.IsNegative())
+                return (uint)(b | 0xFFFFFF00);
+
+            return (uint)b;
+        } 
     }
 }
