@@ -1373,8 +1373,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleName = Module.Mdf.ModuleName + "\0";
 
             //Only needs to be set once
-            if (!Module.Memory.TryGetVariablePointer("GMDNAM", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable("GMDNAM", (ushort)moduleName.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("GMDNAM", (ushort) moduleName.Length);
 
             //Set Memory
             Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(moduleName));
@@ -1547,9 +1546,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void opnmsg()
         {
-            var sourcePointer = GetParameterPointer(0);
-
-            var mcvFileName = Encoding.Default.GetString(Module.Memory.GetString(sourcePointer, true));
+            var mcvFileName = GetParameterString(0, true);
 
             //If the MCV file doesn't exist, but the MSG does -- we need to build the MCV
             if (!File.Exists(Path.Combine(Module.ModulePath, mcvFileName)) &&
@@ -1739,8 +1736,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void atol()
         {
-            var sourcePointer = GetParameterPointer(0);
-            var stringToLong = Encoding.ASCII.GetString(Module.Memory.GetString(sourcePointer, true)).Trim();
+            var stringToLong = GetParameterString(0, true).Trim();
 
             var result = GetLeadingNumberFromString(stringToLong);
 
@@ -1837,10 +1833,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariablePointer($"USRACC-{userNumber}", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable($"USRACC-{userNumber}", UserAccount.Size);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"USRACC-{userNumber}", UserAccount.Size);
 
-            //If user isnt online, return a null pointer
+            //If user isn't online, return a null pointer
             if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
             {
                 Registers.AX = 0;
@@ -1854,7 +1849,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Set User Array Value
             Module.Memory.SetArray(variablePointer, userChannel.UsrAcc.Data);
-
 
             Registers.SetPointer(variablePointer);
         }
@@ -2208,9 +2202,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
             var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
-
-            if (!Module.Memory.TryGetVariablePointer("NCDATE", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable("NCDATE", (ushort)outputDate.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCDATE", (ushort) outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
@@ -2379,13 +2371,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void opnbtv()
         {
-            var btrieveFilenamePointer = GetParameterPointer(0);
+            var btrievefileName = GetParameterString(0, true);
             var maxRecordLength = GetParameter(2);
-            var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btrieveFilenamePointer, true));
 
-            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, btrievefileName, _configuration.BtrieveCacheSize);
 
-            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, fileName);
+            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, btrievefileName);
 
             Registers.SetPointer(btvFileStructPointer);
         }
@@ -2716,8 +2707,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
 
             //Setup Host Memory Variables Pointer
-            if (!Module.Memory.TryGetVariablePointer($"SCNMDF", out var variablePointer))
-                variablePointer = base.Module.Memory.AllocateVariable("SCNMDF", 0xFF);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("SCNMDF", 0xFF);
 
             var recordFound = false;
             foreach (var line in File.ReadAllLines(Path.Combine(Module.ModulePath, mdfName)))
@@ -2931,8 +2921,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var channel = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariablePointer($"VDA-{channel}", out var volatileMemoryAddress))
-                volatileMemoryAddress = Module.Memory.AllocateVariable($"VDA-{channel}", VOLATILE_DATA_SIZE);
+            var volatileMemoryAddress = Module.Memory.GetOrAllocateVariablePointer($"VDA-{channel}", VOLATILE_DATA_SIZE);
 
 #if DEBUG
             _logger.Debug($"Returned VDAOFF {volatileMemoryAddress} for Channel {channel}");
@@ -2959,8 +2948,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             get
             {
-                if (!Module.Memory.TryGetVariablePointer($"VDAPTR", out var variablePointer))
-                    variablePointer = Module.Memory.AllocateVariable($"VDAPTR", 0x4);
+                var variablePointer = Module.Memory.GetOrAllocateVariablePointer("VDAPTR", 0x4);
 
                 return variablePointer.Data;
             }
