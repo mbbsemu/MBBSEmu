@@ -67,5 +67,14 @@ namespace MBBSEmu.Extensions
 
             return setBits != 0 && setBits % 2 == 0;
         }
+
+        /// <summary>
+        ///     Sign extends 16bit -> 32bit
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitDifference"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint ToUintSignExtended(this ushort b) => (uint)(short) b;
     }
 }
