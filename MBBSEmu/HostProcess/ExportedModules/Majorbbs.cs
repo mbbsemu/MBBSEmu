@@ -600,7 +600,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     uacoff();
                     break;
                 case 474:
-                case 787: //pmlt is just mult-lingual prf, so we just call prf
+                case 787: //pmlt is just multi-lingual prf, so we just call prf
                     prf();
                     break;
                 case 463:
@@ -728,6 +728,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 522:
                     sameto();
+                    break;
+                case 813:
+                    samend();
                     break;
                 case 122:
                     cncchr();
@@ -2988,19 +2991,30 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sameto()
         {
-            var string1Pointer = GetParameterPointer(0);
-            var string2Pointer = GetParameterPointer(2);
-
-            var string1Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string1Pointer, true));
-            var string2Buffer = Encoding.ASCII.GetString(Module.Memory.GetString(string2Pointer, true));
+            var string1Buffer = GetParameterString(0, true);
+            var string2Buffer = GetParameterString(2, true);
 
             Registers.AX = (ushort)(string2Buffer.Contains(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
         }
 
         /// <summary>
+        ///     Compares ending of strings, checking if the first string ends with the second string (ignoring case)
+        ///
+        ///     Signature: int samend(char *longs, char *ends)
+        ///     Returns: AX == 1, match
+        /// </summary>
+        private void samend()
+        {
+            var string1Buffer = GetParameterString(0,true);
+            var string2Buffer = GetParameterString(2, true);
+
+            Registers.AX = (ushort)(string1Buffer.EndsWith(string2Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
+        }
+
+        /// <summary>
         ///     Expect a Character from the user (character from the current command)
         ///
-        ///     cncchr() is executed after begincnc(), which runs rstrin() replacing the null separtors
+        ///     cncchr() is executed after begincnc(), which runs rstrin() replacing the null separators
         ///     in the string with spaces once again.
         /// </summary>
         private void cncchr()
