@@ -71,13 +71,7 @@ namespace MBBSEmu.Extensions
         /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort ToUshortSignExtended(this byte b)
-        {
-            if (b.IsNegative())
-                return (ushort)(b | 0xFF00);
-
-            return (ushort)b;
-        }
+        public static ushort ToUshortSignExtended(this byte b) => (ushort)(sbyte) b;
 
         /// <summary>
         ///     Sign extends 8bit -> 32bit
@@ -86,12 +80,6 @@ namespace MBBSEmu.Extensions
         /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ToUintSignExtended(this byte b)
-        {
-            if (b.IsNegative())
-                return (uint)(b | 0xFFFFFF00);
-
-            return (uint)b;
-        } 
+        public static uint ToUintSignExtended(this byte b) => (uint)(sbyte) b;
     }
 }
