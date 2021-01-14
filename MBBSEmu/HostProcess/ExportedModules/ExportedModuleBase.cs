@@ -1,19 +1,17 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -218,10 +216,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Gets a string Parameter as a byte array
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected ReadOnlySpan<byte> GetParameterByteArray(int parameterOrdinal, bool stripNull = false)
+        {
+            var stringPointer = GetParameterPointer(parameterOrdinal);
+            return Module.Memory.GetString(stringPointer, stripNull);
+        }
+
+        /// <summary>
         ///     Gets a Filename Parameter
         /// </summary>
         /// <param name="parameterOrdinal"></param>
-        /// <returns>The filename parameter, uppercased like DOS expects.</returns>
+        /// <returns>The filename parameter, upper-cased like DOS expects.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected string GetParameterFilename(int parameterOrdinal)
         {

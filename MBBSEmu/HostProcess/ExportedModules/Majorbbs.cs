@@ -3428,14 +3428,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strlen()
         {
-            var stringPointer = GetParameterPointer(0);
-
-            var stringValue = Module.Memory.GetString(stringPointer, stripNull: true);
-
+            var stringValue = GetParameterString(0, true);
 #if DEBUG
-            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {stringPointer}: {Encoding.ASCII.GetString(stringValue)}");
+            _logger.Debug($"Evaluated string length of {stringValue.Length} for string: {stringValue}");
 #endif
-
             Registers.AX = (ushort)stringValue.Length;
         }
 
@@ -3495,14 +3491,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void rename()
         {
-            var oldFilenamePointer = GetParameterPointer(0);
-            var newFilenamePointer = GetParameterPointer(2);
-
-            var oldFilenameInputBuffer = Module.Memory.GetString(oldFilenamePointer, true);
-            var oldFilenameInputValue = Encoding.ASCII.GetString(oldFilenameInputBuffer).ToUpper();
-
-            var newFilenameInputBuffer = Module.Memory.GetString(newFilenamePointer, true);
-            var newFilenameInputValue = Encoding.ASCII.GetString(newFilenameInputBuffer).ToUpper();
+            var oldFilenameInputValue = GetParameterString(0, true);
+            var newFilenameInputValue = GetParameterString(2, true);
 
             oldFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, oldFilenameInputValue);
             newFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, newFilenameInputValue);
@@ -3621,9 +3611,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariablePointer($"GETMSG", out var variablePointer))
-                variablePointer = Module.Memory.AllocateVariable($"GETMSG", 0x1000);
-
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("GETMSG", 0x1000);
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
             if (outputValue.Length > 0x1000)
@@ -3846,8 +3834,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void catastro()
         {
-            var messagePointer = GetParameterPointer(0);
-            var message = Module.Memory.GetString(messagePointer);
+            var message = GetParameterByteArray(0);
 
             var formattedMessage = FormatPrintf(message, 2);
 
