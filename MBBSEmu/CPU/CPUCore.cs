@@ -584,6 +584,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Movsw:
                     Op_Movsw();
                     break;
+                case Mnemonic.Movsx:
+                    Op_Movsx();
+                    break;
+                case Mnemonic.Movzx:
+                    Op_Movzx();
+                    break;
                 case Mnemonic.Shld:
                     Op_Shld();
                     break;
@@ -944,7 +950,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Returns if the Current Instruction is an 8-bit or 16-bit operation
+        ///     Returns if the Current Instruction is an 8-bit, 16-bit, or 32-bit operation
         /// </summary>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
@@ -2500,7 +2506,7 @@ namespace MBBSEmu.CPU
                     Push(GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination));
                     return;
 
-                //166bit, also default size (-1)
+                //16bit, also default size (-1)
                 case -2 when _currentOperationSize == -1:
                 case -2 when _currentOperationSize == 2:
                     Push(GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination));
@@ -2619,7 +2625,7 @@ namespace MBBSEmu.CPU
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
 
-                        //Control Transfer Occured in the CALL, so we clean up the stack and return
+                        //Control Transfer occurred in the CALL, so we clean up the stack and return
                         if (ipBeforeCall != Registers.IP)
                             return;
 
@@ -3626,6 +3632,9 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Move data from String to String
+        /// </summary>
         [MethodImpl(CompilerOptimizations)]
         private void Op_Movsw()
         {
@@ -3649,6 +3658,114 @@ namespace MBBSEmu.CPU
                 goto movsw;
             }
 
+        }
+
+        /// <summary>
+        ///     Move with Sign-Extend
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Movsx()
+        {
+
+            var result = _currentOperationSize switch
+            {
+                2 => Op_Movsx_16(),
+                4 => Op_Movsx_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+            
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     Move with Sign-Extend to 16bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private ushort Op_Movsx_16()
+        {
+            var result = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUshortSignExtended();
+            return result;
+        }
+
+        /// <summary>
+        ///     Move with Sign-Extend to 32bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Movsx_32()
+        {
+            var sourceSize = _currentInstruction.Op1Kind switch
+            {
+                OpKind.Register => GetSize(_currentInstruction.Op1Register),
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => 1,
+                    MemorySize.Int16 => 2,
+                    _ => throw new NotImplementedException()
+                },
+                _ => throw new NotImplementedException()
+            };
+
+            var result = sourceSize switch
+            {
+                (1) => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
+                (2) => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source).ToUintSignExtended(),
+                _ => throw new NotImplementedException(),
+            };
+            return result;
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private void Op_Movzx()
+        {
+
+            var result = _currentOperationSize switch
+            {
+                2 => Op_Movzx_16(),
+                4 => Op_Movzx_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend to 16bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private ushort Op_Movzx_16()
+        {
+            var result = (ushort) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            return result;
+        }
+
+        /// <summary>
+        ///     Move with Zero-Extend to 32bit destination
+        /// </summary>
+        [MethodImpl(CompilerOptimizations)]
+        private uint Op_Movzx_32()
+        {
+            var sourceSize = _currentInstruction.Op1Kind switch
+            {
+                OpKind.Register => GetSize(_currentInstruction.Op1Register),
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.UInt8 => 1,
+                    MemorySize.UInt16 => 2,
+                    _ => throw new NotImplementedException()
+                },
+                _ => throw new NotImplementedException()
+            };
+
+            var result = sourceSize switch
+            {
+                (1) => (uint) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (2) => (uint) GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                _ => throw new NotImplementedException(),
+            };
+            return result;
         }
 
         /// <summary>
@@ -4074,6 +4191,44 @@ namespace MBBSEmu.CPU
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
                 Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
             }
+        }
+
+        /// <summary>
+        ///     Returns the size of the given Register
+        /// </summary>
+        /// <param name="register"></param>
+        /// <returns></returns>
+        public byte GetSize(Register register)
+        {
+            return register switch
+            {
+                Register.AL => sizeof(byte),
+                Register.AH => sizeof(byte),
+                Register.BL => sizeof(byte),
+                Register.BH => sizeof(byte),
+                Register.CL => sizeof(byte),
+                Register.CH => sizeof(byte),
+                Register.DL => sizeof(byte),
+                Register.DH => sizeof(byte),
+                Register.AX => sizeof(ushort),
+                Register.BX => sizeof(ushort),
+                Register.CX => sizeof(ushort),
+                Register.DX => sizeof(ushort),
+                Register.SP => sizeof(ushort),
+                Register.BP => sizeof(ushort),
+                Register.SI => sizeof(ushort),
+                Register.DI => sizeof(ushort),
+                Register.ES => sizeof(ushort),
+                Register.CS => sizeof(ushort),
+                Register.SS => sizeof(ushort),
+                Register.DS => sizeof(ushort),
+                Register.EIP => sizeof(uint),
+                Register.EAX => sizeof(uint),
+                Register.EBX => sizeof(uint),
+                Register.ECX => sizeof(uint),
+                Register.EDX => sizeof(uint),
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
         }
     }
 }
