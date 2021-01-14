@@ -798,13 +798,19 @@ namespace MBBSEmu.HostProcess
 
                 //Enter or Return
                 case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
-                    {
-                        if (!session.TransparentMode)
-                            session.SendToClient(new byte[] { 0xD, 0xA });
+                {
+                        //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
+                        if (!session.TransparentMode && session.CharacterProcessed > 0)
+                            session.SendToClient(new byte[] {0xD, 0xA});
 
-                        //Set Status == 3, which means there is a Command Ready
-                        session.Status = 3;
-                        session.EchoSecureEnabled = false;
+                        //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
+                        if (!session.StatusChange && session.Status != 240)
+                        {
+                            //Set Status == 3, which means there is a Command Ready
+                            session.Status = 3;
+                            session.EchoSecureEnabled = false;
+                        }
+
                         break;
                     }
 
