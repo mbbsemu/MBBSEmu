@@ -4825,7 +4825,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             Registers.SetPointer(stringToStripPointer);
-
         }
 
         /// <summary>
@@ -4979,6 +4978,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             fileStream.Write(stringToWrite);
             fileStream.Flush();
+
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
             {
@@ -6232,10 +6232,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void listing()
         {
-            var filenamePointer = GetParameterPointer(0);
+            var fileToSend = GetParameterFilename(0);
             var finishedFunctionPointer = GetParameterPointer(2);
-
-            var fileToSend = Encoding.ASCII.GetString(Module.Memory.GetString(filenamePointer, true));
 
             fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
 
@@ -6434,8 +6432,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sbleng = GetParameter(2);
             var answers = GetParameterPointer(3);
 
-            if (!Module.Memory.TryGetVariablePointer($"FSD-Answers-{ChannelNumber}", out var fsdAnswersPointer))
-                fsdAnswersPointer = Module.Memory.AllocateVariable($"FSD-Answers-{ChannelNumber}", 0x800);
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FDS-Answers-{ChannelNumber}", 0x800);
 
             Module.Memory.SetZero(fsdAnswersPointer, 0x800);
 
@@ -6532,7 +6529,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (suffixPointer != FarPtr.Empty)
                 Module.Memory.SetPointer(suffixPointer,
                     new FarPtr(stringPointer.Segment, (ushort)(stringPointer.Offset + longToParseLength + 1)));
-
         }
 
         /// <summary>
@@ -6568,8 +6564,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var ripHeaderStringPointer = GetParameterPointer(0);
 
-            if (!Module.Memory.TryGetVariablePointer($"FSD-RIPHeader-{ChannelNumber}", out var ripHeaderPointer))
-                ripHeaderPointer = Module.Memory.AllocateVariable($"FSD-RIPHeader-{ChannelNumber}", 0xFF);
+            var ripHeaderPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-RIPHeader-{ChannelNumber}", 0xFF);
 
             Module.Memory.SetArray(ripHeaderPointer, Module.Memory.GetString(ripHeaderStringPointer));
         }
@@ -6584,15 +6579,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fieldVerificationPointer = GetParameterPointer(0);
             var whenDoneRoutinePointer = GetParameterPointer(2);
 
-            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldVerificationRoutine-{ChannelNumber}",
-                out var fsdFieldVerificationRoutinePointer))
-                fsdFieldVerificationRoutinePointer =
-                    Module.Memory.AllocateVariable($"FSD-FieldVerificationRoutine-{ChannelNumber}", FarPtr.Size);
-
-            if (!Module.Memory.TryGetVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}",
-                out var fsdWhenDoneRoutinePointer))
-                fsdWhenDoneRoutinePointer =
-                    Module.Memory.AllocateVariable($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
+            var fsdFieldVerificationRoutinePointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-FieldVerificationRoutine-{ChannelNumber}", FarPtr.Size);
+            var fsdWhenDoneRoutinePointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
 
             Module.Memory.SetPointer(fsdFieldVerificationRoutinePointer, fieldVerificationPointer);
             Module.Memory.SetPointer(fsdWhenDoneRoutinePointer, whenDoneRoutinePointer);
@@ -6604,7 +6592,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
             fsdscbStruct.fldvfy = fieldVerificationPointer;
             Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
-
 
 #if DEBUG
             _logger.Debug($"Channel {ChannelNumber} entering Full Screen Display (v:{fieldVerificationPointer}, d:{whenDoneRoutinePointer}");
@@ -6626,9 +6613,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void vfyadn()
         {
             var fieldNo = GetParameter(0);
-            var answerPointer = GetParameterPointer(1);
-
-            var answer = Module.Memory.GetString(answerPointer);
+            var answer = GetParameterByteArray(1);
 
             //Get fsdscb Struct for this channel
             var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
@@ -6750,9 +6735,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fsdxan()
         {
             var answerPointer = GetParameterPointer(0);
-            var answerNamePointer = GetParameterPointer(2);
+            var answerName = GetParameterString(2, true);
 
-            var answerName = Encoding.ASCII.GetString(Module.Memory.GetString(answerNamePointer, true));
             var answerString = Encoding.ASCII.GetString(Module.Memory.GetArray(answerPointer, 0x400));
 
             //Trim the Answer String to just the component we need
@@ -6761,9 +6745,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             trimmedAnswerString = trimmedAnswerString.Substring(0, trimmedAnswerString.IndexOf('\0'));
 
             var answerComponents = trimmedAnswerString.Split('=');
-
-            if (!Module.Memory.TryGetVariablePointer("fsdxan-buffer", out var fsdxanPointer))
-                fsdxanPointer = Module.Memory.AllocateVariable("fsdxan-buffer", 0xFF);
+            var fsdxanPointer = Module.Memory.GetOrAllocateVariablePointer("fsdxan-buffer", 0xFF);
 
             Module.Memory.SetZero(fsdxanPointer, 0xFF);
             Module.Memory.SetArray(fsdxanPointer, Encoding.ASCII.GetBytes($"{answerComponents[1]}"));
@@ -6850,9 +6832,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void findtvar()
         {
-            var textVariableNamePointer = GetParameterPointer(0);
-
-            var textVariableName = Encoding.ASCII.GetString(Module.Memory.GetString(textVariableNamePointer, true));
+            var textVariableName = GetParameterString(0, true);
 
             for (var i = 0; i < Module.TextVariables.Count; i++)
             {
@@ -7245,7 +7225,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var accountLock = GetParameterString(0, true);
             var userChannel = GetParameter(2);
 
-
             if (string.IsNullOrEmpty(accountLock))
             {
                 Registers.AX = 1;
@@ -7436,9 +7415,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void onsys()
         {
-            var usernamePointer = GetParameterPointer(0);
-
-            var username = Encoding.ASCII.GetString(Module.Memory.GetString(usernamePointer, true));
+            var username = GetParameterString(0, true);
 
             //Scan the current channels for any usernames that match the specified one
             Registers.AX = ChannelDictionary.Any(x =>
@@ -7637,7 +7614,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourceStringPointer = GetParameterPointer(0);
             var inputBuffer = Module.Memory.GetString(sourceStringPointer);
             var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
-
 
             if (sourceStringPointer == FarPtr.Empty)
             {
