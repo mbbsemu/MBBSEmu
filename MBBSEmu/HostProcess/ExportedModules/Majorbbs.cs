@@ -270,8 +270,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channelNumber == ushort.MaxValue)
                 return;
 
-            if (!Module.Memory.TryGetVariablePointer($"VDA-{channelNumber}", out var vdaChannelPointer))
-                vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
+            var vdaChannelPointer = Module.Memory.GetOrAllocateVariablePointer($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
@@ -307,8 +306,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
 
             //Set FSDSCB Pointer for Current User
-            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
-                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
 
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
