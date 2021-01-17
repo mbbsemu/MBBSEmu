@@ -5,7 +5,7 @@ using System.Linq;
 using System.IO;
 using System;
 
-namespace MBBSEmu.Database
+namespace MBBSDatabase
 {
     /// <summary>
     ///   An MBBSEmu database (.DB) utility program.
