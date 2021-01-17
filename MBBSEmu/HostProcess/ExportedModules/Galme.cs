@@ -17,6 +17,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFC;
 
+        public void Dispose()
+        {
+            base.Dispose();
+        }
+
         internal Galme(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {

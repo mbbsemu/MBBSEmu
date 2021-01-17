@@ -22,6 +22,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
+        public void Dispose()
+        {
+            base.Dispose();
+        }
+
         internal Phapi(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {

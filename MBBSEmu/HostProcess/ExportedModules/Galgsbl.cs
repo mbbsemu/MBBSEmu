@@ -34,6 +34,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
 
+        public void Dispose()
+        {
+            base.Dispose();
+        }
+
         public Galgsbl(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {

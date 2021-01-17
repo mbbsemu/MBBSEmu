@@ -21,6 +21,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort DosSegmentBase = 0x200;
         public ushort DosSegmentOffset = 0;
 
+        public void Dispose()
+        {
+            base.Dispose();
+        }
+
         internal Doscalls(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
