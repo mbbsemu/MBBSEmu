@@ -22,7 +22,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
 
-        public void Dispose()
+        public new void Dispose()
         {
             base.Dispose();
         }

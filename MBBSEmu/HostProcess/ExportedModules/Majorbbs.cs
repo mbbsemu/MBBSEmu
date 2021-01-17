@@ -84,7 +84,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private int _sprIndex;
 
-        public void Dispose()
+        public new void Dispose()
         {
             base.Dispose();
         }

@@ -21,7 +21,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort DosSegmentBase = 0x200;
         public ushort DosSegmentOffset = 0;
 
-        public void Dispose()
+        public new void Dispose()
         {
             base.Dispose();
         }
