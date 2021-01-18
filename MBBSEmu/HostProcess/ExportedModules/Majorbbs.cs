@@ -1750,7 +1750,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.F.SetFlag((ushort)EnumFlags.CF);
 
 #if DEBUG
-                _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({sourcePointer}) to long");
+                _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({GetParameterPointer(0)}) to long");
 #endif
             }
         }
@@ -3548,7 +3548,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var destinationPointer = GetParameterPointer(0);
             var destinationString = GetParameterByteArray(0, true);
-            var sourceString = GetParameterByteArray(2, true));
+            var sourceString = GetParameterByteArray(2, true);
             var bytesToCopy = GetParameter(4);
 
             bytesToCopy = Math.Min(bytesToCopy, (ushort)sourceString.Length);
