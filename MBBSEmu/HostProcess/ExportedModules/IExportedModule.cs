@@ -3,7 +3,7 @@ using System;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
-    public interface IExportedModule
+    public interface IExportedModule : IDisposable
     {
         ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false);
         void SetState(ushort channelNumber);

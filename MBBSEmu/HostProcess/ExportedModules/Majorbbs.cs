@@ -28,7 +28,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     ///     Class which defines functions that are part of the MajorBBS/WG SDK and included in
     ///     MAJORBBS.H
     /// </summary>
-    public class Majorbbs : ExportedModuleBase, IExportedModule, IDisposable
+    public class Majorbbs : ExportedModuleBase, IExportedModule
     {
         /// <summary>Used to specify the return type of cncint/cnclon/cncnum</summary>
         private enum CncIntegerReturnType
@@ -84,11 +84,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private int _sprIndex;
 
-        public void Dispose()
+        public new void Dispose()
         {
-            foreach (var f in FilePointerDictionary)
-                f.Value.Close();
-            FilePointerDictionary.Clear();
+            base.Dispose();
         }
 
         public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(

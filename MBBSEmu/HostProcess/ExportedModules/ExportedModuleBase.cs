@@ -18,7 +18,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// <summary>
     ///     Base Class for Exported MajorBBS Routines
     /// </summary>
-    public abstract class ExportedModuleBase
+    public abstract class ExportedModuleBase : IDisposable
     {
         /// <summary>
         ///     The return value from the GetLeadingNumberFromString methods
@@ -91,6 +91,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
         private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
+
+        public void Dispose()
+        {
+            foreach (var f in FilePointerDictionary)
+            {
+                f.Value.Close();
+                _logger.Warn($"WARNING -- File: {f.Value.Name} left open by module, closing");
+            }
+            FilePointerDictionary.Clear();
+        }
 
         private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
