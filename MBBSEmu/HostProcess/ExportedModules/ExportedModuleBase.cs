@@ -250,6 +250,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf = false)
         {
+            if (stringToParse.Length == 1 && stringToParse[0] == 0x0)
+            {
+                _logger.Warn($"Empty Formatter (isVsPrintf:{isVsPrintf}");
+                return new byte[] {0};
+            }
+
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
 
