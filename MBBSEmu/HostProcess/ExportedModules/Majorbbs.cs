@@ -2596,9 +2596,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void spr()
         {
-            var sourcePointer = GetParameterPointer(0);
-
-            var output = Module.Memory.GetString(sourcePointer);
+            var output = GetParameterByteArray(0);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
