@@ -502,6 +502,9 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         private void ExitModule(SessionBase session)
         {
+            //Clear VDA
+            session.CurrentModule.Memory.FillArray($"VDA-{session.Channel}", 0x3FFF, 0x0);
+
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.CurrentModule = null;
             session.CharacterInterceptor = null;

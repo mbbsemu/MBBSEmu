@@ -252,7 +252,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             if (stringToParse.Length == 1 && stringToParse[0] == 0x0)
             {
-                _logger.Warn($"Empty Formatter (isVsPrintf:{isVsPrintf}");
+                _logger.Warn($"Empty Formatter (vsprintf:{isVsPrintf})");
                 return new byte[] {0};
             }
 
