@@ -498,8 +498,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'd':
                         case 'u':
                             {
-                                if (stringPrecision > 0)
+                                if (stringPrecision > 0) {
                                     padCharacter = '0';
+                                    // can't left justify a digit since it changes the digit
+                                    stringFlags &= ~EnumPrintfFlags.LeftJustify;
+                                }
 
                                 long value;
                                 if (isVsPrintf)
