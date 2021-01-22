@@ -1,26 +1,24 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
     /// <summary>
     ///     Base Class for Exported MajorBBS Routines
     /// </summary>
-    public abstract class ExportedModuleBase
+    public abstract class ExportedModuleBase : IDisposable
     {
         /// <summary>
         ///     The return value from the GetLeadingNumberFromString methods
@@ -93,6 +91,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
         private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
+
+        public void Dispose()
+        {
+            foreach (var f in FilePointerDictionary)
+            {
+                f.Value.Close();
+                _logger.Warn($"WARNING -- File: {f.Value.Name} left open by module, closing");
+            }
+            FilePointerDictionary.Clear();
+        }
 
         private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
         {
@@ -505,7 +513,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'u':
                             {
                                 if (stringPrecision > 0)
+                                {
                                     padCharacter = '0';
+                                    // can't left justify a digit with 0 since it changes the digit
+                                    stringFlags &= ~EnumPrintfFlags.LeftJustify;
+                                }
 
                                 long value;
                                 if (isVsPrintf)

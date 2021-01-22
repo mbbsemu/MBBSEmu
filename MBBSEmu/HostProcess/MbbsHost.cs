@@ -1208,7 +1208,10 @@ namespace MBBSEmu.HostProcess
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                {
+                    _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);
+                }
             }
 
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
