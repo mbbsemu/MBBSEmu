@@ -2357,7 +2357,7 @@ namespace MBBSEmu.CPU
                     Op_Idiv_32();
                     return;
                 default:
-                    throw new ArgumentException();
+                    throw new Exception("Unsupported Operation Size");
             }
         }
 
@@ -2376,7 +2376,7 @@ namespace MBBSEmu.CPU
                     Op_Mul_32();
                     return;
                 default:
-                    throw new ArgumentException();
+                    throw new Exception("Unsupported Operation Size");
             }
         }
 
@@ -2840,7 +2840,7 @@ namespace MBBSEmu.CPU
                     Op_Div_32();
                     return;
                 default:
-                    throw new ArgumentException();
+                    throw new Exception("Unsupported Operation Size");
             }
         }
 
