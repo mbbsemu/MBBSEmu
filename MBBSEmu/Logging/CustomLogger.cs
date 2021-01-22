@@ -63,13 +63,15 @@ namespace MBBSEmu.Logging
         /// </summary>
         public static string AddLogLevel(string loggerTarget, string logLevel)
         {
+            logLevel ??= "Debug";
+
             try
             {
                 LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
             }
             catch (ArgumentException)
             {
-                logLevel = "Info";
+                logLevel = "Debug";
                 LogManager.Configuration.AddRule(LogLevel.FromString(logLevel), LogLevel.Fatal, loggerTarget);
             }
             return logLevel;

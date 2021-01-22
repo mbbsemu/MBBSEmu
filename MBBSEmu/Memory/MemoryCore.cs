@@ -557,6 +557,15 @@ namespace MBBSEmu.Memory
             FillArray(pointer.Segment, pointer.Offset, count, value);
 
         /// <summary>
+        ///     Writes the specified byte the specified number of times starting at the specified variable
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <param name="count"></param>
+        /// <param name="value"></param>
+        public void FillArray(string variableName, ushort count, byte value) =>
+            FillArray(GetVariablePointer(variableName), count, value);
+
+        /// <summary>
         ///     Sets the specified pointer value at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>

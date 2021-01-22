@@ -3414,7 +3414,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringValue = GetParameterString(0, true);
 #if DEBUG
-            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)}: {stringValue}");
+            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {stringPointer}");
 #endif
             Registers.AX = (ushort)stringValue.Length;
         }
@@ -5484,17 +5484,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < remainingCharactersInCommand; i++)
             {
-                if (inputCommand[i] == 0)
+                if (inputCommand[i] == 32)
                     continue;
 
+                var resultChar = char.ToUpper((char) inputCommand[i]);
+
 #if DEBUG
-                _logger.Debug($"Returning char: {(char)inputCommand[i]}");
+                _logger.Debug($"Returning char: {resultChar}");
 #endif
 
-                Registers.AX = inputCommand[i];
+                Registers.AX = resultChar;
+
+                //Increment nxtcmd if we hit any blank spaces
                 Module.Memory.SetPointer("NXTCMD", new FarPtr(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset + i)));
-                break;
+                return;
             }
+
+            //Otherwise return zero
+            Registers.AX = 0;
         }
 
         private void cncint_ErrorResult(CncIntegerReturnType returnType)

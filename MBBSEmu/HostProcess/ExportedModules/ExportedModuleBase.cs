@@ -270,6 +270,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf = false)
         {
+            if (stringToParse.Length == 1 && stringToParse[0] == 0x0)
+            {
+                _logger.Warn($"Empty Formatter (vsprintf:{isVsPrintf})");
+                return new byte[] {0};
+            }
+
             using var msOutput = new MemoryStream(stringToParse.Length);
             var currentParameter = startingParameterOrdinal;
 
@@ -519,7 +525,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         case 'u':
                             {
                                 if (stringPrecision > 0)
+                                {
                                     padCharacter = '0';
+                                    // can't left justify a digit with 0 since it changes the digit
+                                    stringFlags &= ~EnumPrintfFlags.LeftJustify;
+                                }
 
                                 long value;
                                 if (isVsPrintf)
