@@ -4333,7 +4333,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void strstr()
         {
             var stringToSearchPointer = GetParameterPointer(0);
-            var stringToSearch = GetParameterString(2, true);
+            var stringToSearch = GetParameterString(0, true);
             var stringToFind = GetParameterString(2, true);
 
             var offset = stringToSearch.IndexOf(stringToFind);
