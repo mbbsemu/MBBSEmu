@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
-using MBBSEmu.Logging;
 
 namespace MBBSEmu
 {
@@ -47,7 +46,7 @@ namespace MBBSEmu
         public bool TelnetHeartbeat => GetAppSettingsFromConfiguration<bool>("Telnet.Heartbeat");
         public bool RloginEnabled => GetAppSettingsFromConfiguration<bool>("Rlogin.Enabled");
         public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
-        public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
+        public string RloginRemoteIP => GetIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetFileNameAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
@@ -62,6 +61,7 @@ namespace MBBSEmu
         public string ConsoleLogLevel => ConfigurationRoot["Console.LogLevel"];
         public string FileLogName => GetFileNameAppSettings("File.LogName");
         public string FileLogLevel => ConfigurationRoot["File.LogLevel"];
+        public string HostIPAddress => GetIPAppSettings("Host.IPAddress");
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -182,15 +182,33 @@ namespace MBBSEmu
             return timerHertz;
         }
 
-        private string GetRemoteIPAppSettings(string key)
+        private string GetIPAppSettings(string key)
         {
             if (IPAddress.TryParse(ConfigurationRoot[key], out var result))
             {
-                return result.ToString();
+                switch (key)
+                {
+                    case "Rlogin.RemoteIP":
+                        return result.ToString();
+                    case "Host.IPAddress":
+                        if (Dns.GetHostEntry(Dns.GetHostName()).AddressList.Any(x => x.Equals(result)))
+                            return result.ToString();
+                        _logger.Warn($"Host.IPAddress {result} not found on system -- setting default value: 0.0.0.0");
+                        return "0.0.0.0";
+                }
             }
 
-            _logger.Warn($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
-            return "127.0.0.1";
+            switch (key)
+            {
+                case "RLogin.RemoteIP":
+                    _logger.Warn($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
+                    return "127.0.0.1";
+                case "Host.IPAddress":
+                    //Return default "any"
+                    return "0.0.0.0";
+            }
+
+            return "0.0.0.0";
         }
 
         /// <summary>

@@ -372,7 +372,7 @@ namespace MBBSEmu
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
                     telnetService.Start(EnumSessionType.Telnet, configuration.TelnetPort);
 
-                    _logger.Info($"Telnet listening on port {configuration.TelnetPort}");
+                    _logger.Info($"Telnet listening on IP {configuration.HostIPAddress} port {configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
@@ -383,7 +383,7 @@ namespace MBBSEmu
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
                     rloginService.Start(EnumSessionType.Rlogin, configuration.RloginPort);
 
-                    _logger.Info($"Rlogin listening on port {configuration.RloginPort}");
+                    _logger.Info($"Rlogin listening on IP {configuration.HostIPAddress} port {configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 

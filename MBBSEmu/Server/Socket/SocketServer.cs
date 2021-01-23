@@ -41,7 +41,7 @@ namespace MBBSEmu.Server.Socket
             _moduleIdentifier = moduleIdentifier;
 
             //Setup Listener
-            var ipEndPoint = new IPEndPoint(IPAddress.Any, port);
+            var ipEndPoint = new IPEndPoint(IPAddress.Parse(_configuration.HostIPAddress), port);
             _listenerSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             _listenerSocket.Bind(ipEndPoint);
