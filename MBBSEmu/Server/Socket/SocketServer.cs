@@ -35,13 +35,13 @@ namespace MBBSEmu.Server.Socket
             _channelDictionary = channelDictionary;
         }
 
-        public void Start(EnumSessionType sessionType, int port, string moduleIdentifier = null)
+        public void Start(EnumSessionType sessionType, string hostIpAddress, int port, string moduleIdentifier = null)
         {
             _sessionType = sessionType;
             _moduleIdentifier = moduleIdentifier;
 
             //Setup Listener
-            var ipEndPoint = new IPEndPoint(IPAddress.Parse(_configuration.HostIPAddress), port);
+            var ipEndPoint = new IPEndPoint(IPAddress.Parse(hostIpAddress), port);
             _listenerSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             _listenerSocket.Bind(ipEndPoint);
