@@ -370,9 +370,10 @@ namespace MBBSEmu
                 if (configuration.TelnetEnabled)
                 {
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    telnetService.Start(EnumSessionType.Telnet, configuration.TelnetPort);
+                    var telnetHostIP = configuration.TelnetIPAddress;
 
-                    _logger.Info($"Telnet listening on port {configuration.TelnetPort}");
+                    telnetService.Start(EnumSessionType.Telnet, telnetHostIP, configuration.TelnetPort);
+                    _logger.Info($"Telnet listening on IP {telnetHostIP} port {configuration.TelnetPort}");
 
                     _runningServices.Add(telnetService);
                 }
@@ -381,9 +382,10 @@ namespace MBBSEmu
                 if (configuration.RloginEnabled)
                 {
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    rloginService.Start(EnumSessionType.Rlogin, configuration.RloginPort);
+                    var rloginHostIP = configuration.RloginIPAddress;
 
-                    _logger.Info($"Rlogin listening on port {configuration.RloginPort}");
+                    rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, configuration.RloginPort);
+                    _logger.Info($"Rlogin listening on IP {rloginHostIP} port {configuration.RloginPort}");
 
                     _runningServices.Add(rloginService);
 
@@ -394,7 +396,7 @@ namespace MBBSEmu
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginPort++, m.ModuleIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++, m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }
