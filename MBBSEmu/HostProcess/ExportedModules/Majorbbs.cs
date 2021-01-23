@@ -3414,7 +3414,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringValue = GetParameterString(0, true);
 #if DEBUG
-            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {stringPointer}");
+            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)}");
 #endif
             Registers.AX = (ushort)stringValue.Length;
         }
