@@ -226,7 +226,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Gets a string Parameter as a byte array
+        ///     Gets a string Parameter as a string span
         /// </summary>
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
