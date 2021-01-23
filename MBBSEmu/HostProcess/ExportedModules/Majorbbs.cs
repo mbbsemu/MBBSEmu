@@ -49,7 +49,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<FarPtr> _previousBtrieveFile;
 
-        private const ushort VOLATILE_DATA_SIZE = 0x3FFF;
+        public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
 
@@ -60,8 +60,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Stores all active searches created via fnd1st
         /// </summary>
-        private Dictionary<Guid, IEnumerator<string>> _activeSearches =
-            new Dictionary<Guid, IEnumerator<string>>();
+        private readonly Dictionary<Guid, IEnumerator<string>> _activeSearches = new Dictionary<Guid, IEnumerator<string>>();
 
         /// <summary>
         ///     Segment Identifier for Relocation
@@ -271,6 +270,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!Module.Memory.TryGetVariablePointer($"VDA-{channelNumber}", out var vdaChannelPointer))
                 vdaChannelPointer = Module.Memory.AllocateVariable($"VDA-{channelNumber}", VOLATILE_DATA_SIZE);
 
+            Module.Memory.SetArray(vdaChannelPointer, ChannelDictionary[channelNumber].VDA);
+
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
@@ -371,6 +372,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
                 (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
+
+            ChannelDictionary[ChannelNumber].VDA = Module.Memory.GetArray($"VDA-{ChannelNumber}", VOLATILE_DATA_SIZE).ToArray();
 
 #if DEBUG
             _logger.Debug($"{channel}->status == {ChannelDictionary[ChannelNumber].Status}");
