@@ -4,6 +4,6 @@ namespace MBBSEmu.Server.Socket
 {
     public interface ISocketServer : IStoppable
     {
-        void Start(EnumSessionType sessionType, int port, string moduleIdentifier = null);
+        void Start(EnumSessionType sessionType, string hostIpAddress, int port, string moduleIdentifier = null);
     }
 }

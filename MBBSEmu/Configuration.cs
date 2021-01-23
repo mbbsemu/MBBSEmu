@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
-using MBBSEmu.Logging;
 
 namespace MBBSEmu
 {
@@ -47,7 +46,7 @@ namespace MBBSEmu
         public bool TelnetHeartbeat => GetAppSettingsFromConfiguration<bool>("Telnet.Heartbeat");
         public bool RloginEnabled => GetAppSettingsFromConfiguration<bool>("Rlogin.Enabled");
         public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
-        public string RloginRemoteIP => GetRemoteIPAppSettings("Rlogin.RemoteIP");
+        public string RloginRemoteIP => GetIPAppSettings("Rlogin.RemoteIP");
         public bool RloginPortPerModule => GetAppSettingsFromConfiguration<bool>("Rlogin.PortPerModule");
         public string DatabaseFile => GetFileNameAppSettings("Database.File");
         public int BtrieveCacheSize => GetAppSettingsFromConfiguration<int>("Btrieve.CacheSize");
@@ -62,6 +61,9 @@ namespace MBBSEmu
         public string ConsoleLogLevel => ConfigurationRoot["Console.LogLevel"];
         public string FileLogName => GetFileNameAppSettings("File.LogName");
         public string FileLogLevel => ConfigurationRoot["File.LogLevel"];
+        public string TelnetIPAddress => GetIPAppSettings("Telnet.IP");
+        public string RloginIPAddress => GetIPAppSettings("Rlogin.IP");
+        
         public IEnumerable<string> DefaultKeys
         {
             get
@@ -182,15 +184,41 @@ namespace MBBSEmu
             return timerHertz;
         }
 
-        private string GetRemoteIPAppSettings(string key)
+        private string GetIPAppSettings(string key)
         {
             if (IPAddress.TryParse(ConfigurationRoot[key], out var result))
             {
-                return result.ToString();
+                switch (key)
+                {
+                    case "Rlogin.RemoteIP":
+                        return result.ToString();
+                    case "Telnet.IP":
+                        if (IsValidHostIP(result))
+                            return result.ToString();
+                        _logger.Warn($"{key} {result} not found on system -- setting default value: 0.0.0.0");
+                        return "0.0.0.0";
+                    case "Rlogin.IP":
+                        if (IsValidHostIP(result))
+                            return result.ToString();
+                        _logger.Warn($"{key} {result} not found on system -- setting default value: 0.0.0.0");
+                        return "0.0.0.0";
+                }
             }
 
-            _logger.Warn($"RLogin.RemoteIP not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
-            return "127.0.0.1";
+            switch (key)
+            {
+                case "RLogin.RemoteIP":
+                    _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 127.0.0.1");
+                    return "127.0.0.1";
+                case "Telnet.IP":
+                    //Return default "any"
+                    return "0.0.0.0";
+                case "Rlogin.IP":
+                    //Return default "any"
+                    return "0.0.0.0";
+            }
+
+            return "0.0.0.0";
         }
 
         /// <summary>
@@ -220,7 +248,7 @@ namespace MBBSEmu
             {
                 //Set Default 3am
                 result = TimeSpan.Parse("03:00");
-                _logger.Warn($"Cleanup.Time not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
+                _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {result}");
             }
             return result;
         }
@@ -242,10 +270,20 @@ namespace MBBSEmu
             }
             else
             {
-                _logger.Warn($"GSBL.BTURNO not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting random value: {result}");
+                _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting random value: {result}");
             }
 
             return result;
+        }
+
+        /// <summary>
+        ///     Validates that an IP Address exists on the host
+        /// </summary>
+        /// <param name="checkIPAddress">IPAddress</param>
+        /// <returns></returns>
+        private bool IsValidHostIP(IPAddress checkIPAddress)
+        {
+            return Dns.GetHostEntry(Dns.GetHostName()).AddressList.Any(x => x.Equals(checkIPAddress));
         }
 
         /// <summary>
