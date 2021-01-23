@@ -4334,7 +4334,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringToSearchPointer = GetParameterPointer(0);
             var stringToSearch = GetParameterString(2, true);
-            var stringToFind = GetParameterString(2);
+            var stringToFind = GetParameterString(2, true);
 
             var offset = stringToSearch.IndexOf(stringToFind);
             if (offset >= 0)
