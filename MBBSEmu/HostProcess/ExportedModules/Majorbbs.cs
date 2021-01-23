@@ -1998,8 +1998,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void shocst()
         {
-            var stringSummary = GetParameterByteArray(0);
-            var stringDetail = FormatPrintf(GetParameterByteArray(2), 4);
+            var stringSummary = GetParameterStringSpan(0);
+            var stringDetail = FormatPrintf(GetParameterStringSpan(2), 4);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.BackgroundColor = ConsoleColor.Blue;
@@ -2041,8 +2041,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void addcrd()
         {
-            var string1 = GetParameterByteArray(0);
-            var string2 = GetParameterByteArray(2);
+            var string1 = GetParameterStringSpan(0);
+            var string2 = GetParameterStringSpan(2);
             var real = GetParameter(4);
 
 #if DEBUG
@@ -2596,7 +2596,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void spr()
         {
-            var output = GetParameterByteArray(0);
+            var output = GetParameterStringSpan(0);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
@@ -2670,7 +2670,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var targetPointer = GetParameterPointer(0);
 
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(GetParameterByteArray(2), 4, true);
+            var formattedMessage = FormatPrintf(GetParameterStringSpan(2), 4, true);
 
             Module.Memory.SetArray(targetPointer, formattedMessage);
 
@@ -3213,7 +3213,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void sprintf()
         {
             var destinationPointer = GetParameterPointer(0);
-            var source = GetParameterByteArray(2, true);
+            var source = GetParameterStringSpan(2, true);
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(source, 4);
@@ -3545,8 +3545,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void strncat()
         {
             var destinationPointer = GetParameterPointer(0);
-            var destinationString = GetParameterByteArray(0, true);
-            var sourceString = GetParameterByteArray(2, true);
+            var destinationString = GetParameterStringSpan(0, true);
+            var sourceString = GetParameterStringSpan(2, true);
             var bytesToCopy = GetParameter(4);
 
             bytesToCopy = Math.Min(bytesToCopy, (ushort)sourceString.Length);
@@ -3816,7 +3816,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void catastro()
         {
-            var message = GetParameterByteArray(0);
+            var message = GetParameterStringSpan(0);
 
             var formattedMessage = FormatPrintf(message, 2);
 
@@ -3889,8 +3889,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void strcat()
         {
             var destinationPointer = GetParameterPointer(0);
-            var destinationString = GetParameterByteArray(0, true);
-            var sourceString = GetParameterByteArray(2);
+            var destinationString = GetParameterStringSpan(0, true);
+            var sourceString = GetParameterStringSpan(2);
 
             Module.Memory.SetArray(destinationPointer.Segment,
                 (ushort)(destinationPointer.Offset + destinationString.Length),
@@ -4783,7 +4783,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void xlttxv()
         {
-            var stringToProcess = GetParameterByteArray(0);
+            var stringToProcess = GetParameterStringSpan(0);
             var size = GetParameter(2);
 
             var processedString = ProcessTextVariables(stringToProcess);
@@ -4961,7 +4961,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void fputs()
         {
-            var stringToWrite = GetParameterByteArray(0);
+            var stringToWrite = GetParameterStringSpan(0);
             var fileStructPointer = GetParameterPointer(2);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
@@ -6614,7 +6614,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void vfyadn()
         {
             var fieldNo = GetParameter(0);
-            var answer = GetParameterByteArray(1);
+            var answer = GetParameterStringSpan(1);
 
             //Get fsdscb Struct for this channel
             var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");

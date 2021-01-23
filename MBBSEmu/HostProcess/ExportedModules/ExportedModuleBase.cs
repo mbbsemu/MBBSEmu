@@ -231,7 +231,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="parameterOrdinal"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private protected ReadOnlySpan<byte> GetParameterByteArray(int parameterOrdinal, bool stripNull = false)
+        private protected ReadOnlySpan<byte> GetParameterStringSpan(int parameterOrdinal, bool stripNull = false)
         {
             var stringPointer = GetParameterPointer(parameterOrdinal);
             return Module.Memory.GetString(stringPointer, stripNull);
