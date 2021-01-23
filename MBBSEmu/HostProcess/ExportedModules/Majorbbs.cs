@@ -373,9 +373,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
 #if DEBUG
-            _logger.Debug($"{channel}->status == {ChannelDictionary[ChannelNumber].Status}");
-            _logger.Debug($"{channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
-            _logger.Debug($"{channel}->substt == {ChannelDictionary[ChannelNumber].UsrPtr.Substt}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[ChannelNumber].Status}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->substt == {ChannelDictionary[ChannelNumber].UsrPtr.Substt}");
 #endif
         }
 
@@ -1326,7 +1326,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = (ushort)(passedSeconds & 0xFFFF);
 
 #if DEBUG
-            _logger.Debug($"Passed seconds: {passedSeconds} (AX:{Registers.AX:X4}, DX:{Registers.DX:X4})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Passed seconds: {passedSeconds} (AX:{Registers.AX:X4}, DX:{Registers.DX:X4})");
 #endif
         }
 
@@ -1380,7 +1380,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set Memory
             Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(moduleName));
 #if DEBUG
-            _logger.Debug($"Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {variablePointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved Module Name \"{moduleName}\" and saved it at host memory offset {variablePointer}");
 #endif
 
             Registers.SetPointer(variablePointer);
@@ -1411,7 +1411,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 Module.Memory.SetArray(destinationPointer, inputBuffer);
 #if DEBUG
-                //_logger.Debug($"Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
+                //_logger.Debug($"({Module.ModuleIdentifier}) Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif
             }
 
@@ -1459,7 +1459,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
+                $"({Module.ModuleIdentifier}) Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
             Registers.SetPointer(destinationPointer);
         }
@@ -1534,8 +1534,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset, localModuleStructPointer);
 
 #if DEBUG
-            _logger.Debug($"MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset}) set to {localModuleStructPointer}");
-            _logger.Debug($"Module Description set to {Module.ModuleDescription}");
+            _logger.Debug($"({Module.ModuleIdentifier}) MODULE pointer ({Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset}) set to {localModuleStructPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Module Description set to {Module.ModuleDescription}");
 #endif
         }
 
@@ -1572,7 +1572,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _currentMcvFile = new FarPtr(ushort.MaxValue, (ushort)offset);
 
 #if DEBUG
-            _logger.Debug($"Opened MCV file: {mcvFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Opened MCV file: {mcvFileName}, assigned to {ushort.MaxValue:X4}:{offset:X4}");
 #endif
             Registers.AX = (ushort)offset;
             Registers.DX = ushort.MaxValue;
@@ -1725,7 +1725,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Debug($"Received value: {outputValue}, string saved to {variablePointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {outputValue}, string saved to {variablePointer}");
 #endif
 
             Registers.SetPointer(variablePointer);
@@ -1775,7 +1775,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedDate = (_clock.Now.Month << 5) + _clock.Now.Day + ((_clock.Now.Year - 1980) << 9);
 
 #if DEBUG
-            _logger.Debug($"Returned packed date: {packedDate}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned packed date: {packedDate}");
 #endif
 
             Registers.AX = (ushort)packedDate;
@@ -1798,7 +1798,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, sourceString);
 
 #if DEBUG
-            _logger.Debug($"Copied {sourceString.Length} bytes from {sourcePointer} to {destinationPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Copied {sourceString.Length} bytes from {sourcePointer} to {destinationPointer}");
 #endif
 
             RealignStack(8);
@@ -1883,7 +1883,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("PRFPTR", pointerPosition);
 
 #if DEBUG
-            _logger.Debug($"Added {formattedMessage.Length} bytes to the buffer");
+            _logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer");
 #endif
 
         }
@@ -1900,7 +1900,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetByte(Module.Memory.GetVariablePointer("PRFBUF"), 0);
 
 #if DEBUG
-            _logger.Debug("Reset Output Buffer");
+            _logger.Debug($"({Module.ModuleIdentifier}) Reset Output Buffer");
 #endif
         }
 
@@ -1927,7 +1927,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
 
 #if DEBUG
-            _logger.Debug($"Sent {outputBuffer.Length} bytes to Channel {userChannel}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif
 
             Module.Memory.SetZero(basePointer, outputLength);
@@ -1952,7 +1952,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var creditsToDeduct = (highByte << 16 | lowByte);
 
 #if DEBUG
-            _logger.Debug($"Deducted {creditsToDeduct} from the current users account (Ignored)");
+            _logger.Debug($"({Module.ModuleIdentifier}) Deducted {creditsToDeduct} from the current users account (Ignored)");
 #endif
 
             Registers.AX = 1;
@@ -1980,7 +1980,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 .TryGetValue(messageNumber, out var outputMessage))
             {
                 _logger.Warn(
-                    $"prfmsg() unable to locate message number {messageNumber} in current MCV file {McvPointerDictionary[_currentMcvFile.Offset].FileName}");
+                    $"({Module.ModuleIdentifier}) prfmsg() unable to locate message number {messageNumber} in current MCV file {McvPointerDictionary[_currentMcvFile.Offset].FileName}");
                 return;
             }
 
@@ -1993,7 +1993,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetByte(currentPrfPositionPointer, 0x0); //Null terminate it
 
 #if DEBUG
-            _logger.Debug($"Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
 #endif
             //Update Pointer
             Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
@@ -2061,7 +2061,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string2 = Module.Memory.GetString(string2Pointer);
 
 #if DEBUG
-            _logger.Debug($"Added {Encoding.Default.GetString(string2)} credits to user account {Encoding.Default.GetString(string1)} (unlimited -- this function is ignored)");
+            _logger.Debug($"({Module.ModuleIdentifier}) Added {Encoding.Default.GetString(string2)} credits to user account {Encoding.Default.GetString(string1)} (unlimited -- this function is ignored)");
 #endif
         }
 
@@ -2083,7 +2083,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(string1Pointer);
 
 #if DEBUG
-            _logger.Debug($"Convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Pointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Convterted integer {integerValue} to {output} (base {baseValue}) and saved it to {string1Pointer}");
 #endif
         }
 
@@ -2123,7 +2123,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 : (ushort)0;
 #if DEBUG
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
-            _logger.Debug($"Returning {Registers.AX} for Haskey({lockName})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for Haskey({lockName})");
 #endif
         }
 
@@ -2165,7 +2165,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 : (ushort)0;
 #if DEBUG
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
-            _logger.Debug($"Returning {Registers.AX} for Hasmkey({lockName})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for Hasmkey({lockName})");
 #endif
         }
 
@@ -2217,7 +2217,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Encoding.Default.GetBytes(outputDate));
 
 #if DEBUG
-            _logger.Debug($"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
             Registers.SetPointer(variablePointer);
         }
@@ -2246,7 +2246,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Encoding.Default.GetBytes(outputDate));
 
 #if DEBUG
-            _logger.Debug($"Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
 #endif
             Registers.SetPointer(variablePointer);
         }
@@ -2296,7 +2296,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routine = new RealTimeRoutine(routinePointer);
             Module.RtihdlrRoutines.Allocate(routine);
 #if DEBUG
-            _logger.Debug($"Registered routine {routinePointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer}");
 #endif
         }
 
@@ -2315,7 +2315,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.RtkickRoutines.Allocate(routine);
 
 #if DEBUG
-            _logger.Debug($"Registered routine {routinePointer} to execute every {delaySeconds} seconds");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer} to execute every {delaySeconds} seconds");
 #endif
         }
 
@@ -2337,14 +2337,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 _previousMcvFile.Push(new FarPtr(_currentMcvFile.Data));
 #if DEBUG
-                _logger.Debug("Enqueue Previous MCV File: {0} (Pointer: {1})", McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile);
+                _logger.Debug($"({Module.ModuleIdentifier}) Enqueue Previous MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {_currentMcvFile})");
 #endif
             }
 
             _currentMcvFile = mcvFilePointer;
 
 #if DEBUG
-            _logger.Debug("Set Current MCV File: {0} (Pointer: {1})", McvPointerDictionary[_currentMcvFile.Offset].FileName, mcvFilePointer);
+            _logger.Debug($"({Module.ModuleIdentifier}) Set Current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
 #endif
         }
 
@@ -2366,7 +2366,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             _currentMcvFile = _previousMcvFile.Pop();
 #if DEBUG
-            _logger.Debug($"Reset Current MCV to {McvPointerDictionary[_currentMcvFile.Offset].FileName} ({_currentMcvFile}) (Queue Depth: {_previousMcvFile.Count})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Reset Current MCV to {McvPointerDictionary[_currentMcvFile.Offset].FileName} ({_currentMcvFile}) (Queue Depth: {_previousMcvFile.Count})");
 #endif
         }
 
@@ -2414,7 +2414,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("BB", btvFileStructPointer);
 
 #if DEBUG
-            _logger.Debug($"Opened file {fileName} and allocated it to {btvFileStructPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Opened file {fileName} and allocated it to {btvFileStructPointer}");
 #endif
             return btvFileStructPointer;
         }
@@ -2439,7 +2439,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(btrieveFilePointer, BtvFileStruct.Size));
             var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
-            _logger.Debug($"Setting current Btrieve file to {btvFileName} ({btrieveFilePointer})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Setting current Btrieve file to {btvFileName} ({btrieveFilePointer})");
 #endif
         }
 
@@ -2632,7 +2632,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(variablePointer, formattedMessage);
 
 #if DEBUG
-            //_logger.Debug($"Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
+            //_logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
 #endif
 
             Registers.SetPointer(variablePointer);
@@ -2847,7 +2847,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.TextVariables.Add(Encoding.ASCII.GetString(textBytes), functionPointer);
 
 #if DEBUG
-            _logger.Debug($"Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
 #endif
         }
 
@@ -2911,7 +2911,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new OutOfMemoryException("Volatile Memory declaration > 16k");
 
 #if DEBUG
-            _logger.Debug($"Volatile Memory Size requested of {size} bytes ({VOLATILE_DATA_SIZE} bytes currently allocated per channel)");
+            _logger.Debug($"({Module.ModuleIdentifier}) Volatile Memory Size requested of {size} bytes ({VOLATILE_DATA_SIZE} bytes currently allocated per channel)");
 #endif
         }
 
@@ -3059,7 +3059,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = char.ToUpper((char)inputString[0]);
 
 #if DEBUG
-            _logger.Debug($"Returned char: {(char)Registers.AX}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned char: {(char)Registers.AX}");
 #endif
             //End of String
             if (Registers.AX == 0)
@@ -3117,14 +3117,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (FileAlreadyOpen(fullPath, out var fileStructPointer))
             {
-                _logger.Warn($"Reopened File: {fullPath} - most likely a module bug.");
+                _logger.Warn($"({Module.ModuleIdentifier}) Reopened File: {fullPath} - most likely a module bug.");
 
                 Registers.SetPointer(fileStructPointer);
                 return;
             }
 
 #if DEBUG
-            _logger.Debug($"Opening File: {fullPath}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
 #endif
 
             var modeInputBuffer = Module.Memory.GetString(modePointer, true);
@@ -3180,7 +3180,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
 #if DEBUG
-            _logger.Debug($"{fullPath} FILE struct written to {fileStructPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {fullPath} FILE struct written to {fileStructPointer}");
 #endif
             Registers.SetPointer(fileStructPointer);
         }
@@ -3202,7 +3202,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (fileStruct.curp.Segment == 0 && fileStruct.curp.Offset == 0)
             {
 #if DEBUG
-                _logger.Warn($"Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
+                _logger.Warn($"({Module.ModuleIdentifier}) Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
                 Registers.AX = 0xFFFF;
                 return;
 #endif
@@ -3211,7 +3211,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
             {
                 _logger.Warn(
-                    $"Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
+                    $"({Module.ModuleIdentifier}) Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
                 Registers.AX = 0xFFFF;
                 return;
             }
@@ -3220,7 +3220,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStream = FilePointerDictionary[fileStruct.curp.Offset];
 
 #if DEBUG
-            _logger.Debug($"Closed File {filePointer} {fileStream.Name} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Closed File {filePointer} {fileStream.Name} (Stream: {fileStruct.curp})");
 #endif
 
             FilePointerDictionary[fileStruct.curp.Offset].Close();
@@ -3288,7 +3288,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             catch (DirectoryNotFoundException)
             {
-                _logger.Warn($"Can't find directory {path}");
+                _logger.Warn($"({Module.ModuleIdentifier}) Can't find directory {path}");
                 Registers.AX = 0;
                 return;
             }
@@ -3309,7 +3309,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fndblk = new FndblkStruct(Module.Memory.GetArray(fndblkPointer, FndblkStruct.StructSize));
             if (!_activeSearches.TryGetValue(fndblk.Guid, out var enumerator))
             {
-                _logger.Warn($"Called fndnxt but the GUID wasn't found {fndblk.Guid}");
+                _logger.Warn($"({Module.ModuleIdentifier}) Called fndnxt but the GUID wasn't found {fndblk.Guid}");
                 return;
             }
 
@@ -3355,7 +3355,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
-                    $"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                    $"({Module.ModuleIdentifier}) File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
             if (fileStream.Position >= fileStream.Length)
             {
@@ -3394,7 +3394,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
-                    $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                    $"({Module.ModuleIdentifier}) File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
             var bytesToWrite = size * count;
             fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort)bytesToWrite));
@@ -3409,7 +3409,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+                $"({Module.ModuleIdentifier}) Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = (ushort)elementsWritten;
         }
@@ -3443,7 +3443,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringValue = Module.Memory.GetString(stringPointer, stripNull: true);
 
 #if DEBUG
-            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {stringPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Evaluated string length of {stringValue.Length} for string at {stringPointer}");
 #endif
 
             Registers.AX = (ushort)stringValue.Length;
@@ -3473,7 +3473,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.AX = character;
             }
 #if DEBUG
-            _logger.Debug($"Converted {(char)character} to {(char)Registers.AX}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Converted {(char)character} to {(char)Registers.AX}");
 #endif
         }
 
@@ -3494,7 +3494,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Registers.AX = character;
             }
 #if DEBUG
-            _logger.Debug($"Converted {(char)character} to {(char)Registers.AX}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Converted {(char)character} to {(char)Registers.AX}");
 #endif
         }
 
@@ -3523,7 +3523,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     true);
 
 #if DEBUG
-                _logger.Debug($"Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
+                _logger.Debug($"({Module.ModuleIdentifier}) Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
 #endif
 
                 Registers.AX = 0;
@@ -3618,7 +3618,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Registers.SetPointer(destinationPointer);
 #if DEBUG
-            _logger.Debug($"Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
 #endif
         }
 
@@ -3682,7 +3682,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
             {
-                _logger.Warn($"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                _logger.Warn($"({Module.ModuleIdentifier}) File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
                 Registers.AX = 0;
                 return;
             }
@@ -3776,7 +3776,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         formatParseState = FormatParseState.NORMAL;
                         goto case FormatParseState.NORMAL; // yolo
                     case FormatParseState.PERCENT:
-                        throw new ArgumentException($"Unsupported sscanf specifier: {formatChar}");
+                        throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {formatChar}");
                 }
             }
 
@@ -3822,7 +3822,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             currentPrfPositionPointer.Offset += (ushort)(formattedMessage.Length - 1); //dont count the null terminator
 
 #if DEBUG
-            _logger.Debug($"Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
 #endif
             //Update Pointer
             Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
@@ -3847,7 +3847,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.GlobalCommandHandlers.Add(globalCommandHandlerPointer);
 
 #if DEBUG
-            _logger.Debug($"Registered Global Command Handler at: {globalCommandHandlerPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Global Command Handler at: {globalCommandHandlerPointer}");
 #endif
         }
 
@@ -3917,7 +3917,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+                $"({Module.ModuleIdentifier}) Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
             Registers.SetPointer(destinationPointer);
         }
@@ -3972,7 +3972,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Wrote {formattedMessage.Length} bytes to {fileStructPointer} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Wrote {formattedMessage.Length} bytes to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
 
             Registers.AX = (ushort)formattedMessage.Length;
@@ -4015,7 +4015,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Seek to {fileStream.Position} in {fileStructPointer} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Seek to {fileStream.Position} in {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
 
             Registers.AX = 0;
@@ -4048,7 +4048,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Encoding.Default.GetBytes(timeString));
 
 #if DEBUG
-            _logger.Debug($"Received value: {packedTime}, decoded string {timeString} saved to {variablePointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedTime}, decoded string {timeString} saved to {variablePointer}");
 #endif
             Registers.SetPointer(variablePointer);
         }
@@ -4160,7 +4160,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(destinationPointer, sourceData);
 
 #if DEBUG
-            _logger.Debug($"Moved {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Moved {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
 #endif
         }
 
@@ -4179,7 +4179,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Returning Current Position of {currentPosition} for {fileStructPointer} (Stream: {fileStruct.curp})");
+                $"({Module.ModuleIdentifier}) Returning Current Position of {currentPosition} for {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
 
             Registers.DX = (ushort)(currentPosition >> 16);
@@ -4285,11 +4285,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
-                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+                throw new Exception($"({Module.ModuleIdentifier}) Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
             if (fileStream.Position == fileStream.Length)
             {
-                _logger.Warn("Attempting to read EOF file, returning null pointer");
+                _logger.Warn($"({Module.ModuleIdentifier}) Attempting to read EOF file, returning null pointer");
                 Registers.AX = 0;
                 Registers.DX = 0;
                 return;
@@ -4319,7 +4319,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+                $"({Module.ModuleIdentifier}) Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
 #endif
             Registers.SetPointer(destinationPointer);
         }
@@ -4672,7 +4672,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             _logger.Debug(
-                $"Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
+                $"({Module.ModuleIdentifier}) Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
 #endif
             Registers.SetPointer(destinationPointer);
         }
@@ -4705,7 +4705,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[channelNumber].StatusChange = true;
 
 #if DEBUG
-            _logger.Debug($"Assigned Polling Routine {ChannelDictionary[channelNumber].PollingRoutine} to Channel {channelNumber}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Assigned Polling Routine {ChannelDictionary[channelNumber].PollingRoutine} to Channel {channelNumber}");
 #endif
         }
 
@@ -4721,7 +4721,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[channelNumber].PollingRoutine = null;
 
 #if DEBUG
-            _logger.Debug($"Unassigned Polling Routine on Channel {channelNumber}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Unassigned Polling Routine on Channel {channelNumber}");
 #endif
         }
 
@@ -4861,10 +4861,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             if (ansiFound)
-                _logger.Warn($"ANSI found but was not stripped. Process not implemented.");
+                _logger.Warn($"({Module.ModuleIdentifier}) ANSI found but was not stripped. Process not implemented.");
 
 #if DEBUG
-            _logger.Debug("Ignoring, not stripping ANSI");
+            _logger.Debug($"({Module.ModuleIdentifier}) Ignoring, not stripping ANSI");
 #endif
 
             Registers.SetPointer(stringToStripPointer);
@@ -5032,7 +5032,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Wrote {stringToWrite.Length} bytes from {stringPointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Wrote {stringToWrite.Length} bytes from {stringPointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 1;
         }
@@ -5109,7 +5109,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Read 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}): {characterRead:X2}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Read 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}): {characterRead:X2}");
 #endif
 
             Registers.AX = (ushort)characterRead;
@@ -5252,7 +5252,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Character {(char)character} written to {fileStructPointer} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Character {(char)character} written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 1;
         }
@@ -5300,7 +5300,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var bigRegion = Module.Memory.AllocateBigMemoryBlock(qty, size);
 
 #if DEBUG
-            _logger.Debug($"Created Big Memory Region that is {qty} records of {size} bytes in length at {bigRegion}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Created Big Memory Region that is {qty} records of {size} bytes in length at {bigRegion}");
 #endif
 
             Registers.SetPointer(bigRegion);
@@ -5333,7 +5333,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var indexPointer = Module.Memory.GetBigMemoryBlock(bigRegionPointer, index);
 
 #if DEBUG
-            _logger.Debug($"Retrieved Big Memory block {bigRegionPointer}, returned pointer to index {index}: {indexPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved Big Memory block {bigRegionPointer}, returned pointer to index {index}: {indexPointer}");
 #endif
 
             Registers.SetPointer(indexPointer);
@@ -5420,7 +5420,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.AX = 0;
 
 #if DEBUG
-            _logger.Debug($"Jump Set -- {jmpBuf.cs:X4}:{jmpBuf.ip:X4} AX:{Registers.AX}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Jump Set -- {jmpBuf.cs:X4}:{jmpBuf.ip:X4} AX:{Registers.AX}");
 #endif
         }
 
@@ -5941,7 +5941,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var epochTime = (uint)((DateTimeOffset)specifiedDate).ToUnixTimeSeconds();
 
 #if DEBUG
-            _logger.Debug($"Returned DOSTOUNIX time: {epochTime}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned DOSTOUNIX time: {epochTime}");
 #endif
 
             Registers.DX = (ushort)(epochTime >> 16);
@@ -6107,7 +6107,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var packedDate = (ushort)((fileTime.Month << 5) + fileTime.Day + ((fileTime.Year - 1980) << 9));
 
 #if DEBUG
-            _logger.Debug($"Returned Packed Date for {filePointer.Name} ({fileTime}) AX: {packedTime} DX: {packedDate}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned Packed Date for {filePointer.Name} ({fileTime}) AX: {packedTime} DX: {packedDate}");
 #endif
             Registers.AX = packedTime;
             Registers.DX = packedDate;
@@ -6238,7 +6238,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
 
 #if DEBUG
-            _logger.Debug($"Channel {ChannelNumber} downloding: {fileToSend}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Channel {ChannelNumber} downloding: {fileToSend}");
 #endif
 
             ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
@@ -6783,7 +6783,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(fsdnanPointer, Encoding.ASCII.GetBytes(fsdStatus.Fields[fieldNo].Value + '\0'));
 
 #if DEBUG
-            _logger.Debug($"Retrieved Field {fieldNo}: {fsdStatus.Fields[fieldNo].Value} ({fsdnanPointer})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved Field {fieldNo}: {fsdStatus.Fields[fieldNo].Value} ({fsdnanPointer})");
 #endif
 
             Registers.SetPointer(fsdnanPointer);
@@ -7028,7 +7028,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var routine = new RealTimeRoutine(routinePointer);
             var routineNumber = Module.TaskRoutines.Allocate(routine);
 #if DEBUG
-            _logger.Debug($"Registered routine {routinePointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer}");
 #endif
             Registers.AX = (ushort)routineNumber;
         }
@@ -7103,7 +7103,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 : 0);
 #if DEBUG
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
-            _logger.Debug($"Returning {Registers.AX} for uidkey({userName}, {lockName})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for uidkey({userName}, {lockName})");
 #endif
         }
 
@@ -7180,7 +7180,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(resultPointer, Encoding.Default.GetBytes(outputValue));
 
 #if DEBUG
-            _logger.Debug($"Received value: {outputValue}, string saved to {resultPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {outputValue}, string saved to {resultPointer}");
 #endif
 
             Registers.SetPointer(resultPointer);
@@ -7635,7 +7635,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[ChannelNumber].ExtUsrAcc.wid = (byte)GetParameter(1);
 
 #if DEBUG
-            _logger.Debug($"Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Setting Echo Security ON for {ChannelDictionary[ChannelNumber].ExtUsrAcc.wid} characters with the character {(char)ChannelDictionary[ChannelNumber].ExtUsrAcc.ech}");
 #endif
         }
 

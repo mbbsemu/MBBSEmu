@@ -441,7 +441,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     //Finally i should be at the specifier
                     if (!InSpan(PRINTF_SPECIFIERS, stringToParse.Slice(i, 1)))
                     {
-                        _logger.Warn($"Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
+                        _logger.Debug($"({Module.ModuleIdentifier}) Invalid printf format: {Encoding.ASCII.GetString(stringToParse)}");
                         continue;
                     }
 
