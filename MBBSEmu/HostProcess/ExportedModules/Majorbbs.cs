@@ -3414,7 +3414,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringValue = GetParameterString(0, true);
 #if DEBUG
-            _logger.Debug($"Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)}");
 #endif
             Registers.AX = (ushort)stringValue.Length;
         }
@@ -4981,7 +4981,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
 #if DEBUG
-            _logger.Debug($"Wrote {stringToWrite.Length} bytes from {GetParameterPointer(0)}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Wrote {stringToWrite.Length} bytes from {GetParameterPointer(0)}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
 #endif
             Registers.AX = 1;
         }
