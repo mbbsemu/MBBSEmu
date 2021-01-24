@@ -226,10 +226,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Gets a string Parameter as a string span
+        /// </summary>
+        /// <param name="parameterOrdinal"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private protected ReadOnlySpan<byte> GetParameterStringSpan(int parameterOrdinal, bool stripNull = false)
+        {
+            var stringPointer = GetParameterPointer(parameterOrdinal);
+            return Module.Memory.GetString(stringPointer, stripNull);
+        }
+
+        /// <summary>
         ///     Gets a Filename Parameter
         /// </summary>
         /// <param name="parameterOrdinal"></param>
-        /// <returns>The filename parameter, uppercased like DOS expects.</returns>
+        /// <returns>The filename parameter, upper-cased like DOS expects.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private protected string GetParameterFilename(int parameterOrdinal)
         {
