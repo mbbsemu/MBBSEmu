@@ -503,7 +503,7 @@ namespace MBBSEmu.HostProcess
         private void ExitModule(SessionBase session)
         {
             //Clear VDA
-            session.CurrentModule.Memory.FillArray($"VDA-{session.Channel}", 0x3FFF, 0x0);
+            Array.Clear(session.VDA,0, Majorbbs.VOLATILE_DATA_SIZE);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.CurrentModule = null;

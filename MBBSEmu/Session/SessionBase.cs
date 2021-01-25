@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session
@@ -207,9 +208,9 @@ namespace MBBSEmu.Session
         public bool EchoSecureEnabled { get; set; }
 
         /// <summary>
-        ///
+        ///     Volatile Data for this specific Channel/Session
         /// </summary>
-        public byte InputMaximumLength { get; set; }
+        public byte[] VDA { get; set; }
 
         protected readonly IMbbsHost _mbbsHost;
 
@@ -245,8 +246,8 @@ namespace MBBSEmu.Session
             OutputEnabled = true;
             EchoBuffer = new MemoryStream(1024);
             InputBuffer = new MemoryStream(1024);
-
             InputCommand = new byte[] { 0x0 };
+            VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
 
             _enumSessionState = startingSessionState;
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
