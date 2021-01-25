@@ -1073,7 +1073,7 @@ namespace MBBSEmu.HostProcess
                                                 break;
                                             }
                                         default:
-                                            Logger.Error($"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
+                                            Logger.Error($"({module.ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                             continue;
                                             //throw new Exception(
                                             //    $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
