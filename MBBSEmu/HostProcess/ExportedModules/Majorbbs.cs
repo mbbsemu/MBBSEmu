@@ -373,7 +373,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
                 (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
-            ChannelDictionary[ChannelNumber].VDA = Module.Memory.GetArray($"VDA-{ChannelNumber}", VOLATILE_DATA_SIZE).ToArray();
+            //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
+            if(Module.Memory.TryGetVariablePointer($"VDA-{ChannelNumber}", out var vdaPointer))
+                ChannelDictionary[ChannelNumber].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
 
 #if DEBUG
             _logger.Debug($"{channel}->status == {ChannelDictionary[ChannelNumber].Status}");
