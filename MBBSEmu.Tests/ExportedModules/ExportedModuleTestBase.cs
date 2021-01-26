@@ -32,8 +32,6 @@ namespace MBBSEmu.Tests.ExportedModules
             657, // f_lumod
         };
 
-        protected static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
-
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
 

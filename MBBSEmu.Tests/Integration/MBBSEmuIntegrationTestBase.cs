@@ -12,18 +12,19 @@ using MBBSEmu.Database.Repositories.AccountKey;
 
 namespace MBBSEmu.Tests.Integration
 {
-    public class MBBSEmuIntegrationTestBase : IDisposable
+    public class MBBSEmuIntegrationTestBase : TestBase, IDisposable
     {
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
         private readonly string[] _moduleFiles = { "MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG" };
 
-        protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
+        protected readonly string _modulePath;
         protected TestSession _session;
 
         private protected readonly ServiceResolver _serviceResolver;
 
         public MBBSEmuIntegrationTestBase()
         {
+            _modulePath = GetModulePath();
+
             _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
 
             _serviceResolver.GetService<IAccountRepository>().Reset("sysop");
