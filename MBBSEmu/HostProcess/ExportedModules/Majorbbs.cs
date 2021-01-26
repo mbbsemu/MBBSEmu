@@ -6438,7 +6438,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sbleng = GetParameter(2);
             var answers = GetParameterPointer(3);
 
-            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FDS-Answers-{ChannelNumber}", 0x800);
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
 
             Module.Memory.SetZero(fsdAnswersPointer, 0x800);
 
