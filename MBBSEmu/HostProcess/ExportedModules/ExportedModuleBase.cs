@@ -709,10 +709,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(_clock.Now.ToString("MM/dd/yyyy")));
                         break;
 
-                    case "SYSTEM_NAME":
-                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
-                        break;
-
                     //Registered Variables
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
                         //Get Variable Entry Point
