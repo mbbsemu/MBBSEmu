@@ -50,7 +50,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!string.IsNullOrEmpty(_configuration.GetBTURNO(Module.ModuleIdentifier)))
             {
                 bturno = _configuration.GetBTURNO(Module.ModuleIdentifier);
-                _logger.Info($"Found Module Specific BTURNO # for {Module.ModuleIdentifier}. Setting BTURNO to: {bturno}");
+                _logger.Info($"{Module.ModuleIdentifier} Found Module Specific BTURNO # -- Setting BTURNO to: {bturno}");
             }
 
             //Sanity Check

@@ -97,7 +97,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             foreach (var f in FilePointerDictionary)
             {
                 f.Value.Close();
-                _logger.Warn($"WARNING -- File: {f.Value.Name} left open by module, closing");
+                _logger.Warn($"({Module.ModuleIdentifier}) WARNING -- File: {f.Value.Name} left open by module, closing");
             }
             FilePointerDictionary.Clear();
         }
@@ -272,7 +272,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             if (stringToParse.Length == 1 && stringToParse[0] == 0x0)
             {
-                _logger.Warn($"Empty Formatter (vsprintf:{isVsPrintf})");
+                _logger.Debug($"({Module.ModuleIdentifier}) Empty Formatter (vsprintf:{isVsPrintf})");
                 return new byte[] {0};
             }
 
@@ -326,7 +326,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         else
                         {
                             msOutput.Write(Encoding.ASCII.GetBytes("Invalid Pointer"));
-                            _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                            _logger.Error($"({Module.ModuleIdentifier}) Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
                         }
 
                         continue;
@@ -444,7 +444,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 variableLength = 4;
                                 break;
                             default:
-                                throw new Exception("Unsupported printf Length Specified");
+                                throw new Exception($"({Module.ModuleIdentifier}) Unsupported printf Length Specified");
                         }
 
                         i++;
@@ -495,7 +495,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     else
                                     {
                                         parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
-                                        _logger.Error($"Invalid Pointer: {stringPointer}");
+                                        _logger.Error($"({Module.ModuleIdentifier}) Invalid Pointer: {stringPointer}");
                                     }
                                 }
                                 else
@@ -509,7 +509,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     else
                                     {
                                         parameter = Encoding.ASCII.GetBytes("Invalid Pointer");
-                                        _logger.Error($"Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
+                                        _logger.Error($"({Module.ModuleIdentifier}) Invalid Pointer: {parameterSegment:X4}:{parameterOffset:X4}");
                                     }
                                 }
 
@@ -607,7 +607,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             }
                         default:
                             throw new InvalidDataException(
-                                $"Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
+                                $"({Module.ModuleIdentifier}) Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
                     }
 
                     //Process Padding
@@ -656,7 +656,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return inputArray.Slice(0, i + (stripNull ? 0 : 1));
             }
 
-            _logger.Warn("Unable to find String terminator");
+            _logger.Warn($"({Module.ModuleIdentifier}) Unable to find String terminator");
             return inputArray;
         }
 
@@ -709,6 +709,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         newOutputBuffer.Write(Encoding.ASCII.GetBytes(_clock.Now.ToString("MM/dd/yyyy")));
                         break;
 
+                    case "SYSTEM_NAME":
+                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
+                        break;
+
                     //Registered Variables
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
                         //Get Variable Entry Point
@@ -716,13 +720,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
                         var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
-                        _logger.Info($"Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
+                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
 #endif
                         newOutputBuffer.Write(variableData);
                         break;
 
                     default:
-                        _logger.Error($"Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
+                        _logger.Error($"({Module.ModuleIdentifier}) Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
                         break;
                 }
             }
