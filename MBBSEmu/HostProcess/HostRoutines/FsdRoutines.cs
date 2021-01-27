@@ -349,6 +349,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private ushort SetUserInput(SessionBase session)
         {
             var userInput = session.InputBuffer.ToArray();
+
+            if (userInput.Length == 0 && session.CharacterProcessed == 0x8)
+                userInput = new byte[] {0x8};
+
             switch (userInput.Length)
             {
                 case 3 when userInput[0] == 0x1B && userInput[1] == '[': //ANSI Sequence
@@ -548,6 +552,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             {
                                 _fsdFields[session.Channel].SelectedField.Value =
                                     _fsdFields[session.Channel].SelectedField.Value.Substring(0, _fsdFields[session.Channel].SelectedField.Value.Length - 1);
+
+                                session.SendToClient(new byte[] { 0x08, 0x20, 0x08 });
                             }
 
                             break;

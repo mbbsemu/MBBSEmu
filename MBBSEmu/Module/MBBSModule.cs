@@ -237,7 +237,7 @@ namespace MBBSEmu.Module
                 if (initResidentName == null)
                 {
                     //This only happens with MajorMUD -- I have no idea why it's a special little snowflake ¯\_(ツ)_/¯
-                    _logger.Warn("Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
+                    _logger.Warn($"({moduleIdentifier}) Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
 
                     var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
 

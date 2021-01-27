@@ -503,7 +503,7 @@ namespace MBBSEmu.HostProcess
         private void ExitModule(SessionBase session)
         {
             //Clear VDA
-            session.CurrentModule.Memory.FillArray($"VDA-{session.Channel}", 0x3FFF, 0x0);
+            Array.Clear(session.VDA,0, Majorbbs.VOLATILE_DATA_SIZE);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.CurrentModule = null;
@@ -1073,7 +1073,7 @@ namespace MBBSEmu.HostProcess
                                                 break;
                                             }
                                         default:
-                                            Logger.Error($"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
+                                            Logger.Error($"({module.ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                             continue;
                                             //throw new Exception(
                                             //    $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
