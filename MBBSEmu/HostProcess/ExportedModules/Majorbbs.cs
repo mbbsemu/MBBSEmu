@@ -140,6 +140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("UACOFF", FarPtr.Size);
             Module.Memory.AllocateVariable("EXTOFF", FarPtr.Size);
             Module.Memory.AllocateVariable("VDAPTR", FarPtr.Size);
+            Module.Memory.AllocateVariable("TJOINROU", FarPtr.Size);
             Module.Memory.AllocateVariable("VDATMP", VOLATILE_DATA_SIZE, true);
             Module.Memory.SetWord(Module.Memory.AllocateVariable("VDASIZ", 0x2), VOLATILE_DATA_SIZE);
             Module.Memory.AllocateVariable("BBSTTL", 0x32, true); //50 bytes for BBS Title
@@ -519,6 +520,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return _8087;
                 case 610:
                     return uidxrf;
+                case 600:
+                    return tjoinrou;
             }
 
             if (offsetsOnly)
@@ -7118,6 +7121,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int clingo;
         /// </summary>
         private ReadOnlySpan<byte> clingo => Module.Memory.GetVariablePointer("CLINGO").Data;
+
+        /// <summary>
+        ///     Teleconference
+        ///
+        ///     Teleconference 'join from other' rouptr
+        ///
+        ///     Signature: void (*tjoinrou)();
+        /// </summary>
+        private ReadOnlySpan<byte> tjoinrou => Module.Memory.GetVariablePointer("TJOINROU").Data;
 
         /// <summary>
         ///     Array of pointers to the lingo Structures
