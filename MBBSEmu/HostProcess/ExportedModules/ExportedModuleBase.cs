@@ -720,7 +720,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
                         var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
-                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}");
+                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
 #endif
                         newOutputBuffer.Write(variableData);
                         break;

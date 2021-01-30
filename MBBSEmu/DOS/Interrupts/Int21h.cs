@@ -240,7 +240,7 @@ namespace MBBSEmu.DOS.Interrupts
                             AX = error code
                             Note: the returned path does not include the initial backslash
                          */
-                        _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
+                        _memory.SetArray(_registers.DS, _registers.DI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
                         _registers.AX = 0;
                         _registers.DL = 0;
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
