@@ -1,16 +1,16 @@
-using System;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
+using MBBSEmu.Session.Enums;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session
 {
@@ -226,6 +226,7 @@ namespace MBBSEmu.Session
                 using var resultStream = new MemoryStream(dataToSend.Length);
                 for (var i = 0; i < dataToSend.Length; i++)
                 {
+                    //Check for text variable, continue if not found
                     if (dataToSend[i] != 0x01)
                     {
                         resultStream.WriteByte(dataToSend[i]);
@@ -239,10 +240,10 @@ namespace MBBSEmu.Session
                         i += 1;
                         var variableEnd = i;
 
-                        //Find the end of the variable
+                        //Find the end of the text variable
                         while (variableEnd < dataToSend.Length)
                         {
-                            //Break if we've found the variable end
+                            //Break if we've found the  text variable end
                             if (dataToSend[variableEnd] == 0x01)
                                 break;
 
@@ -251,11 +252,11 @@ namespace MBBSEmu.Session
 
                         var variableSpan = dataToSend[variableStart..variableEnd];
 
-                        //Process Text Variable
+                        //Replace Text Variable with dynamic info
                         switch (Encoding.ASCII.GetString(variableSpan))
                         {
                             case "DATE":
-                                resultStream.Write(Encoding.Default.GetBytes("Your string here"));
+                                resultStream.Write(Encoding.Default.GetBytes(DateTime.Now.ToString()));
                                 break;
                             default:
                                 resultStream.Write(variableSpan);
