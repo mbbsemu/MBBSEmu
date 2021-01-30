@@ -220,9 +220,56 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
+            
             if (OutputEnabled)
             {
-                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
+                using var resultStream = new MemoryStream(dataToSend.Length);
+                for (var i = 0; i < dataToSend.Length; i++)
+                {
+                    if (dataToSend[i] != 0x01)
+                    {
+                        resultStream.WriteByte(dataToSend[i]);
+                        continue;
+                    }
+
+                    //Found text variable beginning "SOH" 0x01
+                    if (dataToSend[i] == 0x01)
+                    {
+                        var variableStart = i + 1;
+                        i += 1;
+                        var variableEnd = i;
+
+                        //Find the end of the variable
+                        while (variableEnd < dataToSend.Length)
+                        {
+                            //Break if we've found the variable end
+                            if (dataToSend[variableEnd] == 0x01)
+                                break;
+
+                            variableEnd++;
+                        }
+
+                        var variableSpan = dataToSend[variableStart..variableEnd];
+
+                        //Process Text Variable
+                        switch (Encoding.ASCII.GetString(variableSpan))
+                        {
+                            case "DATE":
+                                resultStream.Write(Encoding.Default.GetBytes("Your string here"));
+                                break;
+                            default:
+                                resultStream.Write(variableSpan);
+                                break;
+                        }
+
+                        //Set Cursor to where we're at now
+                        i = variableEnd;
+                    }
+
+                }
+
+                var dataToSendProcessed = resultStream.ToArray();
+                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
         }
 
