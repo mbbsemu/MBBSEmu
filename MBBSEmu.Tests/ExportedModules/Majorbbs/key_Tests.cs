@@ -29,7 +29,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<FarPtr> { stringPointer });
@@ -50,7 +50,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GEN_HASKEY_ORDINAL, new List<ushort> { stringPointer.Offset, stringPointer.Segment, testSessions[0].Channel });
@@ -71,7 +71,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             mbbsEmuMemoryCore.SetWord("OTHUSN", 0);
 
@@ -137,7 +137,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<FarPtr> { stringPointer });
@@ -158,7 +158,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GEN_HASKEY_ORDINAL, new List<ushort> { stringPointer.Offset, stringPointer.Segment, testSessions[0].Channel });
@@ -179,7 +179,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
-            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes("SYSOP"));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
 
             mbbsEmuMemoryCore.SetWord("OTHUSN", 0);
 
@@ -231,6 +231,49 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UIDKEY_ORDINAL, new List<FarPtr> { usernamePointer, keyPointer });
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+
+        }
+
+        [Fact]
+        public void hasmkey_Rloginuser_Test()
+        {
+            //Reset State
+            Reset();
+
+            //Set the test Username
+            testSessions[0].Username = "rloginUser";
+            var key = "NORMAL";
+
+            var mcvPointer = (ushort)majorbbs.McvPointerDictionary.Allocate(new McvFile("TEST.MCV",
+                new Dictionary<int, byte[]> { { 0, Encoding.ASCII.GetBytes(key) } }));
+
+            mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASMKEY_ORDINAL, new List<ushort> { 0 });
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+
+        }
+
+        [Fact]
+        public void haskey_rloginUser_Test()
+        {
+            //Reset State
+            Reset();
+
+            //Set the test Username
+            testSessions[0].Username = "rloginUser";
+            var key = "NORMAL";
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(key.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(key));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, HASKEY_ORDINAL, new List<FarPtr> { stringPointer });
 
             Assert.Equal(1, mbbsEmuCpuRegisters.AX);
 
