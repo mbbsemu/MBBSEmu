@@ -237,7 +237,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void hasmkey_Rloginuser_Test()
+        public void hasmkey_rloginUser_Test()
         {
             //Reset State
             Reset();
