@@ -1,6 +1,4 @@
-﻿using MBBSEmu.Memory;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -10,13 +8,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int SETMEM_ORDINAL = 544;
 
         [Theory]
-        [InlineData(new byte[] { 0x4, 0x4 }, 0x3, 2)]
-        [InlineData(new byte[] { 0x4, 0x4, 0x3, 0x2 }, 0x3, 4)]
-        [InlineData(new byte[] { 0x4, 0x4, 0x3, 0x2, 0x1, 0x0 }, 0xE, 6)]
-        [InlineData(new byte[] { 0x4 }, 0x0, 1)]
-        [InlineData(new byte[] { }, 0x0, 0)]
-        [InlineData(new byte[] { 0xE, 0xF, 0x2, 0x8 }, 0xA, 4)]
-        public void memset_Test(byte[] bufMem, ushort valueToFill, ushort memSize)
+        [InlineData(new byte[] { 0x4, 0x4 }, 2, 0x3)]
+        [InlineData(new byte[] { 0x4, 0x4, 0x3, 0x2 }, 4, 0x3)]
+        [InlineData(new byte[] { 0x4, 0x4, 0x3, 0x2, 0x1, 0x0 }, 6, 0xE)]
+        [InlineData(new byte[] { 0x4 }, 1, 0x0)]
+        [InlineData(new byte[] { }, 0, 0x0)]
+        [InlineData(new byte[] { 0xE, 0xF, 0x2, 0x8 }, 4, 0xA)]
+        public void setmem_Test(byte[] bufMem, ushort numBytes, ushort valueToFill)
         {
             //Reset State
             Reset();
@@ -32,20 +30,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 {
                     bufPointer.Offset,
                     bufPointer.Segment,
-                    memSize,
+                    numBytes,
                     valueToFill
                 });
 
             //Verify Results
-            var expected = new byte[memSize];
+            var expected = new byte[numBytes];
 
-            for (var i = 0; i < memSize; i++)
+            for (var i = 0; i < numBytes; i++)
                 expected[i] = (byte)valueToFill;
 
-            var dstArray = mbbsEmuMemoryCore.GetArray("SETMEMORY", memSize);
+            var dstArray = mbbsEmuMemoryCore.GetArray("SETMEMORY", numBytes);
 
-            Assert.Equal(bufPointer.Segment, mbbsEmuCpuRegisters.DX);
-            Assert.Equal(bufPointer.Offset, mbbsEmuCpuRegisters.AX);
             Assert.Equal(expected, dstArray.ToArray());
         }
     }
