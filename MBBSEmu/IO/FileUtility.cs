@@ -45,7 +45,7 @@ namespace MBBSEmu.IO
         public string FindFile(string modulePath, string fileName)
         {
             //Strip any absolute pathing
-            if (fileName.ToUpper().StartsWith(@"\BBSV6") || fileName.ToUpper().StartsWith(@"\WGSERV"))
+            if (fileName.ToUpper().StartsWith(@"\BBSV6") || fileName.ToUpper().StartsWith(@"\WGSERV") || fileName.ToUpper().StartsWith(@"C:\BBSV6"))
             {
                 var relativePathStart = fileName.IndexOf('\\', fileName.IndexOf('\\') + 1);
                 fileName = fileName.Substring(relativePathStart + 1);
