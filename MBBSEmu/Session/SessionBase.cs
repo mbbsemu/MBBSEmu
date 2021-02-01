@@ -238,8 +238,8 @@ namespace MBBSEmu.Session
                     if (i + 3 >= dataToSendSpan.Length)
                         break;
 
-                    //Look for full signature of 0x1,0x4E,0x26
-                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x26)
+                    //Look for full signature of 0x1,0x4E,0x26 (No Justification, No Padding)
+                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x2E)
                         continue;
 
                     //Increment 3 Bytes
@@ -258,16 +258,21 @@ namespace MBBSEmu.Session
                     switch (Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength)))
                     {
                         //Built in internal Text Variables
-                        case "USERID":
-                            //newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("UserID"));
-                            break;
                         case "DATE":
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes(_mbbsHost.Clock.Now.ToString("MM/dd/yyyy")));
                             break;
+                        case "TIME":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_mbbsHost.Clock.Now.ToString("HH:mm:ss")));
+                            break;
+                        case "CHANNEL":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(Channel.ToString()));
+                            break;
                         case "SYSTEM_NAME":
                             //newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("BBSTitle"));
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("System Name Here"));
+                            break;
+                        case "USERID":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(Username));
                             break;
                         default:
                             _mbbsHost.Logger.Error($"Unknown Text Variable: {Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength))}");
