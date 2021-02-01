@@ -220,56 +220,62 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
-            
+            var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+
             if (OutputEnabled)
             {
-                using var resultStream = new MemoryStream(dataToSend.Length);
-                for (var i = 0; i < dataToSend.Length; i++)
+                using var newOutputBuffer = new MemoryStream(dataToSendSpan.Length);
+                for (var i = 0; i < dataToSendSpan.Length; i++)
                 {
-                    //Check for text variable, continue if not found
-                    if (dataToSend[i] != 0x01)
+                    //Look for initial signature byte -- faster
+                    if (dataToSendSpan[i] != 0x1)
                     {
-                        resultStream.WriteByte(dataToSend[i]);
+                        newOutputBuffer.WriteByte(dataToSendSpan[i]);
                         continue;
                     }
 
-                    //Found text variable beginning "SOH" 0x01
-                    if (dataToSend[i] == 0x01)
+                    //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
+                    if (i + 3 >= dataToSendSpan.Length)
+                        break;
+
+                    //Look for full signature of 0x1,0x4E,0x26
+                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x26)
+                        continue;
+
+                    //Increment 3 Bytes
+                    i += 3;
+
+                    var variableNameStart = i;
+                    var variableNameLength = 0;
+
+                    //Get variable name
+                    while (dataToSendSpan[i] != 0x1)
                     {
-                        var variableStart = i + 1;
-                        i += 1;
-                        var variableEnd = i;
-
-                        //Find the end of the text variable
-                        while (variableEnd < dataToSend.Length)
-                        {
-                            //Break if we've found the  text variable end
-                            if (dataToSend[variableEnd] == 0x01)
-                                break;
-
-                            variableEnd++;
-                        }
-
-                        var variableSpan = dataToSend[variableStart..variableEnd];
-
-                        //Replace Text Variable with dynamic info
-                        switch (Encoding.ASCII.GetString(variableSpan))
-                        {
-                            case "DATE":
-                                resultStream.Write(Encoding.Default.GetBytes(DateTime.Now.ToString()));
-                                break;
-                            default:
-                                resultStream.Write(variableSpan);
-                                break;
-                        }
-
-                        //Set Cursor to where we're at now
-                        i = variableEnd;
+                        i++;
+                        variableNameLength++;
                     }
 
+                    switch (Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength)))
+                    {
+                        //Built in internal Text Variables
+                        case "USERID":
+                            //newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("UserID"));
+                            break;
+                        case "DATE":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_mbbsHost.Clock.Now.ToString("MM/dd/yyyy")));
+                            break;
+                        case "SYSTEM_NAME":
+                            //newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("BBSTitle"));
+                            break;
+                        default:
+                            _mbbsHost.Logger.Error($"Unknown Text Variable: {Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength))}");
+                            break;
+                    }
                 }
 
-                var dataToSendProcessed = resultStream.ToArray();
+                var dataToSendProcessed = newOutputBuffer.ToArray();
                 SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
         }

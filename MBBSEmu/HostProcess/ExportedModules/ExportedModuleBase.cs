@@ -700,19 +700,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 switch (Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength)))
                 {
-                    //Built in internal Text Variables
-                    case "USERID":
-                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(ChannelDictionary[ChannelNumber].Username));
-                        break;
-
-                    case "DATE":
-                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(_clock.Now.ToString("MM/dd/yyyy")));
-                        break;
-
-                    case "SYSTEM_NAME":
-                        newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
-                        break;
-
                     //Registered Variables
                     case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
                         //Get Variable Entry Point
@@ -724,7 +711,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
                         newOutputBuffer.Write(variableData);
                         break;
-
                     default:
                         _logger.Error($"({Module.ModuleIdentifier}) Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
                         break;
