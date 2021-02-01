@@ -271,6 +271,9 @@ namespace MBBSEmu.Session
                             //newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes("System Name Here"));
                             break;
+                        case "OTHERS_ONLINE":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes((_mbbsHost.GetUserSessions().Count - 1).ToString()));
+                            break;
                         case "USERID":
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes(Username));
                             break;
