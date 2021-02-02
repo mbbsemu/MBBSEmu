@@ -1092,6 +1092,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 451:
                     open();
                     break;
+                case 866:
+                    read();
+                    break;
                 case 413:
                     mkdir();
                     break;
@@ -1479,23 +1482,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringLength = Module.Memory.GetString(destinationPointer, true).Length;
 
-            //Truncate Destination if LIMIT is less than DST 
+            //Truncate Destination if LIMIT is less than DST
             if (stringLength > destinationBufferLength)
             {
                 if(destinationBufferLength > 0)
                     destinationBufferLength--; //subtract one for the null we're inserting
-                
+
                 Module.Memory.SetByte(destinationPointer.Segment, (ushort) (destinationPointer.Offset + destinationBufferLength), 0);
                 Registers.SetPointer(destinationPointer);
                 return;
             }
-            
+
             var newDestinationPointer = destinationPointer + stringLength;
             destinationBufferLength -= (ushort)stringLength;
-            
+
             SetParameterPointer(0, newDestinationPointer);
             SetParameter(4, destinationBufferLength);
-            
+
             stzcpy();
             Registers.SetPointer(destinationPointer);
         }
@@ -1530,9 +1533,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.ModuleDlls[ModuleDll].StateCode;
-            
+
             var moduleStructOffset = Module.ModuleDlls[ModuleDll].StateCode * 4;
-            
+
             Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset, localModuleStructPointer);
 
 #if DEBUG
@@ -6365,6 +6368,39 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
             Registers.AX = (ushort)fileStreamPointer;
+        }
+
+        /// <summary>
+        ///     Reads from file.
+        ///
+        ///     Signature: int read{int handle, void *buf, unsigned len);
+        /// </summary>
+        private void read()
+        {
+            _logger.Debug($"Read");
+
+            var fd = GetParameter(0);
+            var destinationPointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream)) {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            if (fileStream.Position >= fileStream.Length)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var buffer = new byte[length];
+            var bytesRead = fileStream.Read(buffer);
+            if (bytesRead > 0)
+                Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
+
+            Registers.AX = (ushort)bytesRead;
         }
 
         /// <summary>
