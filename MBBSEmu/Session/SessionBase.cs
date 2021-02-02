@@ -1,5 +1,4 @@
 using MBBSEmu.HostProcess;
-using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -73,8 +72,6 @@ namespace MBBSEmu.Session
         public bool StatusChange { get; set; }
 
         private EnumSessionState _enumSessionState;
-
-        private AppSettings _configuration;
 
         public event EventHandler<EnumSessionState> OnSessionStateChanged;
 
@@ -214,6 +211,7 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte[] VDA { get; set; }
 
+        private readonly AppSettings _configuration;
         protected readonly IMbbsHost _mbbsHost;
 
         /// <summary>
@@ -329,7 +327,7 @@ namespace MBBSEmu.Session
             EchoBuffer = new MemoryStream(1024);
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
-            VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
+            VDA = new byte[_configuration.VOLATILE_DATA_SIZE];
 
             _enumSessionState = startingSessionState;
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
