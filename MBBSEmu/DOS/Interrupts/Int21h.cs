@@ -235,12 +235,12 @@ namespace MBBSEmu.DOS.Interrupts
                         /*
                             DOS 2+ - GET CURRENT DIRECTORY
                             DL = drive (0=default, 1=A, etc.)
-                            DS:DI points to 64-byte buffer area
+                            DS:SI points to 64-byte buffer area
                             Return: CF set on error
                             AX = error code
                             Note: the returned path does not include the initial backslash
                          */
-                        _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\\\0"));
+                        _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\0"));
                         _registers.AX = 0;
                         _registers.DL = 0;
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
@@ -310,6 +310,8 @@ namespace MBBSEmu.DOS.Interrupts
 
                         var fileUtility = new FileUtility(_logger);
                         var foundFile = fileUtility.FindFile(_path, fileName);
+
+                        
 
                         if(!File.Exists($"{_path}{foundFile}"))
                             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);

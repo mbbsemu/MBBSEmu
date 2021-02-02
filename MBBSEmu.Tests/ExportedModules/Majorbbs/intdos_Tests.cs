@@ -297,7 +297,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var testRegisters = new CpuRegisters {AH = 0x47};
 
             var dirPointer = mbbsEmuMemoryCore.AllocateVariable("DIR-POINTER", 10);
-            testRegisters.DS = dirPointer.Segment;
+            mbbsEmuCpuRegisters.DS = dirPointer.Segment;
             testRegisters.SI = dirPointer.Offset;
 
             //Allocate some memory to hold the test data
@@ -316,8 +316,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.Equal(0, testRegisters.AX);
             Assert.Equal(0, testRegisters.DL);
-            Assert.Equal(4096, testRegisters.DS);
-            Assert.Equal(40238, testRegisters.SI);
+            Assert.Equal(dirPointer.Segment, mbbsEmuCpuRegisters.DS);
+            Assert.Equal(dirPointer.Offset, testRegisters.SI);
+            Assert.Equal("BBSV6", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(testRegisters.DS, testRegisters.SI, true)));
         }
 
         [Fact]
