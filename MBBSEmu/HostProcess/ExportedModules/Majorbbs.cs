@@ -1098,6 +1098,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 866:
                     read();
                     break;
+                case 867:
+                    write();
+                    break;
                 case 413:
                     mkdir();
                     break;
@@ -3381,9 +3384,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new FileNotFoundException(
                     $"({Module.ModuleIdentifier}) File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
+            var oldPosition = fileStream.Position;
             var bytesToWrite = size * count;
             fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort)bytesToWrite));
-            var elementsWritten = bytesToWrite / size;
+            var elementsWritten = (fileStream.Position - oldPosition) / size;
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -6355,6 +6359,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileMode = (EnumOpenFlags)mode;
 
             var fullPath = Path.Combine(Module.ModulePath, fileName);
+
+            if (fileMode.HasFlag(EnumOpenFlags.O_TEXT))
+                throw new ArgumentException($"open called with O_TEXT - not yet supported");
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
 #endif
@@ -6376,12 +6383,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Reads from file.
         ///
-        ///     Signature: int read{int handle, void *buf, unsigned len);
+        ///     Signature: int read(int handle, void *buf, unsigned len);
         /// </summary>
         private void read()
         {
-            _logger.Debug($"Read");
-
             var fd = GetParameter(0);
             var destinationPointer = GetParameterPointer(1);
             var length = GetParameter(3);
@@ -6404,6 +6409,28 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
 
             Registers.AX = (ushort)bytesRead;
+        }
+
+        /// <summary>
+        ///     Writes to file.
+        ///
+        ///     Signature: int write(int handle, void *buf, unsigned len);
+        /// </summary>
+        private void write()
+        {
+            var fd = GetParameter(0);
+            var sourcePointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream)) {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            var oldPosition = fileStream.Position;
+            fileStream.Write(Module.Memory.GetArray(sourcePointer, length));
+            Registers.AX = (ushort)(fileStream.Position - oldPosition);
         }
 
         /// <summary>
