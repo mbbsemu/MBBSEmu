@@ -15,6 +15,7 @@ namespace MBBSEmu.Tests.Integration
             ExecuteTest((session, host) => {
                 ManualResetEvent restartHandle = new ManualResetEvent(false);
                 ManualResetEvent inModule = new ManualResetEvent(false);
+                var configuration = _serviceResolver.GetService<AppSettings>();
 
                 // wait until the session is in the module
                 session.OnSessionStateChanged += (sender, state) =>
@@ -34,7 +35,7 @@ namespace MBBSEmu.Tests.Integration
                 Assert.Equal(EnumSessionState.Disconnected, session.SessionState);
 
                 // create new Session and reattach to host
-                _session = session = new TestSession(host);
+                _session = session = new TestSession(host, configuration);
                 Assert.NotNull(session.CurrentModule);
                 host.AddSession(session);
 

@@ -77,6 +77,7 @@ namespace MBBSEmu.Tests.Integration
 
             //Setup and Run Host with only the MBBSEMU module
             var host = _serviceResolver.GetService<IMbbsHost>();
+            var configuration = _serviceResolver.GetService<AppSettings>();
             var moduleConfigurations = new List<ModuleConfiguration>
             {
                 new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = "A"}
@@ -84,7 +85,7 @@ namespace MBBSEmu.Tests.Integration
 
             host.Start(moduleConfigurations);
 
-            _session = new TestSession(host);
+            _session = new TestSession(host, configuration);
             host.AddSession(_session);
 
             testLogic(_session, host);

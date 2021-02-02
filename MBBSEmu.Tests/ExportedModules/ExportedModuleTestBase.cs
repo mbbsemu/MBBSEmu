@@ -52,6 +52,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected ExportedModuleTestBase(string modulePath)
         {
             _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+            var configuration = _serviceResolver.GetService<AppSettings>();
 
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
@@ -59,8 +60,8 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
-            testSessions.Allocate(new TestSession(null));
-            testSessions.Allocate(new TestSession(null));
+            testSessions.Allocate(new TestSession(null, configuration));
+            testSessions.Allocate(new TestSession(null, configuration));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
@@ -113,8 +114,9 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuCpuRegisters.IP = 0;
 
             testSessions = new PointerDictionary<SessionBase>();
-            testSessions.Allocate(new TestSession(null));
-            testSessions.Allocate(new TestSession(null));
+            var configuration = _serviceResolver.GetService<AppSettings>();
+            testSessions.Allocate(new TestSession(null, configuration));
+            testSessions.Allocate(new TestSession(null, configuration));
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
