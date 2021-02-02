@@ -74,6 +74,8 @@ namespace MBBSEmu.Session
 
         private EnumSessionState _enumSessionState;
 
+        private AppSettings _configuration;
+
         public event EventHandler<EnumSessionState> OnSessionStateChanged;
 
         public EnumSessionState SessionState {
@@ -268,11 +270,28 @@ namespace MBBSEmu.Session
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes(Channel.ToString()));
                             break;
                         case "SYSTEM_NAME":
-                            //newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("System Name Here"));
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
+                            break;
+                        case "SYSTEM_COMPANY":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSCompanyName));
+                            break;
+                        case "SYSTEM_ADDRESS1":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSAddress1));
+                            break;
+                        case "SYSTEM_ADDRESS2":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSAddress2));
+                            break;
+                        case "SYSTEM_PHONE":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSDataPhone));
+                            break;
+                        case "NUMBER_OF_LINES":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSChannels.ToString()));
                             break;
                         case "OTHERS_ONLINE":
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes((_mbbsHost.GetUserSessions().Count - 1).ToString()));
+                            break;
+                        case "TOTAL_ACCOUNTS":
+                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("hi")); //TODO Bring accounts in
                             break;
                         case "USERID":
                             newOutputBuffer.Write(Encoding.ASCII.GetBytes(Username));
@@ -294,9 +313,10 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
-        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState)
+        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, AppSettings configuration)
         {
             _mbbsHost = mbbsHost;
+            _configuration = configuration;
             SessionId = sessionId;
             UsrPtr = new User();
             UsrAcc = new UserAccount();

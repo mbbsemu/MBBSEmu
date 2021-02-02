@@ -24,7 +24,7 @@ namespace MBBSEmu.Session.Rlogin
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(host, logger, rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(host, logger, rloginConnection, configuration)
         {
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;
