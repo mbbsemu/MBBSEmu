@@ -3581,11 +3581,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var numberOfBytesToFill = GetParameter(3);
 
             Module.Memory.FillArray(destinationPointer, numberOfBytesToFill, (byte)valueToFill);
-            //for (var i = 0; i < numberOfBytesToFill; i++)
-            //{
-            //    Module.Memory.SetByte(destinationPointer.Segment, (ushort)(destinationPointer.Offset + i),
-            //        (byte)valueToFill);
-           // }
 
             Registers.SetPointer(destinationPointer);
 #if DEBUG
