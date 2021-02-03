@@ -66,12 +66,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort fwrite(FarPtr destPtr, ushort size, ushort count, FarPtr filep)
+        protected ushort fwrite(FarPtr srcPtr, ushort size, ushort count, FarPtr filep)
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FWRITE_ORDINAL, new List<ushort>
             {
-                destPtr.Offset,
-                destPtr.Segment,
+                srcPtr.Offset,
+                srcPtr.Segment,
                 size,
                 count,
                 filep.Offset,
@@ -134,13 +134,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort write(ushort fd, FarPtr destPtr, ushort count)
+        protected ushort write(ushort fd, FarPtr srcPtr, ushort count)
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, WRITE_ORDINAL, new List<ushort>
             {
                 fd,
-                destPtr.Offset,
-                destPtr.Segment,
+                srcPtr.Offset,
+                srcPtr.Segment,
                 count,
             });
 
