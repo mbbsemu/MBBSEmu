@@ -43,6 +43,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Theory]
         [InlineData(EnumOpenFlags.O_CREAT | EnumOpenFlags.O_RDONLY)]
         [InlineData(EnumOpenFlags.O_CREAT | EnumOpenFlags.O_RDRW)]
+        [InlineData(EnumOpenFlags.O_CREAT | EnumOpenFlags.O_WRONLY)]
         public void open_write_implicitCreate(EnumOpenFlags mode)
         {
             Reset();
@@ -206,6 +207,48 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             close(fd).Should().Be(0);
 
             new FileInfo(Path.Join(mbbsModule.ModulePath, "FILE.TXT")).Length.Should().Be(LOREM_IPSUM.Length);
+        }
+
+        [Fact]
+        public void read_writeonly_fails()
+        {
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            new FileInfo(filePath).Length.Should().Be(LOREM_IPSUM.Length);
+
+            var fd = open("file.txt", EnumOpenFlags.O_WRONLY);
+            fd.Should().NotBe(0xFFFF);
+
+            var dstBuf = mbbsEmuMemoryCore.AllocateVariable(null, 4096);
+            var bytesRead = read(fd, dstBuf, 4096);
+            bytesRead.Should().Be(0xFFFF);
+            mbbsEmuMemoryCore.GetByte(dstBuf).Should().Be(0);
+
+            close(fd).Should().Be(0);
+        }
+
+        [Fact]
+        public void write_readonly_fails()
+        {
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            new FileInfo(filePath).Length.Should().Be(LOREM_IPSUM.Length);
+
+            var fd = open("file.txt", EnumOpenFlags.O_RDONLY);
+            fd.Should().NotBe(0xFFFF);
+
+            var dstBuf = mbbsEmuMemoryCore.AllocateVariable(null, 4096);
+            var bytesWritten = write(fd, dstBuf, 4096);
+            bytesWritten.Should().Be(0xFFFF);
+            mbbsEmuMemoryCore.GetByte(dstBuf).Should().Be(0);
+
+            close(fd).Should().Be(0);
+
+            new FileInfo(filePath).Length.Should().Be(LOREM_IPSUM.Length);
         }
 
         [Fact]

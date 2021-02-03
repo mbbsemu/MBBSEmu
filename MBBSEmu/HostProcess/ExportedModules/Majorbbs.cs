@@ -6430,7 +6430,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 Registers.AX = (ushort)bytesRead;
             }
-            catch (NotSupportedException ex)
+            catch (NotSupportedException)
             {
                 // TODO set errno appropriately
                 Registers.AX = 0xFFFF;
@@ -6454,9 +6454,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var oldPosition = fileStream.Position;
-            fileStream.Write(Module.Memory.GetArray(sourcePointer, length));
-            Registers.AX = (ushort)(fileStream.Position - oldPosition);
+            try
+            {
+                var oldPosition = fileStream.Position;
+                fileStream.Write(Module.Memory.GetArray(sourcePointer, length));
+                Registers.AX = (ushort)(fileStream.Position - oldPosition);
+            }
+            catch (NotSupportedException)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
         }
 
         /// <summary>
