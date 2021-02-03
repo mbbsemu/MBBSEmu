@@ -6356,28 +6356,46 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var mode = GetParameter(2);
 
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
-            var fileMode = (EnumOpenFlags)mode;
+            var dosFileMode = (EnumOpenFlags)mode;
 
             var fullPath = Path.Combine(Module.ModulePath, fileName);
 
-            if (fileMode.HasFlag(EnumOpenFlags.O_TEXT))
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TEXT))
                 throw new ArgumentException($"open called with O_TEXT - not yet supported");
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
 #endif
-            if (!File.Exists($"{fullPath}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
-            {
-                _logger.Warn($"({Module.ModuleIdentifier}) Unable to find file {fullPath}");
-                Registers.AX = 0xFFFF;
-                return;
-            }
+            FileMode fileMode;
+            FileAccess fileAccess;
 
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_CREAT))
+                fileMode = FileMode.OpenOrCreate;
+            else
+                fileMode = FileMode.Open;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TRUNC))
+                fileMode = FileMode.Truncate;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_RDRW))
+                fileAccess = FileAccess.ReadWrite;
+            else if (dosFileMode.HasFlag(EnumOpenFlags.O_WRONLY))
+                fileAccess = FileAccess.Write;
+            else
+                fileAccess = FileAccess.Read;
             //Setup the File Stream
-            var fileStream = File.Open(fullPath, FileMode.OpenOrCreate);
+            try
+            {
+                var fileStream = File.Open(fullPath, fileMode, fileAccess);
 
-            var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+                var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
-            Registers.AX = (ushort)fileStreamPointer;
+                Registers.AX = (ushort)fileStreamPointer;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"Unable to open {fileName} {dosFileMode}");
+                Registers.AX = 0xFFFF;
+            }
         }
 
         /// <summary>
@@ -6403,12 +6421,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var buffer = new byte[length];
-            var bytesRead = fileStream.Read(buffer);
-            if (bytesRead > 0)
-                Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
+            try
+            {
+                var buffer = new byte[length];
+                var bytesRead = fileStream.Read(buffer);
+                if (bytesRead > 0)
+                    Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
 
-            Registers.AX = (ushort)bytesRead;
+                Registers.AX = (ushort)bytesRead;
+            }
+            catch (NotSupportedException ex)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
         }
 
         /// <summary>
@@ -6489,8 +6515,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileHandle = GetParameter(0);
 
             //Clean Up File Stream Pointer
+            if (!FilePointerDictionary.ContainsKey(fileHandle))
+            {
+                // TODO set errno
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
             FilePointerDictionary[fileHandle].Close();
             FilePointerDictionary.Remove(fileHandle);
+
+            Registers.AX = 0;
         }
 
         /// <summary>
