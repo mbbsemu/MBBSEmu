@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -19,7 +20,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            //Set Argument Values to be Passed In -- Signature: void setmem(char *destination, unsigned nbytes, char value)
+            //Set Argument Values to be Passed In
             var bufPointer = mbbsEmuMemoryCore.AllocateVariable("SETMEMORY", (ushort)bufMem.Length);
             mbbsEmuMemoryCore.SetArray(bufPointer, bufMem);
 
@@ -36,11 +37,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             var expected = new byte[numBytes];
+            Array.Fill(expected, (byte)valueToFill);
 
-            for (var i = 0; i < numBytes; i++)
-                expected[i] = (byte)valueToFill;
-
-            var dstArray = mbbsEmuMemoryCore.GetArray("SETMEMORY", numBytes);
+            var dstArray = mbbsEmuMemoryCore.GetArray(bufPointer, numBytes);
 
             Assert.Equal(expected, dstArray.ToArray());
         }

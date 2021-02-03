@@ -2775,14 +2775,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void setmem()
         {
-            var destination = GetParameterPointer(0);
+            var destinationPointer = GetParameterPointer(0);
             var numberOfBytesToWrite = GetParameter(2);
             var byteToWrite = GetParameter(3);
 
-            for (var i = 0; i < numberOfBytesToWrite; i++)
-            {
-                Module.Memory.SetByte(destination.Segment, (ushort)(destination.Offset + i), (byte)byteToWrite);
-            }
+            Module.Memory.FillArray(destinationPointer, numberOfBytesToWrite, (byte)byteToWrite);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Set {numberOfBytesToWrite} bytes at {destinationPointer} with {(byte)byteToWrite:X2}");
+#endif
         }
 
         /// <summary>
@@ -3578,17 +3578,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var destinationPointer = GetParameterPointer(0);
             var valueToFill = GetParameter(2);
-            var numberOfByteToFill = GetParameter(3);
+            var numberOfBytesToFill = GetParameter(3);
 
-            for (var i = 0; i < numberOfByteToFill; i++)
-            {
-                Module.Memory.SetByte(destinationPointer.Segment, (ushort)(destinationPointer.Offset + i),
-                    (byte)valueToFill);
-            }
+            Module.Memory.FillArray(destinationPointer, numberOfBytesToFill, (byte)valueToFill);
+            //for (var i = 0; i < numberOfBytesToFill; i++)
+            //{
+            //    Module.Memory.SetByte(destinationPointer.Segment, (ushort)(destinationPointer.Offset + i),
+            //        (byte)valueToFill);
+           // }
 
             Registers.SetPointer(destinationPointer);
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Filled {numberOfByteToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Filled {numberOfBytesToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
 #endif
         }
 

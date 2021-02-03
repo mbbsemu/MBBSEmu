@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -12,6 +13,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(72)]
         [InlineData(45)]
         [InlineData(0)]
+        [InlineData(39000)]
         public void alcmem_Test(ushort numBytes)
         {
             //Reset State
@@ -22,13 +24,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             var expected = new byte[numBytes];
-
-            for (var i = 0; i < numBytes; i++)
-                expected[i] = 0x0;
+            Array.Fill(expected, (byte)0x0);
 
             var dstArray = mbbsEmuMemoryCore.GetArray(mbbsEmuCpuRegisters.GetPointer(), numBytes);
 
-            //Verify Results
             Assert.Equal(expected, dstArray.ToArray());
         }
     }

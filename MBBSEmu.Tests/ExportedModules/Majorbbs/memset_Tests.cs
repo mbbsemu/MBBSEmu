@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -36,9 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             var expected = new byte[memSize];
-
-            for (var i = 0; i < memSize; i++)
-                expected[i] = (byte) valueToFill;
+            Array.Fill(expected, (byte)valueToFill);
             
             var dstArray = mbbsEmuMemoryCore.GetArray("SETMEMORY", memSize);
 
