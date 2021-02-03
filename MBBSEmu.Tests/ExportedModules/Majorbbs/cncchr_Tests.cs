@@ -1,7 +1,6 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -19,6 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("123    456\0", 3, '4', 8)]
         [InlineData("123\0", 3, '\0', 3)]
         [InlineData("\0", 0, '\0', 0)]
+        [InlineData("123\0", 4, '\0', 4)]
         public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State
