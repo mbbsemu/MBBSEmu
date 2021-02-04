@@ -5,11 +5,12 @@ namespace MBBSEmu.TextVariables
 {
     public class TextVariableService : ITextVariableService
     {
-
         /// <summary>
         ///     Holds the list of Text Variables registered by the system
         /// </summary>
         private readonly List<TextVariable> _textVariables;
+
+
 
         public TextVariableService()
         {
@@ -21,7 +22,7 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
-        public void SetVariable(string name, string value)
+        public void SetVariable(string name, TextVariable.TextVariableValueDelegate value)
         {
             if (_textVariables.Any(x => x.Name == name))
                 return;
@@ -34,14 +35,14 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public string GetVariableByName(string name) => _textVariables.FirstOrDefault(x => x.Name == name)?.Value;
+        public string GetVariableByName(string name) => _textVariables.FirstOrDefault(x => x.Name == name)?.Value();
 
         /// <summary>
         ///     Gets the specified variable value by index
         /// </summary>
         /// <param name="index"></param>
         /// <returns></returns>
-        public string GetVariableByIndex(int index) => _textVariables[index].Value;
+        public string GetVariableByIndex(int index) => _textVariables[index].Value();
 
         /// <summary>
         ///     Gets the index of the specified variable by name

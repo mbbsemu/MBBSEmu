@@ -7,7 +7,7 @@
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
-        void SetVariable(string name, string value);
+        void SetVariable(string name, TextVariable.TextVariableValueDelegate value);
 
         /// <summary>
         ///     Gets the specified variable value by name
