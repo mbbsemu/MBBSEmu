@@ -114,10 +114,8 @@ namespace MBBSEmu.HostProcess
 
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
-
-        private readonly ITextVariableService _textVariableService;
-
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             Logger = logger;
             Clock = clock;
@@ -129,7 +127,6 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = channelDictionary;
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
-            _textVariableService = textVariableService;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -145,12 +142,6 @@ namespace MBBSEmu.HostProcess
                 _timerEvent = new AutoResetEvent(true);
                 _tickTimer = new Timer(_ => _timerEvent.Set(), this, TimeSpan.Zero, TimeSpan.FromMilliseconds(1000 / configuration.TimerHertz));
             }
-
-            //Setup Text Variables
-            _textVariableService.SetVariable("SYSTEM_NAME", () => "Test");
-            _textVariableService.SetVariable("CHANNEL_0_USERNAME", () => GetUserSessions()[0].Username);
-            _textVariableService.SetVariable("DATE", () => DateTime.Now.ToString("M/d/yy"));
-            _textVariableService.SetVariable("TIME", () => DateTime.Now.ToString("t"));
 
             Logger.Info("Constructed MBBSEmu Host!");
         }
