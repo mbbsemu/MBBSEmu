@@ -16,6 +16,7 @@ using MBBSEmu.Server;
 using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
+using MBBSEmu.TextVariables;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using NLog.Layouts;
@@ -233,6 +234,7 @@ namespace MBBSEmu
                 }
 
                 var configuration = _serviceResolver.GetService<AppSettings>();
+                var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
@@ -411,7 +413,7 @@ namespace MBBSEmu
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
                 if (_isConsoleSession)
-                    _ = new LocalConsoleSession(_logger, "CONSOLE", host, configuration);
+                    _ = new LocalConsoleSession(_logger, "CONSOLE", host, configuration, textVariableService);
             }
             catch (Exception e)
             {

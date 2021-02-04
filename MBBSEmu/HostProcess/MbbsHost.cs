@@ -147,8 +147,15 @@ namespace MBBSEmu.HostProcess
 
             //Setup Text Variables
             _textVariableService.SetVariable("SYSTEM_NAME", () => _configuration.BBSTitle);
+            _textVariableService.SetVariable("SYSTEM_COMPANY", () => _configuration.BBSCompanyName);
+            _textVariableService.SetVariable("SYSTEM_ADDRESS1", () => _configuration.BBSAddress1);
+            _textVariableService.SetVariable("SYSTEM_ADDRESS2", () => _configuration.BBSAddress2);
+            _textVariableService.SetVariable("SYSTEM_PHONE", () => _configuration.BBSDataPhone);
+            _textVariableService.SetVariable("NUMBER_OF_LINES", () => _configuration.BBSChannels.ToString());
             _textVariableService.SetVariable("DATE", () => Clock.Now.ToString("M/d/yy"));
             _textVariableService.SetVariable("TIME", () => Clock.Now.ToString("t"));
+            _textVariableService.SetVariable("TOTAL_ACCOUNTS", () => _accountRepository.GetAccounts().Count().ToString());
+            _textVariableService.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
 
             Logger.Info("Constructed MBBSEmu Host!");
         }

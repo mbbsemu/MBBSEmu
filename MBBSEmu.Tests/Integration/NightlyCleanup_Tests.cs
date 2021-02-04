@@ -1,8 +1,9 @@
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
+using System;
 using System.Text;
 using System.Threading;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Integration
@@ -16,6 +17,7 @@ namespace MBBSEmu.Tests.Integration
                 ManualResetEvent restartHandle = new ManualResetEvent(false);
                 ManualResetEvent inModule = new ManualResetEvent(false);
                 var configuration = _serviceResolver.GetService<AppSettings>();
+                var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
                 // wait until the session is in the module
                 session.OnSessionStateChanged += (sender, state) =>
@@ -35,7 +37,7 @@ namespace MBBSEmu.Tests.Integration
                 Assert.Equal(EnumSessionState.Disconnected, session.SessionState);
 
                 // create new Session and reattach to host
-                _session = session = new TestSession(host, configuration);
+                _session = session = new TestSession(host, configuration, textVariableService);
                 Assert.NotNull(session.CurrentModule);
                 host.AddSession(session);
 

@@ -10,12 +10,13 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.TextVariables;
 using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System;
 
 namespace MBBSEmu.Tests.ExportedModules
 {
@@ -51,6 +52,7 @@ namespace MBBSEmu.Tests.ExportedModules
         {
             _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
             var configuration = _serviceResolver.GetService<AppSettings>();
+            var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = new MemoryCore();
             mbbsEmuCpuRegisters = new CpuRegisters();
@@ -58,8 +60,8 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
-            testSessions.Allocate(new TestSession(null, configuration));
-            testSessions.Allocate(new TestSession(null, configuration));
+            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
+            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
@@ -113,8 +115,9 @@ namespace MBBSEmu.Tests.ExportedModules
 
             testSessions = new PointerDictionary<SessionBase>();
             var configuration = _serviceResolver.GetService<AppSettings>();
-            testSessions.Allocate(new TestSession(null, configuration));
-            testSessions.Allocate(new TestSession(null, configuration));
+            var textVariableService = _serviceResolver.GetService<ITextVariableService>();
+            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
+            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(

@@ -4,6 +4,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -212,6 +213,7 @@ namespace MBBSEmu.Session
         public byte[] VDA { get; set; }
 
         private readonly AppSettings _configuration;
+        private readonly ITextVariableService _textVariableService;
         protected readonly IMbbsHost _mbbsHost;
 
         /// <summary>
@@ -239,8 +241,12 @@ namespace MBBSEmu.Session
                         break;
 
                     //Look for full signature of 0x1,0x4E,0x26 (No Justification, No Padding)
-                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x2E)
-                        continue;
+                    //if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x2E)
+                    //    continue;
+
+                    //Get formatting information
+                    var variableFormatJustification = dataToSendSpan[i + 1];
+                    var variableFormatPadding = (dataToSendSpan[i + 2] - 32);
 
                     //Increment 3 Bytes
                     i += 3;
@@ -255,49 +261,51 @@ namespace MBBSEmu.Session
                         variableNameLength++;
                     }
 
-                    switch (Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength)))
+                    var variableName = Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength));
+                    var variableText = _textVariableService.GetVariableByName($"{variableName}");
+
+                    //If not found, try Session specific Text Variables and show error if not
+                    if (variableText == null)
                     {
-                        //Built in internal Text Variables
-                        case "DATE":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_mbbsHost.Clock.Now.ToString("MM/dd/yyyy")));
+                        switch (variableName)
+                        {
+                            case "CHANNEL":
+                                variableText = Channel.ToString();
+                                break;
+                            case "USERID":
+                                variableText = Username;
+                                break;
+                            default:
+                                variableText = "UNKNOWN";
+                                _mbbsHost.Logger.Error($"Unknown Text Variable: {variableName}");
+                                break;
+                        }
+                    }
+
+                    //Format Variable Text
+                    switch (variableFormatJustification)
+                    {
+                        case 78:
+                            //No formatting
                             break;
-                        case "TIME":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_mbbsHost.Clock.Now.ToString("HH:mm:ss")));
+                        case 76:
+                            //Left Justify
+                            variableText = variableText.PadRight(variableFormatPadding, char.Parse("*"));
                             break;
-                        case "CHANNEL":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(Channel.ToString()));
+                        case 67:
+                            //Center Justify
+                            //TODO center justify
                             break;
-                        case "SYSTEM_NAME":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSTitle));
-                            break;
-                        case "SYSTEM_COMPANY":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSCompanyName));
-                            break;
-                        case "SYSTEM_ADDRESS1":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSAddress1));
-                            break;
-                        case "SYSTEM_ADDRESS2":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSAddress2));
-                            break;
-                        case "SYSTEM_PHONE":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSDataPhone));
-                            break;
-                        case "NUMBER_OF_LINES":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(_configuration.BBSChannels.ToString()));
-                            break;
-                        case "OTHERS_ONLINE":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes((_mbbsHost.GetUserSessions().Count - 1).ToString()));
-                            break;
-                        case "TOTAL_ACCOUNTS":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes("hi")); //TODO Bring accounts in
-                            break;
-                        case "USERID":
-                            newOutputBuffer.Write(Encoding.ASCII.GetBytes(Username));
+                        case 82:
+                            //Right Justify
+                            variableText = variableText.PadLeft(variableFormatPadding, char.Parse("*"));
                             break;
                         default:
-                            _mbbsHost.Logger.Error($"Unknown Text Variable: {Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength))}");
+                            _mbbsHost.Logger.Error($"Unknown Formatting for Variable: {variableName}");
                             break;
                     }
+
+                    newOutputBuffer.Write(Encoding.ASCII.GetBytes(variableText));
                 }
 
                 var dataToSendProcessed = newOutputBuffer.ToArray();
@@ -311,10 +319,11 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
-        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, AppSettings configuration)
+        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, AppSettings configuration, ITextVariableService textVariableService)
         {
             _mbbsHost = mbbsHost;
             _configuration = configuration;
+            _textVariableService = textVariableService;
             SessionId = sessionId;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
