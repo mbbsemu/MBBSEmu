@@ -240,6 +240,7 @@ namespace MBBSEmu.Session
                     if (i + 3 >= dataToSendSpan.Length)
                         break;
 
+                    //TODO Create detection for valid padding/justification codes plus 0x1
                     //Look for full signature of 0x1,0x4E,0x26 (No Justification, No Padding)
                     //if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x2E)
                     //    continue;
@@ -290,6 +291,7 @@ namespace MBBSEmu.Session
                             break;
                         case 76:
                             //Left Justify
+                            //TODO add error checking for padding > length
                             variableText = variableText.PadRight(variableFormatPadding, char.Parse("*"));
                             break;
                         case 67:
@@ -298,6 +300,7 @@ namespace MBBSEmu.Session
                             break;
                         case 82:
                             //Right Justify
+                            //TODO add error checking for padding > length
                             variableText = variableText.PadLeft(variableFormatPadding, char.Parse("*"));
                             break;
                         default:
