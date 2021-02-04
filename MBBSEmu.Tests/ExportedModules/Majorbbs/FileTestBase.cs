@@ -1,3 +1,4 @@
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +13,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected const int FWRITE_ORDINAL = 312;
         protected const int FPRINTF_ORDINAL = 226;
         protected const int FCLOSE_ORDINAL = 205;
+
+        protected const int OPEN_ORDINAL = 451;
+        protected const int READ_ORDINAL = 866;
+        protected const int WRITE_ORDINAL = 867;
+        protected const int CLOSE_ORDINAL = 110;
 
         protected FileTestBase() : base(Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}"))
         {
@@ -60,12 +66,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort fwrite(FarPtr destPtr, ushort size, ushort count, FarPtr filep)
+        protected ushort fwrite(FarPtr srcPtr, ushort size, ushort count, FarPtr filep)
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FWRITE_ORDINAL, new List<ushort>
             {
-                destPtr.Offset,
-                destPtr.Segment,
+                srcPtr.Offset,
+                srcPtr.Segment,
                 size,
                 count,
                 filep.Offset,
@@ -94,6 +100,52 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
+        protected ushort open(string filename, EnumOpenFlags mode) {
+            var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(filename.Length + 1));
+            mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(filename));
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OPEN_ORDINAL, new List<ushort>
+            {
+                filenamePointer.Offset,
+                filenamePointer.Segment,
+                (ushort)mode
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort close(ushort fd)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLOSE_ORDINAL, new List<ushort> { fd });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort read(ushort fd, FarPtr destPtr, ushort count)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, READ_ORDINAL, new List<ushort>
+            {
+                fd,
+                destPtr.Offset,
+                destPtr.Segment,
+                count
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort write(ushort fd, FarPtr srcPtr, ushort count)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, WRITE_ORDINAL, new List<ushort>
+            {
+                fd,
+                srcPtr.Offset,
+                srcPtr.Segment,
+                count,
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
         protected string CreateTextFile(string filename, string contents)
         {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);

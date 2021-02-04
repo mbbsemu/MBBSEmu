@@ -1095,6 +1095,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 451:
                     open();
                     break;
+                case 866:
+                    read();
+                    break;
+                case 867:
+                    write();
+                    break;
                 case 413:
                     mkdir();
                     break;
@@ -1482,23 +1488,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var stringLength = Module.Memory.GetString(destinationPointer, true).Length;
 
-            //Truncate Destination if LIMIT is less than DST 
+            //Truncate Destination if LIMIT is less than DST
             if (stringLength > destinationBufferLength)
             {
                 if(destinationBufferLength > 0)
                     destinationBufferLength--; //subtract one for the null we're inserting
-                
+
                 Module.Memory.SetByte(destinationPointer.Segment, (ushort) (destinationPointer.Offset + destinationBufferLength), 0);
                 Registers.SetPointer(destinationPointer);
                 return;
             }
-            
+
             var newDestinationPointer = destinationPointer + stringLength;
             destinationBufferLength -= (ushort)stringLength;
-            
+
             SetParameterPointer(0, newDestinationPointer);
             SetParameter(4, destinationBufferLength);
-            
+
             stzcpy();
             Registers.SetPointer(destinationPointer);
         }
@@ -1533,9 +1539,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //usrptr->state is the Module Number in use, as assigned by the host process
             Registers.AX = (ushort)Module.ModuleDlls[ModuleDll].StateCode;
-            
+
             var moduleStructOffset = Module.ModuleDlls[ModuleDll].StateCode * 4;
-            
+
             Module.Memory.SetPointer(Module.Memory.GetVariablePointer("MODULE") + moduleStructOffset, localModuleStructPointer);
 
 #if DEBUG
@@ -3378,9 +3384,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 throw new FileNotFoundException(
                     $"({Module.ModuleIdentifier}) File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
 
+            var oldPosition = fileStream.Position;
             var bytesToWrite = size * count;
             fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort)bytesToWrite));
-            var elementsWritten = bytesToWrite / size;
+            var elementsWritten = (fileStream.Position - oldPosition) / size;
 
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
@@ -6345,25 +6352,115 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var mode = GetParameter(2);
 
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
-            var fileMode = (EnumOpenFlags)mode;
+            var dosFileMode = (EnumOpenFlags)mode;
 
             var fullPath = Path.Combine(Module.ModulePath, fileName);
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TEXT))
+                throw new ArgumentException($"open called with O_TEXT - not yet supported");
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
 #endif
-            if (!File.Exists($"{fullPath}") && !fileMode.HasFlag(EnumOpenFlags.O_CREAT))
+            FileMode fileMode;
+            FileAccess fileAccess;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_CREAT))
+                fileMode = FileMode.OpenOrCreate;
+            else
+                fileMode = FileMode.Open;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TRUNC))
+                fileMode = FileMode.Truncate;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_RDRW))
+                fileAccess = FileAccess.ReadWrite;
+            else if (dosFileMode.HasFlag(EnumOpenFlags.O_WRONLY))
+                fileAccess = FileAccess.Write;
+            else
+                fileAccess = FileAccess.Read;
+            //Setup the File Stream
+            try
             {
-                _logger.Warn($"({Module.ModuleIdentifier}) Unable to find file {fullPath}");
+                var fileStream = File.Open(fullPath, fileMode, fileAccess);
+
+                var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+
+                Registers.AX = (ushort)fileStreamPointer;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"Unable to open {fileName} {dosFileMode}");
                 Registers.AX = 0xFFFF;
+            }
+        }
+
+        /// <summary>
+        ///     Reads from file.
+        ///
+        ///     Signature: int read(int handle, void *buf, unsigned len);
+        /// </summary>
+        private void read()
+        {
+            var fd = GetParameter(0);
+            var destinationPointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream)) {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
                 return;
             }
 
-            //Setup the File Stream
-            var fileStream = File.Open(fullPath, FileMode.OpenOrCreate);
+            if (fileStream.Position >= fileStream.Length)
+            {
+                Registers.AX = 0;
+                return;
+            }
 
-            var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+            try
+            {
+                var buffer = new byte[length];
+                var bytesRead = fileStream.Read(buffer);
+                if (bytesRead > 0)
+                    Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
 
-            Registers.AX = (ushort)fileStreamPointer;
+                Registers.AX = (ushort)bytesRead;
+            }
+            catch (NotSupportedException)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
+        }
+
+        /// <summary>
+        ///     Writes to file.
+        ///
+        ///     Signature: int write(int handle, void *buf, unsigned len);
+        /// </summary>
+        private void write()
+        {
+            var fd = GetParameter(0);
+            var sourcePointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream)) {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            try
+            {
+                var oldPosition = fileStream.Position;
+                fileStream.Write(Module.Memory.GetArray(sourcePointer, length));
+                Registers.AX = (ushort)(fileStream.Position - oldPosition);
+            }
+            catch (NotSupportedException)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
         }
 
         /// <summary>
@@ -6422,8 +6519,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileHandle = GetParameter(0);
 
             //Clean Up File Stream Pointer
+            if (!FilePointerDictionary.ContainsKey(fileHandle))
+            {
+                // TODO set errno
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
             FilePointerDictionary[fileHandle].Close();
             FilePointerDictionary.Remove(fileHandle);
+
+            Registers.AX = 0;
         }
 
         /// <summary>
