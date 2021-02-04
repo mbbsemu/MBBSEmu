@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System.Collections.Generic;
 using System;
+using MBBSEmu.TextVariables;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -58,6 +59,7 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IAccountKeyRepository, AccountKeyRepository>(overrides);
 
             //MajorBBS Host Objects
+            AddSingleton<ITextVariableService, TextVariableService>(overrides);
             AddSingleton<IHostRoutine, MenuRoutines>(overrides);
             AddSingleton<IHostRoutine, FsdRoutines>(overrides);
             AddSingleton<IGlobalRoutine, UsersOnlineGlobal>(overrides);
