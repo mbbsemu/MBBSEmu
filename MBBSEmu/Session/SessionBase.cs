@@ -213,7 +213,6 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte[] VDA { get; set; }
 
-        private readonly AppSettings _configuration;
         private readonly ITextVariableService _textVariableService;
         protected readonly IMbbsHost _mbbsHost;
 
