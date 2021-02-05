@@ -413,7 +413,7 @@ namespace MBBSEmu
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
                 if (_isConsoleSession)
-                    _ = new LocalConsoleSession(_logger, "CONSOLE", host, configuration, textVariableService);
+                    _ = new LocalConsoleSession(_logger, "CONSOLE", host, textVariableService);
             }
             catch (Exception e)
             {

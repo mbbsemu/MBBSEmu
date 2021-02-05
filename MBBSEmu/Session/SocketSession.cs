@@ -16,7 +16,7 @@ namespace MBBSEmu.Session
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket, AppSettings configuration, ITextVariableService textVariableService) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating, configuration, textVariableService)
+        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket, ITextVariableService textVariableService) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating, textVariableService)
         {
             _logger = logger;
 

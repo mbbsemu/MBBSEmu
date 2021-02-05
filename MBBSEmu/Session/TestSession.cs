@@ -12,7 +12,7 @@ namespace MBBSEmu.Session
     {
         private readonly BlockingCollection<byte> _data = new BlockingCollection<byte>();
 
-        public TestSession(IMbbsHost host, AppSettings configuration, ITextVariableService textVariableService) : base(host, "test", EnumSessionState.EnteringModule, configuration, textVariableService)
+        public TestSession(IMbbsHost host, ITextVariableService textVariableService) : base(host, "test", EnumSessionState.EnteringModule, textVariableService)
         {
             SendToClientMethod = Send;
             OutputEnabled = true;

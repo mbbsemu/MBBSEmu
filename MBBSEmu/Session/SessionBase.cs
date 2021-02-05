@@ -1,4 +1,5 @@
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -326,10 +327,9 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
-        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, AppSettings configuration, ITextVariableService textVariableService)
+        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, ITextVariableService textVariableService)
         {
             _mbbsHost = mbbsHost;
-            _configuration = configuration;
             _textVariableService = textVariableService;
             SessionId = sessionId;
             UsrPtr = new User();
@@ -343,7 +343,7 @@ namespace MBBSEmu.Session
             EchoBuffer = new MemoryStream(1024);
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
-            VDA = new byte[_configuration.VOLATILE_DATA_SIZE];
+            VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
 
             _enumSessionState = startingSessionState;
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();

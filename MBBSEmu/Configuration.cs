@@ -78,15 +78,12 @@ namespace MBBSEmu
 
         public T GetAppSettingsFromConfiguration<T>(string valueName) => GetAppSettings<T>(ConfigurationRoot[valueName], valueName);
 
-        //Default Values not configurable
+        //Default Values not in appSettings
         public string BBSCompanyName = "MBBSEmu\0";
         public string BBSAddress1 = "4101 SW 47th Ave., Suite 101\0";
         public string BBSAddress2 = "Fort Lauderdale, FL 33314\0";
         public string BBSDataPhone = "(305) 583-7808\0";
         public string BBSVoicePhone = "(305) 583-5990\0";
-
-        //Internal MBBS data definitions
-        public ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         public T GetAppSettings<T>(object value, string valueName)
         {

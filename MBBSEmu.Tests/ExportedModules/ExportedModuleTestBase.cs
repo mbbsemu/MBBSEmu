@@ -51,7 +51,6 @@ namespace MBBSEmu.Tests.ExportedModules
         protected ExportedModuleTestBase(string modulePath)
         {
             _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
-            var configuration = _serviceResolver.GetService<AppSettings>();
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = new MemoryCore();
@@ -60,8 +59,8 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
-            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
-            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
+            testSessions.Allocate(new TestSession(null, textVariableService));
+            testSessions.Allocate(new TestSession(null, textVariableService));
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
@@ -114,10 +113,9 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuCpuRegisters.IP = 0;
 
             testSessions = new PointerDictionary<SessionBase>();
-            var configuration = _serviceResolver.GetService<AppSettings>();
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
-            testSessions.Allocate(new TestSession(null, configuration, textVariableService));
+            testSessions.Allocate(new TestSession(null, textVariableService));
+            testSessions.Allocate(new TestSession(null, textVariableService));
 
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
