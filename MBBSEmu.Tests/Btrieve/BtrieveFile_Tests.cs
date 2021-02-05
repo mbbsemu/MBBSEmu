@@ -12,14 +12,14 @@ namespace MBBSEmu.Tests.Btrieve
 {
     public class BtrieveFile_Tests : TestBase, IDisposable
     {
-        private static readonly Random RANDOM = new Random(Guid.NewGuid().GetHashCode());
-
         private readonly string[] _btrieveFiles = { "MBBSEMU.DAT" };
 
-        protected readonly string _modulePath = Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
+        protected readonly string _modulePath;
 
         public BtrieveFile_Tests()
         {
+            _modulePath = GetModulePath();
+
             Directory.CreateDirectory(_modulePath);
 
             CopyFilesToTempPath(ResourceManager.GetTestResourceManager());
