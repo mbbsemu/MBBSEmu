@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
@@ -11,10 +12,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int YNOPT_ORDINAL = 650;
 
         [Theory]
-        [InlineData(" Yes", true)]
-        [InlineData(" No", false)]
-        [InlineData(" ", false)]
-        public void ynopt_Test(string msgValue, bool msgBool)
+        [InlineData(" Yes", 1, false)]
+        [InlineData(" No", 0, false)]
+        [InlineData(" ", 0, true)]
+        [InlineData("", 0, true)]
+        public void ynopt_Test(string msgValue, ushort expectedValue, bool shouldThrowException)
         {
             //Reset State
             Reset();
@@ -26,10 +28,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, YNOPT_ORDINAL, new List<ushort> { 0 });
+            try
+            {
+                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, YNOPT_ORDINAL, new List<ushort> { 0 });
+            }
+            catch (Exception)
+            {
+                Assert.True(shouldThrowException);
+            }
 
             //Verify Results
-            Assert.Equal(msgBool, bool.Parse(mbbsEmuCpuRegisters.AX.ToString()));
+            Assert.Equal(expectedValue, mbbsEmuCpuRegisters.AX);
         }
     }
 }

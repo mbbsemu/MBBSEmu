@@ -11,19 +11,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int CHROPT_ORDINAL = 107;
 
         [Theory]
-        [InlineData(new byte[] { 38 })]
-        [InlineData(new byte[] { 44 })]
-        [InlineData(new byte[] { 0 })]
-        [InlineData(new byte[] { 56 })]
-        [InlineData(new byte[] { 79 })]
-        public void chropt_Test(byte[] msgValue)
+        [InlineData("A", 65)]
+        [InlineData("R", 82)]
+        [InlineData("", 0)]
+        [InlineData("!", 33)]
+        [InlineData("z", 122)]
+        public void chropt_Test(string input, ushort expectedValue)
         {
             //Reset State
             Reset();
 
             //Set Argument Values to be Passed In
             var mcvPointer = (ushort)majorbbs.McvPointerDictionary.Allocate(new McvFile("TEST.MCV",
-                new Dictionary<int, byte[]> { { 0, msgValue } }));
+                new Dictionary<int, byte[]> { { 0, Encoding.ASCII.GetBytes(input) } }));
 
             mbbsEmuMemoryCore.SetPointer("CURRENT-MCV", new FarPtr(0xFFFF, mcvPointer));
 
@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CHROPT_ORDINAL, new List<ushort> { 0 });
 
             //Verify Results
-            Assert.Equal(msgValue[0], mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedValue, mbbsEmuCpuRegisters.AX);
         }
     }
 }
