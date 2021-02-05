@@ -240,10 +240,9 @@ namespace MBBSEmu.Session
                     if (i + 3 >= dataToSendSpan.Length)
                         break;
 
-                    //TODO Create detection for valid padding/justification codes plus 0x1
-                    //Look for full signature of 0x1,0x4E,0x26 (No Justification, No Padding)
-                    //if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 2] != 0x2E)
-                    //    continue;
+                    //Look for justification notation in i + 1 = "N, L, C, R", if not found move on
+                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 1] != 0x4C && dataToSendSpan[i + 1] != 0x43 && dataToSendSpan[i + 1] != 0x52)
+                        continue;
 
                     //Get formatting information
                     var variableFormatJustification = dataToSendSpan[i + 1];
@@ -291,17 +290,22 @@ namespace MBBSEmu.Session
                             break;
                         case 76:
                             //Left Justify
-                            //TODO add error checking for padding > length
-                            variableText = variableText.PadRight(variableFormatPadding, char.Parse("*"));
+                            if (variableFormatPadding > variableText.Length)
+                                variableText = variableText.PadRight(variableFormatPadding, '*');
                             break;
                         case 67:
                             //Center Justify
-                            //TODO center justify
+                            if (variableFormatPadding > variableText.Length)
+                            {
+                                var centerPadLeft = (variableFormatPadding - variableText.Length) / 2;
+                                var variableTextTemp = variableText.PadLeft(variableText.Length + centerPadLeft, '*');
+                                variableText = variableTextTemp.PadRight(variableFormatPadding, '*');
+                            }
                             break;
                         case 82:
                             //Right Justify
-                            //TODO add error checking for padding > length
-                            variableText = variableText.PadLeft(variableFormatPadding, char.Parse("*"));
+                            if (variableFormatPadding > variableText.Length)
+                                variableText = variableText.PadLeft(variableFormatPadding, '*');
                             break;
                         default:
                             _mbbsHost.Logger.Error($"Unknown Formatting for Variable: {variableName}");
