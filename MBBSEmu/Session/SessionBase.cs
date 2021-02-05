@@ -291,21 +291,21 @@ namespace MBBSEmu.Session
                         case 76:
                             //Left Justify
                             if (variableFormatPadding > variableText.Length)
-                                variableText = variableText.PadRight(variableFormatPadding, '*');
+                                variableText = variableText.PadRight(variableFormatPadding);
                             break;
                         case 67:
                             //Center Justify
                             if (variableFormatPadding > variableText.Length)
                             {
                                 var centerPadLeft = (variableFormatPadding - variableText.Length) / 2;
-                                var variableTextTemp = variableText.PadLeft(variableText.Length + centerPadLeft, '*');
-                                variableText = variableTextTemp.PadRight(variableFormatPadding, '*');
+                                var variableTextTemp = variableText.PadLeft(variableText.Length + centerPadLeft);
+                                variableText = variableTextTemp.PadRight(variableFormatPadding);
                             }
                             break;
                         case 82:
                             //Right Justify
                             if (variableFormatPadding > variableText.Length)
-                                variableText = variableText.PadLeft(variableFormatPadding, '*');
+                                variableText = variableText.PadLeft(variableFormatPadding);
                             break;
                         default:
                             _mbbsHost.Logger.Error($"Unknown Formatting for Variable: {variableName}");
