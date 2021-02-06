@@ -8,6 +8,7 @@ using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -222,100 +223,15 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
-            var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-
             if (OutputEnabled)
             {
-                using var newOutputBuffer = new MemoryStream(dataToSendSpan.Length);
-                for (var i = 0; i < dataToSendSpan.Length; i++)
+                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+                var sessionVariables = new Dictionary<string, string>
                 {
-                    //Look for initial signature byte -- faster
-                    if (dataToSendSpan[i] != 0x1)
-                    {
-                        newOutputBuffer.WriteByte(dataToSendSpan[i]);
-                        continue;
-                    }
-
-                    //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
-                    if (i + 3 >= dataToSendSpan.Length)
-                        break;
-
-                    //Look for justification notation in i + 1 = "N, L, C, R", if not found move on
-                    if (dataToSendSpan[i + 1] != 0x4E && dataToSendSpan[i + 1] != 0x4C && dataToSendSpan[i + 1] != 0x43 && dataToSendSpan[i + 1] != 0x52)
-                        continue;
-
-                    //Get formatting information
-                    var variableFormatJustification = dataToSendSpan[i + 1];
-                    var variableFormatPadding = (dataToSendSpan[i + 2] - 32);
-
-                    //Increment 3 Bytes
-                    i += 3;
-
-                    var variableNameStart = i;
-                    var variableNameLength = 0;
-
-                    //Get variable name
-                    while (dataToSendSpan[i] != 0x1)
-                    {
-                        i++;
-                        variableNameLength++;
-                    }
-
-                    var variableName = Encoding.ASCII.GetString(dataToSendSpan.Slice(variableNameStart, variableNameLength));
-                    var variableText = _textVariableService.GetVariableByName($"{variableName}");
-
-                    //If not found, try Session specific Text Variables and show error if not
-                    if (variableText == null)
-                    {
-                        switch (variableName)
-                        {
-                            case "CHANNEL":
-                                variableText = Channel.ToString();
-                                break;
-                            case "USERID":
-                                variableText = Username;
-                                break;
-                            default:
-                                variableText = "UNKNOWN";
-                                _mbbsHost.Logger.Error($"Unknown Text Variable: {variableName}");
-                                break;
-                        }
-                    }
-
-                    //Format Variable Text
-                    switch (variableFormatJustification)
-                    {
-                        case 78:
-                            //No formatting
-                            break;
-                        case 76:
-                            //Left Justify
-                            if (variableFormatPadding > variableText.Length)
-                                variableText = variableText.PadRight(variableFormatPadding);
-                            break;
-                        case 67:
-                            //Center Justify
-                            if (variableFormatPadding > variableText.Length)
-                            {
-                                var centerPadLeft = (variableFormatPadding - variableText.Length) / 2;
-                                var variableTextTemp = variableText.PadLeft(variableText.Length + centerPadLeft);
-                                variableText = variableTextTemp.PadRight(variableFormatPadding);
-                            }
-                            break;
-                        case 82:
-                            //Right Justify
-                            if (variableFormatPadding > variableText.Length)
-                                variableText = variableText.PadLeft(variableFormatPadding);
-                            break;
-                        default:
-                            _mbbsHost.Logger.Error($"Unknown Formatting for Variable: {variableName}");
-                            break;
-                    }
-
-                    newOutputBuffer.Write(Encoding.ASCII.GetBytes(variableText));
-                }
-
-                var dataToSendProcessed = newOutputBuffer.ToArray();
+                    {"CHANNEL", Channel.ToString()}, {"USERID", Username}
+                };
+                
+                var dataToSendProcessed = _textVariableService.Parse(dataToSendSpan, sessionVariables).ToArray();
                 SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
         }
