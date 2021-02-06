@@ -90,7 +90,7 @@ namespace MBBSEmu.Tests.Integration
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
 
-                //Send string to be parsed - Format: Center Justification, 20 characters padding
+                //Send string to be parsed - Format: No Justification, No Padding
                 var variableText = Encoding.ASCII.GetBytes("Random Text ... N.CHANNEL ... The End");
                 var dataToSendSpan = new ReadOnlySpan<byte>(variableText);
 
