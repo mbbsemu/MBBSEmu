@@ -114,7 +114,6 @@ namespace MBBSEmu.HostProcess
 
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
-        private readonly ITextVariableService _textVariableService;
 
         public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
@@ -128,7 +127,7 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = channelDictionary;
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
-            _textVariableService = textVariableService;
+            var textVariableServiceLocal = textVariableService;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -146,16 +145,16 @@ namespace MBBSEmu.HostProcess
             }
 
             //Setup Text Variables
-            _textVariableService.SetVariable("SYSTEM_NAME", () => _configuration.BBSTitle);
-            _textVariableService.SetVariable("SYSTEM_COMPANY", () => _configuration.BBSCompanyName);
-            _textVariableService.SetVariable("SYSTEM_ADDRESS1", () => _configuration.BBSAddress1);
-            _textVariableService.SetVariable("SYSTEM_ADDRESS2", () => _configuration.BBSAddress2);
-            _textVariableService.SetVariable("SYSTEM_PHONE", () => _configuration.BBSDataPhone);
-            _textVariableService.SetVariable("NUMBER_OF_LINES", () => _configuration.BBSChannels.ToString());
-            _textVariableService.SetVariable("DATE", () => Clock.Now.ToString("M/d/yy"));
-            _textVariableService.SetVariable("TIME", () => Clock.Now.ToString("t"));
-            _textVariableService.SetVariable("TOTAL_ACCOUNTS", () => _accountRepository.GetAccounts().Count().ToString());
-            _textVariableService.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
+            textVariableServiceLocal.SetVariable("SYSTEM_NAME", () => _configuration.BBSTitle);
+            textVariableServiceLocal.SetVariable("SYSTEM_COMPANY", () => _configuration.BBSCompanyName);
+            textVariableServiceLocal.SetVariable("SYSTEM_ADDRESS1", () => _configuration.BBSAddress1);
+            textVariableServiceLocal.SetVariable("SYSTEM_ADDRESS2", () => _configuration.BBSAddress2);
+            textVariableServiceLocal.SetVariable("SYSTEM_PHONE", () => _configuration.BBSDataPhone);
+            textVariableServiceLocal.SetVariable("NUMBER_OF_LINES", () => _configuration.BBSChannels.ToString());
+            textVariableServiceLocal.SetVariable("DATE", () => Clock.Now.ToString("M/d/yy"));
+            textVariableServiceLocal.SetVariable("TIME", () => Clock.Now.ToString("t"));
+            textVariableServiceLocal.SetVariable("TOTAL_ACCOUNTS", () => _accountRepository.GetAccounts().Count().ToString());
+            textVariableServiceLocal.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
 
             Logger.Info("Constructed MBBSEmu Host!");
         }
