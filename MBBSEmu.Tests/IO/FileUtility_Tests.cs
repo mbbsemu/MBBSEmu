@@ -5,7 +5,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.IO
 {
-    [Collection("Sequential")]
     public class FileUtility_Tests : IDisposable
     {
         private readonly FileUtility _fileUtility = FileUtility.CreateForTest();

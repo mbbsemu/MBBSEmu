@@ -8,7 +8,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    [Collection("Sequential")]
     public class key_Tests : ExportedModuleTestBase
     {
 

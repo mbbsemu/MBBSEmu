@@ -10,7 +10,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
-    [Collection("Sequential")]
     public class BtrieveFile_Tests : TestBase, IDisposable
     {
         private readonly string[] _btrieveFiles = { "MBBSEMU.DAT" };

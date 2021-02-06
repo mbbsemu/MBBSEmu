@@ -8,7 +8,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    [Collection("Sequential")]
     public class NightlyCleanup_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

@@ -8,7 +8,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
-    [Collection("Sequential")]
     public class BtrieveKey_Tests : TestBase
     {
         private static readonly byte[] DATA_NEGATIVE = { 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8};

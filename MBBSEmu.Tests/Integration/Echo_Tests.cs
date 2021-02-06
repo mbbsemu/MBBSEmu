@@ -3,7 +3,6 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    [Collection("Sequential")]
     public class Echo_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]
