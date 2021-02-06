@@ -39,6 +39,6 @@ namespace MBBSEmu.TextVariables
         /// <param name="input"></param>
         /// <param name="sessionValues"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, string> sessionValues);
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues);
     }
 }

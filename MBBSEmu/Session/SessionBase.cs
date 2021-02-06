@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using TextVariable = MBBSEmu.TextVariables.TextVariable;
 
 namespace MBBSEmu.Session
 {
@@ -214,8 +215,11 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte[] VDA { get; set; }
 
+        public Dictionary<string, TextVariable.TextVariableValueDelegate> SessionVariables;
+
         private readonly ITextVariableService _textVariableService;
         protected readonly IMbbsHost _mbbsHost;
+
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
@@ -226,12 +230,8 @@ namespace MBBSEmu.Session
             if (OutputEnabled)
             {
                 var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-                var sessionVariables = new Dictionary<string, string>
-                {
-                    {"CHANNEL", Channel.ToString()}, {"USERID", Username}
-                };
-                
-                var dataToSendProcessed = _textVariableService.Parse(dataToSendSpan, sessionVariables).ToArray();
+                var dataToSendProcessed = _textVariableService.Parse(dataToSendSpan, SessionVariables).ToArray();
+
                 SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
         }
@@ -259,6 +259,10 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
+            SessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+            {
+                {"CHANNEL", () => Channel.ToString()}, {"USERID", () => Username}
+            };
 
             _enumSessionState = startingSessionState;
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();

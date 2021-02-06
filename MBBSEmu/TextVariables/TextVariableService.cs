@@ -71,7 +71,7 @@ namespace MBBSEmu.TextVariables
         /// <param name="input"></param>
         /// <param name="sessionValues"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, string> sessionValues)
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues)
         {
             using var newOutputBuffer = new MemoryStream(input.Length);
             for (var i = 0; i < input.Length; i++)
@@ -109,7 +109,7 @@ namespace MBBSEmu.TextVariables
                 }
 
                 var variableName = Encoding.ASCII.GetString(input.Slice(variableNameStart, variableNameLength));
-                var variableText = GetVariableByName($"{variableName}");
+                var variableText = GetVariableByName(variableName);
 
                 //If not found, try Session specific Text Variables and show error if not
                 if (variableText == null)
@@ -117,10 +117,8 @@ namespace MBBSEmu.TextVariables
                     switch (variableName)
                     {
                         case "CHANNEL":
-                            variableText = sessionValues.GetValueOrDefault("CHANNEL");
-                            break;
                         case "USERID":
-                            variableText = sessionValues.GetValueOrDefault("USERID");
+                            variableText = sessionValues[variableName]();
                             break;
                         default:
                             variableText = "UNKNOWN";
