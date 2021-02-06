@@ -10,9 +10,11 @@ using MBBSEmu.TextVariables;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Sequential")]
     public class MBBSEmuIntegrationTestBase : TestBase, IDisposable
     {
         private readonly string[] _moduleFiles = { "MBBSEMU.DAT", "MBBSEMU.DLL", "MBBSEMU.MCV", "MBBSEMU.MDF", "MBBSEMU.MSG" };

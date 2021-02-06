@@ -16,7 +16,6 @@ namespace MBBSEmu.Tests.Integration
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
                 //Check variables directly
-                Assert.Equal("Test", textVariableService.GetVariableByName("SYSTEM_NAME"));
                 Assert.Equal("2", textVariableService.GetVariableByName("TOTAL_ACCOUNTS"));
             });
         }
@@ -32,12 +31,12 @@ namespace MBBSEmu.Tests.Integration
                 };
 
                 //Send string to be parsed - Format: Left Justification, 25 characters padding
-                var variableText = Encoding.ASCII.GetBytes("Random Text ... L9SYSTEM_NAME ... The End");
+                var variableText = Encoding.ASCII.GetBytes("Random Text ... L9USERID ... The End");
                 var dataToSendSpan = new ReadOnlySpan<byte>(variableText);
 
                 var parsedText = textVariableService.Parse(dataToSendSpan, sessionVariables);
 
-                Assert.Equal("Random Text ... Test                      ... The End", Encoding.ASCII.GetString(parsedText));
+                Assert.Equal("Random Text ... TestUsername              ... The End", Encoding.ASCII.GetString(parsedText));
             });
         }
 
