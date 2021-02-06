@@ -5,6 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Sequential")]
     public class BtrievePrint_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

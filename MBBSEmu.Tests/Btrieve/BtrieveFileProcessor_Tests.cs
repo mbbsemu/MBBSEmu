@@ -13,6 +13,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
+    [Collection("Sequential")]
     public class BtrieveFileProcessor_Tests : TestBase, IDisposable
     {
         const int CACHE_SIZE = 8;

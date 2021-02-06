@@ -6,6 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Sequential")]
     public class TextVariableService_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

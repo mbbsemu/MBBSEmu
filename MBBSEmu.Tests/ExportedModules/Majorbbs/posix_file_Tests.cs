@@ -1,6 +1,5 @@
 using FluentAssertions;
 using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
 using System;
 using System.IO;
 using System.Text;
@@ -8,6 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Sequential")]
     public class posix_file_Tests : FileTestBase, IDisposable
     {
         private const string LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit,"

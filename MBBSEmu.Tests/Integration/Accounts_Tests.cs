@@ -3,6 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Sequential")]
     public class Accounts_Tests : MBBSEmuIntegrationTestBase
     {
         [Theory]

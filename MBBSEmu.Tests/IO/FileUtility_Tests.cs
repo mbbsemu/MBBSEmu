@@ -1,12 +1,11 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System;
 using MBBSEmu.IO;
+using System;
+using System.IO;
 using Xunit;
 
 namespace MBBSEmu.Tests.IO
 {
+    [Collection("Sequential")]
     public class FileUtility_Tests : IDisposable
     {
         private readonly FileUtility _fileUtility = FileUtility.CreateForTest();

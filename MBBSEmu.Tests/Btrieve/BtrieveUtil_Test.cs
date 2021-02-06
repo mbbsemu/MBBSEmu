@@ -7,6 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
+    [Collection("Sequential")]
     public class BtrieveUtil_Tests : TestBase
     {
         private class FakeMemoryStream : MemoryStream
