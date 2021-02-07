@@ -1033,7 +1033,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return CharacterAccepterResponse.ABORT;
             });
 
-            result.Valid = Int32.TryParse(result.StringValue, out var value);
+            result.Valid = int.TryParse(result.StringValue, out var value);
             if (result.Valid)
                 result.Value = value;
 
@@ -1047,7 +1047,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
-        /// </return>
+        /// <returns></returns>
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
         {
             var enumerator = inputString.GetEnumerator();
