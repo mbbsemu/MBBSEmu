@@ -1,6 +1,5 @@
 using FluentAssertions;
 using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
 using System;
 using System.IO;
 using System.Text;

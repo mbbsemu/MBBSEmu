@@ -124,8 +124,10 @@ namespace MBBSEmu.Btrieve
 
             PreviousQuery?.Dispose();
 
-            foreach(var cmd in _sqlCommands.Values)
+            foreach (var cmd in _sqlCommands.Values)
+            {
                 cmd.Dispose();
+            }
 
             Connection.Close();
             Connection.Dispose();
@@ -205,7 +207,7 @@ namespace MBBSEmu.Btrieve
         private void LoadSqliteMetadata()
         {
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t", Connection);
+            using var cmd = new SqliteCommand("SELECT record_length, page_length, variable_length_records, version, acs FROM metadata_t", Connection);
             using var reader = cmd.ExecuteReader();
             try
             {
@@ -272,7 +274,8 @@ namespace MBBSEmu.Btrieve
 
             // and bump the version
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction).ExecuteNonQuery();
+            using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
+            cmd.ExecuteNonQuery();
 
             try
             {
@@ -941,7 +944,8 @@ namespace MBBSEmu.Btrieve
             sb.Append(");");
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            new SqliteCommand(sb.ToString(), Connection).ExecuteNonQuery();
+            using var cmd = new SqliteCommand(sb.ToString(), Connection);
+            cmd.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -953,9 +957,9 @@ namespace MBBSEmu.Btrieve
             {
                 var possiblyUnique = key.IsUnique ? "UNIQUE" : "";
                 // not using GetSqliteCommand since this is used once and caching it provides no benefit
-                var command = new SqliteCommand(
+                using var cmd = new SqliteCommand(
                     $"CREATE {possiblyUnique} INDEX {key.SqliteKeyName}_index on data_t({key.SqliteKeyName})", Connection);
-                command.ExecuteNonQuery();
+                cmd.ExecuteNonQuery();
             }
         }
 
@@ -983,7 +987,8 @@ namespace MBBSEmu.Btrieve
             builder.Append("END; END;");
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            new SqliteCommand(builder.ToString(), Connection, transaction).ExecuteNonQuery();
+            using var cmd = new SqliteCommand(builder.ToString(), Connection, transaction);
+            cmd.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -1009,7 +1014,7 @@ namespace MBBSEmu.Btrieve
             }
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
+            using var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
             insertCmd.Prepare();
 
             foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
@@ -1052,12 +1057,13 @@ namespace MBBSEmu.Btrieve
                 "CREATE TABLE metadata_t(record_length INTEGER NOT NULL, physical_record_length INTEGER NOT NULL, page_length INTEGER NOT NULL, variable_length_records INTEGER NOT NULL, version INTEGER NOT NULL, acs_name STRING, acs BLOB)";
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
+            using var createTableCommand = new SqliteCommand(createTableStatement, Connection);
+            createTableCommand.ExecuteNonQuery();
 
             const string insertIntoTableStatement =
                 "INSERT INTO metadata_t(record_length, physical_record_length, page_length, variable_length_records, version, acs_name, acs) VALUES(@record_length, @physical_record_length, @page_length, @variable_length_records, @version, @acs_name, @acs)";
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
+            using var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
 
             cmd.Parameters.AddWithValue("@record_length", btrieveFile.RecordLength);
             cmd.Parameters.AddWithValue("@physical_record_length", btrieveFile.PhysicalRecordLength);
@@ -1078,13 +1084,14 @@ namespace MBBSEmu.Btrieve
                 "CREATE TABLE keys_t(id INTEGER PRIMARY KEY, number INTEGER NOT NULL, segment INTEGER NOT NULL, attributes INTEGER NOT NULL, data_type INTEGER NOT NULL, offset INTEGER NOT NULL, length INTEGER NOT NULL, null_value INTEGER NOT NULL, UNIQUE(number, segment))";
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            new SqliteCommand(createTableStatement, Connection).ExecuteNonQuery();
+            using var createTableCommand = new SqliteCommand(createTableStatement, Connection);
+            createTableCommand.ExecuteNonQuery();
 
             const string insertIntoTableStatement =
                 "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
+            using var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
 
             foreach (var keyDefinition in btrieveFile.Keys.SelectMany(key => key.Value.Segments))
             {

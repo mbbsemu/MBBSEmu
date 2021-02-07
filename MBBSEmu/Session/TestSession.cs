@@ -1,9 +1,10 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
+using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
-using System;
 
 namespace MBBSEmu.Session
 {
@@ -11,7 +12,7 @@ namespace MBBSEmu.Session
     {
         private readonly BlockingCollection<byte> _data = new BlockingCollection<byte>();
 
-        public TestSession(IMbbsHost host) : base(host, "test", EnumSessionState.EnteringModule)
+        public TestSession(IMbbsHost host, ITextVariableService textVariableService) : base(host, "test", EnumSessionState.EnteringModule, textVariableService)
         {
             SendToClientMethod = Send;
             OutputEnabled = true;

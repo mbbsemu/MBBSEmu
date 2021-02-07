@@ -114,8 +114,8 @@ namespace MBBSEmu.HostProcess
 
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
-        
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary)
+
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
             Logger = logger;
             Clock = clock;
@@ -127,6 +127,7 @@ namespace MBBSEmu.HostProcess
             _channelDictionary = channelDictionary;
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
+            var textVariableServiceLocal = textVariableService;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
