@@ -13,6 +13,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
 using NLog;
 using System;
@@ -57,6 +58,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private AgentStruct _galacticommClientServerAgent;
 
+        private int findtvarValue;
+
         /// <summary>
         ///     Stores all active searches created via fnd1st
         /// </summary>
@@ -83,12 +86,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private int _sprIndex;
 
+        private readonly ITextVariableService _textVariableService;
+
+        private const ushort MaxTextVariables = 64;
+
         public new void Dispose()
         {
             base.Dispose();
         }
 
-        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository) : base(
+        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
         {
             _accountKeyRepository = accountKeyRepository;
@@ -96,6 +103,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousMcvFile = new Stack<FarPtr>(10);
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
+            _textVariableService = textVariableService;
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;
@@ -156,7 +164,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("VERSION", 5);
             Module.Memory.SetArray("VERSION", Encoding.ASCII.GetBytes("2.00"));
             Module.Memory.AllocateVariable("SYSCYC", FarPtr.Size);
-
             Module.Memory.AllocateVariable("NUMBYTS", sizeof(uint));
             Module.Memory.AllocateVariable("NUMFILS", sizeof(uint));
             Module.Memory.AllocateVariable("NUMBYTP", sizeof(uint));
@@ -167,7 +174,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
             Module.Memory.AllocateVariable("TSHMSG", 81); //universal global Tagspec Handler message
             Module.Memory.AllocateVariable("FTFSCB", FtfscbStruct.Size);
-
             Module.Memory.AllocateVariable("SV", SysvblStruct.Size);
             Module.Memory.AllocateVariable("EURMSK", 1);
             Module.Memory.SetByte("EURMSK", (byte)0x7F);
@@ -188,6 +194,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("_8087", sizeof(ushort));
             Module.Memory.SetWord("_8087", 3);
             Module.Memory.AllocateVariable("UIDXRF", UidxrefStruct.Size, true);
+            Module.Memory.AllocateVariable("NTVARS", sizeof(ushort));
+            Module.Memory.SetWord("NTVARS", 1); //We're setting the 1 defaulted below for SYSTEM
+            Module.Memory.AllocateVariable("TXTVARS", TextvarStruct.Size * MaxTextVariables, true); //Up to 64 Text Variables per Module
+            Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -522,6 +532,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return uidxrf;
                 case 600:
                     return tjoinrou;
+                case 861:
+                    return ntvars;
+                case 753:
+                    return txtvars;
             }
 
             if (offsetsOnly)
@@ -1271,6 +1285,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 905:
                     stzcat();
+                    break;
+                case 9000:
+                    txtvars_delegate();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -2829,17 +2846,25 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
+        /// <summary>
+        ///     Registers a new Text Variable that will be used by the module
+        /// </summary>
         private void register_textvar()
         {
-            var textPointer = GetParameterPointer(0);
+            var name = GetParameterString(0, true);
             var functionPointer = GetParameterPointer(2);
 
-            var textBytes = Module.Memory.GetString(textPointer, true);
+            var newTextVar = new TextvarStruct(name, functionPointer);
+            var newTextVarOffset = Module.Memory.GetWord("NTVARS") * 16;
 
-            Module.TextVariables.Add(Encoding.ASCII.GetString(textBytes), functionPointer);
+            //Save
+            Module.Memory.SetArray(Module.Memory.GetPointer("TXTVARS") + newTextVarOffset, newTextVar.Data);
+
+            //Increment
+            Module.Memory.SetWord("NTVARS", (ushort) (Module.Memory.GetWord("NTVARS") + 1));
 
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{Encoding.ASCII.GetString(textBytes)}\" to {functionPointer}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{name}\" to {functionPointer} ({Module.Memory.GetPointer("TXTVARS") + newTextVarOffset})");
 #endif
         }
 
@@ -6943,16 +6968,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void findtvar()
         {
-            var textVariableName = GetParameterString(0, true);
+            var name = GetParameterString(0, true);
 
-            for (var i = 0; i < Module.TextVariables.Count; i++)
+            //It's a system variable, set the pointer in the TXTVARS array to the 1st record,
+            //which will trigger an MBBSEmu only ordinal for variable lookup
+            if (_textVariableService.GetVariableIndex(name) > -1)
             {
-                if (Module.TextVariables.Keys.Select(x => x).ToList()[i] != textVariableName) continue;
-
-                Registers.AX = (ushort)i;
+                Registers.AX = 0;
                 return;
             }
 
+            //Check variables registered within the module
+            var txtvarMemoryBase = Module.Memory.GetVariablePointer("TXTVARS");
+            for (ushort i = 0; i < MaxTextVariables; i++)
+            {
+                var currentTextVar =
+                    new TextvarStruct(Module.Memory.GetArray(txtvarMemoryBase + (i * TextvarStruct.Size),
+                        TextvarStruct.Size));
+
+                if (currentTextVar.name != name)
+                    continue;
+
+                findtvarValue = i;
+                Registers.AX = i;
+                return;
+
+            }
+            
             Registers.AX = 0xFFFF;
         }
 
@@ -7835,6 +7877,33 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Module.Memory.SetPointer("NXTCMD", new FarPtr(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
+        /// <summary>
+        ///     The number of Text Variables defined in the system
+        /// </summary>
+        private ReadOnlySpan<byte> ntvars => Module.Memory.GetVariablePointer("NTVARS").Data;
+
+        /// <summary>
+        ///     Base address for the array of TXTVARS Structs
+        /// </summary>
+        private ReadOnlySpan<byte> txtvars => Module.Memory.GetVariablePointer("*TXTVARS").Data;
+
+        /// <summary>
+        ///     Technically TXTVARS is a struct, which holds the system text variables and the offset of the *(varrour)() to be executed.
+        ///
+        ///     We set he pointer of the delegate to this routine, which will return the value of the variable looked up by a proceeding
+        ///     FINDTVAR() call
+        /// </summary>
+        private void txtvars_delegate()
+        {
+            var txtvarValue = _textVariableService.GetVariableByIndex(findtvarValue);
+
+            var txtvarsReturnPointer = Module.Memory.GetOrAllocateVariablePointer("TXTVARS_DELEGATE", 0xFF);
+
+            Module.Memory.SetArray(txtvarsReturnPointer, Encoding.ASCII.GetBytes(txtvarValue + '\0'));
+
+            Registers.SetPointer(txtvarsReturnPointer);
         }
     }
 }
