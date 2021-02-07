@@ -14,11 +14,12 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         private readonly List<TextVariable> _textVariables;
 
+        private readonly ILogger _logger;
 
-
-        public TextVariableService()
+        public TextVariableService(ILogger logger)
         {
             _textVariables = new List<TextVariable>();
+            _logger = logger;
         }
 
         /// <summary>

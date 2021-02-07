@@ -700,17 +700,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 switch (Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength)))
                 {
+                    //TODO -- Fix This
                     //Registered Variables
-                    case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
-                        //Get Variable Entry Point
-                        var variableEntryPoint = Module.TextVariables[textVariableName];
-                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
-                        var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
-#if DEBUG
-                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
-#endif
-                        newOutputBuffer.Write(variableData);
-                        break;
+//                    case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
+//                        //Get Variable Entry Point
+//                        var variableEntryPoint = Module.TextVariables[textVariableName];
+//                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
+//                        var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
+//#if DEBUG
+//                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
+//#endif
+//                        newOutputBuffer.Write(variableData);
+//                        break;
                     default:
                         _logger.Error($"({Module.ModuleIdentifier}) Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
                         break;
