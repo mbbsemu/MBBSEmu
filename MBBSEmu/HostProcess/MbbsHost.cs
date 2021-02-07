@@ -990,11 +990,11 @@ namespace MBBSEmu.HostProcess
                 _exportedFunctions[key] = exportedModule switch
                 {
                     "MAJORBBS" => new Majorbbs(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _accountKeyRepository, _accountRepository, _textVariableService),
-                    "GALGSBL" => new Galgsbl(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "DOSCALLS" => new Doscalls(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALME" => new Galme(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "PHAPI" => new Phapi(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
-                    "GALMSG" => new Galmsg(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary),
+                    "GALGSBL" => new Galgsbl(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _textVariableService),
+                    "DOSCALLS" => new Doscalls(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _textVariableService),
+                    "GALME" => new Galme(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _textVariableService),
+                    "PHAPI" => new Phapi(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _textVariableService),
+                    "GALMSG" => new Galmsg(Clock, Logger, _configuration, _fileUtility, _globalCache, module, _channelDictionary, _textVariableService),
                     _ => throw new Exception($"Unknown Exported Library: {exportedModule}")
                 };
 

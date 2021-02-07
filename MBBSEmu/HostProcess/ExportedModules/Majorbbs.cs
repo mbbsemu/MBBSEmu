@@ -86,24 +86,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private int _sprIndex;
 
-        private readonly ITextVariableService _textVariableService;
-
-        private const ushort MaxTextVariables = 64;
-
         public new void Dispose()
         {
             base.Dispose();
         }
 
         public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
-            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
+           clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _previousMcvFile = new Stack<FarPtr>(10);
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
-            _textVariableService = textVariableService;
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;
@@ -2855,10 +2850,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var functionPointer = GetParameterPointer(2);
 
             var newTextVar = new TextvarStruct(name, functionPointer);
-            var newTextVarOffset = Module.Memory.GetWord("NTVARS") * 16;
+            var newTextVarOffset = Module.Memory.GetWord("NTVARS") * TextvarStruct.Size;
 
             //Save
-            Module.Memory.SetArray(Module.Memory.GetPointer("TXTVARS") + newTextVarOffset, newTextVar.Data);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("TXTVARS") + newTextVarOffset, newTextVar.Data);
 
             //Increment
             Module.Memory.SetWord("NTVARS", (ushort) (Module.Memory.GetWord("NTVARS") + 1));

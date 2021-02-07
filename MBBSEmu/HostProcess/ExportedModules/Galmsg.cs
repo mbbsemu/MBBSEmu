@@ -4,6 +4,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.TextVariables;
 using NLog;
 using System;
 
@@ -19,8 +20,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        internal Galmsg(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
-            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        internal Galmsg(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
         }
 

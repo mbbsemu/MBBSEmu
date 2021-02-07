@@ -66,12 +66,54 @@ namespace MBBSEmu.TextVariables
         }
 
         /// <summary>
-        ///     Parses incoming buffer to process text variables before sending to client
+        ///     Looks for Variable Signature Byte of 0x1 and returns true
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="sessionValues"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues)
+        public bool HasVariable(ReadOnlySpan<byte> input) => input.IndexOf((byte) 1) > -1;
+
+        /// <summary>
+        ///     Extracts Text Variable names found in the specified input
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public List<string> ExtractVariableNames(ReadOnlySpan<byte> input)
+        {
+            var output = new List<string>();
+            for (var i = 0; i < input.Length; i++)
+            {
+                //Look for initial signature byte -- faster
+                if (input[i] != 0x1)
+                    continue;
+
+                //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
+                if (i + 3 >= input.Length)
+                    break;
+
+                //Look for justification notation in i + 1 = "N, L, C, R", if not found move on
+                if (input[i + 1] != 0x4E && input[i + 1] != 0x4C && input[i + 1] != 0x43 && input[i + 1] != 0x52)
+                    continue;
+
+                //Increment 3 Bytes
+                i += 3;
+
+                var variableNameStart = i;
+                var variableNameLength = 0;
+
+                //Get variable name
+                while (input[i] != 0x1)
+                {
+                    i++;
+                    variableNameLength++;
+                }
+
+                output.Add(Encoding.ASCII.GetString(input.Slice(variableNameStart, variableNameLength)));
+            }
+
+            return output;
+        }
+
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, string> sessionValues)
         {
             using var newOutputBuffer = new MemoryStream(input.Length);
             for (var i = 0; i < input.Length; i++)
@@ -114,16 +156,10 @@ namespace MBBSEmu.TextVariables
                 //If not found, try Session specific Text Variables and show error if not
                 if (variableText == null)
                 {
-                    switch (variableName)
+                    if (!sessionValues.TryGetValue(variableName, out variableText))
                     {
-                        case "CHANNEL":
-                        case "USERID":
-                            variableText = sessionValues[variableName]();
-                            break;
-                        default:
-                            variableText = "UNKNOWN";
-                            _logger.Error($"Unknown Text Variable: {variableName}");
-                            break;
+                        variableText = "UNKNOWN";
+                        _logger.Error($"Unknown Text Variable: {variableName}");
                     }
                 }
 
@@ -161,6 +197,21 @@ namespace MBBSEmu.TextVariables
             }
 
             return newOutputBuffer.ToArray();
+        }
+
+        /// <summary>
+        ///     Parses incoming buffer to process text variables before sending to client
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="sessionValues"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues)
+        {
+            //Evaluate Delegates and Save them to a Local string,string Dictionary
+            var invokedInput = sessionValues.ToDictionary(val => val.Key, val => val.Value());
+
+            //Execute
+            return Parse(input, invokedInput);
         }
     }
 }

@@ -29,7 +29,7 @@ namespace MBBSEmu.HostProcess.Structs
             set
             {
                 _data = value;
-                name = Encoding.ASCII.GetString(_data, 0, 16).TrimEnd('\0');
+                name = Encoding.ASCII.GetString(_data, 0, 16).Trim('\0');
                 varrou = new FarPtr(value, 16);
             }
         }
