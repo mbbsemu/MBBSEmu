@@ -8,6 +8,7 @@ using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
 using NLog;
 
 namespace MBBSEmu.Session.Rlogin
@@ -24,7 +25,7 @@ namespace MBBSEmu.Session.Rlogin
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, string moduleIdentifier = null) : base(host, logger, rloginConnection)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
         {
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;
