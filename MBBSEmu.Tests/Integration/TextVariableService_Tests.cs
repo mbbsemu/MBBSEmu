@@ -98,5 +98,25 @@ namespace MBBSEmu.Tests.Integration
                 Assert.Equal("Random Text ... 0 ... The End", Encoding.ASCII.GetString(parsedText));
             });
         }
+
+        [Fact]
+        public void TextVariableServiceUnknownNoJus()
+        {
+            ExecuteTest((session, host) => {
+                var textVariableService = _serviceResolver.GetService<ITextVariableService>();
+                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                {
+                    {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
+                };
+
+                //Send string to be parsed - Format: No Justification, No Padding
+                var variableText = Encoding.ASCII.GetBytes("Random Text ... N.XXX ... The End");
+                var dataToSendSpan = new ReadOnlySpan<byte>(variableText);
+
+                var parsedText = textVariableService.Parse(dataToSendSpan, sessionVariables);
+
+                Assert.Equal("Random Text ... UNKNOWN ... The End", Encoding.ASCII.GetString(parsedText));
+            });
+        }
     }
 }
