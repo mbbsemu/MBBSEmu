@@ -1,16 +1,18 @@
-using System;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
+using MBBSEmu.Session.Enums;
+using MBBSEmu.TextVariables;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.Session.Enums;
 
 namespace MBBSEmu.Session
 {
@@ -212,7 +214,11 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte[] VDA { get; set; }
 
+        public Dictionary<string, TextVariable.TextVariableValueDelegate> SessionVariables;
+
+        private readonly ITextVariableService _textVariableService;
         protected readonly IMbbsHost _mbbsHost;
+
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
@@ -222,7 +228,10 @@ namespace MBBSEmu.Session
         {
             if (OutputEnabled)
             {
-                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
+                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+                var dataToSendProcessed = _textVariableService.Parse(dataToSendSpan, SessionVariables).ToArray();
+
+                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
         }
 
@@ -232,9 +241,10 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
-        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState)
+        protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, ITextVariableService textVariableService)
         {
             _mbbsHost = mbbsHost;
+            _textVariableService = textVariableService;
             SessionId = sessionId;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
@@ -248,6 +258,10 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
+            SessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+            {
+                {"CHANNEL", () => Channel.ToString()}, {"USERID", () => Username}
+            };
 
             _enumSessionState = startingSessionState;
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();

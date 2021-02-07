@@ -1,4 +1,7 @@
-﻿namespace MBBSEmu.TextVariables
+﻿using System;
+using System.Collections.Generic;
+
+namespace MBBSEmu.TextVariables
 {
     public interface ITextVariableService
     {
@@ -29,5 +32,13 @@
         /// <param name="name"></param>
         /// <returns></returns>
         int GetVariableIndex(string name);
+
+        /// <summary>
+        ///     Parses incoming buffer to process text variables before sending to client
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="sessionValues"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues);
     }
 }
