@@ -260,7 +260,11 @@ namespace MBBSEmu.Session
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
             SessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
             {
-                {"CHANNEL", () => Channel.ToString()}, {"USERID", () => Username}
+                {"CHANNEL", () => Channel.ToString()}, 
+                {"USERID", () => Username}, 
+                {"BAUD", () => UsrPtr.Baud.ToString() }, 
+                {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
+                {"CREDITS", () => UsrAcc.creds.ToString() }
             };
 
             _enumSessionState = startingSessionState;

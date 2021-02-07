@@ -116,7 +116,10 @@ namespace MBBSEmu.TextVariables
                 {
                     switch (variableName)
                     {
+                        case "BAUD":
                         case "CHANNEL":
+                        case "CREDITS":
+                        case "TIME_ONLINE":
                         case "USERID":
                             variableText = sessionValues[variableName]();
                             break;
