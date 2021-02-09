@@ -675,7 +675,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!_textVariableService.HasVariable(outputBuffer))
                 return outputBuffer;
 
-            var txtvarsFound = _textVariableService.ExtractVariableNames(outputBuffer);
+            var txtvarsFound = _textVariableService.ExtractVariableDefinitions(outputBuffer);
 
             var txtvarDictionary = new Dictionary<string, string>();
 
@@ -684,7 +684,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             foreach (var txtvar in txtvarsFound)
             {
                 //If we've already loaded it, keep going
-                if (txtvarDictionary.ContainsKey(txtvar))
+                if (txtvarDictionary.ContainsKey(txtvar.Name))
                     continue;
 
                 for (ushort j = 0; j < MaxTextVariables; j++)
@@ -693,7 +693,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         new TextvarStruct(Module.Memory.GetArray(txtvarMemoryBase + (j * TextvarStruct.Size),
                             TextvarStruct.Size));
 
-                    if (currentTextVar.name != txtvar)
+                    if (currentTextVar.name != txtvar.Name)
                         continue;
 
                     var resultRegisters = Module.Execute(currentTextVar.varrou, ChannelNumber, true, true, null, 0xF100);
@@ -702,7 +702,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {txtvar} ({currentTextVar.varrou}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
 #endif
 
-                    txtvarDictionary.Add(txtvar, Encoding.ASCII.GetString(variableData));
+                    txtvarDictionary.Add(txtvar.Name, Encoding.ASCII.GetString(variableData));
                 }
             }
 
