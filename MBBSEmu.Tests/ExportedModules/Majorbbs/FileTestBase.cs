@@ -18,6 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected const int READ_ORDINAL = 866;
         protected const int WRITE_ORDINAL = 867;
         protected const int CLOSE_ORDINAL = 110;
+        protected const int FILELENGTH_ORDINAL = 211;
 
         protected FileTestBase() : base(Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}"))
         {
@@ -146,6 +147,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
 
             return mbbsEmuCpuRegisters.AX;
         }
+
+        protected int filelength(ushort fd)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL, new List<ushort> { fd });
+            return mbbsEmuCpuRegisters.GetLong();
+        }
+
         protected string CreateTextFile(string filename, string contents)
         {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);
