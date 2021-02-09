@@ -1,17 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using FluentAssertions;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class filelength_Tests: ExportedModuleTestBase
+    public class filelength_Tests: FileTestBase
     {
-        private const int FILELENGTH_ORDINAL = 211;
-        private const int OPEN_ORDINAL = 451;
-        private const int CLOSE_ORDINAL = 110;
-
         [Fact]
         public void filelength_test()
         {
@@ -27,43 +25,28 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                                          + "Pretium vulputate sapien nec sagittis. Rutrum quisque non tellus orci. Lobortis "
                                          + "feugiat vivamus at augue eget arcu dictum.";
 
-            const string fileName = "file.txt";
-            const string fileMode = "r";
-            long expectedValue = FILE_CONTENTS.Length;
-            long failedValue = -1;
-
             //Create Text File
-            var filePath = Path.Join(mbbsModule.ModulePath, fileName);
-            using var sw = File.Create(filePath);
-            sw.Write(Encoding.ASCII.GetBytes(FILE_CONTENTS));
-            sw.Close();
+            var fileName = CreateTextFile("file.txt", FILE_CONTENTS);
 
-            //Set Argument Values to be Passed In
-            var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(fileName.Length + 1));
-            mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(fileName));
+            var fileHandle = open("file.txt", EnumOpenFlags.O_RDONLY | EnumOpenFlags.O_BINARY);
+            fileHandle.Should().NotBe(0xFFFF);
 
-            var modePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(fileMode.Length + 1));
-            mbbsEmuMemoryCore.SetArray(modePointer, Encoding.ASCII.GetBytes(fileMode));
+            var fileLength = filelength(fileHandle);
+            fileLength.Should().Be(FILE_CONTENTS.Length);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OPEN_ORDINAL, new List<FarPtr> { filenamePointer, modePointer });
+            close(fileHandle);
 
-            var fileHandle = mbbsEmuCpuRegisters.GetPointer();
+            File.Delete(fileName);
+        }
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<FarPtr> { fileHandle });
+        [Fact]
+        public void unknownFileHandle_filelength_test()
+        {
+            //Reset State
+            Reset();
 
-            Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
-            Assert.Equal((ushort)(expectedValue >> 16), mbbsEmuCpuRegisters.DX);
-
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CLOSE_ORDINAL,new List<FarPtr> { fileHandle });
-
-            File.Delete(filePath);
-
-            //Test -1 return, use deleted file handle which won't exist
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL,new List<FarPtr> { fileHandle });
-
-            Assert.Equal((ushort)(failedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);
-            Assert.Equal((ushort)(failedValue >> 16), mbbsEmuCpuRegisters.DX);
-
+            var fileLength = filelength(55);
+            fileLength.Should().Be(-1);
         }
     }
 }
