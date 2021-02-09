@@ -264,7 +264,8 @@ namespace MBBSEmu.Session
                 {"USERID", () => Username}, 
                 {"BAUD", () => UsrPtr.Baud.ToString() }, 
                 {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
-                {"CREDITS", () => UsrAcc.creds.ToString() }
+                {"CREDITS", () => UsrAcc.creds.ToString() },
+                {"CREATION_DATE", () => DateTime.FromBinary(UsrAcc.credat).ToString("d") }
             };
 
             _enumSessionState = startingSessionState;

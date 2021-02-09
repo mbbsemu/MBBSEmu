@@ -118,6 +118,7 @@ namespace MBBSEmu.TextVariables
                     {
                         case "BAUD":
                         case "CHANNEL":
+                        case "CREATION_DATE":
                         case "CREDITS":
                         case "TIME_ONLINE":
                         case "USERID":
