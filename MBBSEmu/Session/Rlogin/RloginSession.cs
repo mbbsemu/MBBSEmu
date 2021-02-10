@@ -121,9 +121,9 @@ namespace MBBSEmu.Session.Rlogin
             {
                 if (ProcessIncomingByte(clientData[i]))
                 {
-                    // return whatever data we may have left in the packet as client data
+                    // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
                     var remaining = bytesReceived - i - 1;
-                    return (clientData.TakeLast(remaining).ToArray(), remaining);
+                    _logger.Debug($"Tossing extra data \"{System.Text.Encoding.UTF8.GetString(clientData.TakeLast(remaining).ToArray())}\"");
                 }
             }
 
