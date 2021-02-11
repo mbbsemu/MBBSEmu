@@ -123,7 +123,7 @@ namespace MBBSEmu.Session.Rlogin
                 {
                     // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
                     var remaining = bytesReceived - i - 1;
-                    _logger.Debug($"Tossing extra data \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
+                    _logger.Debug($"Ignoring extra rlogin data: \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
                 }
             }
 
