@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.Extensions
 {
@@ -76,5 +77,31 @@ namespace MBBSEmu.Extensions
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint ToUintSignExtended(this ushort b) => (uint)(short) b;
+
+        /// <summary>
+        ///     Pack DOS date
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitDifference"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ushort ToDosDate(this DateTime b)
+        {
+            return (ushort) ((b.Month << 5) + b.Day + ((b.Year - 1980) << 9));
+        }
+
+        /// <summary>
+        ///     Unpack DOS date
+        /// </summary>
+        /// <param name="b"></param>
+        /// <param name="bitDifference"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static DateTime FromDosDate(this ushort b)
+        {
+            var outputDate = new DateTime(((b >> 9) & 0x007F) + 1980, (b >> 5) & 0x000F, b & 0x001F);
+
+            return outputDate;
+        }
     }
 }

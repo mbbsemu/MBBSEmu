@@ -237,7 +237,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
 
             session.Username = account.userName;
-            session.UsrAcc.credat = (ushort)account.createDate.ToBinary();
+            session.UsrAcc.credat = account.createDate.ToDosDate();
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
         }

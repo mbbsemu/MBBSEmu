@@ -10,9 +10,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Extensions;
 
 namespace MBBSEmu.Session
 {
@@ -265,7 +267,7 @@ namespace MBBSEmu.Session
                 {"BAUD", () => UsrPtr.Baud.ToString() }, 
                 {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
                 {"CREDITS", () => UsrAcc.creds.ToString() },
-                {"CREATION_DATE", () => DateTime.FromBinary(UsrAcc.credat).ToString("d") }
+                {"CREATION_DATE", () => UsrAcc.credat.FromDosDate().ToShortDateString() }
             };
 
             _enumSessionState = startingSessionState;
