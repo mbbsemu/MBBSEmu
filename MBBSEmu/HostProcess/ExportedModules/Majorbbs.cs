@@ -2859,7 +2859,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("NTVARS", (ushort) (Module.Memory.GetWord("NTVARS") + 1));
 
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{name}\" to {functionPointer} ({Module.Memory.GetPointer("TXTVARS") + newTextVarOffset})");
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{name}\" to {functionPointer} ({Module.Memory.GetVariablePointer("TXTVARS") + newTextVarOffset})");
 #endif
         }
 
