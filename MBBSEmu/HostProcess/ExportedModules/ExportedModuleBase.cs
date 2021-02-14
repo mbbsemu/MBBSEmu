@@ -58,7 +58,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Pointers to files opened using FOPEN
         /// </summary>
-        private protected readonly PointerDictionary<FileStream> FilePointerDictionary;
+        public readonly PointerDictionary<FileStream> FilePointerDictionary;
         public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
         private protected readonly ILogger _logger;
