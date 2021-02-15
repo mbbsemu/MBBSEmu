@@ -19,6 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("/MyUserNameIsTooLong\0", 0, "/MyUserNa", 9, "meIsTooLong")]
         [InlineData("123456789012345678901234567890\0", 0, "/12345678", 8, "9012345678901234567890")]
         [InlineData("\0", 0, "", 0, "")]
+        [InlineData("OneSixSix                Hello              \0", 8, "/x", 25, "Hello              ")]
         public void cncsig_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset, string expectedNxtcmdRemaining)
         {
             //Reset State
