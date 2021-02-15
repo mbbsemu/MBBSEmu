@@ -11,6 +11,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int CNCYESNO_ORDINAL = 131;
 
         [Theory]
+
         //Simple commands with nxtcmd == input
         [InlineData("YES", 0, 'Y', 4)]
         [InlineData("Y", 0, 'Y', 2)]
