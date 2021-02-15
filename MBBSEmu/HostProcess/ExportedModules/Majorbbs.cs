@@ -5556,6 +5556,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputString = Encoding.ASCII.GetString(Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand));
 
             IEnumerator<char> charEnumerator = inputString.GetEnumerator();
+            charEnumerator.MoveNext();
 
             var (moreInput, skipped) = ConsumeWhitespace(charEnumerator);
             if (!moreInput)
