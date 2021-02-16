@@ -410,7 +410,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(-20, 'u', 2)]
         [InlineData(-25, 't', 2)]
         [InlineData(-55, 'c', 2)]
-        public void fgetc_fseek_origin1_file(int fseekOffset, byte expectedChar, ushort originNum)
+        public void fgetc_fseek_origin1and2_file(int fseekOffset, byte expectedChar, ushort originNum)
         {
             //Reset State
             Reset();
