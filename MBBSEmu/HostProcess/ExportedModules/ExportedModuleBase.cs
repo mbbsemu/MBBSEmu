@@ -6,6 +6,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
+using MBBSEmu.TextVariables;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -66,7 +67,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly AppSettings _configuration;
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
-
+        private protected readonly ITextVariableService _textVariableService;
         public CpuRegisters Registers;
 
         public MbbsModule Module;
@@ -91,6 +92,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' }; //Just easier to read
         private protected const ushort GENBB_BASE_SEGMENT = 0x3000;
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
+        private protected const ushort MaxTextVariables = 64;
 
         public void Dispose()
         {
@@ -102,13 +104,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary)
+        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
             _clock = clock;
             _logger = logger;
             _configuration = configuration;
             _fileFinder = fileUtility;
             _globalCache = globalCache;
+            _textVariableService = textVariableService;
 
             Module = module;
             ChannelDictionary = channelDictionary;
@@ -668,56 +671,42 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private protected ReadOnlySpan<byte> ProcessTextVariables(ReadOnlySpan<byte> outputBuffer)
         {
-            using var newOutputBuffer = new MemoryStream(outputBuffer.Length);
-            for (var i = 0; i < outputBuffer.Length; i++)
+            //Bypass if no variable if even found
+            if (!_textVariableService.HasVariable(outputBuffer))
+                return outputBuffer;
+
+            var txtvarsFound = _textVariableService.ExtractVariableDefinitions(outputBuffer);
+
+            var txtvarDictionary = new Dictionary<string, string>();
+
+            //Get Their Values
+            var txtvarMemoryBase = Module.Memory.GetVariablePointer("TXTVARS");
+            foreach (var txtvar in txtvarsFound)
             {
-                //Look for initial signature byte -- faster
-                if (outputBuffer[i] != 0x1)
-                {
-                    newOutputBuffer.WriteByte(outputBuffer[i]);
-                    continue;
-                }
-
-                //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
-                if (i + 3 >= outputBuffer.Length)
-                    break;
-
-                //Look for full signature of 0x1,0x4E,0x26
-                if (outputBuffer[i + 1] != 0x4E && outputBuffer[i + 2] != 0x26)
+                //If we've already loaded it, keep going
+                if (txtvarDictionary.ContainsKey(txtvar.Name))
                     continue;
 
-                //Increment 3 Bytes
-                i += 3;
-
-                var variableNameStart = i;
-                var variableNameLength = 0;
-                //Get variable name
-                while (outputBuffer[i] != 0x1)
+                for (ushort j = 0; j < MaxTextVariables; j++)
                 {
-                    i++;
-                    variableNameLength++;
-                }
+                    var currentTextVar =
+                        new TextvarStruct(Module.Memory.GetArray(txtvarMemoryBase + (j * TextvarStruct.Size),
+                            TextvarStruct.Size));
 
-                switch (Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength)))
-                {
-                    //Registered Variables
-                    case var textVariableName when Module.TextVariables.ContainsKey(textVariableName):
-                        //Get Variable Entry Point
-                        var variableEntryPoint = Module.TextVariables[textVariableName];
-                        var resultRegisters = Module.Execute(variableEntryPoint, ChannelNumber, true, true, null, 0xF100);
-                        var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
+                    if (currentTextVar.name != txtvar.Name)
+                        continue;
+
+                    var resultRegisters = Module.Execute(currentTextVar.varrou, ChannelNumber, true, true, null, 0xF100);
+                    var variableData = Module.Memory.GetString(resultRegisters.DX, resultRegisters.AX, true);
 #if DEBUG
-                        _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {textVariableName} ({variableEntryPoint}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
+                    _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {txtvar} ({currentTextVar.varrou}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
 #endif
-                        newOutputBuffer.Write(variableData);
-                        break;
-                    default:
-                        _logger.Error($"({Module.ModuleIdentifier}) Unknown Text Variable: {Encoding.ASCII.GetString(outputBuffer.Slice(variableNameStart, variableNameLength))}");
-                        break;
+
+                    txtvarDictionary.Add(txtvar.Name, Encoding.ASCII.GetString(variableData));
                 }
             }
 
-            return newOutputBuffer.ToArray();
+            return _textVariableService.Parse(outputBuffer, txtvarDictionary);
         }
 
         /// <summary>
@@ -1044,7 +1033,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return CharacterAccepterResponse.ABORT;
             });
 
-            result.Valid = Int32.TryParse(result.StringValue, out var value);
+            result.Valid = int.TryParse(result.StringValue, out var value);
             if (result.Valid)
                 result.Value = value;
 
@@ -1058,7 +1047,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
-        /// </return>
+        /// <returns></returns>
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
         {
             var enumerator = inputString.GetEnumerator();

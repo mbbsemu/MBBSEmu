@@ -24,6 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("N TEST", 0, 'N', 2)]
         [InlineData("NO THIS IS A TEST", 0, 'N', 3)]
         [InlineData("TEST NO", 0, 'T', 0)]
+        [InlineData("", 0, 0, 0)]
 
         //Incremented nxtcmd Tests
         [InlineData("TEST NO", 5, 'N', 3)]

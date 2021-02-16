@@ -12,13 +12,13 @@ namespace MBBSEmu.TextVariables
         /// <summary>
         ///     Holds the list of Text Variables registered by the system
         /// </summary>
-        private readonly List<TextVariable> _textVariables;
+        private readonly List<TextVariableValue> _textVariables;
 
         private readonly ILogger _logger;
 
         public TextVariableService(ILogger logger)
         {
-            _textVariables = new List<TextVariable>();
+            _textVariables = new List<TextVariableValue>();
             _logger = logger;
         }
 
@@ -27,12 +27,12 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
-        public void SetVariable(string name, TextVariable.TextVariableValueDelegate value)
+        public void SetVariable(string name, TextVariableValue.TextVariableValueDelegate value)
         {
             if (_textVariables.Any(x => x.Name == name))
                 return;
 
-            _textVariables.Add(new TextVariable() { Name = name, Value = value});
+            _textVariables.Add(new TextVariableValue() { Name = name, Value = value});
         }
 
         /// <summary>
@@ -66,22 +66,25 @@ namespace MBBSEmu.TextVariables
         }
 
         /// <summary>
-        ///     Parses incoming buffer to process text variables before sending to client
+        ///     Looks for Variable Signature Byte of 0x1 and returns true
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="sessionValues"></param>
         /// <returns></returns>
-        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariable.TextVariableValueDelegate> sessionValues)
+        public bool HasVariable(ReadOnlySpan<byte> input) => input.IndexOf((byte) 1) > -1;
+
+        /// <summary>
+        ///     Extracts Text Variable names found in the specified input
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public List<TextVariableDefinition> ExtractVariableDefinitions(ReadOnlySpan<byte> input)
         {
-            using var newOutputBuffer = new MemoryStream(input.Length);
-            for (var i = 0; i < input.Length; i++)
+            var output = new List<TextVariableDefinition>();
+            for (ushort i = 0; i < input.Length; i++)
             {
                 //Look for initial signature byte -- faster
                 if (input[i] != 0x1)
-                {
-                    newOutputBuffer.WriteByte(input[i]);
                     continue;
-                }
 
                 //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
                 if (i + 3 >= input.Length)
@@ -90,6 +93,8 @@ namespace MBBSEmu.TextVariables
                 //Look for justification notation in i + 1 = "N, L, C, R", if not found move on
                 if (input[i + 1] != 0x4E && input[i + 1] != 0x4C && input[i + 1] != 0x43 && input[i + 1] != 0x52)
                     continue;
+
+                var startingOffset = i;
 
                 //Get formatting information
                 var variableFormatJustification = input[i + 1];
@@ -108,63 +113,99 @@ namespace MBBSEmu.TextVariables
                     variableNameLength++;
                 }
 
-                var variableName = Encoding.ASCII.GetString(input.Slice(variableNameStart, variableNameLength));
-                var variableText = GetVariableByName(variableName);
-
-                //If not found, try Session specific Text Variables and show error if not
-                if (variableText == null)
+                output.Add(new TextVariableDefinition()
                 {
-                    switch (variableName)
-                    {
-                        case "BAUD":
-                        case "CHANNEL":
-                        case "CREATION_DATE":
-                        case "CREDITS":
-                        case "TIME_ONLINE":
-                        case "USERID":
-                            variableText = sessionValues[variableName]();
-                            break;
-                        default:
-                            variableText = "UNKNOWN";
-                            _logger.Error($"Unknown Text Variable: {variableName}");
-                            break;
-                    }
-                }
+                    Offset = startingOffset,
+                    Length = (ushort)(i - startingOffset),
+                    Justification = (EnumTextVariableJustification)variableFormatJustification,
+                    Name = Encoding.ASCII.GetString(input.Slice(variableNameStart, variableNameLength)),
+                    Padding = (byte)variableFormatPadding
+                });
+
+
+            }
+
+            return output;
+        }
+        
+        /// <summary>
+        ///     Parses incoming buffer to process text variables before sending to client
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="sessionValues"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, string> sessionValues)
+        {
+            using var newOutputBuffer = new MemoryStream(input.Length);
+
+            var foundVariables = ExtractVariableDefinitions(input);
+
+            var previousOffset = 0;
+            foreach (var v in foundVariables)
+            {
+                //Add Every Byte from the previous offset to the byte just before the variable
+                newOutputBuffer.Write(input.Slice(previousOffset, v.Offset - previousOffset));
+
+                //Check Passed In Variables
+                var variableText = sessionValues.FirstOrDefault(x=> x.Key == v.Name).Value;
+
+                //If a Session Variable wasn't found, check global
+                if(string.IsNullOrEmpty(variableText))
+                    variableText = GetVariableByName(v.Name) ?? "UNKNOWN VARIABLE";
 
                 //Format Variable Text
-                switch (variableFormatJustification)
+                switch (v.Justification)
                 {
-                    case 78:
+                    case EnumTextVariableJustification.None:
                         //No formatting
                         break;
-                    case 76:
+                    case EnumTextVariableJustification.Left:
                         //Left Justify
-                        if (variableFormatPadding > variableText.Length)
-                            variableText = variableText.PadRight(variableFormatPadding);
+                        if (v.Padding > variableText.Length)
+                            variableText = variableText.PadRight(v.Padding);
                         break;
-                    case 67:
+                    case EnumTextVariableJustification.Center:
                         //Center Justify
-                        if (variableFormatPadding > variableText.Length)
+                        if (v.Padding > variableText.Length)
                         {
-                            var centerPadLeft = (variableFormatPadding - variableText.Length) / 2;
+                            var centerPadLeft = (v.Padding - variableText.Length) / 2;
                             var variableTextTemp = variableText.PadLeft(variableText.Length + centerPadLeft);
-                            variableText = variableTextTemp.PadRight(variableFormatPadding);
+                            variableText = variableTextTemp.PadRight(v.Padding);
                         }
                         break;
-                    case 82:
+                    case EnumTextVariableJustification.Right:
                         //Right Justify
-                        if (variableFormatPadding > variableText.Length)
-                            variableText = variableText.PadLeft(variableFormatPadding);
+                        if (v.Padding > variableText.Length)
+                            variableText = variableText.PadLeft(v.Padding);
                         break;
                     default:
-                        _logger.Error($"Unknown Formatting for Variable: {variableName}");
+                        _logger.Error($"Unknown Formatting for Variable: {v.Name}");
                         break;
                 }
 
                 newOutputBuffer.Write(Encoding.ASCII.GetBytes(variableText));
+                previousOffset = v.Offset + v.Length + 1;
             }
+            
+            //Add Any Remaining
+            newOutputBuffer.Write(input.Slice(previousOffset));
 
             return newOutputBuffer.ToArray();
+        }
+
+        /// <summary>
+        ///     Parses incoming buffer to process text variables before sending to client
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="sessionValues"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> Parse(ReadOnlySpan<byte> input, Dictionary<string, TextVariableValue.TextVariableValueDelegate> sessionValues)
+        {
+            //Evaluate Delegates and Save them to a Local string,string Dictionary
+            var invokedInput = sessionValues.ToDictionary(val => val.Key, val => val.Value());
+
+            //Execute
+            return Parse(input, invokedInput);
         }
     }
 }

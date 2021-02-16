@@ -1,4 +1,4 @@
-# The MajorBBS Emulation Project
+# The MajorBBS Emulation Project 
 ![](http://forthebadge.com/images/badges/made-with-c-sharp.svg)
 ![](http://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)
 
@@ -11,9 +11,9 @@ MBBSEmu is an emulator for running MajorBBS and Worldrgoup Modules on Windows, L
 # Getting Started
 
 1. Extract MBBSEmu to your target folder
-2. Edit your [appsettings.json](https://github.com/enusbaum/MBBSEmu/wiki/appsettings.json-Configuration-File) to your desired settings
-3. Create a [modules.json](https://github.com/enusbaum/MBBSEmu/wiki/modules.json-Configuration-File) file if want to run multiple Modules
-4. Start MBBSEmu with your desired [Command Line Options](https://github.com/enusbaum/MBBSEmu/wiki/Command-Line-Options)
+2. Edit your [appsettings.json](https://wiki.mbbsemu.com/doku.php?id=mbbsemu:configuration:appsettings.json) to your desired settings
+3. Create a [modules.json](https://wiki.mbbsemu.com/doku.php?id=mbbsemu:configuration:modules.json) file if want to run multiple Modules
+4. Start MBBSEmu with your desired [Command Line Options](https://wiki.mbbsemu.com/doku.php?id=mbbsemu:configuration:command_line_options)
 
 **That's it!** :)
 

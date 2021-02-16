@@ -278,7 +278,7 @@ namespace MBBSEmu.CPU
 
             //Show Debugging
             //_showDebug = true
-            //_showDebug = Registers.CS == 0x12 && Registers.IP >= 0x4E3 && Registers.IP <= 0x69A;
+            //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
             if (_showDebug)
@@ -2613,6 +2613,28 @@ namespace MBBSEmu.CPU
                         var pointer = Memory.GetPointer(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                         Registers.CS = pointer.Segment;
                         Registers.IP = pointer.Offset;
+
+#if DEBUG
+                        if(_showDebug)
+                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+#endif
+
+                        //Loaded an Exported Function Delegate from Memory
+                        if (Registers.CS > 0xFF00)
+                        {
+                            var ipBeforeCall = Registers.IP;
+
+                            _invokeExternalFunctionDelegate(Registers.CS,
+                                Registers.IP);
+
+                            //Control Transfer occurred in the CALL, so we clean up the stack and return
+                            if (ipBeforeCall != Registers.IP)
+                                return;
+
+                            Registers.SetValue(Register.EIP, Pop());
+                            Registers.SetValue(Register.CS, Pop());
+                        }
+
                         break;
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0x0F00:
@@ -2623,6 +2645,11 @@ namespace MBBSEmu.CPU
 
                         Registers.CS = _currentInstruction.FarBranchSelector;
                         Registers.IP = _currentInstruction.FarBranch16;
+
+#if DEBUG
+                        if (_showDebug)
+                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+#endif
                         break;
                     }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
@@ -2637,6 +2664,11 @@ namespace MBBSEmu.CPU
                         Registers.BP = Registers.SP;
 
                         var ipBeforeCall = Registers.IP;
+
+#if DEBUG
+                        if (_showDebug)
+                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector}:{_currentInstruction.Immediate16}");
+#endif
 
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
@@ -2658,6 +2690,11 @@ namespace MBBSEmu.CPU
                         //Push the IP of the **NEXT** instruction to the stack
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
                         Registers.IP = _currentInstruction.NearBranch16;
+
+#if DEBUG
+                        if (_showDebug)
+                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+#endif
                         break;
                     }
                 case OpKind.Memory:
@@ -2670,6 +2707,11 @@ namespace MBBSEmu.CPU
                             var destinationOffset =
                                 Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             Registers.IP = destinationOffset;
+
+#if DEBUG
+                            if (_showDebug)
+                                _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+#endif
 
                         }
                         else

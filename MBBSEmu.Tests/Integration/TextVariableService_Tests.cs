@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.Integration
         {
             ExecuteTest((session, host) => {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
@@ -44,7 +44,7 @@ namespace MBBSEmu.Tests.Integration
         {
             ExecuteTest((session, host) => {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
@@ -64,7 +64,7 @@ namespace MBBSEmu.Tests.Integration
         {
             ExecuteTest((session, host) => {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
@@ -84,7 +84,7 @@ namespace MBBSEmu.Tests.Integration
         {
             ExecuteTest((session, host) => {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
