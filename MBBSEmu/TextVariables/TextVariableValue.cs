@@ -1,6 +1,6 @@
 ﻿namespace MBBSEmu.TextVariables
 {
-    public class TextVariable
+    public class TextVariableValue
     {
         public delegate string TextVariableValueDelegate();
 
