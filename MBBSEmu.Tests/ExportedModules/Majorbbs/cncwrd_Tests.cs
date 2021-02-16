@@ -16,6 +16,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("FIRST SECOND THIRD\0", 13, "THIRD", 19)]
         [InlineData("123456789012345678901234567890\0", 0, "12345678901234567890123456789", 30)] //Test Truncation
         [InlineData("\0", 0, "", 0)]
+        [InlineData("OneSixSix                Hello              \0", 8, "x", 25)]
+        [InlineData("                FIRST SECOND\0", 0, "FIRST", 22)]
         public void cncwrd_Test(string inputString, ushort nxtcmdStartingOffset, string expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State

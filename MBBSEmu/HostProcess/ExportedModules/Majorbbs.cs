@@ -5556,11 +5556,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputString = Encoding.ASCII.GetString(Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand));
 
             IEnumerator<char> charEnumerator = inputString.GetEnumerator();
-            if (!charEnumerator.MoveNext())
-            {
-                cncint_ErrorResult(returnType);
-                return;
-            }
+            charEnumerator.MoveNext();
 
             var (moreInput, skipped) = ConsumeWhitespace(charEnumerator);
             if (!moreInput)
@@ -7283,12 +7279,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
             var inputStringComponents = Encoding.ASCII.GetString(inputString).ToUpper().Split('\0');
-
-            if (inputStringComponents.Length == 0)
-            {
-                Registers.AX = 0;
-                return;
-            }
 
             switch (inputStringComponents[0])
             {
