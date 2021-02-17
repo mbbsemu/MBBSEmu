@@ -104,7 +104,7 @@ namespace MBBSEmu.Tests.Integration
         {
             ExecuteTest((session, host) => {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
-                var sessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
                     {"CHANNEL", () => "0"}, {"USERID", () => "TestUsername"}
                 };
@@ -115,7 +115,7 @@ namespace MBBSEmu.Tests.Integration
 
                 var parsedText = textVariableService.Parse(dataToSendSpan, sessionVariables);
 
-                Assert.Equal("Random Text ... UNKNOWN ... The End", Encoding.ASCII.GetString(parsedText));
+                Assert.Equal("Random Text ... UNKNOWN VARIABLE ... The End", Encoding.ASCII.GetString(parsedText));
             });
         }
     }
