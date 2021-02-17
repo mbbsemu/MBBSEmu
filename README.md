@@ -1,4 +1,4 @@
-# The MajorBBS Emulation Project
+# The MajorBBS Emulation Project 
 ![](http://forthebadge.com/images/badges/made-with-c-sharp.svg)
 ![](http://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)
 

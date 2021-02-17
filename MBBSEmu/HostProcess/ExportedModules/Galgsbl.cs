@@ -5,6 +5,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
+using MBBSEmu.TextVariables;
 using NLog;
 using System;
 using System.Text;
@@ -39,8 +40,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        public Galgsbl(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary) : base(
-            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary)
+        public Galgsbl(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
+            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _startDate = clock.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);

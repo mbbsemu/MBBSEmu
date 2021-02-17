@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.Module
 {
@@ -77,11 +78,6 @@ namespace MBBSEmu.Module
         ///     Routine definitions for functions registered via INITASK
         /// </summary>
         public PointerDictionary<RealTimeRoutine> TaskRoutines { get; set; }
-
-        /// <summary>
-        ///     Text Variable definitions for variables registered via REGISTER_VARIABLE
-        /// </summary>
-        public Dictionary<string, FarPtr> TextVariables { get; set; }
 
         /// <summary>
         ///     Global Command Handler Definitions for modules that register global commands
@@ -168,7 +164,7 @@ namespace MBBSEmu.Module
                 //Verify MDF File Exists
                 var mdfFile = fileUtility.FindFile(ModulePath, $"{ModuleIdentifier}.MDF");
                 var fullMdfFilePath = Path.Combine(ModulePath, mdfFile);
-                if (!System.IO.File.Exists(fullMdfFilePath))
+                if (!File.Exists(fullMdfFilePath))
                 {
                     throw new FileNotFoundException($"Unable to locate Module: {fullMdfFilePath}");
                 }
@@ -206,7 +202,6 @@ namespace MBBSEmu.Module
             RtkickRoutines = new PointerDictionary<RealTimeRoutine>();
             RtihdlrRoutines = new PointerDictionary<RealTimeRoutine>();
             TaskRoutines = new PointerDictionary<RealTimeRoutine>();
-            TextVariables = new Dictionary<string, FarPtr>();
             GlobalCommandHandlers = new List<FarPtr>();
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);

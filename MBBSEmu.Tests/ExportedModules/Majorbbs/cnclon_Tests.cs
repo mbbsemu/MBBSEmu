@@ -64,6 +64,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("abc 123", 3, 123, 7)]
         [InlineData("abc -123", 3, -123, 8)]
         [InlineData("", 0, 0, 0)]
+        [InlineData(" ", 0, 0, 0)]
         public void cncint_Test(string inputString, ushort nxtcmdStartingOffset, short expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State

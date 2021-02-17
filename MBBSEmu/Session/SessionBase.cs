@@ -214,7 +214,7 @@ namespace MBBSEmu.Session
         /// </summary>
         public byte[] VDA { get; set; }
 
-        public Dictionary<string, TextVariable.TextVariableValueDelegate> SessionVariables;
+        public Dictionary<string, TextVariableValue.TextVariableValueDelegate> SessionVariables;
 
         private readonly ITextVariableService _textVariableService;
         protected readonly IMbbsHost _mbbsHost;
@@ -258,7 +258,7 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
-            SessionVariables = new Dictionary<string, TextVariable.TextVariableValueDelegate>
+            SessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
             {
                 {"CHANNEL", () => Channel.ToString()}, {"USERID", () => Username}
             };
