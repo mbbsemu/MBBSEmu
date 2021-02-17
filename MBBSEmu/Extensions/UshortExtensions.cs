@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using MBBSEmu.Date;
 
 namespace MBBSEmu.Extensions
 {
@@ -73,7 +74,6 @@ namespace MBBSEmu.Extensions
         ///     Sign extends 16bit -> 32bit
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static uint ToUintSignExtended(this ushort b) => (uint)(short) b;
@@ -82,7 +82,6 @@ namespace MBBSEmu.Extensions
         ///     Pack DOS date
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ushort ToDosDate(this DateTime b)
@@ -94,7 +93,6 @@ namespace MBBSEmu.Extensions
         ///     Unpack DOS date
         /// </summary>
         /// <param name="b"></param>
-        /// <param name="bitDifference"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DateTime FromDosDate(this ushort b)
