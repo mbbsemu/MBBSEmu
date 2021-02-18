@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using MBBSEmu.Date;
+using MBBSEmu.HostProcess;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.Extensions
 {
@@ -97,9 +99,6 @@ namespace MBBSEmu.Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static DateTime FromDosDate(this ushort b)
         {
-            if (b == 0)
-                b = 0x5152;
-            
             var outputDate = new DateTime(((b >> 9) & 0x007F) + 1980, (b >> 5) & 0x000F, b & 0x001F);
 
             return outputDate;
