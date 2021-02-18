@@ -1,3 +1,4 @@
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
@@ -10,11 +11,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Extensions;
 
 namespace MBBSEmu.Session
 {
