@@ -1,3 +1,5 @@
+using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using System;
 using System.IO;
@@ -24,8 +26,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             Assert.Equal(LOREM_IPSUM_LENGTH, LOREM_IPSUM.Length);
         }
-
-        // TODO(add fgetc/fputc fgets/fputs fseek tests)
 
         [Theory]
         [InlineData("r")]
@@ -299,6 +299,309 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             Assert.Equal(-1, fclose(FarPtr.Empty));
+        }
+
+        [Theory]
+        [InlineData('A', 5)]
+        [InlineData('R', 10)]
+        [InlineData('!', 20)]
+        [InlineData('z', 25)]
+        [InlineData('l', 55)]
+        public void fputc_fgetc_fseek_origin0_file(byte inputChar, int fseekOffset)
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "w");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, fseekOffset, 0));
+
+            Assert.Equal(1, fputc(inputChar, filep));
+
+            Assert.Equal(0,fseek(filep, fseekOffset, 0));
+
+            Assert.Equal(inputChar, fgetc(filep));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Theory]
+        [InlineData(4, 'm', 'n')]
+        [InlineData(9, 'u', 'j')]
+        [InlineData(14, 'l', 'k')]
+        [InlineData(20, 't', 'r')]
+        [InlineData(22, 'a', '.')]
+        public void fgetc_ungetc_fseek_origin0_file(int fseekOffset, ushort getValue, ushort ungetValue)
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "r");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, fseekOffset, 0));
+
+            Assert.Equal((byte)getValue, fgetc(filep));
+
+            Assert.Equal((byte)ungetValue, ungetc(ungetValue, filep));
+
+            var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
+            Assert.Equal(ungetValue, curFileStream.ReadByte());
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Theory]
+        [InlineData("Mary Had a Little Lamb\0", 0)]
+        [InlineData("---+++---111\0", 10)]
+        [InlineData("((((jumbo)))))\0", 20)]
+        [InlineData(" yeah \0", 25)]
+        [InlineData("\0", 40)]
+        [InlineData("A\0", 0)]
+        public void fputs_fgets_fseek_origin0_file(string stringPut, int fseekOffset)
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var stringPutPtr = mbbsEmuMemoryCore.AllocateVariable("STRING_PUT", (ushort)stringPut.Length);
+            mbbsEmuMemoryCore.SetArray(stringPutPtr, Encoding.ASCII.GetBytes(stringPut));
+
+            var stringGetPtr = mbbsEmuMemoryCore.AllocateVariable("STRING_GET", (ushort)stringPut.Length);
+
+            var filep = fopen("FILE.TXT", "w");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, fseekOffset, 0));
+
+            Assert.Equal(1, fputs(stringPutPtr, filep));
+
+            Assert.Equal(0, fseek(filep, fseekOffset, 0));
+
+            Assert.Equal(stringGetPtr, fgets(stringGetPtr, (ushort)stringPut.Length, filep));
+            Assert.Equal(stringPut, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("STRING_GET")));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Theory]
+        [InlineData(4, 'm', 1)]
+        [InlineData(10, 'm', 1)]
+        [InlineData(20, 't', 1)]
+        [InlineData(25, 't', 1)]
+        [InlineData(55, ',', 1)]
+        [InlineData(-1, '.', 2)]
+        [InlineData(-10, 'c', 2)]
+        [InlineData(-20, 'u', 2)]
+        [InlineData(-25, 't', 2)]
+        [InlineData(-55, 'c', 2)]
+        public void fgetc_fseek_origin1and2_file(int fseekOffset, byte expectedChar, ushort originNum)
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "r");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, 0, 0));
+
+            Assert.Equal(0, fseek(filep, fseekOffset, originNum));
+
+            Assert.Equal(expectedChar, fgetc(filep));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
+        public void fgetc_fseek_EOF_file()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "r");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+            
+            Assert.Equal(0, fseek(filep, 0, 2));
+
+            Assert.Equal(0xFFFF, fgetc(filep));
+            
+            var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
+            
+            Assert.Equal(LOREM_IPSUM_LENGTH, curFileStream.Position);
+            Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
+        public void fputc_fseek_EOF_file()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "a");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, 0, 2));
+
+            Assert.Equal(1, fputc(0, filep));
+
+            var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
+
+            Assert.Equal(LOREM_IPSUM_LENGTH + 1, curFileStream.Position);
+            Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
+        public void fgets_fseek_EOF_file()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "r");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            var stringGetPtr = mbbsEmuMemoryCore.AllocateVariable("STRING_GET", (ushort)"TEST".Length);
+            mbbsEmuMemoryCore.SetArray(stringGetPtr, Encoding.ASCII.GetBytes("TEST"));
+            
+            Assert.Equal(0, fseek(filep, 0, 2));
+
+            Assert.Equal(new FarPtr(), fgets(stringGetPtr, 4, filep));
+
+            var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
+            Assert.Equal(LOREM_IPSUM_LENGTH, curFileStream.Position );
+            Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
+        public void fputs_fseek_EOF_file()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "a");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            var stringPutPtr = mbbsEmuMemoryCore.AllocateVariable("STRING_PUT", (ushort)"TEST".Length);
+            mbbsEmuMemoryCore.SetArray(stringPutPtr, Encoding.ASCII.GetBytes("TEST"));
+
+            Assert.Equal(0, fseek(filep, 0, 2));
+
+            Assert.Equal(1, fputs(stringPutPtr, filep));
+
+            var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
+            Assert.Equal(LOREM_IPSUM_LENGTH + 5, curFileStream.Position);
+            Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
+        public void fgetc_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+            
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fgetc(new FarPtr()));
+        }
+
+        [Fact]
+        public void fputc_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fputc(0, new FarPtr()));
+        }
+
+        [Fact]
+        public void fgets_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fgets(new FarPtr(), 0, new FarPtr()));
+        }
+
+        [Fact]
+        public void fputs_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fputs(new FarPtr(), new FarPtr()));
+        }
+
+        [Fact]
+        public void ungetc_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => ungetc(0, new FarPtr()));
+        }
+
+        [Fact]
+        public void fseek_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fseek(new FarPtr(), 0, 0));
         }
     }
 }
