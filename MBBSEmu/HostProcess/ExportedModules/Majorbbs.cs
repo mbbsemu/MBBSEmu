@@ -3869,7 +3869,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var maxCharactersToRead = GetParameter(2);
             var fileStructPointer = GetParameterPointer(3);
-
+            
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
@@ -3887,6 +3887,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
+                
+                if (inputValue == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                    continue;
 
                 valueFromFile.WriteByte(inputValue);
 
@@ -5000,8 +5003,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+            
+            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+                fileStream.Write(FormatNewLineCarriageReturn(stringToWrite));
+            else
+                fileStream.Write(stringToWrite);
 
-            fileStream.Write(stringToWrite);
             fileStream.Flush();
 
             //Update EOF Flag if required
