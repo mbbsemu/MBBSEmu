@@ -950,7 +950,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     galmalloc();
                     break;
                 case 615:
-                    fungetc();
+                    ungetc();
                     break;
                 case 230:
                     galfree();
@@ -3869,11 +3869,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var maxCharactersToRead = GetParameter(2);
             var fileStructPointer = GetParameterPointer(3);
-
+            
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
-                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
             if (fileStream.Position == fileStream.Length)
             {
@@ -3887,6 +3887,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
+                
+                if (inputValue == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                    continue;
 
                 valueFromFile.WriteByte(inputValue);
 
@@ -3974,13 +3977,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fseek()
         {
             var fileStructPointer = GetParameterPointer(0);
-            var offset = GetParameterULong(2);
+            var offset = GetParameterLong(2);
             var origin = GetParameter(4);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
-                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
             switch (origin)
             {
@@ -5000,8 +5003,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+            
+            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+                fileStream.Write(FormatNewLineCarriageReturn(stringToWrite));
+            else
+                fileStream.Write(stringToWrite);
 
-            fileStream.Write(stringToWrite);
             fileStream.Flush();
 
             //Update EOF Flag if required
@@ -5079,6 +5086,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var characterRead = fileStream.ReadByte();
 
+            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+                characterRead = '\n';
+            
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
             {
@@ -5160,7 +5170,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///
         ///     Signature: int ungetc(int character,FILE *stream )
         /// </summary>
-        private void fungetc()
+        private void ungetc()
         {
             var character = GetParameter(0);
             var fileStructPointer = GetParameterPointer(1);
@@ -5175,7 +5185,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileStream.WriteByte((byte)character);
             fileStream.Position -= 1;
 
-            //Update EOF Flag if required
+            //Update EOF Flag if required -- TODO DO WE NEED? 
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;

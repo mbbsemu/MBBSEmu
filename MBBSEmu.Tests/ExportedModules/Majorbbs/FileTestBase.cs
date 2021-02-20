@@ -20,6 +20,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected const int CLOSE_ORDINAL = 110;
         protected const int FILELENGTH_ORDINAL = 211;
 
+        protected const int FPUTC_ORDINAL = 227;
+        protected const int FGETC_ORDINAL = 19;
+        protected const int UNGETC_ORDINAL = 615;
+        protected const int FSEEK_ORDINAL = 266;
+        protected const int FPUTS_ORDINAL = 1125;
+        protected const int FGETS_ORDINAL = 210;
+
         protected FileTestBase() : base(Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}"))
         {
             Directory.CreateDirectory(mbbsModule.ModulePath);
@@ -152,6 +159,81 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FILELENGTH_ORDINAL, new List<ushort> { fd });
             return mbbsEmuCpuRegisters.GetLong();
+        }
+
+        protected ushort fgetc(FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FGETC_ORDINAL, new List<FarPtr>
+            {
+                srcPtr
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort ungetc(ushort ungetChar, FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, UNGETC_ORDINAL, new List<ushort>
+            {
+                ungetChar,
+                srcPtr.Offset,
+                srcPtr.Segment
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort fputc(ushort putChar, FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FPUTC_ORDINAL, new List<ushort>
+            {
+                putChar,
+                srcPtr.Offset,
+                srcPtr.Segment
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected FarPtr fgets(FarPtr putStringPtr, ushort numChars, FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FGETS_ORDINAL, new List<ushort>
+            {
+                putStringPtr.Offset,
+                putStringPtr.Segment,
+                numChars,
+                srcPtr.Offset,
+                srcPtr.Segment
+            });
+            
+            return mbbsEmuCpuRegisters.GetPointer();
+        }
+
+        protected ushort fputs(FarPtr putStringPtr, FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FPUTS_ORDINAL, new List<FarPtr>
+            {
+                putStringPtr,
+                srcPtr
+            });
+
+            return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected ushort fseek(FarPtr srcPtr, int offset, ushort origin)
+        {
+            
+            
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSEEK_ORDINAL, new List<ushort>
+            {
+                srcPtr.Offset,
+                srcPtr.Segment,
+                (ushort)offset,
+                (ushort)(offset >> 16),
+                origin
+            });
+
+            return mbbsEmuCpuRegisters.AX;
         }
 
         protected string CreateTextFile(string filename, string contents)
