@@ -5086,6 +5086,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var characterRead = fileStream.ReadByte();
 
+            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+                characterRead = '\n';
+            
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
             {
