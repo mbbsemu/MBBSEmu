@@ -129,6 +129,9 @@ namespace MBBSEmu.HostProcess.Structs
                 flags |= (ushort) EnumFileFlags.Read;
             else if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Write))
                 flags |= (ushort) EnumFileFlags.Write;
+            if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Binary))
+                flags |= (ushort) EnumFileFlags.Binary;
+            
         }
 
         /// <summary>

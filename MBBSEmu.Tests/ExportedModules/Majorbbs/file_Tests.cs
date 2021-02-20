@@ -17,9 +17,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             + "lacus vel facilisis. Ipsum nunc aliquet bibendum enim facilisis. Malesuada fames ac "
             + "turpis egestas maecenas pharetra. Nunc lobortis mattis aliquam faucibus purus. "
             + "Pretium vulputate sapien nec sagittis. Rutrum quisque non tellus orci. Lobortis "
-            + "feugiat vivamus at augue eget arcu dictum.";
+            + "feugiat vivamus at augue eget arcu dictum.\r\n";
 
-        private const int LOREM_IPSUM_LENGTH = 592;
+        private const int LOREM_IPSUM_LENGTH = 594;
 
         [Fact]
         public void length_matches_constant()
@@ -405,11 +405,48 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(20, 't', 1)]
         [InlineData(25, 't', 1)]
         [InlineData(55, ',', 1)]
-        [InlineData(-1, '.', 2)]
-        [InlineData(-10, 'c', 2)]
-        [InlineData(-20, 'u', 2)]
-        [InlineData(-25, 't', 2)]
-        [InlineData(-55, 'c', 2)]
+        [InlineData(-1, '\n', 2)]
+        [InlineData(-2, '\n', 2)]
+        [InlineData(-3, '.', 2)]
+        [InlineData(-12, 'c', 2)]
+        [InlineData(-22, 'u', 2)]
+        [InlineData(-27, 't', 2)]
+        [InlineData(-57, 'c', 2)]
+        public void fgetc_fseek_origin1and2_file_ascii(int fseekOffset, byte expectedChar, ushort originNum)
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILE.TXT", "rt");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            Assert.Equal(0, fseek(filep, 0, 0));
+
+            Assert.Equal(0, fseek(filep, fseekOffset, originNum));
+
+            Assert.Equal(expectedChar, fgetc(filep));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Theory]
+        [InlineData(4, 'm', 1)]
+        [InlineData(10, 'm', 1)]
+        [InlineData(20, 't', 1)]
+        [InlineData(25, 't', 1)]
+        [InlineData(55, ',', 1)]
+        [InlineData(-1, '\n', 2)]
+        [InlineData(-2, '\r', 2)]
+        [InlineData(-3, '.', 2)]
+        [InlineData(-12, 'c', 2)]
+        [InlineData(-22, 'u', 2)]
+        [InlineData(-27, 't', 2)]
+        [InlineData(-57, 'c', 2)]
         public void fgetc_fseek_origin1and2_file(int fseekOffset, byte expectedChar, ushort originNum)
         {
             //Reset State
@@ -419,7 +456,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
 
-            var filep = fopen("FILE.TXT", "r");
+            var filep = fopen("FILE.TXT", "rb");
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
 
