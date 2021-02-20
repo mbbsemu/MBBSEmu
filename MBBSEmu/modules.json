@@ -1,15 +1,8 @@
 {
   "Modules": [
     {
-      "Identifier": "GALKYR",
-      "Path": "/home/synacktic/MBBSEmu/GALKYR",
-      "MenuOptionKey": "K"
-    },
-    {
-      "Identifier": "RTSLORD",
-      "Path": "/home/synacktic/MBBSEmu/RTSLORD",
-      "MenuOptionKey": "L"
-    },
-    {}
+      "Identifier": "FW_FTRIV",
+      "Path": "c:\\dos\\postinstall\\fwtrivia\\"
+    }
   ]
 }

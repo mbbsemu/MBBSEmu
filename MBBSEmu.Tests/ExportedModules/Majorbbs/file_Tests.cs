@@ -405,8 +405,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(20, 't', 1)]
         [InlineData(25, 't', 1)]
         [InlineData(55, ',', 1)]
-        [InlineData(-1, '\n', 2)]
-        [InlineData(-2, '\n', 2)]
         [InlineData(-3, '.', 2)]
         [InlineData(-12, 'c', 2)]
         [InlineData(-22, 'u', 2)]
@@ -440,8 +438,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(20, 't', 1)]
         [InlineData(25, 't', 1)]
         [InlineData(55, ',', 1)]
-        [InlineData(-1, '\n', 2)]
-        [InlineData(-2, '\r', 2)]
         [InlineData(-3, '.', 2)]
         [InlineData(-12, 'c', 2)]
         [InlineData(-22, 'u', 2)]
@@ -456,7 +452,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
 
-            var filep = fopen("FILE.TXT", "rb");
+            var filep = fopen("FILE.TXT", "r");
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
 
