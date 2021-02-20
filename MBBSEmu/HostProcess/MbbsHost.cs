@@ -14,6 +14,7 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
+using MBBSEmu.TextVariables;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using MBBSEmu.TextVariables;
 
 namespace MBBSEmu.HostProcess
 {
@@ -156,6 +156,7 @@ namespace MBBSEmu.HostProcess
             _textVariableService.SetVariable("TIME", () => Clock.Now.ToString("t"));
             _textVariableService.SetVariable("TOTAL_ACCOUNTS", () => _accountRepository.GetAccounts().Count().ToString());
             _textVariableService.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
+            _textVariableService.SetVariable("REG_NUMBER", () => _configuration.GSBLBTURNO);
 
             Logger.Info("Constructed MBBSEmu Host!");
         }

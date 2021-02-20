@@ -1,3 +1,4 @@
+using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
@@ -260,7 +261,12 @@ namespace MBBSEmu.Session
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
             SessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
             {
-                {"CHANNEL", () => Channel.ToString()}, {"USERID", () => Username}
+                {"CHANNEL", () => Channel.ToString()}, 
+                {"USERID", () => Username}, 
+                {"BAUD", () => UsrPtr.Baud.ToString() }, 
+                {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
+                {"CREDITS", () => UsrAcc.creds.ToString() },
+                {"CREATION_DATE", () => UsrAcc.credat != 0 ? UsrAcc.credat.FromDosDate().ToShortDateString() : mbbsHost.Clock.Now.ToShortDateString()}
             };
 
             _enumSessionState = startingSessionState;
