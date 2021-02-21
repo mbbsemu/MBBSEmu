@@ -73,7 +73,6 @@ namespace MBBSEmu.Extensions
                 case EnumSessionState.LoggedOff:
                 case EnumSessionState.ConfirmLogoffInput:
                 case EnumSessionState.ConfirmLogoffDisplay:
-                case EnumSessionState.Disconnected:
                     userName = "";
                     userSession = true;
                     userOptionSelected = "Logging Off";
@@ -82,7 +81,7 @@ namespace MBBSEmu.Extensions
                 default:
                     userName = "*UNKNOWN*";
                     userSession = false;
-                    userOptionSelected = "Online"; //Default Value
+                    userOptionSelected = "*UNKNOWN*"; //Default Value
                     moduleSession = false;
                     break;
             }
