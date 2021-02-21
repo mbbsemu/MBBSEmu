@@ -259,6 +259,7 @@ namespace MBBSEmu.Session
             InputBuffer = new MemoryStream(1024);
             InputCommand = new byte[] { 0x0 };
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
+            _enumSessionState = startingSessionState;
             SessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
             {
                 {"CHANNEL", () => Channel.ToString()}, 
@@ -266,10 +267,16 @@ namespace MBBSEmu.Session
                 {"BAUD", () => UsrPtr.Baud.ToString() }, 
                 {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
                 {"CREDITS", () => UsrAcc.creds.ToString() },
-                {"CREATION_DATE", () => UsrAcc.credat != 0 ? UsrAcc.credat.FromDosDate().ToShortDateString() : mbbsHost.Clock.Now.ToShortDateString()}
-            };
+                {"CREATION_DATE", () => UsrAcc.credat != 0 ? UsrAcc.credat.FromDosDate().ToShortDateString() : mbbsHost.Clock.Now.ToShortDateString()},
+                {"PAGE", () =>
+                    {
+                        var sessionInfo = _enumSessionState.GetSessionState();
 
-            _enumSessionState = startingSessionState;
+                        return sessionInfo.moduleSession ? CurrentModule.ModuleDescription : sessionInfo.UserOptionSelected;
+                    }
+                }
+            };
+            
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
         }
 
