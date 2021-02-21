@@ -357,7 +357,7 @@ namespace MBBSEmu.Btrieve
                 return false;
 
             Position = (uint)reader.GetInt32(0);
-            GetBtrieveRecord(Position, reader, ordinal: 1);
+            GetAndCacheBtrieveRecord(Position, reader, ordinal: 1);
             reader.Close();
             return true;
         }
@@ -376,7 +376,7 @@ namespace MBBSEmu.Btrieve
                     return false;
 
                 Position = (uint)reader.GetInt32(0);
-                GetBtrieveRecord(Position, reader, ordinal: 1);
+                GetAndCacheBtrieveRecord(Position, reader, ordinal: 1);
                 return true;
             }
             finally
@@ -399,7 +399,7 @@ namespace MBBSEmu.Btrieve
                     return false;
 
                 Position = (uint)reader.GetInt32(0);
-                GetBtrieveRecord(Position, reader, 1);
+                GetAndCacheBtrieveRecord(Position, reader, 1);
                 return true;
             }
             finally
@@ -420,7 +420,7 @@ namespace MBBSEmu.Btrieve
                 return false;
 
             Position = (uint)reader.GetInt32(0);
-            GetBtrieveRecord(Position, reader, 1);
+            GetAndCacheBtrieveRecord(Position, reader, 1);
             reader.Close();
             return Position > 0;
         }
@@ -431,7 +431,7 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public byte[] GetRecord() => GetRecord(Position)?.Data;
 
-        private BtrieveRecord GetBtrieveRecord(uint id, SqliteDataReader reader, int ordinal)
+        private BtrieveRecord GetAndCacheBtrieveRecord(uint id, SqliteDataReader reader, int ordinal)
         {
             using var stream = reader.GetStream(ordinal);
             var data = BtrieveUtil.ReadEntireStream(stream);
@@ -459,7 +459,7 @@ namespace MBBSEmu.Btrieve
                 if (!reader.Read())
                     return null;
 
-                return GetBtrieveRecord(offset, reader, 0);
+                return GetAndCacheBtrieveRecord(offset, reader, 0);
             }
             finally
             {
