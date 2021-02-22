@@ -3128,7 +3128,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (FileAlreadyOpen(fullPath, out var fileStructPointer))
             {
                 _logger.Warn($"({Module.ModuleIdentifier}) Reopened File: {fullPath} - most likely a module bug.");
-
+                var fileStructExist = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+                fileStructExist.ref_count++;
+                Module.Memory.SetArray(fileStructPointer, fileStructExist.Data);
                 Registers.SetPointer(fileStructPointer);
                 return;
             }
@@ -3187,6 +3189,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileStruct.SetFlags(fileAccessMode);
             fileStruct.curp = new FarPtr(ushort.MaxValue, (ushort)fileStreamPointer);
             fileStruct.fd = (byte)fileStreamPointer;
+            fileStruct.ref_count = 1;
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
 #if DEBUG
@@ -3205,6 +3208,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var filePointer = GetParameterPointer(0);
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
+
+            if (fileStruct.ref_count != 1) {
+                _logger.Warn(
+                    $"({Module.ModuleIdentifier}) Attempted to call FCLOSE on file handle that is still being used");
+                fileStruct.ref_count--;
+                Module.Memory.SetArray(filePointer, fileStruct.Data);
+                return;
+            }
 
             // clear the memory
             Module.Memory.SetArray(filePointer, new FileStruct().Data);
