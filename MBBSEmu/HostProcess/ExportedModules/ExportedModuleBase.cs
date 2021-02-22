@@ -677,7 +677,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var txtvarsFound = _textVariableService.ExtractVariableDefinitions(outputBuffer);
 
-            var txtvarDictionary = new Dictionary<string, string>();
+            var txtvarDictionary = ChannelDictionary[ChannelNumber].SessionVariables;
 
             //Get Their Values
             var txtvarMemoryBase = Module.Memory.GetVariablePointer("TXTVARS");
@@ -702,7 +702,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     _logger.Debug(($"({Module.ModuleIdentifier}) Processing Text Variable {txtvar} ({currentTextVar.varrou}): {BitConverter.ToString(variableData.ToArray()).Replace("-", " ")}"));
 #endif
 
-                    txtvarDictionary.Add(txtvar.Name, Encoding.ASCII.GetString(variableData));
+                    txtvarDictionary[txtvar.Name] = Encoding.ASCII.GetString(variableData).ToString;
                 }
             }
 
