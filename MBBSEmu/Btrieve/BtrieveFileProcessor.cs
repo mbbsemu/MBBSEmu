@@ -478,7 +478,7 @@ namespace MBBSEmu.Btrieve
         public bool Update(uint offset, byte[] recordData)
         {
             if (VariableLengthRecords && recordData.Length != RecordLength)
-                _logger.Warn($"Updating variable length record of {recordData.Length} bytes into {FullPath}");
+                _logger.Debug($"Updating variable length record of {recordData.Length} bytes into {FullPath}");
 
             if (!VariableLengthRecords && recordData.Length != RecordLength)
             {
@@ -614,10 +614,10 @@ namespace MBBSEmu.Btrieve
         ///     Inserts a new Btrieve Record.
         /// </summary>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
-        public uint Insert(byte[] record)
+        public uint Insert(byte[] record, LogLevel logLevel)
         {
             if (VariableLengthRecords && record.Length != RecordLength)
-                _logger.Warn($"Inserting variable length record of {record.Length} bytes into {FullPath}");
+                _logger.Debug($"Inserting variable length record of {record.Length} bytes into {FullPath}");
 
             if (!VariableLengthRecords && record.Length != RecordLength)
             {
@@ -664,7 +664,7 @@ namespace MBBSEmu.Btrieve
             }
             catch (SqliteException ex)
             {
-                _logger.Warn(ex, $"{FullPath}: Failed to insert record because {ex.Message}");
+                _logger.Log(logLevel, $"{FullPath}: Failed to insert record because {ex.Message}", ex);
                 transaction.Rollback();
                 return 0;
             }
@@ -677,7 +677,7 @@ namespace MBBSEmu.Btrieve
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex, $"Failed to commit during insert: {ex.Message}");
+                _logger.Log(logLevel, $"Failed to commit during insert: {ex.Message}");
                 transaction.Rollback();
                 queryResult = 0;
             }
