@@ -2552,7 +2552,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            if (!insertBtv())
+            if (!insertBtv(LogLevel.Fatal))
                 throw new SystemException("Failed to insert database record");
         }
 
@@ -2564,17 +2564,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
-            Registers.AX = insertBtv() ? (ushort)1 : (ushort)0;
+            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
         }
 
-        private bool insertBtv()
+        private bool insertBtv(LogLevel logLevel)
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
-            return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
+            return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;
         }
 
 
@@ -2590,7 +2590,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            currentBtrieveFile.Insert(record.ToArray());
+            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
         }
 
         /// <summary>
@@ -3869,7 +3869,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var maxCharactersToRead = GetParameter(2);
             var fileStructPointer = GetParameterPointer(3);
-            
+
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
@@ -3887,7 +3887,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (var i = 0; i < (maxCharactersToRead - 1); i++)
             {
                 var inputValue = (byte)fileStream.ReadByte();
-                
+
                 if (inputValue == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
                     continue;
 
@@ -5003,8 +5003,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
                     $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
-            
-            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+
+            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
                 fileStream.Write(FormatNewLineCarriageReturn(stringToWrite));
             else
                 fileStream.Write(stringToWrite);
@@ -5086,9 +5086,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var characterRead = fileStream.ReadByte();
 
-            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0) 
+            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
                 characterRead = '\n';
-            
+
             //Update EOF Flag if required
             if (fileStream.Position == fileStream.Length)
             {
@@ -5185,7 +5185,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             fileStream.WriteByte((byte)character);
             fileStream.Position -= 1;
 
-            //Update EOF Flag if required -- TODO DO WE NEED? 
+            //Update EOF Flag if required -- TODO DO WE NEED?
             if (fileStream.Position == fileStream.Length)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
@@ -6995,7 +6995,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
 
             }
-            
+
             Registers.AX = 0xFFFF;
         }
 

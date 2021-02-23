@@ -210,7 +210,7 @@ namespace MBBSEmu
                             {
                                 throw new ArgumentException("Console not supported on versions of Windows earlier than 8.0");
                             }
-                            
+
                             _isConsoleSession = true;
                             break;
                             }
@@ -487,8 +487,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data, LogLevel.Error);
 
             _logger.Info("Database Reset!");
         }
