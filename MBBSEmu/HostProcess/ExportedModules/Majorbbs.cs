@@ -3096,22 +3096,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private ReadOnlySpan<byte> prfptr => Module.Memory.GetVariablePointer("PRFPTR").Data;
 
-        private bool FileAlreadyOpen(string fullPath, out FarPtr fileStructPointer)
-        {
-            // let's see if this file has already been opened, and if so return the current handle
-            if (Module.Memory.TryGetVariablePointer($"FILE_{fullPath}", out fileStructPointer))
-            {
-                var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
-                if (FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
-                {
-                    return true;
-                }
-            }
-
-            fileStructPointer = null;
-            return false;
-        }
-
         /// <summary>
         ///     Opens a new file for reading/writing
         ///
@@ -3125,13 +3109,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
             var fullPath = Path.Combine(Module.ModulePath, fileName);
 
-            if (FileAlreadyOpen(fullPath, out var fileStructPointer))
-            {
-                _logger.Warn($"({Module.ModuleIdentifier}) Reopened File: {fullPath} - most likely a module bug.");
-
-                Registers.SetPointer(fileStructPointer);
-                return;
-            }
+            FarPtr fileStructPointer = null;
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
@@ -3169,14 +3147,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Allocate Memory for FILE struct
-            fileStructPointer ??= Module.Memory.GetOrAllocateVariablePointer($"FILE_{fullPath}", FileStruct.Size);
+            fileStructPointer ??= Module.Memory.GetOrAllocateVariablePointer($"FILE_{fullPath}-{FilePointerDictionary.Count}", FileStruct.Size);
 
             //Write New Blank Pointer
             var fileStruct = new FileStruct();
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
             //Setup the File Stream
-            fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate);
+            fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
 
             if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
                 fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
