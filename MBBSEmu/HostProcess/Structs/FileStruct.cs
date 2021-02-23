@@ -108,13 +108,7 @@ namespace MBBSEmu.HostProcess.Structs
             set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 17, 2);
         }
 
-        public byte ref_count
-        {
-            get => Data[19];
-            set => Data[19] = value;
-        }
-
-        public const ushort Size = 20;
+        public const ushort Size = 19;
 
         public byte[] Data = new byte[Size];
 
