@@ -3153,9 +3153,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStruct = new FileStruct();
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
 
-            // Setup struct flags
-            fileStruct.SetFlags(fileAccessMode);
-
             //Setup the File Stream
             fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
 
@@ -3165,7 +3162,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
 
             //Set Struct Values
-            
+            fileStruct.SetFlags(fileAccessMode);
             fileStruct.curp = new FarPtr(ushort.MaxValue, (ushort)fileStreamPointer);
             fileStruct.fd = (byte)fileStreamPointer;
             Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
