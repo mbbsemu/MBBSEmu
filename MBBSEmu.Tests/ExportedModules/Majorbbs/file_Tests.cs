@@ -432,13 +432,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(0, fseek(filep, 0, 0));
 
             Assert.Equal(0, fseek(filep, fseekOffset, originNum));
-            Assert.Equal(0, fseek(filep2, fseekOffset, originNum));
-
             Assert.Equal(expectedChar, fgetc(filep));
-            Assert.Equal(expectedChar, fgetc(filep2));
-
-            Assert.Equal(0, fclose(filep2));
             Assert.Equal(0, fclose(filep));
+
+            Assert.Equal(0, fseek(filep2, fseekOffset, originNum));
+            Assert.Equal(expectedChar, fgetc(filep2));
+            Assert.Equal(0, fclose(filep2));
         }
 
         [Theory]
