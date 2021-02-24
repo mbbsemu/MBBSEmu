@@ -12,6 +12,8 @@ namespace MBBSEmu.Memory
     {
       public ushort Offset { get; set; }
       public uint Size { get; set; }
+
+      public uint EndOffset { get => Offset + Size; }
     }
 
     private LinkedList<MemoryBlock> _freeBlocks = new();
@@ -79,20 +81,45 @@ namespace MBBSEmu.Memory
       var node = _freeBlocks.EnumerateNodes().Where(node => node.Value.Offset == ptr.Offset + size).FirstOrDefault();
       if (node != null)
       {
-        node.Value.Offset -= (ushort)size;
+        node.Value.Offset = ptr.Offset;
         node.Value.Size += size;
+        Compact(node);
         return;
       }
 
       node = _freeBlocks.EnumerateNodes().Where(node => node.Value.Offset == ptr.Offset - size).FirstOrDefault();
       if (node != null)
       {
-        //node.Value.Offset += (ushort)size;
         node.Value.Size += size;
+        Compact(node);
         return;
       }
 
       _freeBlocks.AddFirst(new MemoryBlock() { Offset = ptr.Offset, Size = size});
+    }
+  
+    private LinkedListNode<MemoryBlock> UpdateAndRemoveNode(LinkedListNode<MemoryBlock> liveNode, LinkedListNode<MemoryBlock> deadNode) 
+    {
+      liveNode.Value.Size += deadNode.Value.Size;
+      _freeBlocks.Remove(deadNode);
+      return liveNode;
+    }
+
+    // looks for ways to compact updatedBlock
+    private void Compact(LinkedListNode<MemoryBlock> updatedBlock)
+    {
+      while (_freeBlocks.Count > 1)
+      {
+        // look for nodes that have endoffset = updatedBlock
+        var node = _freeBlocks.EnumerateNodes().Where(node => node.Value.EndOffset == updatedBlock.Value.Offset || updatedBlock.Value.EndOffset == node.Value.Offset).FirstOrDefault();
+        if (node != null) 
+        {
+          updatedBlock = UpdateAndRemoveNode(node, updatedBlock);
+          continue;
+        }
+
+        return;
+      }
     }
   }
 }
