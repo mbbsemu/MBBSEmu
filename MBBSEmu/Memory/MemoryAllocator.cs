@@ -79,6 +79,9 @@ namespace MBBSEmu.Memory
     /// <param name="capacity">size in bytes that this allocator can draw memory from</param>
     public MemoryAllocator(ILogger logger, FarPtr basePointer, uint capacity)
     {
+      if ((basePointer.Offset & 0x1) != 0)
+        throw new ArgumentException("basePointer must be aligned on a word boundary");
+
       var endOffset = basePointer.Offset + capacity;
       if (endOffset > 0x10000)
         throw new ArgumentException("pointer + size overflows segment");
@@ -104,6 +107,9 @@ namespace MBBSEmu.Memory
         Logger?.Warn($"Failed to allocate memory of size {size} since we have no free blocks, or bad argument.");
         return FarPtr.Empty;
       }
+
+      // align to word boundary
+      size = (ushort)((size + 1) & 0xFFFE);
 
       var foundBlock = _freeBlocks.EnumerateNodes()
           .Where(memoryBlock => memoryBlock.Value.Size >= size)

@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void ConstructsJustEnough()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 1);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFE), 2);
       allocator.Should().NotBeNull();
     }
 
@@ -34,6 +34,13 @@ namespace MBBSEmu.Tests.Memory
     public void ConstructOverflowsSegment()
     {
       Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 2);
+      act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void ConstructNotAligned()
+    {
+      Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 1);
       act.Should().Throw<ArgumentException>();
     }
 
