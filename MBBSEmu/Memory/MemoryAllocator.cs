@@ -102,14 +102,14 @@ namespace MBBSEmu.Memory
     /// <returns></returns>
     public FarPtr Malloc(ushort size)
     {
-      if (size == 0 || _freeBlocks.Count == 0)
+      if (_freeBlocks.Count == 0)
       {
         Logger?.Warn($"Failed to allocate memory of size {size} since we have no free blocks, or bad argument.");
         return FarPtr.Empty;
       }
 
       // align to word boundary
-      size = (ushort)((size + 1) & 0xFFFE);
+      size = size == 0 ? 2 : (ushort)((size + 1) & 0xFFFE);
 
       var foundBlock = _freeBlocks.EnumerateNodes()
           .Where(memoryBlock => memoryBlock.Value.Size >= size)

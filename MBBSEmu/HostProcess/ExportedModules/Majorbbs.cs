@@ -81,6 +81,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly IAccountRepository _accountRepository;
 
+        private readonly MemoryAllocator _memoryAllocator;
+
         /// <summary>
         ///     Index for SPR Variable
         /// </summary>
@@ -99,6 +101,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousMcvFile = new Stack<FarPtr>(10);
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
+            _memoryAllocator = new MemoryAllocator(logger, Module.Memory.AllocateRealModeSegment() + 2, 0xFFFE);
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;
@@ -1363,15 +1366,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void alczer()
         {
-            var size = GetParameter(0);
+            galmalloc();
 
-            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
+            if (Registers.GetPointer().IsNull())
+                throw new OutOfMemoryException("Module failed to allocate memory");
 
-#if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
-#endif
-
-            Registers.SetPointer(allocatedMemory);
+            // zero fill
+            Module.Memory.FillArray(Registers.GetPointer(), GetParameter(0), 0);
         }
 
         /// <summary>
@@ -5133,7 +5134,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
+            var allocatedMemory = _memoryAllocator.Malloc(size);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
@@ -5184,10 +5185,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void galfree()
         {
-            //Until we can refactor the memory controller, just return
+            var ptr = GetParameterPointer(0);
 
-            //TODO: Memory is going to be leaked, need to fix this
-            return;
+            _memoryAllocator.Free(ptr);
         }
 
 
@@ -7747,10 +7747,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void alcdup()
         {
             var sourceStringPointer = GetParameterPointer(0);
-            var inputBuffer = Module.Memory.GetString(sourceStringPointer);
-            var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
+            var inputBuffer = Module.Memory.GetString(sourceStringPointer, stripNull: false);
+            var destinationAllocatedPointer = _memoryAllocator.Malloc((ushort)inputBuffer.Length);
 
-            if (sourceStringPointer == FarPtr.Empty)
+            if (sourceStringPointer.IsNull())
             {
                 Module.Memory.SetByte(destinationAllocatedPointer, 0);
 #if DEBUG
@@ -7760,9 +7760,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             else
             {
                 Module.Memory.SetArray(destinationAllocatedPointer, inputBuffer);
-#if DEBUG
-                //_logger.Debug($"({Module.ModuleIdentifier}) Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
-#endif
             }
 
 #if DEBUG

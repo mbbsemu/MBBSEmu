@@ -49,8 +49,8 @@ namespace MBBSEmu.Tests.Memory
     {
       var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000);
 
-      allocator.Malloc(0).Should().Be(FarPtr.Empty);
-      allocator.RemainingBytes.Should().Be(0x10000);
+      allocator.Malloc(0).Should().NotBe(FarPtr.Empty);
+      allocator.RemainingBytes.Should().Be(0xFFFE);
     }
 
     [Fact]
