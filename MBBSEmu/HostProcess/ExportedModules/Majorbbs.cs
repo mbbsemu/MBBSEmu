@@ -5102,8 +5102,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void farfree()
         {
-            // no op, we don't support freeing yet
-            _logger.Debug($"({Module.ModuleIdentifier}) Farfreeing {GetParameterPointer(0)}");
+            _memoryAllocator.Free(GetParameterPointer(0));
         }
 
         /// <summary>
@@ -5117,10 +5116,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var requestedSize = GetParameterULong(0);
             if (requestedSize > 0xFFFF)
-                _logger.Warn($"({Module.ModuleIdentifier}) Trying to allocate {requestedSize} bytes");
+                throw new OutOfMemoryException("farmalloc trying more than a segment");
 
-            // argument is ULONG size, but who cares, just return a full segment
-            Registers.SetPointer(Module.Memory.AllocateRealModeSegment());
+            Registers.SetPointer(_memoryAllocator.Malloc((ushort)requestedSize));
         }
 
         /// <summary>
@@ -5185,9 +5183,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void galfree()
         {
-            var ptr = GetParameterPointer(0);
-
-            _memoryAllocator.Free(ptr);
+            _memoryAllocator.Free(GetParameterPointer(0));
         }
 
 

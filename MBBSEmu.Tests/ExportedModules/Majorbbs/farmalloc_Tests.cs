@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Text;
+﻿using FluentAssertions;
+using System.Collections.Generic;
+using System;
 using MBBSEmu.Memory;
 using Xunit;
 
@@ -11,16 +12,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int FARFREE_ORDINAL = 202;
 
         [Fact]
-        public void FARMALLOC_Test()
+        public void FARMALLOC_AllocatesTooMuch()
         {
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARMALLOC_ORDINAL, new List<ushort> { 10, 10 });
+            Action action = () => ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARMALLOC_ORDINAL, new List<ushort> { 10, 10 });
+            action.Should().Throw<OutOfMemoryException>();
+        }
 
-            //Verify Results
-            Assert.NotEqual(0, mbbsEmuCpuRegisters.DX);
-            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+        [Fact]
+        public void FARMALLOC_HappyPath()
+        {
+            Reset();
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARMALLOC_ORDINAL, new List<ushort> { 256, 0 });
+
+            mbbsEmuCpuRegisters.GetPointer().Should().NotBe(FarPtr.Empty);
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FARFREE_ORDINAL, new List<FarPtr> { mbbsEmuCpuRegisters.GetPointer() });
         }
