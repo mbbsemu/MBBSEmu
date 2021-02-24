@@ -101,7 +101,7 @@ namespace MBBSEmu.Memory
     {
       if (size == 0 || _freeBlocks.Count == 0)
       {
-        Logger?.Warn("Failed to allocate memory of size {size} since we have no free blocks, or bad argument.");
+        Logger?.Warn($"Failed to allocate memory of size {size} since we have no free blocks, or bad argument.");
         return FarPtr.Empty;
       }
 
@@ -110,7 +110,7 @@ namespace MBBSEmu.Memory
           .Aggregate((LinkedListNode<MemoryBlock>)null, (curMin, memoryBlock) => (curMin == null || (memoryBlock.Value.Size < curMin.Value.Size) ? memoryBlock : curMin));
       if (foundBlock == null)
       {
-        Logger?.Warn("Failed to allocate memory of size {size} since we can't find a large enough free block.");
+        Logger?.Warn($"Failed to allocate memory of size {size} since we can't find a large enough free block.");
         return FarPtr.Empty;
       }
 
