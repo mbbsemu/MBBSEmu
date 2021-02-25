@@ -5143,7 +5143,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var requestedSize = GetParameterULong(0);
             if (requestedSize > 0xFFFF)
-                throw new OutOfMemoryException("farmalloc trying more than a segment");
+                throw new OutOfMemoryException("farmalloc trying to allocate more than a segment");
 
             Registers.SetPointer(Malloc((ushort)requestedSize));
         }
