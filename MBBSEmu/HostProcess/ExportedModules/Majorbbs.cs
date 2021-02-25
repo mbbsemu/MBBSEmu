@@ -81,7 +81,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly IAccountRepository _accountRepository;
 
-        private readonly MemoryAllocator _memoryAllocator;
+        private readonly Dictionary<ushort, MemoryAllocator> _memoryAllocators = new();
 
         /// <summary>
         ///     Index for SPR Variable
@@ -101,7 +101,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousMcvFile = new Stack<FarPtr>(10);
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
-            _memoryAllocator = new MemoryAllocator(logger, Module.Memory.AllocateRealModeSegment() + 2, 0xFFFE);
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;
@@ -5102,7 +5101,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void farfree()
         {
-            _memoryAllocator.Free(GetParameterPointer(0));
+            Free(GetParameterPointer(0));
+        }
+
+        private FarPtr Malloc(ushort size)
+        {
+            foreach (var allocator in _memoryAllocators.Values)
+            {
+                var ptr = allocator.Malloc(size);
+                if (!ptr.IsNull())
+                    return ptr;
+            }
+
+            // no segment could allocate, create a new allocator to handle it
+            var newSegment = Module.Memory.AllocateRealModeSegment();
+            var memoryAllocator = new MemoryAllocator(_logger, newSegment + 2, 0xFFFE);
+            _memoryAllocators.Add(newSegment.Segment, memoryAllocator);
+
+            return memoryAllocator.Malloc(size);
+        }
+
+        private void Free(FarPtr ptr)
+        {
+            if (!_memoryAllocators.TryGetValue(ptr.Segment, out var memoryAllocator))
+            {
+                _logger.Error($"Attempted to deallocate memory from an unknown segment {ptr}");
+                return;
+            }
+
+            memoryAllocator.Free(ptr);
         }
 
         /// <summary>
@@ -5118,7 +5145,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (requestedSize > 0xFFFF)
                 throw new OutOfMemoryException("farmalloc trying more than a segment");
 
-            Registers.SetPointer(_memoryAllocator.Malloc((ushort)requestedSize));
+            Registers.SetPointer(Malloc((ushort)requestedSize));
         }
 
         /// <summary>
@@ -5132,7 +5159,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            var allocatedMemory = _memoryAllocator.Malloc(size);
+            var allocatedMemory = Malloc(size);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
@@ -5183,7 +5210,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void galfree()
         {
-            _memoryAllocator.Free(GetParameterPointer(0));
+            Free(GetParameterPointer(0));
         }
 
 
@@ -7744,7 +7771,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var sourceStringPointer = GetParameterPointer(0);
             var inputBuffer = Module.Memory.GetString(sourceStringPointer, stripNull: false);
-            var destinationAllocatedPointer = _memoryAllocator.Malloc((ushort)inputBuffer.Length);
+            var destinationAllocatedPointer = Malloc((ushort)inputBuffer.Length);
 
             if (sourceStringPointer.IsNull())
             {
