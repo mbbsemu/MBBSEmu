@@ -8,7 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Memory
 {
-  public class MemoryAllocator_Tests
+  public class MemoryAllocator_Tests : TestBase
   {
     private const int SEGMENT = 1;
 
