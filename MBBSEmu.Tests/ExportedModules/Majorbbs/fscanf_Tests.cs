@@ -59,6 +59,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<FarPtr> {
                     filep, formatPointer, intPointer1, intPointer2, intPointer3, strPointer1, strPointer2
                 });
+
+                Console.WriteLine($"AX is {mbbsEmuCpuRegisters.AX}");
             }
 
             Assert.Equal(0, fclose(filep));

@@ -402,5 +402,15 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         FarPtr AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue);
 
+        /// <summary>
+        ///     Allocates a block of memory from the heap
+        /// </summary>
+        /// <param name="size">size of memory to allocate</param>
+        FarPtr Malloc(ushort size);
+
+        /// <summary>
+        ///     Frees a block of memory allocated from the heap
+        /// </summary>
+        void Free(FarPtr ptr);
     }
 }

@@ -22,12 +22,13 @@ namespace MBBSEmu.Memory
         private readonly Segment[] _segments = new Segment[0x10000];
         private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
 
-        private readonly Dictionary<string, FarPtr> _variablePointerDictionary;
-        private FarPtr _currentVariablePointer;
-        private const ushort VARIABLE_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
-        private FarPtr _currentRealModePointer;
+        private readonly Dictionary<string, FarPtr> _variablePointerDictionary = new();
+        private const ushort HEAP_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
+        private FarPtr _nextHeapPointer = new FarPtr(HEAP_BASE_SEGMENT, 0);
         private const ushort REALMODE_BASE_SEGMENT = 0x2000; //0x2000->0x2FFF == 256MB
-        private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks;
+        private FarPtr _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
+        private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks = new();
+        private readonly Dictionary<ushort, MemoryAllocator> _heapAllocators = new();
 
         /// <summary>
         ///     Default Compiler Hints for use on methods within the MemoryCore
@@ -39,13 +40,40 @@ namespace MBBSEmu.Memory
 
         public MemoryCore()
         {
-            _variablePointerDictionary = new Dictionary<string, FarPtr>();
-            _currentVariablePointer = new FarPtr(VARIABLE_BASE_SEGMENT, 0);
-            _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
-            _bigMemoryBlocks = new PointerDictionary<Dictionary<ushort, FarPtr>>();
-
             //Add Segment 0 by default, stack segment
             AddSegment(0);
+        }
+
+        public FarPtr Malloc(ushort size)
+        {
+            foreach (var allocator in _heapAllocators.Values)
+            {
+                var ptr = allocator.Malloc(size);
+                if (!ptr.IsNull())
+                    return ptr;
+            }
+
+            // no segment could allocate, create a new allocator to handle it
+            AddSegment(_nextHeapPointer.Segment);
+
+            // I hate null pointers/offsets so start the allocator at offset 2
+            var memoryAllocator = new MemoryAllocator(_logger, _nextHeapPointer + 2, 0xFFFE);
+            _heapAllocators.Add(_nextHeapPointer.Segment, memoryAllocator);
+
+            _nextHeapPointer.Segment++;
+
+            return memoryAllocator.Malloc(size);
+        }
+
+        public void Free(FarPtr ptr)
+        {
+            if (!_heapAllocators.TryGetValue(ptr.Segment, out var memoryAllocator))
+            {
+                _logger.Error($"Attempted to deallocate memory from an unknown segment {ptr}");
+                return;
+            }
+
+            memoryAllocator.Free(ptr);
         }
 
         /// <summary>
@@ -58,9 +86,10 @@ namespace MBBSEmu.Memory
             Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
 
             _variablePointerDictionary.Clear();
-            _currentVariablePointer = new FarPtr(VARIABLE_BASE_SEGMENT, 0);
+            _nextHeapPointer = new FarPtr(HEAP_BASE_SEGMENT, 0);
             _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
             _bigMemoryBlocks.Clear();
+            _heapAllocators.Clear();
         }
 
         /// <summary>
@@ -78,29 +107,12 @@ namespace MBBSEmu.Memory
                 return _variablePointerDictionary[name];
             }
 
-            //Do we have enough room in the current segment?
-            //If not, declare a new segment and start there
-            if (size + _currentVariablePointer.Offset >= ushort.MaxValue)
-            {
-                _currentVariablePointer.Segment++;
-                _currentVariablePointer.Offset = 0;
-                AddSegment(_currentVariablePointer.Segment);
-            }
-
-            if (!HasSegment(_currentVariablePointer.Segment))
-                AddSegment(_currentVariablePointer.Segment);
-
-#if DEBUG
-            //_logger.Debug(
-            //    $"Variable {name ?? "NULL"} allocated {size} bytes of memory in Host Memory Segment {_currentVariablePointer.Segment:X4}:{_currentVariablePointer.Offset:X4}");
-#endif
-            var currentOffset = _currentVariablePointer.Offset;
-            _currentVariablePointer.Offset += (ushort)(size + 1);
-
-            var newPointer = new FarPtr(_currentVariablePointer.Segment, currentOffset);
+            var newPointer = Malloc(size);
+            // zero fill
+            FillArray(newPointer, size, 0);
 
             if (declarePointer && string.IsNullOrEmpty(name))
-                throw new Exception("Unsupported operation, declaring pointer type for NULL named variable");
+                throw new ArgumentException("Unsupported operation, declaring pointer type for NULL named variable");
 
             if (!string.IsNullOrEmpty(name))
             {
@@ -108,7 +120,7 @@ namespace MBBSEmu.Memory
 
                 if (declarePointer)
                 {
-                    var variablePointer = AllocateVariable($"*{name}", 0x4, false);
+                    var variablePointer = AllocateVariable($"*{name}", 0x4, declarePointer: false);
                     SetArray(variablePointer, newPointer.Data);
                 }
             }
@@ -544,7 +556,7 @@ namespace MBBSEmu.Memory
         /// <param name="value"></param>
         public void FillArray(ushort segment, ushort offset, ushort count, byte value)
         {
-            Array.Fill(_memorySegments[segment],value, offset, count);
+            Array.Fill(_memorySegments[segment], value, offset, count);
         }
 
         /// <summary>
