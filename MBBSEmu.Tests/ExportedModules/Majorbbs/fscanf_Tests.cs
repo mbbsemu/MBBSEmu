@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
 
-            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, 16);
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(FORMAT.Length + 1));
             mbbsEmuMemoryCore.SetArray(formatPointer, Encoding.ASCII.GetBytes(FORMAT));
 
             var intPointer1 = mbbsEmuMemoryCore.AllocateVariable("FIRST", 2);
@@ -59,8 +59,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<FarPtr> {
                     filep, formatPointer, intPointer1, intPointer2, intPointer3, strPointer1, strPointer2
                 });
-
-                Console.WriteLine($"AX is {mbbsEmuCpuRegisters.AX}");
             }
 
             Assert.Equal(0, fclose(filep));
