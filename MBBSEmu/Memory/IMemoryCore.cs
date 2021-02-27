@@ -7,7 +7,7 @@ namespace MBBSEmu.Memory
     /// <summary>
     ///     Interface for Memory Management within MBBSEmu
     /// </summary>
-    public interface IMemoryCore
+    public interface IMemoryCore : IDisposable
     {
         //*** Variable Memory Management ***
 
