@@ -65,5 +65,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(6, lines);
         }
+
+        [Fact]
+        public void fscanf_invalid_filestream_Test()
+        {
+            //Reset State
+            Reset();
+
+            //Execute Test -- pass in invalid pointer
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<ushort> { 0, 0 });
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+        }
     }
 }

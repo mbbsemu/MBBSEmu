@@ -623,6 +623,26 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
+        public void f_read_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fread(new FarPtr(), 0, 0, new FarPtr()));
+        }
+
+        [Fact]
+        public void f_write_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fwrite(new FarPtr(), 0, 0, new FarPtr()));
+        }
+
+        [Fact]
         public void fgetc_InvalidStream_Throw()
         {
             //Reset State
