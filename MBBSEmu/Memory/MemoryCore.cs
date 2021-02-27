@@ -48,9 +48,11 @@ namespace MBBSEmu.Memory
         {
             foreach (var allocator in _heapAllocators.Values)
             {
-                var ptr = allocator.Malloc(size);
-                if (!ptr.IsNull())
-                    return ptr;
+                if (allocator.RemainingBytes >= size) {
+                    var ptr = allocator.Malloc(size);
+                    if (!ptr.IsNull())
+                        return ptr;
+                }
             }
 
             // no segment could allocate, create a new allocator to handle it
@@ -108,8 +110,7 @@ namespace MBBSEmu.Memory
             }
 
             var newPointer = Malloc(size);
-            // zero fill
-            FillArray(newPointer, size, 0);
+            SetZero(newPointer, size);
 
             if (declarePointer && string.IsNullOrEmpty(name))
                 throw new ArgumentException("Unsupported operation, declaring pointer type for NULL named variable");
