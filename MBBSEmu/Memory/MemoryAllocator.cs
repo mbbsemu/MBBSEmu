@@ -34,13 +34,13 @@ namespace MBBSEmu.Memory
     /// <summary>
     ///   List of free memory blocks we currently have.
     /// </summary>
-    private LinkedList<MemoryBlock> _freeBlocks = new();
+    private readonly LinkedList<MemoryBlock> _freeBlocks = new();
     /// <summary>
     ///   Stores all of our allocated memory blocks.
     ///
     ///   Key is the pointer, Value is the size of the allocated memory block.
     /// </summary>
-    private ConcurrentDictionary<FarPtr, uint> _allocatedBlocks = new();
+    private readonly ConcurrentDictionary<FarPtr, uint> _allocatedBlocks = new();
 
     /// <summary>
     ///   Lowest memory address that this allocator can return as a valid pointer.
@@ -66,7 +66,7 @@ namespace MBBSEmu.Memory
     ///
     ///   Only used for testing.
     /// </summary>
-    public int FreeBlocks { get => _freeBlocks.Count; }
+    public int FreeBlocks => _freeBlocks.Count;
 
     /// <summary>
     ///   Constructs a new MemoryAllocator.
@@ -96,7 +96,7 @@ namespace MBBSEmu.Memory
     /// <summary>
     ///   Allocates a block of memory of size size.
     ///
-    ///   Returns NULL if size is 0 or no memory is available.
+    ///   Returns NULL if no memory is available.
     /// </summary>
     /// <param name="size">size in bytes to allocate.</param>
     /// <returns></returns>
@@ -155,7 +155,7 @@ namespace MBBSEmu.Memory
       RemainingBytes += size;
 
       // see if we can remerge
-      var node = _freeBlocks.EnumerateNodes().Where(node => node.Value.Offset == ptr.Offset + size || node.Value.EndOffset == ptr.Offset).FirstOrDefault();
+      var node = _freeBlocks.EnumerateNodes().FirstOrDefault(node => node.Value.Offset == ptr.Offset + size || node.Value.EndOffset == ptr.Offset);
       if (node != null)
       {
         // if the adjacent free block is immediately after the freed memory, change the adjacent
@@ -187,28 +187,26 @@ namespace MBBSEmu.Memory
       while (_freeBlocks.Count > 1)
       {
         // look for nodes that join each other
-        var node = _freeBlocks.EnumerateNodes().Where(node => node.Value.EndOffset == updatedBlock.Value.Offset || updatedBlock.Value.EndOffset == node.Value.Offset).FirstOrDefault();
-        if (node != null)
-        {
-          LinkedListNode<MemoryBlock> liveNode;
-          LinkedListNode<MemoryBlock> deadNode;
-          // live node always has the lowest offset
-          if (node.Value.Offset < updatedBlock.Value.Offset)
-          {
-            liveNode = node;
-            deadNode = updatedBlock;
-          }
-          else
-          {
-            liveNode = updatedBlock;
-            deadNode = node;
-          }
-          updatedBlock = MergeNodesAndRemoveDeadNode(liveNode, deadNode);
-          // we've updated another block, so try to compact again
-          continue;
-        }
+        var node = _freeBlocks.EnumerateNodes().FirstOrDefault(node => node.Value.EndOffset == updatedBlock.Value.Offset || updatedBlock.Value.EndOffset == node.Value.Offset);
+        if (node == null)
+          return;
 
-        return;
+        LinkedListNode<MemoryBlock> liveNode;
+        LinkedListNode<MemoryBlock> deadNode;
+        // live node always has the lowest offset
+        if (node.Value.Offset < updatedBlock.Value.Offset)
+        {
+          liveNode = node;
+          deadNode = updatedBlock;
+        }
+        else
+        {
+          liveNode = updatedBlock;
+          deadNode = node;
+        }
+        updatedBlock = MergeNodesAndRemoveDeadNode(liveNode, deadNode);
+        // we've updated another block, so try to compact again
+        continue;
       }
     }
   }

@@ -48,11 +48,12 @@ namespace MBBSEmu.Memory
         {
             foreach (var allocator in _heapAllocators.Values)
             {
-                if (allocator.RemainingBytes >= size) {
-                    var ptr = allocator.Malloc(size);
-                    if (!ptr.IsNull())
-                        return ptr;
-                }
+                if (allocator.RemainingBytes < size)
+                    continue;
+
+                var ptr = allocator.Malloc(size);
+                if (!ptr.IsNull())
+                    return ptr;
             }
 
             // no segment could allocate, create a new allocator to handle it
