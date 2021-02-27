@@ -21,6 +21,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
+
+            //Set System variable
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
             textVariableService.SetVariable("SYSTEM_NAME", () => "MBBSEmu");
 
