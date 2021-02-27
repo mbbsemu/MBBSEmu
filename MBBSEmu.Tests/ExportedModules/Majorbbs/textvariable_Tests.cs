@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.Memory;
+using MBBSEmu.TextVariables;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
@@ -13,10 +14,15 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Theory]
         [InlineData("SYSTEM", 0)]
         [InlineData("UNIT_TEST", 1)]
+        [InlineData("XXX", 65535)]
+        [InlineData("SYSTEM_NAME", 0)]
+        [InlineData("", 2)]
         public void FINDTVAR_Test(string inputString, ushort expectedOrdinal)
         {
             //Reset State
             Reset();
+            var textVariableService = _serviceResolver.GetService<ITextVariableService>();
+            textVariableService.SetVariable("SYSTEM_NAME", () => "MBBSEmu");
 
             var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
