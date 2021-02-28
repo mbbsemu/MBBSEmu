@@ -1281,6 +1281,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 905:
                     stzcat();
                     break;
+                case 1012:
+                    setmode();
+                    break;
+                case 327:
+                    gettime();
+                    break;
                 case 9000:
                     txtvars_delegate();
                     break;
@@ -7867,6 +7873,55 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(txtvarsReturnPointer, Encoding.ASCII.GetBytes(txtvarValue + '\0'));
 
             Registers.SetPointer(txtvarsReturnPointer);
+        }
+
+        /// <summary>
+        ///     setmode - sets mode of open file
+        ///
+        ///     Signature: int setmode(int handle, int mode);
+        /// </summary>
+        private void setmode()
+        {
+            var fileHandle = GetParameter(0);
+            var fileMode = GetParameter(1);
+
+            var fileStreamPointer = FilePointerDictionary[fileHandle];
+            var fileStructPointer = Module.Memory.GetOrAllocateVariablePointer($"FILE_{fileStreamPointer.Name}-{FilePointerDictionary.Count}", FileStruct.Size);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            switch (fileMode)
+            {
+                case 0x4000:
+                    fileStruct.flags &= (ushort)FileStruct.EnumFileFlags.Binary;
+                    Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    break;
+                case 0x8000:
+                    fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.Binary;
+                    Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    break;
+                default:
+                    throw new Exception($"Unknown file open mode: {fileMode}");
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Setting mode {fileMode} for {fileStreamPointer.Name}");
+#endif
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     gettime - gets MS-DOS time
+        ///
+        ///     Signature: void gettime(struct time *timep);
+        /// </summary>
+        private void gettime()
+        {
+            var timePointer = GetParameterPointer(0);
+
+            var dosTimeDateStruct = new TimeStruct(_clock.Now);
+
+            Module.Memory.SetArray(timePointer, dosTimeDateStruct.Data);
         }
     }
 }
