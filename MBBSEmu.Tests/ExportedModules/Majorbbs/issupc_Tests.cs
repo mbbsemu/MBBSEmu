@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class issupc_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ISSUPC_ORDINAL = 362;
 

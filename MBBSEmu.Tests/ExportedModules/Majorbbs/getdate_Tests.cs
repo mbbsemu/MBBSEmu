@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class getdate_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int GETDATE_ORDINAL = 320;
 

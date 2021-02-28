@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class random_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int GENRDN_ORDINAL = 315;
         private const int LNGRND_ORDINAL = 390;

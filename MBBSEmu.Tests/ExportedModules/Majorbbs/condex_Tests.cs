@@ -1,12 +1,12 @@
-﻿using System.Collections.Generic;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class condex_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort CONDEX_ORDINAL = 137;
 

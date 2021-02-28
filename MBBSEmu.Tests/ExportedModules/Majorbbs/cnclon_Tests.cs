@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class cnclon_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int CNCLON_ORDINAL = 126;
         private const int CNCINT_ORDINAL = 125;

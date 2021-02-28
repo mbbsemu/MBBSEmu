@@ -7,7 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class parsin_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort PARSIN_ORDINAL = 467;
 

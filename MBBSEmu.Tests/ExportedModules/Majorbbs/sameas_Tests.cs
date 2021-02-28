@@ -1,11 +1,11 @@
+using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class sameas_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int SAMEAS_ORDINAL = 520;
 
@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("This is great!", "This is great!", 1)]
         [InlineData("super", "supe", 0)]
         [InlineData("supe", "super", 0)]
-        public void compareTest(string a, string b, ushort expected)
+        public void sameas_Test(string a, string b, ushort expected)
         {
             //Reset State
             Reset();

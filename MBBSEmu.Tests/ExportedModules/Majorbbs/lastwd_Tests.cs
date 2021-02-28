@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class lastwd_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int LASTWD_ORDINAL = 381;
 

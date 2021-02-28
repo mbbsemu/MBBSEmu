@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using MBBSEmu.Memory;
+using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strlwr_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRLWR_ORDINAL = 579;
 

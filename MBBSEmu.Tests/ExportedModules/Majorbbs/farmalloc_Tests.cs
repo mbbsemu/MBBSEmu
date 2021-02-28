@@ -1,12 +1,12 @@
 ﻿using FluentAssertions;
-using System.Collections.Generic;
-using System;
 using MBBSEmu.Memory;
+using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class farmalloc_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int FARMALLOC_ORDINAL = 203;
         private const int FARFREE_ORDINAL = 202;

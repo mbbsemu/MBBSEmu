@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strchr_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRCHR_ORDINAL = 572;
 

@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class _8087_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests : ExportedModuleTestBase
     {
         private const int _8087_ORDINAL = 737;
 

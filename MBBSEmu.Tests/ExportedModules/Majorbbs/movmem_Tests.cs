@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class movmem_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int MOVMEM_ORDINAL = 420;
 

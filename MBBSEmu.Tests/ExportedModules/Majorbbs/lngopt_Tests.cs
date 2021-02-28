@@ -7,7 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class lngopt_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int LNGOPT_ORDINAL = 389;
 

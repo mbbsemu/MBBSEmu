@@ -1,5 +1,4 @@
 ﻿using MBBSEmu.Memory;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class rstrin_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort RSTRIN_ORDINAL = 511;
 

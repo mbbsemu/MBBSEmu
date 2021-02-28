@@ -1,11 +1,11 @@
 ﻿using MBBSEmu.Memory;
 using System.Collections.Generic;
-using Xunit;
 using System.Text;
+using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class nkyrec_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int NKYREC_ORDINAL = 432;
 

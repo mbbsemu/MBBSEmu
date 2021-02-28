@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class nctime_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int NCTIME_ORDINAL = 430;
 

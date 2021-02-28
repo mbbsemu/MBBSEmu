@@ -1,14 +1,14 @@
 using FluentAssertions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class anpbtv_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort RECORD_LENGTH = 80;
         private const int ABSBTV = 53;

@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class alcblok_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ALCBLOK_ORDINAL = 879;
         private const int PTRBLOK_ORDINAL = 880;

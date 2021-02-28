@@ -1,11 +1,11 @@
+using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strupr_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRUPR_ORDINAL = 587;
 

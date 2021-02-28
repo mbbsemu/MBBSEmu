@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class stp4cs_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STP4CS_ORDINAL = 960;
 

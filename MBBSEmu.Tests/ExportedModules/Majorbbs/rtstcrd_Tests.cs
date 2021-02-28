@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class rtstcrd_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int RTSTCRD_ORDINAL = 517;
 

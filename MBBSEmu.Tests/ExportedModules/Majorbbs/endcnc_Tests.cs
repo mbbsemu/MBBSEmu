@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class endcnc_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ENDCNC_ORDINAL = 191;
 

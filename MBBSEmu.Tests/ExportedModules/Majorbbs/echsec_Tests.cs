@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class echsec_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort ECHESC = 811;
 

@@ -1,12 +1,12 @@
+using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using System;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class sscanf_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int SSCANF_ORDINAL = 562;
 

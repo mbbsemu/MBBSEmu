@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class languages_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int LANGUAGES_ORDINAL = 762;
 

@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class curusr_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int CURUSR_ORDINAL = 151;
 

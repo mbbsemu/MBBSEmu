@@ -1,10 +1,8 @@
-﻿using MBBSEmu.Memory;
-using System.Collections.Generic;
-using Xunit;
+﻿using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class digalw_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int DIGALW_ORDINAL = 169;
 

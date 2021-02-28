@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class setmem_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int SETMEM_ORDINAL = 544;
 

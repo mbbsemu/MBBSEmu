@@ -1,11 +1,11 @@
+using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strcmp_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRCMP_ORDINAL = 573;
 
@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("This is great!", "This is great!", 0)]
         [InlineData("super", "supe", 1)]
         [InlineData("supe", "super", 0xFFFF)]
-        public void compareTest(string a, string b, ushort expected)
+        public void strcmp_Test(string a, string b, ushort expected)
         {
             //Reset State
             Reset();
@@ -38,7 +38,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
-        public void emptyCompareTest()
+        public void empty_strcmp_Test()
         {
             //Reset State
             Reset();

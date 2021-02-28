@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class alctile_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ALCTILE_ORDINAL = 832;
         private const int PTRTILE_ORDINAL = 833;

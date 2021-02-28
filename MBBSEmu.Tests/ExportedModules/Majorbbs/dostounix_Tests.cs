@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class dostounix_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int DOSTOUNIX_ORDINAL = 173;
 

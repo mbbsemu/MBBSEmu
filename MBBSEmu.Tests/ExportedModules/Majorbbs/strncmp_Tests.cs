@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strncmp_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRNCMP_ORDINAL = 581;
 
@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("sUper", "supe", 4, 1)]
         [InlineData("super", "supe", 4, 0)]
         [InlineData("supe", "Super", 5, 0xFFFF)]
-        public void compareTest(string a, string b, ushort length, ushort expected)
+        public void strncmp_Test(string a, string b, ushort length, ushort expected)
         {
             //Reset State
             Reset();

@@ -1,11 +1,9 @@
 ﻿using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class toupperlower_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int TOLOWER_ORDINAL = 603;
         private const int TOUPPER_ORDINAL = 604;

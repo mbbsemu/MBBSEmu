@@ -1,13 +1,12 @@
-using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strncat_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
-        private const int STRCAT_ORDINAL = 580;
+        private const int STRNCAT_ORDINAL = 580;
 
         [Theory]
         [InlineData("TEST1 ", "TEST1", 32, "TEST1 TEST1")]
@@ -32,7 +31,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(src));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCAT_ORDINAL,
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCAT_ORDINAL,
                 new List<ushort>
                 {
                     destinationStringPointer.Offset,

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class onsys_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ONSYS_ORDINAL = 449;
         private const int ONSYSN_ORDINAL = 450;

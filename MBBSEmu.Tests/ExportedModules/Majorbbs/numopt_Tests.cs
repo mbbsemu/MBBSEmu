@@ -1,13 +1,13 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class numopt_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int NUMOPT_ORDINAL = 441;
 

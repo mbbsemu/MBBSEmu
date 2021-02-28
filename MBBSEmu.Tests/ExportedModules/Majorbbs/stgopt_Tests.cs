@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class stgopt_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STGOPT_ORDINAL = 566;
 

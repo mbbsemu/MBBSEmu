@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class morcnc_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int MORCNC_ORDINAL = 419;
 
@@ -18,7 +18,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("123    456\0", 4, '4', 7)]
         [InlineData("123\0", 3, '\0', 3)]
         [InlineData("\0", 0, '\0', 0)]
-        public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
+        public void morcnc_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State
             Reset();

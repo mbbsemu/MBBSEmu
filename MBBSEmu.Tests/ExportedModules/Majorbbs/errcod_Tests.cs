@@ -4,12 +4,12 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class errcod_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ERRCOD_ORDINAL = 193;
 
         [Fact]
-        public void ClingoTests()
+        public void errcode_Tests()
         {
             //Reset State
             Reset();

@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class hdluid_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const ushort HDLUID_ORDINAL = 338;
 

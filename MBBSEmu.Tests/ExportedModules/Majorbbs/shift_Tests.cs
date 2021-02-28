@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class shift_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int ULONG_R_SHIFT_ORDINAL = 661;
         private const int LONG_R_SHIFT_ORDINAL = 660;

@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class textvariable_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int FINDTVAR_ORDINAL = 215;
         private const int REGISTER_TEXTVAR_ORDINAL = 494;

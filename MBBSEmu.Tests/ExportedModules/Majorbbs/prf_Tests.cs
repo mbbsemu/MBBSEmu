@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class prf_Tests : ExportedModuleTestBase
+    public class Majorbbs_prf_Tests : ExportedModuleTestBase
     {
         private const int PRF_ORDINAL = 474;
 

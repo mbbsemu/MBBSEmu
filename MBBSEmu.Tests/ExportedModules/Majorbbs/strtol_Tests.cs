@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class strtol_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int STRTOL_ORDINAL = 586;
 

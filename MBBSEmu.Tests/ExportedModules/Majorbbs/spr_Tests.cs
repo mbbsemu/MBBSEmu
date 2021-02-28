@@ -1,8 +1,8 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     /// <summary>
     ///     Tests specifically for SPR, for printf formatting, please use prf
     /// </summary>
-    public class spr_Tests : ExportedModuleTestBase
+    public class Majorbbs_spr_Tests : ExportedModuleTestBase
     {
         private const int SPR_ORDINAL = 559;
 

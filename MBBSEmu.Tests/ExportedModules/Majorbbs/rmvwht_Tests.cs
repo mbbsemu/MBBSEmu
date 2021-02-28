@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using MBBSEmu.Memory;
+using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class rmvwht_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int RMVWHT_ORDINAL = 501;
 

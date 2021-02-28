@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class chropt_Tests : ExportedModuleTestBase
+    public partial class Majorbbs_Tests
     {
         private const int CHROPT_ORDINAL = 107;
 

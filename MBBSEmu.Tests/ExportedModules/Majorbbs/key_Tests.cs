@@ -8,7 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class key_Tests : ExportedModuleTestBase
+    public class Majorbbs_key_Tests : ExportedModuleTestBase
     {
 
         private const ushort HASKEY_ORDINAL = 334;
