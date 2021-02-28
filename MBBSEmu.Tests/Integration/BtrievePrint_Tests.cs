@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    public class BtrievePrint_Tests : MBBSEmuIntegrationTestBase
+    public partial class Integration_Tests
     {
         [Fact]
         public void PhysicalOrder_TestAndLogOff()

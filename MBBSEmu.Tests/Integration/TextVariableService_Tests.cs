@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    public class TextVariableService_Tests : MBBSEmuIntegrationTestBase
+    public partial class Integration_Tests
     {
         [Fact]
         public void TextVariableServiceGetVariables()

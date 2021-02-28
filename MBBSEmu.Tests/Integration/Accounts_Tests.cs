@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    public class Accounts_Tests : MBBSEmuIntegrationTestBase
+    public partial class Integration_Tests
     {
         [Theory]
         [InlineData("SYSOP", true)]

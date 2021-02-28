@@ -8,7 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
-    public class NightlyCleanup_Tests : MBBSEmuIntegrationTestBase
+    public partial class Integration_Tests
     {
         [Fact]
         public void Shutdown()
