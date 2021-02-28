@@ -9,32 +9,34 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         private const int STRNCPY_ORDINAL = 582;
 
-        // DST buffer is "AAAAAAAA"
+        // DST buffer is "AAAAAAA"
         [Theory]
-        [InlineData(8, "Test", 4, "TestAAAA")]
-        [InlineData(8, "Test", 0, "AAAAAAAA")]
-        [InlineData(8, "Test", 1, "TAAAAAAA")]
+        [InlineData(8, "Test", 4, "TestAAA")]
+        [InlineData(8, "Test", 0, "AAAAAAA")]
+        [InlineData(8, "Test", 1, "TAAAAAA")]
         [InlineData(8, "Test", 5, "Test")]
         public void strncpy_Test(ushort dstLength, string srcString, ushort copyLength, string expected)
         {
             //Reset State
             Reset();
 
-            //Set Argument Values to be Passed In
+            // Fills destination with all AAAAAAAAAAAAA, up to dstLength - 1 and then a NULL terminator
             var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DST", dstLength);
-            mbbsEmuMemoryCore.SetArray("DST", Enumerable.Repeat((byte)'A', dstLength).ToArray());
+            mbbsEmuMemoryCore.SetArray(destinationStringPointer, Enumerable.Repeat((byte)'A', dstLength).ToArray());
+            mbbsEmuMemoryCore.SetByte(destinationStringPointer + dstLength - 1, 0);
 
             var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort)(srcString.Length+1));
-            mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(srcString));
+            mbbsEmuMemoryCore.SetArray(sourceStringPointer, Encoding.ASCII.GetBytes(srcString));
+            mbbsEmuMemoryCore.SetByte(sourceStringPointer + srcString.Length, 0);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCPY_ORDINAL,
                 new List<ushort>
                 {
-                    destinationStringPointer.Offset, 
-                    destinationStringPointer.Segment, 
+                    destinationStringPointer.Offset,
+                    destinationStringPointer.Segment,
                     sourceStringPointer.Offset,
-                    sourceStringPointer.Segment, 
+                    sourceStringPointer.Segment,
                     copyLength
                 });
 

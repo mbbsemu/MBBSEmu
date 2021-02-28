@@ -1363,15 +1363,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void alczer()
         {
-            var size = GetParameter(0);
+            galmalloc();
 
-            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
+            if (Registers.GetPointer().IsNull())
+                throw new OutOfMemoryException("Module failed to allocate memory");
 
-#if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
-#endif
-
-            Registers.SetPointer(allocatedMemory);
+            // zero fill
+            Module.Memory.FillArray(Registers.GetPointer(), GetParameter(0), 0);
         }
 
         /// <summary>
@@ -3630,7 +3628,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             scanf(inputString.GetEnumerator(), formatString, 4);
         }
 
-        private static IEnumerator<char> fromFileStream(FileStream input)
+        private static IEnumerator<char> FromFileStream(FileStream input)
         {
             int b;
             while ((b = input.ReadByte()) >= 0)
@@ -3656,7 +3654,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            scanf(fromFileStream(fileStream), formatString, 4);
+            scanf(FromFileStream(fileStream), formatString, 4);
         }
 
         private enum FormatParseState
@@ -5101,8 +5099,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void farfree()
         {
-            // no op, we don't support freeing yet
-            _logger.Debug($"({Module.ModuleIdentifier}) Farfreeing {GetParameterPointer(0)}");
+            Module.Memory.Free(GetParameterPointer(0));
         }
 
         /// <summary>
@@ -5116,10 +5113,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var requestedSize = GetParameterULong(0);
             if (requestedSize > 0xFFFF)
-                _logger.Warn($"({Module.ModuleIdentifier}) Trying to allocate {requestedSize} bytes");
+                throw new OutOfMemoryException("farmalloc trying to allocate more than a segment");
 
-            // argument is ULONG size, but who cares, just return a full segment
-            Registers.SetPointer(Module.Memory.AllocateRealModeSegment());
+            Registers.SetPointer(Module.Memory.Malloc((ushort)requestedSize));
         }
 
         /// <summary>
@@ -5133,7 +5129,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var size = GetParameter(0);
 
-            var allocatedMemory = Module.Memory.AllocateVariable(null, size);
+            var allocatedMemory = Module.Memory.Malloc(size);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
@@ -5184,10 +5180,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void galfree()
         {
-            //Until we can refactor the memory controller, just return
-
-            //TODO: Memory is going to be leaked, need to fix this
-            return;
+            Module.Memory.Free(GetParameterPointer(0));
         }
 
 
@@ -7747,10 +7740,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void alcdup()
         {
             var sourceStringPointer = GetParameterPointer(0);
-            var inputBuffer = Module.Memory.GetString(sourceStringPointer);
-            var destinationAllocatedPointer = Module.Memory.AllocateVariable(null, (ushort)inputBuffer.Length);
+            var inputBuffer = Module.Memory.GetString(sourceStringPointer, stripNull: false);
+            var destinationAllocatedPointer = Module.Memory.Malloc((ushort)inputBuffer.Length);
 
-            if (sourceStringPointer == FarPtr.Empty)
+            if (sourceStringPointer.IsNull())
             {
                 Module.Memory.SetByte(destinationAllocatedPointer, 0);
 #if DEBUG
@@ -7760,9 +7753,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             else
             {
                 Module.Memory.SetArray(destinationAllocatedPointer, inputBuffer);
-#if DEBUG
-                //_logger.Debug($"({Module.ModuleIdentifier}) Copied {inputBuffer.Length} bytes from {sourceStringPointer} to {destinationAllocatedPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
-#endif
             }
 
 #if DEBUG
