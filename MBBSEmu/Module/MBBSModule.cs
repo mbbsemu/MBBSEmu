@@ -126,7 +126,7 @@ namespace MBBSEmu.Module
 
         /// <summary>
         ///     Constructor for MbbsModule
-        /// 
+        ///
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
         /// <param name="logger"></param>
@@ -139,7 +139,7 @@ namespace MBBSEmu.Module
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
-            
+
             ModuleIdentifier = moduleIdentifier;
             ModuleDlls = new List<MbbsDll>();
 
@@ -205,8 +205,8 @@ namespace MBBSEmu.Module
             GlobalCommandHandlers = new List<FarPtr>();
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
-            
-            Memory = memoryCore ?? new MemoryCore();
+
+            Memory = memoryCore ?? new MemoryCore(logger);
 
             //Declare PSP Segment
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
@@ -240,9 +240,9 @@ namespace MBBSEmu.Module
                         throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
 
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
-                    
+
                     initEntryPointPointer = new FarPtr((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
-                    
+
                 }
                 else
                 {

@@ -1452,37 +1452,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var limit = GetParameter(4);
 
-            //Reserve last byte for NUL
-            if (limit > 0)
-            {
-                --limit;
-            }
+            strncpy();
 
-            using var inputBuffer = new MemoryStream(limit);
-            var potentialString = Module.Memory.GetArray(sourcePointer, limit);
-            for (var i = 0; i < limit; i++)
-            {
-                if (potentialString[i] == 0x0)
-                    break;
-
-                inputBuffer.WriteByte(potentialString[i]);
-            }
-
-            //If the value read is less than the limit, it'll be padded with null characters
-            //per the MajorBBS Development Guide
-            for (var i = inputBuffer.Length; i < limit; i++)
-                inputBuffer.WriteByte(0x0);
-
-            //Set last byte to NUL
-            inputBuffer.WriteByte(0x0);
-
-            Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
-
-#if DEBUG
-            _logger.Debug(
-                $"({Module.ModuleIdentifier}) Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
-#endif
-            Registers.SetPointer(destinationPointer);
+            Module.Memory.SetByte(destinationPointer + limit - 1, 0);
         }
 
         /// <summary>
