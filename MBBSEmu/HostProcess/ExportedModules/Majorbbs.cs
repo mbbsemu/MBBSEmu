@@ -1440,21 +1440,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Copies a string with a fixed length
+        ///     Copies a string with a fixed length - differs from strncpy in that it guarantees null
+        ///     termination.
         ///
-        ///     Signature: stzcpy(char *dest, char *source, int nbytes);
-        ///     Return: AX = Offset in Segment
-        ///             DX = Data Segment
+        ///     Signature: char *stzcpy(char *dest, char *source, int nbytes);
+        ///     Return: dest in DX:AX
         /// </summary>
         private void stzcpy()
         {
             var destinationPointer = GetParameterPointer(0);
-            var sourcePointer = GetParameterPointer(2);
             var limit = GetParameter(4);
 
             strncpy();
 
-            Module.Memory.SetByte(destinationPointer + limit - 1, 0);
+            if (limit > 0)
+                Module.Memory.SetByte(destinationPointer + limit - 1, 0);
         }
 
         /// <summary>
