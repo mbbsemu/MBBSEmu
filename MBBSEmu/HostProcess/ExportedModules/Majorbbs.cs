@@ -7930,9 +7930,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var timePointer = GetParameterPointer(0);
 
-            var dosTimeDateStruct = new TimeStruct(_clock.Now);
+            var dosTimeStruct = new TimeStruct(_clock.Now);
 
-            Module.Memory.SetArray(timePointer, dosTimeDateStruct.Data);
+            Module.Memory.SetArray(timePointer, dosTimeStruct.Data);
         }
     }
 }
