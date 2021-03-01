@@ -7879,35 +7879,46 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     setmode - sets mode of open file
         ///
         ///     Signature: int setmode(int handle, int mode);
+        ///
+        /// FROM: fcntl.h:
+        /// * NOTE: Text is the default even if the given _O_TEXT bit is not on. */
+        /// #define _O_TEXT		0x4000	/* CR-LF in file becomes LF in memory. */
+        /// #define _O_BINARY	0x8000	/* Input and output is not translated. */
         /// </summary>
         private void setmode()
         {
             var fileHandle = GetParameter(0);
             var fileMode = GetParameter(1);
 
-            var fileStreamPointer = FilePointerDictionary[fileHandle];
-            var fileStructPointer = Module.Memory.GetOrAllocateVariablePointer($"FILE_{fileStreamPointer.Name}-{FilePointerDictionary.Count}", FileStruct.Size);
+            if (!FilePointerDictionary.TryGetValue(fileHandle, out var fileStreamPointer))
+            {
+                // TODO sets errno to ???;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
 
+            var fileStructPointer = Module.Memory.GetOrAllocateVariablePointer($"FILE_{fileStreamPointer.Name}-{FilePointerDictionary.Count}", FileStruct.Size);
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             switch (fileMode)
             {
-                case 0x4000:
-                    fileStruct.flags &= (ushort)FileStruct.EnumFileFlags.Binary;
+                case 0x4000: //TEXT
+                    fileStruct.flags.ClearFlag((ushort)FileStruct.EnumFileFlags.Binary);
                     Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    Registers.AX = 0x8000;
                     break;
-                case 0x8000:
+                case 0x8000: //BINARY
                     fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.Binary;
                     Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    Registers.AX = 0x4000;
                     break;
                 default:
-                    throw new Exception($"Unknown file open mode: {fileMode}");
+                    throw new Exception($"Unknown setmode: {fileMode}");
             }
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Setting mode {fileMode} for {fileStreamPointer.Name}");
 #endif
-            Registers.AX = 0;
         }
 
         /// <summary>
