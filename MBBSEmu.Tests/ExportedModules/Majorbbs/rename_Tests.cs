@@ -36,10 +36,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 CreateFile(oldFileName);
             
             //Pointer to old and new filenames
-            var fromNamePointer = mbbsEmuMemoryCore.AllocateVariable("FROM_NAME", (ushort) oldFileName.Length);
+            var fromNamePointer = mbbsEmuMemoryCore.AllocateVariable("FROM_NAME", (ushort) (oldFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(fromNamePointer, Encoding.ASCII.GetBytes(oldFileName));
 
-            var toNamePointer = mbbsEmuMemoryCore.AllocateVariable("TO_NAME", (ushort) newFileName.Length);
+            var toNamePointer = mbbsEmuMemoryCore.AllocateVariable("TO_NAME", (ushort) (newFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(toNamePointer, Encoding.ASCII.GetBytes(newFileName));
 
             try
