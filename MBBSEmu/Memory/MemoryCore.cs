@@ -654,5 +654,10 @@ namespace MBBSEmu.Memory
             AddSegment(realModeSegment.Segment, segmentSize);
             return realModeSegment;
         }
+
+        public void Dispose()
+        {
+            Clear();
+        }
     }
 }
