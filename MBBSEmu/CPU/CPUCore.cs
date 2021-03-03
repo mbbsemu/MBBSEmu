@@ -1126,7 +1126,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cwd()
         {
-            Registers.DX = Registers.AX.IsBitSet(15) ? 0xFFFF : 0x0000;
+            Registers.DX = (ushort)(Registers.AX.IsBitSet(15) ? 0xFFFF : 0x0000);
         }
 
 

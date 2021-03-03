@@ -1310,7 +1310,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var caseSensitive = GetParameterBool(2);
             var operation = (EnumBtrieveOperationCodes) GetParameter(3);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
+            Registers.AX = (ushort)(anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0);
         }
 
         private bool anpbtv(FarPtr recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
@@ -6267,7 +6267,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0;
+            Registers.AX = (ushort) (anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0);
         }
 
         /// <summary>
