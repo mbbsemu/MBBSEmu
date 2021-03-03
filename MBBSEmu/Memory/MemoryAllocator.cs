@@ -109,7 +109,7 @@ namespace MBBSEmu.Memory
       }
 
       // align to word boundary
-      size = size == 0 ? 2 : (ushort)((size + 1) & 0xFFFE);
+      size = (ushort) (size == 0 ? 2 : (size + 1) & 0xFFFE);
 
       var foundBlock = _freeBlocks.EnumerateNodes()
           .Where(memoryBlock => memoryBlock.Value.Size >= size)
