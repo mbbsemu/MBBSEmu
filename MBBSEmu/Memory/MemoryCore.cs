@@ -17,7 +17,7 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class MemoryCore : IMemoryCore
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected readonly ILogger _logger;
         private readonly byte[][] _memorySegments = new byte[0x10000][];
         private readonly Segment[] _segments = new Segment[0x10000];
         private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
@@ -38,8 +38,9 @@ namespace MBBSEmu.Memory
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        public MemoryCore()
+        public MemoryCore(ILogger logger)
         {
+            _logger = logger;
             //Add Segment 0 by default, stack segment
             AddSegment(0);
         }
@@ -653,6 +654,11 @@ namespace MBBSEmu.Memory
             var realModeSegment = new FarPtr(_currentRealModePointer);
             AddSegment(realModeSegment.Segment, segmentSize);
             return realModeSegment;
+        }
+
+        public void Dispose()
+        {
+            Clear();
         }
     }
 }

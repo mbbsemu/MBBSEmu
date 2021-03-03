@@ -20,5 +20,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(1, mbbsEmuMemoryCore.GetWord("USRNUM"));
         }
+
+        [Fact]
+        public void CURUSR_invalid_Test()
+        {
+            //Reset State
+            Reset();
+
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord("USRNUM"));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CURUSR_ORDINAL, new List<ushort> { 1000 });
+
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord("USRNUM"));
+        }
     }
 }

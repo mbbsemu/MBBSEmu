@@ -1316,7 +1316,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var caseSensitive = GetParameterBool(2);
             var operation = (EnumBtrieveOperationCodes) GetParameter(3);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
+            Registers.AX = (ushort)(anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0);
         }
 
         private bool anpbtv(FarPtr recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
@@ -1446,49 +1446,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Copies a string with a fixed length
+        ///     Copies a string with a fixed length - differs from strncpy in that it guarantees null
+        ///     termination.
         ///
-        ///     Signature: stzcpy(char *dest, char *source, int nbytes);
-        ///     Return: AX = Offset in Segment
-        ///             DX = Data Segment
+        ///     Signature: char *stzcpy(char *dest, char *source, int nbytes);
+        ///     Return: dest in DX:AX
         /// </summary>
         private void stzcpy()
         {
             var destinationPointer = GetParameterPointer(0);
-            var sourcePointer = GetParameterPointer(2);
             var limit = GetParameter(4);
 
-            //Reserve last byte for NUL
+            strncpy();
+
             if (limit > 0)
-            {
-                --limit;
-            }
-
-            using var inputBuffer = new MemoryStream(limit);
-            var potentialString = Module.Memory.GetArray(sourcePointer, limit);
-            for (var i = 0; i < limit; i++)
-            {
-                if (potentialString[i] == 0x0)
-                    break;
-
-                inputBuffer.WriteByte(potentialString[i]);
-            }
-
-            //If the value read is less than the limit, it'll be padded with null characters
-            //per the MajorBBS Development Guide
-            for (var i = inputBuffer.Length; i < limit; i++)
-                inputBuffer.WriteByte(0x0);
-
-            //Set last byte to NUL
-            inputBuffer.WriteByte(0x0);
-
-            Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
-
-#if DEBUG
-            _logger.Debug(
-                $"({Module.ModuleIdentifier}) Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
-#endif
-            Registers.SetPointer(destinationPointer);
+                Module.Memory.SetByte(destinationPointer + limit - 1, 0);
         }
 
         /// <summary>
@@ -6273,7 +6245,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0;
+            Registers.AX = (ushort) (anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0);
         }
 
         /// <summary>
