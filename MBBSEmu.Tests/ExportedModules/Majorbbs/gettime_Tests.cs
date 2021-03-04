@@ -36,6 +36,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             
             Assert.Equal(minute, dosTimeDateStruct[0]);
             Assert.Equal(hour, dosTimeDateStruct[1]);
+            Assert.Equal(0, dosTimeDateStruct[2]);
             Assert.Equal(second, dosTimeDateStruct[3]);
         }
     }
