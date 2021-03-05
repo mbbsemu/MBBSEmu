@@ -37,6 +37,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("End 50% ", "End 50% ", null)] //Unescaped %
         [InlineData("End 50%", "End 50%", null)] //Unescaped %
         [InlineData("This is 100%% accurate", "This is 100% accurate", null)] //Escaped %
+        [InlineData("%%%%", "%%", null)] //Escaped %
+        [InlineData("%%%%%", "%%%", null)] //Escaped & Unescaped %
+        [InlineData("%%%%% ", "%%% ", null)] //Escaped & Unescaped %
         public void prf_Test(string inputString, string expectedString, params object[] values)
         {
             Reset();
