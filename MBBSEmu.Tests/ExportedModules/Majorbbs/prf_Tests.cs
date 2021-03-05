@@ -32,6 +32,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%s-%ld-%d-%s", "TEST--1-1-FOO", "TEST", (uint)0xFFFFFFFF, (ushort)1, "FOO")]
         [InlineData("%s-%lu-%d-%s", "TEST-2147483647-1-FOO", "TEST", 2147483647u, (ushort)1, "FOO")]
         [InlineData("%s-%lu-%d-%s", "TEST-3147483647-1-FOO", "TEST", 3147483647u, (ushort)1, "FOO")]
+        [InlineData("99% of the time, this will print %s", "99% of the time, this will print TEST", "TEST")] //Unescaped %
+        [InlineData("Mid 50% Test", "Mid 50% Test", null)] //Unescaped %
+        [InlineData("End 50% ", "End 50% ", null)] //Unescaped %
+        [InlineData("End 50%", "End 50%", null)] //Unescaped %
+        [InlineData("This is 100%% accurate", "This is 100% accurate", null)] //Escaped %
+        [InlineData("%%%%", "%%", null)] //Escaped %
+        [InlineData("%%%%%", "%%%", null)] //Escaped & Unescaped %
+        [InlineData("%%%%% ", "%%% ", null)] //Escaped & Unescaped %
         public void prf_Test(string inputString, string expectedString, params object[] values)
         {
             Reset();
@@ -41,9 +49,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             parameters.Add(inputStingParameterPointer.Offset);
             parameters.Add(inputStingParameterPointer.Segment);
 
-            var parameterList = GenerateParameters(values);
-            foreach (var p in parameterList)
-                parameters.Add(p);
+            if (values != null)
+            {
+                var parameterList = GenerateParameters(values);
+                foreach (var p in parameterList)
+                    parameters.Add(p);
+            }
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PRF_ORDINAL, parameters);
 
