@@ -583,7 +583,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             
             Assert.Equal(0, fseek(filep, 0, 2));
 
-            Assert.Equal(new FarPtr(), fgets(stringGetPtr, 4, filep));
+            Assert.Equal(FarPtr.Empty, fgets(stringGetPtr, 4, filep));
 
             var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
             var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
@@ -623,13 +623,33 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
+        public void f_read_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fread(FarPtr.Empty, 0, 0, FarPtr.Empty));
+        }
+
+        [Fact]
+        public void f_write_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => fwrite(FarPtr.Empty, 0, 0, FarPtr.Empty));
+        }
+
+        [Fact]
         public void fgetc_InvalidStream_Throw()
         {
             //Reset State
             Reset();
             
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => fgetc(new FarPtr()));
+            Assert.Throws<FileNotFoundException>(() => fgetc(FarPtr.Empty));
         }
 
         [Fact]
@@ -639,7 +659,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => fputc(0, new FarPtr()));
+            Assert.Throws<FileNotFoundException>(() => fputc(0, FarPtr.Empty));
         }
 
         [Fact]
@@ -649,7 +669,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => fgets(new FarPtr(), 0, new FarPtr()));
+            Assert.Throws<FileNotFoundException>(() => fgets(FarPtr.Empty, 0, FarPtr.Empty));
         }
 
         [Fact]
@@ -659,7 +679,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => fputs(new FarPtr(), new FarPtr()));
+            Assert.Throws<FileNotFoundException>(() => fputs(FarPtr.Empty, FarPtr.Empty));
         }
 
         [Fact]
@@ -669,7 +689,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => ungetc(0, new FarPtr()));
+            Assert.Throws<FileNotFoundException>(() => ungetc(0, FarPtr.Empty));
         }
 
         [Fact]
@@ -679,7 +699,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Pass empty pointer
-            Assert.Throws<FileNotFoundException>(() => fseek(new FarPtr(), 0, 0));
+            Assert.Throws<FileNotFoundException>(() => fseek(FarPtr.Empty, 0, 0));
         }
     }
 }

@@ -1281,6 +1281,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 905:
                     stzcat();
                     break;
+                case 1012:
+                    setmode();
+                    break;
+                case 327:
+                    gettime();
+                    break;
                 case 9000:
                     txtvars_delegate();
                     break;
@@ -1310,7 +1316,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var caseSensitive = GetParameterBool(2);
             var operation = (EnumBtrieveOperationCodes) GetParameter(3);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0;
+            Registers.AX = (ushort)(anpbtv(recordPointer, caseSensitive, operation) ? 1 : 0);
         }
 
         private bool anpbtv(FarPtr recordPointer, bool caseSensitive, EnumBtrieveOperationCodes operationCodes)
@@ -6228,7 +6234,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var recordPointer = GetParameterPointer(0);
             var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
 
-            Registers.AX = anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0;
+            Registers.AX = (ushort) (anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0);
         }
 
         /// <summary>
@@ -7828,6 +7834,66 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(txtvarsReturnPointer, Encoding.ASCII.GetBytes(txtvarValue + '\0'));
 
             Registers.SetPointer(txtvarsReturnPointer);
+        }
+
+        /// <summary>
+        ///     setmode - sets mode of open file
+        ///
+        ///     Signature: int setmode(int handle, int mode);
+        ///
+        /// FROM: fcntl.h:
+        /// * NOTE: Text is the default even if the given _O_TEXT bit is not on. */
+        /// #define _O_TEXT		0x4000	/* CR-LF in file becomes LF in memory. */
+        /// #define _O_BINARY	0x8000	/* Input and output is not translated. */
+        /// </summary>
+        private void setmode()
+        {
+            var fileHandle = GetParameter(0);
+            var fileMode = GetParameter(1);
+
+            if (!FilePointerDictionary.TryGetValue(fileHandle, out var fileStreamPointer))
+            {
+                // TODO sets errno to ???;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            var fileStructPointer = Module.Memory.GetOrAllocateVariablePointer($"FILE_{fileStreamPointer.Name}-{FilePointerDictionary.Count}", FileStruct.Size);
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            switch (fileMode)
+            {
+                case 0x4000: //TEXT
+                    fileStruct.flags.ClearFlag((ushort)FileStruct.EnumFileFlags.Binary);
+                    Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    Registers.AX = 0x8000;
+                    break;
+                case 0x8000: //BINARY
+                    fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.Binary;
+                    Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+                    Registers.AX = 0x4000;
+                    break;
+                default:
+                    throw new Exception($"Unknown setmode: {fileMode}");
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Setting mode {fileMode} for {fileStreamPointer.Name}");
+#endif
+        }
+
+        /// <summary>
+        ///     gettime - gets MS-DOS time
+        ///
+        ///     Signature: void gettime(struct time *timep);
+        /// </summary>
+        private void gettime()
+        {
+            var timePointer = GetParameterPointer(0);
+
+            var dosTimeStruct = new TimeStruct(_clock.Now);
+
+            Module.Memory.SetArray(timePointer, dosTimeStruct.Data);
         }
     }
 }

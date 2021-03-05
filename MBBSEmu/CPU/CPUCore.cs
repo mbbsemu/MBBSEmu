@@ -1126,7 +1126,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cwd()
         {
-            Registers.DX = Registers.AX.IsBitSet(15) ? 0xFFFF : 0x0000;
+            Registers.DX = (ushort)(Registers.AX.IsBitSet(15) ? 0xFFFF : 0x0000);
         }
 
 
@@ -2733,7 +2733,11 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fld()
         {
-            var floatToLoad = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var operandType = _currentInstruction.Op0Kind == OpKind.Register
+                ? EnumOperandType.Destination
+                : EnumOperandType.Source;
+
+            var floatToLoad = GetOperandValueDouble(_currentInstruction.Op0Kind, operandType);
 
             //Set Value as new ST(0)
             Registers.Fpu.PushStackTop();

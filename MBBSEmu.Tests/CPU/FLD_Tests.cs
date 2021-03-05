@@ -97,5 +97,45 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(st0, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
             Assert.Equal(st1, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
         }
+
+        [Theory]
+        [InlineData(42f)]
+        [InlineData(double.MinValue)]
+        [InlineData(double.MaxValue)]
+        public void FLD_Test_STi(float initialRegisterValue)
+        {
+            Reset();
+
+            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)] = initialRegisterValue;
+
+            var instructions = new Assembler(16);
+            instructions.fld(st1);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(initialRegisterValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+        }
+
+        [Theory]
+        [InlineData(42f)]
+        [InlineData(double.MinValue)]
+        [InlineData(double.MaxValue)]
+        public void FLD_Test_ST0(float initialRegisterValue)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.PushStackTop();
+            mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST0)] = initialRegisterValue;
+
+            var instructions = new Assembler(16);
+            instructions.fld(st0);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(initialRegisterValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST0)]);
+            Assert.Equal(initialRegisterValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+        }
     }
 }
