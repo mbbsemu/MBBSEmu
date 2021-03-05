@@ -293,11 +293,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             for (var i = 0; i < stringToParse.Length; i++)
             {
+                var controlStart = i;
+
                 //Handle escaped %% as a single % -- or if % is the last character in a string
                 if (stringToParse[i] == '%')
                 {
                     switch ((char)stringToParse[i + 1])
                     {
+                        case ' ': //Single % followed by space
+                            msOutput.WriteByte(stringToParse[i]);
+                            continue;
+
                         case '%': //escaped %
                             msOutput.WriteByte((byte)'%');
                             i++;
@@ -609,8 +615,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 break;
                             }
                         default:
-                            throw new InvalidDataException(
-                                $"({Module.ModuleIdentifier}) Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
+                        {
+                            _logger.Warn($"({Module.ModuleIdentifier}) Unhandled Printf Control Character: {(char) stringToParse[i + 1]}");
+                            msOutput.Write(stringToParse.Slice(controlStart, (i - controlStart) + 1));
+                            continue;
+                        }
                     }
 
                     //Process Padding
