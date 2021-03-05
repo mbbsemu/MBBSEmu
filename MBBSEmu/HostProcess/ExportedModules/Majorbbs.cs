@@ -5678,18 +5678,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
-            //Verify the Destination will not overlap with the Source
-            if (sourcePointer.Segment == destinationPointer.Segment)
-            {
-                if (destinationPointer.Offset < sourcePointer.Offset &&
-                    destinationPointer.Offset + bytesToMove >= sourcePointer.Offset)
-                {
-                    throw new Exception(
-                        $"Destination {destinationPointer} would overlap with source {sourcePointer} ({bytesToMove} bytes)");
-                }
-            }
-
-            //Cast to array as the write can overlap and overwrite, mucking up the span read
+            // Cast to array as the write can overlap and overwrite, mucking up the span read
             var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
 
             Module.Memory.SetArray(destinationPointer, sourceData);
