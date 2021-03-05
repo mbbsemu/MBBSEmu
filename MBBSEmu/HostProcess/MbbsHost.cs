@@ -545,14 +545,16 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call on only
-        ///     the selected Rlogin module, specified by ModuleIdentifier.
+        ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call for
+        ///     all modules, and then enters module specified by ModuleIdentifier.
         ///
         ///     Executes on the given channel once after a user successfully logs in.
         /// </summary>
         private void ProcessLONROU_FromRlogin(SessionBase session)
         {
             session.OutputEnabled = false; // always disabled for RLogin
+
+            session.DataFromClient.Clear(); // Fix for WG rlogin
 
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 
@@ -572,6 +574,9 @@ namespace MBBSEmu.HostProcess
             session.OutputEnabled = _configuration.ModuleDoLoginRoutine;
 
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+
+            if (session.SessionType == EnumSessionType.Rlogin)
+                session.DataFromClient.Clear(); // Fix for WG rlogin
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.OutputEnabled = true;
