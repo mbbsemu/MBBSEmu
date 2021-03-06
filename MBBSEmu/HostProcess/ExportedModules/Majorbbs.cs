@@ -3900,7 +3900,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
-                throw new Exception($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
 
             var output = Module.Memory.GetString(sourcePointer, true);
 
