@@ -6039,7 +6039,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var pathPointer = GetParameterPointer(0);
 
-            var pathString = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
+            var pathString = _fileFinder.ResolvePathWithWildcards(Module.ModulePath, GetParameterFilename(0));
 
             var files = Directory.GetFiles(Module.ModulePath, pathString);
             uint totalBytes = 0;

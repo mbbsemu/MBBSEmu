@@ -69,16 +69,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             // create 1 empty file
-            CreateFile("/subdir/test.dat");
-            CreateFile("/subdir/test1.dat");
-            CreateFile("/subdir/test2.dat");
-            CreateFile("/subdir/xxx.dat");
-            CreateFile("/subdir/hello.dat");
+            CreateFile("subdir/test.dat");
+            CreateFile("subdir/test1.dat");
+            CreateFile("subdir/test2.dat");
+            CreateFile("subdir/xxx.dat");
+            CreateFile("subdir/hello.dat");
 
             //Pointer to sub directory
             var subdirPointer = mbbsEmuMemoryCore.AllocateVariable("STR", 64);
 
-            mbbsEmuMemoryCore.SetArray(subdirPointer, Encoding.ASCII.GetBytes("/subdir/*"));
+            mbbsEmuMemoryCore.SetArray(subdirPointer, Encoding.ASCII.GetBytes("subdir/*"));
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNTDIR_ORDINAL, new List<FarPtr>() { subdirPointer });
 
