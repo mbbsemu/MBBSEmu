@@ -14,6 +14,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
+    [Collection("Non-Parallel")]
     public class BtrieveFileProcessor_Tests : TestBase, IDisposable
     {
         const int CACHE_SIZE = 8;

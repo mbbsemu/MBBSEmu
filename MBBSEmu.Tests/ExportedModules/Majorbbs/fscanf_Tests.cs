@@ -1,12 +1,13 @@
+using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Non-Parallel")]
     public class fscanf_Tests : FileTestBase, IDisposable
     {
         private const int FSCANF_ORDINAL = 232;

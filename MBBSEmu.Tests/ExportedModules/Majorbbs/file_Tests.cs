@@ -8,6 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Non-Parallel")]
     public class file_Tests : FileTestBase, IDisposable
     {
         private const string LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit,"

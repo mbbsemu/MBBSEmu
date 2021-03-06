@@ -7,6 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
+    [Collection("Non-Parallel")]
     public class BtrieveUtil_Tests : TestBase
     {
         private class FakeMemoryStream : MemoryStream

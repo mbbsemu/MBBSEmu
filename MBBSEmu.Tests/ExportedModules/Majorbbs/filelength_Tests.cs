@@ -1,13 +1,11 @@
 ﻿using FluentAssertions;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
 using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
+using System.IO;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Non-Parallel")]
     public class filelength_Tests: FileTestBase
     {
         [Fact]
