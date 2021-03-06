@@ -42,7 +42,7 @@ namespace MBBSEmu.IO
             return path.Split(PATH_SEPARATORS);
         }
 
-        public string FindFile(string modulePath, string fileName)
+        public string FindFile(string modulePath, string fileName, bool preserveWildcards)
         {
             //Strip any absolute pathing
             if (fileName.ToUpper().StartsWith(@"\BBSV6") || fileName.ToUpper().StartsWith(@"\WGSERV") || fileName.ToUpper().StartsWith(@"C:\BBSV6"))
@@ -62,8 +62,14 @@ namespace MBBSEmu.IO
             }
 
             // since SearchPath returns the full path, we relativize it based on modulePath
-            return Path.GetRelativePath(modulePath, SearchPath(modulePath, pathComponents));
+            return Path.GetRelativePath(modulePath, SearchPath(modulePath, pathComponents, preserveWildcards));
         }
+
+        public string FindFile(string modulePath, string fileName)
+            => FindFile(modulePath, fileName, preserveWildcards: false);
+
+        public string ResolvePathWithWildcards(string modulePath, string filePath)
+            => FindFile(modulePath, filePath, preserveWildcards: true);
 
         /// <summary>
         ///     Searches case-insensitivly for the filename in pathComponents
@@ -73,12 +79,15 @@ namespace MBBSEmu.IO
         /// <returns>The FULL PATH of the filename, which may be differently cased than
         ///     the individual path components. The value will always be
         ///     currentPath + pathComponents</returns>
-        private string SearchPath(string currentPath, Queue<string> pathComponents)
+        private string SearchPath(string currentPath, Queue<string> pathComponents, bool preserveWildcards)
         {
             var component = pathComponents.Dequeue();
             string found;
             if (pathComponents.Count == 0)
             {
+                if (preserveWildcards && component.Contains('*'))
+                    return Path.Combine(currentPath, component);
+
                 found = FindByEnumeration(currentPath, component, Directory.EnumerateFileSystemEntries);
                 return String.IsNullOrEmpty(found) ? Path.Combine(currentPath, component) : found;
             }
@@ -87,7 +96,7 @@ namespace MBBSEmu.IO
             found = FindByEnumeration(currentPath, component, Directory.EnumerateDirectories);
             return String.IsNullOrEmpty(found)
                 ? CombineRemainingPaths(Path.Combine(currentPath, component), pathComponents)
-                : SearchPath(found, pathComponents);
+                : SearchPath(found, pathComponents, preserveWildcards);
         }
 
         private static string CombineRemainingPaths(String rootPath, IEnumerable<string> restOfPaths)

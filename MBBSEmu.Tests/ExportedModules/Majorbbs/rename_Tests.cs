@@ -22,17 +22,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
-        [InlineData("oldname.dat", "newname.dat", 0, false)]
-        [InlineData("o.txt", "longname.dat", 0, false)]
-        [InlineData("a", "b", 0, false)]
-        [InlineData("oldname.dat", "newname.dat", 65535, true)]
-        [InlineData("", "newname.dat", 65535, true)]
-        [InlineData("oldfile.txt", "", 65535, true)]
-        public void rename_file_Test(string oldFileName, string newFileName, ushort axValue, bool shouldThrowException)
+        [InlineData("oldname.dat", "NEWNAME.DAT", 0)]
+        [InlineData("o.txt", "LONGNAM.DAT", 0)]
+        [InlineData("a", "B", 0)]
+        [InlineData("oldname.dat", "NEWNAME.DAT", 65535)]
+        [InlineData("", "NEWNAME.DAT", 65535)]
+        [InlineData("oldfile.txt", "", 65535)]
+        public void rename_file_Test(string oldFileName, string newFileName, ushort axValue)
         {
             Reset();
 
-            if(!shouldThrowException)
+            if(axValue == 0)
                 CreateFile(oldFileName);
             
             //Pointer to old and new filenames
@@ -42,18 +42,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var toNamePointer = mbbsEmuMemoryCore.AllocateVariable("TO_NAME", (ushort) (newFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(toNamePointer, Encoding.ASCII.GetBytes(newFileName));
 
-            try
-            {
-                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RENAME_ORDINAL, new List<FarPtr> {fromNamePointer, toNamePointer});
-            }
-            catch (Exception)
-            {
-                Assert.True(shouldThrowException);
-                Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
-            }
-
-            Assert.NotEqual(shouldThrowException, File.Exists(mbbsModule.ModulePath + newFileName));
-            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RENAME_ORDINAL, new List<FarPtr> {fromNamePointer, toNamePointer});
+            
+            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);    
+            Assert.Equal(axValue == 0, File.Exists(Path.Combine(mbbsModule.ModulePath, newFileName)));
         }
 
         private void CreateFile(string file)
