@@ -8,6 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Non-Parallel")]
     public class fnd1st_Tests : ExportedModuleTestBase, IDisposable
     {
       private const int FND1ST_ORDINAL = 694;

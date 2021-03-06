@@ -7,6 +7,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
+    [Collection("Non-Parallel")]
     public class cntdir_Tests : ExportedModuleTestBase, IDisposable
     {
         private const int CNTDIR_ORDINAL = 132;
