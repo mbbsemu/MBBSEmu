@@ -20,6 +20,7 @@ namespace MBBSEmu.HostProcess.Structs
         public FarPtr finrou { get; set; }
 
         public const ushort Size = 61;
+        public const ushort DESCRP_SIZE = 25;
 
         private readonly byte[] _data = new byte[Size];
 

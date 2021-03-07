@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Extensions;
 
 namespace MBBSEmu
 {
@@ -293,8 +294,8 @@ namespace MBBSEmu
                 }
                 else if (_isModuleConfigFile)
                 {
-                    //Load Menu Option Keys - 35 total
-                    var menuOptionKeyList = "ABCDEFGHIJKLMNOPQRSTUVWYZ0123456789".ToCharArray().ToList(); //Exclude X for logoff
+                    var menuOptionKeys = new List<string>();
+                    var autoMenuOptionSeed = 1;
 
                     //Load Config File
                     var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
@@ -305,25 +306,18 @@ namespace MBBSEmu
                         //Check to see if module is enabled
                         var moduleEnabled = m["Enabled"] != "0";
 
-                        //Check for available MenuOptionKeys
-                        if (menuOptionKeyList.Count < 1)
+                        //Check for Non Character in MenuOptionKey
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && !(m["MenuOptionKey"]).All(char.IsLetter))
                         {
-                            _logger.Error($"Maximum module limit reached -- {m["Identifier"]} not loaded");
-                            continue;
-                        }
-
-                        //Check for Non Character/Digit MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && (!char.IsLetterOrDigit(m["MenuOptionKey"][0])))
-                        {
-                            _logger.Error($"Invalid menu option key (NOT A-Z or 0-9) for {m["Identifier"]}, module not loaded");
-                            continue;
+                            _logger.Error($"Invalid menu option key character (NOT A-Z) for {m["Identifier"]}, auto assigning menu option key");
+                            m["MenuOptionKey"] = "";
                         }
 
                         //Check for duplicate MenuOptionKey
                         if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"]))
                         {
-                            _logger.Error($"Duplicate menu option key for {m["Identifier"]}, module not loaded");
-                            continue;
+                            _logger.Error($"Duplicate menu option key for {m["Identifier"]}, auto assigning menu option key");
+                            m["MenuOptionKey"] = "";
                         }
 
                         //Check for duplicate module in moduleConfig
@@ -333,15 +327,16 @@ namespace MBBSEmu
                             continue;
                         }
 
-                        //If MenuOptionKey, remove from allowable list
+                        //If MenuOptionKey, add to list
                         if (!string.IsNullOrEmpty(m["MenuOptionKey"]))
-                            menuOptionKeyList.Remove(char.Parse(m["MenuOptionKey"]));
+                            menuOptionKeys.Add(m["MenuOptionKey"]);
 
-                        //Check for missing MenuOptionKey, assign, remove from allowable list
+                        //Check for missing MenuOptionKey, assign, add to list
                         if (string.IsNullOrEmpty(m["MenuOptionKey"]))
                         {
-                            m["MenuOptionKey"] = menuOptionKeyList[0].ToString();
-                            menuOptionKeyList.RemoveAt(0);
+                            m["MenuOptionKey"] = autoMenuOptionSeed.ToString();
+                            autoMenuOptionSeed++;
+                            menuOptionKeys.Add(m["MenuOptionKey"]);
                         }
 
                         //Load Modules

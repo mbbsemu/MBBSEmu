@@ -265,9 +265,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     for (var i = 0; i < columnSeed; i++)
                     {
                         if (columnFlag == 0 || i < columnSeed - 1 && columnFlag == 1)
-                            session.SendToClient($"   |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-28}   |CYAN||B|{moduleList[i + columnSeed].Item1,-2}|YELLOW| ... {moduleList[i + columnSeed].Item2,-28}\r\n".EncodeToANSIArray());
+                            session.SendToClient($"      |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-ModuleStruct.DESCRP_SIZE}   |CYAN||B|{moduleList[i + columnSeed].Item1,-2}|YELLOW| ... {moduleList[i + columnSeed].Item2,-ModuleStruct.DESCRP_SIZE}\r\n".EncodeToANSIArray());
                         if (i == columnSeed - 1 && columnFlag == 1)
-                            session.SendToClient($"   |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-28}\r\n".EncodeToANSIArray());
+                            session.SendToClient($"      |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-28}\r\n".EncodeToANSIArray());
                     }
                 }
                 else
@@ -329,6 +329,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
             else
             {
+                session.InputBuffer.SetLength(1);
                 session.CurrentModule = selectedMenuItem;
                 session.SessionState = EnumSessionState.EnteringModule;
                 session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
