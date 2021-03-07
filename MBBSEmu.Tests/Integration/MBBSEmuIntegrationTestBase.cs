@@ -82,7 +82,7 @@ namespace MBBSEmu.Tests.Integration
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
             var moduleConfigurations = new List<ModuleConfiguration>
             {
-                new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = "A"}
+                new ModuleConfiguration {ModuleIdentifier = "MBBSEMU", ModulePath = _modulePath, MenuOptionKey = "A", ModuleEnabled = true}
             };
 
             host.Start(moduleConfigurations);

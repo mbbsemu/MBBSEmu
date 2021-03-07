@@ -255,7 +255,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             {
                 session.SendToClient("\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
-                if (modules.Values.Count > 3)
+                if (modules.Values.Count > 19)
                 {
                     var moduleList = modules.Values.OrderBy(x => x.MenuOptionKey.PadLeft(4, '0')).Select(m => new Tuple<string, string>(m.MenuOptionKey, m.ModuleDescription)).ToList();
                     var columnSeed = moduleList.Count / 2;
