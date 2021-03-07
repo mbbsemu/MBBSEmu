@@ -167,7 +167,7 @@ namespace MBBSEmu.HostProcess
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
             //Load Modules
-            foreach (var m in moduleConfigurations)
+            foreach (var m in moduleConfigurations.Where(m => m.ModuleEnabled))
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
@@ -240,6 +240,7 @@ namespace MBBSEmu.HostProcess
                 WaitForNextTick();
 
                 ProcessNightlyCleanup();
+                ProcessHotSwapModules();
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -267,7 +268,7 @@ namespace MBBSEmu.HostProcess
 
                         //Check for Internal System Globals
                         if (_globalRoutines.Any(g =>
-                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
+                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules, _moduleConfigurations)))
                         {
                             session.Status = 1;
                             session.InputBuffer.SetLength(0);
@@ -419,6 +420,21 @@ namespace MBBSEmu.HostProcess
 
                     Run(m.ModuleIdentifier, routineEntryPoint, channel);
                 }
+            }
+        }
+
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, MbbsModule module, ushort channel = ushort.MaxValue)
+        {
+            if (!module.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) return;
+
+            if (routineEntryPoint.Segment != 0 && routineEntryPoint.Offset != 0)
+            {
+#if DEBUG
+                Logger.Info($"Calling {routine} on module {module.ModuleIdentifier} for channel {channel}");
+#endif
+                preRunCallback?.Invoke(module);
+
+                Run(module.ModuleIdentifier, routineEntryPoint, channel);
             }
         }
 
@@ -1181,6 +1197,40 @@ namespace MBBSEmu.HostProcess
                         }
                     }
                 }
+            }
+        }
+
+        private void ProcessHotSwapModules()
+        {
+            if (_globalCache.ContainsKey("ENABLE"))
+            {
+                var moduleName = _globalCache.Get("ENABLE").ToString();
+                var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
+                
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) {MenuOptionKey = moduleChange.MenuOptionKey});
+
+                var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
+                _moduleConfigurations[moduleIndex].ModuleEnabled = true;
+                _globalCache.Remove("ENABLE");
+            }
+
+            if (_globalCache.ContainsKey("DISABLE"))
+            {
+                var moduleName = _globalCache.Get("DISABLE").ToString();
+                var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
+
+                CallModuleRoutine("finrou", null, moduleChange.Value);
+                _modules.Remove(moduleChange.Value.ModuleIdentifier);
+                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)))
+                {
+                    _exportedFunctions[e].Dispose();
+                    _exportedFunctions.Remove(e);
+                }
+
+                var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
+                _moduleConfigurations[moduleIndex].ModuleEnabled = false;
+
+                _globalCache.Remove("DISABLE");
             }
         }
 

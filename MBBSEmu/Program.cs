@@ -302,6 +302,9 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
                     {
+                        //Check to see if module is enabled
+                        var moduleEnabled = m["Enabled"] != "0";
+
                         //Check for available MenuOptionKeys
                         if (menuOptionKeyList.Count < 1)
                         {
@@ -343,7 +346,7 @@ namespace MBBSEmu
 
                         //Load Modules
                         _logger.Info($"Loading {m["Identifier"]}");
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"] });
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"], ModuleEnabled = moduleEnabled});
                     }
                 }
                 else

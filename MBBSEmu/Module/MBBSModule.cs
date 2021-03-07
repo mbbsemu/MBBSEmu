@@ -1,6 +1,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
+using MBBSEmu.DOS.Structs;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
@@ -10,9 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using MBBSEmu.DOS.Interrupts;
-using MBBSEmu.DOS.Structs;
-using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.Module
 {
@@ -53,6 +51,10 @@ namespace MBBSEmu.Module
         /// </summary>
         public string MenuOptionKey { get; set; }
 
+        /// <summary>
+        ///     Flag to determine if module should be loaded
+        /// </summary>
+        public bool ModuleEnabled { get; set; }
 
         /// <summary>
         ///     Module MSG File

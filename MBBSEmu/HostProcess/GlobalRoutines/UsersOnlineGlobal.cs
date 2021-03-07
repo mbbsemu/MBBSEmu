@@ -10,7 +10,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 {
     public class UsersOnlineGlobal : IGlobalRoutine
     {
-        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
+        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
         {
             var commandString = Encoding.ASCII.GetString(command).TrimEnd('\0');
 
