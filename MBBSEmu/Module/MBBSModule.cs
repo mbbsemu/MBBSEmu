@@ -52,11 +52,6 @@ namespace MBBSEmu.Module
         public string MenuOptionKey { get; set; }
 
         /// <summary>
-        ///     Flag to determine if module should be loaded
-        /// </summary>
-        public bool ModuleEnabled { get; set; }
-
-        /// <summary>
         ///     Module MSG File
         /// </summary>
         public readonly List<MsgFile> Msgs;
