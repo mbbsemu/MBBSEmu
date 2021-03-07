@@ -241,6 +241,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.UsrAcc.credat = account.createDate.ToDosDate();
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
+
+            if (_accountKeyRepository.GetAccountKeysByUsername(session.Username).Any(x => x.accountKey == "SYSOP"))
+                session.SendToClient("|RED||B|/SYS to access SYSOP commands\r\n".EncodeToANSIArray());
         }
 
 
