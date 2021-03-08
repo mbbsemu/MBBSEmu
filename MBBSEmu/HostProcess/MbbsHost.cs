@@ -554,8 +554,6 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            session.DataFromClient.Clear(); // Fix for WG rlogin
-
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
 
             session.SessionState = EnumSessionState.EnteringModule;
@@ -574,9 +572,6 @@ namespace MBBSEmu.HostProcess
             session.OutputEnabled = _configuration.ModuleDoLoginRoutine;
 
             CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
-
-            if (session.SessionType == EnumSessionType.Rlogin)
-                session.DataFromClient.Clear(); // Fix for WG rlogin
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.OutputEnabled = true;

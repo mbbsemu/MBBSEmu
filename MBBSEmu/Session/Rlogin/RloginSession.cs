@@ -112,8 +112,12 @@ namespace MBBSEmu.Session.Rlogin
 
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
-            if (SessionState != EnumSessionState.Negotiating)
+             if (SessionState != EnumSessionState.Negotiating)
             {
+                //Ugly WG3NT RLOGIN Extra Data Hack
+                if (bytesReceived == 12 && clientData[5] == 24)
+                    return (null, 0);
+
                 return (clientData, bytesReceived);
             }
 
