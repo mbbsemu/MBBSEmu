@@ -68,10 +68,11 @@ namespace MBBSEmu
         {
             get
             {
-                if (!ConfigurationRoot.GetSection("Rlogin.Compatibility").Exists())
+                if (!ConfigurationRoot.GetSection("Rlogin.Compatibility").Exists() || 
+                    !Enum.TryParse(typeof(Session.Rlogin.EnumRloginCompatibility), ConfigurationRoot["Rlogin.Compatibility"], out var result ))
                     return Session.Rlogin.EnumRloginCompatibility.Default;
-                    
-                return (Session.Rlogin.EnumRloginCompatibility)Enum.Parse(typeof(Session.Rlogin.EnumRloginCompatibility), ConfigurationRoot["Rlogin.Compatibility"]);
+
+                return (Session.Rlogin.EnumRloginCompatibility)result;
             }
         }
 
