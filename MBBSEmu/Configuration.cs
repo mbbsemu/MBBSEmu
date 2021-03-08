@@ -64,6 +64,17 @@ namespace MBBSEmu
         public string TelnetIPAddress => GetIPAppSettings("Telnet.IP");
         public string RloginIPAddress => GetIPAppSettings("Rlogin.IP");
         
+        public Session.Rlogin.EnumRloginCompatibility RloginCompatibility
+        {
+            get
+            {
+                if (!ConfigurationRoot.GetSection("Rlogin.Compatibility").Exists())
+                    return Session.Rlogin.EnumRloginCompatibility.Default;
+                    
+                return (Session.Rlogin.EnumRloginCompatibility)Enum.Parse(typeof(Session.Rlogin.EnumRloginCompatibility), ConfigurationRoot["Rlogin.Compatibility"]);
+            }
+        }
+
         public IEnumerable<string> DefaultKeys
         {
             get
