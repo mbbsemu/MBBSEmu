@@ -702,5 +702,38 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Pass empty pointer
             Assert.Throws<FileNotFoundException>(() => fseek(FarPtr.Empty, 0, 0));
         }
+
+        [Fact]
+        public void fprintf_InvalidStream_Throw()
+        {
+            //Reset State
+            Reset();
+
+            //Pass empty pointer
+            Assert.Throws<FileNotFoundException>(() => f_printf(FarPtr.Empty, "%s", LOREM_IPSUM.Substring(0, 1)));
+        }
+
+        [Fact]
+        public void fclose_SegmentNotInDictionary()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("filesegment.txt", LOREM_IPSUM);
+
+            Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
+
+            var filep = fopen("FILESEGMENT.TXT", "a");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            //Clear Dictionary
+            majorbbs.FilePointerDictionary.Clear();
+
+            //Pass in file pointer that was cleared from dictionary
+            fclose(filep);
+
+            Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.AX);
+        }
     }
 }

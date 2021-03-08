@@ -3,6 +3,7 @@ using MBBSEmu.HostProcess.Structs;
 using System;
 using System.IO;
 using System.Text;
+using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -257,6 +258,30 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             close(6).Should().Be(0xFFFF);
+        }
+
+        [Fact]
+        public void read_invalidHandle()
+        {
+            Reset();
+
+            read(6, FarPtr.Empty, 1).Should().Be(0xFFFF);
+        }
+
+        [Fact]
+        public void write_invalidHandle()
+        {
+            Reset();
+
+            write(6, FarPtr.Empty, 1).Should().Be(0xFFFF);
+        }
+
+        [Fact]
+        public void open_text_fails()
+        {
+            Reset();
+
+            Assert.Throws<ArgumentException>(() => open("Dummy.txt", EnumOpenFlags.O_TEXT));
         }
     }
 }
