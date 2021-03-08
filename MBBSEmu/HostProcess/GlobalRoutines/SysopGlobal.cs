@@ -8,6 +8,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MediatR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,16 +24,18 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IGlobalCache _globalCache;
+        private readonly IMediator _mediator;
         private List<ModuleConfiguration> _moduleConfigurations;
         private PointerDictionary<SessionBase> _sessions;
         private Dictionary<string, MbbsModule> _modules;
         private ushort _channelNumber;
 
-        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache)
+        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache, IMediator mediator)
         {
             _accountRepository = accountRepository;
             _accountKeyRepository = accountKeyRepository;
             _globalCache = globalCache;
+            _mediator = mediator;
         }
 
         public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
@@ -452,8 +455,9 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            _globalCache.Set("ENABLE",moduleChange.ModuleIdentifier);
-
+            //_globalCache.Set("ENABLE",moduleChange.ModuleIdentifier);
+            //_mediator.Publish(new EnableModule(moduleChange.ModuleIdentifier));
+            var enabled = _mediator.Send(moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -478,7 +482,8 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            _globalCache.Set("DISABLE", moduleChange.ModuleIdentifier);
+            //_globalCache.Set("DISABLE", moduleChange.ModuleIdentifier);
+            _mediator.Publish(new DisableModule(moduleChange.ModuleIdentifier));
         }
 
         /// <summary>
@@ -496,6 +501,26 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             }
 
             _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());
+        }
+    }
+
+    public class EnableModule : IRequest<bool>
+    {
+        public string ModuleId { get; set; }
+
+        public EnableModule(string moduleId)
+        {
+            ModuleId = moduleId;
+        }
+    }
+
+    public class DisableModule : INotification
+    {
+        public string ModuleId { get; }
+
+        public DisableModule(string moduleId)
+        {
+            ModuleId = moduleId;
         }
     }
 }

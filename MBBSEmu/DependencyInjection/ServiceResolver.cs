@@ -12,18 +12,20 @@ using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
 using MBBSEmu.Session;
+using MBBSEmu.TextVariables;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
-using System.Collections.Generic;
 using System;
-using MBBSEmu.TextVariables;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace MBBSEmu.DependencyInjection
 {
     public class ServiceResolver : IDisposable
     {
         private ServiceProvider _provider;
-        private readonly ServiceCollection _serviceCollection = new ServiceCollection();
+        private readonly ServiceCollection _serviceCollection = new();
 
         public void Dispose()
         {
@@ -66,6 +68,8 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IGlobalRoutine, PageUserGlobal>(overrides);
             AddSingleton<IGlobalRoutine, SysopGlobal>(overrides);
             AddSingleton<IMbbsHost, MbbsHost>(overrides);
+            AddSingleton<IMediator, Mediator>(overrides);
+            _serviceCollection.AddMediatR(Assembly.GetExecutingAssembly());
             _serviceCollection.AddTransient<ISocketServer, SocketServer>();
 
             //System clock

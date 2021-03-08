@@ -17,6 +17,7 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using NLog;
 using NLog.Layouts;
@@ -26,7 +27,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Extensions;
 
 namespace MBBSEmu
 {
@@ -239,6 +239,7 @@ namespace MBBSEmu
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
+                var mediator = _serviceResolver.GetService<IMediator>();
 
                 //Setup Logger from AppSettings
                 LogManager.Configuration.LoggingRules.Clear();

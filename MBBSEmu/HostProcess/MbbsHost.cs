@@ -22,6 +22,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using MediatR;
 
 namespace MBBSEmu.HostProcess
 {
@@ -115,8 +116,9 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly ITextVariableService _textVariableService;
+        private readonly IMediator _mediator;
 
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMediator mediator)
         {
             Logger = logger;
             Clock = clock;
@@ -129,6 +131,7 @@ namespace MBBSEmu.HostProcess
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
+            _mediator = mediator;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -1232,6 +1235,17 @@ namespace MBBSEmu.HostProcess
 
                 _globalCache.Remove("DISABLE");
             }
+        }
+
+        public void EnableModule(string moduleId)
+        {
+            var _moduleId = moduleId;
+            var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
+            AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) { MenuOptionKey = moduleChange.MenuOptionKey });
+
+            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+            _moduleConfigurations[moduleIndex].ModuleEnabled = true;
         }
 
         private void ProcessNightlyCleanup()
