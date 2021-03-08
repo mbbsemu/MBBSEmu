@@ -1237,7 +1237,7 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        public void EnableModule(string moduleId)
+        private void EnableModule(string moduleId)
         {
             var _moduleId = moduleId;
             var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));

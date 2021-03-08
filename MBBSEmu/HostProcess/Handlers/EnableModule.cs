@@ -11,6 +11,8 @@ namespace MBBSEmu.HostProcess.Handlers
         {
             var _moduleId = moduleId;
             
+            //TODO I want to call MBBSHOST.EnableModule(moduleId) here
+
             return Task.FromResult(true);
 
         }

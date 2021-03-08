@@ -457,7 +457,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             //_globalCache.Set("ENABLE",moduleChange.ModuleIdentifier);
             //_mediator.Publish(new EnableModule(moduleChange.ModuleIdentifier));
-            var enabled = _mediator.Send(moduleChange.ModuleIdentifier);
+            var enabled = _mediator.Send(new EnableModule(moduleChange.ModuleIdentifier));
         }
 
         /// <summary>
