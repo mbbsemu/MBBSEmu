@@ -455,7 +455,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            var enabled = _mediator.Send(new EnableModule(moduleChange.ModuleIdentifier));
+            _mediator.Publish(new EnableModule { ModuleId = moduleChange.ModuleIdentifier });
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            var enabled = _mediator.Send(new DisableModule(moduleChange.ModuleIdentifier));
+            _mediator.Publish(new DisableModule { ModuleId = moduleChange.ModuleIdentifier });
         }
 
         /// <summary>
@@ -507,29 +507,19 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Cleanup()
         {
-            var enabled = _mediator.Send(new ManualCleanup());
+            _mediator.Publish(new ManualCleanup());
         }
     }
 
-    public class EnableModule : IRequest<bool>
+    public class EnableModule : INotification
     {
         public string ModuleId { get; set; }
-
-        public EnableModule(string moduleId)
-        {
-            ModuleId = moduleId;
-        }
     }
 
-    public class DisableModule : IRequest<bool>
+    public class DisableModule : INotification
     {
         public string ModuleId { get; set; }
-
-        public DisableModule(string moduleId)
-        {
-            ModuleId = moduleId;
-        }
     }
 
-    public class ManualCleanup : IRequest<bool> { }
+    public class ManualCleanup : INotification { }
 }

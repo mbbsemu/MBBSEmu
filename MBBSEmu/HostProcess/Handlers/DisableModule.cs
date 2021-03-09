@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace MBBSEmu.HostProcess.Handlers
 {
-    public class DisableModuleHandler : IRequestHandler<DisableModule, bool>
+    public class DisableModuleHandler : INotificationHandler<DisableModule>
     {
         private readonly IMbbsHost _host;
 
@@ -14,13 +14,11 @@ namespace MBBSEmu.HostProcess.Handlers
             _host = host;
         }
 
-        public Task<bool> Handle(DisableModule moduleId, CancellationToken cancellationToken)
+        public Task Handle(DisableModule moduleId, CancellationToken cancellationToken)
         {
-            var _moduleId = moduleId;
+            _host.DisableModule(moduleId.ModuleId);
 
-            _host.DisableModule(_moduleId.ModuleId);
-
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
     }
 }

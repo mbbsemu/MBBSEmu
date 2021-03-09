@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace MBBSEmu.HostProcess.Handlers
 {
-    public class ManualCleanupHandler : IRequestHandler<ManualCleanup, bool>
+    public class ManualCleanupHandler : INotificationHandler<ManualCleanup>
     {
         private readonly IMbbsHost _host;
 
@@ -14,11 +14,11 @@ namespace MBBSEmu.HostProcess.Handlers
             _host = host;
         }
 
-        public Task<bool> Handle(ManualCleanup cleanup, CancellationToken cancellationToken)
+        public Task Handle(ManualCleanup cleanup, CancellationToken cancellationToken)
         {
             _host.ManualCleanup();
 
-            return Task.FromResult(true);
+            return Task.CompletedTask;
         }
     }
 }
