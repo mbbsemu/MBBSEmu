@@ -15,6 +15,7 @@ using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
+using MediatR;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using MediatR;
 
 namespace MBBSEmu.HostProcess
 {
