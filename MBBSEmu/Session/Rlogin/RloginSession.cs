@@ -13,6 +13,19 @@ using NLog;
 
 namespace MBBSEmu.Session.Rlogin
 {
+    public enum EnumRloginCompatibility
+    {
+        /// <summary>
+        ///     Rlogin with no special love
+        /// </summary>
+        Default,
+
+        /// <summary>
+        ///     Enable WG3NT fixes
+        /// </summary>
+        WG3NT
+    }
+
     /// <summary>
     ///     Class for handling inbound RLogin Connections
     /// </summary>
@@ -112,8 +125,12 @@ namespace MBBSEmu.Session.Rlogin
 
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
-            if (SessionState != EnumSessionState.Negotiating)
+             if (SessionState != EnumSessionState.Negotiating)
             {
+                //Ugly WG3NT RLOGIN Extra Data Hack
+                if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
+                    return (null, 0);
+
                 return (clientData, bytesReceived);
             }
 

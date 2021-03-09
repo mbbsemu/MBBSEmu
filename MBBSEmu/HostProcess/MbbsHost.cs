@@ -545,8 +545,8 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call on only
-        ///     the selected Rlogin module, specified by ModuleIdentifier.
+        ///     Invokes routine registered as LONROU during MAJORBBS->REGISTER_MODULE() call for
+        ///     all modules, and then enters module specified by ModuleIdentifier.
         ///
         ///     Executes on the given channel once after a user successfully logs in.
         /// </summary>
