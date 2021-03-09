@@ -455,8 +455,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            //_globalCache.Set("ENABLE",moduleChange.ModuleIdentifier);
-            //_mediator.Publish(new EnableModule(moduleChange.ModuleIdentifier));
             var enabled = _mediator.Send(new EnableModule(moduleChange.ModuleIdentifier));
         }
 
@@ -482,8 +480,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            //_globalCache.Set("DISABLE", moduleChange.ModuleIdentifier);
-            _mediator.Publish(new DisableModule(moduleChange.ModuleIdentifier));
+            var enabled = _mediator.Send(new DisableModule(moduleChange.ModuleIdentifier));
         }
 
         /// <summary>
@@ -514,9 +511,9 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         }
     }
 
-    public class DisableModule : INotification
+    public class DisableModule : IRequest<bool>
     {
-        public string ModuleId { get; }
+        public string ModuleId { get; set; }
 
         public DisableModule(string moduleId)
         {

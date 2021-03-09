@@ -5,17 +5,17 @@ using System.Threading.Tasks;
 
 namespace MBBSEmu.HostProcess.Handlers
 {
-    public class EnableModuleHandler : IRequestHandler<EnableModule, bool>
+    public class DisableModuleHandler : IRequestHandler<DisableModule, bool>
     {
         private IMbbsHost _host;
 
-        public void EnableModuleService(IMbbsHost host) => _host = host;
+        public void DisableModuleService(IMbbsHost host) => _host = host;
 
-        public Task<bool> Handle(EnableModule moduleId, CancellationToken cancellationToken)
+        public Task<bool> Handle(DisableModule moduleId, CancellationToken cancellationToken)
         {
             var _moduleId = moduleId;
-            
-            _host.EnableModule(_moduleId.ModuleId);
+
+            _host.DisableModule(_moduleId.ModuleId);
 
             return Task.FromResult(true);
 

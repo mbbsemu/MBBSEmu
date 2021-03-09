@@ -69,6 +69,16 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void GenerateAPIReport();
 
+        /// <summary>
+        ///     Enable a module that was loaded but not "Added" to host
+        /// </summary>
+        public void EnableModule(string moduleId);
+
+        /// <summary>
+        ///     Disables a module that is loaded
+        /// </summary>
+        public void DisableModule(string moduleId);
+
         public ILogger Logger { get; init; }
 
         public IClock Clock { get; init; }

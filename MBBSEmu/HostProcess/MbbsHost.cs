@@ -243,7 +243,6 @@ namespace MBBSEmu.HostProcess
                 WaitForNextTick();
 
                 ProcessNightlyCleanup();
-                ProcessHotSwapModules();
 
                 //Handle Channels
                 ProcessIncomingSessions();
@@ -1203,41 +1202,7 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessHotSwapModules()
-        {
-            if (_globalCache.ContainsKey("ENABLE"))
-            {
-                var moduleName = _globalCache.Get("ENABLE").ToString();
-                var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
-                
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) {MenuOptionKey = moduleChange.MenuOptionKey});
-
-                var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
-                _moduleConfigurations[moduleIndex].ModuleEnabled = true;
-                _globalCache.Remove("ENABLE");
-            }
-
-            if (_globalCache.ContainsKey("DISABLE"))
-            {
-                var moduleName = _globalCache.Get("DISABLE").ToString();
-                var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
-
-                CallModuleRoutine("finrou", null, moduleChange.Value);
-                _modules.Remove(moduleChange.Value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)))
-                {
-                    _exportedFunctions[e].Dispose();
-                    _exportedFunctions.Remove(e);
-                }
-
-                var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(moduleName, StringComparison.InvariantCultureIgnoreCase));
-                _moduleConfigurations[moduleIndex].ModuleEnabled = false;
-
-                _globalCache.Remove("DISABLE");
-            }
-        }
-
-        private void EnableModule(string moduleId)
+        public void EnableModule(string moduleId)
         {
             var _moduleId = moduleId;
             var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
@@ -1246,6 +1211,23 @@ namespace MBBSEmu.HostProcess
 
             var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
             _moduleConfigurations[moduleIndex].ModuleEnabled = true;
+        }
+
+        public void DisableModule(string moduleId)
+        {
+            var _moduleId = moduleId;
+            var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
+            CallModuleRoutine("finrou", null, moduleChange.Value);
+            _modules.Remove(moduleChange.Value.ModuleIdentifier);
+            foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)))
+            {
+                _exportedFunctions[e].Dispose();
+                _exportedFunctions.Remove(e);
+            }
+
+            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+            _moduleConfigurations[moduleIndex].ModuleEnabled = false;
         }
 
         private void ProcessNightlyCleanup()
