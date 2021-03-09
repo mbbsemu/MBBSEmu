@@ -79,6 +79,11 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void DisableModule(string moduleId);
 
+        /// <summary>
+        ///     Sets flag to run a manual cleanup
+        /// </summary>
+        public void ManualCleanup();
+
         public ILogger Logger { get; init; }
 
         public IClock Clock { get; init; }

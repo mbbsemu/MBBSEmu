@@ -102,7 +102,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                     }
                 case "CLEANUP":
                     {
-                        _globalCache.Set("SYSOPGLOBAL-CLEANUP", true);
+                        Cleanup();
                         break;
                     }
                 case "BROADCAST":
@@ -499,6 +499,16 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());
         }
+
+        /// <summary>
+        ///     Sysop Command to manually run nightly cleanup
+        ///
+        ///     Syntax: /SYS CLEANUP
+        /// </summary>
+        private void Cleanup()
+        {
+            var enabled = _mediator.Send(new ManualCleanup());
+        }
     }
 
     public class EnableModule : IRequest<bool>
@@ -520,4 +530,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             ModuleId = moduleId;
         }
     }
+
+    public class ManualCleanup : IRequest<bool> { }
 }

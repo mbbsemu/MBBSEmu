@@ -1230,14 +1230,13 @@ namespace MBBSEmu.HostProcess
             _moduleConfigurations[moduleIndex].ModuleEnabled = false;
         }
 
+        public void ManualCleanup()
+        {
+            _performCleanup = true;
+        }
+
         private void ProcessNightlyCleanup()
         {
-            if (_globalCache.ContainsKey("SYSOPGLOBAL-CLEANUP"))
-            {
-                _globalCache.Remove("SYSOPGLOBAL-CLEANUP");
-                _performCleanup = true;
-            }
-
             if (_performCleanup)
             {
                 _performCleanup = false;
