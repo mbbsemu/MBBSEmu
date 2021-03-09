@@ -723,7 +723,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(LOREM_IPSUM.Length, new FileInfo(filePath).Length);
 
-            var filep = fopen("FILESEGMENTNEW.TXT", "r");
+            var filep = fopen("FILESEGMENTNEW.TXT", "w");
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
 
