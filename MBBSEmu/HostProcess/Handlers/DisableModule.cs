@@ -7,9 +7,12 @@ namespace MBBSEmu.HostProcess.Handlers
 {
     public class DisableModuleHandler : IRequestHandler<DisableModule, bool>
     {
-        private IMbbsHost _host;
+        private readonly IMbbsHost _host;
 
-        public void DisableModuleService(IMbbsHost host) => _host = host;
+        public DisableModuleHandler(IMbbsHost host)
+        {
+            _host = host;
+        }
 
         public Task<bool> Handle(DisableModule moduleId, CancellationToken cancellationToken)
         {
@@ -18,7 +21,6 @@ namespace MBBSEmu.HostProcess.Handlers
             _host.DisableModule(_moduleId.ModuleId);
 
             return Task.FromResult(true);
-
         }
     }
 }
