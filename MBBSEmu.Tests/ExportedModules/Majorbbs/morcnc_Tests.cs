@@ -17,8 +17,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("123 456\0", 4, '4', 4)]
         [InlineData("123    456\0", 4, '4', 7)]
         [InlineData("123\0", 3, '\0', 3)]
-        [InlineData("\0", 0, '\0', 0)]
-        public void cncchr_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
+        [InlineData("", 0, '\0', 0)]
+        public void morcnc_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, ushort expectedNxtcmdOffset)
         {
             //Reset State
             Reset();
