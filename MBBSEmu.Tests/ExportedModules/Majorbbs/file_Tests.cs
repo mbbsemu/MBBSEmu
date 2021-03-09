@@ -524,14 +524,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var filep = fopen("FILE.TXT", "r");
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
-            
+
             Assert.Equal(0, fseek(filep, 0, 2));
 
             Assert.Equal(0xFFFF, fgetc(filep));
-            
+
             var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
             var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
-            
+
             Assert.Equal(LOREM_IPSUM_LENGTH, curFileStream.Position);
             Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
 
@@ -581,7 +581,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var stringGetPtr = mbbsEmuMemoryCore.AllocateVariable("STRING_GET", (ushort)"TEST".Length);
             mbbsEmuMemoryCore.SetArray(stringGetPtr, Encoding.ASCII.GetBytes("TEST"));
-            
+
             Assert.Equal(0, fseek(filep, 0, 2));
 
             Assert.Equal(FarPtr.Empty, fgets(stringGetPtr, 4, filep));
@@ -648,7 +648,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
-            
+
             //Pass empty pointer
             Assert.Throws<FileNotFoundException>(() => fgetc(FarPtr.Empty));
         }
@@ -727,7 +727,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.NotEqual(0, filep.Segment);
             Assert.NotEqual(0, filep.Offset);
 
-            //Clear Dictionary
+            //Clear Dictionary, but first cleanly close file references
+            foreach (var f in majorbbs.FilePointerDictionary)
+            {
+                f.Value.Close();
+            }
             majorbbs.FilePointerDictionary.Clear();
 
             //Pass in file pointer that was cleared from dictionary
