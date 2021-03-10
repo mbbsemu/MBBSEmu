@@ -1,4 +1,7 @@
-﻿using System;
+﻿//Copyright (c) .NET Foundation Contributors
+//https://github.com/xamarin/Xamarin.Forms/blob/5.0.0/LICENSE
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
