@@ -455,7 +455,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            _messagingCenter.Send("SYSOP-ENABLE-MODULE", moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, "SYSOP-ENABLE-MODULE", moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            _messagingCenter.Send("SYSOP-DISABLE-MODULE", moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, "SYSOP-DISABLE-MODULE", moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -507,7 +507,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Cleanup()
         {
-            _messagingCenter.Send("SYSOP-MANUAL-CLEANUP", "NOW");
+            _messagingCenter.Send(this, "SYSOP-MANUAL-CLEANUP", "NOW");
         }
     }
 }
