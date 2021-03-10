@@ -161,9 +161,9 @@ namespace MBBSEmu.HostProcess
             _textVariableService.SetVariable("REG_NUMBER", () => _configuration.GSBLBTURNO);
 
             //Setup Message Subscribers
-            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumSysopCommands.EnableModule.ToString(), (sender, arg) => { EnableModule(arg); });
-            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumSysopCommands.DisableModule.ToString(), (sender, arg) => { DisableModule(arg); });
-            _messagingCenter.Subscribe<SysopGlobal>(this, EnumSysopCommands.Cleanup.ToString(), (sender) => { ManualCleanup(); });
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, arg) => { EnableModule(arg); });
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, arg) => { DisableModule(arg); });
+            _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { ManualCleanup(); });
 
             Logger.Info("Constructed MBBSEmu Host!");
         }

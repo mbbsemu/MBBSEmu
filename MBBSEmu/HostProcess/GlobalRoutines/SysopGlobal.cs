@@ -455,7 +455,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            _messagingCenter.Send(this, EnumSysopCommands.EnableModule.ToString(), moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            _messagingCenter.Send(this, EnumSysopCommands.DisableModule.ToString(), moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, EnumMessageEvent.DisableModule, moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -507,7 +507,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Cleanup()
         {
-            _messagingCenter.Send( this, EnumSysopCommands.Cleanup.ToString());
+            _messagingCenter.Send(this, EnumMessageEvent.Cleanup);
         }
     }
 }

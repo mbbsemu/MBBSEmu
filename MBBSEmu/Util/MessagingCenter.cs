@@ -7,26 +7,26 @@ namespace MBBSEmu.Util
 {
 	public interface IMessagingCenter
 	{
-		void Send<TSender, TArgs>(TSender sender, string message, TArgs args) where TSender : class;
+		void Send<TSender, TArgs>(TSender sender, EnumMessageEvent message, TArgs args) where TSender : class;
 
-		void Send<TSender>(TSender sender, string message) where TSender : class;
+		void Send<TSender>(TSender sender, EnumMessageEvent message) where TSender : class;
 
-		void Subscribe<TSender, TArgs>(object subscriber, string message, Action<TSender, TArgs> callback, TSender source = null) where TSender : class;
+		void Subscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message, Action<TSender, TArgs> callback, TSender source = null) where TSender : class;
 
-		void Subscribe<TSender>(object subscriber, string message, Action<TSender> callback, TSender source = null) where TSender : class;
+		void Subscribe<TSender>(object subscriber, EnumMessageEvent message, Action<TSender> callback, TSender source = null) where TSender : class;
 
-		void Unsubscribe<TSender, TArgs>(object subscriber, string message) where TSender : class;
+		void Unsubscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message) where TSender : class;
 
-		void Unsubscribe<TSender>(object subscriber, string message) where TSender : class;
+		void Unsubscribe<TSender>(object subscriber, EnumMessageEvent message) where TSender : class;
 	}
 
 	public class MessagingCenter : IMessagingCenter
 	{
 		public static IMessagingCenter Instance { get; } = new MessagingCenter();
 
-		class Sender : Tuple<string, Type, Type>
+		class Sender : Tuple<EnumMessageEvent, Type, Type>
 		{
-			public Sender(string message, Type senderType, Type argType) : base(message, senderType, argType)
+			public Sender(EnumMessageEvent message, Type senderType, Type argType) : base(message, senderType, argType)
 			{
 			}
 		}
@@ -102,36 +102,36 @@ namespace MBBSEmu.Util
 
 		readonly Dictionary<Sender, List<Subscription>> _subscriptions = new ();
 
-		public static void Send<TSender, TArgs>(TSender sender, string message, TArgs args) where TSender : class
+		public static void Send<TSender, TArgs>(TSender sender, EnumMessageEvent message, TArgs args) where TSender : class
 		{
 			Instance.Send(sender, message, args);
 		}
 
-		void IMessagingCenter.Send<TSender, TArgs>(TSender sender, string message, TArgs args)
+		void IMessagingCenter.Send<TSender, TArgs>(TSender sender, EnumMessageEvent message, TArgs args)
 		{
 			if (sender == null)
 				throw new ArgumentNullException(nameof(sender));
 			InnerSend(message, typeof(TSender), typeof(TArgs), sender, args);
 		}
 
-		public static void Send<TSender>(TSender sender, string message) where TSender : class
+		public static void Send<TSender>(TSender sender, EnumMessageEvent message) where TSender : class
 		{
 			Instance.Send(sender, message);
 		}
 
-		void IMessagingCenter.Send<TSender>(TSender sender, string message)
+		void IMessagingCenter.Send<TSender>(TSender sender, EnumMessageEvent message)
 		{
 			if (sender == null)
 				throw new ArgumentNullException(nameof(sender));
 			InnerSend(message, typeof(TSender), null, sender, null);
 		}
 
-		public static void Subscribe<TSender, TArgs>(object subscriber, string message, Action<TSender, TArgs> callback, TSender source = null) where TSender : class
+		public static void Subscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message, Action<TSender, TArgs> callback, TSender source = null) where TSender : class
 		{
 			Instance.Subscribe(subscriber, message, callback, source);
 		}
 
-		void IMessagingCenter.Subscribe<TSender, TArgs>(object subscriber, string message, Action<TSender, TArgs> callback, TSender source)
+		void IMessagingCenter.Subscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message, Action<TSender, TArgs> callback, TSender source)
 		{
 			if (subscriber == null)
 				throw new ArgumentNullException(nameof(subscriber));
@@ -149,12 +149,12 @@ namespace MBBSEmu.Util
 			InnerSubscribe(subscriber, message, typeof(TSender), typeof(TArgs), target, callback.GetMethodInfo(), filter);
 		}
 
-		public static void Subscribe<TSender>(object subscriber, string message, Action<TSender> callback, TSender source = null) where TSender : class
+		public static void Subscribe<TSender>(object subscriber, EnumMessageEvent message, Action<TSender> callback, TSender source = null) where TSender : class
 		{
 			Instance.Subscribe(subscriber, message, callback, source);
 		}
 
-		void IMessagingCenter.Subscribe<TSender>(object subscriber, string message, Action<TSender> callback, TSender source)
+		void IMessagingCenter.Subscribe<TSender>(object subscriber, EnumMessageEvent message, Action<TSender> callback, TSender source)
 		{
 			if (subscriber == null)
 				throw new ArgumentNullException(nameof(subscriber));
@@ -172,27 +172,27 @@ namespace MBBSEmu.Util
 			InnerSubscribe(subscriber, message, typeof(TSender), null, target, callback.GetMethodInfo(), filter);
 		}
 
-		public static void Unsubscribe<TSender, TArgs>(object subscriber, string message) where TSender : class
+		public static void Unsubscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message) where TSender : class
 		{
 			Instance.Unsubscribe<TSender, TArgs>(subscriber, message);
 		}
 
-		void IMessagingCenter.Unsubscribe<TSender, TArgs>(object subscriber, string message)
+		void IMessagingCenter.Unsubscribe<TSender, TArgs>(object subscriber, EnumMessageEvent message)
 		{
 			InnerUnsubscribe(message, typeof(TSender), typeof(TArgs), subscriber);
 		}
 
-		public static void Unsubscribe<TSender>(object subscriber, string message) where TSender : class
+		public static void Unsubscribe<TSender>(object subscriber, EnumMessageEvent message) where TSender : class
 		{
 			Instance.Unsubscribe<TSender>(subscriber, message);
 		}
 
-		void IMessagingCenter.Unsubscribe<TSender>(object subscriber, string message)
+		void IMessagingCenter.Unsubscribe<TSender>(object subscriber, EnumMessageEvent message)
 		{
 			InnerUnsubscribe(message, typeof(TSender), null, subscriber);
 		}
 
-		void InnerSend(string message, Type senderType, Type argType, object sender, object args)
+		void InnerSend(EnumMessageEvent message, Type senderType, Type argType, object sender, object args)
 		{
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
@@ -218,7 +218,7 @@ namespace MBBSEmu.Util
 			}
 		}
 
-		void InnerSubscribe(object subscriber, string message, Type senderType, Type argType, object target, MethodInfo methodInfo, Filter filter)
+		void InnerSubscribe(object subscriber, EnumMessageEvent message, Type senderType, Type argType, object target, MethodInfo methodInfo, Filter filter)
 		{
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
@@ -235,7 +235,7 @@ namespace MBBSEmu.Util
 			}
 		}
 
-		void InnerUnsubscribe(string message, Type senderType, Type argType, object subscriber)
+		void InnerUnsubscribe(EnumMessageEvent message, Type senderType, Type argType, object subscriber)
 		{
 			if (subscriber == null)
 				throw new ArgumentNullException(nameof(subscriber));
