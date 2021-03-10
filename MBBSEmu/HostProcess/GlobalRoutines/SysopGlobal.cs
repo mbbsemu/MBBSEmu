@@ -8,7 +8,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using MediatR;
+using MBBSEmu.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,18 +24,18 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IGlobalCache _globalCache;
-        private readonly IMediator _mediator;
+        private readonly IMessagingCenter _messagingCenter;
         private List<ModuleConfiguration> _moduleConfigurations;
         private PointerDictionary<SessionBase> _sessions;
         private Dictionary<string, MbbsModule> _modules;
         private ushort _channelNumber;
 
-        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache, IMediator mediator)
+        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache, IMessagingCenter messagingCenter)
         {
             _accountRepository = accountRepository;
             _accountKeyRepository = accountKeyRepository;
             _globalCache = globalCache;
-            _mediator = mediator;
+            _messagingCenter = messagingCenter;
         }
 
         public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
@@ -455,7 +455,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            _mediator.Publish(new EnableModule { ModuleId = moduleChange.ModuleIdentifier });
+            _messagingCenter.Send("SYSOP-ENABLE-MODULE", moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -480,7 +480,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
 
-            _mediator.Publish(new DisableModule { ModuleId = moduleChange.ModuleIdentifier });
+            _messagingCenter.Send("SYSOP-DISABLE-MODULE", moduleChange.ModuleIdentifier);
         }
 
         /// <summary>
@@ -507,19 +507,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Cleanup()
         {
-            _mediator.Publish(new ManualCleanup());
+            _messagingCenter.Send("SYSOP-MANUAL-CLEANUP", "NOW");
         }
     }
-
-    public class EnableModule : INotification
-    {
-        public string ModuleId { get; set; }
-    }
-
-    public class DisableModule : INotification
-    {
-        public string ModuleId { get; set; }
-    }
-
-    public class ManualCleanup : INotification { }
 }

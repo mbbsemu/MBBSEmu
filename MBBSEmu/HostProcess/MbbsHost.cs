@@ -15,7 +15,7 @@ using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
-using MediatR;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -116,9 +116,9 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IAccountRepository _accountRepository;
         private readonly ITextVariableService _textVariableService;
-        private readonly IMediator _mediator;
 
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMediator mediator)
+
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
             Logger = logger;
             Clock = clock;
@@ -131,7 +131,7 @@ namespace MBBSEmu.HostProcess
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
-            _mediator = mediator;
+            var _messagingCenter = messagingCenter;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -160,6 +160,22 @@ namespace MBBSEmu.HostProcess
             _textVariableService.SetVariable("TOTAL_ACCOUNTS", () => _accountRepository.GetAccounts().Count().ToString());
             _textVariableService.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
             _textVariableService.SetVariable("REG_NUMBER", () => _configuration.GSBLBTURNO);
+
+            //Setup Message Subscribers
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, "SYSOP-ENABLE-MODULE", (sender, arg) =>
+            {
+                EnableModule(arg);
+            });
+
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, "SYSOP-DISABLE-MODULE", (sender, arg) =>
+            {
+                DisableModule(arg);
+            });
+
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, "SYSOP-MANUAL-CLEANUP", (sender, arg) =>
+            {
+                ManualCleanup();
+            });
 
             Logger.Info("Constructed MBBSEmu Host!");
         }

@@ -19,6 +19,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using MBBSEmu.Util;
 
 namespace MBBSEmu.DependencyInjection
 {
@@ -68,8 +69,7 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IGlobalRoutine, PageUserGlobal>(overrides);
             AddSingleton<IGlobalRoutine, SysopGlobal>(overrides);
             AddSingleton<IMbbsHost, MbbsHost>(overrides);
-            AddSingleton<IMediator, Mediator>(overrides);
-            _serviceCollection.AddMediatR(Assembly.GetExecutingAssembly());
+            AddSingleton<IMessagingCenter, MessagingCenter>(overrides);
             _serviceCollection.AddTransient<ISocketServer, SocketServer>();
 
             //System clock
