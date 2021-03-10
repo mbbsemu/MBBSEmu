@@ -100,8 +100,7 @@ namespace MBBSEmu.Util
 			}
 		}
 
-		readonly Dictionary<Sender, List<Subscription>> _subscriptions =
-			new Dictionary<Sender, List<Subscription>>();
+		readonly Dictionary<Sender, List<Subscription>> _subscriptions = new ();
 
 		public static void Send<TSender, TArgs>(TSender sender, string message, TArgs args) where TSender : class
 		{
