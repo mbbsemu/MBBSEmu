@@ -117,7 +117,6 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountRepository _accountRepository;
         private readonly ITextVariableService _textVariableService;
 
-
         public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
             Logger = logger;
