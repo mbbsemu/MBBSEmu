@@ -1218,7 +1218,7 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        public void EnableModule(string moduleId)
+        private void EnableModule(string moduleId)
         {
             var _moduleId = moduleId;
             var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
@@ -1229,7 +1229,7 @@ namespace MBBSEmu.HostProcess
             _moduleConfigurations[moduleIndex].ModuleEnabled = true;
         }
 
-        public void DisableModule(string moduleId)
+        private void DisableModule(string moduleId)
         {
             var _moduleId = moduleId;
             var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
@@ -1246,7 +1246,7 @@ namespace MBBSEmu.HostProcess
             _moduleConfigurations[moduleIndex].ModuleEnabled = false;
         }
 
-        public void ManualCleanup()
+        private void ManualCleanup()
         {
             _performCleanup = true;
         }

@@ -13,13 +13,11 @@ using MBBSEmu.Resources;
 using MBBSEmu.Server.Socket;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
-using MediatR;
+using MBBSEmu.Util;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using MBBSEmu.Util;
 
 namespace MBBSEmu.DependencyInjection
 {
