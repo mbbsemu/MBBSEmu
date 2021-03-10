@@ -171,10 +171,7 @@ namespace MBBSEmu.HostProcess
                 DisableModule(arg);
             });
 
-            _messagingCenter.Subscribe<SysopGlobal, string>(this, "SYSOP-MANUAL-CLEANUP", (sender, arg) =>
-            {
-                ManualCleanup();
-            });
+            _messagingCenter.Subscribe<SysopGlobal>(this, "SYSOP-MANUAL-CLEANUP", (sender) => { ManualCleanup(); });
 
             Logger.Info("Constructed MBBSEmu Host!");
         }

@@ -507,7 +507,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Cleanup()
         {
-            _messagingCenter.Send(this, "SYSOP-MANUAL-CLEANUP", "NOW");
+            _messagingCenter.Send( this,"SYSOP-MANUAL-CLEANUP");
         }
     }
 }
