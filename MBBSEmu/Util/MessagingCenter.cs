@@ -194,9 +194,7 @@ namespace MBBSEmu.Util
 
 		void InnerSend(EnumMessageEvent message, Type senderType, Type argType, object sender, object args)
 		{
-			if (message == null)
-				throw new ArgumentNullException(nameof(message));
-			var key = new Sender(message, senderType, argType);
+            var key = new Sender(message, senderType, argType);
 			if (!_subscriptions.ContainsKey(key))
 				return;
 			List<Subscription> subscriptions = _subscriptions[key];
@@ -220,9 +218,7 @@ namespace MBBSEmu.Util
 
 		void InnerSubscribe(object subscriber, EnumMessageEvent message, Type senderType, Type argType, object target, MethodInfo methodInfo, Filter filter)
 		{
-			if (message == null)
-				throw new ArgumentNullException(nameof(message));
-			var key = new Sender(message, senderType, argType);
+            var key = new Sender(message, senderType, argType);
 			var value = new Subscription(subscriber, target, methodInfo, filter);
 			if (_subscriptions.ContainsKey(key))
 			{
@@ -239,10 +235,8 @@ namespace MBBSEmu.Util
 		{
 			if (subscriber == null)
 				throw new ArgumentNullException(nameof(subscriber));
-			if (message == null)
-				throw new ArgumentNullException(nameof(message));
 
-			var key = new Sender(message, senderType, argType);
+            var key = new Sender(message, senderType, argType);
 			if (!_subscriptions.ContainsKey(key))
 				return;
 			_subscriptions[key].RemoveAll(sub => sub.CanBeRemoved() || sub.Subscriber.Target == subscriber);
