@@ -161,8 +161,8 @@ namespace MBBSEmu.HostProcess
             _textVariableService.SetVariable("REG_NUMBER", () => _configuration.GSBLBTURNO);
 
             //Setup Message Subscribers
-            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, arg) => { EnableModule(arg); });
-            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, arg) => { DisableModule(arg); });
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, moduleId) => { EnableModule(moduleId); });
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId); });
             _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
 
             Logger.Info("Constructed MBBSEmu Host!");
@@ -404,8 +404,13 @@ namespace MBBSEmu.HostProcess
             {
                 _modules.Remove(m);
 
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m)))
+                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m)).ToList();
+
+                foreach (var e in exportedFunctionsToRemove)
+                {
+                    _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);
+                }
             }
         }
 
@@ -1211,10 +1216,16 @@ namespace MBBSEmu.HostProcess
             var _moduleId = moduleId;
             var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
 
+            //stop host loop
+            _isRunning = false;
+
             AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) { MenuOptionKey = moduleChange.MenuOptionKey });
 
             var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
             _moduleConfigurations[moduleIndex].ModuleEnabled = true;
+
+            //start host loop
+            _isRunning = true;
         }
 
         private void DisableModule(string moduleId)
@@ -1222,16 +1233,33 @@ namespace MBBSEmu.HostProcess
             var _moduleId = moduleId;
             var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
 
+            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == _moduleId))
+            {
+                Logger.Warn($"(Sysop Command) Tried to disable {moduleId} while in use -- Wait until all users have exited module");
+                return;
+            }
+
+            //stop host loop
+            _isRunning = false;
+
             CallModuleRoutine("finrou", null, moduleChange.Value);
             _modules.Remove(moduleChange.Value.ModuleIdentifier);
-            foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)))
+
+            var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)).ToList();
+
+            foreach (var e in exportedFunctionsToRemove)
             {
                 _exportedFunctions[e].Dispose();
                 _exportedFunctions.Remove(e);
             }
 
-            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+            var moduleIndex = _moduleConfigurations.FindIndex(i =>
+                i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
             _moduleConfigurations[moduleIndex].ModuleEnabled = false;
+
+            //start host loop
+            _isRunning = true;
         }
 
         private void ProcessNightlyCleanup()
@@ -1264,7 +1292,9 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)).ToList();
+
+                foreach (var e in exportedFunctionsToRemove)
                 {
                     _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);
