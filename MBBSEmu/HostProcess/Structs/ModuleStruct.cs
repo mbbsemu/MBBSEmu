@@ -44,7 +44,7 @@ namespace MBBSEmu.HostProcess.Structs
             set
             {
                 var valueSpan = new ReadOnlySpan<byte>(value);
-                descrp = valueSpan.Slice(0, 25).ToArray();
+                descrp = valueSpan.Slice(0, DESCRP_SIZE).ToArray();
                 lonrou.FromSpan(valueSpan.Slice(25, FarPtr.Size));
                 sttrou.FromSpan(valueSpan.Slice(29, FarPtr.Size));
                 stsrou.FromSpan(valueSpan.Slice(33, FarPtr.Size));
@@ -59,7 +59,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public ModuleStruct()
         {
-            descrp = new byte[25];
+            descrp = new byte[DESCRP_SIZE];
             lonrou = new FarPtr();
             sttrou = new FarPtr();
             stsrou = new FarPtr();

@@ -163,7 +163,7 @@ namespace MBBSEmu.HostProcess
             //Setup Message Subscribers
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, arg) => { EnableModule(arg); });
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, arg) => { DisableModule(arg); });
-            _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { ManualCleanup(); });
+            _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
 
             Logger.Info("Constructed MBBSEmu Host!");
         }
@@ -1232,11 +1232,6 @@ namespace MBBSEmu.HostProcess
 
             var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
             _moduleConfigurations[moduleIndex].ModuleEnabled = false;
-        }
-
-        private void ManualCleanup()
-        {
-            _performCleanup = true;
         }
 
         private void ProcessNightlyCleanup()
