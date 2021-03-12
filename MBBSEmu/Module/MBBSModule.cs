@@ -171,20 +171,19 @@ namespace MBBSEmu.Module
                 moduleDll.Load(Mdf.DLLFiles[0].Trim(), ModulePath);
                 ModuleDlls.Add(moduleDll);
 
-
-                if (Mdf.Requires.Count > 0)
+                //We load any DLL's required by the module and load it into the same memory space
+                //by looking at the NE Module Reference Tableto see what is being referenced.
+                //We filter out entries that are handled internally
+                foreach (var imports in ModuleDlls[0].File.ModuleReferenceTable
+                    .Where(x => x.Name != "MAJORBBS" && x.Name != "GALGSBL" && x.Name != "PHAPI" && x.Name != "DOSCALLS").Select(x=> x.Name))
                 {
-                    foreach (var r in Mdf.Requires)
-                    {
-                        var requiredDll = new MbbsDll(fileUtility, logger);
-                        if (requiredDll.Load(r.Trim(), ModulePath))
-                        {
-                            requiredDll.SegmentOffset = (ushort) (ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
-                            ModuleDlls.Add(requiredDll);
-                        }
-                    }
-                }
+                    var requiredDll = new MbbsDll(fileUtility, logger);
+                    if (!requiredDll.Load(imports, ModulePath)) continue;
 
+                    requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
+                    ModuleDlls.Add(requiredDll);
+                }
+                
                 if (Mdf.MSGFiles.Count > 0)
                 {
                     Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
@@ -234,7 +233,10 @@ namespace MBBSEmu.Module
                     var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
 
                     if (initNonResidentName == null)
-                        throw new Exception("Unable to locate _INIT__ entry in Resident Name Table");
+                    {
+                        _logger.Error($"Unable to locate _INIT__ entry in Resident Name Table for {dll.File.FileName}");
+                        continue;
+                    }
 
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
 
