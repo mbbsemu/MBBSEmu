@@ -15,6 +15,7 @@ using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -116,7 +117,7 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountRepository _accountRepository;
         private readonly ITextVariableService _textVariableService;
 
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettings configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
             Logger = logger;
             Clock = clock;
@@ -129,6 +130,7 @@ namespace MBBSEmu.HostProcess
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
+            var _messagingCenter = messagingCenter;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -158,6 +160,11 @@ namespace MBBSEmu.HostProcess
             _textVariableService.SetVariable("OTHERS_ONLINE", () => (GetUserSessions().Count - 1).ToString());
             _textVariableService.SetVariable("REG_NUMBER", () => _configuration.GSBLBTURNO);
 
+            //Setup Message Subscribers
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, moduleId) => { EnableModule(moduleId); });
+            _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId); });
+            _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
+
             Logger.Info("Constructed MBBSEmu Host!");
         }
 
@@ -167,7 +174,7 @@ namespace MBBSEmu.HostProcess
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
             //Load Modules
-            foreach (var m in moduleConfigurations)
+            foreach (var m in moduleConfigurations.Where(m => m.ModuleEnabled))
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
 
             //Remove any modules that did not properly initialize
@@ -267,7 +274,7 @@ namespace MBBSEmu.HostProcess
 
                         //Check for Internal System Globals
                         if (_globalRoutines.Any(g =>
-                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
+                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules, _moduleConfigurations)))
                         {
                             session.Status = 1;
                             session.InputBuffer.SetLength(0);
@@ -397,8 +404,13 @@ namespace MBBSEmu.HostProcess
             {
                 _modules.Remove(m);
 
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m)))
+                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m)).ToList();
+
+                foreach (var e in exportedFunctionsToRemove)
+                {
+                    _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);
+                }
             }
         }
 
@@ -419,6 +431,21 @@ namespace MBBSEmu.HostProcess
 
                     Run(m.ModuleIdentifier, routineEntryPoint, channel);
                 }
+            }
+        }
+
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, MbbsModule module, ushort channel = ushort.MaxValue)
+        {
+            if (!module.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) return;
+
+            if (routineEntryPoint.Segment != 0 && routineEntryPoint.Offset != 0)
+            {
+#if DEBUG
+                Logger.Info($"Calling {routine} on module {module.ModuleIdentifier} for channel {channel}");
+#endif
+                preRunCallback?.Invoke(module);
+
+                Run(module.ModuleIdentifier, routineEntryPoint, channel);
             }
         }
 
@@ -1184,14 +1211,59 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void ProcessNightlyCleanup()
+        private void EnableModule(string moduleId)
         {
-            if (_globalCache.ContainsKey("SYSOPGLOBAL-CLEANUP"))
+            var _moduleId = moduleId;
+            var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
+            //stop host loop
+            _isRunning = false;
+
+            AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) { MenuOptionKey = moduleChange.MenuOptionKey });
+
+            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+            _moduleConfigurations[moduleIndex].ModuleEnabled = true;
+
+            //start host loop
+            _isRunning = true;
+        }
+
+        private void DisableModule(string moduleId)
+        {
+            var _moduleId = moduleId;
+            var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
+            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == _moduleId))
             {
-                _globalCache.Remove("SYSOPGLOBAL-CLEANUP");
-                _performCleanup = true;
+                Logger.Warn($"(Sysop Command) Tried to disable {moduleId} while in use -- Wait until all users have exited module");
+                return;
             }
 
+            //stop host loop
+            _isRunning = false;
+
+            CallModuleRoutine("finrou", null, moduleChange.Value);
+            _modules.Remove(moduleChange.Value.ModuleIdentifier);
+
+            var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)).ToList();
+
+            foreach (var e in exportedFunctionsToRemove)
+            {
+                _exportedFunctions[e].Dispose();
+                _exportedFunctions.Remove(e);
+            }
+
+            var moduleIndex = _moduleConfigurations.FindIndex(i =>
+                i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
+
+            _moduleConfigurations[moduleIndex].ModuleEnabled = false;
+
+            //start host loop
+            _isRunning = true;
+        }
+
+        private void ProcessNightlyCleanup()
+        {
             if (_performCleanup)
             {
                 _performCleanup = false;
@@ -1220,7 +1292,9 @@ namespace MBBSEmu.HostProcess
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)))
+                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)).ToList();
+
+                foreach (var e in exportedFunctionsToRemove)
                 {
                     _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);

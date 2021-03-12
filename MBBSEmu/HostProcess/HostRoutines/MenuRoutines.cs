@@ -241,6 +241,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.UsrAcc.credat = account.createDate.ToDosDate();
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
+
+            if (_accountKeyRepository.GetAccountKeysByUsername(session.Username).Any(x => x.accountKey == "SYSOP"))
+                session.SendToClient("|RED||B|/SYS to access SYSOP commands\r\n".EncodeToANSIArray());
         }
 
 
@@ -250,13 +253,29 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var ansiMenuFileName = _configuration.ANSIMenu;
             if (!File.Exists(ansiMenuFileName))
             {
-                session.SendToClient(
-                    "\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
+                session.SendToClient("\r\n|GREEN||B|Please select one of the following:|RESET|\r\n\r\n".EncodeToANSIArray());
 
-                foreach (var m in modules.Values.OrderBy(x => x.MenuOptionKey.PadLeft(4, '0')))
+                if (modules.Values.Count > 19)
                 {
-                    session.SendToClient(
-                        $"   |CYAN||B|{m.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.ModuleDescription}\r\n".EncodeToANSIArray());
+                    var moduleList = modules.Values.OrderBy(x => x.MenuOptionKey.PadLeft(4, '0')).Select(m => new Tuple<string, string>(m.MenuOptionKey, m.ModuleDescription)).ToList();
+                    var columnSeed = moduleList.Count / 2;
+                    var columnFlag = moduleList.Count % 2;
+                    if (columnFlag == 1)
+                        columnSeed++;
+                    for (var i = 0; i < columnSeed; i++)
+                    {
+                        if (columnFlag == 0 || i < columnSeed - 1 && columnFlag == 1)
+                            session.SendToClient($"      |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-ModuleStruct.DESCRP_SIZE}   |CYAN||B|{moduleList[i + columnSeed].Item1,-2}|YELLOW| ... {moduleList[i + columnSeed].Item2,-ModuleStruct.DESCRP_SIZE}\r\n".EncodeToANSIArray());
+                        if (i == columnSeed - 1 && columnFlag == 1)
+                            session.SendToClient($"      |CYAN||B|{moduleList[i].Item1,-2}|YELLOW| ... {moduleList[i].Item2,-28}\r\n".EncodeToANSIArray());
+                    }
+                }
+                else
+                {
+                    foreach (var m in modules.Values.OrderBy(x => x.MenuOptionKey.PadLeft(4, '0')))
+                    {
+                        session.SendToClient($"   |CYAN||B|{m.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.ModuleDescription}\r\n".EncodeToANSIArray());
+                    }
                 }
             }
             else
@@ -310,6 +329,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
             else
             {
+                session.InputBuffer.SetLength(1);
                 session.CurrentModule = selectedMenuItem;
                 session.SessionState = EnumSessionState.EnteringModule;
                 session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });

@@ -8,6 +8,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,17 +24,21 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IGlobalCache _globalCache;
+        private readonly IMessagingCenter _messagingCenter;
+        private List<ModuleConfiguration> _moduleConfigurations;
         private PointerDictionary<SessionBase> _sessions;
+        private Dictionary<string, MbbsModule> _modules;
         private ushort _channelNumber;
 
-        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache)
+        public SysopGlobal(IAccountRepository accountRepository, IAccountKeyRepository accountKeyRepository, IGlobalCache globalCache, IMessagingCenter messagingCenter)
         {
             _accountRepository = accountRepository;
             _accountKeyRepository = accountKeyRepository;
             _globalCache = globalCache;
+            _messagingCenter = messagingCenter;
         }
 
-        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
+        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
         {
             //Fast Return
             if (command.Length < 5)
@@ -51,6 +56,8 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             //Set Class Variables
             _sessions = sessions;
             _channelNumber = channelNumber;
+            _modules = modules;
+            _moduleConfigurations = moduleConfigurations;
 
             //Verify the command has at least one action
             if (command.IndexOf((byte)' ') == -1)
@@ -95,7 +102,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                     }
                 case "CLEANUP":
                     {
-                        _globalCache.Set("SYSOPGLOBAL-CLEANUP", true);
+                        Cleanup();
                         break;
                     }
                 case "BROADCAST":
@@ -116,6 +123,21 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 case "VERSION":
                     {
                         Version();
+                        break;
+                    }
+                case "ENABLE":
+                    {
+                        ModuleEnable(commandSequence);
+                        break;
+                    }
+                case "DISABLE":
+                    {
+                        ModuleDisable(commandSequence);
+                        break;
+                    }
+                case "LISTMODULES":
+                    {
+                        ListModules();
                         break;
                     }
                 default:
@@ -153,8 +175,12 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"BROADCAST <MESSAGE>",-30} Broadcasts message to all users online".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"KICK <USER>",-30} Kick user".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTMODULES",-30} Disables specified module".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"ENABLE <MODULEID>",-30} Enables specified module".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"DISABLE <MODULEID>",-30} Disables specified module".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"VERSION",-30} Displays MBBSEmu Version\r\n".EncodeToANSIString());
+            
         }
 
         /// <summary>
@@ -397,6 +423,91 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             _sessions[channelToKick.Channel].SendToClient("\r\n|RESET||RED||B|SYSOP HAS LOGGED YOU OFF\r\n|RESET|".EncodeToANSIString());
             _sessions[channelToKick.Channel].SessionState = EnumSessionState.LoggingOffDisplay;
+        }
+
+        /// <summary>
+        ///     Sysop Command to enable a disabled module from the module configuration (Enabled: 0)
+        ///
+        ///     Syntax: /SYS ENABLE MODULEID
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void ModuleEnable(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(commandSequence[2], StringComparison.InvariantCultureIgnoreCase));
+            
+            if (moduleIndex == 0)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Module -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var moduleChange = _moduleConfigurations[moduleIndex];
+
+            if (moduleChange.ModuleEnabled)
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{moduleChange.ModuleIdentifier} already enabled -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, moduleChange.ModuleIdentifier);
+        }
+
+        /// <summary>
+        ///     Sysop Command to enable a disabled module from the module configuration (Enabled: 0)
+        ///
+        ///     Syntax: /SYS DISABLE MODULEID
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void ModuleDisable(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            if (!_modules.ContainsKey(commandSequence[2].ToUpper()))
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Module -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
+
+            _messagingCenter.Send(this, EnumMessageEvent.DisableModule, moduleChange.ModuleIdentifier);
+        }
+
+        /// <summary>
+        ///     Sysop Command to list all modules (enabled and disabled)
+        ///
+        ///     Syntax: /SYS LISTMODULES
+        /// </summary>
+        private void ListModules()
+        {
+            _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Module Name----------------------Path-------------------------------Enabled-----\r\n".EncodeToANSIString());
+
+            foreach (var m in _moduleConfigurations)
+            {
+                _sessions[_channelNumber].SendToClient($"{m.ModuleIdentifier,-33}{m.ModulePath,-35}{m.ModuleEnabled}\r\n");
+            }
+
+            _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to manually run nightly cleanup
+        ///
+        ///     Syntax: /SYS CLEANUP
+        /// </summary>
+        private void Cleanup()
+        {
+            _messagingCenter.Send(this, EnumMessageEvent.Cleanup);
         }
     }
 }
