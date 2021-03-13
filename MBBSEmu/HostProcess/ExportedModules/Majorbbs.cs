@@ -1549,11 +1549,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var mcvFileName = GetParameterString(0, true);
 
-            //If the MCV file doesn't exist, but the MSG does -- we need to build the MCV
-            if (!File.Exists(Path.Combine(Module.ModulePath, mcvFileName)) &&
-                File.Exists(
-                    Path.Combine(Module.ModulePath, mcvFileName.Replace("mcv", "msg", StringComparison.InvariantCultureIgnoreCase))
-            ))
+            //If it's our first time opening it, generate the MCV
+            if (!McvPointerDictionary.Any(x=> x.Value.FileName == mcvFileName))
             {
                 // triggers MSG -> MCV compilation
                 _ = new MsgFile(Module.ModulePath,
