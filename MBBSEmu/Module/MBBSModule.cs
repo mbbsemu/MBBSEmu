@@ -298,9 +298,11 @@ namespace MBBSEmu.Module
 
             _logger.Info($"Loaded {dllToLoad}");
 
+            //Pull records from ModuleReferenceTable that aren't of References handled internally by the emulator
             foreach (var import in ModuleDlls[0].File.ModuleReferenceTable
                 .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x=> x.Name))
             {
+                //Only load a dependency if it's not already loaded by a previous library
                 if (ModuleDlls.All(x => x.File.FileName.ToUpper().Split('.')[0] != import.ToUpper()))
                     LoadModuleDll(import);
             }
