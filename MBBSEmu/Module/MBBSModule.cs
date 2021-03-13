@@ -7,10 +7,10 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace MBBSEmu.Module
 {
@@ -316,7 +316,7 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         private IEnumerable<string> GetAllExportedModules()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            return Assembly.GetExecutingAssembly().GetTypes()
                 .Where(x => typeof(IExportedModule).IsAssignableFrom(x) && !x.IsInterface && !x.IsAbstract)
                 .Select(x => x.Name.ToUpper()).ToList();
         }
