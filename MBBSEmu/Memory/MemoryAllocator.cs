@@ -89,6 +89,7 @@ namespace MBBSEmu.Memory
       BasePointer = basePointer;
       Capacity = capacity;
       RemainingBytes = capacity;
+      Logger = logger;
 
       _freeBlocks.AddFirst(new MemoryBlock() { Offset = basePointer.Offset, Size = capacity });
     }
@@ -148,7 +149,7 @@ namespace MBBSEmu.Memory
 
       if (!_allocatedBlocks.TryRemove(ptr, out var size))
       {
-        Logger?.Warn($"Attempting to deallocate invalid memory block at {ptr}");
+        Logger?.Error($"Attempting to deallocate invalid memory block at {ptr}");
         return;
       }
 
