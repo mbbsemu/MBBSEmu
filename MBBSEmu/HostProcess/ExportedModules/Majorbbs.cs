@@ -1654,7 +1654,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Gets a string from an MCV file
+        ///     Gets a string from an MCV file, returned as freshly allocated from malloc.
+        ///     Return value should be free'd by the module.
         ///
         ///     Signature: char *string=stgopt(int msgnum)
         ///     Return: AX = Offset in Segment
@@ -1664,22 +1665,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            if (!Module.Memory.TryGetVariablePointer($"STGOPT_{_currentMcvFile.Offset}_{msgnum}",
-                out var variablePointer))
-            {
-                var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
-                variablePointer = base.Module.Memory.AllocateVariable($"STGOPT_{_currentMcvFile.Offset}_{msgnum}",
-                    (ushort)outputValue.Length);
+            var variablePointer = Module.Memory.Malloc((ushort)outputValue.Length);
 
-                //Set Value in Memory
-                Module.Memory.SetArray(variablePointer, outputValue);
+            //Set Value in Memory
+            Module.Memory.SetArray(variablePointer, outputValue);
 
 #if DEBUG
-                _logger.Debug(
-                    $"({Module.ModuleIdentifier}) Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Retrieved option {msgnum} string value: {outputValue.Length} bytes saved to {variablePointer}");
 #endif
-            }
 
             Registers.SetPointer(variablePointer);
         }
