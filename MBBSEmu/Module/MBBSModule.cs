@@ -165,24 +165,9 @@ namespace MBBSEmu.Module
                 {
                     throw new FileNotFoundException($"Unable to locate Module: {fullMdfFilePath}");
                 }
-
                 Mdf = new MdfFile(fullMdfFilePath);
-                var moduleDll = new MbbsDll(fileUtility, logger);
-                moduleDll.Load(Mdf.DLLFiles[0].Trim(), ModulePath);
-                ModuleDlls.Add(moduleDll);
 
-                //We load any DLL's required by the module and load it into the same memory space
-                //by looking at the NE Module Reference Tableto see what is being referenced.
-                //We filter out entries that are handled internally
-                foreach (var imports in ModuleDlls[0].File.ModuleReferenceTable
-                    .Where(x => x.Name != "MAJORBBS" && x.Name != "GALGSBL" && x.Name != "PHAPI" && x.Name != "DOSCALLS").Select(x=> x.Name))
-                {
-                    var requiredDll = new MbbsDll(fileUtility, logger);
-                    if (!requiredDll.Load(imports, ModulePath)) continue;
-
-                    requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
-                    ModuleDlls.Add(requiredDll);
-                }
+                LoadModuleDll(Mdf.DLLFiles[0].Trim());
                 
                 if (Mdf.MSGFiles.Count > 0)
                 {
@@ -292,6 +277,46 @@ namespace MBBSEmu.Module
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
             ExecutionUnits.Enqueue(executionUnit);
             return resultRegisters;
+        }
+
+        /// <summary>
+        ///     Loads the specified DLL, and then inspects that DLLs Module Reference Table to import any additional
+        ///     references it might require recursively. 
+        /// </summary>
+        /// <param name="dllToLoad"></param>
+        private void LoadModuleDll(string dllToLoad)
+        {
+            var requiredDll = new MbbsDll(_fileUtility, _logger);
+            if (!requiredDll.Load(dllToLoad, ModulePath))
+            {
+                _logger.Error($"Unable to load {dllToLoad}");
+                return;
+            }
+
+            requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
+            ModuleDlls.Add(requiredDll);
+
+            _logger.Info($"Loaded {dllToLoad}");
+
+            foreach (var import in ModuleDlls[0].File.ModuleReferenceTable
+                .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x=> x.Name))
+            {
+                if (ModuleDlls.All(x => x.File.FileName.ToUpper().Split('.')[0] != import.ToUpper()))
+                    LoadModuleDll(import);
+            }
+        }
+
+        /// <summary>
+        ///     Returns a list of each Class which Implements IExportedModule
+        ///
+        ///     We use this to not try and import DLL references that are emulated internally
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<string> GetAllExportedModules()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                .Where(x => typeof(IExportedModule).IsAssignableFrom(x) && !x.IsInterface && !x.IsAbstract)
+                .Select(x => x.Name.ToUpper()).ToList();
         }
     }
 }
