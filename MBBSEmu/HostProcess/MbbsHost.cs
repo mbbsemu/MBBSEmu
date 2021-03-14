@@ -921,9 +921,10 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var seg in dll.File.SegmentTable)
                 {
+                    var originalOrdinal = seg.Ordinal;
                     seg.Ordinal += dll.SegmentOffset;
                     module.Memory.AddSegment(seg);
-                    Logger.Debug($"({module.ModuleIdentifier}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+                    Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
                 }
 
                 dll.StateCode = (short) (_modules.Count * 10 + i);
