@@ -444,7 +444,7 @@ namespace MBBSEmu.Memory
         {
             ReadOnlySpan<byte> segmentSpan = _memorySegments[segment];
 
-            for (var i = offset; i < ushort.MaxValue; i++)
+            for (int i = offset; i <= ushort.MaxValue; i++)
             {
                 if (segmentSpan[i] == 0x0)
                     return segmentSpan.Slice(offset, (i - offset) + (stripNull ? 0 : 1));
