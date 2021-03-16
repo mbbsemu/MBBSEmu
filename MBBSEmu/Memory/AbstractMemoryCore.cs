@@ -25,8 +25,6 @@ namespace MBBSEmu.Memory
         protected const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         protected ILogger _logger;
-        protected readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
-
         private readonly Dictionary<string, FarPtr> _variablePointerDictionary = new();
 
         public AbstractMemoryCore(ILogger logger)
@@ -43,8 +41,6 @@ namespace MBBSEmu.Memory
         /// </summary>
         public virtual void Clear()
         {
-            Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
-
             _variablePointerDictionary.Clear();
         }
 
@@ -132,31 +128,6 @@ namespace MBBSEmu.Memory
                 return result;
 
             return AllocateVariable(name, size, declarePointer);
-        }
-
-        /// <summary>
-        ///     Returns the decompiled instruction from the specified segment:pointer
-        /// </summary>
-        /// <param name="segment"></param>
-        /// <param name="instructionPointer"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
-            _decompiledSegments[segment][instructionPointer];
-
-        public Instruction Recompile(ushort segment, ushort instructionPointer)
-        {
-            //If it wasn't able to decompile linear through the data, there might have been
-            //data in the path of the code that messed up decoding, in this case, we grab up to
-            //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            ReadOnlySpan<byte> segmentData = GetArray(segment, instructionPointer, 6);
-            var reader = new ByteArrayCodeReader(segmentData.ToArray());
-            var decoder = Decoder.Create(16, reader);
-            decoder.IP = instructionPointer;
-            decoder.Decode(out var outputInstruction);
-
-            _decompiledSegments[segment][instructionPointer] = outputInstruction;
-            return outputInstruction;
         }
 
         public abstract Span<byte> VirtualToPhysical(ushort segment, ushort offset);

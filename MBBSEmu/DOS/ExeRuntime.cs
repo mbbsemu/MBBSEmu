@@ -21,8 +21,8 @@ namespace MBBSEmu.DOS
         public CpuRegisters Registers;
         private ILogger _logger;
         private FarPtr _programRealModeLoadAddress;
-        private int _programPhysicalLoadAddress;
 
+        private const ushort PROGRAM_MAXIMUM_ADDRESS = 0xF000;
         private const ushort PSP_SEGMENT = 0x2000;
 
         /// <summary>
@@ -42,8 +42,6 @@ namespace MBBSEmu.DOS
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
             _environmentVariables = environmentVariables;
 
-            Registers.IP = 0;
-            Registers.CS = 1;
             Registers.ES = PSP_SEGMENT;
             Registers.DS = PSP_SEGMENT;
         }
@@ -67,12 +65,11 @@ namespace MBBSEmu.DOS
         private void LoadProgramIntoMemory()
         {
             // compute load address
-            var startingAddress = RealModeMemoryCore.MAX_REAL_MODE_MEMORY - File.Header.ProgramSize;
+            var startingAddress = PROGRAM_MAXIMUM_ADDRESS - File.Header.ProgramSize;
 
             _programRealModeLoadAddress = RealModeMemoryCore.PhysicalToVirtualOffset(startingAddress);
             // might not be aligned to 16 bytes, so align cleanly
             _programRealModeLoadAddress.Offset = 0;
-            _programPhysicalLoadAddress = RealModeMemoryCore.VirtualToPhysicalOffset(_programRealModeLoadAddress.Segment, 0);
 
             Memory.SetArray(_programRealModeLoadAddress, File.ProgramData);
         }
@@ -97,8 +94,12 @@ namespace MBBSEmu.DOS
         {
             Registers.CS = (ushort)(File.Header.InitialCS + _programRealModeLoadAddress.Segment);
             Registers.IP = File.Header.InitialIP;
-            // and compile
-            Memory.Recompile(Registers.CS, Registers.IP);
+
+            // and compile/cache instructions
+            //Memory.Recompile(Registers.CS, Registers.IP);
+
+            Registers.SS = (ushort)(_programRealModeLoadAddress.Segment - 1 - (File.Header.InitialSP >> 4));
+            Registers.SP = File.Header.InitialSP;
         }
 
         /// <summary>

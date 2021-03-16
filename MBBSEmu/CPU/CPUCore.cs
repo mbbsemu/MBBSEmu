@@ -123,7 +123,7 @@ namespace MBBSEmu.CPU
         ///     AggressiveOptimization == The method contains a hot path and should be optimized
         ///
         ///     Inlining actually is appropriate for the Opcode Subroutines (8, 16, 32 bit variations) as it inlines
-        ///     those with their Opcode function. 
+        ///     those with their Opcode function.
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
@@ -2637,21 +2637,6 @@ namespace MBBSEmu.CPU
 
                         break;
                     }
-                case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector <= 0x0F00:
-                    {
-                        //Far call to another Segment
-                        Push(Registers.CS);
-                        Push((ushort)(Registers.IP + _currentInstruction.Length));
-
-                        Registers.CS = _currentInstruction.FarBranchSelector;
-                        Registers.IP = _currentInstruction.FarBranch16;
-
-#if DEBUG
-                        if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
-#endif
-                        break;
-                    }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
                     {
                         //We push CS:IP to the stack
@@ -2682,6 +2667,21 @@ namespace MBBSEmu.CPU
                         Registers.SetValue(Register.BP, Pop());
                         Registers.SetValue(Register.EIP, Pop());
                         Registers.SetValue(Register.CS, Pop());
+                        break;
+                    }
+                case OpKind.FarBranch16:
+                    {
+                        //Far call to another Segment
+                        Push(Registers.CS);
+                        Push((ushort)(Registers.IP + _currentInstruction.Length));
+
+                        Registers.CS = _currentInstruction.FarBranchSelector;
+                        Registers.IP = _currentInstruction.FarBranch16;
+
+#if DEBUG
+                        if (_showDebug)
+                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+#endif
                         break;
                     }
                 case OpKind.NearBranch16:
@@ -3735,7 +3735,7 @@ namespace MBBSEmu.CPU
                 4 => Op_Movsx_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
-            
+
             WriteToDestination(result);
         }
 

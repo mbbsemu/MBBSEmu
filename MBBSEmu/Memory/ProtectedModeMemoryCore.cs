@@ -18,6 +18,7 @@ namespace MBBSEmu.Memory
     {
         private readonly byte[][] _memorySegments = new byte[0x10000][];
         private readonly Segment[] _segments = new Segment[0x10000];
+        private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
 
         private const ushort HEAP_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
         private FarPtr _nextHeapPointer = new FarPtr(HEAP_BASE_SEGMENT, 0);
@@ -76,6 +77,7 @@ namespace MBBSEmu.Memory
 
             Array.Clear(_memorySegments, 0, _memorySegments.Length);
             Array.Clear(_segments, 0, _segments.Length);
+            Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
 
             _nextHeapPointer = new FarPtr(HEAP_BASE_SEGMENT, 0);
             _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
@@ -172,6 +174,32 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
         public bool HasSegment(ushort segmentNumber) => _memorySegments[segmentNumber] != null;
+
+        /// <summary>
+        ///     Returns the decompiled instruction from the specified segment:pointer
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <param name="instructionPointer"></param>
+        /// <returns></returns>
+        [MethodImpl(CompilerOptimizations)]
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
+            _decompiledSegments[segment][instructionPointer];
+
+        [MethodImpl(CompilerOptimizations)]
+        public Instruction Recompile(ushort segment, ushort instructionPointer)
+        {
+            //If it wasn't able to decompile linear through the data, there might have been
+            //data in the path of the code that messed up decoding, in this case, we grab up to
+            //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
+            ReadOnlySpan<byte> segmentData = GetArray(segment, instructionPointer, 6);
+            var reader = new ByteArrayCodeReader(segmentData.ToArray());
+            var decoder = Decoder.Create(16, reader);
+            decoder.IP = instructionPointer;
+            decoder.Decode(out var outputInstruction);
+
+            _decompiledSegments[segment][instructionPointer] = outputInstruction;
+            return outputInstruction;
+        }
 
         [MethodImpl(CompilerOptimizations)]
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>_memorySegments[segment].AsSpan(offset);

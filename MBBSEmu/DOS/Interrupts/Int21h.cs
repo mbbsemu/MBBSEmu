@@ -53,6 +53,17 @@ namespace MBBSEmu.DOS.Interrupts
         {
             switch (_registers.AH)
             {
+                case 0x09:
+                    {
+                        var src = new FarPtr(_registers.DS, _registers.DX);
+                        var memoryStream = new MemoryStream();
+                        byte b;
+                        while ((b = _memory.GetByte(src++)) != '$')
+                            memoryStream.WriteByte(b);
+
+                        Console.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+                        return;
+                    }
                 case 0x19:
                     {
                         //DOS - GET DEFAULT DISK NUMBER

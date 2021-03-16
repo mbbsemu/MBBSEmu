@@ -14,8 +14,10 @@ namespace MBBSEmu.Memory
     ///
     ///     We just allocate a 1MB memory block and map accordingly.
     ///
-    ///     Memory is mapped with executable at the top of the address space, and 64k heap at
-    ///     0x1000-0x2000
+    ///     Memory is mapped with executable at the top of the address space up to 0xF000, so the
+    ///     executable code should live directly below that address. The stack is immediately below
+    ///     the start of the executable - growing down. There is a 64k heap at 0x1000-0x2000 which
+    ///     grows up.
     /// </summary>
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
@@ -41,7 +43,8 @@ namespace MBBSEmu.Memory
         public override FarPtr Malloc(ushort size) => _memoryAllocator.Malloc(size);
         public override void Free(FarPtr ptr) => _memoryAllocator.Free(ptr);
 
-        Instruction IMemoryCore.GetInstruction(ushort segment, ushort instructionPointer)
+        // TODO optimize/cache this
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
             //var instructionList = new InstructionList();
             var codeReader = new ByteArrayCodeReader(VirtualToPhysical(segment, instructionPointer).Slice(0, 10).ToArray());
@@ -50,6 +53,8 @@ namespace MBBSEmu.Memory
 
             return decoder.Decode();
         }
+
+        public Instruction Recompile(ushort segment, ushort instructionPointer) => GetInstruction(segment, instructionPointer);
 
         public static int VirtualToPhysicalOffset(ushort segment, ushort offset) => ((segment << 4) + offset);
         public static FarPtr PhysicalToVirtualOffset(int offset) => new FarPtr((ushort)(offset >> 4), (ushort)(offset & 0xF));
