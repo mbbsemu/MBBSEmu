@@ -159,7 +159,7 @@ namespace MBBSEmu.Memory
             return outputInstruction;
         }
 
-        public abstract Span<byte> ToPhysicalSpan(ushort segment, ushort offset);
+        public abstract Span<byte> VirtualToPhysical(ushort segment, ushort offset);
 
         /// <summary>
         ///     Returns a single byte from the specified segment:offset
@@ -168,7 +168,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public byte GetByte(ushort segment, ushort offset) => ToPhysicalSpan(segment, offset)[0];
+        public byte GetByte(ushort segment, ushort offset) => VirtualToPhysical(segment, offset)[0];
 
         /// <summary>
         ///     Returns an unsigned word from the specified segment:offset
@@ -178,7 +178,7 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
         public unsafe ushort GetWord(ushort segment, ushort offset) {
-            fixed (byte *p = ToPhysicalSpan(segment, offset))
+            fixed (byte *p = VirtualToPhysical(segment, offset))
             {
                 return *((ushort*)p);
             }
@@ -187,7 +187,7 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe uint GetDWord(ushort segment, ushort offset)
         {
-            fixed (byte* p = ToPhysicalSpan(segment, offset))
+            fixed (byte* p = VirtualToPhysical(segment, offset))
             {
                 return *((uint*)p);
             }
@@ -202,13 +202,13 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count) =>
-            ToPhysicalSpan(segment, offset).Slice(0, count);
+            VirtualToPhysical(segment, offset).Slice(0, count);
 
 
         [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         {
-            var segmentSpan = ToPhysicalSpan(segment, offset);
+            var segmentSpan = VirtualToPhysical(segment, offset);
             var nullTerminator = segmentSpan.IndexOf((byte)0);
             if (nullTerminator < 0)
                 throw new Exception($"Invalid String at {segment:X4}:{offset:X4}");
@@ -223,7 +223,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
-        public void SetByte(ushort segment, ushort offset, byte value) => ToPhysicalSpan(segment, offset)[0] = value;
+        public void SetByte(ushort segment, ushort offset, byte value) => VirtualToPhysical(segment, offset)[0] = value;
 
         /// <summary>
         ///     Sets the specified word at the desired segment:offset
@@ -234,7 +234,7 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetWord(ushort segment, ushort offset, ushort value)
         {
-            fixed (byte *dst = ToPhysicalSpan(segment, offset))
+            fixed (byte *dst = VirtualToPhysical(segment, offset))
             {
                 *((ushort*)dst) = value;
             }
@@ -243,7 +243,7 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetDWord(ushort segment, ushort offset, uint value)
         {
-            fixed (byte* dst = ToPhysicalSpan(segment, offset))
+            fixed (byte* dst = VirtualToPhysical(segment, offset))
             {
                 *((uint*)dst) = value;
             }
@@ -252,7 +252,7 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
-            var destinationSpan = ToPhysicalSpan(segment, offset);
+            var destinationSpan = VirtualToPhysical(segment, offset);
             array.CopyTo(destinationSpan);
         }
 
@@ -265,7 +265,7 @@ namespace MBBSEmu.Memory
         /// <param name="value"></param>
         public void FillArray(ushort segment, ushort offset, int count, byte value)
         {
-            ToPhysicalSpan(segment, offset).Slice(0, count).Fill(value);
+            VirtualToPhysical(segment, offset).Slice(0, count).Fill(value);
         }
 
         /// <summary>
