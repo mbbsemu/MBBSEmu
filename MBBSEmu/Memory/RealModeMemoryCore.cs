@@ -1,3 +1,4 @@
+using Iced.Intel;
 using NLog;
 using System;
 
@@ -18,7 +19,7 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
-        private const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
+        public const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
         private readonly FarPtr HEAP_BASE = new FarPtr(0x1000, 0);
         private const int HEAP_MAX_SIZE = 64*1024;
 
@@ -28,7 +29,7 @@ namespace MBBSEmu.Memory
 
         public RealModeMemoryCore(ILogger logger) : base(logger)
         {
-            _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE);
+             _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE);
         }
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
@@ -39,5 +40,18 @@ namespace MBBSEmu.Memory
 
         public override FarPtr Malloc(ushort size) => _memoryAllocator.Malloc(size);
         public override void Free(FarPtr ptr) => _memoryAllocator.Free(ptr);
+
+        Instruction IMemoryCore.GetInstruction(ushort segment, ushort instructionPointer)
+        {
+            //var instructionList = new InstructionList();
+            var codeReader = new ByteArrayCodeReader(VirtualToPhysical(segment, instructionPointer).Slice(0, 10).ToArray());
+            var decoder = Decoder.Create(16, codeReader);
+            decoder.IP = 0x0;
+
+            return decoder.Decode();
+        }
+
+        public static int VirtualToPhysicalOffset(ushort segment, ushort offset) => ((segment << 4) + offset);
+        public static FarPtr PhysicalToVirtualOffset(int offset) => new FarPtr((ushort)(offset >> 4), (ushort)(offset & 0xF));
     }
 }

@@ -8,60 +8,45 @@ namespace MBBSEmu.Disassembler
 {
     public class MZFile
     {
-        private readonly MZHeader _mzHeader;
+        public MZHeader Header { get; init; }
         private readonly string _exeFile;
-        private readonly byte[] _exeFileData;
-        public readonly List<Segment> Segments;
-        public readonly List<FarPtr> RelocationRecords;
-
-        public FarPtr StartingPointer = new FarPtr(1 + 0x10, 0); //PSP+10h for Segment
+        public byte[] ProgramData { get; init; }
+        public List<FarPtr> RelocationRecords { get; init; }
 
         public MZFile(string exeFile)
         {
-            Segments = new List<Segment>();
             RelocationRecords = new List<FarPtr>();
 
             _exeFile = exeFile;
-            _exeFileData = File.ReadAllBytes(_exeFile);
+            var exeFileData = File.ReadAllBytes(_exeFile);
 
-            _mzHeader = new MZHeader(_exeFileData);
+            Header = new MZHeader(exeFileData);
 
-            Load();
+            LoadRelocationRecords(exeFileData);
+            ProgramData = LoadProgramData(exeFileData);
         }
 
-        private void Load()
+        private byte[] LoadProgramData(byte[] exeFileData)
         {
             //Get EXE Contents
-            var contentSpan = new ReadOnlySpan<byte>(_exeFileData);
-            var programData = contentSpan.Slice(_mzHeader.HeaderSize, _mzHeader.ProgramSize);
-
-            //Parse Relocation Records
-            LoadRelocationRecords();
-
-            //Get First Instruction
-            var dataSegmentStart = BitConverter.ToUInt16(programData.ToArray(), RelocationRecords[0].Offset);
-            dataSegmentStart <<= 4;
-
-            Segments.Add(new Segment() { Data = programData.Slice(0, dataSegmentStart).ToArray(), Flag = (ushort)EnumSegmentFlags.Code, Ordinal = 1 });
-            Segments.Add(new Segment() { Data = programData.Slice(dataSegmentStart).ToArray(), Flag = (ushort)EnumSegmentFlags.Data, Ordinal = 2 });
+            var contentSpan = new ReadOnlySpan<byte>(exeFileData);
+            return contentSpan.Slice(Header.HeaderSize, Header.ProgramSize).ToArray();
         }
 
         /// <summary>
         ///     Applies Relocation Records to the EXE data at load time
         /// </summary>
-        private void LoadRelocationRecords()
+        private void LoadRelocationRecords(byte[] exeFileData)
         {
-            for (var i = 0; i < _mzHeader.RelocationEntries; i++)
+            for (var i = 0; i < Header.RelocationEntries; i++)
             {
-                var relocationAddress = _mzHeader.RelocationOffset + (4 * i);
+                var relocationAddress = Header.RelocationOffset + (4 * i);
 
-                var offset = BitConverter.ToUInt16(_exeFileData, relocationAddress);
-                var segment = BitConverter.ToUInt16(_exeFileData, relocationAddress + 2);
+                var offset = BitConverter.ToUInt16(exeFileData, relocationAddress);
+                var segment = BitConverter.ToUInt16(exeFileData, relocationAddress + 2);
 
                 RelocationRecords.Add(new FarPtr(segment, offset));
             }
         }
-
-
     }
 }

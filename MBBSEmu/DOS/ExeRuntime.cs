@@ -20,18 +20,15 @@ namespace MBBSEmu.DOS
         public ICpuCore Cpu;
         public CpuRegisters Registers;
         private ILogger _logger;
+        private FarPtr _programRealModeLoadAddress;
+        private int _programPhysicalLoadAddress;
+
+        private const ushort PSP_SEGMENT = 0x2000;
 
         /// <summary>
         ///     Segment which holds the Environment Variables
         /// </summary>
-        private const ushort ENVIRONMENT_SEGMENT = 0xFFF0;
-
-        /// <summary>
-        ///     Segment which contains the PSP Struct
-        ///
-        ///     Normally +10h beyond the last segment of the EXE
-        /// </summary>
-        private ushort PSP_SEGMENT { get; init; }
+        private const ushort ENVIRONMENT_SEGMENT = 0x2010;
 
         private readonly List<string> _environmentVariables;
 
@@ -39,12 +36,11 @@ namespace MBBSEmu.DOS
         {
             _logger = logger;
             File = file;
-            Memory = new ProtectedModeMemoryCore(logger); // TODO change to RealModeMemoryCore
+            Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
             _environmentVariables = environmentVariables;
-            PSP_SEGMENT = (ushort)(file.Segments.Count + 0x10);
 
             Registers.IP = 0;
             Registers.CS = 1;
@@ -54,10 +50,11 @@ namespace MBBSEmu.DOS
 
         public bool Load()
         {
+            LoadProgramIntoMemory();
             ApplyRelocation();
-            LoadSegments();
             SetupPSP();
             SetupEnvironmentVariables();
+            CompileEntryPoint();
             return true;
         }
 
@@ -67,46 +64,41 @@ namespace MBBSEmu.DOS
                 Cpu.Tick();
         }
 
-        /// <summary>
-        ///     Applies Relocation Records to the EXE Code Segments
-        /// </summary>
-        private void ApplyRelocation()
+        private void LoadProgramIntoMemory()
         {
-            //Get the Code Segment in the MZFile
-            var codeSegment = File.Segments.First(x => x.Flag == (ushort)EnumSegmentFlags.Code).Data;
+            // compute load address
+            var startingAddress = RealModeMemoryCore.MAX_REAL_MODE_MEMORY - File.Header.ProgramSize;
 
-            //For the time being, only handle the 1st relo for the data segment
-            foreach (var relo in File.RelocationRecords)
-            {
-                //Data Segment is always the last one
-                Array.Copy(BitConverter.GetBytes((ushort)File.Segments.Count), 0, codeSegment, relo.Offset,
-                    sizeof(ushort));
-            }
+            _programRealModeLoadAddress = RealModeMemoryCore.PhysicalToVirtualOffset(startingAddress);
+            // might not be aligned to 16 bytes, so align cleanly
+            _programRealModeLoadAddress.Offset = 0;
+            _programPhysicalLoadAddress = RealModeMemoryCore.VirtualToPhysicalOffset(_programRealModeLoadAddress.Segment, 0);
+
+            Memory.SetArray(_programRealModeLoadAddress, File.ProgramData);
         }
 
         /// <summary>
-        ///     Loads EXE Code Segments into the Memory Core
+        ///     Applies Relocation Records to the EXE using _programRealModeLoadAddress
         /// </summary>
-        private void LoadSegments()
+        private void ApplyRelocation()
         {
-            for (ushort i = 1; i <= File.Segments.Count; i++)
+            foreach (var relo in File.RelocationRecords)
             {
-                var seg = File.Segments[i - 1];
-                switch (seg.Flag)
-                {
-                    case (ushort)EnumSegmentFlags.Code:
-                        {
-                            //Memory.AddSegment(seg);
-                            break;
-                        }
-                    case (ushort)EnumSegmentFlags.Data:
-                        {
-                            //Memory.AddSegment(i);
-                            Memory.SetArray(i, 0, seg.Data);
-                            break;
-                        }
-                }
+                var relocVirtualAddress = _programRealModeLoadAddress + relo;
+
+                var inMemoryVirtualAddress = BitConverter.ToUInt16(Memory.GetArray(relocVirtualAddress, 2));
+                inMemoryVirtualAddress += _programRealModeLoadAddress.Segment;
+
+                Memory.SetArray(relocVirtualAddress, BitConverter.GetBytes(inMemoryVirtualAddress));
             }
+        }
+
+        private void CompileEntryPoint()
+        {
+            Registers.CS = (ushort)(File.Header.InitialCS + _programRealModeLoadAddress.Segment);
+            Registers.IP = File.Header.InitialIP;
+            // and compile
+            Memory.Recompile(Registers.CS, Registers.IP);
         }
 
         /// <summary>
@@ -115,7 +107,6 @@ namespace MBBSEmu.DOS
         private void SetupPSP()
         {
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = ENVIRONMENT_SEGMENT };
-            //Memory.AddSegment(PSP_SEGMENT);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -127,8 +118,6 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupEnvironmentVariables()
         {
-            //Memory.AddSegment(ENVIRONMENT_SEGMENT);
-
             if (_environmentVariables == null)
                 return;
 
