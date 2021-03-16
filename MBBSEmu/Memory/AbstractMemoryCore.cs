@@ -22,7 +22,7 @@ namespace MBBSEmu.Memory
         ///     Works fastest with just AggressiveOptimization. Enabling AggressiveInlining slowed
         ///     down the code.
         /// </summary>
-        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
+        protected const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
         protected ILogger _logger;
         protected readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];

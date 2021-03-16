@@ -26,14 +26,6 @@ namespace MBBSEmu.Memory
         private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks = new();
         private readonly Dictionary<ushort, MemoryAllocator> _heapAllocators = new();
 
-        /// <summary>
-        ///     Default Compiler Hints for use on methods within the MemoryCore
-        ///
-        ///     Works fastest with just AggressiveOptimization. Enabling AggressiveInlining slowed
-        ///     down the code.
-        /// </summary>
-        private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
-
         public ProtectedModeMemoryCore(ILogger logger) : base(logger)
         {
             //Add Segment 0 by default, stack segment
@@ -181,10 +173,8 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public bool HasSegment(ushort segmentNumber) => _memorySegments[segmentNumber] != null;
 
-        public override Span<byte> ToPhysicalSpan(ushort segment, ushort offset)
-        {
-            return _memorySegments[segment].AsSpan(offset);
-        }
+        [MethodImpl(CompilerOptimizations)]
+        public override Span<byte> ToPhysicalSpan(ushort segment, ushort offset) =>_memorySegments[segment].AsSpan(offset);
 
         /// <summary>
         ///     Allocates the specific number of Big Memory Blocks with the desired size
@@ -209,7 +199,6 @@ namespace MBBSEmu.Memory
         /// <param name="block"></param>
         /// <param name="index"></param>
         /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
         public override FarPtr GetBigMemoryBlock(FarPtr block, ushort index) => _bigMemoryBlocks[block.Offset][index];
 
         /// <summary>
