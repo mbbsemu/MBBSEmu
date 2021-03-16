@@ -15,7 +15,7 @@ namespace MBBSEmu.Memory
     ///
     ///     Information of x86 Memory Segmentation: https://en.wikipedia.org/wiki/X86_memory_segmentation
     /// </summary>
-    public class MemoryCore : IMemoryCore
+    public class ProtectedMemoryCore : IMemoryCore
     {
         protected readonly ILogger _logger;
         private readonly byte[][] _memorySegments = new byte[0x10000][];
@@ -38,7 +38,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        public MemoryCore(ILogger logger)
+        public ProtectedMemoryCore(ILogger logger)
         {
             _logger = logger;
             //Add Segment 0 by default, stack segment
@@ -112,7 +112,7 @@ namespace MBBSEmu.Memory
             }
 
             var newPointer = Malloc(size);
-            SetZero(newPointer, size);
+            ((IMemoryCore)this).SetZero(newPointer, size);
 
             if (declarePointer && string.IsNullOrEmpty(name))
                 throw new ArgumentException("Unsupported operation, declaring pointer type for NULL named variable");
@@ -124,7 +124,7 @@ namespace MBBSEmu.Memory
                 if (declarePointer)
                 {
                     var variablePointer = AllocateVariable($"*{name}", 0x4, declarePointer: false);
-                    SetArray(variablePointer, newPointer.Data);
+                    ((IMemoryCore)this).SetArray(variablePointer, newPointer.Data);
                 }
             }
 
@@ -298,14 +298,6 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Returns a single byte from the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public byte GetByte(FarPtr pointer) => GetByte(pointer.Segment, pointer.Offset);
-
-        /// <summary>
         ///     Returns a single byte from the specified segment:offset
         /// </summary>
         /// <param name="segment"></param>
@@ -313,22 +305,6 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
         public byte GetByte(ushort segment, ushort offset) => _memorySegments[segment][offset];
-
-        /// <summary>
-        ///     Returns an unsigned byte from the specified defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ushort GetWord(string variableName) => GetWord(GetVariablePointer(variableName));
-
-        /// <summary>
-        ///     Returns an unsigned word from the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ushort GetWord(FarPtr pointer) => GetWord(pointer.Segment, pointer.Offset);
 
         /// <summary>
         ///     Returns an unsigned word from the specified segment:offset
@@ -344,10 +320,7 @@ namespace MBBSEmu.Memory
             }
         }
 
-        public uint GetDWord(string variableName) => GetDWord(GetVariablePointer(variableName));
-
-        public uint GetDWord(FarPtr pointer) => GetWord(pointer.Segment, pointer.Offset);
-
+        [MethodImpl(CompilerOptimizations)]
         public unsafe uint GetDWord(ushort segment, ushort offset)
         {
             fixed (byte* p = _memorySegments[segment])
@@ -356,51 +329,6 @@ namespace MBBSEmu.Memory
                 return *ptr;
             }
         }
-
-        /// <summary>
-        ///     Returns a pointer stored at the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public FarPtr GetPointer(FarPtr pointer) => new FarPtr(GetArray(pointer, 4));
-
-        /// <summary>
-        ///     Returns a pointer stored at the specified defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public FarPtr GetPointer(string variableName) => new FarPtr(GetArray(GetVariablePointer(variableName), 4));
-
-        /// <summary>
-        ///     Returns a pointer stored at the specified segment:offset
-        /// </summary>
-        /// <param name="segment"></param>
-        /// <param name="offset"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public FarPtr GetPointer(ushort segment, ushort offset) => new FarPtr(GetArray(segment, offset, 4));
-
-        /// <summary>
-        ///     Returns an array with desired count from the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetArray(FarPtr pointer, ushort count) =>
-            GetArray(pointer.Segment, pointer.Offset, count);
-
-        /// <summary>
-        ///     Returns an array with the desired count from the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="count"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetArray(string variableName, ushort count) =>
-            GetArray(GetVariablePointer(variableName), count);
 
         /// <summary>
         ///     Returns an array with the desired count from the specified segment:offset
@@ -414,32 +342,13 @@ namespace MBBSEmu.Memory
             _memorySegments[segment].AsSpan().Slice(offset, count);
 
         /// <summary>
-        ///     Returns an array containing the cstring stored at the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="stripNull"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetString(FarPtr pointer, bool stripNull = false) =>
-            GetString(pointer.Segment, pointer.Offset, stripNull);
-
-        /// <summary>
-        ///     Returns an array containing cstring stored at the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="stripNull"></param>
-        /// <returns></returns>
-        [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) =>
-            GetString(GetVariablePointer(variableName), stripNull);
-
-        /// <summary>
         ///     Returns an array containing the cstring stored at the specified segment:offset
         /// </summary>
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="stripNull"></param>
         /// <returns></returns>
+        /// TODO move to IMemoryCore
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         {
             ReadOnlySpan<byte> segmentSpan = _memorySegments[segment];
@@ -523,18 +432,6 @@ namespace MBBSEmu.Memory
         }
 
         [MethodImpl(CompilerOptimizations)]
-        public void SetDWord(string variableName, uint value) => SetDWord(GetVariablePointer(variableName), value);
-
-        /// <summary>
-        ///     Sets the specified array at the desired pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="array"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetArray(FarPtr pointer, ReadOnlySpan<byte> array) =>
-            SetArray(pointer.Segment, pointer.Offset, array);
-
-        [MethodImpl(CompilerOptimizations)]
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
             var destinationSpan = _memorySegments[segment].AsSpan(offset);
@@ -542,80 +439,15 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Sets the specified array at the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="array"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetArray(string variableName, ReadOnlySpan<byte> value) =>
-            SetArray(GetVariablePointer(variableName), value);
-
-        /// <summary>
         ///     Writes the specified byte the specified number of times starting at the specified pointer
         /// </summary>
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="count"></param>
         /// <param name="value"></param>
-        public void FillArray(ushort segment, ushort offset, ushort count, byte value)
+        public void FillArray(ushort segment, ushort offset, int count, byte value)
         {
             Array.Fill(_memorySegments[segment], value, offset, count);
-        }
-
-        /// <summary>
-        ///     Writes the specified byte the specified number of times starting at the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="count"></param>
-        /// <param name="value"></param>
-        public void FillArray(FarPtr pointer, ushort count, byte value) =>
-            FillArray(pointer.Segment, pointer.Offset, count, value);
-
-        /// <summary>
-        ///     Writes the specified byte the specified number of times starting at the specified variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="count"></param>
-        /// <param name="value"></param>
-        public void FillArray(string variableName, ushort count, byte value) =>
-            FillArray(GetVariablePointer(variableName), count, value);
-
-        /// <summary>
-        ///     Sets the specified pointer value at the desired pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(FarPtr pointer, FarPtr value) => SetArray(pointer, value.Data);
-
-        /// <summary>
-        ///     Sets the specified pointer value at the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(string variableName, FarPtr value) =>
-            SetArray(GetVariablePointer(variableName), value.Data);
-
-        /// <summary>
-        ///     Sets the specified pointer value at the desired segment:offset
-        /// </summary>
-        /// <param name="segment"></param>
-        /// <param name="offset"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetPointer(ushort segment, ushort offset, FarPtr value) => SetArray(segment, offset, value.Data);
-
-        /// <summary>
-        ///     Zeroes out the memory at the specified pointer for the desired number of bytes
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="length"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetZero(FarPtr pointer, int length)
-        {
-            var destinationSpan = new Span<byte>(_memorySegments[pointer.Segment], pointer.Offset, length);
-            destinationSpan.Fill(0);
         }
 
         /// <summary>

@@ -121,7 +121,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
-        byte GetByte(FarPtr pointer);
+        byte GetByte(FarPtr pointer) => GetByte(segment: pointer.Segment, offset: pointer.Offset);
 
         /// <summary>
         ///     Returns a single byte from the specified segment:offset
@@ -132,13 +132,6 @@ namespace MBBSEmu.Memory
         byte GetByte(ushort segment, ushort offset);
 
         /// <summary>
-        ///     Returns an unsigned word from the specified pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <returns></returns>
-        ushort GetWord(FarPtr pointer);
-
-        /// <summary>
         ///     Returns an unsigned word from the specified segment:offset
         /// </summary>
         /// <param name="segment"></param>
@@ -147,25 +140,33 @@ namespace MBBSEmu.Memory
         ushort GetWord(ushort segment, ushort offset);
 
         /// <summary>
+        ///     Returns an unsigned word from the specified pointer
+        /// </summary>
+        /// <param name="pointer"></param>
+        /// <returns></returns>
+        ushort GetWord(FarPtr pointer) => GetWord(pointer.Segment, pointer.Offset);
+
+
+        /// <summary>
         ///     Returns an unsigned word from the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
-        ushort GetWord(string variableName);
+        ushort GetWord(string variableName) => GetWord(GetVariablePointer(variableName));
 
         /// <summary>
         ///     Returns an unsigned double word from the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
-        uint GetDWord(string variableName);
+        uint GetDWord(string variableName) => GetDWord(GetVariablePointer(variableName));
 
         /// <summary>
         ///     Returns an unsigned double word from the specified pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
-        uint GetDWord(FarPtr pointer);
+        uint GetDWord(FarPtr pointer) => GetDWord(pointer.Segment, pointer.Offset);
 
         /// <summary>
         ///     Returns an unsigned double word from the specified segment:offset
@@ -180,7 +181,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <returns></returns>
-        FarPtr GetPointer(FarPtr pointer);
+        FarPtr GetPointer(FarPtr pointer) => GetPointer(pointer.Segment, pointer.Offset);
 
         /// <summary>
         ///     Returns a pointer stored at the specified segment:offset
@@ -188,14 +189,14 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <returns></returns>
-        FarPtr GetPointer(ushort segment, ushort offset);
+        FarPtr GetPointer(ushort segment, ushort offset) => new FarPtr(GetArray(segment, offset, 4));
 
         /// <summary>
         ///     Returns a pointer stored at the specified defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
-        FarPtr GetPointer(string variableName);
+        FarPtr GetPointer(string variableName) => GetPointer(GetVariablePointer(variableName));
 
         /// <summary>
         ///     Returns an array with desired count from the specified pointer
@@ -203,7 +204,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetArray(FarPtr pointer, ushort count);
+        ReadOnlySpan<byte> GetArray(FarPtr pointer, ushort count) => GetArray(pointer.Segment, pointer.Offset, count);
 
         /// <summary>
         ///     Returns an array with the desired count from the specified segment:offset
@@ -220,7 +221,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetArray(string variableName, ushort count);
+        ReadOnlySpan<byte> GetArray(string variableName, ushort count) => GetArray(GetVariablePointer(variableName), count);
 
         /// <summary>
         ///     Returns an array containing the cstring stored at the specified pointer
@@ -228,7 +229,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="stripNull"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetString(FarPtr pointer, bool stripNull = false);
+        ReadOnlySpan<byte> GetString(FarPtr pointer, bool stripNull = false) => GetString(pointer.Segment, pointer.Offset, stripNull);
 
         /// <summary>
         ///     Returns an array containing the cstring stored at the specified segment:offset
@@ -245,7 +246,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="stripNull"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false);
+        ReadOnlySpan<byte> GetString(string variableName, bool stripNull = false) => GetString(GetVariablePointer(variableName), stripNull);
 
         //*** Setters ***
 
@@ -254,7 +255,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
-        void SetByte(FarPtr pointer, byte value);
+        void SetByte(FarPtr pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified byte at the desired segment:offset
@@ -269,14 +270,14 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
-        void SetByte(string variableName, byte value);
+        void SetByte(string variableName, byte value) => SetByte(GetVariablePointer(variableName), value);
 
         /// <summary>
         ///     Sets the specified word at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
-        void SetWord(FarPtr pointer, ushort value);
+        void SetWord(FarPtr pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified word at the desired segment:offset
@@ -291,14 +292,14 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
-        void SetWord(string variableName, ushort value);
+        void SetWord(string variableName, ushort value) => SetWord(GetVariablePointer(variableName), value);
 
         /// <summary>
         ///     Sets the specified double word at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
-        void SetDWord(FarPtr pointer, uint value);
+        void SetDWord(FarPtr pointer, uint value) => SetDWord(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified double word at the desired segment:offset
@@ -313,14 +314,14 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
-        void SetDWord(string variableName, uint value);
+        void SetDWord(string variableName, uint value) => SetDWord(GetVariablePointer(variableName), value);
 
         /// <summary>
         ///     Sets the specified array at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="array"></param>
-        void SetArray(FarPtr pointer, ReadOnlySpan<byte> array);
+        void SetArray(FarPtr pointer, ReadOnlySpan<byte> array) => SetArray(pointer.Segment, pointer.Offset, array);
 
         /// <summary>
         ///     Sets the specified array at the desired segment:offset
@@ -335,7 +336,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="array"></param>
-        void SetArray(string variableName, ReadOnlySpan<byte> array);
+        void SetArray(string variableName, ReadOnlySpan<byte> array) => SetArray(GetVariablePointer(variableName), array);
 
         /// <summary>
         ///     Writes the specified byte the specified number of times starting at the specified pointer
@@ -344,7 +345,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="count"></param>
         /// <param name="value"></param>
-        void FillArray(ushort segment, ushort offset, ushort count, byte value);
+        void FillArray(ushort segment, ushort offset, int count, byte value);
 
         /// <summary>
         ///     Writes the specified byte the specified number of times starting at the specified pointer
@@ -352,7 +353,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="count"></param>
         /// <param name="value"></param>
-        void FillArray(FarPtr pointer, ushort count, byte value);
+        void FillArray(FarPtr pointer, int count, byte value) => FillArray(pointer.Segment, pointer.Offset, count, value);
 
         /// <summary>
         ///     Writes the specified byte the specified number of times starting at the specified variable
@@ -360,21 +361,21 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="count"></param>
         /// <param name="value"></param>
-        void FillArray(string variableName, ushort count, byte value);
+        void FillArray(string variableName, int count, byte value) => FillArray(GetVariablePointer(variableName), count, value);
 
         /// <summary>
         ///     Sets the specified pointer value at the desired pointer
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="value"></param>
-        void SetPointer(FarPtr pointer, FarPtr value);
+        void SetPointer(FarPtr pointer, FarPtr value) => SetArray(pointer, value.Data);
 
         /// <summary>
         ///     Sets the specified pointer value at the defined variable
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="value"></param>
-        void SetPointer(string variableName, FarPtr value);
+        void SetPointer(string variableName, FarPtr value) => SetPointer(GetVariablePointer(variableName), value);
 
         /// <summary>
         ///     Sets the specified pointer value at the desired segment:offset
@@ -382,14 +383,14 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <param name="offset"></param>
         /// <param name="value"></param>
-        void SetPointer(ushort segment, ushort offset, FarPtr value);
+        void SetPointer(ushort segment, ushort offset, FarPtr value) => SetArray(segment, offset, value.Data);
 
         /// <summary>
         ///     Zeroes out the memory at the specified pointer for the desired number of bytes
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="length"></param>
-        void SetZero(FarPtr pointer, int length);
+        void SetZero(FarPtr pointer, int length) => FillArray(pointer.Segment, pointer.Offset, length, 0);
 
         /// <summary>
         ///     Deletes all defined Segments from Memory

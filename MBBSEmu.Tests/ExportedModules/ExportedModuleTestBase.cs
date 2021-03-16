@@ -38,7 +38,8 @@ namespace MBBSEmu.Tests.ExportedModules
 
         protected readonly FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
-        protected MemoryCore mbbsEmuMemoryCore;
+        protected IMemoryCore mbbsEmuMemoryCore;
+        protected ProtectedMemoryCore mbbsEmuProtectedMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
@@ -53,10 +54,10 @@ namespace MBBSEmu.Tests.ExportedModules
             _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
-            mbbsEmuMemoryCore = new MemoryCore(_serviceResolver.GetService<ILogger>());
+            mbbsEmuMemoryCore = mbbsEmuProtectedMemoryCore = new ProtectedMemoryCore(_serviceResolver.GetService<ILogger>());
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuProtectedMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null, textVariableService));
@@ -152,14 +153,14 @@ namespace MBBSEmu.Tests.ExportedModules
         /// <param name="apiArguments"></param>
         protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
-            if (!mbbsEmuMemoryCore.HasSegment(STACK_SEGMENT))
+            if (!mbbsEmuProtectedMemoryCore.HasSegment(STACK_SEGMENT))
             {
-                mbbsEmuMemoryCore.AddSegment(STACK_SEGMENT);
+                mbbsEmuProtectedMemoryCore.AddSegment(STACK_SEGMENT);
             }
 
-            if (mbbsEmuMemoryCore.HasSegment(CODE_SEGMENT))
+            if (mbbsEmuProtectedMemoryCore.HasSegment(CODE_SEGMENT))
             {
-                mbbsEmuMemoryCore.RemoveSegment(CODE_SEGMENT);
+                mbbsEmuProtectedMemoryCore.RemoveSegment(CODE_SEGMENT);
             }
 
             var apiTestCodeSegment = new Segment
