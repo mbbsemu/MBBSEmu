@@ -67,7 +67,7 @@ namespace MBBSEmu.DOS
             // compute load address
             var startingAddress = PROGRAM_MAXIMUM_ADDRESS - File.Header.ProgramSize;
 
-            _programRealModeLoadAddress = RealModeMemoryCore.PhysicalToVirtualOffset(startingAddress);
+            _programRealModeLoadAddress = RealModeMemoryCore.PhysicalToVirtualAddress(startingAddress);
             // might not be aligned to 16 bytes, so align cleanly
             _programRealModeLoadAddress.Offset = 0;
 
@@ -84,6 +84,12 @@ namespace MBBSEmu.DOS
                 var relocVirtualAddress = _programRealModeLoadAddress + relo;
 
                 var inMemoryVirtualAddress = BitConverter.ToUInt16(Memory.GetArray(relocVirtualAddress, 2));
+#if DEBUG
+                // sanity check against overflows
+                int v = inMemoryVirtualAddress + _programRealModeLoadAddress.Segment;
+                if (v > 0xFFFF)
+                    throw new ArgumentException("Relocated segment overflowed");
+#endif
                 inMemoryVirtualAddress += _programRealModeLoadAddress.Segment;
 
                 Memory.SetArray(relocVirtualAddress, BitConverter.GetBytes(inMemoryVirtualAddress));

@@ -53,6 +53,51 @@ namespace MBBSEmu.DOS.Interrupts
         {
             switch (_registers.AH)
             {
+                case 0x01:
+                    {
+                        // DOS - KEYBOARD INPUT (with echo)
+                        // Return: AL = character read
+                        // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
+                        var c = (byte)Console.In.Read();
+                        Console.Out.Write(c);
+                        _registers.AL = c;
+                        return;
+                    }
+                case 0x67:
+                    {
+                        // DOS - SET HANDLE COUNT
+                        // BX : Number of handles
+                        // Return: carry set if error (and error code in AX)
+                        _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        return;
+                    }
+                case 0x48:
+                    {
+                        // DOS - Allocate memory
+                        // BX = number of 16-byte paragraphs desired
+                        // Return: CF set on error
+                        //             AX = error code
+                        //             BX = maximum available
+                        //         CF clear if successful
+                        //             AX = segment of allocated memory block
+                        var ptr = _memory.Malloc((ushort)(_registers.BX * 16));
+                        if (ptr != FarPtr.Empty && ptr.Offset != 0)
+                            throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
+
+                        if (ptr == FarPtr.Empty)
+                        {
+                            _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.BX = 0; // TODO get maximum available here
+                            _registers.AX = 1;
+                        }
+                        else
+                        {
+                            _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.AX = ptr.Segment;
+                        }
+
+                        return;
+                    }
                 case 0x09:
                     {
                         var src = new FarPtr(_registers.DS, _registers.DX);

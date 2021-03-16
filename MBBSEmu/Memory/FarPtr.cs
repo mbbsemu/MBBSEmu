@@ -130,6 +130,10 @@ namespace MBBSEmu.Memory
             if (offset >= 0x10000)
                 ++segment;
 
+#if DEBUG
+            if (segment > 0xFFFF)
+                throw new ArgumentException("Segment addition overflowed");
+#endif
             return new FarPtr((ushort)segment, (ushort)(offset & 0xFFFF));
         }
 

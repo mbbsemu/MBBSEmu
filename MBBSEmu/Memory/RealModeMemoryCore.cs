@@ -1,6 +1,7 @@
 using Iced.Intel;
 using NLog;
 using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Memory
 {
@@ -29,6 +30,8 @@ namespace MBBSEmu.Memory
 
         private readonly MemoryAllocator _memoryAllocator;
 
+        private readonly Dictionary<int, Instruction> _instructionCache = new(128*1024);
+
         public RealModeMemoryCore(ILogger logger) : base(logger)
         {
              _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE);
@@ -46,17 +49,27 @@ namespace MBBSEmu.Memory
         // TODO optimize/cache this
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
-            //var instructionList = new InstructionList();
+            var physicalAddress = VirtualToPhysicalAddress(segment, instructionPointer);
+
+            if (_instructionCache.TryGetValue(physicalAddress, out var instruction))
+                return instruction;
+
             var codeReader = new ByteArrayCodeReader(VirtualToPhysical(segment, instructionPointer).Slice(0, 10).ToArray());
             var decoder = Decoder.Create(16, codeReader);
             decoder.IP = 0x0;
 
-            return decoder.Decode();
+            instruction = decoder.Decode();
+            _instructionCache.Add(VirtualToPhysicalAddress(segment, instructionPointer), instruction);
+            return instruction;
         }
 
-        public Instruction Recompile(ushort segment, ushort instructionPointer) => GetInstruction(segment, instructionPointer);
+        public Instruction Recompile(ushort segment, ushort instructionPointer)
+        {
+            _instructionCache.Remove(VirtualToPhysicalAddress(segment, instructionPointer));
+            return GetInstruction(segment, instructionPointer);
+        }
 
-        public static int VirtualToPhysicalOffset(ushort segment, ushort offset) => ((segment << 4) + offset);
-        public static FarPtr PhysicalToVirtualOffset(int offset) => new FarPtr((ushort)(offset >> 4), (ushort)(offset & 0xF));
+        public static int VirtualToPhysicalAddress(ushort segment, ushort offset) => ((segment << 4) + offset);
+        public static FarPtr PhysicalToVirtualAddress(int offset) => new FarPtr((ushort)(offset >> 4), (ushort)(offset & 0xF));
     }
 }
