@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.Memory
         public void EndOfSegmentString()
         {
             ushort segment = 1;
-            var memoryCore = new ProtectedMemoryCore(_logger);
+            var memoryCore = new ProtectedModeMemoryCore(_logger);
             memoryCore.AddSegment(segment);
 
             var testString = new string('X', 5) + "\0";

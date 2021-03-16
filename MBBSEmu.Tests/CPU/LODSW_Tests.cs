@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.CPU
         public void LODSW_Test()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuMemoryCore.SetWord(2, 2, 0xFFFF);
             mbbsEmuCpuRegisters.AX = 0;
             mbbsEmuCpuRegisters.DS = 2;
@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.CPU
         public void LODSW_DF_Test()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuMemoryCore.SetWord(2, 2, 0xFFFF);
             mbbsEmuCpuRegisters.AX = 0;
             mbbsEmuCpuRegisters.DS = 2;

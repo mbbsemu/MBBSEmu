@@ -43,7 +43,7 @@ namespace MBBSEmu.Tests.CPU
         public void INC_M8_ClearFlags(byte memoryValue, byte expectedResult, bool zeroFlagSet, bool overflowFlagSet, bool signFlagSet)
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2,0, memoryValue);
 
@@ -99,7 +99,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, memoryValue);
 
@@ -155,7 +155,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, memoryValue);
 

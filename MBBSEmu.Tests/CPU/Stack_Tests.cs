@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.CPU
         public void Push_Pop_Single_Value_Byte()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(0); //Stack Segment
+            mbbsEmuProtectedModeMemoryCore.AddSegment(0); //Stack Segment
             mbbsEmuCpuCore.Push(byte.MaxValue);
             Assert.Equal(byte.MaxValue, mbbsEmuCpuCore.Pop());
         }
@@ -20,7 +20,7 @@ namespace MBBSEmu.Tests.CPU
         public void Push_Pop_Single_Value_Ushort()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(0); //Stack Segment
+            mbbsEmuProtectedModeMemoryCore.AddSegment(0); //Stack Segment
             mbbsEmuCpuCore.Push(ushort.MaxValue);
             mbbsEmuCpuCore.Push(ushort.MaxValue - 1);
             Assert.Equal(ushort.MaxValue - 1, mbbsEmuCpuCore.Pop());

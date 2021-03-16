@@ -36,7 +36,7 @@ namespace MBBSEmu.Module
         /// </summary>
         public IMemoryCore Memory;
 
-        public ProtectedMemoryCore ProtectedMemory;
+        public ProtectedModeMemoryCore ProtectedMemory;
 
         /// <summary>
         ///     The unique name of the module (same as the DLL name)
@@ -133,7 +133,7 @@ namespace MBBSEmu.Module
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", ProtectedMemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", ProtectedModeMemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;
@@ -188,8 +188,8 @@ namespace MBBSEmu.Module
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
 
-            Memory = memoryCore ?? new ProtectedMemoryCore(logger);
-            ProtectedMemory = (ProtectedMemoryCore)Memory;
+            Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
+            ProtectedMemory = (ProtectedModeMemoryCore)Memory;
 
             //Declare PSP Segment
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };

@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.CPU
         public void SWOSW_Test()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.AX = 0xFFFF;
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.ES = 2;
@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.CPU
         public void SWOSW_Rep_Test()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.AX = 0xFFFF;
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.ES = 2;
@@ -54,7 +54,7 @@ namespace MBBSEmu.Tests.CPU
         public void SWOSW_Rep_DF_Test()
         {
             Reset();
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.AX = 0xFFFF;
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.ES = 2;

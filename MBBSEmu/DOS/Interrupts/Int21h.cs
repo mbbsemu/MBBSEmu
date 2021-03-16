@@ -262,9 +262,9 @@ namespace MBBSEmu.DOS.Interrupts
                         var segmentToAdjust = _registers.ES;
                         var newSize = _registers.BX;
 
-                        if (_memory is ProtectedMemoryCore)
+                        if (_memory is ProtectedModeMemoryCore)
                         {
-                            ProtectedMemoryCore protectedMemory = (ProtectedMemoryCore)_memory;
+                            ProtectedModeMemoryCore protectedMemory = (ProtectedModeMemoryCore)_memory;
                             if (!protectedMemory.HasSegment(segmentToAdjust))
                                 protectedMemory.AddSegment(segmentToAdjust);
                         }

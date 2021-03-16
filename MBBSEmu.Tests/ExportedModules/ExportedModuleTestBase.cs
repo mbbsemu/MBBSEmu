@@ -39,7 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected readonly FakeClock fakeClock = new FakeClock();
         protected CpuCore mbbsEmuCpuCore;
         protected IMemoryCore mbbsEmuMemoryCore;
-        protected ProtectedMemoryCore mbbsEmuProtectedMemoryCore;
+        protected ProtectedModeMemoryCore mbbsEmuProtectedModeMemoryCore;
         protected CpuRegisters mbbsEmuCpuRegisters;
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
@@ -54,10 +54,10 @@ namespace MBBSEmu.Tests.ExportedModules
             _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
-            mbbsEmuMemoryCore = mbbsEmuProtectedMemoryCore = new ProtectedMemoryCore(_serviceResolver.GetService<ILogger>());
+            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<ILogger>());
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuProtectedMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuProtectedModeMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null, textVariableService));
@@ -153,14 +153,14 @@ namespace MBBSEmu.Tests.ExportedModules
         /// <param name="apiArguments"></param>
         protected void ExecuteApiTest(ushort exportedModuleSegment, ushort apiOrdinal, IEnumerable<ushort> apiArguments)
         {
-            if (!mbbsEmuProtectedMemoryCore.HasSegment(STACK_SEGMENT))
+            if (!mbbsEmuProtectedModeMemoryCore.HasSegment(STACK_SEGMENT))
             {
-                mbbsEmuProtectedMemoryCore.AddSegment(STACK_SEGMENT);
+                mbbsEmuProtectedModeMemoryCore.AddSegment(STACK_SEGMENT);
             }
 
-            if (mbbsEmuProtectedMemoryCore.HasSegment(CODE_SEGMENT))
+            if (mbbsEmuProtectedModeMemoryCore.HasSegment(CODE_SEGMENT))
             {
-                mbbsEmuProtectedMemoryCore.RemoveSegment(CODE_SEGMENT);
+                mbbsEmuProtectedModeMemoryCore.RemoveSegment(CODE_SEGMENT);
             }
 
             var apiTestCodeSegment = new Segment
@@ -171,7 +171,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(exportedModuleSegment & 0xFF), (byte)(exportedModuleSegment >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
-            mbbsEmuProtectedMemoryCore.AddSegment(apiTestCodeSegment);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(apiTestCodeSegment);
 
             mbbsEmuCpuRegisters.CS = CODE_SEGMENT;
             mbbsEmuCpuRegisters.IP = 0;

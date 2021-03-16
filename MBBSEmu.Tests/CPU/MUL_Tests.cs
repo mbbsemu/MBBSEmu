@@ -39,7 +39,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.AL = (byte)alValue;
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetByte(2,0, (byte)valueToMultiply);
@@ -87,7 +87,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.AX = axValue;
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetWord(2, 0, valueToMultiply);
@@ -135,7 +135,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.EAX = eaxValue;
-            mbbsEmuProtectedMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetDWord(2, 0, valueToMultiply);

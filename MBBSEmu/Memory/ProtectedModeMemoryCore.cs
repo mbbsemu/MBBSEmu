@@ -15,7 +15,7 @@ namespace MBBSEmu.Memory
     ///
     ///     Information of x86 Memory Segmentation: https://en.wikipedia.org/wiki/X86_memory_segmentation
     /// </summary>
-    public class ProtectedMemoryCore : IMemoryCore
+    public class ProtectedModeMemoryCore : IMemoryCore
     {
         protected readonly ILogger _logger;
         private readonly byte[][] _memorySegments = new byte[0x10000][];
@@ -38,7 +38,7 @@ namespace MBBSEmu.Memory
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        public ProtectedMemoryCore(ILogger logger)
+        public ProtectedModeMemoryCore(ILogger logger)
         {
             _logger = logger;
             //Add Segment 0 by default, stack segment

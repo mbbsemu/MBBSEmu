@@ -39,7 +39,7 @@ namespace MBBSEmu.DOS
         {
             _logger = logger;
             File = file;
-            Memory = new ProtectedMemoryCore(logger); // TODO change to RealModeMemoryCore
+            Memory = new ProtectedModeMemoryCore(logger); // TODO change to RealModeMemoryCore
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
