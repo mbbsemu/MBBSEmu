@@ -16,11 +16,6 @@ namespace MBBSEmu.Memory
     /// </summary>
     public abstract class AbstractMemoryCore
     {
-        protected ILogger _logger;
-        protected readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
-
-        private readonly Dictionary<string, FarPtr> _variablePointerDictionary = new();
-
         /// <summary>
         ///     Default Compiler Hints for use on methods within the MemoryCore
         ///
@@ -28,6 +23,11 @@ namespace MBBSEmu.Memory
         ///     down the code.
         /// </summary>
         private const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
+
+        protected ILogger _logger;
+        protected readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
+
+        private readonly Dictionary<string, FarPtr> _variablePointerDictionary = new();
 
         public AbstractMemoryCore(ILogger logger)
         {
@@ -178,7 +178,8 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
         public unsafe ushort GetWord(ushort segment, ushort offset) {
-            fixed (byte *p = ToPhysicalSpan(segment, offset)) {
+            fixed (byte *p = ToPhysicalSpan(segment, offset))
+            {
                 return *((ushort*)p);
             }
         }
@@ -188,7 +189,6 @@ namespace MBBSEmu.Memory
         {
             fixed (byte* p = ToPhysicalSpan(segment, offset))
             {
-                uint* ptr = (uint*)(p + offset);
                 return *((uint*)p);
             }
         }
@@ -205,6 +205,7 @@ namespace MBBSEmu.Memory
             ToPhysicalSpan(segment, offset).Slice(0, count);
 
 
+        [MethodImpl(CompilerOptimizations)]
         public ReadOnlySpan<byte> GetString(ushort segment, ushort offset, bool stripNull = false)
         {
             var segmentSpan = ToPhysicalSpan(segment, offset);
@@ -216,22 +217,6 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Sets the specified byte at the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetByte(string variableName, byte value) => SetByte(GetVariablePointer(variableName), value);
-
-        /// <summary>
-        ///     Sets the specified byte at the desired pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetByte(FarPtr pointer, byte value) => SetByte(pointer.Segment, pointer.Offset, value);
-
-        /// <summary>
         ///     Sets the specified byte at the desired segment:offset
         /// </summary>
         /// <param name="segment"></param>
@@ -239,14 +224,6 @@ namespace MBBSEmu.Memory
         /// <param name="value"></param>
         [MethodImpl(CompilerOptimizations)]
         public void SetByte(ushort segment, ushort offset, byte value) => ToPhysicalSpan(segment, offset)[0] = value;
-
-        /// <summary>
-        ///     Sets the specified word at the desired pointer
-        /// </summary>
-        /// <param name="pointer"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetWord(FarPtr pointer, ushort value) => SetWord(pointer.Segment, pointer.Offset, value);
 
         /// <summary>
         ///     Sets the specified word at the desired segment:offset
@@ -257,21 +234,11 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetWord(ushort segment, ushort offset, ushort value)
         {
-            fixed (byte *dst = ToPhysicalSpan(segment, offset)) {
+            fixed (byte *dst = ToPhysicalSpan(segment, offset))
+            {
                 *((ushort*)dst) = value;
             }
         }
-
-        /// <summary>
-        ///     Sets the specified word at the defined variable
-        /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="value"></param>
-        [MethodImpl(CompilerOptimizations)]
-        public void SetWord(string variableName, ushort value) => SetWord(GetVariablePointer(variableName), value);
-
-        [MethodImpl(CompilerOptimizations)]
-        public void SetDWord(FarPtr pointer, uint value) => SetDWord(pointer.Segment, pointer.Offset, value);
 
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetDWord(ushort segment, ushort offset, uint value)
@@ -282,6 +249,7 @@ namespace MBBSEmu.Memory
             }
         }
 
+        [MethodImpl(CompilerOptimizations)]
         public void SetArray(ushort segment, ushort offset, ReadOnlySpan<byte> array)
         {
             var destinationSpan = ToPhysicalSpan(segment, offset);
