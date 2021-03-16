@@ -96,12 +96,12 @@ namespace MBBSEmu.DOS
                 {
                     case (ushort)EnumSegmentFlags.Code:
                         {
-                            Memory.AddSegment(seg);
+                            //Memory.AddSegment(seg);
                             break;
                         }
                     case (ushort)EnumSegmentFlags.Data:
                         {
-                            Memory.AddSegment(i);
+                            //Memory.AddSegment(i);
                             Memory.SetArray(i, 0, seg.Data);
                             break;
                         }
@@ -115,7 +115,7 @@ namespace MBBSEmu.DOS
         private void SetupPSP()
         {
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = ENVIRONMENT_SEGMENT };
-            Memory.AddSegment(PSP_SEGMENT);
+            //Memory.AddSegment(PSP_SEGMENT);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -127,7 +127,7 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupEnvironmentVariables()
         {
-            Memory.AddSegment(ENVIRONMENT_SEGMENT);
+            //Memory.AddSegment(ENVIRONMENT_SEGMENT);
 
             if (_environmentVariables == null)
                 return;

@@ -10,11 +10,12 @@ namespace MBBSEmu.Tests.CPU
     {
         private protected CpuCore mbbsEmuCpuCore;
         private protected IMemoryCore mbbsEmuMemoryCore;
+        private protected ProtectedMemoryCore mbbsEmuProtectedMemoryCore;
         private protected CpuRegisters mbbsEmuCpuRegisters;
 
         protected CpuTestBase()
         {
-            mbbsEmuMemoryCore = new ProtectedMemoryCore(null);
+            mbbsEmuMemoryCore = mbbsEmuProtectedMemoryCore = new ProtectedMemoryCore(null);
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, null, null);
@@ -56,12 +57,12 @@ namespace MBBSEmu.Tests.CPU
 
         protected void CreateCodeSegment(InstructionList instructionList, ushort segmentOrdinal = 1)
         {
-            mbbsEmuMemoryCore.AddSegment(segmentOrdinal, instructionList);
+            mbbsEmuProtectedMemoryCore.AddSegment(segmentOrdinal, instructionList);
         }
 
         protected void CreateDataSegment(ReadOnlySpan<byte> data, ushort segmentOrdinal = 2)
         {
-            mbbsEmuMemoryCore.AddSegment(segmentOrdinal);
+            mbbsEmuProtectedMemoryCore.AddSegment(segmentOrdinal);
             mbbsEmuMemoryCore.SetArray(segmentOrdinal, 0, data);
         }
 

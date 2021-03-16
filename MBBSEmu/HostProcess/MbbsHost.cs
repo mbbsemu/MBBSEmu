@@ -923,7 +923,7 @@ namespace MBBSEmu.HostProcess
                 {
                     var originalOrdinal = seg.Ordinal;
                     seg.Ordinal += dll.SegmentOffset;
-                    module.Memory.AddSegment(seg);
+                    module.ProtectedMemory.AddSegment(seg);
                     Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
                 }
 
@@ -1057,7 +1057,7 @@ namespace MBBSEmu.HostProcess
             {
                 //Patch Segment 0 (PHAPI) to just RETF (0xCB)
                 dll.File.SegmentTable[0].Data[0] = 0xCB;
-                
+
                 foreach (var s in dll.File.SegmentTable)
                 {
                     if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)

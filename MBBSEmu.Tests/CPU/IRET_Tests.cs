@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.CPU
         public void IRET_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(0);
+            mbbsEmuProtectedMemoryCore.AddSegment(0);
             var entrySP = mbbsEmuCpuRegisters.SP;
             mbbsEmuCpuCore.Push(0xFFFF);
             mbbsEmuCpuCore.Push(0xFFFE);

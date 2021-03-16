@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.CPU
         public void POPF_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(0);
+            mbbsEmuProtectedMemoryCore.AddSegment(0);
             mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuCore.Push(0xFFFF);
 

@@ -171,7 +171,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 Data = new byte[] { 0x9A, (byte)(apiOrdinal & 0xFF), (byte)(apiOrdinal >> 8), (byte)(exportedModuleSegment & 0xFF), (byte)(exportedModuleSegment >> 8), },
                 Flag = (ushort)EnumSegmentFlags.Code
             };
-            mbbsEmuMemoryCore.AddSegment(apiTestCodeSegment);
+            mbbsEmuProtectedMemoryCore.AddSegment(apiTestCodeSegment);
 
             mbbsEmuCpuRegisters.CS = CODE_SEGMENT;
             mbbsEmuCpuRegisters.IP = 0;

@@ -37,9 +37,9 @@ namespace MBBSEmu.Tests.CPU
         public void MUL_8_M8_Test(byte alValue, byte valueToMultiply, ushort expectedValue, bool carryFlag, bool overflowFlag)
         {
             Reset();
-            
+
             mbbsEmuCpuRegisters.AL = (byte)alValue;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetByte(2,0, (byte)valueToMultiply);
@@ -87,7 +87,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.AX = axValue;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetWord(2, 0, valueToMultiply);
@@ -135,7 +135,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.EAX = eaxValue;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
             mbbsEmuMemoryCore.SetDWord(2, 0, valueToMultiply);

@@ -36,6 +36,8 @@ namespace MBBSEmu.Module
         /// </summary>
         public IMemoryCore Memory;
 
+        public ProtectedMemoryCore ProtectedMemory;
+
         /// <summary>
         ///     The unique name of the module (same as the DLL name)
         /// </summary>
@@ -187,10 +189,11 @@ namespace MBBSEmu.Module
             ExecutionUnits = new Queue<ExecutionUnit>(2);
 
             Memory = memoryCore ?? new ProtectedMemoryCore(logger);
+            ProtectedMemory = (ProtectedMemoryCore)Memory;
 
             //Declare PSP Segment
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
-            Memory.AddSegment(0x4000);
+            ProtectedMemory.AddSegment(0x4000);
             Memory.SetArray(0x4000, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));

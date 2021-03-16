@@ -22,7 +22,7 @@ namespace MBBSEmu.DOS.Interrupts
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
-        
+
         /// <summary>
         ///     Path of the current Execution Context
         /// </summary>
@@ -262,8 +262,12 @@ namespace MBBSEmu.DOS.Interrupts
                         var segmentToAdjust = _registers.ES;
                         var newSize = _registers.BX;
 
-                        if (!_memory.HasSegment(segmentToAdjust))
-                            _memory.AddSegment(segmentToAdjust);
+                        if (_memory is ProtectedMemoryCore)
+                        {
+                            ProtectedMemoryCore protectedMemory = (ProtectedMemoryCore)_memory;
+                            if (!protectedMemory.HasSegment(segmentToAdjust))
+                                protectedMemory.AddSegment(segmentToAdjust);
+                        }
 
                         _registers.BX = 0xFFFF;
                         break;
@@ -311,11 +315,11 @@ namespace MBBSEmu.DOS.Interrupts
                         var fileUtility = new FileUtility(_logger);
                         var foundFile = fileUtility.FindFile(_path, fileName);
 
-                        
+
 
                         if(!File.Exists($"{_path}{foundFile}"))
                             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                        
+
                         break;
                 }
                 case 0x62:

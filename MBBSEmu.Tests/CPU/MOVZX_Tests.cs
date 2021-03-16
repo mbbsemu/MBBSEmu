@@ -15,7 +15,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, dsValue);
 
@@ -61,7 +61,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2, 0, dsValue);
 
@@ -107,7 +107,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2, 0, dsValue);
 

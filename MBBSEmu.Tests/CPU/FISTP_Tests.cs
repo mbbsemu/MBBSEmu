@@ -22,7 +22,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
             mbbsEmuCpuRegisters.Fpu.ControlWord = 0;
             mbbsEmuCpuCore.FpuStack[1] = ST0Value;
@@ -49,7 +49,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
             mbbsEmuCpuRegisters.Fpu.ControlWord = 0;
             mbbsEmuCpuCore.FpuStack[1] = ST0Value;
@@ -75,7 +75,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
 
             mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
             mbbsEmuCpuRegisters.Fpu.ControlWord = 0;
             mbbsEmuCpuCore.FpuStack[1] = ST0Value;

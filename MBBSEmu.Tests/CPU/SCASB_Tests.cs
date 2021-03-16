@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_DirectionClear_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.AL = 0xFF;
             mbbsEmuCpuRegisters.DS = 2;
@@ -35,7 +35,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_DirectionSet_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.DF);
             mbbsEmuCpuRegisters.AL = 0xFF;
             mbbsEmuCpuRegisters.DS = 2;
@@ -59,7 +59,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_Repne_DirectionClear_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.AL = 0xFF;
             mbbsEmuCpuRegisters.CX = 0xA;
@@ -85,7 +85,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_Repne_DirectionClear_ExhaustCX_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.AL = 0xFF;
             mbbsEmuCpuRegisters.CX = 0xA;
@@ -109,7 +109,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_Repne_DirectionSet_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort) EnumFlags.DF);
             mbbsEmuCpuRegisters.AL = 0xFF;
             mbbsEmuCpuRegisters.CX = 0xA;
@@ -135,7 +135,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_Repe_DirectionClear_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.AL = 0x0;
             mbbsEmuCpuRegisters.CX = 0xA;
@@ -161,7 +161,7 @@ namespace MBBSEmu.Tests.CPU
         public void SCASB_Repe_DirectionSet_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.DF);
             mbbsEmuCpuRegisters.AL = 0x0;
             mbbsEmuCpuRegisters.CX = 0xA;

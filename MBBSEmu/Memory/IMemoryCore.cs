@@ -65,42 +65,6 @@ namespace MBBSEmu.Memory
         /// <returns></returns>
         FarPtr GetBigMemoryBlock(FarPtr block, ushort index);
 
-        //*** Segment Management ***
-
-        /// <summary>
-        ///     Adds a new Memory Segment containing 65536 bytes
-        /// </summary>
-        /// <param name="segmentNumber"></param>
-        /// <param name="size"></param>
-        void AddSegment(ushort segmentNumber, int size = 0x10000);
-
-        /// <summary>
-        ///     Adds a Decompiled code segment
-        /// </summary>
-        /// <param name="segmentNumber"></param>
-        /// <param name="segmentInstructionList"></param>
-        void AddSegment(ushort segmentNumber, InstructionList segmentInstructionList);
-
-        /// <summary>
-        ///     Directly adds a raw segment from an NE file segment
-        /// </summary>
-        /// <param name="segment"></param>
-        void AddSegment(Segment segment);
-
-        /// <summary>
-        ///     Returns the Segment information for the desired Segment Number
-        /// </summary>
-        /// <param name="segmentNumber"></param>
-        /// <returns></returns>
-        Segment GetSegment(ushort segmentNumber);
-
-        /// <summary>
-        ///     Verifies the specified segment is defined
-        /// </summary>
-        /// <param name="segmentNumber"></param>
-        /// <returns></returns>
-        bool HasSegment(ushort segmentNumber);
-
         //*** Getters ***
 
         /// <summary>
