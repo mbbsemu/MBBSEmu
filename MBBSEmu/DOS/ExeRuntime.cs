@@ -22,7 +22,7 @@ namespace MBBSEmu.DOS
         private ILogger _logger;
         private FarPtr _programRealModeLoadAddress;
 
-        private const ushort PROGRAM_MAXIMUM_ADDRESS = 0xF000;
+        private const int PROGRAM_MAXIMUM_ADDRESS = (0xF000 << 4);
         private const ushort PSP_SEGMENT = 0x2000;
 
         /// <summary>
