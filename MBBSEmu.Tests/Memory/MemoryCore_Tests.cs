@@ -20,9 +20,9 @@ namespace MBBSEmu.Tests.Memory
             var testString = new string('X', 5) + "\0";
             var testStringOffset = (ushort)(ushort.MaxValue - testString.Length + 1);
 
-            memoryCore.SetArray(1, testStringOffset, Encoding.ASCII.GetBytes(testString));
+            (memoryCore as IMemoryCore).SetArray(1, testStringOffset, Encoding.ASCII.GetBytes(testString));
 
-            var stringFromMemory = Encoding.ASCII.GetString(memoryCore.GetString(1, testStringOffset, stripNull: false));
+            var stringFromMemory = Encoding.ASCII.GetString((memoryCore as IMemoryCore).GetString(1, testStringOffset, stripNull: false));
 
             Assert.Equal(testString, stringFromMemory);
 

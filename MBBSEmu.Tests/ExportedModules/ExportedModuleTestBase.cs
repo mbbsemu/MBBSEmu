@@ -87,7 +87,6 @@ namespace MBBSEmu.Tests.ExportedModules
 
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate, null);
         }
-
         private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {
             switch (ordinal)
