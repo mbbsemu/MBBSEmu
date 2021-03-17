@@ -1,9 +1,5 @@
 using FluentAssertions;
-using MBBSEmu.DependencyInjection;
 using MBBSEmu.Memory;
-using NLog;
-using System.Collections.Generic;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
