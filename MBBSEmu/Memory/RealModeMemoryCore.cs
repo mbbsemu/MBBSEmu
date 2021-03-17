@@ -23,7 +23,8 @@ namespace MBBSEmu.Memory
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
         public const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
-        private readonly FarPtr HEAP_BASE = new FarPtr(0x1000, 0);
+        public const int HEAP_BASE_SEGMENT = 0x1000;
+        private readonly FarPtr HEAP_BASE = new FarPtr(HEAP_BASE_SEGMENT, 0);
         private const int HEAP_MAX_SIZE = 64*1024;
 
         private readonly byte[] _memory = new byte[MAX_REAL_MODE_MEMORY];
@@ -44,10 +45,27 @@ namespace MBBSEmu.Memory
         public override FarPtr AllocateBigMemoryBlock(ushort quantity, ushort size) => throw new NotImplementedException();
         public override FarPtr GetBigMemoryBlock(FarPtr block, ushort index) => throw new NotImplementedException();
 
-        public override FarPtr Malloc(ushort size) => _memoryAllocator.Malloc(size);
-        public override void Free(FarPtr ptr) => _memoryAllocator.Free(ptr);
+        public override FarPtr Malloc(ushort size)
+        {
+            var ptr = _memoryAllocator.Malloc(size);
+            if (ptr.IsNull())
+                return ptr;
 
-        // TODO optimize/cache this
+            // ptr is returned with segment = 0x1000 and an offset, so change ptr to have 0 offset
+            // by incrementing segment.
+            ptr.Segment += (ushort)(ptr.Offset >> 4);
+            ptr.Offset = 0;
+            return ptr;
+        }
+        public override void Free(FarPtr ptr)
+        {
+            // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
+            ptr.Offset += (ushort)((ptr.Segment - HEAP_BASE_SEGMENT) << 4);
+            ptr.Segment = HEAP_BASE_SEGMENT;
+
+            _memoryAllocator.Free(ptr);
+        }
+
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
             var physicalAddress = VirtualToPhysicalAddress(segment, instructionPointer);
