@@ -57,7 +57,9 @@ namespace MBBSEmu.Memory
         ///     Returns the int16:int16 pointer as a 32-bit value
         /// </summary>
         /// <returns></returns>
-        public int ToInt32() => (Segment << 16) | Offset;
+        public uint ToUInt32() => (uint)((Segment << 16) | Offset);
+
+        public bool IsAligned(ushort alignment) => (Offset & (alignment - 1)) == 0;
 
         /// <summary>
         ///     Returns the int16:int16 pointer as a string
@@ -70,21 +72,12 @@ namespace MBBSEmu.Memory
             if (other == null)
                 return false;
 
-            if (other.Segment != Segment)
-                return false;
-
-            if (other.Offset != Offset)
-                return false;
-
-            return true;
+            return (Segment == other.Segment && Offset == other.Offset);
         }
 
         public override bool Equals(object obj) => Equals(obj as FarPtr);
 
-        public override int GetHashCode()
-        {
-            return (Segment << 16) | Offset;
-        }
+        public override int GetHashCode() => (int)ToUInt32();
 
         public static bool operator ==(FarPtr left, FarPtr right)
         {
@@ -94,13 +87,7 @@ namespace MBBSEmu.Memory
             if (left is null || right is null)
                 return false;
 
-            if (left.Segment != right.Segment)
-                return false;
-
-            if (left.Offset != right.Offset)
-                return false;
-
-            return true;
+            return left.Equals(right);
         }
 
         public static bool operator !=(FarPtr left, FarPtr right)
@@ -111,13 +98,7 @@ namespace MBBSEmu.Memory
             if (left is null || right is null)
                 return true;
 
-            if (left.Segment != right.Segment)
-                return true;
-
-            if (left.Offset != right.Offset)
-                return true;
-
-            return false;
+            return !left.Equals(right);
         }
 
         public static FarPtr Empty => new FarPtr(0, 0);
@@ -131,10 +112,10 @@ namespace MBBSEmu.Memory
         public static FarPtr operator ++(FarPtr i) => new FarPtr(i.Segment, (ushort)(i.Offset + 1));
         public static FarPtr operator --(FarPtr i) => new FarPtr(i.Segment, (ushort)(i.Offset - 1));
 
-        public static bool operator >(FarPtr l, FarPtr r) => l.ToInt32() > r.ToInt32();
-        public static bool operator >=(FarPtr l, FarPtr r) => l.ToInt32() >= r.ToInt32();
+        public static bool operator >(FarPtr l, FarPtr r) => l.ToUInt32() > r.ToUInt32();
+        public static bool operator >=(FarPtr l, FarPtr r) => l.ToUInt32() >= r.ToUInt32();
 
-        public static bool operator <(FarPtr l, FarPtr r) => l.ToInt32() < r.ToInt32();
-        public static bool operator <=(FarPtr l, FarPtr r) => l.ToInt32() <= r.ToInt32();
+        public static bool operator <(FarPtr l, FarPtr r) => l.ToUInt32() < r.ToUInt32();
+        public static bool operator <=(FarPtr l, FarPtr r) => l.ToUInt32() <= r.ToUInt32();
     }
 }
