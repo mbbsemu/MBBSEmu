@@ -83,7 +83,7 @@ namespace MBBSEmu.DOS
             {
                 var relocVirtualAddress = _programRealModeLoadAddress + relo;
 
-                var inMemoryVirtualAddress = BitConverter.ToUInt16(Memory.GetArray(relocVirtualAddress, 2));
+                var inMemoryVirtualAddress = Memory.GetWord(relocVirtualAddress);
 #if DEBUG
                 // sanity check against overflows
                 int v = inMemoryVirtualAddress + _programRealModeLoadAddress.Segment;
@@ -92,7 +92,7 @@ namespace MBBSEmu.DOS
 #endif
                 inMemoryVirtualAddress += _programRealModeLoadAddress.Segment;
 
-                Memory.SetArray(relocVirtualAddress, BitConverter.GetBytes(inMemoryVirtualAddress));
+                Memory.SetWord(relocVirtualAddress, inMemoryVirtualAddress);
             }
         }
 
