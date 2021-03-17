@@ -49,7 +49,7 @@ namespace MBBSEmu.Memory
             AddSegment(_nextHeapPointer.Segment);
 
             // I hate null pointers/offsets so start the allocator at offset 2
-            var memoryAllocator = new MemoryAllocator(_logger, _nextHeapPointer + 2, 0xFFFE);
+            var memoryAllocator = new MemoryAllocator(_logger, _nextHeapPointer + 2, 0xFFFE, alignment: 2);
             _heapAllocators.Add(_nextHeapPointer.Segment, memoryAllocator);
 
             _nextHeapPointer.Segment++;

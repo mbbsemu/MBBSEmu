@@ -34,7 +34,8 @@ namespace MBBSEmu.Memory
 
         public RealModeMemoryCore(ILogger logger) : base(logger)
         {
-             _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE);
+            // set alignment to 16 so that all allocations return a clean segment (which are 16 bytes)
+             _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE, alignment: 16);
         }
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);

@@ -10,6 +10,7 @@ namespace MBBSEmu.Tests.Memory
 {
   public class MemoryAllocator_Tests : TestBase
   {
+    private const int DEFAULT_ALIGNMENT = 2;
     private const int SEGMENT = 1;
 
     private readonly ILogger _logger = new ServiceResolver().GetService<ILogger>();
@@ -17,7 +18,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Properties()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000, DEFAULT_ALIGNMENT);
       allocator.BasePointer.Should().Be(new FarPtr(SEGMENT, 0));
       allocator.Capacity.Should().Be(0x10000);
       allocator.RemainingBytes.Should().Be(0x10000);
@@ -26,28 +27,28 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void ConstructsJustEnough()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFE), 2);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFE), 2, DEFAULT_ALIGNMENT);
       allocator.Should().NotBeNull();
     }
 
     [Fact]
     public void ConstructOverflowsSegment()
     {
-      Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 2);
+      Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 2, DEFAULT_ALIGNMENT);
       act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void ConstructNotAligned()
     {
-      Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 1);
+      Action act = () => new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0xFFFF), 1, DEFAULT_ALIGNMENT);
       act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void AllocateZero()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000, DEFAULT_ALIGNMENT);
 
       allocator.Malloc(0).Should().NotBe(FarPtr.Empty);
       allocator.RemainingBytes.Should().Be(0xFFFE);
@@ -56,14 +57,14 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void FreeNull()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000, DEFAULT_ALIGNMENT);
       allocator.Free(FarPtr.Empty);
     }
 
     [Fact]
     public void SimpleAllocation()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory = allocator.Malloc(16);
       memory.Segment.Should().Be(SEGMENT);
@@ -76,7 +77,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void AllocateEntireBlock()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory = allocator.Malloc(0xFFFE);
       memory.Segment.Should().Be(SEGMENT);
@@ -94,7 +95,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void DoubleAllocation()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory = allocator.Malloc(16);
       memory.Segment.Should().Be(SEGMENT);
@@ -111,7 +112,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void AllocationAndFreeRepeat()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory = allocator.Malloc(16);
       memory.Segment.Should().Be(SEGMENT);
@@ -130,7 +131,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void AllocationAndFreeOutOfOrderRepeatFirstOrder()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory1 = allocator.Malloc(16);
       memory1.Segment.Should().Be(SEGMENT);
@@ -165,7 +166,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void AllocationAndFreeOutOfOrderRepeatSecondOrder()
     {
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
 
       var memory1 = allocator.Malloc(16);
       memory1.Segment.Should().Be(SEGMENT);
@@ -211,7 +212,7 @@ namespace MBBSEmu.Tests.Memory
     {
       var random = new Random();
       var memory = new List<FarPtr>();
-      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE);
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 2), 0xFFFE, DEFAULT_ALIGNMENT);
       // allocate all the memory
       while (allocator.RemainingBytes > 0)
       {
@@ -241,6 +242,21 @@ namespace MBBSEmu.Tests.Memory
 
       allocator.RemainingBytes.Should().Be(0xFFFE);
       allocator.FreeBlocks.Should().Be(1);
+    }
+
+    [Fact]
+    public void AlignmentAllocations()
+    {
+      var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x1000, alignment: 16);
+      int expectedAllocations = 0x1000 / 32;
+      int allocations = 0;
+      for (FarPtr ptr = allocator.Malloc(31); !ptr.IsNull(); ptr = allocator.Malloc(31))
+      {
+        ptr.IsAligned(16).Should().BeTrue();
+        ++allocations;
+      }
+
+      allocations.Should().Be(expectedAllocations);
     }
   }
 }
