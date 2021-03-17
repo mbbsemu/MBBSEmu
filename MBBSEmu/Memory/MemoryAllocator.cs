@@ -69,6 +69,11 @@ namespace MBBSEmu.Memory
     public int FreeBlocks => _freeBlocks.Count;
 
     /// <summary>
+    ///   Alignment to use when returning pointers. Should be a power of 2.
+    /// </summary>
+    public ushort Alignment { get; init; }
+
+    /// <summary>
     ///   Constructs a new MemoryAllocator.
     ///
     ///   basePointer + capacity must be smaller than a segment size, to ensure it will not overflow
@@ -77,10 +82,13 @@ namespace MBBSEmu.Memory
     /// <param name="logger">logger</param>
     /// <param name="basePointer">lowest memory address returnable from malloc</param>
     /// <param name="capacity">size in bytes that this allocator can draw memory from</param>
-    public MemoryAllocator(ILogger logger, FarPtr basePointer, uint capacity)
+    /// <param name="alignment">alignment in bytes for returned pointers, power of 2</param>
+    public MemoryAllocator(ILogger logger, FarPtr basePointer, uint capacity, ushort alignment)
     {
-      if ((basePointer.Offset & 0x1) != 0)
-        throw new ArgumentException("basePointer must be aligned on a word boundary");
+      if (alignment == 0)
+        throw new ArgumentException("Alignment must be non-zero");
+      if (!basePointer.IsAligned(alignment))
+        throw new ArgumentException($"basePointer must be aligned on a boundary of {alignment}");
 
       var endOffset = basePointer.Offset + capacity;
       if (endOffset > 0x10000)
@@ -90,6 +98,7 @@ namespace MBBSEmu.Memory
       Capacity = capacity;
       RemainingBytes = capacity;
       Logger = logger;
+      Alignment = alignment;
 
       _freeBlocks.AddFirst(new MemoryBlock() { Offset = basePointer.Offset, Size = capacity });
     }
@@ -109,8 +118,8 @@ namespace MBBSEmu.Memory
         return FarPtr.Empty;
       }
 
-      // align to word boundary
-      size = (ushort) (size == 0 ? 2 : (size + 1) & 0xFFFE);
+      // align
+      size = size == 0 ? Alignment : (ushort)((size + Alignment - 1) & ~(Alignment - 1));
 
       var foundBlock = _freeBlocks.EnumerateNodes()
           .Where(memoryBlock => memoryBlock.Value.Size >= size)
