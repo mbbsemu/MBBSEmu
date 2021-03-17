@@ -11,8 +11,8 @@ namespace MBBSEmu.Tests.CPU
         public void MOVSW_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
-            mbbsEmuMemoryCore.AddSegment(3);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(3);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.SI = 0;
             mbbsEmuCpuRegisters.ES = 3;
@@ -36,8 +36,8 @@ namespace MBBSEmu.Tests.CPU
         public void MOVSW_Rep_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
-            mbbsEmuMemoryCore.AddSegment(3);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(3);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.SI = 0;
             mbbsEmuCpuRegisters.ES = 3;
@@ -68,8 +68,8 @@ namespace MBBSEmu.Tests.CPU
         public void MOVSW_Rep_DF_Test()
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
-            mbbsEmuMemoryCore.AddSegment(3);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(3);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.SI = 22;
             mbbsEmuCpuRegisters.ES = 3;

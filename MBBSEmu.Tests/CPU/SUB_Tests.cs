@@ -327,7 +327,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_M8_R8(byte memoryValue, byte alValue, byte expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2,0, memoryValue);
             mbbsEmuCpuRegisters.AL = alValue;
@@ -357,7 +357,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_M16_R16(ushort memoryValue, ushort axValue, ushort expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, memoryValue);
             mbbsEmuCpuRegisters.AX = axValue;
@@ -378,7 +378,7 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(overflowFlagValue, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
             Assert.Equal(carryFlagValue, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
         }
-        
+
         [Theory]
         [InlineData(1, 1, 0, false, false, true, false)]
         [InlineData(0, 1, 0xFFFFFFFF, false, true, false, true)]
@@ -387,7 +387,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_M32_R32(uint memoryValue, uint axValue, uint expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, memoryValue);
             mbbsEmuCpuRegisters.EAX = axValue;
@@ -417,7 +417,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_R8_M8(byte alValue, byte valueToSubtract, byte expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2, 0, valueToSubtract);
             mbbsEmuCpuRegisters.AL = alValue;
@@ -447,7 +447,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_R16_M16(ushort axValue, ushort valueToSubtract, ushort expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, valueToSubtract);
             mbbsEmuCpuRegisters.AX = axValue;
@@ -477,7 +477,7 @@ namespace MBBSEmu.Tests.CPU
         public void SUB_R32_M32(uint eaxValue, uint valueToSubtract, uint expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue, bool carryFlagValue)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, valueToSubtract);
             mbbsEmuCpuRegisters.EAX = eaxValue;

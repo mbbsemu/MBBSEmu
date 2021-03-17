@@ -328,7 +328,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     {
                         var parameterOffset = GetParameter(currentParameter++);
                         var parameterSegment = GetParameter(currentParameter++);
-                        if (Module.Memory.HasSegment(parameterSegment))
+                        if (Module.ProtectedMemory.HasSegment(parameterSegment))
                         {
                             msOutput.Write(Module.Memory.GetString(parameterSegment, parameterOffset));
                         }
@@ -496,7 +496,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 {
                                     var stringPointer = Module.Memory.GetPointer(vsPrintfBase);
 
-                                    if (Module.Memory.HasSegment(stringPointer.Segment))
+                                    if (Module.ProtectedMemory.HasSegment(stringPointer.Segment))
                                     {
                                         parameter = Module.Memory.GetString(stringPointer);
                                         vsPrintfBase.Offset += 4;
@@ -511,7 +511,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 {
                                     var parameterOffset = GetParameter(currentParameter++);
                                     var parameterSegment = GetParameter(currentParameter++);
-                                    if (Module.Memory.HasSegment(parameterSegment))
+                                    if (Module.ProtectedMemory.HasSegment(parameterSegment))
                                     {
                                         parameter = Module.Memory.GetString(parameterSegment, parameterOffset);
                                     }
@@ -1142,10 +1142,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 _globalCache.Set($"{variableName}-POINTER", btrievePointer);
 
             //If the Module doesn't already have this Global Btrieve Pointer setup in memory, set it up
-            if (!Module.Memory.HasSegment(baseSegment))
+            if (!Module.ProtectedMemory.HasSegment(baseSegment))
             {
                 //Declare Pointers and Locations for Struct Data
-                Module.Memory.AddSegment(baseSegment);
+                Module.ProtectedMemory.AddSegment(baseSegment);
 
                 //Set Struct Value
                 var newBtvStruct = new BtvFileStruct { filenam = btrieveNamePointer, reclen = 8192, data = btrieveDataPointer };

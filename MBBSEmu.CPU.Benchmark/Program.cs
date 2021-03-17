@@ -10,13 +10,13 @@ namespace MBBSEmu.CPU.Benchmark
     class Program
     {
         private static CpuCore mbbsEmuCpuCore;
-        private static IMemoryCore mbbsEmuMemoryCore;
+        private static ProtectedModeMemoryCore mbbsEmuMemoryCore;
         private static CpuRegisters mbbsEmuCpuRegisters;
         private static bool _isRunning;
 
         static Program()
         {
-            mbbsEmuMemoryCore = new MemoryCore(null);
+            mbbsEmuMemoryCore = new ProtectedModeMemoryCore(null);
             mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, null, null);

@@ -46,7 +46,7 @@ namespace MBBSEmu.Tests.CPU
         public void FCOM_M32_Test(double ST0Value, float m32Value, ushort expectedFlags)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuMemoryCore.SetArray(2, 0, BitConverter.GetBytes(m32Value));
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.Fpu.StatusWord = 0; //Manually Clear all Status Values
@@ -74,7 +74,7 @@ namespace MBBSEmu.Tests.CPU
         public void FCOM_M64_Test(double ST0Value, double m32Value, ushort expectedFlags)
         {
             Reset();
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuMemoryCore.SetArray(2, 0, BitConverter.GetBytes(m32Value));
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.Fpu.StatusWord = 0; //Manually Clear all Status Values

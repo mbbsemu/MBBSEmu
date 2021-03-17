@@ -5311,8 +5311,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void frzseg()
         {
-            if (!Module.Memory.HasSegment(0xF000))
-                Module.Memory.AddSegment(0xF000);
+            if (!Module.ProtectedMemory.HasSegment(0xF000))
+                Module.ProtectedMemory.AddSegment(0xF000);
 
             Registers.AX = 0x0;
             Registers.DX = 0xF000;

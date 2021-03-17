@@ -99,7 +99,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var allocatedSegment = (ushort) (DosSegmentBase + DosSegmentOffset);
 
-            Module.Memory.AddSegment(allocatedSegment);
+            Module.ProtectedMemory.AddSegment(allocatedSegment);
             Module.Memory.SetWord(selectorPointer, allocatedSegment);
             DosSegmentOffset++;
             Registers.AX = 0;
@@ -144,7 +144,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var moduleHandle = GetParameter(3);
 
             //I've only seen this in TW2002, and it passes in Code Segment
-            if (Module.Memory.HasSegment(moduleHandle))
+            if (Module.ProtectedMemory.HasSegment(moduleHandle))
             {
                 var moduleFileName = Module.MainModuleDll.File.FileName + '\0';
                 Module.Memory.SetArray(bufferPointer, Encoding.ASCII.GetBytes(moduleFileName));

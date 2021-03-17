@@ -178,7 +178,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2, 0, memoryValue);
 
@@ -207,7 +207,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, memoryValue);
 
@@ -236,7 +236,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, memoryValue);
 
@@ -265,7 +265,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, memoryValue);
 
@@ -294,7 +294,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, memoryValue);
 
@@ -407,7 +407,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetByte(2, 0, memoryValue);
             mbbsEmuCpuRegisters.AL = registerValue;
@@ -437,7 +437,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetWord(2, 0, memoryValue);
             mbbsEmuCpuRegisters.AX = registerValue;
@@ -467,7 +467,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuMemoryCore.AddSegment(2);
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuMemoryCore.SetDWord(2, 0, memoryValue);
             mbbsEmuCpuRegisters.EAX = registerValue;

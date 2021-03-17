@@ -36,6 +36,8 @@ namespace MBBSEmu.Module
         /// </summary>
         public IMemoryCore Memory;
 
+        public ProtectedModeMemoryCore ProtectedMemory;
+
         /// <summary>
         ///     The unique name of the module (same as the DLL name)
         /// </summary>
@@ -131,7 +133,7 @@ namespace MBBSEmu.Module
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", MemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", ProtectedModeMemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;
@@ -139,7 +141,6 @@ namespace MBBSEmu.Module
 
             ModuleIdentifier = moduleIdentifier;
             ModuleDlls = new List<MbbsDll>();
-
 
             //Sanitize and setup Path
             if (string.IsNullOrEmpty(path))
@@ -168,7 +169,7 @@ namespace MBBSEmu.Module
                 Mdf = new MdfFile(fullMdfFilePath);
 
                 LoadModuleDll(Mdf.DLLFiles[0].Trim());
-                
+
                 if (Mdf.MSGFiles.Count > 0)
                 {
                     Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
@@ -187,11 +188,12 @@ namespace MBBSEmu.Module
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
 
-            Memory = memoryCore ?? new MemoryCore(logger);
+            Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
+            ProtectedMemory = (ProtectedModeMemoryCore)Memory;
 
             //Declare PSP Segment
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
-            Memory.AddSegment(0x4000);
+            ProtectedMemory.AddSegment(0x4000);
             Memory.SetArray(0x4000, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -281,7 +283,7 @@ namespace MBBSEmu.Module
 
         /// <summary>
         ///     Loads the specified DLL, and then inspects that DLLs Module Reference Table to import any additional
-        ///     references it might require recursively. 
+        ///     references it might require recursively.
         /// </summary>
         /// <param name="dllToLoad"></param>
         private void LoadModuleDll(string dllToLoad)

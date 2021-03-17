@@ -104,6 +104,20 @@ namespace MBBSEmu.Memory
         public static FarPtr Empty => new FarPtr(0, 0);
         public static FarPtr Null => Empty;
 
+        public static FarPtr operator +(FarPtr i, FarPtr j)
+        {
+            int segment = i.Segment + j.Segment;
+            int offset = i.Offset + j.Offset;
+            if (offset >= 0x10000)
+                ++segment;
+
+#if DEBUG
+            if (segment > 0xFFFF)
+                throw new ArgumentException("Segment addition overflowed");
+#endif
+            return new FarPtr((ushort)segment, (ushort)(offset & 0xFFFF));
+        }
+
         public static FarPtr operator +(FarPtr i, ushort v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
         public static FarPtr operator +(FarPtr i, int v) => new FarPtr(i.Segment, (ushort)(i.Offset + v));
         public static FarPtr operator -(FarPtr i, ushort v) => new FarPtr(i.Segment, (ushort)(i.Offset - v));

@@ -23,7 +23,7 @@ namespace MBBSEmu.Disassembler.Artifacts
         public ushort RelocationOffset { get; set; }
         public ushort OverlayNumber { get; set; }
         public ushort HeaderSize => (ushort)(HeaderParagraphs * 16);
-        public ushort ProgramSize => (ushort)((BlocksInFile - 1) * 512 + BytesInLastBlock - HeaderSize);
+        public int ProgramSize => ((BlocksInFile - 1) * 512 + BytesInLastBlock - HeaderSize);
 
         public MZHeader(byte[] fileContent)
         {

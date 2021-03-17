@@ -22,7 +22,7 @@ namespace MBBSEmu.DOS.Interrupts
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
-        
+
         /// <summary>
         ///     Path of the current Execution Context
         /// </summary>
@@ -53,6 +53,62 @@ namespace MBBSEmu.DOS.Interrupts
         {
             switch (_registers.AH)
             {
+                case 0x01:
+                    {
+                        // DOS - KEYBOARD INPUT (with echo)
+                        // Return: AL = character read
+                        // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
+                        var c = (byte)Console.In.Read();
+                        Console.Out.Write(c);
+                        _registers.AL = c;
+                        return;
+                    }
+                case 0x67:
+                    {
+                        // DOS - SET HANDLE COUNT
+                        // BX : Number of handles
+                        // Return: carry set if error (and error code in AX)
+                        _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        return;
+                    }
+                case 0x48:
+                    {
+                        // DOS - Allocate memory
+                        // BX = number of 16-byte paragraphs desired
+                        // Return: CF set on error
+                        //             AX = error code
+                        //             BX = maximum available
+                        //         CF clear if successful
+                        //             AX = segment of allocated memory block
+                        var ptr = _memory.Malloc((ushort)(_registers.BX * 16));
+                        if (ptr != FarPtr.Empty && ptr.Offset != 0)
+                            throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
+
+                        if (ptr == FarPtr.Empty)
+                        {
+                            _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.BX = 0; // TODO get maximum available here
+                            _registers.AX = 1;
+                        }
+                        else
+                        {
+                            _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.AX = ptr.Segment;
+                        }
+
+                        return;
+                    }
+                case 0x09:
+                    {
+                        var src = new FarPtr(_registers.DS, _registers.DX);
+                        var memoryStream = new MemoryStream();
+                        byte b;
+                        while ((b = _memory.GetByte(src++)) != '$')
+                            memoryStream.WriteByte(b);
+
+                        Console.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+                        return;
+                    }
                 case 0x19:
                     {
                         //DOS - GET DEFAULT DISK NUMBER
@@ -262,8 +318,12 @@ namespace MBBSEmu.DOS.Interrupts
                         var segmentToAdjust = _registers.ES;
                         var newSize = _registers.BX;
 
-                        if (!_memory.HasSegment(segmentToAdjust))
-                            _memory.AddSegment(segmentToAdjust);
+                        if (_memory is ProtectedModeMemoryCore)
+                        {
+                            ProtectedModeMemoryCore protectedMemory = (ProtectedModeMemoryCore)_memory;
+                            if (!protectedMemory.HasSegment(segmentToAdjust))
+                                protectedMemory.AddSegment(segmentToAdjust);
+                        }
 
                         _registers.BX = 0xFFFF;
                         break;
@@ -311,11 +371,11 @@ namespace MBBSEmu.DOS.Interrupts
                         var fileUtility = new FileUtility(_logger);
                         var foundFile = fileUtility.FindFile(_path, fileName);
 
-                        
+
 
                         if(!File.Exists($"{_path}{foundFile}"))
                             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                        
+
                         break;
                 }
                 case 0x62:
