@@ -39,7 +39,7 @@ namespace MBBSEmu.DOS
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
             _environmentVariables = environmentVariables;
 
             Registers.ES = PSP_SEGMENT;

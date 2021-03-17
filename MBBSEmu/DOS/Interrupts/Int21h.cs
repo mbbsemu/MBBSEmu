@@ -22,6 +22,9 @@ namespace MBBSEmu.DOS.Interrupts
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
+        private TextReader _stdin { get; init; }
+        private TextWriter _stdout { get; init; }
+        private TextWriter _stderr { get; init; }
 
         /// <summary>
         ///     Path of the current Execution Context
@@ -39,11 +42,14 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, string path = "")
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             _registers = registers;
             _memory = memory;
             _clock = clock;
+            _stdin = stdin;
+            _stdout = stdout;
+            _stderr = stderr;
             _interruptVectors = new Dictionary<byte, FarPtr>();
             _logger = logger;
             _path = path;
@@ -58,8 +64,8 @@ namespace MBBSEmu.DOS.Interrupts
                         // DOS - KEYBOARD INPUT (with echo)
                         // Return: AL = character read
                         // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-                        var c = (byte)Console.In.Read();
-                        Console.Out.Write(c);
+                        var c = (byte)_stdin.Read();
+                        _stdout.Write((char)c);
                         _registers.AL = c;
                         return;
                     }
@@ -106,7 +112,7 @@ namespace MBBSEmu.DOS.Interrupts
                         while ((b = _memory.GetByte(src++)) != '$')
                             memoryStream.WriteByte(b);
 
-                        Console.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+                        _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
                         return;
                     }
                 case 0x19:
@@ -242,8 +248,10 @@ namespace MBBSEmu.DOS.Interrupts
 	                         4 - Standard Printer Device (STDPRN)
                          */
 
-                        if (fileHandle == 1 || fileHandle == 2)
-                            Console.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                        if (fileHandle == 1)
+                            _stdout.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                        else if (fileHandle == 2)
+                            _stderr.WriteLine(Encoding.ASCII.GetString(dataToWrite));
 
                         break;
                     }
@@ -335,7 +343,7 @@ namespace MBBSEmu.DOS.Interrupts
                             AL = exit code
                             Return: never returns
                          */
-                        Console.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+                        _stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
                         _registers.Halt = true;
                         break;
                     }
