@@ -3,6 +3,7 @@ using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.DOS.Interrupts;
+using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using NLog;
@@ -110,6 +111,7 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+      _registers.AX.Should().Be((ushort)DOSErrorCode.INSUFFICIENT_MEMORY);
     }
 
     [Fact]
@@ -135,6 +137,55 @@ namespace MBBSEmu.Tests.Memory
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
 
       _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.HEAP_BASE_SEGMENT, 0));
+    }
+
+    [Fact]
+    public void GetDefaultAllocationStrategy_0x58()
+    {
+      _registers.AL = 0;
+      _registers.AH = 0x58;
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be((ushort)Int21h.AllocationStrategy.BEST_FIT);
+    }
+
+    [Theory]
+    [InlineData((byte)Int21h.AllocationStrategy.BEST_FIT, (byte)Int21h.AllocationStrategy.BEST_FIT)]
+    [InlineData((byte)Int21h.AllocationStrategy.FIRST_FIT, (byte)Int21h.AllocationStrategy.FIRST_FIT)]
+    [InlineData((byte)Int21h.AllocationStrategy.LAST_FIT, (byte)Int21h.AllocationStrategy.LAST_FIT)]
+    [InlineData((byte)3, (byte)Int21h.AllocationStrategy.LAST_FIT)]
+    [InlineData((byte)0xFF, (byte)Int21h.AllocationStrategy.LAST_FIT)]
+    public void SetDefaultAllocationStrategy_0x58(byte allocationStrategy, byte expectedStrategy)
+    {
+      _registers.AL = 1;
+      _registers.AH = 0x58;
+      _registers.BL = allocationStrategy;
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be(expectedStrategy);
+
+      _registers.AX = _registers.BX = 0;
+      _registers.AH = 0x58;
+
+      _int21.Handle();
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be(expectedStrategy);
+    }
+
+    [Fact]
+    public void GetDefaultAllocationStrategyBadCommand_0x58()
+    {
+      _registers.AL = 2;
+      _registers.AH = 0x58;
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+      _registers.AX.Should().Be((ushort)DOSErrorCode.UNKNOWN_COMMAND);
     }
   }
 }
