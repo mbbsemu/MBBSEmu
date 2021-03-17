@@ -45,7 +45,7 @@ namespace MBBSEmu.Memory
         public override FarPtr AllocateBigMemoryBlock(ushort quantity, ushort size) => throw new NotImplementedException();
         public override FarPtr GetBigMemoryBlock(FarPtr block, ushort index) => throw new NotImplementedException();
 
-        public override FarPtr Malloc(ushort size)
+        public override FarPtr Malloc(uint size)
         {
             var ptr = _memoryAllocator.Malloc(size);
             if (ptr.IsNull())

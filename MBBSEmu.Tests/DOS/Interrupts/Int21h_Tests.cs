@@ -59,11 +59,11 @@ namespace MBBSEmu.Tests.Memory
     {
       _registers.AH = 0x67;
       _registers.BX = 255;
-      _registers.F.SetFlag((ushort)EnumFlags.CF);
+      _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().Be(false);
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
     }
 
     [Fact]
@@ -75,6 +75,66 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.AL.Should().Be(2);
+    }
+
+    [Fact]
+    public void AllocateMemory_0x48()
+    {
+      _registers.AL = 0;
+      _registers.AH = 0x48;
+      _registers.BX = 2;
+      _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+
+      _registers.AL = 0;
+      _registers.AH = 0x48;
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT + 2);
+    }
+
+    [Fact]
+    public void AllocateMemory_0x48_TooMuch()
+    {
+      _registers.AL = 0;
+      _registers.AH = 0x48;
+      _registers.BX = 0xFFFF;
+      _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+    }
+
+    [Fact]
+    public void FreeMemory_0x49()
+    {
+      _registers.AL = 0;
+      _registers.AH = 0x48;
+      _registers.BX = 2;
+      _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+
+      _registers.AL = 0;
+      _registers.AH = 0x49;
+      _registers.ES = RealModeMemoryCore.HEAP_BASE_SEGMENT;
+      _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+
+      _int21.Handle();
+
+      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+
+      _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.HEAP_BASE_SEGMENT, 0));
     }
   }
 }

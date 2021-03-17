@@ -74,7 +74,7 @@ namespace MBBSEmu.DOS.Interrupts
                         // DOS - SET HANDLE COUNT
                         // BX : Number of handles
                         // Return: carry set if error (and error code in AX)
-                        _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
                 case 0x48:
@@ -86,22 +86,34 @@ namespace MBBSEmu.DOS.Interrupts
                         //             BX = maximum available
                         //         CF clear if successful
                         //             AX = segment of allocated memory block
-                        var ptr = _memory.Malloc((ushort)(_registers.BX * 16));
-                        if (ptr != FarPtr.Empty && ptr.Offset != 0)
+                        var ptr = _memory.Malloc((uint)(_registers.BX * 16));
+                        if (!ptr.IsNull() && ptr.Offset != 0)
                             throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
 
-                        if (ptr == FarPtr.Empty)
+                        if (ptr.IsNull())
                         {
-                            _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                             _registers.BX = 0; // TODO get maximum available here
                             _registers.AX = 1;
                         }
                         else
                         {
-                            _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                             _registers.AX = ptr.Segment;
                         }
 
+                        return;
+                    }
+                case 0x49:
+                    {
+                        // DOS - Free Memory
+                        // ES = Segment address of area to be freed
+                        // Return: CF set on error
+                        //             AX = error code
+                        //         CF clear if successful
+                        _memory.Free(new FarPtr(_registers.ES, 0));
+                        // no status, so always say we're good
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
                 case 0x09:

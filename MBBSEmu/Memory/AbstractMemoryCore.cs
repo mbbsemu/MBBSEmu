@@ -32,7 +32,7 @@ namespace MBBSEmu.Memory
             _logger = logger;
         }
 
-        public abstract FarPtr Malloc(ushort size);
+        public abstract FarPtr Malloc(uint size);
 
         public abstract void Free(FarPtr ptr);
 
