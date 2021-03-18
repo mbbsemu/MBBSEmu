@@ -178,8 +178,7 @@ namespace MBBSEmu.CPU
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
-            Push(ushort.MaxValue);
-            Push(ushort.MaxValue);
+            Push(uint.MaxValue);
         }
 
         /// <summary>
@@ -204,8 +203,7 @@ namespace MBBSEmu.CPU
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
-            Push(ushort.MaxValue);
-            Push(ushort.MaxValue);
+            Push(uint.MaxValue);
 
             InstructionCounter = 0;
         }
@@ -230,6 +228,23 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Pops a DWord from the Stack and increments the Stack Pointer
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint PopDWord()
+        {
+            var value = Memory.GetDWord(Registers.SS, Registers.SP);
+#if DEBUG
+            if (_showDebug)
+                _logger.Debug($"Popped {value:X8} from {Registers.SP:X4}");
+#endif
+
+            Registers.SP += 4;
+            return value;
+        }
+
+        /// <summary>
         ///     Pushes a Word to the Stack and decrements the Stack Pointer
         /// </summary>
         /// <param name="value"></param>
@@ -244,6 +259,22 @@ namespace MBBSEmu.CPU
                 _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
 #endif
 
+        }
+
+        /// <summary>
+        ///     Pushes a DWord to the Stack and decrements the Stack Pointer
+        /// </summary>
+        /// <param name="value"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Push(uint value)
+        {
+            Registers.SP -= 4;
+            Memory.SetDWord(Registers.SS, Registers.SP, value);
+
+#if DEBUG
+            if (_showDebug)
+                _logger.Debug($"Pushed {value:X8} to {Registers.SP:X4}");
+#endif
         }
 
         /// <summary>
@@ -2536,11 +2567,7 @@ namespace MBBSEmu.CPU
 
                 //32Bit
                 case -4:
-                    {
-                        var valueToPush = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-                        Push((ushort)(valueToPush >> 16));
-                        Push((ushort)valueToPush);
-                    }
+                    Push(GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination));
                     return;
                 default:
                     throw new Exception(
@@ -3448,20 +3475,13 @@ namespace MBBSEmu.CPU
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushf()
-        {
-            Push(Registers.F);
-        }
+        private void Op_Pushf() => Push(Registers.F);
 
         /// <summary>
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushfd()
-        {
-            Push((ushort)(Registers.EF >> 16));
-            Push((ushort)Registers.F);
-        }
+        private void Op_Pushfd() => Push(Registers.EF);
 
         /// <summary>
         ///     Floating Point Addition (x87)
@@ -3850,19 +3870,13 @@ namespace MBBSEmu.CPU
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popf()
-        {
-            Registers.F = Pop();
-        }
+        private void Op_Popf() => Registers.F = Pop();
 
         /// <summary>
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popfd()
-        {
-            Registers.EF = (uint)(Pop() | (Pop() << 16));
-        }
+        private void Op_Popfd() => Registers.EF = PopDWord();
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Iret()

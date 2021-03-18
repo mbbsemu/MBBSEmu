@@ -24,23 +24,14 @@ namespace MBBSEmu.CPU
         public FpuStatusRegister Fpu { get; set; }
 
         /// <summary>
-        ///     Extended Flags
+        ///     Extended Flags - we don't use/track any extended flags, so this just delegates to F
         /// </summary>
-        public uint EF { get; set; }
-
+        public uint EF { get => F; set => F = (ushort)value; }
 
         /// <summary>
         ///     Flags
         /// </summary>
-        public ushort F
-        {
-            get => (ushort)(EF & 0xFFFF);
-            set
-            {
-                EF &= 0xFFFF0000;
-                EF |= value;
-            }
-        }
+        public ushort F { get; set; }
 
         /*
          * General Registers
@@ -53,7 +44,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort AX
         {
-            get => (ushort)(EAX & 0xFFFF);
+            get => (ushort)EAX;
             set
             {
                 EAX &= 0xFFFF0000;
@@ -66,7 +57,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte AL
         {
-            get => (byte)(EAX & 0xFF);
+            get => (byte)EAX;
             set
             {
                 EAX &= 0xFFFFFF00;
@@ -94,7 +85,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort BX
         {
-            get => (ushort)(EBX & 0xFFFF);
+            get => (ushort)EBX;
             set
             {
                 EBX &= 0xFFFF0000;
@@ -107,7 +98,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte BL
         {
-            get => (byte)(EBX & 0xFF);
+            get => (byte)EBX;
             set
             {
                 EBX &= 0xFFFFFF00;
@@ -135,7 +126,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort CX
         {
-            get => (ushort)(ECX & 0xFFFF);
+            get => (ushort)ECX;
             set
             {
                 ECX &= 0xFFFF0000;
@@ -148,7 +139,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte CL
         {
-            get => (byte)(ECX & 0xFF);
+            get => (byte)ECX;
             set
             {
                 ECX &= 0xFFFFFF00;
@@ -176,7 +167,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort DX
         {
-            get => (ushort)(EDX & 0xFFFF);
+            get => (ushort)EDX;
             set
             {
                 EDX &= 0xFFFF0000;
@@ -189,7 +180,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte DL
         {
-            get => (byte)(EDX & 0xFF);
+            get => (byte)EDX;
             set
             {
                 EDX &= 0xFFFFFF00;
@@ -220,7 +211,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort SP
         {
-            get => (ushort)(ESP & 0xFFFF);
+            get => (ushort)ESP;
             set
             {
                 ESP &= 0xFFFF0000;
@@ -238,7 +229,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort BP
         {
-            get => (ushort)(EBP & 0xFFFF);
+            get => (ushort)EBP;
             set
             {
                 EBP &= 0xFFFF0000;
@@ -257,7 +248,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort SI
         {
-            get => (ushort)(ESI & 0xFFFF);
+            get => (ushort)ESI;
             set
             {
                 ESI &= 0xFFFF0000;
@@ -275,7 +266,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort DI
         {
-            get => (ushort)(EDI & 0xFFFF);
+            get => (ushort)EDI;
             set
             {
                 EDI &= 0xFFFF0000;
