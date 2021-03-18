@@ -371,7 +371,7 @@ namespace MBBSEmu.Memory
         ///     Allocates a block of memory from the heap
         /// </summary>
         /// <param name="size">size of memory to allocate</param>
-        FarPtr Malloc(ushort size);
+        FarPtr Malloc(uint size);
 
         /// <summary>
         ///     Frees a block of memory allocated from the heap

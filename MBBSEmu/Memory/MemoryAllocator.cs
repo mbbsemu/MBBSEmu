@@ -19,7 +19,7 @@ namespace MBBSEmu.Memory
       /// <summary>
       ///   Offset within the segment where this memory begins.
       /// </summary>
-      public ushort Offset { get; set; }
+      public uint Offset { get; set; }
       /// <summary>
       ///   Size in bytes of this memory block.
       /// </summary>
@@ -110,7 +110,7 @@ namespace MBBSEmu.Memory
     /// </summary>
     /// <param name="size">size in bytes to allocate.</param>
     /// <returns></returns>
-    public FarPtr Malloc(ushort size)
+    public FarPtr Malloc(uint size)
     {
       if (_freeBlocks.Count == 0)
       {
@@ -119,7 +119,7 @@ namespace MBBSEmu.Memory
       }
 
       // align
-      size = size == 0 ? Alignment : (ushort)((size + Alignment - 1) & ~(Alignment - 1));
+      size = size == 0 ? Alignment : (uint)((size + Alignment - 1) & ~(Alignment - 1));
 
       var foundBlock = _freeBlocks.EnumerateNodes()
           .Where(memoryBlock => memoryBlock.Value.Size >= size)
@@ -130,7 +130,7 @@ namespace MBBSEmu.Memory
         return FarPtr.Empty;
       }
 
-      var returnPtr = new FarPtr(BasePointer.Segment, foundBlock.Value.Offset);
+      var returnPtr = new FarPtr(BasePointer.Segment, (ushort)foundBlock.Value.Offset);
       _allocatedBlocks[returnPtr] = size;
 
       if (foundBlock.Value.Size > size) // break it up

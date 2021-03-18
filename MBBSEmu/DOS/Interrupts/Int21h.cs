@@ -22,6 +22,9 @@ namespace MBBSEmu.DOS.Interrupts
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
+        private TextReader _stdin { get; init; }
+        private TextWriter _stdout { get; init; }
+        private TextWriter _stderr { get; init; }
 
         /// <summary>
         ///     Path of the current Execution Context
@@ -39,11 +42,14 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, string path = "")
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             _registers = registers;
             _memory = memory;
             _clock = clock;
+            _stdin = stdin;
+            _stdout = stdout;
+            _stderr = stderr;
             _interruptVectors = new Dictionary<byte, FarPtr>();
             _logger = logger;
             _path = path;
@@ -58,8 +64,8 @@ namespace MBBSEmu.DOS.Interrupts
                         // DOS - KEYBOARD INPUT (with echo)
                         // Return: AL = character read
                         // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-                        var c = (byte)Console.In.Read();
-                        Console.Out.Write(c);
+                        var c = (byte)_stdin.Read();
+                        _stdout.Write((char)c);
                         _registers.AL = c;
                         return;
                     }
@@ -68,7 +74,7 @@ namespace MBBSEmu.DOS.Interrupts
                         // DOS - SET HANDLE COUNT
                         // BX : Number of handles
                         // Return: carry set if error (and error code in AX)
-                        _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
                 case 0x48:
@@ -80,22 +86,34 @@ namespace MBBSEmu.DOS.Interrupts
                         //             BX = maximum available
                         //         CF clear if successful
                         //             AX = segment of allocated memory block
-                        var ptr = _memory.Malloc((ushort)(_registers.BX * 16));
-                        if (ptr != FarPtr.Empty && ptr.Offset != 0)
+                        var ptr = _memory.Malloc((uint)(_registers.BX * 16));
+                        if (!ptr.IsNull() && ptr.Offset != 0)
                             throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
 
-                        if (ptr == FarPtr.Empty)
+                        if (ptr.IsNull())
                         {
-                            _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                             _registers.BX = 0; // TODO get maximum available here
                             _registers.AX = 1;
                         }
                         else
                         {
-                            _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                             _registers.AX = ptr.Segment;
                         }
 
+                        return;
+                    }
+                case 0x49:
+                    {
+                        // DOS - Free Memory
+                        // ES = Segment address of area to be freed
+                        // Return: CF set on error
+                        //             AX = error code
+                        //         CF clear if successful
+                        _memory.Free(new FarPtr(_registers.ES, 0));
+                        // no status, so always say we're good
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
                 case 0x09:
@@ -106,7 +124,7 @@ namespace MBBSEmu.DOS.Interrupts
                         while ((b = _memory.GetByte(src++)) != '$')
                             memoryStream.WriteByte(b);
 
-                        Console.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+                        _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
                         return;
                     }
                 case 0x19:
@@ -242,8 +260,10 @@ namespace MBBSEmu.DOS.Interrupts
 	                         4 - Standard Printer Device (STDPRN)
                          */
 
-                        if (fileHandle == 1 || fileHandle == 2)
-                            Console.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                        if (fileHandle == 1)
+                            _stdout.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                        else if (fileHandle == 2)
+                            _stderr.WriteLine(Encoding.ASCII.GetString(dataToWrite));
 
                         break;
                     }
@@ -335,7 +355,7 @@ namespace MBBSEmu.DOS.Interrupts
                             AL = exit code
                             Return: never returns
                          */
-                        Console.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+                        _stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
                         _registers.Halt = true;
                         break;
                     }

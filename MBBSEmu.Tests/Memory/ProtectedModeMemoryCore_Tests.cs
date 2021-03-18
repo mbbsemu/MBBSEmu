@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Memory
 {
-    public class MemoryCore_Tests : TestBase
+    public class ProtectedModeMemoryCore_Tests : TestBase
     {
         private readonly ILogger _logger = new ServiceResolver().GetService<ILogger>();
 

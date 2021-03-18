@@ -34,7 +34,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         ///     Exported Modules to be called from the CPU
         /// </summary>
         public readonly Dictionary<ushort, IExportedModule> ExportedModuleDictionary;
-        
+
         public string Path { get; init; }
 
         public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
@@ -45,7 +45,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             ExportedModuleDictionary = exportedModuleDictionary;
             Path = path;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
+            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)

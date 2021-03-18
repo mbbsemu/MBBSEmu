@@ -33,7 +33,7 @@ namespace MBBSEmu.Memory
             AddSegment(0);
         }
 
-        public override FarPtr Malloc(ushort size)
+        public override FarPtr Malloc(uint size)
         {
             foreach (var allocator in _heapAllocators.Values)
             {
