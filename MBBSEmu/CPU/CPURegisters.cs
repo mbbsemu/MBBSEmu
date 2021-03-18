@@ -197,24 +197,77 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Pointer Register
+        ///     Stack Register
         /// </summary>
-        public ushort SP { get; set; }
+        public uint ESP { get; set; }
+
+        /// <summary>
+        ///     Stack Register
+        /// </summary>
+        public ushort SP
+        {
+            get => (ushort)(ESP & 0xFFFF);
+            set
+            {
+                ESP &= 0xFFFF0000;
+                ESP |= value;
+            }
+        }
 
         /// <summary>
         ///     Base Register
         /// </summary>
-        public ushort BP { get; set; }
+        public uint EBP { get; set; }
+
+        /// <summary>
+        ///     Base Register
+        /// </summary>
+        public ushort BP
+        {
+            get => (ushort)(EBP & 0xFFFF);
+            set
+            {
+                EBP &= 0xFFFF0000;
+                EBP |= value;
+            }
+        }
+
 
         /// <summary>
         ///     Index Register
         /// </summary>
-        public ushort SI { get; set; }
+        public uint ESI { get; set; }
 
         /// <summary>
         ///     Index Register
         /// </summary>
-        public ushort DI { get; set; }
+        public ushort SI
+        {
+            get => (ushort)(ESI & 0xFFFF);
+            set
+            {
+                ESI &= 0xFFFF0000;
+                ESI |= value;
+            }
+        }
+
+        /// <summary>
+        ///     Index Register
+        /// </summary>
+        public uint EDI { get; set; }
+
+        /// <summary>
+        ///     Index Register
+        /// </summary>
+        public ushort DI
+        {
+            get => (ushort)(EDI & 0xFFFF);
+            set
+            {
+                EDI &= 0xFFFF0000;
+                EDI |= value;
+            }
+        }
 
         /*
          * Memory Segmentation and Segment Registers
@@ -293,6 +346,10 @@ namespace MBBSEmu.CPU
                 Register.EBX => EBX,
                 Register.ECX => ECX,
                 Register.EDX => EDX,
+                Register.ESP => ESP,
+                Register.EBP => EBP,
+                Register.EDI => EDI,
+                Register.ESI => ESI,
                 _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
             };
         }
@@ -410,6 +467,18 @@ namespace MBBSEmu.CPU
                     break;
                 case Register.EDX:
                     EDX = value;
+                    break;
+                case Register.ESP:
+                    ESP = value;
+                    break;
+                case Register.EBP:
+                    EBP = value;
+                    break;
+                case Register.ESI:
+                    ESI = value;
+                    break;
+                case Register.EDI:
+                    EDI = value;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);

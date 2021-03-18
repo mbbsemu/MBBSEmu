@@ -4292,6 +4292,10 @@ namespace MBBSEmu.CPU
                 Register.EBX => sizeof(uint),
                 Register.ECX => sizeof(uint),
                 Register.EDX => sizeof(uint),
+                Register.ESP => sizeof(uint),
+                Register.EBP => sizeof(uint),
+                Register.ESI => sizeof(uint),
+                Register.EDI => sizeof(uint),
                 _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
             };
         }
