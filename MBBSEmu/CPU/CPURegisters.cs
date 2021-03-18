@@ -24,9 +24,23 @@ namespace MBBSEmu.CPU
         public FpuStatusRegister Fpu { get; set; }
 
         /// <summary>
+        ///     Extended Flags
+        /// </summary>
+        public uint EF { get; set; }
+
+
+        /// <summary>
         ///     Flags
         /// </summary>
-        public ushort F { get; set; }
+        public ushort F
+        {
+            get => (ushort)(EF & 0xFFFF);
+            set
+            {
+                EF &= 0xFFFF0000;
+                EF |= value;
+            }
+        }
 
         /*
          * General Registers
@@ -531,12 +545,14 @@ namespace MBBSEmu.CPU
         /// </summary>
         public void Zero()
         {
-            AX = 0;
-            BX = 0;
-            CX = 0;
-            DX = 0;
-            SI = 0;
-            DI = 0;
+            EAX = 0;
+            EBX = 0;
+            ECX = 0;
+            EDX = 0;
+            ESI = 0;
+            EDI = 0;
+            ESP = 0;
+            EBP = 0;
             IP = 0;
             CS = 0;
             DS = 0;

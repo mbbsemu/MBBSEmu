@@ -542,6 +542,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Pushf:
                     Op_Pushf();
                     break;
+                case Mnemonic.Pushfd:
+                    Op_Pushfd();
+                    break;
                 case Mnemonic.Fadd:
                     Op_Fadd();
                     break;
@@ -587,6 +590,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Popf:
                     Op_Popf();
+                    break;
+                case Mnemonic.Popfd:
+                    Op_Popfd();
                     break;
                 case Mnemonic.Fsubp:
                     Op_Fsubp();
@@ -3448,6 +3454,16 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Push Flags Register to Stack
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Pushfd()
+        {
+            Push((ushort)(Registers.EF >> 16));
+            Push((ushort)Registers.F);
+        }
+
+        /// <summary>
         ///     Floating Point Addition (x87)
         ///
         ///     Add m32fp to ST(0) and store result in ST(0).
@@ -3837,6 +3853,15 @@ namespace MBBSEmu.CPU
         private void Op_Popf()
         {
             Registers.F = Pop();
+        }
+
+        /// <summary>
+        ///     Pop from Stack into the Flags Register
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Popfd()
+        {
+            Registers.EF = (uint)(Pop() | (Pop() << 16));
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
