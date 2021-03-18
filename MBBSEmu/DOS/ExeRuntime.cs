@@ -113,7 +113,7 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP()
         {
-            var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = ENVIRONMENT_SEGMENT };
+            var psp = new PSPStruct { NextSegOffset = 0xF000, EnvSeg = ENVIRONMENT_SEGMENT };
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));

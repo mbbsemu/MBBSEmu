@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
+using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -42,6 +43,14 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
+        public enum AllocationStrategy {
+            FIRST_FIT = 0,
+            BEST_FIT = 1,
+            LAST_FIT = 2,
+        }
+
+        private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
+
         public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             _registers = registers;
@@ -57,6 +66,8 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
+            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+
             switch (_registers.AH)
             {
                 case 0x01:
@@ -94,7 +105,7 @@ namespace MBBSEmu.DOS.Interrupts
                         {
                             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                             _registers.BX = 0; // TODO get maximum available here
-                            _registers.AX = 1;
+                            _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
                         }
                         else
                         {
@@ -114,6 +125,47 @@ namespace MBBSEmu.DOS.Interrupts
                         _memory.Free(new FarPtr(_registers.ES, 0));
                         // no status, so always say we're good
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        return;
+                    }
+                case 0x58:
+                    {
+                        // INT 21 - AH = 58h DOS 3.x - GET/SET MEMORY ALLOCATION STRATEGY
+                        // AL = function code
+                        //     0 = get allocation strategy
+                        //     1 = set allocation strategy
+                        // BL = strategy code
+                        //     0 first fit (use first memory block large enough)
+                        //     1 best fit (use smallest memory block large enough)
+                        //     2 last fit (use high part of last usable memory block)
+                        // Return:
+                        //   CF set on error
+                        //     AX = error code
+                        //   CF clear if successful
+                        //     AX = strategy code
+                        // Note: the Set subfunction accepts any value in BL; 2 or greater means last fit.
+                        // the Get subfunction returns the last value set, so programs should check
+                        // whether the value is >= 2, not just equal to 2.
+
+                        if (_registers.AL == 0)
+                        {
+                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.AX = (ushort)_allocationStrategy;
+                        }
+                        else if (_registers.AL == 1)
+                        {
+                            if (_registers.BL > 2)
+                                _allocationStrategy = AllocationStrategy.LAST_FIT;
+                            else
+                                _allocationStrategy = (AllocationStrategy)_registers.BL;
+
+                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                            _registers.AX = (ushort)_allocationStrategy;
+                        }
+                        else
+                        {
+                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.AX = (ushort)DOSErrorCode.UNKNOWN_COMMAND;
+                        }
                         return;
                     }
                 case 0x09:
