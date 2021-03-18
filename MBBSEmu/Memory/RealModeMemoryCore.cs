@@ -70,7 +70,7 @@ namespace MBBSEmu.Memory
 
             var codeReader = new ByteArrayCodeReader(VirtualToPhysical(segment, instructionPointer).Slice(0, 10).ToArray());
             var decoder = Decoder.Create(16, codeReader);
-            decoder.IP = 0x0;
+            decoder.IP = instructionPointer;
 
             instruction = decoder.Decode();
             _instructionCache.Add(VirtualToPhysicalAddress(segment, instructionPointer), instruction);
