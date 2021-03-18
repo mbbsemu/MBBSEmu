@@ -23,7 +23,7 @@ namespace MBBSEmu.CPU.Benchmark
         }
 
         static void Main(string[] args)
-        { 
+        {
             //Reset
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();

@@ -308,7 +308,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true
+            //_showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -630,6 +630,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Fchs:
                     Op_Fchs();
+                    break;
+                case Mnemonic.Movsb:
+                    Op_Movsb();
                     break;
                 case Mnemonic.Movsw:
                     Op_Movsw();
@@ -3745,7 +3748,34 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Move data from String to String
+        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Movsb()
+        {
+        movsb:
+            Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
+
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            {
+                Registers.DI -= 1;
+                Registers.SI -= 1;
+            }
+            else
+            {
+                Registers.DI += 1;
+                Registers.SI += 1;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                goto movsb;
+            }
+        }
+
+        /// <summary>
+        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsw()
@@ -3769,7 +3799,6 @@ namespace MBBSEmu.CPU
                 Registers.CX--;
                 goto movsw;
             }
-
         }
 
         /// <summary>
