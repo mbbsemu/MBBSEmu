@@ -313,10 +313,18 @@ namespace MBBSEmu.DOS.Interrupts
                          */
 
                         if (fileHandle == 1)
+                        {
                             _stdout.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                            _stdout.Flush();
+                        }
                         else if (fileHandle == 2)
+                        {
                             _stderr.WriteLine(Encoding.ASCII.GetString(dataToWrite));
+                            _stderr.Flush();
+                        }
 
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        _registers.AX = numberOfBytes;
                         break;
                     }
                 case 0x44:
