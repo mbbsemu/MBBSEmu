@@ -2539,8 +2539,22 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, Pop());
                     break;
                 case OpKind.Register when _currentOperationSize == 4:
-                    Registers.SetValue(_currentInstruction.Op0Register, (uint)(Pop() | (Pop() << 16)));
+                    Registers.SetValue(_currentInstruction.Op0Register, PopDWord());
                     break;
+                case OpKind.Memory when _currentOperationSize == 2:
+                    {
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            Pop());
+                        return;
+                    }
+                case OpKind.Memory when _currentOperationSize == 4:
+                    {
+                        Memory.SetDWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            PopDWord());
+                        return;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown POP: {_currentInstruction.Op0Kind}");
             }
@@ -2617,9 +2631,9 @@ namespace MBBSEmu.CPU
                     }
                 case OpKind.Memory when _currentOperationSize == 4:
                     {
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        Memory.SetDWord(Registers.GetValue(_currentInstruction.MemorySegment),
                             GetOperandOffset(_currentInstruction.Op0Kind),
-                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
+                            GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source));
                         return;
                     }
 

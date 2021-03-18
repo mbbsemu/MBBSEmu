@@ -1,49 +1,54 @@
 ﻿using Iced.Intel;
 using Xunit;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public class POPF_Tests : CpuTestBase
+    public class PUSHF_Tests : CpuTestBase
     {
         [Fact]
-        public void POPF_Test()
+        public void PUSHF_Test()
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.F = 0;
+            mbbsEmuCpuRegisters.F = 0x1234;
+            mbbsEmuCpuRegisters.AX = 0xFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
-            mbbsEmuCpuCore.Push(0xFFFF);
 
             var instructions = new Assembler(16);
 
-            instructions.popf();
+            instructions.pushf();
+            instructions.pop(ax);
             CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();
+            Assert.Equal(originalSP - 2, mbbsEmuCpuRegisters.SP);
 
-            Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.F);
+            mbbsEmuCpuCore.Tick();
+            Assert.Equal(0x1234, mbbsEmuCpuRegisters.AX);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
 
         [Fact]
-        public void POPFD_Test()
+        public void PUSHFD_Test()
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.EF = 0;
+            mbbsEmuCpuRegisters.EF = 0x00001234;
+            mbbsEmuCpuRegisters.EAX = 0xFFFFFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
-            mbbsEmuCpuCore.Push(0xFFFFFFFF);
 
             var instructions = new Assembler(16);
 
-            instructions.popfd();
+            instructions.pushfd();
+            instructions.pop(eax);
             CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();
+            Assert.Equal(originalSP - 4, mbbsEmuCpuRegisters.SP);
 
-            // so the reason this is 0x0000FFFF instead of 0xFFFFFFFF is because EF isn't a full 32
-            // bit register, but rather we fake it to be by extending F to 32 bits.
-            Assert.Equal(0x0000FFFF, mbbsEmuCpuRegisters.F);
+            mbbsEmuCpuCore.Tick();
+            Assert.Equal(0x00001234u, mbbsEmuCpuRegisters.EAX);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
     }
