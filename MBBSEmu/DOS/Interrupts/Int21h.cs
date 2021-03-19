@@ -43,10 +43,20 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public enum AllocationStrategy {
+        public enum AllocationStrategy
+        {
             FIRST_FIT = 0,
             BEST_FIT = 1,
             LAST_FIT = 2,
+        }
+
+        public enum FileHandle
+        {
+            STDIN = 0,
+            STDOUT = 1,
+            STDERR = 2,
+            STDAUX = 3,
+            STDPRN = 4,
         }
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
@@ -70,6 +80,85 @@ namespace MBBSEmu.DOS.Interrupts
 
             switch (_registers.AH)
             {
+                case 0x3D:
+                    {
+                        /*
+                        AL = access code
+                            0 = Read Only
+                            1 = Write Only
+                            2 = Read/Write
+                        AL bits 7-3 = file-sharing modes (DOS 3.x)
+                            bit 7 = inheritance flag, set for no inheritance
+                            bits 4-6 = sharing mode
+                            000 compatibility mode
+                            001 exclusive (deny all)
+                            010 write access denied (deny write)
+                            011 read access denied (deny read)
+                            100 full access permitted (deny none)
+                            bit 3 = reserved, should be zero
+                        DS:DX = address of ASCIZ filename
+                        Return:
+                            CF set on error
+                                AX = error code
+                            CF clear if successful
+                                AX = file handle
+                        */
+                        _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                        _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                        return;
+                    }
+                case 0x3E:
+                    {
+                        /*
+                        INT 21 - AH = 3Eh DOS 2+ - CLOSE A FILE WITH HANDLE
+                        BX = file handle
+                        Return: CF set on error
+                            AX = error code
+                        */
+
+                        switch (_registers.BX)
+                        {
+                            case (ushort)FileHandle.STDIN:
+                            case (ushort)FileHandle.STDAUX:
+                            case (ushort)FileHandle.STDPRN:
+                                break;
+                            case (ushort)FileHandle.STDOUT:
+                                _stdout.Close();
+                                break;
+                            case (ushort)FileHandle.STDERR:
+                                _stderr.Close();
+                                break;
+                            default:
+                                _logger.Error($"Closing handle {_registers.BX}");
+                                break;
+                        }
+                        return;
+                    }
+                case 0x43:
+                    {
+                        /*
+                        INT 21 - AH = 43h DOS 2+ - GET/PUT FILE ATTRIBUTES (CHMOD)
+                        AL =
+                            0 get file attributes
+                            1 put file attributes
+                        CX = file attribute bits
+                            0 = read only
+                            1 = hidden file
+                            2 = system file
+                            3 = volume label
+                            4 = subdirectory
+                            5 = written since backup
+                            8 = shareable (Novell NetWare)
+                        DS:DX -> ASCIZ file name
+                        Return: CF set on error
+                            AX = error code
+                            CX = file attributes on get
+                        */
+                        //_stdout.Write($"Attempting to chmod {Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true))}");
+                        _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                        _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                        return;
+                    }
                 case 0x01:
                     {
                         // DOS - KEYBOARD INPUT (with echo)
@@ -302,6 +391,14 @@ namespace MBBSEmu.DOS.Interrupts
                         var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
+                        char[] toWrite = new char[numberOfBytes];
+                        Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
+                        for (int i = 0; i < toWrite.Length; ++i)
+                        {
+                            _logger.Error($"Writing {i}:{dataToWrite[i]}:{toWrite[i]}");
+                        }
+
+                        //_logger.Error($"Writing {_registers.BX} {numberOfBytes}:{dataToWrite.Length} bytes");
 
                         /*
                              DOS Default/Predefined Handles:
@@ -312,16 +409,10 @@ namespace MBBSEmu.DOS.Interrupts
 	                         4 - Standard Printer Device (STDPRN)
                          */
 
-                        if (fileHandle == 1)
-                        {
-                            _stdout.WriteLine(Encoding.ASCII.GetString(dataToWrite));
-                            _stdout.Flush();
-                        }
-                        else if (fileHandle == 2)
-                        {
-                            _stderr.WriteLine(Encoding.ASCII.GetString(dataToWrite));
-                            _stderr.Flush();
-                        }
+                        if (fileHandle == (ushort)FileHandle.STDOUT)
+                            _stdout.Write(toWrite);
+                        else if (fileHandle == (ushort)FileHandle.STDERR)
+                            _stderr.Write(toWrite);
 
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         _registers.AX = numberOfBytes;
@@ -415,7 +506,10 @@ namespace MBBSEmu.DOS.Interrupts
                             AL = exit code
                             Return: never returns
                          */
-                        _stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+                        _stdout.Flush();
+                        _stderr.Flush();
+
+                        //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
                         _registers.Halt = true;
                         break;
                     }
