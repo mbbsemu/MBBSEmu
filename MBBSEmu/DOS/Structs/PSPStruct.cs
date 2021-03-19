@@ -98,7 +98,7 @@ namespace MBBSEmu.DOS.Structs
         ///
         ///     Offset: 0x80
         /// </summary>
-        public byte CmdTailLength { get; set; }
+        public byte CommandTailLength { get; set; }
 
         /// <summary>
         ///     Characters from DOS Command Line
@@ -124,7 +124,7 @@ namespace MBBSEmu.DOS.Structs
                 Array.Copy(BitConverter.GetBytes(EnvSeg), 0, _data, 0x2C, sizeof(ushort));
                 Array.Copy(FCB_1, 0, _data, 0x5C, FCB_1.Length);
                 Array.Copy(FCB_2, 0, _data, 0x6C, FCB_2.Length);
-                _data[0x80] = CmdTailLength;
+                _data[0x80] = CommandTailLength;
                 Array.Copy(CommandTail, 0, _data, 0x81, CommandTail.Length);
                 return _data;
             }
