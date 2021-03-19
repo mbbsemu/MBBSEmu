@@ -35,6 +35,9 @@ namespace MBBSEmu.Memory
 
         public RealModeMemoryCore(ILogger logger) : base(logger)
         {
+            // fill with halt instructions
+            Array.Fill(_memory, (byte)0xF4);
+
             // set alignment to 16 so that all allocations return a clean segment (which are 16 bytes)
             _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE, alignment: 16);
         }

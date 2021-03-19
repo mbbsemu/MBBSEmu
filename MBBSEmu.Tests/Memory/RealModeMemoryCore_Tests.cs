@@ -137,7 +137,7 @@ namespace MBBSEmu.Tests.Memory
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
 
-            (memoryCore as IMemoryCore).SetArray(ptr1, Encoding.ASCII.GetBytes(str));
+            (memoryCore as IMemoryCore).SetArray(ptr1, Encoding.ASCII.GetBytes(str + "\0"));
             Encoding.ASCII.GetString((memoryCore as IMemoryCore).GetString(ptr1, stripNull: true)).Should().Be(str);
             Encoding.ASCII.GetString((memoryCore as IMemoryCore).GetString(ptr2, stripNull: true)).Should().Be(str);
         }

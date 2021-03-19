@@ -24,6 +24,11 @@ namespace MBBSEmu.CPU
         public FpuStatusRegister Fpu { get; set; }
 
         /// <summary>
+        ///     Extended Flags - we don't use/track any extended flags, so this just delegates to F
+        /// </summary>
+        public uint EF { get => F; set => F = (ushort)value; }
+
+        /// <summary>
         ///     Flags
         /// </summary>
         public ushort F { get; set; }
@@ -39,7 +44,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort AX
         {
-            get => (ushort)(EAX & 0xFFFF);
+            get => (ushort)EAX;
             set
             {
                 EAX &= 0xFFFF0000;
@@ -52,7 +57,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte AL
         {
-            get => (byte)(EAX & 0xFF);
+            get => (byte)EAX;
             set
             {
                 EAX &= 0xFFFFFF00;
@@ -80,7 +85,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort BX
         {
-            get => (ushort)(EBX & 0xFFFF);
+            get => (ushort)EBX;
             set
             {
                 EBX &= 0xFFFF0000;
@@ -93,7 +98,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte BL
         {
-            get => (byte)(EBX & 0xFF);
+            get => (byte)EBX;
             set
             {
                 EBX &= 0xFFFFFF00;
@@ -121,7 +126,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort CX
         {
-            get => (ushort)(ECX & 0xFFFF);
+            get => (ushort)ECX;
             set
             {
                 ECX &= 0xFFFF0000;
@@ -134,7 +139,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte CL
         {
-            get => (byte)(ECX & 0xFF);
+            get => (byte)ECX;
             set
             {
                 ECX &= 0xFFFFFF00;
@@ -162,7 +167,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public ushort DX
         {
-            get => (ushort)(EDX & 0xFFFF);
+            get => (ushort)EDX;
             set
             {
                 EDX &= 0xFFFF0000;
@@ -175,7 +180,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         public byte DL
         {
-            get => (byte)(EDX & 0xFF);
+            get => (byte)EDX;
             set
             {
                 EDX &= 0xFFFFFF00;
@@ -197,24 +202,77 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Pointer Register
+        ///     Stack Register
         /// </summary>
-        public ushort SP { get; set; }
+        public uint ESP { get; set; }
+
+        /// <summary>
+        ///     Stack Register
+        /// </summary>
+        public ushort SP
+        {
+            get => (ushort)ESP;
+            set
+            {
+                ESP &= 0xFFFF0000;
+                ESP |= value;
+            }
+        }
 
         /// <summary>
         ///     Base Register
         /// </summary>
-        public ushort BP { get; set; }
+        public uint EBP { get; set; }
+
+        /// <summary>
+        ///     Base Register
+        /// </summary>
+        public ushort BP
+        {
+            get => (ushort)EBP;
+            set
+            {
+                EBP &= 0xFFFF0000;
+                EBP |= value;
+            }
+        }
+
 
         /// <summary>
         ///     Index Register
         /// </summary>
-        public ushort SI { get; set; }
+        public uint ESI { get; set; }
 
         /// <summary>
         ///     Index Register
         /// </summary>
-        public ushort DI { get; set; }
+        public ushort SI
+        {
+            get => (ushort)ESI;
+            set
+            {
+                ESI &= 0xFFFF0000;
+                ESI |= value;
+            }
+        }
+
+        /// <summary>
+        ///     Index Register
+        /// </summary>
+        public uint EDI { get; set; }
+
+        /// <summary>
+        ///     Index Register
+        /// </summary>
+        public ushort DI
+        {
+            get => (ushort)EDI;
+            set
+            {
+                EDI &= 0xFFFF0000;
+                EDI |= value;
+            }
+        }
 
         /*
          * Memory Segmentation and Segment Registers
@@ -293,6 +351,10 @@ namespace MBBSEmu.CPU
                 Register.EBX => EBX,
                 Register.ECX => ECX,
                 Register.EDX => EDX,
+                Register.ESP => ESP,
+                Register.EBP => EBP,
+                Register.EDI => EDI,
+                Register.ESI => ESI,
                 _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
             };
         }
@@ -411,6 +473,18 @@ namespace MBBSEmu.CPU
                 case Register.EDX:
                     EDX = value;
                     break;
+                case Register.ESP:
+                    ESP = value;
+                    break;
+                case Register.EBP:
+                    EBP = value;
+                    break;
+                case Register.ESI:
+                    ESI = value;
+                    break;
+                case Register.EDI:
+                    EDI = value;
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(register), register, null);
             }
@@ -462,12 +536,14 @@ namespace MBBSEmu.CPU
         /// </summary>
         public void Zero()
         {
-            AX = 0;
-            BX = 0;
-            CX = 0;
-            DX = 0;
-            SI = 0;
-            DI = 0;
+            EAX = 0;
+            EBX = 0;
+            ECX = 0;
+            EDX = 0;
+            ESI = 0;
+            EDI = 0;
+            ESP = 0;
+            EBP = 0;
             IP = 0;
             CS = 0;
             DS = 0;

@@ -178,8 +178,7 @@ namespace MBBSEmu.CPU
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
-            Push(ushort.MaxValue);
-            Push(ushort.MaxValue);
+            Push(uint.MaxValue);
         }
 
         /// <summary>
@@ -204,8 +203,7 @@ namespace MBBSEmu.CPU
 
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
-            Push(ushort.MaxValue);
-            Push(ushort.MaxValue);
+            Push(uint.MaxValue);
 
             InstructionCounter = 0;
         }
@@ -230,6 +228,23 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Pops a DWord from the Stack and increments the Stack Pointer
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint PopDWord()
+        {
+            var value = Memory.GetDWord(Registers.SS, Registers.SP);
+#if DEBUG
+            if (_showDebug)
+                _logger.Debug($"Popped {value:X8} from {Registers.SP:X4}");
+#endif
+
+            Registers.SP += 4;
+            return value;
+        }
+
+        /// <summary>
         ///     Pushes a Word to the Stack and decrements the Stack Pointer
         /// </summary>
         /// <param name="value"></param>
@@ -244,6 +259,22 @@ namespace MBBSEmu.CPU
                 _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
 #endif
 
+        }
+
+        /// <summary>
+        ///     Pushes a DWord to the Stack and decrements the Stack Pointer
+        /// </summary>
+        /// <param name="value"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Push(uint value)
+        {
+            Registers.SP -= 4;
+            Memory.SetDWord(Registers.SS, Registers.SP, value);
+
+#if DEBUG
+            if (_showDebug)
+                _logger.Debug($"Pushed {value:X8} to {Registers.SP:X4}");
+#endif
         }
 
         /// <summary>
@@ -277,7 +308,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true
+            //_showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -542,6 +573,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Pushf:
                     Op_Pushf();
                     break;
+                case Mnemonic.Pushfd:
+                    Op_Pushfd();
+                    break;
                 case Mnemonic.Fadd:
                     Op_Fadd();
                     break;
@@ -588,11 +622,17 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Popf:
                     Op_Popf();
                     break;
+                case Mnemonic.Popfd:
+                    Op_Popfd();
+                    break;
                 case Mnemonic.Fsubp:
                     Op_Fsubp();
                     break;
                 case Mnemonic.Fchs:
                     Op_Fchs();
+                    break;
+                case Mnemonic.Movsb:
+                    Op_Movsb();
                     break;
                 case Mnemonic.Movsw:
                     Op_Movsw();
@@ -2502,8 +2542,22 @@ namespace MBBSEmu.CPU
                     Registers.SetValue(_currentInstruction.Op0Register, Pop());
                     break;
                 case OpKind.Register when _currentOperationSize == 4:
-                    Registers.SetValue(_currentInstruction.Op0Register, (uint)(Pop() | (Pop() << 16)));
+                    Registers.SetValue(_currentInstruction.Op0Register, PopDWord());
                     break;
+                case OpKind.Memory when _currentOperationSize == 2:
+                    {
+                        Memory.SetWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            Pop());
+                        return;
+                    }
+                case OpKind.Memory when _currentOperationSize == 4:
+                    {
+                        Memory.SetDWord(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind),
+                            PopDWord());
+                        return;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown POP: {_currentInstruction.Op0Kind}");
             }
@@ -2530,11 +2584,7 @@ namespace MBBSEmu.CPU
 
                 //32Bit
                 case -4:
-                    {
-                        var valueToPush = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-                        Push((ushort)(valueToPush >> 16));
-                        Push((ushort)valueToPush);
-                    }
+                    Push(GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination));
                     return;
                 default:
                     throw new Exception(
@@ -2584,9 +2634,9 @@ namespace MBBSEmu.CPU
                     }
                 case OpKind.Memory when _currentOperationSize == 4:
                     {
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                        Memory.SetDWord(Registers.GetValue(_currentInstruction.MemorySegment),
                             GetOperandOffset(_currentInstruction.Op0Kind),
-                            BitConverter.GetBytes(GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source)));
+                            GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source));
                         return;
                     }
 
@@ -3442,10 +3492,13 @@ namespace MBBSEmu.CPU
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushf()
-        {
-            Push(Registers.F);
-        }
+        private void Op_Pushf() => Push(Registers.F);
+
+        /// <summary>
+        ///     Push Flags Register to Stack
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Pushfd() => Push(Registers.EF);
 
         /// <summary>
         ///     Floating Point Addition (x87)
@@ -3695,7 +3748,34 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Move data from String to String
+        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Movsb()
+        {
+        movsb:
+            Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
+
+            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            {
+                Registers.DI -= 1;
+                Registers.SI -= 1;
+            }
+            else
+            {
+                Registers.DI += 1;
+                Registers.SI += 1;
+            }
+
+            if (_currentInstruction.HasRepPrefix && Registers.CX > 0)
+            {
+                Registers.CX--;
+                goto movsb;
+            }
+        }
+
+        /// <summary>
+        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsw()
@@ -3719,7 +3799,6 @@ namespace MBBSEmu.CPU
                 Registers.CX--;
                 goto movsw;
             }
-
         }
 
         /// <summary>
@@ -3834,10 +3913,13 @@ namespace MBBSEmu.CPU
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popf()
-        {
-            Registers.F = Pop();
-        }
+        private void Op_Popf() => Registers.F = Pop();
+
+        /// <summary>
+        ///     Pop from Stack into the Flags Register
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Popfd() => Registers.EF = PopDWord();
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Iret()
@@ -4292,6 +4374,10 @@ namespace MBBSEmu.CPU
                 Register.EBX => sizeof(uint),
                 Register.ECX => sizeof(uint),
                 Register.EDX => sizeof(uint),
+                Register.ESP => sizeof(uint),
+                Register.EBP => sizeof(uint),
+                Register.ESI => sizeof(uint),
+                Register.EDI => sizeof(uint),
                 _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
             };
         }

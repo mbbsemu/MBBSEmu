@@ -22,7 +22,7 @@ namespace MBBSEmu.DOS
         private ILogger _logger;
         private FarPtr _programRealModeLoadAddress;
 
-        private const int PROGRAM_MAXIMUM_ADDRESS = (0xF000 << 4);
+        private const int PROGRAM_MAXIMUM_ADDRESS = (0xA000 << 4);
         private const ushort PSP_SEGMENT = 0x2000;
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP()
         {
-            var psp = new PSPStruct { NextSegOffset = 0xF000, EnvSeg = ENVIRONMENT_SEGMENT };
+            var psp = new PSPStruct { NextSegOffset = 0xA000, EnvSeg = ENVIRONMENT_SEGMENT };
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
