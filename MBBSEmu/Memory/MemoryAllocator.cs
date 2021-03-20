@@ -183,7 +183,10 @@ namespace MBBSEmu.Memory
 
     public int GetAllocatedMemorySize(FarPtr ptr)
     {
-      return -1;
+      if (!_allocatedBlocks.TryRemove(ptr, out var size))
+        return -1;
+
+      return (int)size;
     }
 
     private LinkedListNode<MemoryBlock> MergeNodesAndRemoveDeadNode(LinkedListNode<MemoryBlock> liveNode, LinkedListNode<MemoryBlock> deadNode)
