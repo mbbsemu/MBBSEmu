@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
@@ -167,7 +168,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(fakeClock.Now.Hour, testRegisters.CH);
             Assert.Equal(fakeClock.Now.Minute, testRegisters.CL);
             Assert.Equal(fakeClock.Now.Second, testRegisters.DH);
-            Assert.Equal((fakeClock.Now.Millisecond / 100), testRegisters.DL);
+            Assert.Equal((fakeClock.Now.Millisecond / 10), testRegisters.DL);
         }
 
         [Fact]
@@ -184,9 +185,6 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
-            //Allocate DTA variable
-            var dtaPointer = mbbsEmuMemoryCore.AllocateVariable("Int21h-DTA", 0xFF);
-
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
                 new List<FarPtr> {testRegistersPointer, testRegistersPointer});
@@ -196,8 +194,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort) testRegistersArrayData.Length));
 
             //Verify Results
-            //Assert.Equal(dtaPointer.Segment, testRegisters.ES); -- TODO DOESN'T WORK!, comes back as 0
-            Assert.Equal(dtaPointer.Offset, testRegisters.BX);
+            //Assert.Equal(0xF000, testRegisters.ES); // regs doesn't return ES
+            Assert.Equal(0x1000, testRegisters.BX);
         }
 
         [Fact]
@@ -345,7 +343,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort)testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.Equal(0xFFFF, testRegisters.BX);
+            Assert.Equal(0, testRegisters.BX);
+            Assert.Equal((ushort)DOSErrorCode.INVALID_MEMORY_BLOCK_ADDRESS, testRegisters.AX);
         }
 
         [Fact]

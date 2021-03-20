@@ -377,5 +377,10 @@ namespace MBBSEmu.Memory
         ///     Frees a block of memory allocated from the heap
         /// </summary>
         void Free(FarPtr ptr);
+
+        /// <summary>
+        ///     For a given allocated memory block, returns the size. Returns negative if invalid.
+        /// </summary>
+        int GetAllocatedMemorySize(FarPtr ptr);
     }
 }
