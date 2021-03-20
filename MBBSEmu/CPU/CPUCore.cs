@@ -3294,7 +3294,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Rep(Action action)
         {
-            while(Registers.CX != 0) { // TODO evaluate whether to use ECX or CX
+            while (Registers.CX != 0) { // TODO evaluate whether to use ECX or CX
 	            action.Invoke();
                 Registers.CX--;
 	            if ((_currentInstruction.HasRepePrefix && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF)) || (_currentInstruction.HasRepnePrefix && Registers.F.IsFlagSet((ushort)EnumFlags.ZF)))
