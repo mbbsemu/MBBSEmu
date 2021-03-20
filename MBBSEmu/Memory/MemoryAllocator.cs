@@ -183,7 +183,7 @@ namespace MBBSEmu.Memory
 
     public int GetAllocatedMemorySize(FarPtr ptr)
     {
-      if (!_allocatedBlocks.TryRemove(ptr, out var size))
+      if (!_allocatedBlocks.TryGetValue(ptr, out var size))
         return -1;
 
       return (int)size;
