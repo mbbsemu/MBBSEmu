@@ -227,7 +227,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_exeFile))
                 {
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger);
+                    var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>());
                     exe.Load();
                     exe.Run();
                     return;

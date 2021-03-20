@@ -273,7 +273,7 @@ namespace MBBSEmu.Module
             if (!ExecutionUnits.TryDequeue(out var executionUnit))
             {
                 _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, _clock, ExportedModuleDictionary, _logger, ModulePath);
+                executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
             }
 
             var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);

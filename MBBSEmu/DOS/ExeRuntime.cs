@@ -1,13 +1,12 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
-using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using NLog;
 
@@ -32,14 +31,14 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility)
         {
             _logger = logger;
             File = file;
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
 
             Registers.ES = PSP_SEGMENT;
             Registers.DS = PSP_SEGMENT;

@@ -4,6 +4,7 @@ using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.HostProcess.ExportedModules;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 
@@ -37,7 +38,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
 
         public string Path { get; init; }
 
-        public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
+        public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
         {
             ModuleCpu = new CpuCore(logger);
             ModuleCpuRegisters = new CpuRegisters();
@@ -45,7 +46,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             ExportedModuleDictionary = exportedModuleDictionary;
             Path = path;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
+            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)
