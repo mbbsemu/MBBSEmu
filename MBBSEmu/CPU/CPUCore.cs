@@ -379,7 +379,7 @@ namespace MBBSEmu.CPU
                     return;
                 case Mnemonic.Loopne:
                     Op_Loopne();
-                    break;
+                    return;
                 case Mnemonic.Iret:
                     Op_Iret();
                     return;
