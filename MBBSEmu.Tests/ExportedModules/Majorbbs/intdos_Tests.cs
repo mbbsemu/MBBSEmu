@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.CPU;
+using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
@@ -314,8 +315,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort)testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.Equal(0, testRegisters.AX);
-            Assert.Equal(0, testRegisters.DL);
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.Equal(2, testRegisters.DL); // C Drive
             Assert.Equal(dirPointer.Segment, mbbsEmuCpuRegisters.DS);
             Assert.Equal(dirPointer.Offset, testRegisters.SI);
             Assert.Equal("BBSV6", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(testRegisters.DS, testRegisters.SI, true)));

@@ -46,9 +46,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(0xFF, mbbsEmuMemoryCore.GetByte(2, 0));
-            Assert.Equal(0xFF, mbbsEmuMemoryCore.GetByte(2, 1));
-            Assert.Equal(0, mbbsEmuMemoryCore.GetByte(2, 2));
-            Assert.Equal(2, mbbsEmuCpuRegisters.DI);
+            Assert.Equal(0, mbbsEmuMemoryCore.GetByte(2, 1));
+            Assert.Equal(1, mbbsEmuCpuRegisters.DI);
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
         }
 
@@ -70,10 +69,9 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0, mbbsEmuMemoryCore.GetByte(2, 0));
-            Assert.Equal(0xFF, mbbsEmuMemoryCore.GetByte(2, 1));
+            Assert.Equal(0, mbbsEmuMemoryCore.GetByte(2, 1));
             Assert.Equal(0xFF, mbbsEmuMemoryCore.GetByte(2, 2));
-            Assert.Equal(0, mbbsEmuCpuRegisters.DI);
+            Assert.Equal(1, mbbsEmuCpuRegisters.DI);
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
         }
     }

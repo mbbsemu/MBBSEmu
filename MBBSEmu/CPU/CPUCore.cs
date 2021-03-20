@@ -3292,12 +3292,12 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
-        private void Op_Rep(Action action)
+        private void Op_Rep(Action action, bool isRepeCompatible = false)
         {
             while (Registers.CX != 0) { // TODO evaluate whether to use ECX or CX
 	            action.Invoke();
                 Registers.CX--;
-	            if ((_currentInstruction.HasRepePrefix && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF)) || (_currentInstruction.HasRepnePrefix && Registers.F.IsFlagSet((ushort)EnumFlags.ZF)))
+	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF)) || (_currentInstruction.HasRepnePrefix && Registers.F.IsFlagSet((ushort)EnumFlags.ZF)))
                     break;
             }
         }
@@ -3325,7 +3325,7 @@ namespace MBBSEmu.CPU
                         Registers.DI++;
                     }
                 }
-            });
+            }, isRepeCompatible: true);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -3772,10 +3772,10 @@ namespace MBBSEmu.CPU
         private bool IsRepInstruction() => _currentInstruction.HasRepPrefix || _currentInstruction.HasRepnePrefix || _currentInstruction.HasRepePrefix;
 
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Repeat(Action action)
+        private void Repeat(Action action, bool isRepeCompatible = false)
         {
             if (IsRepInstruction())
-                Op_Rep(action);
+                Op_Rep(action, isRepeCompatible);
             else
                 action.Invoke();
         }
