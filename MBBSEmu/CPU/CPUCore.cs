@@ -435,6 +435,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Cmp:
                     Op_Cmp();
                     break;
+                case Mnemonic.Cmpsb:
+                    Op_Cmpsb();
+                    break;
                 case Mnemonic.Sub:
                     Op_Sub();
                     break;
@@ -3275,6 +3278,28 @@ namespace MBBSEmu.CPU
                     Registers.DI++;
                 }
             });
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Cmpsb()
+        {
+            Repeat(() => {
+                var result = (byte)(Memory.GetByte(Registers.DS, Registers.SI) - Memory.GetByte(Registers.ES, Registers.DI));
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result);
+                Flags_EvaluateSignZero(result);
+
+                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                {
+                    Registers.DI--;
+                    Registers.SI--;
+                }
+                else
+                {
+                    Registers.DI++;
+                    Registers.SI++;
+                }
+            }, isRepeCompatible: true);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
