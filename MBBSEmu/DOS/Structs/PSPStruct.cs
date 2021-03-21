@@ -126,6 +126,7 @@ namespace MBBSEmu.DOS.Structs
                 Array.Copy(FCB_2, 0, _data, 0x6C, FCB_2.Length);
                 _data[0x80] = CommandTailLength;
                 Array.Copy(CommandTail, 0, _data, 0x81, CommandTail.Length);
+                _data[0x81 + CommandTailLength] = (byte)'\r';
                 return _data;
             }
         }

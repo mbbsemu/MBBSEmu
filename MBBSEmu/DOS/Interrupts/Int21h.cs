@@ -602,6 +602,9 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
+            _registers.BX = 0xFFFF;
+            ClearCarryFlag();
+            return;
             // real mode memory
             var ptr = new FarPtr(_registers.ES, 0);
             var currentBlockSize = _memory.GetAllocatedMemorySize(ptr);

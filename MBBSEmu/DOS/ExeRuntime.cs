@@ -27,7 +27,7 @@ namespace MBBSEmu.DOS
         /// <summary>
         ///     Segment which holds the Environment Variables
         /// </summary>
-        private const ushort ENVIRONMENT_SEGMENT = 0x2010;
+        private const ushort ENVIRONMENT_SEGMENT = 0x3000;
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
@@ -63,13 +63,13 @@ namespace MBBSEmu.DOS
 
         private void CreateEnvironmentVariables()
         {
-            _environmentVariables["%CMDLINE%"] = File.ExeFile;
-            _environmentVariables["%COMSPEC%"] = "C:\\COMMAND.COM";
-            _environmentVariables["%COPYCMD%"] = "COPY";
-            _environmentVariables["%DIRCMD%"] = "DIR";
-            _environmentVariables["%PATH%"] = "C:\\DOS;C:\\BBSV6";
-            _environmentVariables["%TMP%"] = "C:\\TEMP";
-            _environmentVariables["%TEMP%"] = "C:\\TEMP";
+            _environmentVariables["CMDLINE"] = File.ExeFile;
+            _environmentVariables["COMSPEC"] = "C:\\COMMAND.COM";
+            _environmentVariables["COPYCMD"] = "COPY";
+            _environmentVariables["DIRCMD"] = "DIR";
+            _environmentVariables["PATH"] = "C:\\DOS;C:\\BBSV6";
+            _environmentVariables["TMP"] = "C:\\TEMP";
+            _environmentVariables["TEMP"] = "C:\\TEMP";
         }
 
         private void LoadProgramIntoMemory()
@@ -124,8 +124,8 @@ namespace MBBSEmu.DOS
         private void SetupPSP()
         {
             var psp = new PSPStruct { NextSegOffset = 0xF000, EnvSeg = ENVIRONMENT_SEGMENT };
-            psp.CommandTailLength = (byte)(File.ExeFile.Length + 1);
-            Array.Copy(Encoding.ASCII.GetBytes(File.ExeFile + "\r"), 0, psp.CommandTail, 0, psp.CommandTailLength);
+            psp.CommandTailLength = (byte)File.ExeFile.Length;
+            Array.Copy(Encoding.ASCII.GetBytes(File.ExeFile), 0, psp.CommandTail, 0, psp.CommandTailLength);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -145,7 +145,12 @@ namespace MBBSEmu.DOS
                 bytesWritten += (ushort)(str.Length);
             }
             // null terminate
-            Memory.SetWord(ENVIRONMENT_SEGMENT, bytesWritten, 0);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0x1);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0x0);
+
+            _logger.Error($"Writing cmdline to {bytesWritten}");
+            Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(File.ExeFile + "\0"));
         }
     }
 }
