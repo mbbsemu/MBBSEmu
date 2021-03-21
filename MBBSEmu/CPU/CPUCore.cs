@@ -1591,7 +1591,9 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination >> source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                //Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
