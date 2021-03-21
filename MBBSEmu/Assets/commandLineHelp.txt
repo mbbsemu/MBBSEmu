@@ -1,7 +1,7 @@
 MBBSEmu - A MajorBBS/Worldgroup Emulator
-By: Eric Nusbaum @ The MajorBBS Emulation Project
+By: MBBSEmu Community @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
-https://github.com/enusbaum/MBBSEmu
+https://github.com/mbbsemu/MBBSEmu
 -----------------------------------------------------------
 Command Line Options:
 -?                  This Help Screen
@@ -18,6 +18,7 @@ Command Line Options:
 -DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
                     is specified, you will be prompted to enter one
 -CONSOLE            Login to local CONSOLE after MBBSEmu initialization (system will shutdown when you logoff)
+-EXE <example.exe>  Run DOS executable, typically used for module utilties or module installers
 
 Examples:
 ./MBBSEmu -M MyModule -P c:\bbsv6\ -DBRESET sysop
@@ -49,6 +50,8 @@ Module Configuration JSON File Structure:
 Modules (array)
 ... Identifier          String         Module Identifier
 ... Path                String         Path to given Module
+... MenuOptionKey       String         Only characters and/or numbers accepted (A-Z, 0-9), MAX length 2
+... Enabled             String         1 for enabled (defaults if not specified), 0 for disabled
 
 Example Module Configuration JSON File Structure:
 
@@ -61,12 +64,13 @@ Example Module Configuration JSON File Structure:
     {
       "Identifier": "EXAMPLE2",
       "Path": "c:\\bbsv6\\",
-      "MenuOptionKey": "E"
+      "MenuOptionKey": "E",
+      "Enabled": 1
     }
   ]
 }
 
 -----------------------------------------------------------
 Please consider contributing to this project by visiting:
-https://github.com/enusbaum/MBBSEmu
+https://github.com/mbbsemu/MBBSEmu
 -----------------------------------------------------------
