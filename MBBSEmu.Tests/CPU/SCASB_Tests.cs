@@ -2,6 +2,7 @@
 using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
+using MBBSEmu.Memory;
 using System.Text;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -188,25 +189,11 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData("test", 4)]
+        [InlineData("", 0)]
+        [InlineData("This is super long", 18)]
+        [InlineData("This is\0 super long", 7)]
         public void strlen(string str, ushort expectedLength)
         {
-            /*
-            Func@   strlen, _EXPFUNC, _RTLENTRYF, <pointer s>
-
-                    Link@   edi
-                    mov     edi, s
-                    mov     ecx, -1
-                    xor     al, al          ; search for null
-                    cld
-                    repne   scasb           ; scan one character past null
-                    not     ecx
-                    lea     eax, [ecx-1]
-                    Unlink@ edi
-                    Return@
-
-            EndFunc@ strlen
-            */
-
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
             mbbsEmuProtectedModeMemoryCore.AddSegment(2);
@@ -214,12 +201,14 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.SS = 0;
             mbbsEmuCpuRegisters.SP = 0x100;
 
-            mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.DS, 0x1000, Encoding.ASCII.GetBytes(str + "\0"));
+            var strPtr = new FarPtr(mbbsEmuCpuRegisters.DS, 0x1000);
+
+            mbbsEmuMemoryCore.SetArray(strPtr, Encoding.ASCII.GetBytes(str + "\0"));
 
             var instructions = new Assembler(16);
             var strlen = instructions.CreateLabel();
 
-            instructions.push(0x1000); // src, will be 0s
+            instructions.push(strPtr.Offset);
             instructions.call(strlen);
             instructions.hlt();
 
@@ -227,6 +216,9 @@ namespace MBBSEmu.Tests.CPU
             str             = word ptr  4
             */
             instructions.Label(ref strlen);
+            instructions.push(bp);
+            instructions.mov(bp, sp);
+
             instructions.push(di);
             instructions.push(cx);
             instructions.mov(di, __word_ptr[bp + 4]); // str
@@ -235,10 +227,12 @@ namespace MBBSEmu.Tests.CPU
             instructions.cld();
             instructions.repne.scasb();
             instructions.not(cx);
-            //instructions.lea(ax, __word_ptr[cx - 1]);
             instructions.mov(ax, cx);
+            instructions.dec(ax);
+
             instructions.pop(cx);
             instructions.pop(di);
+            instructions.pop(bp);
             instructions.ret();
             CreateCodeSegment(instructions);
 
