@@ -50,8 +50,10 @@ namespace MBBSEmu.Tests.Memory
     {
       var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000, DEFAULT_ALIGNMENT);
 
-      allocator.Malloc(0).Should().NotBe(FarPtr.Empty);
+      var ptr = allocator.Malloc(0);
+      ptr.Should().NotBe(FarPtr.Empty);
       allocator.RemainingBytes.Should().Be(0xFFFE);
+      allocator.GetAllocatedMemorySize(ptr).Should().Be(DEFAULT_ALIGNMENT);
     }
 
     [Fact]
@@ -59,6 +61,7 @@ namespace MBBSEmu.Tests.Memory
     {
       var allocator = new MemoryAllocator(_logger, new FarPtr(SEGMENT, 0), 0x10000, DEFAULT_ALIGNMENT);
       allocator.Free(FarPtr.Empty);
+      allocator.GetAllocatedMemorySize(FarPtr.Empty).Should().Be(-1);
     }
 
     [Fact]
@@ -72,6 +75,7 @@ namespace MBBSEmu.Tests.Memory
 
       allocator.FreeBlocks.Should().Be(1);
       allocator.RemainingBytes.Should().Be(0xFFFE - 16);
+      allocator.GetAllocatedMemorySize(memory).Should().Be(16);
     }
 
     [Fact]
@@ -85,11 +89,13 @@ namespace MBBSEmu.Tests.Memory
 
       allocator.FreeBlocks.Should().Be(0);
       allocator.RemainingBytes.Should().Be(0);
+      allocator.GetAllocatedMemorySize(memory).Should().Be(0xFFFE);
 
       // and free it to make sure everything is back in place
       allocator.Free(memory);
       allocator.FreeBlocks.Should().Be(1);
       allocator.RemainingBytes.Should().Be(0xFFFE);
+      allocator.GetAllocatedMemorySize(memory).Should().Be(-1);
     }
 
     [Fact]
@@ -136,14 +142,17 @@ namespace MBBSEmu.Tests.Memory
       var memory1 = allocator.Malloc(16);
       memory1.Segment.Should().Be(SEGMENT);
       memory1.Offset.Should().Be(2);
+      allocator.GetAllocatedMemorySize(memory1).Should().Be(16);
 
       var memory2 = allocator.Malloc(256);
       memory2.Segment.Should().Be(SEGMENT);
       memory2.Offset.Should().Be(18);
+      allocator.GetAllocatedMemorySize(memory2).Should().Be(256);
 
       var memory3 = allocator.Malloc(16);
       memory3.Segment.Should().Be(SEGMENT);
       memory3.Offset.Should().Be(256 + 18);
+      allocator.GetAllocatedMemorySize(memory3).Should().Be(16);
 
       allocator.FreeBlocks.Should().Be(1);
 
@@ -252,6 +261,7 @@ namespace MBBSEmu.Tests.Memory
       int allocations = 0;
       for (FarPtr ptr = allocator.Malloc(31); !ptr.IsNull(); ptr = allocator.Malloc(31))
       {
+        allocator.GetAllocatedMemorySize(ptr).Should().Be(32);
         ptr.IsAligned(16).Should().BeTrue();
         ++allocations;
       }

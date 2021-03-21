@@ -181,6 +181,14 @@ namespace MBBSEmu.Memory
       _freeBlocks.AddFirst(new MemoryBlock() { Offset = ptr.Offset, Size = size });
     }
 
+    public int GetAllocatedMemorySize(FarPtr ptr)
+    {
+      if (!_allocatedBlocks.TryGetValue(ptr, out var size))
+        return -1;
+
+      return (int)size;
+    }
+
     private LinkedListNode<MemoryBlock> MergeNodesAndRemoveDeadNode(LinkedListNode<MemoryBlock> liveNode, LinkedListNode<MemoryBlock> deadNode)
     {
       liveNode.Value.Size += deadNode.Value.Size;
