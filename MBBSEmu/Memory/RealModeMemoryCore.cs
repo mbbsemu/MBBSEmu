@@ -61,7 +61,15 @@ namespace MBBSEmu.Memory
         public override void Free(FarPtr ptr)
         {
             // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
-            _memoryAllocator.Free(new FarPtr(HEAP_BASE_SEGMENT, (ushort)(ptr.Offset + ((ptr.Segment - HEAP_BASE_SEGMENT) << 4))));
+            var adjustedPtr = new FarPtr(HEAP_BASE_SEGMENT, (ushort)(ptr.Offset + ((ptr.Segment - HEAP_BASE_SEGMENT) << 4)));
+            _memoryAllocator.Free(adjustedPtr);
+        }
+
+        public int GetAllocatedMemorySize(FarPtr ptr)
+        {
+            // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
+            var adjustedPtr = new FarPtr(HEAP_BASE_SEGMENT, (ushort)(ptr.Offset + ((ptr.Segment - HEAP_BASE_SEGMENT) << 4)));
+            return _memoryAllocator.GetAllocatedMemorySize(adjustedPtr);
         }
 
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)

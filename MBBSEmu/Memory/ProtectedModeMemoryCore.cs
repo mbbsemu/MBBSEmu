@@ -68,6 +68,14 @@ namespace MBBSEmu.Memory
             memoryAllocator.Free(ptr);
         }
 
+        public int GetAllocatedMemorySize(FarPtr ptr)
+        {
+            if (!_heapAllocators.TryGetValue(ptr.Segment, out var memoryAllocator))
+                return -1;
+
+            return memoryAllocator.GetAllocatedMemorySize(ptr);
+        }
+
         /// <summary>
         ///     Deletes all defined Segments from Memory
         /// </summary>

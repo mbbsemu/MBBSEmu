@@ -41,7 +41,7 @@ namespace MBBSEmu.DOS.Interrupts
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private FarPtr DiskTransferArea;
+        private FarPtr DiskTransferArea = new(0xF000, 0x1000);
 
         public byte Vector => 0x21;
 
@@ -90,443 +90,475 @@ namespace MBBSEmu.DOS.Interrupts
             switch (_registers.AH)
             {
                 case 0x3D:
-                    OpenFile();
+                    OpenFile_0x3D();
                     break;
                 case 0x3E:
-                    {
-                        /*
-                        INT 21 - AH = 3Eh DOS 2+ - CLOSE A FILE WITH HANDLE
-                        BX = file handle
-                        Return: CF set on error
-                            AX = error code
-                        */
-
-                        switch (_registers.BX)
-                        {
-                            case (ushort)FileHandle.STDIN:
-                                _stdin.Close();
-                                break;
-                            case (ushort)FileHandle.STDOUT:
-                                _stdout.Close();
-                                break;
-                            case (ushort)FileHandle.STDERR:
-                                _stderr.Close();
-                                break;
-                            case (ushort)FileHandle.STDAUX:
-                            case (ushort)FileHandle.STDPRN:
-                                break;
-                            default:
-                                //_logger.Error($"Closing handle {_registers.BX}");
-                                break;
-                        }
-                        return;
-                    }
+                    CloseFile_0x3E();
+                    break;
                 case 0x43:
-                    {
-                        /*
-                        INT 21 - AH = 43h DOS 2+ - GET/PUT FILE ATTRIBUTES (CHMOD)
-                        AL =
-                            0 get file attributes
-                            1 put file attributes
-                        CX = file attribute bits
-                            0 = read only
-                            1 = hidden file
-                            2 = system file
-                            3 = volume label
-                            4 = subdirectory
-                            5 = written since backup
-                            8 = shareable (Novell NetWare)
-                        DS:DX -> ASCIZ file name
-                        Return: CF set on error
-                            AX = error code
-                            CX = file attributes on get
-                        */
-                        var file = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true));
-                        if (_registers.AL != 0)
-                            throw new NotImplementedException();
-
-                        FileInfo fileInfo = new FileInfo(file);
-                        if (!fileInfo.Exists)
-                        {
-                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                            _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
-                            return;
-                        }
-
-                        _registers.CX = 0;
-                        if (fileInfo.IsReadOnly)
-                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.ReadOnly;
-                        if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
-                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Hidden;
-                        if (fileInfo.Attributes.HasFlag(FileAttributes.System))
-                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.System;
-                        if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
-                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Directory;
-                        if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
-                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
-
-                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        return;
-                    }
+                    GetOrPutFileAttributes_0x43();
+                    break;
                 case 0x01:
-                    {
-                        // DOS - KEYBOARD INPUT (with echo)
-                        // Return: AL = character read
-                        // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-                        var c = (byte)_stdin.Read();
-                        _stdout.Write((char)c);
-                        _registers.AL = c;
-                        return;
-                    }
+                    KeyboardInputWithEcho_0x01();
+                    break;
                 case 0x67:
-                    {
-                        // DOS - SET HANDLE COUNT
-                        // BX : Number of handles
-                        // Return: carry set if error (and error code in AX)
-                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        return;
-                    }
+                    SetHandleCount_0x67();
+                    break;
                 case 0x48:
-                    {
-                        // DOS - Allocate memory
-                        // BX = number of 16-byte paragraphs desired
-                        // Return: CF set on error
-                        //             AX = error code
-                        //             BX = maximum available
-                        //         CF clear if successful
-                        //             AX = segment of allocated memory block
-                        var ptr = _memory.Malloc((uint)(_registers.BX * 16));
-                        if (!ptr.IsNull() && ptr.Offset != 0)
-                            throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
-
-                        if (ptr.IsNull())
-                        {
-                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                            _registers.BX = 0; // TODO get maximum available here
-                            _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
-                        }
-                        else
-                        {
-                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                            _registers.AX = ptr.Segment;
-                        }
-
-                        return;
-                    }
+                    AllocateMemory_0x48();
+                    break;
                 case 0x49:
-                    {
-                        // DOS - Free Memory
-                        // ES = Segment address of area to be freed
-                        // Return: CF set on error
-                        //             AX = error code
-                        //         CF clear if successful
-                        _memory.Free(new FarPtr(_registers.ES, 0));
-                        // no status, so always say we're good
-                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        return;
-                    }
+                    FreeMemory_0x49();
+                    break;
                 case 0x58:
-                    {
-                        // INT 21 - AH = 58h DOS 3.x - GET/SET MEMORY ALLOCATION STRATEGY
-                        // AL = function code
-                        //     0 = get allocation strategy
-                        //     1 = set allocation strategy
-                        // BL = strategy code
-                        //     0 first fit (use first memory block large enough)
-                        //     1 best fit (use smallest memory block large enough)
-                        //     2 last fit (use high part of last usable memory block)
-                        // Return:
-                        //   CF set on error
-                        //     AX = error code
-                        //   CF clear if successful
-                        //     AX = strategy code
-                        // Note: the Set subfunction accepts any value in BL; 2 or greater means last fit.
-                        // the Get subfunction returns the last value set, so programs should check
-                        // whether the value is >= 2, not just equal to 2.
-
-                        if (_registers.AL == 0)
-                        {
-                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                            _registers.AX = (ushort)_allocationStrategy;
-                        }
-                        else if (_registers.AL == 1)
-                        {
-                            if (_registers.BL > 2)
-                                _allocationStrategy = AllocationStrategy.LAST_FIT;
-                            else
-                                _allocationStrategy = (AllocationStrategy)_registers.BL;
-
-                            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                            _registers.AX = (ushort)_allocationStrategy;
-                        }
-                        else
-                        {
-                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                            _registers.AX = (ushort)DOSErrorCode.UNKNOWN_COMMAND;
-                        }
-                        return;
-                    }
+                    GetOrSetMemoryAllocationStrategy_0x58();
+                    break;
                 case 0x09:
-                    {
-                        var src = new FarPtr(_registers.DS, _registers.DX);
-                        var memoryStream = new MemoryStream();
-                        byte b;
-                        while ((b = _memory.GetByte(src++)) != '$')
-                            memoryStream.WriteByte(b);
-
-                        _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
-                        return;
-                    }
+                    PrintString_0x09();
+                    break;
                 case 0x19:
-                    {
-                        //DOS - GET DEFAULT DISK NUMBER
-                        //Return: AL = Drive Number
-                        _registers.AL = DEFAULT_BLOCK_DEVICE;
-                        return;
-                    }
+                    GetDefaultDiskNumber_0x19();
+                    break;
                 case 0x1A:
-                    {
-                        //Specifies the memory area to be used for subsequent FCB operations.
-                        //DS:DX = Segment:offset of DTA
-                        DiskTransferArea = new FarPtr(_registers.DS, _registers.DX);
-                        return;
-                    }
+                    SetDiskTransferArea_0x1A();
+                    break;
                 case 0x25:
-                    {
-                        /*
-                            INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
-                            AL = interrupt number
-                            DS:DX = new vector to be used for specified interrupt
-                         */
-
-                        var interruptVector = _registers.AL;
-                        var newVectorPointer = new FarPtr(_registers.DS, _registers.DX);
-
-                        _interruptVectors[interruptVector] = newVectorPointer;
-
-                        return;
-                    }
+                    SetInterruptVector_0x25();
+                    break;
                 case 0x2A:
-                    {
-                        //DOS - GET CURRENT DATE
-                        //Return: DL = day, DH = month, CX = year
-                        //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
-                        _registers.DL = (byte)_clock.Now.Day;
-                        _registers.DH = (byte)_clock.Now.Month;
-                        _registers.CX = (ushort)_clock.Now.Year;
-                        _registers.AL = (byte)_clock.Now.DayOfWeek;
-                        return;
-                    }
+                    GetCurrentDate_0x2A();
+                    break;
                 case 0x2C:
-                    {
-                        //DOS - GET CURRENT TIME
-                        //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
-                        _registers.CH = (byte) _clock.Now.Hour;
-                        _registers.CL = (byte) _clock.Now.Minute;
-                        _registers.DH = (byte) _clock.Now.Second;
-                        _registers.DL = (byte) (_clock.Now.Millisecond / 100);
-                        return;
-                    }
+                    GetCurrentTime_0x2C();
+                    break;
                 case 0x2F:
-                    {
-                        //Get DTA address
-                        /*
-                         *  Action:	Returns the segment:offset of the current DTA for read/write operations.
-                            On entry:	AH = 2Fh
-                            Returns:	ES:BX = Segment.offset of current DTA
-                         */
-                        DiskTransferArea = _memory.GetOrAllocateVariablePointer("Int21h-DTA", 0xFF);
-
-                        _registers.ES = DiskTransferArea.Segment;
-                        _registers.BX = DiskTransferArea.Offset;
-                        return;
-                    }
+                    GetDiskTransferAreaAddress_0x2F();
+                    break;
                 case 0x30:
-                    {
-                        /*  DOS 2+ - GET DOS VERSION
-                            AH = 30h
-                            Return: AL = Major Version number (0 for DOS 1.x)
-                            AH = Minor Version number
-                            BH = OEM number
-                             00h IBM
-                             16h DEC
-                            BL:CX = 24-bit user number
-                         */
-                        _registers.AL = 6;
-                        _registers.AH = 22;
-                        return;
-
-                    }
+                    GetDOSVersion_0x30();
+                    break;
                 case 0x35:
-                    {
-                        /*
-                           INT 21 - AH = 35h DOS 2+ - GET INTERRUPT VECTOR
-                           AL = interrupt number
-                           Return: ES:BX = value of interrupt vector
-                         */
-
-                        if (!_interruptVectors.TryGetValue(_registers.AL, out var resultVector))
-                        {
-                            _registers.ES = 0xFFFF;
-                            _registers.BX = _registers.AL;
-                        }
-                        else
-                        {
-                            _registers.ES = resultVector.Segment;
-                            _registers.BX = resultVector.Offset;
-                        }
-                        return;
-
-                    }
+                    GetInterruptVector_0x35();
+                    break;
                 case 0x40:
-                    {
-                        /*
-                          INT 21 - AH = 40h DOS 2+ - WRITE TO FILE WITH HANDLE
-                            BX = file handle
-                            CX = number of bytes to write
-                            DS:DX -> buffer
-
-                            Return: CF set on error
-                             AX = error code
-
-                            CF clear if successful
-                             AX = number of bytes written
-
-                            Note: if CX is zero, no data is written, and the file is truncated or extended
-                             to the current position
-                         */
-                        var fileHandle = _registers.BX;
-                        var numberOfBytes = _registers.CX;
-                        var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
-
-                        var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
-                        char[] toWrite = new char[numberOfBytes];
-                        Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
-
-                        if (fileHandle == (ushort)FileHandle.STDOUT)
-                            _stdout.Write(toWrite);
-                        else if (fileHandle == (ushort)FileHandle.STDERR)
-                            _stderr.Write(toWrite);
-
-                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        _registers.AX = numberOfBytes;
-                        break;
-                    }
+                    WriteToFileWithHandle_0x40();
+                    break;
                 case 0x44 when _registers.AL == 0x00:
                     GetDeviceInformation();
                     return;
                 case 0x47:
-                    {
-                        /*
-                            DOS 2+ - GET CURRENT DIRECTORY
-                            DL = drive (0=default, 1=A, etc.)
-                            DS:SI points to 64-byte buffer area
-                            Return: CF set on error
-                            AX = error code
-                            Note: the returned path does not include the initial backslash
-                         */
-                        _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\0"));
-                        _registers.DL = DEFAULT_BLOCK_DEVICE;
-                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-                        return;
-                    }
+                    GetCurrentDirectory_0x47();
+                    break;
                 case 0x4A:
-                    {
-                        /*
-                            INT 21 - AH = 4Ah DOS 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)
-                            ES = Segment address of block to change
-                            BX = New size in paragraphs
-                            Return: CF set on error
-                            AX = error code
-                            BX = maximum size possible for the block
-
-                            Because MBBSEmu allocates blocks as 0xFFFF in length, we ignore this and proceed
-                         */
-
-                        var segmentToAdjust = _registers.ES;
-                        var newSize = _registers.BX;
-
-                        if (_memory is ProtectedModeMemoryCore)
-                        {
-                            ProtectedModeMemoryCore protectedMemory = (ProtectedModeMemoryCore)_memory;
-                            if (!protectedMemory.HasSegment(segmentToAdjust))
-                                protectedMemory.AddSegment(segmentToAdjust);
-                        }
-
-                        _registers.BX = 0xFFFF;
-                        break;
-                    }
+                    AdjustMemoryBlockSize_0x4A();
+                    break;
                 case 0x4C:
-                    {
-                        /*
-                            INT 21 - AH = 4Ch DOS 2+ - QUIT WITH EXIT CODE (EXIT)
-                            AL = exit code
-                            Return: never returns
-                         */
-                        _stdout.Flush();
-                        _stderr.Flush();
-
-                        //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
-                        _registers.Halt = true;
-                        break;
-                    }
+                    QuitWithExitCode_0x4C();
+                    break;
                 case 0x4E:
-                {
-                        /*
-                         *INT 21 - AH = 4Eh DOS 2+ - FIND FIRST ASCIZ (FIND FIRST)
-                            CX = search attributes
-                            DS:DX -> ASCIZ filename
-                            Return: CF set on error
-                                AX = error code
-                                [DTA] = data block
-                                undocumented fields
-                                    PC-DOS 3.10
-                                         byte 00h: drive letter
-                                         bytes 01h-0Bh: search template
-                                         byte 0Ch: search attributes
-                                    DOS 2.x (and DOS 3.x except 3.1???)
-                                         byte 00h: search attributes
-                                         byte 01h: drive letter
-                                         bytes 02h-0Ch: search template
-                                         bytes 0Dh-0Eh: entry count within directory
-                                         bytes 0Fh-12h: reserved
-                                         bytes 13h-14h: cluster number of parent directory
-                                         byte 15h: attribute of file found
-                                         bytes 16h-17h: file time
-                                         bytes 18h-19h: file date
-                                         bytes 1Ah-1Dh: file size
-                                         bytes 1Eh-3Ah: ASCIZ filename+extension
-                         */
-                        var fileName = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, true));
-
-                        var fileUtility = new FileUtility(_logger);
-                        var foundFile = fileUtility.FindFile(_path, fileName);
-
-
-
-                        if(!File.Exists($"{_path}{foundFile}"))
-                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-
-                        break;
-                }
+                    FindFirstAsciz_0x4E();
+                    break;
                 case 0x62:
-                    {
-                        /*
-                            INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
-                            Return: BX = segment address of PSP
-
-                            This is only set when an EXE is running, thus should only be called from
-                            an EXE.
-                         */
-                        if (!_memory.TryGetVariablePointer("Int21h-PSP", out var pspPointer))
-                            throw new Exception("No PSP has been defined");
-
-                        _registers.BX = _memory.GetWord(pspPointer);
-                        return;
-                    }
+                    GetPSPAddress_0x62();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{_registers.AH:X2}");
             }
+        }
+
+        private void KeyboardInputWithEcho_0x01()
+        {
+            // DOS - KEYBOARD INPUT (with echo)
+            // Return: AL = character read
+            // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
+            var c = (byte)_stdin.Read();
+            _stdout.Write((char)c);
+            _registers.AL = c;
+        }
+
+        private void SetHandleCount_0x67()
+        {
+            // DOS - SET HANDLE COUNT
+            // BX : Number of handles
+            // Return: carry set if error (and error code in AX)
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+        }
+
+        private void AllocateMemory_0x48()
+        {
+            // DOS - Allocate memory
+            // BX = number of 16-byte paragraphs desired
+            // Return: CF set on error
+            //             AX = error code
+            //             BX = maximum available
+            //         CF clear if successful
+            //             AX = segment of allocated memory block
+            var ptr = _memory.Malloc((uint)(_registers.BX * 16));
+            if (!ptr.IsNull() && ptr.Offset != 0)
+                throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
+
+            if (ptr.IsNull())
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.BX = 0; // TODO get maximum available here
+                _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
+            }
+            else
+            {
+                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                _registers.AX = ptr.Segment;
+            }
+        }
+
+        private void FreeMemory_0x49()
+        {
+            // DOS - Free Memory
+            // ES = Segment address of area to be freed
+            // Return: CF set on error
+            //             AX = error code
+            //         CF clear if successful
+            _memory.Free(new FarPtr(_registers.ES, 0));
+            // no status, so always say we're good
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+        }
+
+        private void GetOrSetMemoryAllocationStrategy_0x58()
+        {
+            // INT 21 - AH = 58h DOS 3.x - GET/SET MEMORY ALLOCATION STRATEGY
+            // AL = function code
+            //     0 = get allocation strategy
+            //     1 = set allocation strategy
+            // BL = strategy code
+            //     0 first fit (use first memory block large enough)
+            //     1 best fit (use smallest memory block large enough)
+            //     2 last fit (use high part of last usable memory block)
+            // Return:
+            //   CF set on error
+            //     AX = error code
+            //   CF clear if successful
+            //     AX = strategy code
+            // Note: the Set subfunction accepts any value in BL; 2 or greater means last fit.
+            // the Get subfunction returns the last value set, so programs should check
+            // whether the value is >= 2, not just equal to 2.
+
+            if (_registers.AL == 0)
+            {
+                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)_allocationStrategy;
+            }
+            else if (_registers.AL == 1)
+            {
+                if (_registers.BL > 2)
+                    _allocationStrategy = AllocationStrategy.LAST_FIT;
+                else
+                    _allocationStrategy = (AllocationStrategy)_registers.BL;
+
+                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)_allocationStrategy;
+            }
+            else
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)DOSErrorCode.UNKNOWN_COMMAND;
+            }
+            return;
+        }
+
+        private void PrintString_0x09()
+        {
+            /*
+                DS:DX = address of string terminated by "$"
+                Note: ^C/^Break checked, and INT 23h called if pressed
+            */
+
+            var src = new FarPtr(_registers.DS, _registers.DX);
+            var memoryStream = new MemoryStream();
+            byte b;
+            while ((b = _memory.GetByte(src++)) != '$')
+                memoryStream.WriteByte(b);
+
+            _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+            return;
+        }
+
+        private void GetDefaultDiskNumber_0x19()
+        {
+            //DOS - GET DEFAULT DISK NUMBER
+            //Return: AL = Drive Number
+            _registers.AL = DEFAULT_BLOCK_DEVICE;
+        }
+
+        private void SetDiskTransferArea_0x1A()
+        {
+            //Specifies the memory area to be used for subsequent FCB operations.
+            //DS:DX = Segment:offset of DTA
+            DiskTransferArea = new FarPtr(_registers.DS, _registers.DX);
+            return;
+        }
+
+        /// <summary>
+        ///     TODO: Should write to 0000:0000 instead of internally
+        /// </summary>
+        private void SetInterruptVector_0x25()
+        {
+            /*
+                INT 21 - AH = 25h DOS - SET INTERRUPT VECTOR
+                AL = interrupt number
+                DS:DX = new vector to be used for specified interrupt
+            */
+
+            var interruptVector = _registers.AL;
+            var newVectorPointer = new FarPtr(_registers.DS, _registers.DX);
+
+            _interruptVectors[interruptVector] = newVectorPointer;
+        }
+
+        private void GetCurrentDate_0x2A()
+        {
+            //DOS - GET CURRENT DATE
+            //Return: DL = day, DH = month, CX = year
+            //AL = day of the week(0 = Sunday, 1 = Monday, etc.)
+            var now = _clock.Now;
+            _registers.DL = (byte)now.Day;
+            _registers.DH = (byte)now.Month;
+            _registers.CX = (ushort)now.Year;
+            _registers.AL = (byte)now.DayOfWeek;
+        }
+
+        private void GetCurrentTime_0x2C()
+        {
+            //DOS - GET CURRENT TIME
+            //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
+            var now = _clock.Now;
+            _registers.CH = (byte) now.Hour;
+            _registers.CL = (byte) now.Minute;
+            _registers.DH = (byte) now.Second;
+            _registers.DL = (byte) (now.Millisecond / 10);
+        }
+
+        private void GetDiskTransferAreaAddress_0x2F()
+        {
+            /*
+                *  Action:	Returns the segment:offset of the current DTA for read/write operations.
+                On entry:	AH = 2Fh
+                Returns:	ES:BX = Segment.offset of current DTA
+            */
+            _registers.ES = DiskTransferArea.Segment;
+            _registers.BX = DiskTransferArea.Offset;
+        }
+
+        private void GetDOSVersion_0x30()
+        {
+            /*  DOS 2+ - GET DOS VERSION
+                AH = 30h
+                Return: AL = Major Version number (0 for DOS 1.x)
+                AH = Minor Version number
+                BH = OEM number
+                    00h IBM
+                    16h DEC
+                BL:CX = 24-bit user number
+            */
+            _registers.AL = 6;
+            _registers.AH = 22;
+            _registers.BH = 0;
+            _registers.CX = 0x1234;
+        }
+
+        /// <summary>
+        ///     TODO: These interrupt vectors live at memory address 0000:0000 and should be read
+        ///           from there.
+        /// </summary>
+        private void GetInterruptVector_0x35()
+        {
+            /*
+                INT 21 - AH = 35h DOS 2+ - GET INTERRUPT VECTOR
+                AL = interrupt number
+                Return: ES:BX = value of interrupt vector
+            */
+
+            if (!_interruptVectors.TryGetValue(_registers.AL, out var resultVector))
+            {
+                _registers.ES = 0xFFFF;
+                _registers.BX = _registers.AL;
+            }
+            else
+            {
+                _registers.ES = resultVector.Segment;
+                _registers.BX = resultVector.Offset;
+            }
+        }
+
+        private void WriteToFileWithHandle_0x40()
+        {
+            /*
+                INT 21 - AH = 40h DOS 2+ - WRITE TO FILE WITH HANDLE
+                BX = file handle
+                CX = number of bytes to write
+                DS:DX -> buffer
+
+                Return: CF set on error
+                    AX = error code
+
+                CF clear if successful
+                    AX = number of bytes written
+
+                Note: if CX is zero, no data is written, and the file is truncated or extended
+                    to the current position
+            */
+            var fileHandle = _registers.BX;
+            var numberOfBytes = _registers.CX;
+            var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
+
+            var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
+            var toWrite = new char[numberOfBytes];
+            Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
+
+            switch (fileHandle)
+            {
+                case (ushort)FileHandle.STDOUT:
+                    _stdout.Write(toWrite);
+                    break;
+                case (ushort)FileHandle.STDERR:
+                    _stderr.Write(toWrite);
+                    break;
+                default:
+                    _logger.Warn($"Write to file not yet supported");
+                    _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                    _registers.AX = (ushort)DOSErrorCode.INVALID_HANDLE;
+                    return;
+            }
+
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            _registers.AX = numberOfBytes;
+        }
+
+        private void GetCurrentDirectory_0x47()
+        {
+            /*
+                DOS 2+ - GET CURRENT DIRECTORY
+                DL = drive (0=default, 1=A, etc.)
+                DS:SI points to 64-byte buffer area
+                Return: CF set on error
+                AX = error code
+                Note: the returned path does not include the initial backslash
+            */
+            _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\0"));
+            _registers.DL = DEFAULT_BLOCK_DEVICE;
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+        }
+
+        private void AdjustMemoryBlockSize_0x4A()
+        {
+            /*
+                INT 21 - AH = 4Ah DOS 2+ - ADJUST MEMORY BLOCK SIZE (SETBLOCK)
+                ES = Segment address of block to change
+                BX = New size in paragraphs
+                Return: CF set on error
+                AX = error code
+                BX = maximum size possible for the block
+
+                Because MBBSEmu allocates blocks as 0xFFFF in length, we ignore this and proceed
+            */
+
+            var segmentToAdjust = _registers.ES;
+            var newSize = _registers.BX;
+
+            if (_memory is ProtectedModeMemoryCore protectedMemory)
+            {
+                if (!protectedMemory.HasSegment(segmentToAdjust))
+                    protectedMemory.AddSegment(segmentToAdjust);
+
+                _registers.BX = 0xFFFF;
+                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                return;
+            }
+
+            // real mode memory
+            var ptr = new FarPtr(_registers.ES, 0);
+            var currentBlockSize = _memory.GetAllocatedMemorySize(ptr);
+            _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {ptr}:{currentBlockSize} to {_registers.BX}. We don't really support it");
+            if (currentBlockSize < 0)
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.BX = 0;
+                _registers.AX = (ushort)DOSErrorCode.INVALID_MEMORY_BLOCK_ADDRESS;
+            }
+            else
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.BX = (ushort)currentBlockSize;
+                _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
+            }
+        }
+
+        private void QuitWithExitCode_0x4C()
+        {
+            /*
+                INT 21 - AH = 4Ch DOS 2+ - QUIT WITH EXIT CODE (EXIT)
+                AL = exit code
+                Return: never returns
+            */
+            _stdout.Flush();
+            _stderr.Flush();
+
+            //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+            _registers.Halt = true;
+        }
+
+        private void FindFirstAsciz_0x4E()
+        {
+            /*
+            INT 21 - AH = 4Eh DOS 2+ - FIND FIRST ASCIZ (FIND FIRST)
+            CX = search attributes
+            DS:DX -> ASCIZ filename
+            Return: CF set on error
+                AX = error code
+                [DTA] = data block
+                undocumented fields
+                    PC-DOS 3.10
+                            byte 00h: drive letter
+                            bytes 01h-0Bh: search template
+                            byte 0Ch: search attributes
+                    DOS 2.x (and DOS 3.x except 3.1???)
+                            byte 00h: search attributes
+                            byte 01h: drive letter
+                            bytes 02h-0Ch: search template
+                            bytes 0Dh-0Eh: entry count within directory
+                            bytes 0Fh-12h: reserved
+                            bytes 13h-14h: cluster number of parent directory
+                            byte 15h: attribute of file found
+                            bytes 16h-17h: file time
+                            bytes 18h-19h: file date
+                            bytes 1Ah-1Dh: file size
+                            bytes 1Eh-3Ah: ASCIZ filename+extension
+            */
+            var fileName = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true));
+            var foundFile = _fileUtility.FindFile(_path, fileName);
+
+            if(!File.Exists($"{_path}{foundFile}"))
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                return;
+            }
+
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            throw new NotImplementedException();
+        }
+
+        private void GetPSPAddress_0x62()
+        {
+            /*
+                INT 21 - AH = 62h DOS 3.x - GET PSP ADDRESS
+                Return: BX = segment address of PSP
+
+                This is only set when an EXE is running, thus should only be called from
+                an EXE.
+            */
+            if (!_memory.TryGetVariablePointer("Int21h-PSP", out var pspPointer))
+                throw new Exception("No PSP has been defined");
+
+            _registers.BX = _memory.GetWord(pspPointer);
         }
 
         private void GetDeviceInformation()
@@ -564,7 +596,82 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
-        private void OpenFile()
+        private void GetOrPutFileAttributes_0x43()
+        {
+            /*
+            INT 21 - AH = 43h DOS 2+ - GET/PUT FILE ATTRIBUTES (CHMOD)
+            AL =
+                0 get file attributes
+                1 put file attributes
+            CX = file attribute bits
+                0 = read only
+                1 = hidden file
+                2 = system file
+                3 = volume label
+                4 = subdirectory
+                5 = written since backup
+                8 = shareable (Novell NetWare)
+            DS:DX -> ASCIZ file name
+            Return: CF set on error
+                AX = error code
+                CX = file attributes on get
+            */
+            var file = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true));
+            if (_registers.AL != 0)
+                throw new NotImplementedException();
+
+            var fileInfo = new FileInfo(file);
+            if (!fileInfo.Exists)
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                return;
+            }
+
+            _registers.CX = 0;
+            if (fileInfo.IsReadOnly)
+                _registers.CX |= (ushort)EnumDirectoryAttributeFlags.ReadOnly;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
+                _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Hidden;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.System))
+                _registers.CX |= (ushort)EnumDirectoryAttributeFlags.System;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
+                _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Directory;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
+                _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
+
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+        }
+
+        private void CloseFile_0x3E()
+        {
+            /*
+            INT 21 - AH = 3Eh DOS 2+ - CLOSE A FILE WITH HANDLE
+            BX = file handle
+            Return: CF set on error
+                AX = error code
+            */
+            switch (_registers.BX)
+            {
+                case (ushort)FileHandle.STDIN:
+                    _stdin.Close();
+                    break;
+                case (ushort)FileHandle.STDOUT:
+                    _stdout.Close();
+                    break;
+                case (ushort)FileHandle.STDERR:
+                    _stderr.Close();
+                    break;
+                case (ushort)FileHandle.STDAUX:
+                case (ushort)FileHandle.STDPRN:
+                    break;
+                default:
+                    //_logger.Error($"Closing handle {_registers.BX}");
+                    break;
+            }
+        }
+
+        private void OpenFile_0x3D()
         {
             /*
             INT 21 - AH = 3Dh DOS 2+ - OPEN DISK FILE WITH HANDLE
@@ -622,7 +729,6 @@ namespace MBBSEmu.DOS.Interrupts
                 _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                 _registers.AX = (ushort)ExceptionToErrorCode(ex);
             }
-            return;
         }
 
         private int GetNextHandle()
