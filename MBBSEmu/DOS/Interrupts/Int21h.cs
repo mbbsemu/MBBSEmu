@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS;
+using MBBSEmu.DOS.Structs;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -8,6 +9,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
@@ -19,6 +21,8 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
+        const int DEFAULT_BLOCK_DEVICE = 2; //C:
+
         private ILogger _logger { get; init; }
         private CpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
@@ -43,33 +47,127 @@ namespace MBBSEmu.DOS.Interrupts
 
         private readonly Dictionary<byte, FarPtr> _interruptVectors;
 
-        public enum AllocationStrategy {
+        private readonly IFileUtility _fileUtility;
+
+        private readonly Dictionary<int, FileStream> _fileHandles = new();
+
+        public enum AllocationStrategy
+        {
             FIRST_FIT = 0,
             BEST_FIT = 1,
             LAST_FIT = 2,
         }
 
+        public enum FileHandle
+        {
+            STDIN = 0,
+            STDOUT = 1,
+            STDERR = 2,
+            STDAUX = 3,
+            STDPRN = 4,
+        }
+
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             _registers = registers;
             _memory = memory;
             _clock = clock;
+            _logger = logger;
+            _fileUtility = fileUtility;
             _stdin = stdin;
             _stdout = stdout;
             _stderr = stderr;
             _interruptVectors = new Dictionary<byte, FarPtr>();
-            _logger = logger;
             _path = path;
         }
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            _logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
 
             switch (_registers.AH)
             {
+                case 0x3D:
+                    OpenFile();
+                    break;
+                case 0x3E:
+                    {
+                        /*
+                        INT 21 - AH = 3Eh DOS 2+ - CLOSE A FILE WITH HANDLE
+                        BX = file handle
+                        Return: CF set on error
+                            AX = error code
+                        */
+
+                        switch (_registers.BX)
+                        {
+                            case (ushort)FileHandle.STDIN:
+                                _stdin.Close();
+                                break;
+                            case (ushort)FileHandle.STDOUT:
+                                _stdout.Close();
+                                break;
+                            case (ushort)FileHandle.STDERR:
+                                _stderr.Close();
+                                break;
+                            case (ushort)FileHandle.STDAUX:
+                            case (ushort)FileHandle.STDPRN:
+                                break;
+                            default:
+                                //_logger.Error($"Closing handle {_registers.BX}");
+                                break;
+                        }
+                        return;
+                    }
+                case 0x43:
+                    {
+                        /*
+                        INT 21 - AH = 43h DOS 2+ - GET/PUT FILE ATTRIBUTES (CHMOD)
+                        AL =
+                            0 get file attributes
+                            1 put file attributes
+                        CX = file attribute bits
+                            0 = read only
+                            1 = hidden file
+                            2 = system file
+                            3 = volume label
+                            4 = subdirectory
+                            5 = written since backup
+                            8 = shareable (Novell NetWare)
+                        DS:DX -> ASCIZ file name
+                        Return: CF set on error
+                            AX = error code
+                            CX = file attributes on get
+                        */
+                        var file = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true));
+                        if (_registers.AL != 0)
+                            throw new NotImplementedException();
+
+                        FileInfo fileInfo = new FileInfo(file);
+                        if (!fileInfo.Exists)
+                        {
+                            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                            _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                            return;
+                        }
+
+                        _registers.CX = 0;
+                        if (fileInfo.IsReadOnly)
+                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.ReadOnly;
+                        if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
+                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Hidden;
+                        if (fileInfo.Attributes.HasFlag(FileAttributes.System))
+                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.System;
+                        if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
+                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Directory;
+                        if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
+                            _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
+
+                        _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                        return;
+                    }
                 case 0x01:
                     {
                         // DOS - KEYBOARD INPUT (with echo)
@@ -183,7 +281,7 @@ namespace MBBSEmu.DOS.Interrupts
                     {
                         //DOS - GET DEFAULT DISK NUMBER
                         //Return: AL = Drive Number
-                        _registers.AL = 2; //C:
+                        _registers.AL = DEFAULT_BLOCK_DEVICE;
                         return;
                     }
                 case 0x1A:
@@ -302,70 +400,21 @@ namespace MBBSEmu.DOS.Interrupts
                         var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
                         var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
+                        char[] toWrite = new char[numberOfBytes];
+                        Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
 
-                        /*
-                             DOS Default/Predefined Handles:
-                             0 - Standard Input Device - can be redirected (STDIN)
-	                         1 - Standard Output Device - can be redirected (STDOUT)
-	                         2 - Standard Error Device - can be redirected (STDERR)
-	                         3 - Standard Auxiliary Device (STDAUX)
-	                         4 - Standard Printer Device (STDPRN)
-                         */
-
-                        if (fileHandle == 1)
-                        {
-                            _stdout.WriteLine(Encoding.ASCII.GetString(dataToWrite));
-                            _stdout.Flush();
-                        }
-                        else if (fileHandle == 2)
-                        {
-                            _stderr.WriteLine(Encoding.ASCII.GetString(dataToWrite));
-                            _stderr.Flush();
-                        }
+                        if (fileHandle == (ushort)FileHandle.STDOUT)
+                            _stdout.Write(toWrite);
+                        else if (fileHandle == (ushort)FileHandle.STDERR)
+                            _stderr.Write(toWrite);
 
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         _registers.AX = numberOfBytes;
                         break;
                     }
-                case 0x44:
-                    {
-                        /*
-                            INT 21 - AH = 44H DOS Get Device Information
-
-                            Sub-Function Definition is in AL
-                         */
-                        switch (_registers.AL)
-                        {
-
-                            case 0x0:
-                                {
-                                    /*
-                                        INT 21 - AX = 4400h DOS 2+ - IOCTL - GET DEVICE INFORMATION
-                                        BX = file or device handle
-                                        Return: CF set on error
-                                         AX = error code
-                                        CF clear if successful
-                                         DX = device info
-                                     */
-
-                                    //Device
-                                    if (_registers.BX <= 2)
-                                    {
-                                        _registers.DX = 0;
-
-                                        _registers.DX |= 1; //STD Input
-                                        _registers.DX |= 1 << 1; //STD Output
-                                        _registers.DX |= 1 << 4; //Reserved? DOSBox sets it
-                                        _registers.DX |= 1 << 6; //Not EOF
-                                        _registers.DX |= 1 << 7; //IS Device
-                                        _registers.DX |= 1 << 15; //Reserved? DOSBox sets it
-                                    }
-                                }
-                                break;
-                        }
-
-                        break;
-                    }
+                case 0x44 when _registers.AL == 0x00:
+                    GetDeviceInformation();
+                    return;
                 case 0x47:
                     {
                         /*
@@ -377,8 +426,7 @@ namespace MBBSEmu.DOS.Interrupts
                             Note: the returned path does not include the initial backslash
                          */
                         _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\0"));
-                        _registers.AX = 0;
-                        _registers.DL = 0;
+                        _registers.DL = DEFAULT_BLOCK_DEVICE;
                         _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
                         return;
                     }
@@ -415,7 +463,10 @@ namespace MBBSEmu.DOS.Interrupts
                             AL = exit code
                             Return: never returns
                          */
-                        _stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+                        _stdout.Flush();
+                        _stderr.Flush();
+
+                        //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
                         _registers.Halt = true;
                         break;
                     }
@@ -476,6 +527,130 @@ namespace MBBSEmu.DOS.Interrupts
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{_registers.AH:X2}");
             }
+        }
+
+        private void GetDeviceInformation()
+        {
+            /*
+                INT 21 - AX = 4400h DOS 2+ - IOCTL - GET DEVICE INFORMATION
+                BX = file or device handle
+                Return: CF set on error
+                    AX = error code
+                CF clear if successful
+                    DX = device info
+            */
+
+            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+
+            switch (_registers.BX)
+            {
+                case (ushort)FileHandle.STDIN:
+                    _registers.DX = 0x80 | 0x40 | 0x1;
+                    break;
+                case (ushort)FileHandle.STDERR:
+                case (ushort)FileHandle.STDOUT:
+                    _registers.DX = 0x80 | 0x40 | 0x2;
+                    break;
+                default:
+                    if (!_fileHandles.TryGetValue(_registers.BX, out var fileStream))
+                    {
+                        _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                        _registers.AX = (ushort)DOSErrorCode.INVALID_HANDLE;
+                        return;
+                    }
+
+                    _registers.DX = DEFAULT_BLOCK_DEVICE;
+                    break;
+            }
+        }
+
+        private void OpenFile()
+        {
+            /*
+            INT 21 - AH = 3Dh DOS 2+ - OPEN DISK FILE WITH HANDLE
+            AL = access code
+                0 = Read Only
+                1 = Write Only
+                2 = Read/Write
+            AL bits 7-3 = file-sharing modes (DOS 3.x)
+                bit 7 = inheritance flag, set for no inheritance
+                bits 4-6 = sharing mode
+                000 compatibility mode
+                001 exclusive (deny all)
+                010 write access denied (deny write)
+                011 read access denied (deny read)
+                100 full access permitted (deny none)
+                bit 3 = reserved, should be zero
+            DS:DX = address of ASCIZ filename
+            Return:
+                CF set on error
+                    AX = error code
+                CF clear if successful
+                    AX = file handle
+            */
+
+            var fullPath = Encoding.ASCII.GetString(_memory.GetString(_registers.DS, _registers.DX, stripNull: true));
+            FileMode fileMode = FileMode.Open;
+            FileAccess fileAccess;
+            switch (_registers.AL)
+            {
+                case 0:
+                    fileAccess = FileAccess.Read;
+                    break;
+                case 1:
+                    fileAccess = FileAccess.Write;
+                    break;
+                case 2:
+                default:
+                    fileAccess = FileAccess.ReadWrite;
+                    break;
+            }
+
+            //Setup the File Stream
+            try
+            {
+                var fileStream = File.Open(fullPath, fileMode, fileAccess);
+                var handle = GetNextHandle();
+
+                _fileHandles[handle] = fileStream;
+
+                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)handle;
+            }
+            catch (Exception ex)
+            {
+                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                _registers.AX = (ushort)ExceptionToErrorCode(ex);
+            }
+            return;
+        }
+
+        private int GetNextHandle()
+        {
+            if (_fileHandles.Count == 0)
+                return 6;
+
+            int handle = _fileHandles.Max(kvp => kvp.Key) + 1;
+            if (handle <= 5)
+                handle = 6;
+
+            return handle;
+        }
+
+        private DOSErrorCode ExceptionToErrorCode(Exception ex)
+        {
+            if (ex is PathTooLongException)
+                return DOSErrorCode.PATH_NOT_FOUND;
+            if (ex is DirectoryNotFoundException)
+                return DOSErrorCode.PATH_NOT_FOUND;
+            if (ex is IOException)
+                return DOSErrorCode.WRITE_FAULT;
+            if (ex is UnauthorizedAccessException)
+                return DOSErrorCode.ACCESS_DENIED;
+            if (ex is FileNotFoundException)
+                return DOSErrorCode.FILE_NOT_FOUND;
+
+            return DOSErrorCode.GENERAL_FAILURE;
         }
     }
 }

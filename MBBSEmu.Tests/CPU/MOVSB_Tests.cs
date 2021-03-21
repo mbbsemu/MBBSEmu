@@ -60,8 +60,8 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(0, mbbsEmuMemoryCore.GetByte(mbbsEmuCpuRegisters.ES, 11));
 
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
-            Assert.Equal(11, mbbsEmuCpuRegisters.SI);
-            Assert.Equal(11, mbbsEmuCpuRegisters.DI);
+            Assert.Equal(10, mbbsEmuCpuRegisters.SI);
+            Assert.Equal(10, mbbsEmuCpuRegisters.DI);
         }
 
         [Fact]
@@ -88,14 +88,14 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify the 10 Words were copies
-            for (ushort i = 11; i > 0; i--)
+            for (ushort i = 11; i > 1; i--)
                 Assert.Equal(0xFF, mbbsEmuMemoryCore.GetByte(mbbsEmuCpuRegisters.ES, i));
 
             Assert.Equal(0, mbbsEmuMemoryCore.GetByte(mbbsEmuCpuRegisters.ES, 0));
 
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
-            Assert.Equal(0, mbbsEmuCpuRegisters.SI);
-            Assert.Equal(0, mbbsEmuCpuRegisters.DI);
+            Assert.Equal(1, mbbsEmuCpuRegisters.SI);
+            Assert.Equal(1, mbbsEmuCpuRegisters.DI);
         }
     }
 }

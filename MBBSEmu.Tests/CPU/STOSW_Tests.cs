@@ -46,8 +46,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2,0));
-            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 2));
-            Assert.Equal(0, mbbsEmuMemoryCore.GetWord(2, 4));
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord(2, 2));
+            Assert.Equal(0, mbbsEmuCpuRegisters.CX);
         }
 
         [Fact]
@@ -68,9 +68,9 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0, mbbsEmuMemoryCore.GetWord(2, 0));
-            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 2));
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord(2, 2));
             Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 4));
+            Assert.Equal(2, mbbsEmuCpuRegisters.DI);
         }
     }
 }

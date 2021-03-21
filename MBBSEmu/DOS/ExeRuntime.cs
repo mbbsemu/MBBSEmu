@@ -1,13 +1,12 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
-using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using NLog;
 
@@ -30,17 +29,16 @@ namespace MBBSEmu.DOS
         /// </summary>
         private const ushort ENVIRONMENT_SEGMENT = 0x2010;
 
-        private readonly List<string> _environmentVariables;
+        private readonly Dictionary<string, string> _environmentVariables = new();
 
-        public ExeRuntime(MZFile file, List<string> environmentVariables, IClock clock, ILogger logger)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility)
         {
             _logger = logger;
             File = file;
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
-            _environmentVariables = environmentVariables;
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
 
             Registers.ES = PSP_SEGMENT;
             Registers.DS = PSP_SEGMENT;
@@ -48,6 +46,7 @@ namespace MBBSEmu.DOS
 
         public bool Load()
         {
+            CreateEnvironmentVariables();
             LoadProgramIntoMemory();
             ApplyRelocation();
             SetupPSP();
@@ -60,6 +59,17 @@ namespace MBBSEmu.DOS
         {
             while (!Registers.Halt)
                 Cpu.Tick();
+        }
+
+        private void CreateEnvironmentVariables()
+        {
+            _environmentVariables["%CMDLINE%"] = File.ExeFile;
+            _environmentVariables["%COMSPEC%"] = "C:\\COMMAND.COM";
+            _environmentVariables["%COPYCMD%"] = "COPY";
+            _environmentVariables["%DIRCMD%"] = "DIR";
+            _environmentVariables["%PATH%"] = "C:\\DOS;C:\\BBSV6";
+            _environmentVariables["%TMP%"] = "C:\\TEMP";
+            _environmentVariables["%TEMP%"] = "C:\\TEMP";
         }
 
         private void LoadProgramIntoMemory()
@@ -104,7 +114,7 @@ namespace MBBSEmu.DOS
             // and compile/cache instructions
             //Memory.Recompile(Registers.CS, Registers.IP);
 
-            Registers.SS = (ushort)(_programRealModeLoadAddress.Segment - 1 - (File.Header.InitialSP >> 4));
+            Registers.SS = (ushort)(File.Header.InitialSS + _programRealModeLoadAddress.Segment);
             Registers.SP = File.Header.InitialSP;
         }
 
@@ -113,7 +123,9 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP()
         {
-            var psp = new PSPStruct { NextSegOffset = 0xA000, EnvSeg = ENVIRONMENT_SEGMENT };
+            var psp = new PSPStruct { NextSegOffset = 0xF000, EnvSeg = ENVIRONMENT_SEGMENT };
+            psp.CommandTailLength = (byte)(File.ExeFile.Length + 1);
+            Array.Copy(Encoding.ASCII.GetBytes(File.ExeFile + "\r"), 0, psp.CommandTail, 0, psp.CommandTailLength);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -125,15 +137,15 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupEnvironmentVariables()
         {
-            if (_environmentVariables == null)
-                return;
-
             ushort bytesWritten = 0;
             foreach (var v in _environmentVariables)
             {
-                Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(v));
-                bytesWritten += (ushort)(v.Length + 1);
+                string str = v.Key + "=" + v.Value + "\0";
+                Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(str));
+                bytesWritten += (ushort)(str.Length);
             }
+            // null terminate
+            Memory.SetWord(ENVIRONMENT_SEGMENT, bytesWritten, 0);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace MBBSEmu.Disassembler
     public class MZFile
     {
         public MZHeader Header { get; init; }
-        private readonly string _exeFile;
+        public string ExeFile { get; init; }
         public byte[] ProgramData { get; init; }
         public List<FarPtr> RelocationRecords { get; init; }
 
@@ -17,8 +17,8 @@ namespace MBBSEmu.Disassembler
         {
             RelocationRecords = new List<FarPtr>();
 
-            _exeFile = exeFile;
-            var exeFileData = File.ReadAllBytes(_exeFile);
+            ExeFile = exeFile;
+            var exeFileData = File.ReadAllBytes(ExeFile);
 
             Header = new MZHeader(exeFileData);
 

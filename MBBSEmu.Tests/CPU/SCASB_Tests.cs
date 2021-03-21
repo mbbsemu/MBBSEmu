@@ -76,7 +76,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0x5, mbbsEmuCpuRegisters.CX);
+            Assert.Equal(0x4, mbbsEmuCpuRegisters.CX);
             Assert.Equal(0x6, mbbsEmuCpuRegisters.DI);
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
         }
@@ -101,7 +101,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
-            Assert.Equal(0xB, mbbsEmuCpuRegisters.DI);
+            Assert.Equal(0xA, mbbsEmuCpuRegisters.DI);
             Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
         }
 
@@ -126,7 +126,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0x5, mbbsEmuCpuRegisters.CX);
+            Assert.Equal(0x4, mbbsEmuCpuRegisters.CX);
             Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.DI); //DI is decremented after the comparison, which would overflow from 0x0->0xFFFF
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
         }
@@ -152,7 +152,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0x5, mbbsEmuCpuRegisters.CX);
+            Assert.Equal(0x4, mbbsEmuCpuRegisters.CX);
             Assert.Equal(0x6, mbbsEmuCpuRegisters.DI);
             Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
         }
@@ -178,7 +178,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0x5, mbbsEmuCpuRegisters.CX);
+            Assert.Equal(0x4, mbbsEmuCpuRegisters.CX);
             Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.DI); //DI is decremented after the comparison, which would overflow from 0x0->0xFFFF
             Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
         }

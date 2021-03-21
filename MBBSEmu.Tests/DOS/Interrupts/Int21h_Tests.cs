@@ -5,6 +5,7 @@ using MBBSEmu.DependencyInjection;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
+using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ namespace MBBSEmu.Tests.Memory
 
         _serviceResolver = new ServiceResolver(_fakeClock);
         _memory = new RealModeMemoryCore(_serviceResolver.GetService<ILogger>());
-        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<ILogger>(), new StreamReader(_consoleInput), streamWriter, streamWriter);
+        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<ILogger>(), _serviceResolver.GetService<IFileUtility>(), new StreamReader(_consoleInput), streamWriter, streamWriter);
     }
 
     [Fact]
