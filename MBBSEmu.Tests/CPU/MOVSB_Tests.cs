@@ -124,9 +124,9 @@ namespace MBBSEmu.Tests.CPU
             instructions.hlt();
 
             /*
-            dst             = word ptr  4
-            src             = word ptr  6
-            length          = word ptr  8
+            dst             = word ptr  2
+            src             = word ptr  4
+            length          = word ptr  6
             */
             instructions.Label(ref memcpy);
             instructions.push(bp);
@@ -135,16 +135,16 @@ namespace MBBSEmu.Tests.CPU
             instructions.push(di);
             instructions.push(ds);
             instructions.pop(es);
-            instructions.mov(di, __word_ptr[bp + 4]); // dst
-            instructions.mov(si, __word_ptr[bp + 6]); // src
-            instructions.mov(cx, __word_ptr[bp + 8]); // length
+            instructions.mov(di, __word_ptr[bp + 2]); // dst
+            instructions.mov(si, __word_ptr[bp + 4]); // src
+            instructions.mov(cx, __word_ptr[bp + 6]); // length
             instructions.shr(cx, 1);
             instructions.cld();
             instructions.rep.movsw();
             instructions.jae(evenLength); // jnb
             instructions.movsb();
             instructions.Label(ref evenLength);
-            instructions.mov(ax, __word_ptr[bp + 4]); // dst, return value
+            instructions.mov(ax, __word_ptr[bp + 2]); // dst, return value
             instructions.pop(di);
             instructions.pop(si);
             instructions.pop(bp);
