@@ -1519,14 +1519,18 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte)(destination >> (sbyte)source);
+                // in order to inspect bits lost during shift when computing the carry flag, we
+                // extend the size of the operation first by shifting left and then shifting right.
+                // So result becomes 0xDDLL where DD is the value and LL are the lost bits
+                var uresult = (ushort)((((ushort)destination) << 8) >> source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(uresult & 0x80));
 
-                //Maintain Sign Bit
+                var result = (byte)(uresult >> 8);
+                // maintain sign bit
                 if (destination.IsNegative())
-                    result.SetFlag(1 << 7);
+                    result |= 0x80;
 
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1540,14 +1544,18 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (ushort)(destination >> source);
+                // in order to inspect bits lost during shift when computing the carry flag, we
+                // extend the size of the operation first by shifting left and then shifting right.
+                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
+                var uresult = (uint)((((uint)destination) << 16) >> source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(uresult & 0x8000));
 
-                //Maintain Sign Bit
+                var result = (ushort)(uresult >> 16);
+                // maintain sign bit
                 if (destination.IsNegative())
-                    result.SetFlag(1 << 15);
+                    result |= 0x8000;
 
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1574,9 +1582,14 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte)(destination >> (sbyte)source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                // in order to inspect bits lost during shift when computing the carry flag, we
+                // extend the size of the operation first by shifting left and then shifting right.
+                // So result becomes 0xDDLL where DD is the value and LL are the lost bits
+                var uresult = (ushort)((((ushort)destination) << 8) >> source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftRight, (byte)(uresult & 0x80));
+
+                var result = (byte)(uresult >> 8);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1590,11 +1603,14 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (ushort)(destination >> source);
-                //Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                // in order to inspect bits lost during shift when computing the carry flag, we
+                // extend the size of the operation first by shifting left and then shifting right.
+                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
+                var uresult = (uint)((((uint)destination) << 16) >> source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftRight, (ushort)(uresult & 0x8000));
 
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                var result = (ushort)(uresult >> 16);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1622,9 +1638,11 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (byte)(destination << (sbyte)source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                var uresult = (ushort)(destination << (sbyte)source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftLeft, (ushort)(uresult & 0x100));
+
+                var result = (byte)uresult;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftLeft, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1638,9 +1656,11 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = (ushort)(destination << source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                var uresult = (uint)(destination << source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftLeft, uresult & 0x1_0000);
+
+                var result = (ushort)uresult;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftLeft, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1654,9 +1674,11 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                var result = destination << source;
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
+                var uresult = (ulong)(((ulong)destination) << source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftLeft, (uresult & 0x1_0000_0000) != 0 ? 1u : 0u);
+
+                var result = (uint)uresult;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftLeft, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -4073,7 +4095,10 @@ namespace MBBSEmu.CPU
             {
                 EnumArithmeticOperation.Addition => (source + destination) > byte.MaxValue,
                 EnumArithmeticOperation.Subtraction => result > destination,
-                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                EnumArithmeticOperation.ShiftArithmeticLeft => result != 0,
+                EnumArithmeticOperation.ShiftArithmeticRight => result != 0,
+                EnumArithmeticOperation.ShiftLeft => result != 0,
+                EnumArithmeticOperation.ShiftRight => result != 0,
                 _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                     "Unsupported Carry Flag Operation for Evaluation"),
             };
@@ -4103,7 +4128,10 @@ namespace MBBSEmu.CPU
             {
                 EnumArithmeticOperation.Addition => (source + destination) > ushort.MaxValue,
                 EnumArithmeticOperation.Subtraction => result > destination,
-                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                EnumArithmeticOperation.ShiftArithmeticLeft => result != 0,
+                EnumArithmeticOperation.ShiftArithmeticRight => result != 0,
+                EnumArithmeticOperation.ShiftLeft => result != 0,
+                EnumArithmeticOperation.ShiftRight => result != 0,
                 _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                     "Unsupported Carry Flag Operation for Evaluation")
             };
@@ -4133,7 +4161,10 @@ namespace MBBSEmu.CPU
             {
                 EnumArithmeticOperation.Addition => ((ulong)source + destination) > uint.MaxValue,
                 EnumArithmeticOperation.Subtraction => result > destination,
-                EnumArithmeticOperation.ShiftLeft => !result.IsNegative() && destination.IsNegative(),
+                EnumArithmeticOperation.ShiftArithmeticLeft => result != 0,
+                EnumArithmeticOperation.ShiftArithmeticRight => result != 0,
+                EnumArithmeticOperation.ShiftLeft => result != 0,
+                EnumArithmeticOperation.ShiftRight => result != 0,
                 _ => throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                     "Unsupported Carry Flag Operation for Evaluation")
             };
@@ -4197,6 +4228,31 @@ namespace MBBSEmu.CPU
                             setFlag = true;
                         }
 
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftArithmeticLeft:
+                case EnumArithmeticOperation.ShiftLeft:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = result.IsFlagSet(0x80) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftArithmeticRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = false;
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = destination.IsFlagSet(0x80);
                         break;
                     }
                 default:
@@ -4265,6 +4321,31 @@ namespace MBBSEmu.CPU
 
                         break;
                     }
+                case EnumArithmeticOperation.ShiftArithmeticLeft:
+                case EnumArithmeticOperation.ShiftLeft:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = result.IsFlagSet(0x8000) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftArithmeticRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = false;
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = destination.IsFlagSet(0x8000);
+                        break;
+                    }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(arithmeticOperation), arithmeticOperation,
                         "Unsupported Carry Flag Operation for Evaluation");
@@ -4322,6 +4403,31 @@ namespace MBBSEmu.CPU
                             setFlag = true;
                         }
 
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftArithmeticLeft:
+                case EnumArithmeticOperation.ShiftLeft:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = result.IsFlagSet(0x80000000) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftArithmeticRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = false;
+                        break;
+                    }
+                case EnumArithmeticOperation.ShiftRight:
+                    {
+                        if (source != 1)
+                            return;
+
+                        setFlag = destination.IsFlagSet(0x80000000);
                         break;
                     }
                 default:
