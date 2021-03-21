@@ -41,7 +41,7 @@ namespace MBBSEmu.DOS.Interrupts
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private FarPtr DiskTransferArea = new FarPtr(0xF000, 0x1000);
+        private FarPtr DiskTransferArea = new(0xF000, 0x1000);
 
         public byte Vector => 0x21;
 
@@ -410,7 +410,7 @@ namespace MBBSEmu.DOS.Interrupts
             var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
             var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
-            char[] toWrite = new char[numberOfBytes];
+            var toWrite = new char[numberOfBytes];
             Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
 
             switch (fileHandle)
@@ -463,14 +463,14 @@ namespace MBBSEmu.DOS.Interrupts
             var segmentToAdjust = _registers.ES;
             var newSize = _registers.BX;
 
-            if (_memory is ProtectedModeMemoryCore)
+            if (_memory is ProtectedModeMemoryCore protectedMemory)
             {
-                ProtectedModeMemoryCore protectedMemory = (ProtectedModeMemoryCore)_memory;
                 if (!protectedMemory.HasSegment(segmentToAdjust))
                     protectedMemory.AddSegment(segmentToAdjust);
 
                 _registers.BX = 0xFFFF;
                 _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                return;
             }
 
             // real mode memory
@@ -620,7 +620,7 @@ namespace MBBSEmu.DOS.Interrupts
             if (_registers.AL != 0)
                 throw new NotImplementedException();
 
-            FileInfo fileInfo = new FileInfo(file);
+            var fileInfo = new FileInfo(file);
             if (!fileInfo.Exists)
             {
                 _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
@@ -641,7 +641,6 @@ namespace MBBSEmu.DOS.Interrupts
                 _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
 
             _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-            return;
         }
 
         private void CloseFile_0x3E()
@@ -730,7 +729,6 @@ namespace MBBSEmu.DOS.Interrupts
                 _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                 _registers.AX = (ushort)ExceptionToErrorCode(ex);
             }
-            return;
         }
 
         private int GetNextHandle()

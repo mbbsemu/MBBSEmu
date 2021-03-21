@@ -343,8 +343,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort)testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.Equal(0, testRegisters.BX);
-            Assert.Equal((ushort)DOSErrorCode.INVALID_MEMORY_BLOCK_ADDRESS, testRegisters.AX);
+            Assert.Equal(0xFFFF, testRegisters.BX);
+            Assert.False(testRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
         }
 
         [Fact]
