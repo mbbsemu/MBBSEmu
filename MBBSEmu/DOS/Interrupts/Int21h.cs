@@ -85,7 +85,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            _logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
 
             switch (_registers.AH)
             {
