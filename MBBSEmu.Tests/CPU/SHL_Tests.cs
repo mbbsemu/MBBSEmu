@@ -107,5 +107,77 @@ namespace MBBSEmu.Tests.CPU
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
         }
+
+        [Fact]
+        public void SHL_AH_Big_Shift()
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AH = 0xFF;
+
+            var instructions = new Assembler(16);
+            instructions.shl(ah, 35); // will clamp to 3
+            CreateCodeSegment(instructions);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(0xF8, mbbsEmuCpuRegisters.AH);
+
+            //Verify Flags
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+        }
+
+        [Fact]
+        public void SHL_AX_Big_Shift()
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AX = 0xFFFF;
+
+            var instructions = new Assembler(16);
+            instructions.shl(ax, 35); // will clamp to 3
+            CreateCodeSegment(instructions);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(0xFFF8, mbbsEmuCpuRegisters.AX);
+
+            //Verify Flags
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+        }
+
+        [Fact]
+        public void SHL_EAX_Big_Shift()
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.EAX = 0xFFFFFFFF;
+
+            var instructions = new Assembler(16);
+            instructions.shl(eax, 35); // will clamp to 3
+            CreateCodeSegment(instructions);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(0xFFFFFFF8, mbbsEmuCpuRegisters.EAX);
+
+            //Verify Flags
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
+            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+        }
     }
 }

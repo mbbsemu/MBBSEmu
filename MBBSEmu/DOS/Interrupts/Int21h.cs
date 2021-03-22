@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.DOS;
 using MBBSEmu.DOS.Structs;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
@@ -10,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
@@ -21,6 +21,8 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
+        public const MethodImplOptions SubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
+
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
 
         private ILogger _logger { get; init; }
@@ -85,10 +87,16 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            _logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
 
             switch (_registers.AH)
             {
+                case 0x3F:
+                    ReadFromFileHandle_0x3F();
+                    break;
+                case 0x42:
+                    MoveFilePointer_0x42();
+                    break;
                 case 0x3D:
                     OpenFile_0x3D();
                     break;
@@ -166,6 +174,114 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
+        [MethodImpl(SubroutineCompilerOptimizations)]
+        private void ClearCarryFlag() => _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+
+        [MethodImpl(SubroutineCompilerOptimizations)]
+        private void SetCarryFlagErrorCodeInAX(DOSErrorCode code)
+        {
+            _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+            _registers.AX = (ushort)code;
+        }
+
+        private void ReadFromFileHandle_0x3F()
+        {
+            /*
+            INT 21 - AH = 3Fh DOS 2+ - READ FROM FILE WITH HANDLE
+            BX = file handle
+            CX = number of bytes to read
+            DS:DX = address of buffer
+            Return: CF set on error
+              AX = error code
+            CF clear if successful
+              AX = number of bytes read
+            */
+            var fileHandle = _registers.BX;
+            var bytesToRead = _registers.CX;
+            var destPtr = new FarPtr(_registers.DS, _registers.DX);
+
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            {
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
+                return;
+            }
+
+            try
+            {
+                var buf = new byte[bytesToRead];
+                var actualBytesRead = fileStream.Read(buf, 0, bytesToRead);
+
+                if (actualBytesRead > 0)
+                {
+                    _memory.SetArray(destPtr, buf.AsSpan().Slice(0, actualBytesRead));
+                }
+
+                ClearCarryFlag();
+                _registers.AX = (ushort)actualBytesRead;
+            }
+            catch (Exception)
+            {
+                _logger.Warn($"Unable to read {bytesToRead} bytes from FD:{fileHandle}");
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.READ_FAULT);
+            }
+        }
+
+        private void MoveFilePointer_0x42()
+        {
+            /*
+            INT 21 - AH = 42h DOS 2+ - MOVE FILE READ/WRITE POINTER (LSEEK)
+                    AL = method value
+                        0 = offset from beginning of file
+                        1 = offset from present location
+                        2 = offset from end of file
+                    BX = file handle
+                    CX:DX = offset in bytes
+                    Return: CF set on error
+                        AX = error code
+                        CF clear if successful
+                        DX:AX = new offset
+            */
+            SeekOrigin seekOrigin;
+            var fileHandle = _registers.BX;
+            var offset = (uint)(_registers.CX << 16 | _registers.DX);
+
+            switch (_registers.AL)
+            {
+                case 0: // begin
+                    seekOrigin = SeekOrigin.Begin;
+                    break;
+                case 1: // current
+                    seekOrigin = SeekOrigin.Current;
+                    break;
+                case 2: // end
+                    seekOrigin = SeekOrigin.End;
+                    break;
+                default:
+                    SetCarryFlagErrorCodeInAX(DOSErrorCode.UNKNOWN_COMMAND);
+                    return;
+            }
+
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            {
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
+                return;
+            }
+
+            try
+            {
+                var position = fileStream.Seek(offset, seekOrigin);
+
+                ClearCarryFlag();
+                _registers.DX = (ushort)(position >> 16);
+                _registers.AX = (ushort)position;
+            }
+            catch (Exception)
+            {
+                _logger.Warn($"Unable to seek to {offset} from FD:{fileHandle}");
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.SEEK_ERROR);
+            }
+        }
+
         private void KeyboardInputWithEcho_0x01()
         {
             // DOS - KEYBOARD INPUT (with echo)
@@ -181,7 +297,7 @@ namespace MBBSEmu.DOS.Interrupts
             // DOS - SET HANDLE COUNT
             // BX : Number of handles
             // Return: carry set if error (and error code in AX)
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
         }
 
         private void AllocateMemory_0x48()
@@ -199,13 +315,12 @@ namespace MBBSEmu.DOS.Interrupts
 
             if (ptr.IsNull())
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INSUFFICIENT_MEMORY);
                 _registers.BX = 0; // TODO get maximum available here
-                _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
             }
             else
             {
-                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                ClearCarryFlag();
                 _registers.AX = ptr.Segment;
             }
         }
@@ -219,7 +334,7 @@ namespace MBBSEmu.DOS.Interrupts
             //         CF clear if successful
             _memory.Free(new FarPtr(_registers.ES, 0));
             // no status, so always say we're good
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
         }
 
         private void GetOrSetMemoryAllocationStrategy_0x58()
@@ -243,7 +358,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             if (_registers.AL == 0)
             {
-                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                ClearCarryFlag();
                 _registers.AX = (ushort)_allocationStrategy;
             }
             else if (_registers.AL == 1)
@@ -253,13 +368,12 @@ namespace MBBSEmu.DOS.Interrupts
                 else
                     _allocationStrategy = (AllocationStrategy)_registers.BL;
 
-                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                ClearCarryFlag();
                 _registers.AX = (ushort)_allocationStrategy;
             }
             else
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                _registers.AX = (ushort)DOSErrorCode.UNKNOWN_COMMAND;
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.UNKNOWN_COMMAND);
             }
             return;
         }
@@ -278,7 +392,6 @@ namespace MBBSEmu.DOS.Interrupts
                 memoryStream.WriteByte(b);
 
             _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
-            return;
         }
 
         private void GetDefaultDiskNumber_0x19()
@@ -410,26 +523,46 @@ namespace MBBSEmu.DOS.Interrupts
             var bufferPointer = new FarPtr(_registers.DS, _registers.DX);
 
             var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
-            var toWrite = new char[numberOfBytes];
-            Encoding.ASCII.GetChars(dataToWrite, toWrite.AsSpan());
 
             switch (fileHandle)
             {
+                case (ushort)FileHandle.STDIN:
+                    SetCarryFlagErrorCodeInAX(DOSErrorCode.WRITE_FAULT);
+                    break;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Write(toWrite);
-                    break;
-                case (ushort)FileHandle.STDERR:
-                    _stderr.Write(toWrite);
-                    break;
-                default:
-                    _logger.Warn($"Write to file not yet supported");
-                    _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                    _registers.AX = (ushort)DOSErrorCode.INVALID_HANDLE;
+                    _stdout.Write(Encoding.ASCII.GetString(dataToWrite));
+                    ClearCarryFlag();
+                    _registers.AX = numberOfBytes;
                     return;
+                case (ushort)FileHandle.STDERR:
+                    _stderr.Write(Encoding.ASCII.GetString(dataToWrite));
+                    ClearCarryFlag();
+                    _registers.AX = numberOfBytes;
+                    return;
+                default:
+                    break;
             }
 
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
-            _registers.AX = numberOfBytes;
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            {
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
+                return;
+            }
+
+            try
+            {
+                var initial = fileStream.Position;
+                fileStream.Write(dataToWrite);
+                var final = fileStream.Position;
+
+                ClearCarryFlag();
+                _registers.AX = (ushort)(final - initial);
+            }
+            catch (Exception)
+            {
+                _logger.Warn($"Unable to write {numberOfBytes} to FD:{fileHandle}");
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.WRITE_FAULT);
+            }
         }
 
         private void GetCurrentDirectory_0x47()
@@ -444,7 +577,7 @@ namespace MBBSEmu.DOS.Interrupts
             */
             _memory.SetArray(_registers.DS, _registers.SI, Encoding.ASCII.GetBytes("BBSV6\0"));
             _registers.DL = DEFAULT_BLOCK_DEVICE;
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
         }
 
         private void AdjustMemoryBlockSize_0x4A()
@@ -469,7 +602,7 @@ namespace MBBSEmu.DOS.Interrupts
                     protectedMemory.AddSegment(segmentToAdjust);
 
                 _registers.BX = 0xFFFF;
-                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                ClearCarryFlag();
                 return;
             }
 
@@ -479,15 +612,13 @@ namespace MBBSEmu.DOS.Interrupts
             _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {ptr}:{currentBlockSize} to {_registers.BX}. We don't really support it");
             if (currentBlockSize < 0)
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                 _registers.BX = 0;
-                _registers.AX = (ushort)DOSErrorCode.INVALID_MEMORY_BLOCK_ADDRESS;
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_MEMORY_BLOCK_ADDRESS);
             }
             else
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
                 _registers.BX = (ushort)currentBlockSize;
-                _registers.AX = (ushort)DOSErrorCode.INSUFFICIENT_MEMORY;
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INSUFFICIENT_MEMORY);
             }
         }
 
@@ -537,12 +668,11 @@ namespace MBBSEmu.DOS.Interrupts
 
             if(!File.Exists($"{_path}{foundFile}"))
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
             }
 
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
             throw new NotImplementedException();
         }
 
@@ -572,7 +702,7 @@ namespace MBBSEmu.DOS.Interrupts
                     DX = device info
             */
 
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
 
             switch (_registers.BX)
             {
@@ -586,8 +716,7 @@ namespace MBBSEmu.DOS.Interrupts
                 default:
                     if (!_fileHandles.TryGetValue(_registers.BX, out var fileStream))
                     {
-                        _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                        _registers.AX = (ushort)DOSErrorCode.INVALID_HANDLE;
+                        SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
                         return;
                     }
 
@@ -623,8 +752,7 @@ namespace MBBSEmu.DOS.Interrupts
             var fileInfo = new FileInfo(file);
             if (!fileInfo.Exists)
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                _registers.AX = (ushort)DOSErrorCode.FILE_NOT_FOUND;
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
             }
 
@@ -640,7 +768,7 @@ namespace MBBSEmu.DOS.Interrupts
             if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
                 _registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
 
-            _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+            ClearCarryFlag();
         }
 
         private void CloseFile_0x3E()
@@ -651,24 +779,42 @@ namespace MBBSEmu.DOS.Interrupts
             Return: CF set on error
                 AX = error code
             */
+
+            ClearCarryFlag();
+
             switch (_registers.BX)
             {
                 case (ushort)FileHandle.STDIN:
                     _stdin.Close();
-                    break;
+                    return;
                 case (ushort)FileHandle.STDOUT:
                     _stdout.Close();
-                    break;
+                    return;
                 case (ushort)FileHandle.STDERR:
                     _stderr.Close();
-                    break;
+                    return;
                 case (ushort)FileHandle.STDAUX:
                 case (ushort)FileHandle.STDPRN:
-                    break;
+                    return;
                 default:
-                    //_logger.Error($"Closing handle {_registers.BX}");
+                    // in file handle table
                     break;
             }
+
+            var fileHandle = _registers.BX;
+
+            _logger.Debug($"Closing file {fileHandle}");
+
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            {
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
+                return;
+            }
+
+            _fileHandles.Remove(fileHandle);
+
+            fileStream.Close();
+            fileStream.Dispose();
         }
 
         private void OpenFile_0x3D()
@@ -719,15 +865,16 @@ namespace MBBSEmu.DOS.Interrupts
                 var fileStream = File.Open(fullPath, fileMode, fileAccess);
                 var handle = GetNextHandle();
 
+                _logger.Debug($"Opening file {fullPath} as FD:{handle}");
+
                 _fileHandles[handle] = fileStream;
 
-                _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
+                ClearCarryFlag();
                 _registers.AX = (ushort)handle;
             }
             catch (Exception ex)
             {
-                _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
-                _registers.AX = (ushort)ExceptionToErrorCode(ex);
+                SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
             }
         }
 

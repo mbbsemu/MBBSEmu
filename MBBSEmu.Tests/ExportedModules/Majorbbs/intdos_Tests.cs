@@ -1,4 +1,4 @@
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;

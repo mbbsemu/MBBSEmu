@@ -10,6 +10,8 @@
         Multiplication,
         Division,
         ShiftLeft,
-        ShiftRight
+        ShiftArithmeticLeft,
+        ShiftRight,
+        ShiftArithmeticRight,
     }
 }
