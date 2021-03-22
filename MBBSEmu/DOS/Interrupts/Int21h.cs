@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.DOS;
 using MBBSEmu.DOS.Structs;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
@@ -10,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
@@ -21,6 +21,8 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
+        public const MethodImplOptions SubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
+
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
 
         private ILogger _logger { get; init; }
@@ -172,8 +174,10 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
+        [MethodImpl(SubroutineCompilerOptimizations)]
         private void ClearCarryFlag() => _registers.F = _registers.F.ClearFlag((ushort)EnumFlags.CF);
 
+        [MethodImpl(SubroutineCompilerOptimizations)]
         private void SetCarryFlagErrorCodeInAX(DOSErrorCode code)
         {
             _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);

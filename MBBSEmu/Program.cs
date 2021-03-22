@@ -305,15 +305,22 @@ namespace MBBSEmu
                         //Check to see if module is enabled
                         var moduleEnabled = m["Enabled"] != "0";
 
-                        //Check for Non Character in MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && !(m["MenuOptionKey"]).All(char.IsLetter))
+                        //Check for Non Character/Number in MenuOptionKey and Length of 2 or less
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && !(m["MenuOptionKey"]).All(char.IsLetterOrDigit))
                         {
-                            _logger.Error($"Invalid menu option key character (NOT A-Z) for {m["Identifier"]}, auto assigning menu option key");
+                            _logger.Error($"Invalid menu option key character (NOT A-Z or 0-9) for {m["Identifier"]}, auto assigning menu option key");
+                            m["MenuOptionKey"] = "";
+                        }
+
+                        //Check MenuOptionKey is Length of 2 or less
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && m["MenuOptionKey"].Length > 2)
+                        {
+                            _logger.Error($"Invalid menu option key length (MAX Length: 2) {m["Identifier"]}, auto assigning menu option key");
                             m["MenuOptionKey"] = "";
                         }
 
                         //Check for duplicate MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"]))
+                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"]) && menuOptionKeys.Any(x => x.Equals(m["MenuOptionKey"])))
                         {
                             _logger.Error($"Duplicate menu option key for {m["Identifier"]}, auto assigning menu option key");
                             m["MenuOptionKey"] = "";

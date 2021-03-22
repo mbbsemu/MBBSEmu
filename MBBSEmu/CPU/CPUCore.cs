@@ -1517,6 +1517,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            source &= 0x1F;
+
             unchecked
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
@@ -1541,6 +1543,8 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            source &= 0x1F;
 
             unchecked
             {
@@ -1580,6 +1584,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            source &= 0x1F;
+
             unchecked
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
@@ -1600,6 +1606,8 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            source &= 0x1F;
 
             unchecked
             {
@@ -1636,6 +1644,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            source &= 0x1F;
+
             unchecked
             {
                 var uresult = (ushort)(destination << (sbyte)source);
@@ -1654,6 +1664,8 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            source &= 0x1F;
+
             unchecked
             {
                 var uresult = (uint)(destination << source);
@@ -1671,6 +1683,8 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            source &= 0x1F;
 
             unchecked
             {
@@ -4055,7 +4069,7 @@ namespace MBBSEmu.CPU
             var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
 
             //Make sure Count isn't > 32 bits
-            count %= 32;
+            count &= 0x1F;
 
             var result = destination << count;
             result |= (source >> count);
