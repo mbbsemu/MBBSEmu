@@ -114,7 +114,7 @@ namespace MBBSEmu.CPU
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
-        public const MethodImplOptions OpcodeCompilerOptimizations = MethodImplOptions.AggressiveOptimization;
+        private const MethodImplOptions OpcodeCompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace MBBSEmu.CPU
         ///
         ///     AggressiveOptimization will tell the JIT to spend more time during compilation generating better code
         /// </summary>
-        public const MethodImplOptions OpcodeSubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
+        private const MethodImplOptions OpcodeSubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers;
 
