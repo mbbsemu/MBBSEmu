@@ -393,6 +393,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
                     Registers.Halt = true;
                     break;
+                case Mnemonic.Aam:
+                    Op_Aam();
+                    break;
+                case Mnemonic.Daa:
+                    Op_Daa();
+                    break;
                 case Mnemonic.Clc:
                     Op_Clc();
                     break;
@@ -1157,6 +1163,83 @@ namespace MBBSEmu.CPU
             }
         }
 
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Aam()
+        {
+            var al = Registers.AL;
+            var imm = _currentInstruction.Immediate8;
+
+            Registers.AH = (byte)(al / imm);
+            Registers.AL = (byte)(al % imm);
+
+            Flags_EvaluateSignZero(Registers.AL);
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Daa()
+        {
+            int res = Registers.AL;
+            if ((Registers.AL & 0xF) > 9 || Registers.F.IsFlagSet((ushort)EnumFlags.AF)) {
+                res += 6;
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+            }
+
+            if (res > 0x9F || Registers.F.IsFlagSet((ushort)EnumFlags.CF)) {
+                res += 0x60;
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+
+            Registers.AL = (byte)res;
+
+            /*var old_AL = Registers.AL;
+            var old_CF = Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+
+            if ((Registers.AL & 0xF) > 9 || Registers.F.IsFlagSet((ushort)EnumFlags.AF))
+            {
+                var al = Registers.AL + 6;
+                Registers.AL = (byte)al;
+
+                if (old_CF || (al > 0xFF))
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                else
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+            }
+
+            if ((old_AL  > 0x99) || old_CF)
+            {
+                Registers.AL = (byte)(Registers.AL + 0x60);
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }*/
+
+            Flags_EvaluateSignZero(Registers.AL);
+
+            /*
+            IF (((AL AND 0FH) > 9) or AF = 1)
+                    THEN
+                        AL ← AL + 6;
+                        CF ← old_CF or (Carry from AL ← AL + 6);
+                        AF ← 1;
+                    ELSE
+                        AF ← 0;
+            FI;
+            IF ((old_AL > 99H) or (old_CF = 1))
+                THEN
+                        AL ← AL + 60H;
+                        CF ← 1;
+                ELSE
+                        CF ← 0;
+            FI;*/
+        }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Loop()
@@ -4124,6 +4207,22 @@ namespace MBBSEmu.CPU
             else
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+
+            setFlag = arithmeticOperation switch
+            {
+                EnumArithmeticOperation.Addition => (source + destination) > 15,
+                EnumArithmeticOperation.Subtraction => (source - destination) < -15,
+                _ => false
+            };
+
+            if (setFlag)
+            {
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
             }
         }
 

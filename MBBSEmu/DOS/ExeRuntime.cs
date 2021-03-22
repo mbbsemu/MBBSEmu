@@ -61,9 +61,20 @@ namespace MBBSEmu.DOS
                 Cpu.Tick();
         }
 
+        private string CreateCommandLine()
+        {
+            /*string cmd = File.ExeFile.Replace('/', '\\');
+            if (cmd[1] != ':')
+                cmd = "C:\\" + cmd;
+
+            return cmd;*/
+
+            return "C:\\TEST.EXE";
+        }
+
         private void CreateEnvironmentVariables()
         {
-            _environmentVariables["CMDLINE"] = File.ExeFile;
+            _environmentVariables["CMDLINE"] = CreateCommandLine();
             _environmentVariables["COMSPEC"] = "C:\\COMMAND.COM";
             _environmentVariables["COPYCMD"] = "COPY";
             _environmentVariables["DIRCMD"] = "DIR";
@@ -124,8 +135,8 @@ namespace MBBSEmu.DOS
         private void SetupPSP()
         {
             var psp = new PSPStruct { NextSegOffset = 0xF000, EnvSeg = ENVIRONMENT_SEGMENT };
-            psp.CommandTailLength = (byte)File.ExeFile.Length;
-            Array.Copy(Encoding.ASCII.GetBytes(File.ExeFile), 0, psp.CommandTail, 0, psp.CommandTailLength);
+            psp.CommandTailLength = 0;
+            //Array.Copy(Encoding.ASCII.GetBytes(File.ExeFile), 0, psp.CommandTail, 0, psp.CommandTailLength);
             Memory.SetArray(PSP_SEGMENT, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
@@ -146,9 +157,11 @@ namespace MBBSEmu.DOS
             }
             // null terminate
             Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 1);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0);
 
             //Add EXE
-            Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(File.ExeFile + "\0"));
+            Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(CreateCommandLine() + "\0"));
         }
     }
 }
