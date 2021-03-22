@@ -145,7 +145,10 @@ namespace MBBSEmu.DOS
                 bytesWritten += (ushort)(str.Length);
             }
             // null terminate
-            Memory.SetWord(ENVIRONMENT_SEGMENT, bytesWritten, 0);
+            Memory.SetByte(ENVIRONMENT_SEGMENT, bytesWritten++, 0);
+
+            //Add EXE 
+            Memory.SetArray(ENVIRONMENT_SEGMENT, bytesWritten, Encoding.ASCII.GetBytes(File.ExeFile + "\0"));
         }
     }
 }
