@@ -2,6 +2,7 @@ using FluentAssertions;
 using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
+using System.Text;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -9,8 +10,13 @@ namespace MBBSEmu.Tests.CPU
 {
     public class AAM_DAA_Tests : CpuTestBase
     {
-        [Fact]
-        public void Test()
+        [Theory]
+        [InlineData(0xABCD, "ABCD")]
+        [InlineData(0xFFFF, "FFFF")]
+        [InlineData(0x0000, "0000")]
+        [InlineData(0x02F0, "02F0")]
+        [InlineData(0x1B2D, "1B2D")]
+        public void Test(ushort value, string expected)
         {
             Reset();
 
@@ -55,7 +61,7 @@ namespace MBBSEmu.Tests.CPU
 
             // set pointers
             mbbsEmuCpuRegisters.DI = 0;
-            mbbsEmuCpuRegisters.DX = 0xAEF;
+            mbbsEmuCpuRegisters.DX = value;
 
             var instructions = new Assembler(16);
             var Hex4 = instructions.CreateLabel("Hex4");
@@ -90,10 +96,7 @@ namespace MBBSEmu.Tests.CPU
             while (!mbbsEmuCpuRegisters.Halt)
                mbbsEmuCpuCore.Tick();
 
-            mbbsEmuMemoryCore.GetByte(2, 0).Should().Be((byte)'0');
-            mbbsEmuMemoryCore.GetByte(2, 1).Should().Be((byte)'A');
-            mbbsEmuMemoryCore.GetByte(2, 2).Should().Be((byte)'E');
-            mbbsEmuMemoryCore.GetByte(2, 3).Should().Be((byte)'F');
+            Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(2, 0, 4)).Should().Be(expected);
         }
     }
 }

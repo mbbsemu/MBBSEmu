@@ -4211,7 +4211,7 @@ namespace MBBSEmu.CPU
 
             setFlag = arithmeticOperation switch
             {
-                EnumArithmeticOperation.Addition => (source + destination) > 15,
+                EnumArithmeticOperation.Addition => ((source & 0xF) + (destination & 0xF)) > 15,
                 EnumArithmeticOperation.Subtraction => (source - destination) < -15,
                 _ => false
             };
