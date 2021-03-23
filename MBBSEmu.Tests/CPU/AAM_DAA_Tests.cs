@@ -81,14 +81,14 @@ namespace MBBSEmu.Tests.CPU
             CreateCodeSegment(instructions);
 
             // make sure *all* combinations convert properly, because why not
-            for (var i = 0; i <= 0xFFFF; ++i)
+            for (var i = 0u; i <= 0xFF; ++i)
             {
                 mbbsEmuCpuRegisters.Halt = false;
                 mbbsEmuCpuRegisters.DS = mbbsEmuCpuRegisters.ES = 2;
                 mbbsEmuCpuRegisters.SS = 0;
                 mbbsEmuCpuRegisters.SP = 0x100;
                 mbbsEmuCpuRegisters.DI = 0;
-                mbbsEmuCpuRegisters.DX = (ushort)i;
+                mbbsEmuCpuRegisters.DX = (ushort)(i << 16 | i);
                 mbbsEmuCpuRegisters.IP = 0;
 
                 while (!mbbsEmuCpuRegisters.Halt)
