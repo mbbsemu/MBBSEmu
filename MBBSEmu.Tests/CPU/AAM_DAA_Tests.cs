@@ -10,21 +10,13 @@ namespace MBBSEmu.Tests.CPU
 {
     public class AAM_DAA_Tests : CpuTestBase
     {
-        [Theory]
-        [InlineData(0xABCD, "ABCD")]
-        [InlineData(0xFFFF, "FFFF")]
-        [InlineData(0x0000, "0000")]
-        [InlineData(0x02F0, "02F0")]
-        [InlineData(0x1B2D, "1B2D")]
-        public void Test(ushort value, string expected)
+        [Fact]
+        public void Hex4_ConvertsAllCombinations()
         {
             Reset();
 
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
             mbbsEmuProtectedModeMemoryCore.AddSegment(2);
-            mbbsEmuCpuRegisters.DS = mbbsEmuCpuRegisters.ES = 2;
-            mbbsEmuCpuRegisters.SS = 0;
-            mbbsEmuCpuRegisters.SP = 0x100;
 
             /*
             static void near pascal Hex4( void )
@@ -59,10 +51,6 @@ namespace MBBSEmu.Tests.CPU
             I          ret
             */
 
-            // set pointers
-            mbbsEmuCpuRegisters.DI = 0;
-            mbbsEmuCpuRegisters.DX = value;
-
             var instructions = new Assembler(16);
             var Hex4 = instructions.CreateLabel("Hex4");
             var Byte2Ascii = instructions.CreateLabel("Byte2Ascii");
@@ -92,11 +80,22 @@ namespace MBBSEmu.Tests.CPU
 
             CreateCodeSegment(instructions);
 
-            //Process Instruction
-            while (!mbbsEmuCpuRegisters.Halt)
-               mbbsEmuCpuCore.Tick();
+            // make sure *all* combinations convert properly, because why not
+            for (var i = 0; i <= 0xFFFF; ++i)
+            {
+                mbbsEmuCpuRegisters.Halt = false;
+                mbbsEmuCpuRegisters.DS = mbbsEmuCpuRegisters.ES = 2;
+                mbbsEmuCpuRegisters.SS = 0;
+                mbbsEmuCpuRegisters.SP = 0x100;
+                mbbsEmuCpuRegisters.DI = 0;
+                mbbsEmuCpuRegisters.DX = (ushort)i;
+                mbbsEmuCpuRegisters.IP = 0;
 
-            Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(2, 0, 4)).Should().Be(expected);
+                while (!mbbsEmuCpuRegisters.Halt)
+                   mbbsEmuCpuCore.Tick();
+
+                Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(2, 0, 4)).Should().Be(i.ToString("X4"));
+            }
         }
     }
 }

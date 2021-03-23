@@ -308,7 +308,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true;
+            _showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -1183,62 +1183,23 @@ namespace MBBSEmu.CPU
                 res += 6;
                 Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
             }
-
-            if (res > 0x9F || Registers.F.IsFlagSet((ushort)EnumFlags.CF)) {
-                res += 0x60;
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-            }
-
-            Registers.AL = (byte)res;
-
-            /*var old_AL = Registers.AL;
-            var old_CF = Registers.F.IsFlagSet((ushort)EnumFlags.CF);
-
-            if ((Registers.AL & 0xF) > 9 || Registers.F.IsFlagSet((ushort)EnumFlags.AF))
-            {
-                var al = Registers.AL + 6;
-                Registers.AL = (byte)al;
-
-                if (old_CF || (al > 0xFF))
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                else
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
-            }
             else
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
             }
 
-            if ((old_AL  > 0x99) || old_CF)
-            {
-                Registers.AL = (byte)(Registers.AL + 0x60);
+            if (res > 0x9F || Registers.F.IsFlagSet((ushort)EnumFlags.CF)) {
+                res += 0x60;
                 Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
             }
             else
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }*/
+            }
+
+            Registers.AL = (byte)res;
 
             Flags_EvaluateSignZero(Registers.AL);
-
-            /*
-            IF (((AL AND 0FH) > 9) or AF = 1)
-                    THEN
-                        AL ← AL + 6;
-                        CF ← old_CF or (Carry from AL ← AL + 6);
-                        AF ← 1;
-                    ELSE
-                        AF ← 0;
-            FI;
-            IF ((old_AL > 99H) or (old_CF = 1))
-                THEN
-                        AL ← AL + 60H;
-                        CF ← 1;
-                ELSE
-                        CF ← 0;
-            FI;*/
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]

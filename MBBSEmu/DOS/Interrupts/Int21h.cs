@@ -38,12 +38,30 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private string _path { get; init; }
 
+        private FarPtr _dta = null;
+
         /// <summary>
         ///     INT 21h defined Disk Transfer Area
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private FarPtr DiskTransferArea = new(0xF000, 0x1000);
+        private FarPtr DiskTransferArea {
+            get
+            {
+                if (_dta != null)
+                    return _dta;
+
+                // default to PSP:0080
+                if (!_memory.TryGetVariablePointer("Int21h-PSP", out var pspPointer))
+                    throw new Exception("No PSP has been defined");
+
+                return new FarPtr(_memory.GetWord(pspPointer), 0x80);
+            }
+            set
+            {
+                _dta = value;
+            }
+        }
 
         public byte Vector => 0x21;
 
@@ -587,8 +605,8 @@ namespace MBBSEmu.DOS.Interrupts
                 ES = Segment address of block to change
                 BX = New size in paragraphs
                 Return: CF set on error
-                AX = error code
-                BX = maximum size possible for the block
+                  AX = error code
+                  BX = maximum size possible for the block
 
                 Because MBBSEmu allocates blocks as 0xFFFF in length, we ignore this and proceed
             */
@@ -606,11 +624,13 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
+            _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {_registers.BX * 16}. We don't really support it");
+
             _registers.BX = 0xFFFF;
             ClearCarryFlag();
             return;
             // real mode memory
-            var ptr = new FarPtr(_registers.ES, 0);
+            /*var ptr = new FarPtr(_registers.ES, 0);
             var currentBlockSize = _memory.GetAllocatedMemorySize(ptr);
             _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {ptr}:{currentBlockSize} to {_registers.BX}. We don't really support it");
             if (currentBlockSize < 0)
@@ -622,7 +642,7 @@ namespace MBBSEmu.DOS.Interrupts
             {
                 _registers.BX = (ushort)currentBlockSize;
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.INSUFFICIENT_MEMORY);
-            }
+            }*/
         }
 
         private void QuitWithExitCode_0x4C()
