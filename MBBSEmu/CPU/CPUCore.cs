@@ -3024,8 +3024,8 @@ namespace MBBSEmu.CPU
 
             var source = _currentOperationSize switch
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source),
+                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
