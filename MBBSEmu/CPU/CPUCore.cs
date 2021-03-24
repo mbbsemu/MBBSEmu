@@ -393,6 +393,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
                     Registers.Halt = true;
                     break;
+                case Mnemonic.Aam:
+                    Op_Aam();
+                    break;
+                case Mnemonic.Daa:
+                    Op_Daa();
+                    break;
                 case Mnemonic.Clc:
                     Op_Clc();
                     break;
@@ -1157,6 +1163,44 @@ namespace MBBSEmu.CPU
             }
         }
 
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Aam()
+        {
+            var al = Registers.AL;
+            var imm = _currentInstruction.Immediate8;
+
+            Registers.AH = (byte)(al / imm);
+            Registers.AL = (byte)(al % imm);
+
+            Flags_EvaluateSignZero(Registers.AL);
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Daa()
+        {
+            int res = Registers.AL;
+            if ((Registers.AL & 0xF) > 9 || Registers.F.IsFlagSet((ushort)EnumFlags.AF)) {
+                res += 6;
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+            }
+
+            if (res > 0x9F || Registers.F.IsFlagSet((ushort)EnumFlags.CF)) {
+                res += 0x60;
+                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            }
+            else
+            {
+                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+
+            Registers.AL = (byte)res;
+
+            Flags_EvaluateSignZero(Registers.AL);
+        }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Loop()
@@ -2980,8 +3024,8 @@ namespace MBBSEmu.CPU
 
             var source = _currentOperationSize switch
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Source),
+                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -4124,6 +4168,20 @@ namespace MBBSEmu.CPU
             else
             {
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+            }
+
+            // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
+            if (arithmeticOperation == EnumArithmeticOperation.Addition)
+            {
+                setFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
+                if (setFlag)
+                {
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+                }
+                else
+                {
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+                }
             }
         }
 

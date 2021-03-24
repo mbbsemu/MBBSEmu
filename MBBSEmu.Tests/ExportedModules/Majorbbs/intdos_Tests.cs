@@ -178,14 +178,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x2F};
+            var testRegisters = new CpuRegisters {AH = 0x1A, DS = 0x1000, DX = 0x3480};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
             var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
-            //Execute Test
+            //Execute Test to set the DTA
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
+                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+
+            //Now get the address we just set
+            testRegisters.AH = 0x2F;
+            testRegistersArrayData = testRegisters.ToRegs();
+            mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
+
+            //Execute Test to retrieve the DTA
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
                 new List<FarPtr> {testRegistersPointer, testRegistersPointer});
 
@@ -194,8 +203,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort) testRegistersArrayData.Length));
 
             //Verify Results
-            //Assert.Equal(0xF000, testRegisters.ES); // regs doesn't return ES
-            Assert.Equal(0x1000, testRegisters.BX);
+            //Assert.Equal(0x1000, testRegisters.ES); // regs doesn't return ES
+            Assert.Equal(0x3480, testRegisters.BX);
         }
 
         [Fact]

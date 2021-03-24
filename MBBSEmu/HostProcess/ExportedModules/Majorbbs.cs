@@ -86,6 +86,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private int _sprIndex;
 
+        /// <summary>
+        ///     Int 21h handler
+        /// </summary>
+        private readonly Int21h _int21h;
+
         public new void Dispose()
         {
             base.Dispose();
@@ -99,6 +104,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousMcvFile = new Stack<FarPtr>(10);
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
+
+            _int21h = new Int21h(Registers, Module.Memory, _clock, _logger, _fileFinder, Console.In, Console.Out, Console.Error, Module.ModulePath);
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;
@@ -3736,7 +3743,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Load registers and pass to Int21h
             var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
-            new Int21h(registers, Module.Memory, _clock, _logger, _fileFinder, Console.In, Console.Out, Console.Error, Module.ModulePath).Handle();
+
+            _int21h.Registers = registers;
+            _int21h.Handle();
 
             Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }
