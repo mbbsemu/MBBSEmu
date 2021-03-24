@@ -6,6 +6,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,7 +30,7 @@ namespace MBBSEmu.DOS.Interrupts
         public CpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
-        private TextReader _stdin { get; init; }
+        private BlockingCollection<byte> _stdin { get; init; }
         private TextWriter _stdout { get; init; }
         private TextWriter _stderr { get; init; }
 
@@ -89,7 +90,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
@@ -105,7 +106,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            _logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -186,6 +187,12 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x62:
                     GetPSPAddress_0x62();
                     break;
+                case 0x33:
+                    ExtendedControlBreakChecking_0x33();
+                    break;
+                case 0x07:
+                    DirectStdinInputNoEcho_0x07();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
             }
@@ -199,6 +206,15 @@ namespace MBBSEmu.DOS.Interrupts
         {
             Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
             Registers.AX = (ushort)code;
+        }
+
+        private void DirectStdinInputNoEcho_0x07()
+        {
+            Registers.DL = 0xFF;
+            var c = _stdin.Take();
+            _stdout.Write((char)c);
+            Registers.AL = c;
+            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
 
         private void ReadFromFileHandle_0x3F()
@@ -217,7 +233,7 @@ namespace MBBSEmu.DOS.Interrupts
             var bytesToRead = Registers.CX;
             var destPtr = new FarPtr(Registers.DS, Registers.DX);
 
-            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream) && fileHandle > 0)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
                 return;
@@ -225,6 +241,23 @@ namespace MBBSEmu.DOS.Interrupts
 
             try
             {
+                //Handle Keyboard Input
+                if (fileHandle == 0)
+                {
+                    var c = _stdin.Take();
+                    _stdout.Write((char)c);
+                    ClearCarryFlag();
+                    if (c == 0xD)
+                    {
+                        Registers.AX = 0;
+                        return;
+                    }
+                    ClearCarryFlag();
+                    Registers.AX = 1;
+                    _memory.SetByte(destPtr, c);
+                    return;
+                }
+
                 var buf = new byte[bytesToRead];
                 var actualBytesRead = fileStream.Read(buf, 0, bytesToRead);
 
@@ -304,7 +337,7 @@ namespace MBBSEmu.DOS.Interrupts
             // DOS - KEYBOARD INPUT (with echo)
             // Return: AL = character read
             // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-            var c = (byte)_stdin.Read();
+            var c = _stdin.Take();
             _stdout.Write((char)c);
             Registers.AL = c;
         }
@@ -791,7 +824,7 @@ namespace MBBSEmu.DOS.Interrupts
             switch (Registers.BX)
             {
                 case (ushort)FileHandle.STDIN:
-                    _stdin.Close();
+                    _stdin.Clear();
                     return;
                 case (ushort)FileHandle.STDOUT:
                     _stdout.Close();
@@ -882,6 +915,17 @@ namespace MBBSEmu.DOS.Interrupts
             {
                 SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
             }
+        }
+
+        private void ExtendedControlBreakChecking_0x33()
+        {
+            if (Registers.AL == 0) //Get State
+            {
+                Registers.DL = 0; //Break OFF
+                return;
+            }
+
+            _logger.Warn("Setting Control-Break State currently Not Supported");
         }
 
         private int GetNextHandle()

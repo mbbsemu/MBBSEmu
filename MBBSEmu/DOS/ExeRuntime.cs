@@ -6,9 +6,12 @@ using MBBSEmu.DOS.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Xml;
 using NLog;
 
 namespace MBBSEmu.DOS
@@ -29,6 +32,9 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
+        private readonly BlockingCollection<byte> consoleInputQueue;
+        private readonly Thread consoleInputThread;
+
         public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility)
         {
             _logger = logger;
@@ -36,7 +42,24 @@ namespace MBBSEmu.DOS
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            consoleInputQueue = new BlockingCollection<byte>(new ConcurrentStack<byte>());
+            //TODO -- EXE Runtime should have an input handler that reads new data from SessionBase
+            consoleInputThread = new Thread(() =>
+            {
+                while (true)
+                {
+                    consoleInputQueue.Add((byte) Console.ReadKey(true).KeyChar);
+                }
+            });
+            consoleInputThread.Start();
+
+            Cpu.Reset(Memory, Registers, null,
+                new List<IInterruptHandler>
+                {
+                    new Int21h(Registers, Memory, clock, _logger, fileUtility, consoleInputQueue, Console.Out, Console.Error,
+                        Environment.CurrentDirectory),
+                    new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger)
+                });
         }
 
         public bool Load(string[] args)
@@ -97,7 +120,7 @@ namespace MBBSEmu.DOS
                 var inMemoryVirtualAddress = Memory.GetWord(relocVirtualAddress);
 #if DEBUG
                 // sanity check against overflows
-                int v = inMemoryVirtualAddress + _programRealModeLoadAddress.Segment;
+                var v = inMemoryVirtualAddress + _programRealModeLoadAddress.Segment;
                 if (v > 0xFFFF)
                     throw new ArgumentException("Relocated segment overflowed");
 #endif
