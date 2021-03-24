@@ -6,6 +6,7 @@ using MBBSEmu.DOS.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using NLog;
@@ -38,12 +39,12 @@ namespace MBBSEmu.DOS
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
         }
 
-        public bool Load()
+        public bool Load(string[] args)
         {
-            CreateEnvironmentVariables();
+            CreateEnvironmentVariables(args);
             LoadProgramIntoMemory();
             ApplyRelocation();
-            SetupPSP();
+            SetupPSP(args);
             SetupEnvironmentVariables();
             SetSegmentRegisters();
             return true;
@@ -57,12 +58,13 @@ namespace MBBSEmu.DOS
 
         private string CreateCommandLine()
         {
-            return "C:\\TEST.EXE";
+            var exeName = Path.GetFileName(File.ExeFile);
+            return $"C:\\BBSV6\\{exeName}";
         }
 
-        private void CreateEnvironmentVariables()
+        private void CreateEnvironmentVariables(string[] args)
         {
-            _environmentVariables["CMDLINE"] = CreateCommandLine();
+            _environmentVariables["CMDLINE"] = CreateCommandLine() + ' ' + String.Join(' ', args);
             _environmentVariables["COMSPEC"] = "C:\\COMMAND.COM";
             _environmentVariables["COPYCMD"] = "COPY";
             _environmentVariables["DIRCMD"] = "DIR";
@@ -120,11 +122,16 @@ namespace MBBSEmu.DOS
         /// <summary>
         ///     Sets up PSP for the program Execution
         /// </summary>
-        private void SetupPSP()
+        private void SetupPSP(string[] args)
         {
-            // no CommandTailLength since we append cmdline to end of environment
-            var psp = new PSPStruct { NextSegOffset = 0xE000, EnvSeg = _environmentSegment, CommandTailLength = 0 };
-            //psp.CommandTail[0] = (byte)'\n';
+            var cmdLine = String.Join(' ', args);
+            // maximum 126 characters, thanks to DOS
+            if (cmdLine.Length > 126)
+                cmdLine = cmdLine.Substring(0, 126);
+
+            var psp = new PSPStruct { NextSegOffset = 0xE000, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length };
+            Array.Copy(Encoding.ASCII.GetBytes(cmdLine), 0, psp.CommandTail, 0, cmdLine.Length);
+
             Memory.SetArray(_pspSegment, 0, psp.Data);
 
             Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
