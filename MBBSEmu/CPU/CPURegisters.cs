@@ -2,9 +2,26 @@
 using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
+using System.Runtime.InteropServices;
 
 namespace MBBSEmu.CPU
 {
+    [StructLayout(LayoutKind.Explicit)]
+    public struct Regs
+    {
+        [FieldOffset(0)]
+        public uint EAX;
+
+        [FieldOffset(0)]
+        public ushort AX;
+
+        [FieldOffset(1)]
+        public byte AH;
+
+        [FieldOffset(0)]
+        public byte AL;
+    }
+
     /// <summary>
     ///     Holds the CPU Registers for the emulated x86 Core
     ///

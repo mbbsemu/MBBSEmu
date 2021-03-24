@@ -6,6 +6,29 @@ namespace MBBSEmu.Tests.Memory
 {
   public class FarPtr_Tests : TestBase
   {
+    private void update(ref MBBSEmu.CPU.Regs r)
+    {
+      r.AL = 0x11;
+    }
+
+    [Fact]
+    public void Regs()
+    {
+      MBBSEmu.CPU.Regs regs;
+      regs.AH = regs.AL = 0;
+      regs.AX = 0;
+
+      regs.EAX = 0x12345678;
+
+      regs.AX.Should().Be(0x5678);
+      regs.AH.Should().Be(0x56);
+      regs.AL.Should().Be(0x78);
+
+      update(ref regs);
+      regs.EAX.Should().Be(0x12345611);
+      regs.AX.Should().Be(0x5611);
+    }
+
     [Fact]
     public void ConstructsFromArray()
     {
