@@ -56,7 +56,7 @@ namespace MBBSEmu.DOS
                 Cpu.Tick();
         }
 
-        private string CreateCommandLine()
+        private string GetFullExecutingPath()
         {
             var exeName = Path.GetFileName(File.ExeFile);
             return $"C:\\BBSV6\\{exeName}";
@@ -64,7 +64,7 @@ namespace MBBSEmu.DOS
 
         private void CreateEnvironmentVariables(string[] args)
         {
-            _environmentVariables["CMDLINE"] = CreateCommandLine() + ' ' + String.Join(' ', args);
+            _environmentVariables["CMDLINE"] = GetFullExecutingPath() + ' ' + String.Join(' ', args);
             _environmentVariables["COMSPEC"] = "C:\\COMMAND.COM";
             _environmentVariables["COPYCMD"] = "COPY";
             _environmentVariables["DIRCMD"] = "DIR";
@@ -156,7 +156,7 @@ namespace MBBSEmu.DOS
             Memory.SetByte(_environmentSegment, bytesWritten++, 0);
 
             //Add EXE
-            Memory.SetArray(_environmentSegment, bytesWritten, Encoding.ASCII.GetBytes(CreateCommandLine() + "\0"));
+            Memory.SetArray(_environmentSegment, bytesWritten, Encoding.ASCII.GetBytes(GetFullExecutingPath() + "\0"));
         }
     }
 }
