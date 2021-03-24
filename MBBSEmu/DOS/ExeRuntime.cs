@@ -57,12 +57,6 @@ namespace MBBSEmu.DOS
 
         private string CreateCommandLine()
         {
-            /*string cmd = File.ExeFile.Replace('/', '\\');
-            if (cmd[1] != ':')
-                cmd = "C:\\" + cmd;
-
-            return cmd;*/
-
             return "C:\\TEST.EXE";
         }
 

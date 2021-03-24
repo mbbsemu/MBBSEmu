@@ -118,7 +118,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             FilePointerDictionary = new PointerDictionary<FileStream>(1, int.MaxValue);
             McvPointerDictionary = new PointerDictionary<McvFile>();
-
         }
 
         /// <summary>

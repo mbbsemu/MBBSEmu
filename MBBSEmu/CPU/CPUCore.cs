@@ -4170,20 +4170,18 @@ namespace MBBSEmu.CPU
                 Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
             }
 
-            setFlag = arithmeticOperation switch
+            // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
+            if (arithmeticOperation == EnumArithmeticOperation.Addition)
             {
-                EnumArithmeticOperation.Addition => ((source & 0xF) + (destination & 0xF)) > 15,
-                EnumArithmeticOperation.Subtraction => (source - destination) < -15,
-                _ => false
-            };
-
-            if (setFlag)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+                setFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
+                if (setFlag)
+                {
+                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+                }
+                else
+                {
+                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+                }
             }
         }
 
