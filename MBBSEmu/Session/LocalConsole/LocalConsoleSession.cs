@@ -15,12 +15,13 @@ namespace MBBSEmu.Session.LocalConsole
     /// </summary>
     public class LocalConsoleSession : SessionBase
     {
-        private ILogger _logger;
-        private IMbbsHost _host;
-        private Timer _timer;
+        private readonly ILogger _logger;
+        private readonly IMbbsHost _host;
+        private readonly Timer _timer;
         private readonly Thread _consoleInputThread;
         private readonly Thread _consoleOutputThread;
         private bool _consoleInputThreadIsRunning;
+        private readonly bool _processClientData;
 
         /// <summary>
         ///     This array allows for easy conversion between Extended ASCII codes used by MajorBBS/WG modules for ANSI graphics and their Unicode
@@ -49,10 +50,11 @@ namespace MBBSEmu.Session.LocalConsole
                 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF  //F0
         };
 
-        public LocalConsoleSession(ILogger logger, string sessionId, IMbbsHost host, ITextVariableService textVariableService) : base(host, sessionId, EnumSessionState.Unauthenticated, textVariableService)
+        public LocalConsoleSession(ILogger logger, string sessionId, IMbbsHost host, ITextVariableService textVariableService, bool processClientData = true, bool disableLogging = true) : base(host, sessionId, EnumSessionState.Unauthenticated, textVariableService)
         {
             _logger = logger;
             _host = host;
+            _processClientData = processClientData;
             SendToClientMethod = dataToSend => UnicodeANSIOutput(dataToSend);
 
             //Timer to trigger btuche() if enabled
@@ -70,7 +72,8 @@ namespace MBBSEmu.Session.LocalConsole
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 new Win32VT100().Enable();
 
-            (_logger as CustomLogger)?.DisableConsoleLogging();
+            if(disableLogging)
+                (_logger as CustomLogger)?.DisableConsoleLogging();
 
             _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
@@ -86,8 +89,10 @@ namespace MBBSEmu.Session.LocalConsole
         {
             while (SessionState != EnumSessionState.LoggedOff && _consoleInputThreadIsRunning)
             {
-                DataFromClient.Add((byte)Console.ReadKey(true).KeyChar);
-                ProcessDataFromClient();
+                DataFromClient.TryAdd((byte)Console.ReadKey(true).KeyChar);
+
+                if(_processClientData)
+                    ProcessDataFromClient();
             }
         }
 

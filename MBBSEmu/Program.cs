@@ -229,7 +229,7 @@ namespace MBBSEmu
                 //EXE File Execution
                 if (!string.IsNullOrEmpty(_exeFile))
                 {
-                    var localSession = new LocalConsoleSession(_logger, "CONSOLE", null, null);
+                    var localSession = new LocalConsoleSession(_logger, "CONSOLE", null, null, false, false);
                     var mzFile = new MZFile(_exeFile);
                     var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>(), localSession);
                     exe.Load(programArgs);

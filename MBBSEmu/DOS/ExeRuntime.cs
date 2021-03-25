@@ -134,7 +134,7 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP(string[] args)
         {
-            var cmdLine = String.Join(' ', args);
+            var cmdLine = string.Join(' ', args);
             // maximum 126 characters, thanks to DOS
             if (cmdLine.Length > 126)
                 cmdLine = cmdLine.Substring(0, 126);
@@ -156,9 +156,9 @@ namespace MBBSEmu.DOS
             ushort bytesWritten = 0;
             foreach (var v in _environmentVariables)
             {
-                string str = v.Key + "=" + v.Value + "\0";
+                var str = $"{v.Key}={v.Value}\0";
                 Memory.SetArray(_environmentSegment, bytesWritten, Encoding.ASCII.GetBytes(str));
-                bytesWritten += (ushort)(str.Length);
+                bytesWritten += (ushort)str.Length;
             }
             // null terminate
             Memory.SetByte(_environmentSegment, bytesWritten++, 0);
