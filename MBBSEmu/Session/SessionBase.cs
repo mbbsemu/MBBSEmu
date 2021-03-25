@@ -218,8 +218,8 @@ namespace MBBSEmu.Session
         public Dictionary<string, TextVariableValue.TextVariableValueDelegate> SessionVariables;
 
         private readonly ITextVariableService _textVariableService;
-        protected readonly IMbbsHost _mbbsHost;
 
+        protected readonly IMbbsHost _mbbsHost;
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
@@ -227,13 +227,18 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClient(byte[] dataToSend)
         {
-            if (OutputEnabled)
-            {
-                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-                var dataToSendProcessed = _textVariableService.Parse(dataToSendSpan, SessionVariables).ToArray();
+            if (!OutputEnabled) return;
 
-                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+            if (_textVariableService == null)
+            {
+                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
+                return;
             }
+
+            var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+            var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
+
+            SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
         }
 
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));

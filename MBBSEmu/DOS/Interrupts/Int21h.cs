@@ -31,7 +31,7 @@ namespace MBBSEmu.DOS.Interrupts
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
         private BlockingCollection<byte> _stdin { get; init; }
-        private TextWriter _stdout { get; init; }
+        private BlockingCollection<byte[]> _stdout { get; init; }
         private TextWriter _stderr { get; init; }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, TextWriter stdout, TextWriter stderr, string path = "")
+        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, BlockingCollection<byte[]> stdout, TextWriter stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
@@ -212,7 +212,7 @@ namespace MBBSEmu.DOS.Interrupts
         {
             Registers.DL = 0xFF;
             var c = _stdin.Take();
-            _stdout.Write((char)c);
+            _stdout.Add(new []{c});
             Registers.AL = c;
             Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
@@ -245,7 +245,7 @@ namespace MBBSEmu.DOS.Interrupts
                 if (fileHandle == 0)
                 {
                     var c = _stdin.Take();
-                    _stdout.Write((char)c);
+                    _stdout.Add(new[] { c });
                     ClearCarryFlag();
                     if (c == 0xD)
                     {
@@ -338,7 +338,7 @@ namespace MBBSEmu.DOS.Interrupts
             // Return: AL = character read
             // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
             var c = _stdin.Take();
-            _stdout.Write((char)c);
+            _stdout.Add(new[] { c });
             Registers.AL = c;
         }
 
@@ -441,7 +441,7 @@ namespace MBBSEmu.DOS.Interrupts
             while ((b = _memory.GetByte(src++)) != '$')
                 memoryStream.WriteByte(b);
 
-            _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+                _stdout.Add(memoryStream.ToArray());
         }
 
         private void GetDefaultDiskNumber_0x19()
@@ -579,7 +579,7 @@ namespace MBBSEmu.DOS.Interrupts
                     SetCarryFlagErrorCodeInAX(DOSErrorCode.WRITE_FAULT);
                     break;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Write(Encoding.ASCII.GetString(dataToWrite));
+                    _stdout.Add(dataToWrite.ToArray());
                     ClearCarryFlag();
                     Registers.AX = numberOfBytes;
                     return;
@@ -668,7 +668,7 @@ namespace MBBSEmu.DOS.Interrupts
                 AL = exit code
                 Return: never returns
             */
-            _stdout.Flush();
+            _stdout.Clear();
             _stderr.Flush();
 
             //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
@@ -827,7 +827,7 @@ namespace MBBSEmu.DOS.Interrupts
                     _stdin.Clear();
                     return;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Close();
+                    _stdout.Clear();
                     return;
                 case (ushort)FileHandle.STDERR:
                     _stderr.Close();

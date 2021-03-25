@@ -5,14 +5,14 @@ using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
+using NLog;
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
-using System.Xml;
-using NLog;
+using MBBSEmu.Session;
 
 namespace MBBSEmu.DOS
 {
@@ -32,31 +32,18 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
-        private readonly BlockingCollection<byte> consoleInputQueue;
-        private readonly Thread consoleInputThread;
-
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase)
         {
             _logger = logger;
             File = file;
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-            consoleInputQueue = new BlockingCollection<byte>(new ConcurrentStack<byte>());
-            //TODO -- EXE Runtime should have an input handler that reads new data from SessionBase
-            consoleInputThread = new Thread(() =>
-            {
-                while (true)
-                {
-                    consoleInputQueue.Add((byte) Console.ReadKey(true).KeyChar);
-                }
-            });
-            consoleInputThread.Start();
 
             Cpu.Reset(Memory, Registers, null,
                 new List<IInterruptHandler>
                 {
-                    new Int21h(Registers, Memory, clock, _logger, fileUtility, consoleInputQueue, Console.Out, Console.Error,
+                    new Int21h(Registers, Memory, clock, _logger, fileUtility, sessionBase.DataFromClient, sessionBase.DataToClient, Console.Error,
                         Environment.CurrentDirectory),
                     new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger)
                 });

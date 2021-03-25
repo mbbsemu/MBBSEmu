@@ -19,6 +19,7 @@ namespace MBBSEmu.Session.LocalConsole
         private IMbbsHost _host;
         private Timer _timer;
         private readonly Thread _consoleInputThread;
+        private readonly Thread _consoleOutputThread;
         private bool _consoleInputThreadIsRunning;
 
         /// <summary>
@@ -74,7 +75,11 @@ namespace MBBSEmu.Session.LocalConsole
             _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
             _consoleInputThread.Start();
-            _host.AddSession(this);
+
+            _consoleOutputThread = new Thread(OutputThread);
+            _consoleOutputThread.Start();
+
+            _host?.AddSession(this);
         }
 
         private void InputThread()
@@ -83,6 +88,15 @@ namespace MBBSEmu.Session.LocalConsole
             {
                 DataFromClient.Add((byte)Console.ReadKey(true).KeyChar);
                 ProcessDataFromClient();
+            }
+        }
+
+        private void OutputThread()
+        {
+            while (_consoleInputThreadIsRunning)
+            {
+                if (DataToClient.TryTake(out var dataToSend, 500))
+                    UnicodeANSIOutput(dataToSend);
             }
         }
 
@@ -114,7 +128,7 @@ namespace MBBSEmu.Session.LocalConsole
 
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();
-            _host.Stop();
+            _host?.Stop();
 
             Console.Clear();
             // the thread is stuck in ReadKey, the user needs to free that thread to end the
