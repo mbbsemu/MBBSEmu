@@ -46,7 +46,8 @@ namespace MBBSEmu.DOS.Interrupts
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private FarPtr DiskTransferArea {
+        private FarPtr DiskTransferArea
+        {
             get
             {
                 if (_dta != null)
@@ -212,7 +213,7 @@ namespace MBBSEmu.DOS.Interrupts
         {
             Registers.DL = 0xFF;
             var c = _stdin.Take();
-            _stdout.Add(new []{c});
+            _stdout.Add(new[] { c });
             Registers.AL = c;
             Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
@@ -247,15 +248,19 @@ namespace MBBSEmu.DOS.Interrupts
                     var c = _stdin.Take();
                     _stdout.Add(new[] { c });
                     ClearCarryFlag();
+
+                    //ENTER sends 0xD if you Console.ReadKey().KeyChar
+                    //We need to send 0xA as fgets() uses 0xA to denote end of input
                     if (c == 0xD)
                     {
-                        _stdout.Add(new[] {(byte) '\r', (byte) '\n'});
-                        Registers.AX = 0;
-                        return;
+                        c = 0xA;
+                        _stdout.Add(new[] { c });
                     }
-                    ClearCarryFlag();
+
+                    //Handle Character Input
                     Registers.AX = 1;
                     _memory.SetByte(destPtr, c);
+
                     return;
                 }
 
@@ -442,7 +447,7 @@ namespace MBBSEmu.DOS.Interrupts
             while ((b = _memory.GetByte(src++)) != '$')
                 memoryStream.WriteByte(b);
 
-                _stdout.Add(memoryStream.ToArray());
+            _stdout.Add(memoryStream.ToArray());
         }
 
         private void GetDefaultDiskNumber_0x19()
@@ -493,10 +498,10 @@ namespace MBBSEmu.DOS.Interrupts
             //DOS - GET CURRENT TIME
             //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
             var now = _clock.Now;
-            Registers.CH = (byte) now.Hour;
-            Registers.CL = (byte) now.Minute;
-            Registers.DH = (byte) now.Second;
-            Registers.DL = (byte) (now.Millisecond / 10);
+            Registers.CH = (byte)now.Hour;
+            Registers.CL = (byte)now.Minute;
+            Registers.DH = (byte)now.Second;
+            Registers.DL = (byte)(now.Millisecond / 10);
         }
 
         private void GetDiskTransferAreaAddress_0x2F()
@@ -706,7 +711,7 @@ namespace MBBSEmu.DOS.Interrupts
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             var foundFile = _fileUtility.FindFile(_path, fileName);
 
-            if(!File.Exists($"{_path}{foundFile}"))
+            if (!File.Exists($"{_path}{foundFile}"))
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
