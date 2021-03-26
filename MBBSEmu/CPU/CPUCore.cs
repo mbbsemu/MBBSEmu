@@ -308,7 +308,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true;
+            _showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -1159,7 +1159,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op1Kind}");
             }
         }
 
@@ -2761,7 +2761,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if(_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
 
                         //Loaded an Exported Function Delegate from Memory
@@ -2797,7 +2797,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector}:{_currentInstruction.Immediate16}");
+                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector:X4}:{_currentInstruction.Immediate16:X4}");
 #endif
 
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
@@ -2825,7 +2825,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
                         break;
                     }
@@ -2838,7 +2838,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
                         break;
                     }
@@ -2855,7 +2855,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                             if (_showDebug)
-                                _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                                _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
 
                         }

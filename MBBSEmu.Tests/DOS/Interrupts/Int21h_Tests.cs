@@ -17,6 +17,7 @@ namespace MBBSEmu.Tests.Memory
 {
   public class Int21h_Tests : TestBase
   {
+
     private readonly CpuRegisters _registers = new CpuRegisters();
     private readonly FakeClock _fakeClock = new FakeClock();
     private readonly ServiceResolver _serviceResolver;
@@ -90,7 +91,7 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
       _registers.AH = 0x48;
@@ -98,7 +99,7 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT + 2);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT + 2);
     }
 
     [Fact]
@@ -126,18 +127,18 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
       _registers.AH = 0x49;
-      _registers.ES = RealModeMemoryCore.HEAP_BASE_SEGMENT;
+      _registers.ES = RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT;
       _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
 
       _int21.Handle();
 
       _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
 
-      _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.HEAP_BASE_SEGMENT, 0));
+      _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT, 0));
     }
 
     [Fact]

@@ -105,7 +105,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+           //_logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -170,7 +170,7 @@ namespace MBBSEmu.DOS.Interrupts
                     break;
                 case 0x44 when Registers.AL == 0x00:
                     GetDeviceInformation();
-                    return;
+                    break;
                 case 0x47:
                     GetCurrentDirectory_0x47();
                     break;
@@ -326,6 +326,15 @@ namespace MBBSEmu.DOS.Interrupts
             //             BX = maximum available
             //         CF clear if successful
             //             AX = segment of allocated memory block
+
+            if (_allocationStrategy == AllocationStrategy.LAST_FIT)
+            {
+                _logger.Warn("Returning 0x9FAE for top of heap");
+                ClearCarryFlag();
+                Registers.AX = 0x9FAE;
+                return;
+            }
+
             var ptr = _memory.Malloc((uint)(Registers.BX * 16));
             if (!ptr.IsNull() && ptr.Offset != 0)
                 throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
@@ -540,6 +549,8 @@ namespace MBBSEmu.DOS.Interrupts
 
             var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
 
+            _logger.Error($"Writing {numberOfBytes} to {fileHandle}");
+
             switch (fileHandle)
             {
                 case (ushort)FileHandle.STDIN:
@@ -624,7 +635,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
 
-            Registers.BX = 0xFFFF;
+            // don't update BX, leave it alone to say we resized exactly as client requested
             ClearCarryFlag();
         }
 
