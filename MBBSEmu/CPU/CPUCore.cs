@@ -310,7 +310,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            _showDebug = true;
+            //_showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -730,7 +730,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -781,7 +788,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -838,7 +852,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetDWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetDWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -3334,7 +3355,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Lodsb()
         {
-            Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
+            Registers.AL = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {
@@ -3867,7 +3888,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Lodsw()
         {
-            Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
+            Registers.AX = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
             {

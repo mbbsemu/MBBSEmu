@@ -61,7 +61,7 @@ dta: 1000:0080
 
 PSP: first byte beyond: 9FB3:0000
 PSP: env_segment: 9FB4:0000
-PSP: cmdTailLength: 13
+PSP: cmdTailLength: 14
 PSP: env[0]:CMDLINE=C:\BBSV6\CMDLINE.EXE one two three
 PSP: env[1]:COMSPEC=C:\COMMAND.COM
 PSP: env[2]:COPYCMD=COPY
@@ -71,10 +71,10 @@ PSP: env[5]:TMP=C:\TEMP
 PSP: env[6]:TEMP=C:\TEMP
 PSP: env[0]:0 env[1]:1 env[2]:0 env[3]:67 env[4]:58 env[5]:92
 
-Printing 4 cmdline args from FFDC
-FFE2:
-FFF7:one
-FFF7:two
+Printing 4 cmdline args from FFD0
+FFDA:C:\BBSV6\CMDLINE.EXE
+FFEF:one
+FFF3:two
 FFF7:three
 
 Printing environment variables from 0CDE
