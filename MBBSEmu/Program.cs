@@ -230,7 +230,7 @@ namespace MBBSEmu
                 if (!string.IsNullOrEmpty(_exeFile))
                 {
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>());
+                    var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>(), Console.In, Console.Out, Console.Error);
                     exe.Load(programArgs);
                     exe.Run();
                     return;

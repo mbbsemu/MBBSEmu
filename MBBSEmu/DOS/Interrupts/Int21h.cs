@@ -549,7 +549,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
 
-            _logger.Error($"Writing {numberOfBytes} to {fileHandle}");
+            //_logger.Error($"Writing {numberOfBytes} to {fileHandle}");
 
             switch (fileHandle)
             {

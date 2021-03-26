@@ -79,6 +79,8 @@ namespace MBBSEmu.CPU
         /// </summary>
         public const ushort STACK_BASE = 0xFFFE;
 
+        private byte _timer = 0;
+
         /// <summary>
         ///     Default Segment for the Stack in Memory
         /// </summary>
@@ -388,6 +390,8 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Wait:
                 case Mnemonic.Nop:
                 case Mnemonic.In:
+                    Registers.AL = _timer++;
+                    break;
                 case Mnemonic.Out:
                     break;
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going

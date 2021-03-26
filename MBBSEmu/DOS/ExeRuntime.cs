@@ -40,13 +40,13 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr)
         {
             _logger = logger;
             File = file;
             Memory = new RealModeMemoryCore(0x8000, logger);
             Cpu = new CpuCore(_logger);
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
         }
 
         private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);
@@ -130,12 +130,14 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP(string[] args)
         {
-            var cmdLine = String.Join(' ', args);
+            var cmdLine = ' ' + String.Join(' ', args);
             // maximum 126 characters, thanks to DOS
             if (cmdLine.Length > 126)
                 cmdLine = cmdLine.Substring(0, 126);
 
-            var psp = new PSPStruct { NextSegOffset = _nextSegmentOffset, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length };
+            _logger.Error($"CommandTail: \"{cmdLine}:{cmdLine.Length}\"");
+
+            var psp = new PSPStruct { NextSegOffset = _nextSegmentOffset, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length};
             Array.Copy(Encoding.ASCII.GetBytes(cmdLine), 0, psp.CommandTail, 0, cmdLine.Length);
 
             Memory.SetArray(_pspSegment, 0, psp.Data);
