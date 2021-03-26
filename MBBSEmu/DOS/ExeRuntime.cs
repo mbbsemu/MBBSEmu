@@ -77,7 +77,7 @@ namespace MBBSEmu.DOS
 
         private void CreateEnvironmentVariables(string[] args)
         {
-            //_environmentVariables["CMDLINE"] = GetFullExecutingPath() + ' ' + String.Join(' ', args);
+            _environmentVariables["CMDLINE"] = GetFullExecutingPath() + ' ' + String.Join(' ', args);
             _environmentVariables["COMSPEC"] = "C:\\COMMAND.COM";
             _environmentVariables["COPYCMD"] = "COPY";
             _environmentVariables["DIRCMD"] = "DIR";
@@ -169,6 +169,10 @@ namespace MBBSEmu.DOS
             //Add EXE
             var exePath = Encoding.ASCII.GetBytes(GetFullExecutingPath() + "\0");
             Memory.SetArray(_environmentSegment, bytesWritten, exePath);
+            bytesWritten += (ushort)exePath.Length;
+
+            if (_environmentSize != bytesWritten)
+                throw new InvalidProgramException("We screwed up");
         }
 
         private ushort CalculateEnvironmentSize()
