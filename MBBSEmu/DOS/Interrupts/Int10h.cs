@@ -1,20 +1,27 @@
-﻿using MBBSEmu.CPU;
+﻿using System.Collections.Concurrent;
+using System.Text;
+using MBBSEmu.CPU;
 using NLog;
 
 namespace MBBSEmu.DOS.Interrupts
 {
     public class Int10h : IInterruptHandler
     {
+        private const string ANSI_CLEAR_SCREEN = "\x1B[2J";
+        private const string ANSI_SET_CURSOR_POSITION = "\x1B[{0};{1}H";
+
         private ILogger _logger { get; init; }
+        private readonly BlockingCollection<byte[]> _stdout;
 
         private CpuRegisters _registers { get; init; }
 
         public byte Vector => 0x10;
 
-        public Int10h(CpuRegisters registers, ILogger logger)
+        public Int10h(CpuRegisters registers, ILogger logger, BlockingCollection<byte[]> stdout)
         {
             _registers = registers;
             _logger = logger;
+            _stdout = stdout;
         }
 
         public void Handle()
@@ -32,7 +39,12 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x08:
                     ReadAttributes_CharacterAtCursorPosition_0x08();
                     return;
-                    
+                case 0x06:
+                    ScrollPageUp_0x06();
+                    return;
+                case 0x02:
+                    SetCursorPosition_0x02();
+                    return;
             }
         }
 
@@ -91,6 +103,39 @@ namespace MBBSEmu.DOS.Interrupts
 
             _registers.AL = 0x0; //TODO -- Null for now?
             _registers.AH = 0x0; //TODO -- Attributes of Character?
+        }
+
+        /// <summary>
+        /// INT 10 - AH = 06h VIDEO - SCROLL PAGE UP
+        /// AL = number of lines to scroll window (0 = blank whole window)
+        /// BH = attributes to be used on blanked lines
+        /// CH,CL = row,column of upper left corner of window to scroll
+        /// DH,DL = row,column of lower right corner of window
+        /// </summary>
+        private void ScrollPageUp_0x06()
+        {
+            //Blank Whole Screen?
+            if (_registers.AL == 0)
+            {
+                _stdout.Add(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
+                return;
+            }
+
+            _logger.Warn($"Scrolling up {_registers.AL} lines not currently supported");
+
+        }
+
+        /// <summary>
+        /// INT 10 - AH = 02h VIDEO - SET CURSOR POSITION
+        /// DH,DL = row, column (0,0 = upper left)
+        /// BH = page number
+        /// 0 in graphics modes
+        /// 0-3 in modes 2&amp;3
+        /// 0-7 in modes 0&amp;1
+        /// </summary>
+        private void SetCursorPosition_0x02()
+        {
+            _stdout.Add(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _registers.DH, _registers.DL)));
         }
     }
 }

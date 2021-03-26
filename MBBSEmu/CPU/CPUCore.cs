@@ -6,7 +6,6 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU

@@ -45,7 +45,7 @@ namespace MBBSEmu.DOS
                 {
                     new Int21h(Registers, Memory, clock, _logger, fileUtility, sessionBase.DataFromClient, sessionBase.DataToClient, Console.Error,
                         Environment.CurrentDirectory),
-                    new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger)
+                    new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger, sessionBase.DataToClient)
                 });
         }
 
