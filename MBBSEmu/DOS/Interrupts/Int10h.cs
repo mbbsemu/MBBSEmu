@@ -26,15 +26,45 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x0F:
                     GetCurrentVideoMode_0x0F();
                     return;
+                case 0x12:
+                    AlternateFunctionSelect_0x12();
+                    return;
+                case 0x08:
+                    ReadAttributes_CharacterAtCursorPosition();
+                    return;
+                    
             }
         }
 
 
         private void GetCurrentVideoMode_0x0F()
         {
-            _registers.AH = 80;
-            _registers.BL = 0x03; //80x34
-            _registers.BH = 0x00;
+            _registers.AH = 80; //Columns
+            _registers.BL = 0x10; //640x480 16 colors 80x25 text resolution
+            _registers.BH = 0x00; //Initial Page?
+        }
+
+        private void AlternateFunctionSelect_0x12()
+        {
+            switch (_registers.BL)
+            {
+                case 0x10: //Return EGA Information
+                {
+                    _registers.BH = 0; //Color Mode
+                    _registers.BL = 3; //256k bytes Memory Installed
+                    _registers.CH = 0; //TODO -- Feature Bits?
+                    _registers.CL = 0; //TODO -- Switch Settings?
+                    return;
+                }
+            }
+        }
+
+        private void ReadAttributes_CharacterAtCursorPosition()
+        {
+            // Input: _registers.BL == Display Page
+
+            _registers.AL = 0x0; //TODO -- Null for now?
+            _registers.AH = 0x0; //TODO -- Attributes of Character?
         }
     }
 }

@@ -249,6 +249,7 @@ namespace MBBSEmu.DOS.Interrupts
                     ClearCarryFlag();
                     if (c == 0xD)
                     {
+                        _stdout.Add(new[] {(byte) '\r', (byte) '\n'});
                         Registers.AX = 0;
                         return;
                     }
