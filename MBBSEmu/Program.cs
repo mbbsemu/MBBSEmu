@@ -405,7 +405,7 @@ namespace MBBSEmu
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++, m.ModuleIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++, _moduleConfigurations, m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }
