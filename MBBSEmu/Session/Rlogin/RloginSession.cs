@@ -102,7 +102,7 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
-                if (_mbbsHost.GetModuleConfig(ModuleIdentifier).ModuleEnabled == false)
+                if (_mbbsHost.GetModuleConfiguration(ModuleIdentifier).ModuleEnabled == false)
                 {
                     _logger.Warn($"User attempted to login to disabled module {ModuleIdentifier}");
                     Send($"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray());

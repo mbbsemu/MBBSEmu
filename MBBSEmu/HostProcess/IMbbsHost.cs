@@ -53,7 +53,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="moduleId"></param>
         /// <returns></returns>
-        public ModuleConfiguration GetModuleConfig(string moduleId);
+        public ModuleConfiguration GetModuleConfiguration(string moduleId);
 
         /// <summary>
         ///     Schedules nightly shutdown to occur immediately

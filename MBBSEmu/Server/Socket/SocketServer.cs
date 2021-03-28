@@ -1,6 +1,5 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Memory;
-using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
@@ -8,7 +7,6 @@ using MBBSEmu.Session.Telnet;
 using MBBSEmu.TextVariables;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 

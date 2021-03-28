@@ -954,7 +954,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="moduleId"></param>
         /// <returns></returns>
-        public ModuleConfiguration GetModuleConfig(string moduleId)
+        public ModuleConfiguration GetModuleConfiguration(string moduleId)
         {
             var module = _moduleConfigurations[_moduleConfigurations.FindIndex(i =>
                 i.ModuleIdentifier.Equals(moduleId, StringComparison.InvariantCultureIgnoreCase))];
