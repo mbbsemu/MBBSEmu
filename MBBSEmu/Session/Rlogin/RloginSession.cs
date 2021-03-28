@@ -81,10 +81,7 @@ namespace MBBSEmu.Session.Rlogin
             //Check to see if there is an available channel
             if (_channelDictionary.Count > _configuration.BBSChannels)
             {
-                var channelFullMsg =
-                    $"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|"
-                        .EncodeToANSIArray();
-                Send(channelFullMsg);
+                Send($"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|".EncodeToANSIArray());
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
@@ -94,10 +91,7 @@ namespace MBBSEmu.Session.Rlogin
                 rloginStrings.First(s => !string.IsNullOrEmpty(s)), StringComparison.CurrentCultureIgnoreCase)))
             {
                 _logger.Info("RLogin -- User already logged in");
-                var duplicateLoginMsg =
-                    "\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|"
-                        .EncodeToANSIArray();
-                Send(duplicateLoginMsg);
+                Send("\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
@@ -111,15 +105,11 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
-                var moduleIndex = ModuleConfigurations.FindIndex(i =>
-                    i.ModuleIdentifier.Equals(ModuleIdentifier, StringComparison.InvariantCultureIgnoreCase));
-
-                if (ModuleConfigurations[moduleIndex].ModuleEnabled == false)
+                if (ModuleConfigurations[ModuleConfigurations.FindIndex(i =>
+                    i.ModuleIdentifier.Equals(ModuleIdentifier, StringComparison.InvariantCultureIgnoreCase))].ModuleEnabled == false)
                 {
                     _logger.Warn($"User attempted to login to disabled module {ModuleIdentifier}");
-                    var duplicateLoginMsg =
-                        $"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray();
-                    Send(duplicateLoginMsg);
+                    Send($"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray());
                     SessionState = EnumSessionState.LoggedOff;
                     return false;
                 }
