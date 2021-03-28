@@ -950,6 +950,19 @@ namespace MBBSEmu.HostProcess
         public MbbsModule GetModule(string uniqueIdentifier) => _modules[uniqueIdentifier];
 
         /// <summary>
+        ///     Gets the  specified Module from the Module Configuration
+        /// </summary>
+        /// <param name="moduleId"></param>
+        /// <returns></returns>
+        public ModuleConfiguration GetModuleConfig(string moduleId)
+        {
+            var module = _moduleConfigurations[_moduleConfigurations.FindIndex(i =>
+                i.ModuleIdentifier.Equals(moduleId, StringComparison.InvariantCultureIgnoreCase))];
+
+            return module;
+        }
+
+        /// <summary>
         ///     Assigns a Channel # to a session and adds it to the Channel Dictionary
         /// </summary>
         /// <param name="session"></param>

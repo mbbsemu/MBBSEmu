@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using MBBSEmu.Module;
 
 namespace MBBSEmu.Session.Rlogin
 {
@@ -38,12 +37,10 @@ namespace MBBSEmu.Session.Rlogin
         private readonly MemoryStream memoryStream = new(1024);
 
         public readonly string ModuleIdentifier;
-        public readonly List<ModuleConfiguration> ModuleConfigurations;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, ITextVariableService textVariableService, List<ModuleConfiguration> moduleConfigurations = null, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
         {
             ModuleIdentifier = moduleIdentifier;
-            ModuleConfigurations = moduleConfigurations;
             _channelDictionary = channelDictionary;
             _configuration = configuration;
             SessionType = EnumSessionType.Rlogin;
@@ -105,8 +102,7 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
-                if (ModuleConfigurations[ModuleConfigurations.FindIndex(i =>
-                    i.ModuleIdentifier.Equals(ModuleIdentifier, StringComparison.InvariantCultureIgnoreCase))].ModuleEnabled == false)
+                if (_mbbsHost.GetModuleConfig(ModuleIdentifier).ModuleEnabled == false)
                 {
                     _logger.Warn($"User attempted to login to disabled module {ModuleIdentifier}");
                     Send($"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray());

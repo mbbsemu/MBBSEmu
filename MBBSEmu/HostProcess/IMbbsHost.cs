@@ -49,6 +49,13 @@ namespace MBBSEmu.HostProcess
         public MbbsModule GetModule(string uniqueIdentifier);
 
         /// <summary>
+        ///     Gets the  specified Module from the Module Configuration
+        /// </summary>
+        /// <param name="moduleId"></param>
+        /// <returns></returns>
+        public ModuleConfiguration GetModuleConfig(string moduleId);
+
+        /// <summary>
         ///     Schedules nightly shutdown to occur immediately
         /// </summary>
         /// <param name="restartCompletionEvent">EventWaitHandle to set when restart has completed</param>
