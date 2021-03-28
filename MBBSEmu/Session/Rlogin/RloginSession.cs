@@ -102,7 +102,7 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
-                if (_mbbsHost.GetModuleConfiguration(ModuleIdentifier).ModuleEnabled == false)
+                if (_mbbsHost.GetModule(ModuleIdentifier).ModuleConfig.ModuleEnabled == false)
                 {
                     _logger.Warn($"User attempted to login to disabled module {ModuleIdentifier}");
                     Send($"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray());
@@ -111,7 +111,7 @@ namespace MBBSEmu.Session.Rlogin
                 }
 
                 CurrentModule = _mbbsHost.GetModule(ModuleIdentifier);
-                InputBuffer.WriteByte((byte)CurrentModule.MenuOptionKey[0]);
+                InputBuffer.WriteByte((byte)CurrentModule.ModuleConfig.MenuOptionKey[0]);
                 SessionState = EnumSessionState.RloginEnteringModule;
             }
             else

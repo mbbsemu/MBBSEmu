@@ -49,9 +49,9 @@ namespace MBBSEmu.Module
         public readonly string ModulePath;
 
         /// <summary>
-        ///     Menu Option Key of Module
+        ///     Module Configuration
         /// </summary>
-        public string MenuOptionKey { get; set; }
+        public ModuleConfiguration ModuleConfig { get; set; }
 
         /// <summary>
         ///     Module MSG File
