@@ -130,15 +130,12 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="moduleIdentifier">Will be null in a test</param>
-        /// /// <param name="moduleEnabled">Module Enabled</param>
+        /// <param name="moduleEnabled">Module Enabled</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
         public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, bool moduleEnabled, string path = "", ProtectedModeMemoryCore memoryCore = null)
         {
-            if (!moduleEnabled)
-                return;
-
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
@@ -191,6 +188,10 @@ namespace MBBSEmu.Module
             GlobalCommandHandlers = new List<FarPtr>();
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
+
+            //If module disabled don't go any farther
+            if (!moduleEnabled)
+                return;
 
             Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
             ProtectedMemory = (ProtectedModeMemoryCore)Memory;

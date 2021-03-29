@@ -1238,7 +1238,6 @@ namespace MBBSEmu.HostProcess
             _isRunning = false;
 
             CallModuleRoutine("finrou", null, _modules[moduleId]);
-            _modules.Remove(_modules[moduleId].ModuleIdentifier);
 
             var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(_modules[moduleId].ModuleIdentifier)).ToList();
 

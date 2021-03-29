@@ -451,7 +451,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, _modules[commandSequence[2]].ModuleIdentifier);
+            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, _modules[moduleChange].ModuleIdentifier);
         }
 
         /// <summary>
