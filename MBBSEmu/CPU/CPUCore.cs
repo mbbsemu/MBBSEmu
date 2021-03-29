@@ -4215,14 +4215,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            if (setFlag)
-            {
-                Registers.Carry = true;
-            }
-            else
-            {
-                Registers.Carry = false;
-            }
+            Registers.Carry = setFlag;
         }
 
         /// <summary>
@@ -4248,14 +4241,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            if (setFlag)
-            {
-                Registers.Carry = true;
-            }
-            else
-            {
-                Registers.Carry = false;
-            }
+            Registers.Carry = setFlag;
         }
 
         /// <summary>
