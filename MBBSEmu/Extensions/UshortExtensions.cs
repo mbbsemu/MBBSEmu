@@ -11,7 +11,7 @@ namespace MBBSEmu.Extensions
         /// <param name="b"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsNegative(this ushort b) => (b >> 15) == 1;
+        public static bool IsNegative(this ushort b) => (b & 0x8000) != 0;
 
         /// <summary>
         ///     Returns if the specified bit was set
