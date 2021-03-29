@@ -7,8 +7,10 @@ using System.Runtime.InteropServices;
 namespace MBBSEmu.CPU
 {
     [StructLayout(LayoutKind.Explicit)]
-    public struct Regs
+    public struct FastCpuRegisters
     {
+        public static FastCpuRegisters Create() => new FastCpuRegisters();
+
         [FieldOffset(0)]
         public uint EAX;
 
@@ -20,6 +22,290 @@ namespace MBBSEmu.CPU
 
         [FieldOffset(0)]
         public byte AL;
+
+        // EBX
+        [FieldOffset(4)]
+        public uint EBX;
+
+        [FieldOffset(4)]
+        public ushort BX;
+
+        [FieldOffset(5)]
+        public byte BH;
+
+        [FieldOffset(4)]
+        public byte BL;
+
+        // ECX
+        [FieldOffset(8)]
+        public uint ECX;
+
+        [FieldOffset(8)]
+        public ushort CX;
+
+        [FieldOffset(9)]
+        public byte CH;
+
+        [FieldOffset(8)]
+        public byte CL;
+
+        // EDX
+        [FieldOffset(12)]
+        public uint EDX;
+
+        [FieldOffset(12)]
+        public ushort DX;
+
+        [FieldOffset(13)]
+        public byte DH;
+
+        [FieldOffset(12)]
+        public byte DL;
+
+        // ESP
+        [FieldOffset(16)]
+        public uint ESP;
+
+        [FieldOffset(16)]
+        public ushort SP;
+
+        // EBP
+        [FieldOffset(20)]
+        public uint EBP;
+
+        [FieldOffset(20)]
+        public ushort BP;
+
+        // ESI
+        [FieldOffset(24)]
+        public uint ESI;
+
+        [FieldOffset(24)]
+        public ushort SI;
+
+        // EDI
+        [FieldOffset(28)]
+        public uint EDI;
+
+        [FieldOffset(28)]
+        public ushort DI;
+
+        [FieldOffset(32)]
+        public ushort DS;
+        [FieldOffset(34)]
+        public ushort ES;
+        [FieldOffset(36)]
+        public ushort SS;
+        [FieldOffset(38)]
+        public ushort CS;
+        [FieldOffset(40)]
+        public ushort IP;
+
+        [FieldOffset(42)]
+        public bool Carry;
+        [FieldOffset(43)]
+        public bool Sign;
+        [FieldOffset(44)]
+        public bool Overflow;
+        [FieldOffset(45)]
+        public bool Zero;
+        [FieldOffset(46)]
+        public bool Direction;
+        [FieldOffset(47)]
+        public bool AuxiliaryCarry;
+        [FieldOffset(48)]
+        public bool InterruptFlag;
+        [FieldOffset(49)]
+        public bool Halt;
+
+        /// <summary>
+        ///     Gets Value based on the specified Register
+        /// </summary>
+        /// <param name="register"></param>
+        /// <returns></returns>
+        public ushort GetValue(Register register)
+        {
+            return register switch
+            {
+                Register.AX => AX,
+                Register.AL => AL,
+                Register.AH => AH,
+                Register.CL => CL,
+                Register.DL => DL,
+                Register.BL => BL,
+                Register.CH => CH,
+                Register.DH => DH,
+                Register.BH => BH,
+                Register.CX => CX,
+                Register.DX => DX,
+                Register.BX => BX,
+                Register.SP => SP,
+                Register.BP => BP,
+                Register.SI => SI,
+                Register.DI => DI,
+                Register.ES => ES,
+                Register.CS => CS,
+                Register.SS => SS,
+                Register.DS => DS,
+                Register.EIP => IP,
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
+        }
+
+        public uint GetValue32(Register register)
+        {
+            return register switch
+            {
+                Register.EAX => EAX,
+                Register.EBX => EBX,
+                Register.ECX => ECX,
+                Register.EDX => EDX,
+                Register.ESP => ESP,
+                Register.EBP => EBP,
+                Register.EDI => EDI,
+                Register.ESI => ESI,
+                _ => throw new ArgumentOutOfRangeException(nameof(register), register, null)
+            };
+        }
+
+        /// <summary>
+        ///     Sets the specified Register to the specified 8-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
+        public void SetValue(Register register, byte value)
+        {
+            switch (register)
+            {
+                case Register.AL:
+                    AL = value;
+                    break;
+                case Register.AH:
+                    AH = value;
+                    break;
+                case Register.BH:
+                    BH = value;
+                    break;
+                case Register.BL:
+                    BL = value;
+                    break;
+                case Register.CH:
+                    CH = value;
+                    break;
+                case Register.CL:
+                    CL = value;
+                    break;
+                case Register.DH:
+                    DH = value;
+                    break;
+                case Register.DL:
+                    DL = value;
+                    break;
+                default:
+                    SetValue(register, (ushort)value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Sets the specified Register to the specified 16-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
+        public void SetValue(Register register, ushort value)
+        {
+            switch (register)
+            {
+                case Register.AX:
+                    AX = value;
+                    break;
+                case Register.CX:
+                    CX = value;
+                    break;
+                case Register.DX:
+                    DX = value;
+                    break;
+                case Register.BX:
+                    BX = value;
+                    break;
+                case Register.SP:
+                    SP = value;
+                    break;
+                case Register.BP:
+                    BP = value;
+                    break;
+                case Register.SI:
+                    SI = value;
+                    break;
+                case Register.DI:
+                    DI = value;
+                    break;
+                case Register.ES:
+                    ES = value;
+                    break;
+                case Register.CS:
+                    CS = value;
+                    break;
+                case Register.SS:
+                    SS = value;
+                    break;
+                case Register.DS:
+                    DS = value;
+                    break;
+                case Register.EIP:
+                    IP = value;
+                    break;
+                default:
+                    SetValue(register, (uint)value);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Sets the specified Register to the specified 32-bit value
+        /// </summary>
+        /// <param name="register"></param>
+        /// <param name="value"></param>
+        public void SetValue(Register register, uint value)
+        {
+            switch (register)
+            {
+                case Register.EAX:
+                    EAX = value;
+                    break;
+                case Register.EBX:
+                    EBX = value;
+                    break;
+                case Register.ECX:
+                    ECX = value;
+                    break;
+                case Register.EDX:
+                    EDX = value;
+                    break;
+                case Register.ESP:
+                    ESP = value;
+                    break;
+                case Register.EBP:
+                    EBP = value;
+                    break;
+                case Register.ESI:
+                    ESI = value;
+                    break;
+                case Register.EDI:
+                    EDI = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(register), register, null);
+            }
+        }
+
+        /// <summary>
+        ///     Returns a 32-bit long from DX:AX
+        /// </summary>
+        public int GetLong()
+        {
+            return DX << 16 | AX;
+        }
     }
 
     /// <summary>
