@@ -130,11 +130,15 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="moduleIdentifier">Will be null in a test</param>
+        /// /// <param name="moduleEnabled">Module Enabled</param>
         /// <param name="path"></param>
         /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", ProtectedModeMemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, bool moduleEnabled, string path = "", ProtectedModeMemoryCore memoryCore = null)
         {
+            if (!moduleEnabled)
+                return;
+
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
