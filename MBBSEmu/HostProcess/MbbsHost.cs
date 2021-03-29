@@ -895,7 +895,7 @@ namespace MBBSEmu.HostProcess
         {
             if (!module.ModuleConfig.ModuleEnabled)
             {
-                modules[module.ModuleIdentifier] = module;
+                _modules[module.ModuleIdentifier] = module;
                 return;
             }
 
