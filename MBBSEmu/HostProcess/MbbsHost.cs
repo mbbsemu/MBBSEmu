@@ -174,7 +174,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModuleEnabled, m.ModulePath) { ModuleConfig = m });
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m));
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && m.Value.ModuleConfig.ModuleEnabled))
@@ -1220,7 +1220,7 @@ namespace MBBSEmu.HostProcess
             _isRunning = false;
 
             _modules[moduleId].ModuleConfig.ModuleEnabled = true;
-            AddModule(new MbbsModule(_fileUtility, Clock, Logger, _modules[moduleId].ModuleIdentifier, _modules[moduleId].ModuleConfig.ModuleEnabled, _modules[moduleId].ModulePath) { ModuleConfig = _modules[moduleId].ModuleConfig });
+            AddModule(new MbbsModule(_fileUtility, Clock, Logger, _modules[moduleId].ModuleConfig));
 
             //start host loop
             _isRunning = true;
