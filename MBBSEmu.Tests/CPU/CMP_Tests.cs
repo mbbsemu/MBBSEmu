@@ -1,6 +1,9 @@
-﻿using MBBSEmu.CPU;
+﻿using FluentAssertions;
+using Iced.Intel;
+using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using Xunit;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.Tests.CPU
 {
@@ -77,6 +80,29 @@ namespace MBBSEmu.Tests.CPU
             Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
             Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
             Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+        }
+
+        [Fact]
+        public void CMP_Memory_Reg()
+        {
+            Reset();
+
+            // data segment
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
+
+            mbbsEmuCpuRegisters.ES = mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuMemoryCore.SetWord(mbbsEmuCpuRegisters.DS, 0x300, 0x8080);
+
+            mbbsEmuCpuRegisters.CX = 3;
+
+            var instructions = new Assembler(16);
+            instructions.cmp(__word_ptr[0x300], cx);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF).Should().BeFalse();
+            mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
         }
     }
 }

@@ -18,17 +18,28 @@ namespace MBBSEmu.DOS
 {
     public class ExeRuntime
     {
+        /*
+         Memory layout
+         0x1000:0000 => PSP
+         0x1010:0000 => Program memory
+
+         0x9FBF - envSize - 0x0001:0000 => end of heap
+         0x9FBF - envSize => environment segment
+         0x9FBF => end of memory
+        */
+        private const ushort PROGRAM_START_ADDRESS = 0x1000;
+        private const ushort PSP_LENGTH = 256;
+
         public MZFile File;
         public IMemoryCore Memory;
         public ICpuCore Cpu;
-        public CpuRegisters Registers;
+        public readonly CpuRegisters Registers = new CpuRegisters();
         private ILogger _logger;
-        private FarPtr _programRealModeLoadAddress;
-
-        private ushort _pspSegment => (ushort)(_programRealModeLoadAddress.Segment - 16); // 256 bytes less
-        private ushort _environmentSegment => (ushort)(_pspSegment - (4096 / 16)); // 4k less
-
-        private const int PROGRAM_MAXIMUM_ADDRESS = (0xA000 << 4);
+        private readonly FarPtr _programRealModeLoadAddress = new FarPtr(PROGRAM_START_ADDRESS + (PSP_LENGTH >> 4), 0);
+        private readonly ushort _pspSegment = PROGRAM_START_ADDRESS;
+        private ushort _environmentSegment;
+        private ushort _environmentSize;
+        private ushort _nextSegmentOffset => (ushort)(_environmentSegment - 1);
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
@@ -36,7 +47,7 @@ namespace MBBSEmu.DOS
         {
             _logger = logger;
             File = file;
-            Memory = new RealModeMemoryCore(logger);
+            Memory = new RealModeMemoryCore(0x8000, logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
 
@@ -49,13 +60,16 @@ namespace MBBSEmu.DOS
                 });
         }
 
+        private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);
+        private static ushort GetPreviousSegment(ushort segment, uint size) => (ushort)(segment - (size >> 4) - 1);
+
         public bool Load(string[] args)
         {
             CreateEnvironmentVariables(args);
             LoadProgramIntoMemory();
             ApplyRelocation();
-            SetupPSP(args);
             SetupEnvironmentVariables();
+            SetupPSP(args);
             SetSegmentRegisters();
             return true;
         }
@@ -85,13 +99,6 @@ namespace MBBSEmu.DOS
 
         private void LoadProgramIntoMemory()
         {
-            // compute load address
-            var startingAddress = PROGRAM_MAXIMUM_ADDRESS - File.Header.ProgramSize;
-
-            _programRealModeLoadAddress = RealModeMemoryCore.PhysicalToVirtualAddress(startingAddress);
-            // might not be aligned to 16 bytes, so align cleanly
-            _programRealModeLoadAddress.Offset = 0;
-
             Memory.SetArray(_programRealModeLoadAddress, File.ProgramData);
         }
 
@@ -134,25 +141,31 @@ namespace MBBSEmu.DOS
         /// </summary>
         private void SetupPSP(string[] args)
         {
-            var cmdLine = string.Join(' ', args);
+            var cmdLine = ' ' + String.Join(' ', args);
             // maximum 126 characters, thanks to DOS
             if (cmdLine.Length > 126)
                 cmdLine = cmdLine.Substring(0, 126);
 
-            var psp = new PSPStruct { NextSegOffset = 0xE000, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length };
+            _logger.Error($"CommandTail: \"{cmdLine}:{cmdLine.Length}\"");
+
+            var psp = new PSPStruct { NextSegOffset = _nextSegmentOffset, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length};
             Array.Copy(Encoding.ASCII.GetBytes(cmdLine), 0, psp.CommandTail, 0, cmdLine.Length);
 
             Memory.SetArray(_pspSegment, 0, psp.Data);
 
-            Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
-            Memory.SetWord("Int21h-PSP", _pspSegment);
+            var pspPtr = Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
+            Memory.SetWord(pspPtr, _pspSegment);
         }
 
         /// <summary>
-        ///     Copies any Environment Variables to the Environment Variables Segment
+        ///     Copies any Environment Variables to the Environment Variables Segment.
         /// </summary>
+        /// <return>Total bytes used in the environment block</return>
         private void SetupEnvironmentVariables()
         {
+            _environmentSize = CalculateEnvironmentSize();
+            _environmentSegment = GetPreviousSegment(0x9FBF, _environmentSize);
+
             ushort bytesWritten = 0;
             foreach (var v in _environmentVariables)
             {
@@ -160,13 +173,30 @@ namespace MBBSEmu.DOS
                 Memory.SetArray(_environmentSegment, bytesWritten, Encoding.ASCII.GetBytes(str));
                 bytesWritten += (ushort)str.Length;
             }
-            // null terminate
+
+            // null terminate and add separation between vars & cmdline
             Memory.SetByte(_environmentSegment, bytesWritten++, 0);
             Memory.SetByte(_environmentSegment, bytesWritten++, 1);
             Memory.SetByte(_environmentSegment, bytesWritten++, 0);
 
             //Add EXE
-            Memory.SetArray(_environmentSegment, bytesWritten, Encoding.ASCII.GetBytes(GetFullExecutingPath() + "\0"));
+            var exePath = Encoding.ASCII.GetBytes(GetFullExecutingPath() + "\0");
+            Memory.SetArray(_environmentSegment, bytesWritten, exePath);
+            bytesWritten += (ushort)exePath.Length;
+
+            if (_environmentSize != bytesWritten)
+                throw new InvalidProgramException("We screwed up");
+        }
+
+        private ushort CalculateEnvironmentSize()
+        {
+            ushort size = 0;
+            foreach (var v in _environmentVariables)
+            {
+                size += (ushort)(v.Key + "=" + v.Value + "\0").Length;
+            }
+
+            return (ushort)(size + 4 + GetFullExecutingPath().Length);
         }
     }
 }

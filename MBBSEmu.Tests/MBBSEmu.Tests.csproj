@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\CMDLINE.EXE" />
     <EmbeddedResource Include="Assets\EXE.EXE" />
     <EmbeddedResource Include="Assets\MBBSEMU.DAT" />
     <EmbeddedResource Include="Assets\MBBSEMU.DB" />
