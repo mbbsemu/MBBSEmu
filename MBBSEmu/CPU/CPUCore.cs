@@ -34,7 +34,7 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     x86 Registers
         /// </summary>
-        private FastCpuRegisters Registers = FastCpuRegisters.Create();
+        public FastCpuRegisters Registers = FastCpuRegisters.Create();
 
         /// <summary>
         ///     x86 Memory Core representing a full 16-bit Address Space
@@ -3613,13 +3613,21 @@ namespace MBBSEmu.CPU
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushf() => Push(Registers.F);
+        private void Op_Pushf()
+        {
+            // TODO
+            // Push(Registers.F);
+        }
 
         /// <summary>
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushfd() => Push(Registers.EF);
+        private void Op_Pushfd()
+        {
+            // TODO
+            //=> Push(Registers.EF);
+        }
 
         /// <summary>
         ///     Floating Point Addition (x87)
@@ -4036,20 +4044,28 @@ namespace MBBSEmu.CPU
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popf() => Registers.F = Pop();
+        private void Op_Popf()
+        {
+            // TODO
+            //Registers.F = Pop();
+        }
 
         /// <summary>
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popfd() => Registers.EF = PopDWord();
+        private void Op_Popfd()
+        {
+            // TODO
+            //Registers.EF = PopDWord();
+        }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Iret()
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
-            Registers.F = Pop();
+            //Registers.F = Pop(); // TODO
         }
 
         /// <summary>

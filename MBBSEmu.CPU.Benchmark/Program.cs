@@ -28,9 +28,9 @@ namespace MBBSEmu.CPU.Benchmark
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
             mbbsEmuMemoryCore.Clear();
-            mbbsEmuCpuRegisters.CS = 1;
-            mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuCpuRegisters.IP = 0;
+            mbbsEmuCpuCore.Registers.CS = 1;
+            mbbsEmuCpuCore.Registers.DS = 2;
+            mbbsEmuCpuCore.Registers.IP = 0;
 
             var instructions = new Assembler(16);
             var label_start = instructions.CreateLabel();
@@ -46,7 +46,6 @@ namespace MBBSEmu.CPU.Benchmark
 
             CreateCodeSegment(instructions);
             CreateDataSegment(new ReadOnlySpan<byte>());
-
 
             _isRunning = true;
             new Thread(RunThread).Start();
