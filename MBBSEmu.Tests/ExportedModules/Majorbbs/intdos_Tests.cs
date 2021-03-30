@@ -178,7 +178,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x1A, DS = 0x1000, DX = 0x3480};
+            var testRegisters = new RegistersImpl() {AH = 0x1A, DS = 0x1000, DX = 0x3480};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();

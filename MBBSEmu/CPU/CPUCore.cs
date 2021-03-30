@@ -14,7 +14,7 @@ namespace MBBSEmu.CPU
     /// <summary>
     ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
     /// </summary>
-    public class CpuCore : ICpuCore
+    public class CpuCore : RegistersImpl, ICpuCore
     {
         protected readonly ILogger _logger;
 
@@ -30,11 +30,6 @@ namespace MBBSEmu.CPU
         ///     Delegate that is invoked with a CALL FAR references an Imported Method
         /// </summary>
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
-
-        /// <summary>
-        ///     x86 Registers
-        /// </summary>
-        public FastCpuRegisters Registers = FastCpuRegisters.Create();
 
         /// <summary>
         ///     x86 Memory Core representing a full 16-bit Address Space
@@ -287,11 +282,11 @@ namespace MBBSEmu.CPU
             // memory core instruction set at 65535 to all halt instructions
 
             // Check for segment end
-            if (Registers.CS == ushort.MaxValue)
+            /*if (Registers.CS == ushort.MaxValue)
             {
                 Registers.Halt = true;
                 return;
-            }
+            }*/
 
 #if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
@@ -1179,22 +1174,22 @@ namespace MBBSEmu.CPU
         private void Op_Daa()
         {
             int res = Registers.AL;
-            if ((Registers.AL & 0xF) > 9 || Registers.AuxiliaryCarry) {
+            if ((Registers.AL & 0xF) > 9 || Registers.AuxiliaryCarryFlag) {
                 res += 6;
-                Registers.AuxiliaryCarry = true;
+                Registers.AuxiliaryCarryFlag = true;
             }
             else
             {
-                Registers.AuxiliaryCarry = false;
+                Registers.AuxiliaryCarryFlag = false;
             }
 
-            if (res > 0x9F || Registers.Carry) {
+            if (res > 0x9F || Registers.CarryFlag) {
                 res += 0x60;
-                Registers.Carry = true;
+                Registers.CarryFlag = true;
             }
             else
             {
-                Registers.Carry = false;
+                Registers.CarryFlag = false;
             }
 
             Registers.AL = (byte)res;
@@ -1250,7 +1245,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)-destination;
-                Registers.Carry = destination != 0;
+                Registers.CarryFlag = destination != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1264,7 +1259,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)-destination;
-                Registers.Carry = destination != 0;
+                Registers.CarryFlag = destination != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1291,7 +1286,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                if (Registers.Carry)
+                if (Registers.CarryFlag)
                     source += 1;
 
                 var result = (byte)(destination - source);
@@ -1310,7 +1305,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (Registers.Carry)
+                if (Registers.CarryFlag)
                     source += 1;
 
                 var result = (ushort)(destination - source);
@@ -1322,10 +1317,10 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Clc() => Registers.Carry = false;
+        private void Op_Clc() => Registers.CarryFlag = false;
 
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Stc() => Registers.Carry = true;
+        private void Op_Stc() => Registers.CarryFlag = true;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Or()
@@ -1339,7 +1334,7 @@ namespace MBBSEmu.CPU
             };
 
             //Clear Flags
-            Registers.Carry = Registers.Overflow = false;
+            Registers.CarryFlag = Registers.OverflowFlag = false;
 
             WriteToDestination(result);
         }
@@ -1404,17 +1399,17 @@ namespace MBBSEmu.CPU
                     result = (byte)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.Carry)
+                    if (Registers.CarryFlag)
                         result.SetFlag(1 << 7);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.Carry = true;
+                        Registers.CarryFlag = true;
                     }
                     else
                     {
-                        Registers.Carry = false;
+                        Registers.CarryFlag = false;
                     }
                 }
 
@@ -1439,17 +1434,17 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.Carry)
+                    if (Registers.CarryFlag)
                         result.SetFlag(1 << 15);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.Carry = true;
+                        Registers.CarryFlag = true;
                     }
                     else
                     {
-                        Registers.Carry = false;
+                        Registers.CarryFlag = false;
                     }
                 }
 
@@ -1488,17 +1483,17 @@ namespace MBBSEmu.CPU
                     result = (byte)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.Carry)
+                    if (Registers.CarryFlag)
                         result.SetFlag(1);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.Carry = true;
+                        Registers.CarryFlag = true;
                     }
                     else
                     {
-                        Registers.Carry = false;
+                        Registers.CarryFlag = false;
                     }
                 }
 
@@ -1524,17 +1519,17 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.Carry)
+                    if (Registers.CarryFlag)
                         result.SetFlag(1);
 
                     //Set new CF Value
                     if (newCFValue)
                     {
-                        Registers.Carry = true;
+                        Registers.CarryFlag = true;
                     }
                     else
                     {
-                        Registers.Carry = false;
+                        Registers.CarryFlag = false;
                     }
                 }
 
@@ -1827,7 +1822,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
 
-                if (Registers.Direction)
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 2;
                 }
@@ -1954,7 +1949,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.Carry = Registers.Overflow = false;
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2004,7 +1999,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.Carry = Registers.Overflow = false;
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2043,7 +2038,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Ja()
         {
-            if (!Registers.Carry && !Registers.Zero)
+            if (!Registers.CarryFlag && !Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2056,7 +2051,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Jae()
         {
-            if (!Registers.Carry)
+            if (!Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2069,7 +2064,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Jbe()
         {
-            if (Registers.Zero || Registers.Carry)
+            if (Registers.ZeroFlag || Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2122,8 +2117,8 @@ namespace MBBSEmu.CPU
         private void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
-            if (Registers.Sign != Registers.Overflow
-                || Registers.Zero)
+            if (Registers.SignFlag != Registers.OverflowFlag
+                || Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2137,7 +2132,7 @@ namespace MBBSEmu.CPU
         private void Op_Jge()
         {
             // SF == OF
-            if (Registers.Sign == Registers.Overflow)
+            if (Registers.SignFlag == Registers.OverflowFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2151,7 +2146,7 @@ namespace MBBSEmu.CPU
         private void Op_Jne()
         {
             //ZF == 0
-            if (!Registers.Zero)
+            if (!Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2165,8 +2160,8 @@ namespace MBBSEmu.CPU
         private void Op_Jg()
         {
             //ZF == 0 & SF == OF
-            if (!Registers.Zero &&
-                (Registers.Sign == Registers.Overflow))
+            if (!Registers.ZeroFlag &&
+                (Registers.SignFlag == Registers.OverflowFlag))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2180,7 +2175,7 @@ namespace MBBSEmu.CPU
         private void Op_Je()
         {
             // ZF == 1
-            if (Registers.Zero)
+            if (Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2194,7 +2189,7 @@ namespace MBBSEmu.CPU
         private void Op_Jl()
         {
             //SF <> OF
-            if (Registers.Sign != Registers.Overflow)
+            if (Registers.SignFlag != Registers.OverflowFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2208,7 +2203,7 @@ namespace MBBSEmu.CPU
         private void Op_Jb()
         {
             //CF == 1
-            if (Registers.Carry)
+            if (Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2237,7 +2232,7 @@ namespace MBBSEmu.CPU
             }
 
             //Clear Overflow & Carry
-            Registers.Carry = Registers.Overflow = false;
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2380,7 +2375,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.Carry)
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (byte)(source + destination);
@@ -2399,7 +2394,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.Carry)
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (ushort)(source + destination);
@@ -2418,7 +2413,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.Carry)
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (ushort)(source + destination);
@@ -2519,7 +2514,7 @@ namespace MBBSEmu.CPU
 
             Registers.AX = (ushort)result;
 
-            Registers.Overflow = Registers.Carry = (result > byte.MaxValue);
+            Registers.OverflowFlag = Registers.CarryFlag = (result > byte.MaxValue);
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2534,11 +2529,11 @@ namespace MBBSEmu.CPU
 
             if (Registers.DX > 0)
             {
-                Registers.Overflow = Registers.Carry = true;
+                Registers.OverflowFlag = Registers.CarryFlag = true;
             }
             else
             {
-                Registers.Overflow = Registers.Carry = false;
+                Registers.OverflowFlag = Registers.CarryFlag = false;
             }
         }
 
@@ -2554,11 +2549,11 @@ namespace MBBSEmu.CPU
 
             if (Registers.EDX > 0)
             {
-                Registers.Overflow = Registers.Carry = true;
+                Registers.OverflowFlag = Registers.CarryFlag = true;
             }
             else
             {
-                Registers.Overflow = Registers.Carry = false;
+                Registers.OverflowFlag = Registers.CarryFlag = false;
             }
         }
 
@@ -2943,50 +2938,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Sahf()
         {
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.SF))
-            {
-                Registers.Sign = true;
-            }
-            else
-            {
-                Registers.Sign = false;
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.ZF))
-            {
-                Registers.Zero = true;
-            }
-            else
-            {
-                Registers.Zero = false;
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.AF))
-            {
-                Registers.AuxiliaryCarry = true;
-            }
-            else
-            {
-                Registers.AuxiliaryCarry = false;
-            }
-
-            /*if (Registers.AH.IsFlagSet((byte)EnumFlags.PF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.PF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.PF);
-            }*/
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.CF))
-            {
-                Registers.Carry = true;
-            }
-            else
-            {
-                Registers.Carry = false;
-            }
+            Registers.SignFlag = Registers.AH.IsFlagSet((byte)EnumFlags.SF);
+            Registers.ZeroFlag = Registers.AH.IsFlagSet((byte)EnumFlags.ZF);
+            Registers.AuxiliaryCarryFlag =Registers.AH.IsFlagSet((byte)EnumFlags.AF);
+            Registers.CarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.CF);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -3314,7 +3269,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cld()
         {
-            Registers.Direction = false;
+            Registers.DirectionFlag = false;
         }
 
         /// <summary>
@@ -3325,7 +3280,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
 
-            if (Registers.Direction)
+            if (Registers.DirectionFlag)
             {
                 Registers.SI--;
             }
@@ -3344,7 +3299,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
-                if (Registers.Direction)
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI--;
                 }
@@ -3364,7 +3319,7 @@ namespace MBBSEmu.CPU
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result);
                 Flags_EvaluateSignZero(result);
 
-                if (Registers.Direction)
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI--;
                     Registers.SI--;
@@ -3394,10 +3349,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Rep(Action action, bool isRepeCompatible = false)
         {
-            while (Registers.CX != 0) { // TODO evaluate whether to use ECX or CX
-	            action.Invoke();
+            while (Registers.CX != 0) {
+                action.Invoke();
                 Registers.CX--;
-	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.Zero) || (_currentInstruction.HasRepnePrefix && Registers.Zero))
+	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.ZeroFlag) || (_currentInstruction.HasRepnePrefix && Registers.ZeroFlag))
                     break;
             }
         }
@@ -3416,7 +3371,7 @@ namespace MBBSEmu.CPU
                     Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                     Flags_EvaluateSignZero(result);
 
-                    if (Registers.Direction)
+                    if (Registers.DirectionFlag)
                     {
                         Registers.DI--;
                     }
@@ -3433,7 +3388,7 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (Registers.Zero && Registers.CX != 0)
+            if (Registers.ZeroFlag && Registers.CX != 0)
             {
                 Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
@@ -3448,7 +3403,7 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (!Registers.Zero && Registers.CX != 0)
+            if (!Registers.ZeroFlag && Registers.CX != 0)
             {
                 Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
@@ -3613,21 +3568,13 @@ namespace MBBSEmu.CPU
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushf()
-        {
-            // TODO
-            // Push(Registers.F);
-        }
+        private void Op_Pushf() => Push(Registers.F());
 
         /// <summary>
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushfd()
-        {
-            // TODO
-            //=> Push(Registers.EF);
-        }
+        private void Op_Pushfd() => Push(Registers.EF());
 
         /// <summary>
         ///     Floating Point Addition (x87)
@@ -3714,15 +3661,15 @@ namespace MBBSEmu.CPU
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
-                    Registers.Carry = true;
+                    Registers.CarryFlag = true;
                 else
-                    Registers.Carry = false;
+                    Registers.CarryFlag = false;
 
                 //If Bits 7 & 6 are not the same, then we overflowed
                 if (result.IsBitSet(7) != result.IsBitSet(6))
-                    Registers.Overflow = true;
+                    Registers.OverflowFlag = true;
                 else
-                    Registers.Overflow = false;
+                    Registers.OverflowFlag = false;
 
                 return result;
             }
@@ -3744,15 +3691,15 @@ namespace MBBSEmu.CPU
 
                 //CF Set if Most Significant Bit set to 1
                 if (result.IsNegative())
-                    Registers.Carry = true;
+                    Registers.CarryFlag = true;
                 else
-                    Registers.Carry = false;
+                    Registers.CarryFlag = false;
 
                 //If Bits 15 & 14 are not the same, then we overflowed
                 if (result.IsBitSet(15) != result.IsBitSet(14))
-                    Registers.Overflow = true;
+                    Registers.OverflowFlag = true;
                 else
-                    Registers.Overflow = false;
+                    Registers.OverflowFlag = false;
 
                 return result;
             }
@@ -3866,7 +3813,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
 
-            if (Registers.Direction)
+            if (Registers.DirectionFlag)
             {
                 Registers.SI -= 2;
             }
@@ -3897,7 +3844,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
 
-                if (Registers.Direction)
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 1;
                     Registers.SI -= 1;
@@ -3919,7 +3866,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
 
-                if (Registers.Direction)
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 2;
                     Registers.SI -= 2;
@@ -4044,28 +3991,20 @@ namespace MBBSEmu.CPU
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popf()
-        {
-            // TODO
-            //Registers.F = Pop();
-        }
+        private void Op_Popf() => Registers.SetF(Pop());
 
         /// <summary>
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popfd()
-        {
-            // TODO
-            //Registers.EF = PopDWord();
-        }
+        private void Op_Popfd() => Registers.SetEF(PopDWord());
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Iret()
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
-            //Registers.F = Pop(); // TODO
+            Registers.SetF(Pop());
         }
 
         /// <summary>
@@ -4130,14 +4069,14 @@ namespace MBBSEmu.CPU
             if (count > 0)
             {
                 //CF == the last bit shifted out of the destination
-                Registers.Carry = destination.IsBitSet((sizeof(uint) * 8) - count);
+                Registers.CarryFlag = destination.IsBitSet((sizeof(uint) * 8) - count);
             }
 
             //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
             if (count == 1)
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
             else
-                Registers.Overflow = false;
+                Registers.OverflowFlag = false;
 
             Flags_EvaluateSignZero(result);
 
@@ -4170,11 +4109,11 @@ namespace MBBSEmu.CPU
 
             if (setFlag)
             {
-                Registers.Carry = true;
+                Registers.CarryFlag = true;
             }
             else
             {
-                Registers.Carry = false;
+                Registers.CarryFlag = false;
             }
 
             // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
@@ -4183,11 +4122,11 @@ namespace MBBSEmu.CPU
                 setFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
                 if (setFlag)
                 {
-                    Registers.AuxiliaryCarry = true;
+                    Registers.AuxiliaryCarryFlag = true;
                 }
                 else
                 {
-                    Registers.AuxiliaryCarry = false;
+                    Registers.AuxiliaryCarryFlag = false;
                 }
             }
         }
@@ -4215,7 +4154,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            Registers.Carry = setFlag;
+            Registers.CarryFlag = setFlag;
         }
 
         /// <summary>
@@ -4241,7 +4180,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            Registers.Carry = setFlag;
+            Registers.CarryFlag = setFlag;
         }
 
         /// <summary>
@@ -4301,7 +4240,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x80) ^ Registers.Carry;
+                        setFlag = result.IsFlagSet(0x80) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4325,7 +4264,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            Registers.Overflow = setFlag;
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4385,7 +4324,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x8000) ^ Registers.Carry;
+                        setFlag = result.IsFlagSet(0x8000) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4409,7 +4348,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            Registers.Overflow = setFlag;
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4469,7 +4408,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x80000000) ^ Registers.Carry;
+                        setFlag = result.IsFlagSet(0x80000000) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4493,7 +4432,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            Registers.Overflow = setFlag;
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4505,13 +4444,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.Sign = false;
-                Registers.Zero = true;
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.Zero = false;
-                Registers.Sign = result.IsNegative();
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 
@@ -4524,13 +4463,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.Sign = false;
-                Registers.Zero = true;
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.Zero = false;
-                Registers.Sign = result.IsNegative();
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 
@@ -4543,13 +4482,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.Sign = false;
-                Registers.Zero = true;
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.Zero = false;
-                Registers.Sign = result.IsNegative();
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 

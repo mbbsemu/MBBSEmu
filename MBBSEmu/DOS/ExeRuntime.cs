@@ -34,7 +34,7 @@ namespace MBBSEmu.DOS
             File = file;
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
-            Registers = new CpuRegisters();
+            Registers = (CpuRegisters)Cpu;
             Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
         }
 

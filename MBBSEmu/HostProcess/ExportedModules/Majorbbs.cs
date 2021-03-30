@@ -1743,14 +1743,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
 
-            if (result.Valid)
+            // TODO validate this?
+            Registers.CarryFlag = result.Valid;
+            if (!result.Valid)
             {
-                Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F.SetFlag((ushort)EnumFlags.CF);
-
 #if DEBUG
                 _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({GetParameterPointer(0)}) to long");
 #endif
@@ -3740,14 +3736,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset1 = GetParameterPointer(0);
             var parameterOffset2 = GetParameterPointer(2);
 
+            // TODO
             //Load registers and pass to Int21h
-            var registers = new CpuRegisters();
-            registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
+            //CpuRegistersHolder temporaryRegisters = new CpuRegistersHolder(ref Registers);
+            //temporaryRegisters.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
 
-            _int21h.Registers = registers;
+            //_int21h.Registers = temporaryRegisters;
             _int21h.Handle();
 
-            Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
+            //Module.Memory.SetArray(parameterOffset2, temporaryRegisters.ToRegs());
         }
 
         /// <summary>

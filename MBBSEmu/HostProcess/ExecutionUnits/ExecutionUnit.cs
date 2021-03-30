@@ -41,7 +41,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
         {
             ModuleCpu = new CpuCore(logger);
-            ModuleCpuRegisters = new CpuRegisters();
+            ModuleCpuRegisters = (CpuRegisters)ModuleCpu;
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
             Path = path;
