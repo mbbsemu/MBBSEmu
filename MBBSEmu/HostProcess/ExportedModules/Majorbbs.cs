@@ -6219,7 +6219,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Channel {ChannelNumber} listing: {fileToSend}");
 #endif
 
-            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
+            ChannelDictionary[ChannelNumber].SendToClientRaw(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
 
             Module.Execute(finishedFunctionPointer, ChannelNumber, true, true,
                 null, (ushort)(Registers.SP - 0x800));
