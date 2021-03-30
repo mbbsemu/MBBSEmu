@@ -241,7 +241,7 @@ namespace MBBSEmu.Session
         public void SendToClient(ReadOnlySpan<byte> dataToSend) => SendToClient(dataToSend.ToArray());
 
         /// <summary>
-        ///     Helper Method to send data to the client synchronously
+        ///     Helper Method to send data to the client synchronously without checking text variables
         /// </summary>
         /// <param name="dataToSend"></param>
         public void SendToClientRaw(byte[] dataToSend)
