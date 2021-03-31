@@ -1560,7 +1560,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!McvPointerDictionary.Any(x=> x.Value.FileName == mcvFileName))
             {
                 // triggers MSG -> MCV compilation
-                _ = new MsgFile(Module.ModulePath,
+                _ = new MsgFile(_fileFinder, Module.ModulePath,
                     mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
             }
 
