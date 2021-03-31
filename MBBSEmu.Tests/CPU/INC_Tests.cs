@@ -30,9 +30,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AL);
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -58,9 +58,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetByte(2,0));
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -85,9 +85,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -114,9 +114,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetWord(2, 0));
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -141,9 +141,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.EAX);
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -170,9 +170,9 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetDWord(2, 0));
 
             //Verify Flags
-            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(overflowFlagSet, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagSet, mbbsEmuCpuRegisters.SignFlag);
         }
     }
 }

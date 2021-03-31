@@ -24,15 +24,15 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             instructions.shld(eax, ebx, count);
             CreateCodeSegment(instructions);
-            
+
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
             Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
-            Assert.Equal(carryFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
-            Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
-            Assert.Equal(zeroFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.Equal(carryFlag, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlag, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(zeroFlag, mbbsEmuCpuRegisters.ZeroFlag);
         }
 
         [Theory]
@@ -57,10 +57,10 @@ namespace MBBSEmu.Tests.CPU
 
             //Verify Results
             Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
-            Assert.Equal(carryFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
-            Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.Equal(signFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
-            Assert.Equal(zeroFlag, mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+            Assert.Equal(carryFlag, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlag, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(zeroFlag, mbbsEmuCpuRegisters.ZeroFlag);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.F = 0x1234;
+            mbbsEmuCpuRegisters.OverflowFlag = true;
             mbbsEmuCpuRegisters.AX = 0xFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
 
@@ -34,7 +34,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.EF = 0x00001234;
+            mbbsEmuCpuRegisters.OverflowFlag = true;
             mbbsEmuCpuRegisters.EAX = 0xFFFFFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
 

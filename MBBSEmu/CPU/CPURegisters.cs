@@ -6,6 +6,24 @@ using System.Runtime.InteropServices;
 
 namespace MBBSEmu.CPU
 {
+    public interface FpuRegisters
+    {
+        ushort StatusWord { get; set; }
+
+        ushort ControlWord { get; set; }
+
+        void SetFlag(EnumFpuStatusFlags statusFlag);
+        void ClearFlag(EnumFpuStatusFlags statusFlag);
+
+        byte GetStackTop();
+
+        void SetStackTop(byte value);
+
+        int GetStackPointer(Register register);
+        void PopStackTop();
+        void PushStackTop();
+        void ClearExceptions();
+    }
     /// <summary>
     ///     Holds the CPU Registers for the emulated x86 Core
     ///
@@ -14,6 +32,8 @@ namespace MBBSEmu.CPU
     /// </summary>
     public interface CpuRegisters
     {
+        FpuRegisters Fpu { get; }
+
         uint EAX { get; set; }
         ushort AX { get; set; }
         byte AH  { get; set; }
@@ -43,6 +63,7 @@ namespace MBBSEmu.CPU
         ushort SS { get; set; }
         ushort CS { get; set; }
         ushort IP { get; set; }
+        ushort F { get; set; }
         bool CarryFlag { get; set; }
         bool SignFlag { get; set; }
         bool OverflowFlag { get; set; }

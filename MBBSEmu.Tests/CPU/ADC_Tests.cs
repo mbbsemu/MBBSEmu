@@ -27,10 +27,10 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(axExpectedValue, mbbsEmuCpuRegisters.AX);
 
             //Verify Flags
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.False(mbbsEmuCpuRegisters.CarryFlag);
+            Assert.False(mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.False(mbbsEmuCpuRegisters.SignFlag);
         }
 
         [Theory]
@@ -57,10 +57,10 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(dxExpectedValue, mbbsEmuCpuRegisters.DX);
 
             //Verify Flags
-            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
-            Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.True(mbbsEmuCpuRegisters.CarryFlag);
+            Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.False(mbbsEmuCpuRegisters.SignFlag);
         }
     }
 }

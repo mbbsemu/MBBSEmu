@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.EF = 0;
+            mbbsEmuCpuRegisters.F = 0xFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
             mbbsEmuCpuCore.Push(0xFFFFFFFF);
 
