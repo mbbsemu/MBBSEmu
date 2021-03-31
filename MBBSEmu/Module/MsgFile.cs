@@ -56,7 +56,7 @@ namespace MBBSEmu.Module
             var messageCount = 0;
 
             var path = _fileUtility.FindFile(_modulePath, Path.ChangeExtension(_moduleName, ".MSG"));
-            var fileToRead = File.ReadAllBytes(path);
+            var fileToRead = File.ReadAllBytes(Path.Combine(_modulePath, path));
 
             var variableName = string.Empty;
             var bInVariable = false;
