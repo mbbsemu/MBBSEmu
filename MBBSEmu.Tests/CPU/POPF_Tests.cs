@@ -10,7 +10,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.F = 0;
+            mbbsEmuCpuRegisters.F = 0xED1;
             var originalSP = mbbsEmuCpuRegisters.SP;
             mbbsEmuCpuCore.Push(0xFFFF);
 
@@ -21,7 +21,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.F);
+            Assert.Equal(0x0ED1, mbbsEmuCpuRegisters.F);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
 
@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
-            mbbsEmuCpuRegisters.F = 0xFFFF;
+            mbbsEmuCpuRegisters.F = 0x0ED1;
             var originalSP = mbbsEmuCpuRegisters.SP;
             mbbsEmuCpuCore.Push(0xFFFFFFFF);
 
@@ -41,9 +41,8 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            // so the reason this is 0x0000FFFF instead of 0xFFFFFFFF is because EF isn't a full 32
-            // bit register, but rather we fake it to be by extending F to 32 bits.
-            Assert.Equal(0x0000FFFF, mbbsEmuCpuRegisters.F);
+            // subset of all the flags
+            Assert.Equal(0x00000ED1, mbbsEmuCpuRegisters.F);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
     }

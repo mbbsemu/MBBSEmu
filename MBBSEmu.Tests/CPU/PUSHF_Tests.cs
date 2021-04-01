@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(originalSP - 2, mbbsEmuCpuRegisters.SP);
 
             mbbsEmuCpuCore.Tick();
-            Assert.Equal(0x1234, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(0x800u, mbbsEmuCpuRegisters.AX);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
 
@@ -35,6 +35,8 @@ namespace MBBSEmu.Tests.CPU
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(0);
             mbbsEmuCpuRegisters.OverflowFlag = true;
+            mbbsEmuCpuRegisters.SignFlag = true;
+            mbbsEmuCpuRegisters.InterruptFlag = true;
             mbbsEmuCpuRegisters.EAX = 0xFFFFFFFF;
             var originalSP = mbbsEmuCpuRegisters.SP;
 
@@ -48,7 +50,7 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(originalSP - 4, mbbsEmuCpuRegisters.SP);
 
             mbbsEmuCpuCore.Tick();
-            Assert.Equal(0x00001234u, mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(0x00000A80u, mbbsEmuCpuRegisters.EAX);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
     }
