@@ -112,6 +112,8 @@ namespace MBBSEmu
                 if (args.Length == 0)
                     args = new[] { "-?" };
 
+                string[] programArgs = args;
+
                 for (var i = 0; i < args.Length; i++)
                 {
                     switch (args[i].ToUpper())
@@ -121,7 +123,8 @@ namespace MBBSEmu
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
                                     _exeFile = args[i + 1];
-                                    i++;
+                                    programArgs = args.Skip(i + 2).ToArray();
+                                    i = args.Length;
                                 }
 
                                 break;
@@ -228,7 +231,7 @@ namespace MBBSEmu
                 {
                     var mzFile = new MZFile(_exeFile);
                     var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>());
-                    exe.Load();
+                    exe.Load(programArgs);
                     exe.Run();
                     return;
                 }

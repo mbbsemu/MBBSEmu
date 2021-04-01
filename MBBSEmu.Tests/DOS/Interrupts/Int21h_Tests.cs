@@ -17,7 +17,7 @@ namespace MBBSEmu.Tests.Memory
 {
   public class Int21h_Tests : TestBase
   {
-    private readonly CpuRegisters _registers = new CpuRegisters();
+    private readonly CpuRegisters _registers = new RegistersImpl();
     private readonly FakeClock _fakeClock = new FakeClock();
     private readonly ServiceResolver _serviceResolver;
     private readonly IMemoryCore _memory;

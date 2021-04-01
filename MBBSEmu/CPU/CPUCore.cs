@@ -4129,6 +4129,12 @@ namespace MBBSEmu.CPU
                     Registers.AuxiliaryCarryFlag = false;
                 }
             }
+
+            // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
+            if (arithmeticOperation == EnumArithmeticOperation.Addition)
+            {
+                Registers.AuxiliaryCarryFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
+            }
         }
 
         /// <summary>

@@ -64,6 +64,9 @@ namespace MBBSEmu.CPU
 
         public int GetLong() => (Registers.DX << 16) | Registers.AX;
 
+        public void FromRegs(ReadOnlySpan<byte> regs) => Registers.FromRegs(regs);
+        public ReadOnlySpan<byte> ToRegs() => Registers.ToRegs();
+
         public ushort StatusWord { get => Registers.Fpu.StatusWord;  set => Registers.Fpu.StatusWord = value; }
 
         public ushort ControlWord { get => Registers.Fpu.ControlWord; set => Registers.Fpu.ControlWord = value; }

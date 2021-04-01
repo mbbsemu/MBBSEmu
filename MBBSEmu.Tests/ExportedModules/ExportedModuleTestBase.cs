@@ -55,8 +55,8 @@ namespace MBBSEmu.Tests.ExportedModules
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<ILogger>());
-            mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
+            mbbsEmuCpuRegisters = mbbsEmuCpuCore;
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuProtectedModeMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();

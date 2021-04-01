@@ -79,5 +79,8 @@ namespace MBBSEmu.CPU
         FarPtr GetPointer();
 
         int GetLong();
+
+        void FromRegs(ReadOnlySpan<byte> regs);
+        ReadOnlySpan<byte> ToRegs();
     }
 }

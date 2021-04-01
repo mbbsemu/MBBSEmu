@@ -175,7 +175,7 @@ namespace MBBSEmu.Module
                     Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
                     foreach (var m in Mdf.MSGFiles)
                     {
-                        Msgs.Add(new MsgFile(ModulePath, m));
+                        Msgs.Add(new MsgFile(_fileUtility, ModulePath, m));
                     }
                 }
             }

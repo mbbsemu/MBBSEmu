@@ -1560,7 +1560,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!McvPointerDictionary.Any(x=> x.Value.FileName == mcvFileName))
             {
                 // triggers MSG -> MCV compilation
-                _ = new MsgFile(Module.ModulePath,
+                _ = new MsgFile(_fileFinder, Module.ModulePath,
                     mcvFileName.Replace(".mcv", string.Empty, StringComparison.InvariantCultureIgnoreCase));
             }
 
@@ -3736,15 +3736,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset1 = GetParameterPointer(0);
             var parameterOffset2 = GetParameterPointer(2);
 
-            // TODO
             //Load registers and pass to Int21h
-            //CpuRegistersHolder temporaryRegisters = new CpuRegistersHolder(ref Registers);
-            //temporaryRegisters.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
+            var registers = new RegistersImpl();
+            registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
 
-            //_int21h.Registers = temporaryRegisters;
+            _int21h.Registers = registers;
             _int21h.Handle();
 
-            //Module.Memory.SetArray(parameterOffset2, temporaryRegisters.ToRegs());
+            Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
         }
 
         /// <summary>
@@ -6216,7 +6215,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Channel {ChannelNumber} listing: {fileToSend}");
 #endif
 
-            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
+            ChannelDictionary[ChannelNumber].SendToClientRaw(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
 
             Module.Execute(finishedFunctionPointer, ChannelNumber, true, true,
                 null, (ushort)(Registers.SP - 0x800));
