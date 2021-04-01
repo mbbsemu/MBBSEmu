@@ -8,7 +8,7 @@ namespace MBBSEmu.CPU
 {
     public class RegistersImpl : CpuRegisters, FpuRegisters
     {
-        public FastCpuRegisters Registers;
+        public FastCpuRegisters Registers = FastCpuRegisters.Create();
 
         public FpuRegisters Fpu => this;
 
