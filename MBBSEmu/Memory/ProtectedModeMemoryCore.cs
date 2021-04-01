@@ -190,8 +190,13 @@ namespace MBBSEmu.Memory
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
-            _decompiledSegments[segment][instructionPointer];
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer) {
+            try {
+                return _decompiledSegments[segment][instructionPointer];
+            } catch (Exception ex) {
+                throw new ArgumentException($"Failure at {segment:X4}:{instructionPointer:X4}");
+            }
+        }
 
         [MethodImpl(CompilerOptimizations)]
         public Instruction Recompile(ushort segment, ushort instructionPointer)

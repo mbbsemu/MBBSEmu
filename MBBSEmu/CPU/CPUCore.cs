@@ -282,11 +282,11 @@ namespace MBBSEmu.CPU
             // memory core instruction set at 65535 to all halt instructions
 
             // Check for segment end
-            /*if (Registers.CS == ushort.MaxValue)
+            if (Registers.CS == ushort.MaxValue)
             {
                 Registers.Halt = true;
                 return;
-            }*/
+            }
 
 #if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
