@@ -11,19 +11,18 @@ namespace MBBSEmu.Tests.CPU
         private protected CpuCore mbbsEmuCpuCore;
         private protected IMemoryCore mbbsEmuMemoryCore;
         private protected ProtectedModeMemoryCore mbbsEmuProtectedModeMemoryCore;
-        private protected CpuRegisters mbbsEmuCpuRegisters;
+        private protected ICpuRegisters mbbsEmuCpuRegisters;
 
         protected CpuTestBase()
         {
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(null);
             mbbsEmuCpuCore = new CpuCore();
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, null, null);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null);
         }
 
         protected void Reset()
         {
-            mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
             mbbsEmuMemoryCore.Clear();
             mbbsEmuCpuRegisters.CS = 1;

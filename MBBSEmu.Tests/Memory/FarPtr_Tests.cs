@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_AX()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.EAX = 0x12345678;
 
       regs.AX.Should().Be(0x5678);
@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_BX()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.EBX = 0x12345678;
 
       regs.BX.Should().Be(0x5678);
@@ -44,7 +44,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_CX()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.ECX = 0x12345678;
 
       regs.CX.Should().Be(0x5678);
@@ -62,7 +62,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_DX()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.EDX = 0x12345678;
 
       regs.DX.Should().Be(0x5678);
@@ -80,7 +80,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_SP()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.ESP = 0x12345678;
       regs.SP.Should().Be(0x5678);
 
@@ -94,7 +94,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_BP()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.EBP = 0x12345678;
       regs.BP.Should().Be(0x5678);
 
@@ -108,7 +108,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_SI()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.ESI = 0x12345678;
       regs.SI.Should().Be(0x5678);
 
@@ -122,7 +122,7 @@ namespace MBBSEmu.Tests.Memory
     [Fact]
     public void Regs_DI()
     {
-      MBBSEmu.CPU.FastCpuRegisters regs = MBBSEmu.CPU.FastCpuRegisters.Create();
+      MBBSEmu.CPU.CpuRegistersStruct regs = MBBSEmu.CPU.CpuRegistersStruct.Create();
       regs.EDI = 0x12345678;
       regs.DI.Should().Be(0x5678);
 

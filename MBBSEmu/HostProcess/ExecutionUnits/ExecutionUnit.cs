@@ -24,7 +24,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         /// <summary>
         ///     Module dedicated CPU Registers
         /// </summary>
-        public readonly CpuRegisters ModuleCpuRegisters;
+        public readonly ICpuRegisters ModuleCpuRegisters;
 
         /// <summary>
         ///     Module Memory Space
@@ -41,12 +41,12 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
         {
             ModuleCpu = new CpuCore(logger);
-            ModuleCpuRegisters = (CpuRegisters)ModuleCpu;
+            ModuleCpuRegisters = (ICpuRegisters)ModuleCpu;
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
             Path = path;
 
-            ModuleCpu.Reset(ModuleMemory, ModuleCpuRegisters, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
+            ModuleCpu.Reset(ModuleMemory, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)
@@ -72,7 +72,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         /// <param name="initialStackValues">Values to be on the stack at the start of emulation (arguments passed in)</param>
         /// <param name="initialStackPointer">Initial SP offset (used to shift SP as to not overlap memory space on nested execution)</param>
         /// <returns></returns>
-        public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
+        public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassState = false, Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Reset Registers to Startup State for the CPU
             ModuleCpu.Reset(initialStackPointer);

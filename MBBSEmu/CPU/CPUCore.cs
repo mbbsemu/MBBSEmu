@@ -14,7 +14,7 @@ namespace MBBSEmu.CPU
     /// <summary>
     ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
     /// </summary>
-    public class CpuCore : RegistersImpl, ICpuCore
+    public class CpuCore : CpuRegisters, ICpuCore
     {
         protected readonly ILogger _logger;
 
@@ -141,10 +141,9 @@ namespace MBBSEmu.CPU
         ///     Resets the CPU back to a starting state
         /// </summary>
         /// <param name="memoryCore"></param>
-        /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
-        public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
+        public void Reset(IMemoryCore memoryCore,
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
         {
             //Setup Debug Pointers
@@ -164,7 +163,7 @@ namespace MBBSEmu.CPU
             EXTRA_SEGMENT = ushort.MaxValue;
 
             //Setup Registers
-            //Registers = cpuRegisters;
+            Registers.Zero();
             Registers.BP = STACK_BASE;
             Registers.SP = STACK_BASE;
             Registers.SS = STACK_SEGMENT;

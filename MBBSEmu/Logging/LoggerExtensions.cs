@@ -85,7 +85,7 @@ namespace MBBSEmu.Logging
             }
         }
 
-        public static void InfoStack(this ILogger l, CpuRegisters registers, IMemoryCore memory)
+        public static void InfoStack(this ILogger l, ICpuRegisters registers, IMemoryCore memory)
         {
             var output = new StringBuilder();
             l.Info("------------------------------------------");

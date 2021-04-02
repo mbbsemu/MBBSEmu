@@ -6,21 +6,18 @@ using System.Runtime.InteropServices;
 
 namespace MBBSEmu.CPU
 {
-    public struct FastFpuStatusRegister
+    /// <summary>
+    ///     FPU registers as a struct.
+    /// </summary>
+    public struct FpuRegistersStruct
     {
         public ushort StatusWord { get; set; }
 
         public ushort ControlWord { get; set; }
 
-        public void SetFlag(EnumFpuStatusFlags statusFlag)
-        {
-            StatusWord = (ushort) (StatusWord | (ushort) statusFlag);
-        }
+        public void SetFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort) (StatusWord | (ushort) statusFlag);
 
-        public void ClearFlag(EnumFpuStatusFlags statusFlag)
-        {
-            StatusWord = (ushort) (StatusWord & ~(ushort) statusFlag);
-        }
+        public void ClearFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort) (StatusWord & ~(ushort) statusFlag);
 
         public byte GetStackTop() => (byte) ((StatusWord >> 11) & 0x7);
 
@@ -95,9 +92,9 @@ namespace MBBSEmu.CPU
             ControlWord &= 0xFFC0;
         }
 
-        public static FastFpuStatusRegister Create()
+        public static FpuRegistersStruct Create()
         {
-            var t = new FastFpuStatusRegister();
+            var t = new FpuRegistersStruct();
             t.ControlWord = 0x37F;
             t.StatusWord = 0;
             t.SetStackTop(7);
@@ -106,11 +103,11 @@ namespace MBBSEmu.CPU
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    public struct FastCpuRegisters
+    public struct CpuRegistersStruct
     {
-        public static FastCpuRegisters Create()
+        public static CpuRegistersStruct Create()
         {
-            var t = new FastCpuRegisters();
+            var t = new CpuRegistersStruct();
             t.Fpu.ControlWord = 0x37F;
             t.Fpu.StatusWord = 0;
             t.Fpu.SetStackTop(7);
@@ -225,7 +222,7 @@ namespace MBBSEmu.CPU
         public bool Halt;
 
         [FieldOffset(50)]
-        public FastFpuStatusRegister Fpu;
+        public FpuRegistersStruct Fpu;
 
         public ushort F()
         {
@@ -472,6 +469,9 @@ namespace MBBSEmu.CPU
             DS = 0;
             ES = 0;
             SS = 0;
+            Fpu.ControlWord = 0x37F;
+            Fpu.StatusWord = 0;
+            Fpu.SetStackTop(7);
         }
 
          /// <summary>

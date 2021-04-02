@@ -20,7 +20,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x19};
+            var testRegisters = new CpuRegisters {AH = 0x19};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -46,7 +46,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl { AH = 0x1A, DS = 0xFF, DX = 0xFF };
+            var testRegisters = new CpuRegisters { AH = 0x1A, DS = 0xFF, DX = 0xFF };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -73,7 +73,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x25, AL = 0x8};
+            var testRegisters = new CpuRegisters {AH = 0x25, AL = 0x8};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -108,7 +108,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x2A};
+            var testRegisters = new CpuRegisters {AH = 0x2A};
 
             fakeClock.Now = new DateTime(year, month, day);
 
@@ -147,7 +147,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x2C};
+            var testRegisters = new CpuRegisters {AH = 0x2C};
 
             fakeClock.Now = new DateTime(2020, 1, 6, hour, minute, seconds, milliseconds);
 
@@ -178,7 +178,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl() {AH = 0x1A, DS = 0x1000, DX = 0x3480};
+            var testRegisters = new CpuRegisters() {AH = 0x1A, DS = 0x1000, DX = 0x3480};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -214,7 +214,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x30};
+            var testRegisters = new CpuRegisters {AH = 0x30};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -243,7 +243,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl { AH = 0x35, AL = (byte)registerALvalue };
+            var testRegisters = new CpuRegisters { AH = 0x35, AL = (byte)registerALvalue };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -276,7 +276,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x44, AL = 0};
+            var testRegisters = new CpuRegisters {AH = 0x44, AL = 0};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -302,7 +302,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x47};
+            var testRegisters = new CpuRegisters {AH = 0x47};
 
             var dirPointer = mbbsEmuMemoryCore.AllocateVariable("DIR-POINTER", 10);
             mbbsEmuCpuRegisters.DS = dirPointer.Segment;
@@ -336,7 +336,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x4A};
+            var testRegisters = new CpuRegisters {AH = 0x4A};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -369,7 +369,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new RegistersImpl {AH = 0x62};
+            var testRegisters = new CpuRegisters {AH = 0x62};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();

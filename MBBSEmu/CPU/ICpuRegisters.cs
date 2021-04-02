@@ -6,7 +6,10 @@ using System.Runtime.InteropServices;
 
 namespace MBBSEmu.CPU
 {
-    public interface FpuRegisters
+    /// <summary>
+    ///     Mutable FPU Registers for the emulated x86 core.
+    /// </summary>
+    public interface IFpuRegisters
     {
         ushort StatusWord { get; set; }
 
@@ -24,15 +27,16 @@ namespace MBBSEmu.CPU
         void PushStackTop();
         void ClearExceptions();
     }
+
     /// <summary>
-    ///     Holds the CPU Registers for the emulated x86 Core
+    ///     Mutable CPU Registers for the emulated x86 Core
     ///
     ///     While the majority of these are basic 16-bit values, several special
     ///     registers are abstracted out into their own class (Flags, FPU)
     /// </summary>
-    public interface CpuRegisters
+    public interface ICpuRegisters
     {
-        FpuRegisters Fpu { get; }
+        IFpuRegisters Fpu { get; }
 
         uint EAX { get; set; }
         ushort AX { get; set; }

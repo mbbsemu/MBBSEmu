@@ -259,7 +259,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
-        public void SetRegisters(CpuRegisters registers)
+        public void SetRegisters(ICpuRegisters registers)
         {
             Registers = registers;
         }
@@ -3737,7 +3737,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parameterOffset2 = GetParameterPointer(2);
 
             //Load registers and pass to Int21h
-            var registers = new RegistersImpl();
+            var registers = new CpuRegisters();
             registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
 
             _int21h.Registers = registers;
