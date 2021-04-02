@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.CPU
           mbbsEmuCpuCore.Tick();
 
           //Verify Results
-          mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+          mbbsEmuCpuRegisters.CarryFlag.Should().BeFalse();
       }
 
       [Fact]
@@ -42,7 +42,7 @@ namespace MBBSEmu.Tests.CPU
           mbbsEmuCpuCore.Tick();
 
           //Verify Results
-          mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+          mbbsEmuCpuRegisters.CarryFlag.Should().BeTrue();
       }
     }
 }

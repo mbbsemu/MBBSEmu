@@ -17,7 +17,7 @@ namespace MBBSEmu.Tests.Memory
 {
   public class Int21h_Tests : TestBase
   {
-    private readonly CpuRegisters _registers = new CpuRegisters();
+    private readonly ICpuRegisters _registers = new CpuRegisters();
     private readonly FakeClock _fakeClock = new FakeClock();
     private readonly ServiceResolver _serviceResolver;
     private readonly IMemoryCore _memory;
@@ -65,7 +65,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
     }
 
     [Fact]
@@ -89,7 +89,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
@@ -97,7 +97,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT + 2);
     }
 
@@ -111,7 +111,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+      _registers.CarryFlag.Should().BeTrue();
       _registers.AX.Should().Be((ushort)DOSErrorCode.INSUFFICIENT_MEMORY);
     }
 
@@ -125,7 +125,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
@@ -135,7 +135,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
 
       _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.HEAP_BASE_SEGMENT, 0));
     }
@@ -148,7 +148,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be((ushort)Int21h.AllocationStrategy.BEST_FIT);
     }
 
@@ -166,14 +166,14 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be(expectedStrategy);
 
       _registers.AX = _registers.BX = 0;
       _registers.AH = 0x58;
 
       _int21.Handle();
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
+      _registers.CarryFlag.Should().BeFalse();
       _registers.AX.Should().Be(expectedStrategy);
     }
 
@@ -185,7 +185,7 @@ namespace MBBSEmu.Tests.Memory
 
       _int21.Handle();
 
-      _registers.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeTrue();
+      _registers.CarryFlag.Should().BeTrue();
       _registers.AX.Should().Be((ushort)DOSErrorCode.UNKNOWN_COMMAND);
     }
   }

@@ -255,7 +255,7 @@ namespace MBBSEmu.Module
         ///     stack pointer enough to where the stack on the nested call won't overlap with the stack on the parent caller.
         /// </param>
         /// <returns></returns>
-        public CpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
+        public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             //Set the proper DLL making the call based on the Segment

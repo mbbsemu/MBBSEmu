@@ -259,7 +259,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
         }
 
-        public void SetRegisters(CpuRegisters registers)
+        public void SetRegisters(ICpuRegisters registers)
         {
             Registers = registers;
         }
@@ -1743,14 +1743,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
 
-            if (result.Valid)
+            if (!result.Valid)
             {
-                Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F.SetFlag((ushort)EnumFlags.CF);
-
 #if DEBUG
                 _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({GetParameterPointer(0)}) to long");
 #endif

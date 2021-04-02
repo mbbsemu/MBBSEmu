@@ -10,13 +10,13 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int1Ah : IInterruptHandler
     {
-        private CpuRegisters _registers { get; init; }
+        private ICpuRegisters _registers { get; init; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
 
         public byte Vector => 0x1A;
 
-        public Int1Ah(CpuRegisters registers, IMemoryCore memory, IClock clock)
+        public Int1Ah(ICpuRegisters registers, IMemoryCore memory, IClock clock)
         {
             _registers = registers;
             _memory = memory;

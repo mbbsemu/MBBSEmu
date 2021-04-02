@@ -61,7 +61,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 2;
             mbbsEmuCpuRegisters.DI = 2;
             mbbsEmuCpuRegisters.CX = 1;
-            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.DF);
+            mbbsEmuCpuRegisters.DirectionFlag = true;
             var instructions = new Assembler(16);
 
             instructions.rep.stosb();

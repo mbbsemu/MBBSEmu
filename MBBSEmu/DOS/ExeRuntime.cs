@@ -18,7 +18,7 @@ namespace MBBSEmu.DOS
         public MZFile File;
         public IMemoryCore Memory;
         public ICpuCore Cpu;
-        public CpuRegisters Registers;
+        public ICpuRegisters Registers;
         private ILogger _logger;
         private FarPtr _programRealModeLoadAddress;
 
@@ -35,8 +35,8 @@ namespace MBBSEmu.DOS
             File = file;
             Memory = new RealModeMemoryCore(logger);
             Cpu = new CpuCore(_logger);
-            Registers = new CpuRegisters();
-            Cpu.Reset(Memory, Registers, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Registers = (ICpuRegisters)Cpu;
+            Cpu.Reset(Memory, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
         }
 
         public bool Load(string[] args)

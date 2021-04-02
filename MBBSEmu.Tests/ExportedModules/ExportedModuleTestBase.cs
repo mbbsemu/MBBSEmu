@@ -40,7 +40,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected CpuCore mbbsEmuCpuCore;
         protected IMemoryCore mbbsEmuMemoryCore;
         protected ProtectedModeMemoryCore mbbsEmuProtectedModeMemoryCore;
-        protected CpuRegisters mbbsEmuCpuRegisters;
+        protected ICpuRegisters mbbsEmuCpuRegisters;
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
@@ -55,8 +55,8 @@ namespace MBBSEmu.Tests.ExportedModules
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<ILogger>());
-            mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
+            mbbsEmuCpuRegisters = mbbsEmuCpuCore;
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), null, modulePath, mbbsEmuProtectedModeMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
@@ -85,7 +85,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 testSessions,
                 textVariableService);
 
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, ExportedFunctionDelegate, null);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, ExportedFunctionDelegate, null);
         }
         private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {

@@ -14,7 +14,7 @@ namespace MBBSEmu.CPU
     /// <summary>
     ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
     /// </summary>
-    public class CpuCore : ICpuCore
+    public class CpuCore : CpuRegisters, ICpuCore
     {
         protected readonly ILogger _logger;
 
@@ -30,11 +30,6 @@ namespace MBBSEmu.CPU
         ///     Delegate that is invoked with a CALL FAR references an Imported Method
         /// </summary>
         private InvokeExternalFunctionDelegate _invokeExternalFunctionDelegate;
-
-        /// <summary>
-        ///     x86 Registers
-        /// </summary>
-        public CpuRegisters Registers { get; set; }
 
         /// <summary>
         ///     x86 Memory Core representing a full 16-bit Address Space
@@ -146,10 +141,9 @@ namespace MBBSEmu.CPU
         ///     Resets the CPU back to a starting state
         /// </summary>
         /// <param name="memoryCore"></param>
-        /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
-        public void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
+        public void Reset(IMemoryCore memoryCore,
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
         {
             //Setup Debug Pointers
@@ -169,7 +163,7 @@ namespace MBBSEmu.CPU
             EXTRA_SEGMENT = ushort.MaxValue;
 
             //Setup Registers
-            Registers = cpuRegisters;
+            Registers.Zero();
             Registers.BP = STACK_BASE;
             Registers.SP = STACK_BASE;
             Registers.SS = STACK_SEGMENT;
@@ -1179,22 +1173,22 @@ namespace MBBSEmu.CPU
         private void Op_Daa()
         {
             int res = Registers.AL;
-            if ((Registers.AL & 0xF) > 9 || Registers.F.IsFlagSet((ushort)EnumFlags.AF)) {
+            if ((Registers.AL & 0xF) > 9 || Registers.AuxiliaryCarryFlag) {
                 res += 6;
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
+                Registers.AuxiliaryCarryFlag = true;
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
+                Registers.AuxiliaryCarryFlag = false;
             }
 
-            if (res > 0x9F || Registers.F.IsFlagSet((ushort)EnumFlags.CF)) {
+            if (res > 0x9F || Registers.CarryFlag) {
                 res += 0x60;
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = true;
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = false;
             }
 
             Registers.AL = (byte)res;
@@ -1250,7 +1244,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)-destination;
-                Registers.F = destination == 0 ? Registers.F.ClearFlag((ushort)EnumFlags.CF) : Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = destination != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1264,7 +1258,7 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)-destination;
-                Registers.F = destination == 0 ? Registers.F.ClearFlag((ushort)EnumFlags.CF) : Registers.F.SetFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = destination != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1291,7 +1285,7 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                if (Registers.CarryFlag)
                     source += 1;
 
                 var result = (byte)(destination - source);
@@ -1310,7 +1304,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                if (Registers.CarryFlag)
                     source += 1;
 
                 var result = (ushort)(destination - source);
@@ -1322,10 +1316,10 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Clc() => Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+        private void Op_Clc() => Registers.CarryFlag = false;
 
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Stc() => Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+        private void Op_Stc() => Registers.CarryFlag = true;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Op_Or()
@@ -1339,7 +1333,7 @@ namespace MBBSEmu.CPU
             };
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
+            Registers.CarryFlag = Registers.OverflowFlag = false;
 
             WriteToDestination(result);
         }
@@ -1404,18 +1398,11 @@ namespace MBBSEmu.CPU
                     result = (byte)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                    if (Registers.CarryFlag)
                         result.SetFlag(1 << 7);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1439,18 +1426,11 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result >> 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                    if (Registers.CarryFlag)
                         result.SetFlag(1 << 15);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1488,18 +1468,11 @@ namespace MBBSEmu.CPU
                     result = (byte)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                    if (Registers.CarryFlag)
                         result.SetFlag(1);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1524,18 +1497,11 @@ namespace MBBSEmu.CPU
                     result = (ushort)(result << 1);
 
                     //If CF was set, rotate that value in
-                    if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                    if (Registers.CarryFlag)
                         result.SetFlag(1);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                    }
-                    else
-                    {
-                        Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1827,7 +1793,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
 
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 2;
                 }
@@ -1954,7 +1920,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2004,7 +1970,7 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
 
             //Clear Flags
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2043,7 +2009,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Ja()
         {
-            if (!Registers.F.IsFlagSet((ushort)EnumFlags.CF) && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
+            if (!Registers.CarryFlag && !Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2056,7 +2022,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Jae()
         {
-            if (!Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+            if (!Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2069,7 +2035,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Jbe()
         {
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) || Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+            if (Registers.ZeroFlag || Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2122,8 +2088,8 @@ namespace MBBSEmu.CPU
         private void Op_Jle()
         {
             //ZF == 1 OR SF <> OF
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) != Registers.F.IsFlagSet((ushort)EnumFlags.OF)
-                || Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
+            if (Registers.SignFlag != Registers.OverflowFlag
+                || Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2137,7 +2103,7 @@ namespace MBBSEmu.CPU
         private void Op_Jge()
         {
             // SF == OF
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) == Registers.F.IsFlagSet((ushort)EnumFlags.OF))
+            if (Registers.SignFlag == Registers.OverflowFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2151,7 +2117,7 @@ namespace MBBSEmu.CPU
         private void Op_Jne()
         {
             //ZF == 0
-            if (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
+            if (!Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2165,8 +2131,8 @@ namespace MBBSEmu.CPU
         private void Op_Jg()
         {
             //ZF == 0 & SF == OF
-            if (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) &&
-                (Registers.F.IsFlagSet((ushort)EnumFlags.SF) == Registers.F.IsFlagSet((ushort)EnumFlags.OF)))
+            if (!Registers.ZeroFlag &&
+                (Registers.SignFlag == Registers.OverflowFlag))
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2180,7 +2146,7 @@ namespace MBBSEmu.CPU
         private void Op_Je()
         {
             // ZF == 1
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF))
+            if (Registers.ZeroFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2194,7 +2160,7 @@ namespace MBBSEmu.CPU
         private void Op_Jl()
         {
             //SF <> OF
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.SF) != Registers.F.IsFlagSet((ushort)EnumFlags.OF))
+            if (Registers.SignFlag != Registers.OverflowFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2208,7 +2174,7 @@ namespace MBBSEmu.CPU
         private void Op_Jb()
         {
             //CF == 1
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+            if (Registers.CarryFlag)
             {
                 Registers.IP = _currentInstruction.Immediate16;
             }
@@ -2237,7 +2203,7 @@ namespace MBBSEmu.CPU
             }
 
             //Clear Overflow & Carry
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
+            Registers.CarryFlag = Registers.OverflowFlag = false;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2380,7 +2346,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (byte)(source + destination);
@@ -2399,7 +2365,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (ushort)(source + destination);
@@ -2418,7 +2384,7 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.F.IsFlagSet((ushort)EnumFlags.CF))
+                if (addCarry && Registers.CarryFlag)
                     source++;
 
                 var result = (ushort)(source + destination);
@@ -2519,14 +2485,7 @@ namespace MBBSEmu.CPU
 
             Registers.AX = (ushort)result;
 
-            if (result > byte.MaxValue)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
-            }
+            Registers.OverflowFlag = Registers.CarryFlag = (result > byte.MaxValue);
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2539,14 +2498,7 @@ namespace MBBSEmu.CPU
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
 
-            if (Registers.DX > 0)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
-            }
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.DX > 0;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2559,14 +2511,7 @@ namespace MBBSEmu.CPU
             Registers.EDX = (uint)(result >> 32);
             Registers.EAX = (uint)(result & 0xFFFFFFFF);
 
-            if (Registers.EDX > 0)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF | (ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF | (ushort)EnumFlags.OF);
-            }
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.EDX > 0;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -2950,50 +2895,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Sahf()
         {
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.SF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.SF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.ZF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.AF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.PF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.PF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.PF);
-            }
-
-            if (Registers.AH.IsFlagSet((byte)EnumFlags.CF))
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
+            Registers.SignFlag = Registers.AH.IsFlagSet((byte)EnumFlags.SF);
+            Registers.ZeroFlag = Registers.AH.IsFlagSet((byte)EnumFlags.ZF);
+            Registers.AuxiliaryCarryFlag =Registers.AH.IsFlagSet((byte)EnumFlags.AF);
+            Registers.CarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.CF);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -3261,19 +3166,13 @@ namespace MBBSEmu.CPU
         ///     Clear Interrupt Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Cli()
-        {
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.IF);
-        }
+        private void Op_Cli() => Registers.InterruptFlag = false;
 
         /// <summary>
         ///     Set Interrupt Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Sti()
-        {
-            Registers.F = Registers.F.SetFlag((ushort)EnumFlags.IF);
-        }
+        private void Op_Sti() => Registers.InterruptFlag = true;
 
         /// <summary>
         ///     Floating Point Store (x87)
@@ -3319,10 +3218,7 @@ namespace MBBSEmu.CPU
         ///     Clears Direction Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Cld()
-        {
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.DF);
-        }
+        private void Op_Cld() => Registers.DirectionFlag = false;
 
         /// <summary>
         ///     Load byte at address DS:(E)SI into AL.
@@ -3332,7 +3228,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
 
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            if (Registers.DirectionFlag)
             {
                 Registers.SI--;
             }
@@ -3351,7 +3247,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI--;
                 }
@@ -3371,7 +3267,7 @@ namespace MBBSEmu.CPU
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result);
                 Flags_EvaluateSignZero(result);
 
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI--;
                     Registers.SI--;
@@ -3401,10 +3297,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Rep(Action action, bool isRepeCompatible = false)
         {
-            while (Registers.CX != 0) { // TODO evaluate whether to use ECX or CX
-	            action.Invoke();
+            while (Registers.CX != 0) {
+                action.Invoke();
                 Registers.CX--;
-	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.F.IsFlagSet((ushort)EnumFlags.ZF)) || (_currentInstruction.HasRepnePrefix && Registers.F.IsFlagSet((ushort)EnumFlags.ZF)))
+	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.ZeroFlag) || (_currentInstruction.HasRepnePrefix && Registers.ZeroFlag))
                     break;
             }
         }
@@ -3423,7 +3319,7 @@ namespace MBBSEmu.CPU
                     Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                     Flags_EvaluateSignZero(result);
 
-                    if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                    if (Registers.DirectionFlag)
                     {
                         Registers.DI--;
                     }
@@ -3440,7 +3336,7 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.CX != 0)
+            if (Registers.ZeroFlag && Registers.CX != 0)
             {
                 Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
@@ -3455,7 +3351,7 @@ namespace MBBSEmu.CPU
         {
             Registers.CX--;
 
-            if (!Registers.F.IsFlagSet((ushort)EnumFlags.ZF) && Registers.CX != 0)
+            if (!Registers.ZeroFlag && Registers.CX != 0)
             {
                 Registers.IP = GetOperandOffset(_currentInstruction.Op0Kind);
                 return;
@@ -3620,13 +3516,13 @@ namespace MBBSEmu.CPU
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushf() => Push(Registers.F);
+        private void Op_Pushf() => Push(Registers.F());
 
         /// <summary>
         ///     Push Flags Register to Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Pushfd() => Push(Registers.EF);
+        private void Op_Pushfd() => Push(Registers.EF());
 
         /// <summary>
         ///     Floating Point Addition (x87)
@@ -3712,16 +3608,10 @@ namespace MBBSEmu.CPU
                 var result = (byte)((destination >> (sbyte)source) | (destination << (8 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
-                if (result.IsNegative())
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                else
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed
-                if (result.IsBitSet(7) != result.IsBitSet(6))
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
-                else
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;
             }
@@ -3742,16 +3632,10 @@ namespace MBBSEmu.CPU
                 var result = (ushort)((destination >> (sbyte)source) | (destination << (16 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
-                if (result.IsNegative())
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-                else
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+                Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 15 & 14 are not the same, then we overflowed
-                if (result.IsBitSet(15) != result.IsBitSet(14))
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
-                else
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
 
                 return result;
             }
@@ -3865,7 +3749,7 @@ namespace MBBSEmu.CPU
         {
             Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
 
-            if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+            if (Registers.DirectionFlag)
             {
                 Registers.SI -= 2;
             }
@@ -3896,7 +3780,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
 
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 1;
                     Registers.SI -= 1;
@@ -3918,7 +3802,7 @@ namespace MBBSEmu.CPU
             Repeat(() => {
                 Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
 
-                if (Registers.F.IsFlagSet((ushort)EnumFlags.DF))
+                if (Registers.DirectionFlag)
                 {
                     Registers.DI -= 2;
                     Registers.SI -= 2;
@@ -4043,20 +3927,20 @@ namespace MBBSEmu.CPU
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popf() => Registers.F = Pop();
+        private void Op_Popf() => Registers.SetF(Pop());
 
         /// <summary>
         ///     Pop from Stack into the Flags Register
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Popfd() => Registers.EF = PopDWord();
+        private void Op_Popfd() => Registers.SetEF(PopDWord());
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Iret()
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
-            Registers.F = Pop();
+            Registers.SetF(Pop());
         }
 
         /// <summary>
@@ -4121,16 +4005,14 @@ namespace MBBSEmu.CPU
             if (count > 0)
             {
                 //CF == the last bit shifted out of the destination
-                Registers.F = destination.IsBitSet((sizeof(uint) * 8) - count)
-                    ? Registers.F.SetFlag((ushort) EnumFlags.CF)
-                    : Registers.F.ClearFlag((ushort) EnumFlags.CF);
+                Registers.CarryFlag = destination.IsBitSet((sizeof(uint) * 8) - count);
             }
 
             //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
             if (count == 1)
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
             else
-                Registers.F.ClearFlag((ushort)EnumFlags.OF);
+                Registers.OverflowFlag = false;
 
             Flags_EvaluateSignZero(result);
 
@@ -4161,27 +4043,12 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation"),
             };
 
-            if (setFlag)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
+            Registers.CarryFlag = setFlag;
 
             // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
             if (arithmeticOperation == EnumArithmeticOperation.Addition)
             {
-                setFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
-                if (setFlag)
-                {
-                    Registers.F = Registers.F.SetFlag((ushort)EnumFlags.AF);
-                }
-                else
-                {
-                    Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.AF);
-                }
+                Registers.AuxiliaryCarryFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
             }
         }
 
@@ -4208,14 +4075,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            if (setFlag)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
+            Registers.CarryFlag = setFlag;
         }
 
         /// <summary>
@@ -4241,14 +4101,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation")
             };
 
-            if (setFlag)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
-            }
+            Registers.CarryFlag = setFlag;
         }
 
         /// <summary>
@@ -4308,7 +4161,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x80) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        setFlag = result.IsFlagSet(0x80) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4332,14 +4185,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            if (setFlag)
-            {
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.OF);
-            }
-            else
-            {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.OF);
-            }
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4399,7 +4245,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x8000) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        setFlag = result.IsFlagSet(0x8000) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4423,7 +4269,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            Registers.F = setFlag ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4483,7 +4329,7 @@ namespace MBBSEmu.CPU
                         if (source != 1)
                             return;
 
-                        setFlag = result.IsFlagSet(0x80000000) ^ Registers.F.IsFlagSet((ushort)EnumFlags.CF);
+                        setFlag = result.IsFlagSet(0x80000000) ^ Registers.CarryFlag;
                         break;
                     }
                 case EnumArithmeticOperation.ShiftArithmeticRight:
@@ -4507,7 +4353,7 @@ namespace MBBSEmu.CPU
                         "Unsupported Carry Flag Operation for Evaluation");
             }
 
-            Registers.F = setFlag ? Registers.F.SetFlag((ushort)EnumFlags.OF) : Registers.F.ClearFlag((ushort)EnumFlags.OF);
+            Registers.OverflowFlag = setFlag;
         }
 
         /// <summary>
@@ -4519,13 +4365,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 
@@ -4538,13 +4384,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 
@@ -4557,13 +4403,13 @@ namespace MBBSEmu.CPU
         {
             if (result == 0)
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.SF);
-                Registers.F = Registers.F.SetFlag((ushort)EnumFlags.ZF);
+                Registers.SignFlag = false;
+                Registers.ZeroFlag = true;
             }
             else
             {
-                Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
-                Registers.F = result.IsNegative() ? Registers.F.SetFlag((ushort)EnumFlags.SF) : Registers.F.ClearFlag((ushort)EnumFlags.SF);
+                Registers.ZeroFlag = false;
+                Registers.SignFlag = result.IsNegative();
             }
         }
 

@@ -78,7 +78,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 3;
             mbbsEmuCpuRegisters.DI = 11;
             mbbsEmuCpuRegisters.CX = 10;
-            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort) EnumFlags.DF);
+            mbbsEmuCpuRegisters.DirectionFlag = true;
 
             mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
             mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);

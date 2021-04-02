@@ -49,7 +49,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return;
         }
 
-        public void SetRegisters(CpuRegisters registers)
+        public void SetRegisters(ICpuRegisters registers)
         {
             return;
         }

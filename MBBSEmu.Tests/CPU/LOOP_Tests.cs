@@ -83,7 +83,7 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = (ushort)EnumFlags.ZF;
+            mbbsEmuCpuRegisters.ZeroFlag = true;
             mbbsEmuCpuRegisters.CX = 2;
             instructions.Label(ref loop);
             instructions.loope(loop);
@@ -105,7 +105,6 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.CX = 2;
             instructions.Label(ref loop);
             instructions.loope(loop);
@@ -127,7 +126,7 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = (ushort)EnumFlags.ZF;
+            mbbsEmuCpuRegisters.ZeroFlag = true;
             mbbsEmuCpuRegisters.CX = 1;
             instructions.Label(ref loop);
             instructions.loope(loop);
@@ -149,7 +148,6 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.CX = 2;
             instructions.Label(ref loop);
             instructions.loopne(loop);
@@ -171,7 +169,7 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = (ushort)EnumFlags.ZF;
+            mbbsEmuCpuRegisters.ZeroFlag = true;
             mbbsEmuCpuRegisters.CX = 2;
             instructions.Label(ref loop);
             instructions.loopne(loop);
@@ -193,7 +191,6 @@ namespace MBBSEmu.Tests.CPU
             var instructions = new Assembler(16);
             var loop = instructions.CreateLabel();
 
-            mbbsEmuCpuRegisters.F = 0;
             mbbsEmuCpuRegisters.CX = 1;
             instructions.Label(ref loop);
             instructions.loopne(loop);
