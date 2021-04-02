@@ -190,10 +190,6 @@ namespace MBBSEmu.Module
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
 
-            //If module disabled don't go any farther
-            if (!moduleConfig.ModuleEnabled)
-                return;
-
             Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
             ProtectedMemory = (ProtectedModeMemoryCore)Memory;
 

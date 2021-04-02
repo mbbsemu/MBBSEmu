@@ -893,12 +893,6 @@ namespace MBBSEmu.HostProcess
         /// <param name="module"></param>
         public void AddModule(MbbsModule module)
         {
-            if (!module.ModuleConfig.ModuleEnabled)
-            {
-                _modules[module.ModuleIdentifier] = module;
-                return;
-            }
-
             Logger.Info($"({module.ModuleIdentifier}) Adding Module...");
 
             //Setup Exported Modules
@@ -1216,14 +1210,7 @@ namespace MBBSEmu.HostProcess
 
         private void EnableModule(string moduleId)
         {
-            //stop host loop
-            _isRunning = false;
-
             _modules[moduleId].ModuleConfig.ModuleEnabled = true;
-            AddModule(new MbbsModule(_fileUtility, Clock, Logger, _modules[moduleId].ModuleConfig));
-
-            //start host loop
-            _isRunning = true;
         }
 
         private void DisableModule(string moduleId)
@@ -1234,23 +1221,7 @@ namespace MBBSEmu.HostProcess
                 return;
             }
 
-            //stop host loop
-            _isRunning = false;
-
-            CallModuleRoutine("finrou", null, _modules[moduleId]);
-
-            var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(_modules[moduleId].ModuleIdentifier)).ToList();
-
-            foreach (var e in exportedFunctionsToRemove)
-            {
-                _exportedFunctions[e].Dispose();
-                _exportedFunctions.Remove(e);
-            }
-
             _modules[moduleId].ModuleConfig.ModuleEnabled = false;
-
-            //start host loop
-            _isRunning = true;
         }
 
         private void ProcessNightlyCleanup()
