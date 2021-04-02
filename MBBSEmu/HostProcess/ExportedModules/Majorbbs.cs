@@ -1743,8 +1743,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
 
-            // TODO validate this?
-            Registers.CarryFlag = result.Valid;
             if (!result.Valid)
             {
 #if DEBUG

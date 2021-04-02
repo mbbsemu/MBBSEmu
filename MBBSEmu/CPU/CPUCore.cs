@@ -1402,14 +1402,7 @@ namespace MBBSEmu.CPU
                         result.SetFlag(1 << 7);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.CarryFlag = true;
-                    }
-                    else
-                    {
-                        Registers.CarryFlag = false;
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1437,14 +1430,7 @@ namespace MBBSEmu.CPU
                         result.SetFlag(1 << 15);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.CarryFlag = true;
-                    }
-                    else
-                    {
-                        Registers.CarryFlag = false;
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1486,14 +1472,7 @@ namespace MBBSEmu.CPU
                         result.SetFlag(1);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.CarryFlag = true;
-                    }
-                    else
-                    {
-                        Registers.CarryFlag = false;
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -1522,14 +1501,7 @@ namespace MBBSEmu.CPU
                         result.SetFlag(1);
 
                     //Set new CF Value
-                    if (newCFValue)
-                    {
-                        Registers.CarryFlag = true;
-                    }
-                    else
-                    {
-                        Registers.CarryFlag = false;
-                    }
+                    Registers.CarryFlag = newCFValue;
                 }
 
                 return result;
@@ -2526,14 +2498,7 @@ namespace MBBSEmu.CPU
             Registers.DX = (ushort)(result >> 16);
             Registers.AX = (ushort)(result & 0xFFFF);
 
-            if (Registers.DX > 0)
-            {
-                Registers.OverflowFlag = Registers.CarryFlag = true;
-            }
-            else
-            {
-                Registers.OverflowFlag = Registers.CarryFlag = false;
-            }
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.DX > 0;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -2546,14 +2511,7 @@ namespace MBBSEmu.CPU
             Registers.EDX = (uint)(result >> 32);
             Registers.EAX = (uint)(result & 0xFFFFFFFF);
 
-            if (Registers.EDX > 0)
-            {
-                Registers.OverflowFlag = Registers.CarryFlag = true;
-            }
-            else
-            {
-                Registers.OverflowFlag = Registers.CarryFlag = false;
-            }
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.EDX > 0;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -3208,19 +3166,13 @@ namespace MBBSEmu.CPU
         ///     Clear Interrupt Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Cli()
-        {
-            Registers.InterruptFlag = false;
-        }
+        private void Op_Cli() => Registers.InterruptFlag = false;
 
         /// <summary>
         ///     Set Interrupt Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Sti()
-        {
-            Registers.InterruptFlag = true;
-        }
+        private void Op_Sti() => Registers.InterruptFlag = true;
 
         /// <summary>
         ///     Floating Point Store (x87)
@@ -3266,10 +3218,7 @@ namespace MBBSEmu.CPU
         ///     Clears Direction Flag
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Cld()
-        {
-            Registers.DirectionFlag = false;
-        }
+        private void Op_Cld() => Registers.DirectionFlag = false;
 
         /// <summary>
         ///     Load byte at address DS:(E)SI into AL.
@@ -3659,16 +3608,10 @@ namespace MBBSEmu.CPU
                 var result = (byte)((destination >> (sbyte)source) | (destination << (8 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
-                if (result.IsNegative())
-                    Registers.CarryFlag = true;
-                else
-                    Registers.CarryFlag = false;
+                Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed
-                if (result.IsBitSet(7) != result.IsBitSet(6))
-                    Registers.OverflowFlag = true;
-                else
-                    Registers.OverflowFlag = false;
+                Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;
             }
@@ -3689,16 +3632,10 @@ namespace MBBSEmu.CPU
                 var result = (ushort)((destination >> (sbyte)source) | (destination << (16 - (sbyte)source)));
 
                 //CF Set if Most Significant Bit set to 1
-                if (result.IsNegative())
-                    Registers.CarryFlag = true;
-                else
-                    Registers.CarryFlag = false;
+                Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 15 & 14 are not the same, then we overflowed
-                if (result.IsBitSet(15) != result.IsBitSet(14))
-                    Registers.OverflowFlag = true;
-                else
-                    Registers.OverflowFlag = false;
+                Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
 
                 return result;
             }
@@ -4106,28 +4043,7 @@ namespace MBBSEmu.CPU
                     "Unsupported Carry Flag Operation for Evaluation"),
             };
 
-            if (setFlag)
-            {
-                Registers.CarryFlag = true;
-            }
-            else
-            {
-                Registers.CarryFlag = false;
-            }
-
-            // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
-            if (arithmeticOperation == EnumArithmeticOperation.Addition)
-            {
-                setFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
-                if (setFlag)
-                {
-                    Registers.AuxiliaryCarryFlag = true;
-                }
-                else
-                {
-                    Registers.AuxiliaryCarryFlag = false;
-                }
-            }
+            Registers.CarryFlag = setFlag;
 
             // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
             if (arithmeticOperation == EnumArithmeticOperation.Addition)
