@@ -240,6 +240,16 @@ namespace MBBSEmu.Session
 
         public void SendToClient(ReadOnlySpan<byte> dataToSend) => SendToClient(dataToSend.ToArray());
 
+        /// <summary>
+        ///     Helper Method to send data to the client synchronously without checking text variables
+        /// </summary>
+        /// <param name="dataToSend"></param>
+        public void SendToClientRaw(byte[] dataToSend)
+        {
+            if (OutputEnabled)
+                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
+        }
+
         public abstract void Stop();
 
         protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, ITextVariableService textVariableService)

@@ -7,17 +7,15 @@ namespace MBBSEmu.CPU
     /// <summary>
     ///     Interface for CpuCore
     /// </summary>
-    public interface ICpuCore
+    public interface ICpuCore : ICpuRegisters
     {
         /// <summary>
         ///     Resets the CPU back to a starting state
         /// </summary>
         /// <param name="memoryCore"></param>
-        /// <param name="cpuRegisters"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
-        void Reset(IMemoryCore memoryCore, CpuRegisters cpuRegisters,
-            CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers);
+        void Reset(IMemoryCore memoryCore, CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers);
 
         /// <summary>
         ///     Resets the CPU to a startup state

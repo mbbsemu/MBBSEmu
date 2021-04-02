@@ -13,7 +13,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             CreateCodeSegment(new byte[] { 0x76, 01 });
-            
+
             if(carryFlagValue)
                 mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.CF);
 
@@ -29,24 +29,24 @@ namespace MBBSEmu.Tests.CPU
             //Verify Flags
             if (carryFlagValue)
             {
-                Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+                Assert.True(mbbsEmuCpuRegisters.CarryFlag);
             }
             else
             {
-                Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+                Assert.False(mbbsEmuCpuRegisters.CarryFlag);
             }
 
             if (zeroFlagValue)
             {
-                Assert.True(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+                Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
             }
             else
             {
-                Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF));
+                Assert.False(mbbsEmuCpuRegisters.ZeroFlag);
             }
 
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.OF));
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.SF));
+            Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.False(mbbsEmuCpuRegisters.SignFlag);
         }
     }
 }

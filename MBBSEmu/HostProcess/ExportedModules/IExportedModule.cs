@@ -7,7 +7,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
     {
         ReadOnlySpan<byte> Invoke(ushort ordinal, bool offsetsOnly = false);
         void SetState(ushort channelNumber);
-        void SetRegisters(CpuRegisters registers);
+        void SetRegisters(ICpuRegisters registers);
         void UpdateSession(ushort channelNumber);
     }
 }

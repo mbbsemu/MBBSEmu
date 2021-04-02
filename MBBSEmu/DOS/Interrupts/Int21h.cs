@@ -26,7 +26,7 @@ namespace MBBSEmu.DOS.Interrupts
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
 
         private ILogger _logger { get; init; }
-        public CpuRegisters Registers { get; set; }
+        public ICpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
         private TextReader _stdin { get; init; }
@@ -89,7 +89,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
+        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
@@ -105,7 +105,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            //_logger.Error($"Interrupt AX {_Registers.AX:X4} H:{_Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -192,12 +192,12 @@ namespace MBBSEmu.DOS.Interrupts
         }
 
         [MethodImpl(SubroutineCompilerOptimizations)]
-        private void ClearCarryFlag() => Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+        private void ClearCarryFlag() => Registers.CarryFlag = false;
 
         [MethodImpl(SubroutineCompilerOptimizations)]
         private void SetCarryFlagErrorCodeInAX(DOSErrorCode code)
         {
-            Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            Registers.CarryFlag = true;
             Registers.AX = (ushort)code;
         }
 
@@ -638,7 +638,7 @@ namespace MBBSEmu.DOS.Interrupts
             _stdout.Flush();
             _stderr.Flush();
 
-            //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+            //_stdout.WriteLine($"Exiting With Exit Code: {_Registers.AL}");
             Registers.Halt = true;
         }
 

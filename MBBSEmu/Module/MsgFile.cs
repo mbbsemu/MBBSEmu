@@ -1,4 +1,5 @@
-﻿using MBBSEmu.Logging;
+﻿using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -20,17 +21,19 @@ namespace MBBSEmu.Module
         protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
         private readonly string _modulePath;
         private readonly string _moduleName;
+        private readonly IFileUtility _fileUtility;
 
         public readonly string FileName;
         public readonly string FileNameAtRuntime;
 
         public readonly Dictionary<string, byte[]> MsgValues;
 
-        public MsgFile(string modulePath, string msgName)
+        public MsgFile(IFileUtility fileUtility, string modulePath, string msgName)
         {
             MsgValues = new Dictionary<string, byte[]>();
             _modulePath = modulePath;
             _moduleName = msgName;
+            _fileUtility = fileUtility;
 
             FileName = $"{msgName.ToUpper()}.MSG";
             FileNameAtRuntime = $"{msgName.ToUpper()}.MCV";
@@ -52,7 +55,8 @@ namespace MBBSEmu.Module
 
             var messageCount = 0;
 
-            var fileToRead = File.ReadAllBytes($"{_modulePath}{_moduleName}.MSG");
+            var path = _fileUtility.FindFile(_modulePath, Path.ChangeExtension(_moduleName, ".MSG"));
+            var fileToRead = File.ReadAllBytes(Path.Combine(_modulePath, path));
 
             var variableName = string.Empty;
             var bInVariable = false;
@@ -174,7 +178,7 @@ namespace MBBSEmu.Module
             msOutput.Write(BitConverter.GetBytes((short)messageCount));
 
             //Write it to the disk
-            File.WriteAllBytes($"{_modulePath}{FileNameAtRuntime}", msOutput.ToArray());
+            File.WriteAllBytes(Path.Combine(_modulePath, FileNameAtRuntime), msOutput.ToArray());
 
             _logger.Debug($"({_moduleName}) Compiled {FileNameAtRuntime} ({MsgValues.Count} values, {msOutput.Length} bytes)");
         }
