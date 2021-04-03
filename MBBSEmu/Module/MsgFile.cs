@@ -4,8 +4,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace MBBSEmu.Module
@@ -42,145 +40,176 @@ namespace MBBSEmu.Module
             BuildMCV();
         }
 
+        private enum MsgParseState {
+            NEWLINE,
+            IDENTIFIER,
+            SPACE,
+            BRACKET,
+            JUNK
+        };
+
+        private static bool IsIdentifier(char c) =>
+            char.IsDigit(c) || (c >= 'A' && c <= 'Z');
+
+        private static bool IsAlnum(char c) =>
+            char.IsLetterOrDigit(c);
+
+        private static string FixLineEndings(string rawMessage) {
+            var ret = new StringBuilder(rawMessage.Length + 16);
+
+            for (var i = 0; i < rawMessage.Length; ++i)
+            {
+                var c = rawMessage[i];
+                if (c == '\n')
+                {
+                    var next = i < (rawMessage.Length - 1) ? rawMessage[i + 1] : (char)0;
+                    if (!IsAlnum(next) && next != '%' && next != '(' && next != '"')
+                    {
+                        ret.Append('\r');
+                        continue;
+                    }
+                }
+                ret.Append(c);
+            }
+            return ret.ToString();
+        }
+
         /// <summary>
         ///     Takes the Specified MSG File and compiles a MCV file to be used at runtime
         /// </summary>
         private void BuildMCV()
         {
-            using var msOutput = new MemoryStream();
-            using var msMessages = new MemoryStream();
-            using var msMessageLengths = new MemoryStream();
-            using var msMessageOffsets = new MemoryStream();
-            using var msCurrentValue = new MemoryStream();
-
-            var messageCount = 0;
-
             var path = _fileUtility.FindFile(_modulePath, Path.ChangeExtension(_moduleName, ".MSG"));
             var fileToRead = File.ReadAllBytes(Path.Combine(_modulePath, path));
+            var state = MsgParseState.NEWLINE;
+            var identifier = new StringBuilder();
+            var str = new StringBuilder();
+            var language = "English/ANSI";
+            var messages = new List<string>();
 
-            var variableName = string.Empty;
-            var bInVariable = false;
-            var bIgnoreNext = false;
-            var checkForLanguage = false;
-
-            msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
-            for (var i = 0; i < fileToRead.Length; i++)
+            foreach (var b in fileToRead)
             {
-                //','
-                if (checkForLanguage && fileToRead[i] == ',')
+                var c = (char)b;
+                switch (state)
                 {
-                    bIgnoreNext = true;
-                    continue;
+                    case MsgParseState.NEWLINE when IsIdentifier(c):
+                        state = MsgParseState.IDENTIFIER;
+                        identifier.Clear();
+                        identifier.Append(c);
+                        break;
+                    case MsgParseState.NEWLINE when c != '\n':
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.IDENTIFIER when IsIdentifier(c):
+                        identifier.Append(c);
+                        break;
+                    case MsgParseState.IDENTIFIER when Char.IsWhiteSpace(c):
+                        state = MsgParseState.SPACE;
+                        break;
+                    case MsgParseState.SPACE when c == '{':
+                        state = MsgParseState.BRACKET;
+                        str.Clear();
+                        break;
+                    case MsgParseState.SPACE when !Char.IsWhiteSpace(c):
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.BRACKET when c == '}':
+                        var value = FixLineEndings(str.ToString());
+
+                        if (identifier.ToString().Equals("LANGUAGE"))
+                            language = value;
+                        else
+                            messages.Add(value);
+
+                        state = MsgParseState.JUNK;
+                        str.Clear();
+                        break;
+                    case MsgParseState.BRACKET when c != '\r':
+                        str.Append(c);
+                        break;
+                    case MsgParseState.JUNK when c == '\n':
+                        state = MsgParseState.NEWLINE;
+                        break;
                 }
-
-                //We're no longer looking for a comma after the previous value
-                checkForLanguage = false;
-
-                //{
-                if (fileToRead[i] == '{' && !bIgnoreNext && !bInVariable)
-                {
-                    bInVariable = true;
-
-                    var variableStart = i;
-                    i--;
-
-                    while (i > 0 && fileToRead[i] <= ' ')
-                        i--;
-
-                    var variableNameEnd = i;
-
-                    //Work Backwards to get Variable Name
-                    while (i > 0 && fileToRead[i] >= ' ')
-                        i--;
-                    var variableNameStart = i;
-
-                    var variableNameLength = (variableNameEnd +1) - variableNameStart;
-                    variableName = Encoding.ASCII.GetString(fileToRead, i, variableNameLength).Trim();
-                    i = variableStart;
-                    continue;
-                }
-
-                //New Line Characters get stripped
-                if (fileToRead[i] == 0xA)
-                    continue;
-
-                //Check for escaped end curly bracket
-                if (fileToRead[i] == '~' && fileToRead[i + 1] == '}')
-                {
-                    i++;
-                    msCurrentValue.WriteByte((byte)'}');
-                    continue;
-                }
-
-                //}
-                if (fileToRead[i] == '}')
-                {
-                    //Check to see if the next character is a comma, denoting another language option
-                    checkForLanguage = true;
-
-                    //This is set if we're ignoring a value, usually a language
-                    if (bIgnoreNext)
-                    {
-                        bIgnoreNext = false;
-                        continue;
-                    }
-
-                    if (!bInVariable)
-                        continue;
-
-                    bInVariable = false;
-
-                    //Always null terminate
-                    msCurrentValue.WriteByte(0x0);
-
-                    //Language is written first, and not written to the offsets/lengths array
-                    //So -- if we parsed it first, write it. If it wasn't in the MSG file, write it
-                    //out to the MCV. We always put language first.
-                    if (Encoding.ASCII.GetString(msCurrentValue.ToArray()) == "English/ANSI\0" || Encoding.ASCII.GetString(msMessages.ToArray()) == "English/RIP\0")
-                    {
-                        msMessages.Write(Encoding.ASCII.GetBytes("English/ANSI\0"));
-                        msCurrentValue.SetLength(0);
-                        continue;
-                    }
-
-                    //Write Result to respective output streams
-                    msMessageOffsets.Write(BitConverter.GetBytes((int)msMessages.Position));
-                    msMessages.Write(msCurrentValue.ToArray());
-                    msMessageLengths.Write(BitConverter.GetBytes((int)msCurrentValue.Length));
-
-                    //If it's a duplicate variable name, append with _X where X is the number of duplicate names so far
-                    if (MsgValues.ContainsKey(variableName))
-                        variableName += $"_{MsgValues.Count(x=> x.Key.StartsWith(variableName))}";
-
-                    //Write to Variable Dictionary
-                    MsgValues.Add(variableName, msCurrentValue.ToArray());
-
-                    messageCount++;
-                    msCurrentValue.SetLength(0);
-                    continue;
-                }
-
-                //Otherwise, we're still parsing a value. Write it to the output buffer and move on to the next byte
-                if (bInVariable)
-                    msCurrentValue.WriteByte(fileToRead[i]);
             }
 
-            //Build Final MCV File
-            msOutput.Write(msMessages.ToArray());
-            msOutput.Write(msMessageLengths.ToArray());
-            msOutput.Write(msMessageOffsets.ToArray());
+            WriteMCV(language, messages);
+        }
 
-            //Final 16 Bytes of the MCV file contain the file information for parsing
-            msOutput.Write(BitConverter.GetBytes((int)0));
-            msOutput.Write(BitConverter.GetBytes((int)msMessages.Length));
-            msOutput.Write(BitConverter.GetBytes((int)msMessages.Length + (int)msMessageLengths.Length));
-            msOutput.Write(BitConverter.GetBytes((short)1));
-            msOutput.Write(BitConverter.GetBytes((short)messageCount));
+        private byte[] GetStringBytes(string str) => Encoding.ASCII.GetBytes(str + "\0");
 
-            //Write it to the disk
-            File.WriteAllBytes(Path.Combine(_modulePath, FileNameAtRuntime), msOutput.ToArray());
+        private void WriteUInt32(Stream stream, int value) => stream.Write(BitConverter.GetBytes(value));
+        private void WriteUInt16(Stream stream, short value) => stream.Write(BitConverter.GetBytes(value));
 
-            _logger.Debug($"({_moduleName}) Compiled {FileNameAtRuntime} ({MsgValues.Count} values, {msOutput.Length} bytes)");
+        private void WriteMCV(string language, List<string> messages, bool writeStringLengthTable = true)
+        {
+            if (language.Length == 0)
+                throw new ArgumentException("Empty language, bad MSG parse");
+
+            /*
+            * 16-byte final header is
+            *
+            * uint32_t ;   // ptr to languages
+            * uint32_t ;   // ptr to length array, always last
+            * uint32_t ;   // ptr to location list
+            * uint16_t ;   // count of languages
+            * uint16_t ;   // count of messages
+            */
+            using var writer = File.Open(Path.Combine(_modulePath, FileNameAtRuntime), FileMode.Create);
+            var offset = 0;
+            var offsets = new int[messages.Count];
+
+            // write out the languages (just messages[0])
+            writer.Write(GetStringBytes(language));
+
+            offset = language.Length + 1;
+
+            // write out each string with a null-terminator
+            var i = 0;
+            foreach (var message in messages)
+            {
+                offsets[i++] = offset;
+
+                writer.Write(GetStringBytes(message));
+                offset += message.Length + 1;
+            }
+
+            var numberOfLanguages = 1;
+            var stringLengthArrayPointer = 0;
+
+            // write out the offset table first
+            var stringLocationsPointer = offset;
+            foreach (var msgOffset in offsets)
+                WriteUInt32(writer, msgOffset);
+
+            offset += 4 * offsets.Length;
+
+            // write out the file lengths if requested
+            if (writeStringLengthTable)
+            {
+                stringLengthArrayPointer = offset;
+
+                foreach (var message in messages)
+                    WriteUInt32(writer, message.Length + 1);
+
+                // don't need to update offset since it's no longer referenced past this point
+            }
+            else
+            {
+                // ptr to location list
+                WriteUInt32(writer, stringLocationsPointer);
+            }
+
+            // language pointer, always 0
+            WriteUInt32(writer, 0);
+            // length array
+            WriteUInt32(writer, stringLengthArrayPointer);
+            // ptr to location list
+            WriteUInt32(writer, stringLocationsPointer);
+            // count of languages
+            WriteUInt16(writer, (short)numberOfLanguages);
+            // count of messages
+            WriteUInt16(writer, (short)messages.Count);
         }
     }
 }
