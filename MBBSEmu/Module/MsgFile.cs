@@ -86,7 +86,7 @@ namespace MBBSEmu.Module
             var state = MsgParseState.NEWLINE;
             var identifier = new StringBuilder();
             var str = new StringBuilder();
-            var language = "";
+            var language = "English/ANSI";
             var messages = new List<string>();
 
             foreach (var b in fileToRead)
@@ -145,6 +145,9 @@ namespace MBBSEmu.Module
 
         private void WriteMCV(string language, List<string> messages, bool writeStringLengthTable = true)
         {
+            if (language.Length == 0)
+                throw new ArgumentException("Empty language, bad MSG parse");
+
             /*
             * 16-byte final header is
             *
