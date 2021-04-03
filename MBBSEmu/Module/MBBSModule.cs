@@ -49,9 +49,9 @@ namespace MBBSEmu.Module
         public readonly string ModulePath;
 
         /// <summary>
-        ///     Menu Option Key of Module
+        ///     Module Configuration
         /// </summary>
-        public string MenuOptionKey { get; set; }
+        public ModuleConfiguration ModuleConfig { get; set; }
 
         /// <summary>
         ///     Module MSG File
@@ -128,28 +128,30 @@ namespace MBBSEmu.Module
         ///
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
-        /// <param name="logger"></param>
-        /// <param name="moduleIdentifier">Will be null in a test</param>
-        /// <param name="path"></param>
-        /// <param name="memoryCore"></param>
         /// <param name="fileUtility"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, string moduleIdentifier, string path = "", ProtectedModeMemoryCore memoryCore = null)
+        /// <param name="clock"></param>
+        /// <param name="logger"></param>
+        /// <param name="moduleConfig"></param>
+        /// <param name="memoryCore"></param>
+        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
 
-            ModuleIdentifier = moduleIdentifier;
+            ModuleConfig = moduleConfig;
+            ModuleIdentifier = moduleConfig.ModuleIdentifier;
+
             ModuleDlls = new List<MbbsDll>();
 
             //Sanitize and setup Path
-            if (string.IsNullOrEmpty(path))
-                path = Directory.GetCurrentDirectory();
+            if (string.IsNullOrEmpty(moduleConfig.ModulePath))
+                moduleConfig.ModulePath = Directory.GetCurrentDirectory();
 
-            if (!Path.EndsInDirectorySeparator(path))
-                path += Path.DirectorySeparatorChar;
+            if (!Path.EndsInDirectorySeparator(moduleConfig.ModulePath))
+                moduleConfig.ModulePath += Path.DirectorySeparatorChar;
 
-            ModulePath = path;
+            ModulePath = moduleConfig.ModulePath;
 
             // will be null in tests
             if (string.IsNullOrEmpty(ModuleIdentifier))
@@ -215,7 +217,7 @@ namespace MBBSEmu.Module
                 if (initResidentName == null)
                 {
                     //This only happens with MajorMUD -- I have no idea why it's a special little snowflake ¯\_(ツ)_/¯
-                    _logger.Warn($"({moduleIdentifier}) Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
+                    _logger.Warn($"({moduleConfig.ModuleIdentifier}) Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
 
                     var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
 

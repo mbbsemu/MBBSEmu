@@ -109,7 +109,6 @@ namespace MBBSEmu.HostProcess
 
         private readonly IGlobalCache _globalCache;
         private readonly IFileUtility _fileUtility;
-        private List<ModuleConfiguration> _moduleConfigurations;
 
         private Thread _workerThread;
 
@@ -174,11 +173,11 @@ namespace MBBSEmu.HostProcess
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
             //Load Modules
-            foreach (var m in moduleConfigurations.Where(m => m.ModuleEnabled))
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m.ModuleIdentifier, m.ModulePath) { MenuOptionKey = m.MenuOptionKey });
+            foreach (var m in moduleConfigurations)
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m));
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1))
+            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && m.Value.ModuleConfig.ModuleEnabled))
             {
                 Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
@@ -186,9 +185,6 @@ namespace MBBSEmu.HostProcess
                 foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
                     _exportedFunctions.Remove(e);
             }
-
-            //Save module configurations for cleanup
-            _moduleConfigurations = moduleConfigurations;
 
             _isRunning = true;
 
@@ -274,7 +270,7 @@ namespace MBBSEmu.HostProcess
 
                         //Check for Internal System Globals
                         if (_globalRoutines.Any(g =>
-                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules, _moduleConfigurations)))
+                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
                         {
                             session.Status = 1;
                             session.InputBuffer.SetLength(0);
@@ -416,7 +412,7 @@ namespace MBBSEmu.HostProcess
 
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
         {
-            foreach (var m in _modules.Values)
+            foreach (var m in _modules.Values.Where(x => x.ModuleConfig.ModuleEnabled))
             {
                 if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
 
@@ -702,7 +698,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessRTKICK()
         {
             //Check for any rtkick routines
-            foreach (var module in _modules.Values)
+            foreach (var module in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (module.RtkickRoutines.Count == 0) continue;
 
@@ -739,7 +735,7 @@ namespace MBBSEmu.HostProcess
             //Too soon? Bail.
             if (_realTimeStopwatch.ElapsedMilliseconds <= 55) return;
 
-            foreach (var m in _modules.Values)
+            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (m.RtihdlrRoutines.Count == 0) continue;
 
@@ -757,7 +753,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void ProcessSYSCYC()
         {
-            foreach (var m in _modules.Values)
+            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
                 if (syscycPointer == FarPtr.Empty) continue;
@@ -776,7 +772,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessTasks()
         {
             //Run task routines
-            foreach (var m in _modules.Values)
+            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (m.TaskRoutines.Count == 0) continue;
 
@@ -1214,53 +1210,18 @@ namespace MBBSEmu.HostProcess
 
         private void EnableModule(string moduleId)
         {
-            var _moduleId = moduleId;
-            var moduleChange = _moduleConfigurations.FirstOrDefault(m => m.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
-
-            //stop host loop
-            _isRunning = false;
-
-            AddModule(new MbbsModule(_fileUtility, Clock, Logger, moduleChange.ModuleIdentifier, moduleChange.ModulePath) { MenuOptionKey = moduleChange.MenuOptionKey });
-
-            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
-            _moduleConfigurations[moduleIndex].ModuleEnabled = true;
-
-            //start host loop
-            _isRunning = true;
+            _modules[moduleId].ModuleConfig.ModuleEnabled = true;
         }
 
         private void DisableModule(string moduleId)
         {
-            var _moduleId = moduleId;
-            var moduleChange = _modules.FirstOrDefault(m => m.Value.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
-
-            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == _moduleId))
+            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == moduleId))
             {
                 Logger.Warn($"(Sysop Command) Tried to disable {moduleId} while in use -- Wait until all users have exited module");
                 return;
             }
 
-            //stop host loop
-            _isRunning = false;
-
-            CallModuleRoutine("finrou", null, moduleChange.Value);
-            _modules.Remove(moduleChange.Value.ModuleIdentifier);
-
-            var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(moduleChange.Value.ModuleIdentifier)).ToList();
-
-            foreach (var e in exportedFunctionsToRemove)
-            {
-                _exportedFunctions[e].Dispose();
-                _exportedFunctions.Remove(e);
-            }
-
-            var moduleIndex = _moduleConfigurations.FindIndex(i =>
-                i.ModuleIdentifier.Equals(_moduleId, StringComparison.InvariantCultureIgnoreCase));
-
-            _moduleConfigurations[moduleIndex].ModuleEnabled = false;
-
-            //start host loop
-            _isRunning = true;
+            _modules[moduleId].ModuleConfig.ModuleEnabled = false;
         }
 
         private void ProcessNightlyCleanup()
@@ -1290,6 +1251,9 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("mcurou", module => Logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
             CallModuleRoutine("finrou", module => Logger.Info($"Calling finish-up (sys-shutdown) routine on module {module.ModuleIdentifier}"));
 
+            //Save current module config
+            var moduleConfigurations = (from m in _modules select m.Value.ModuleConfig).ToList();
+
             foreach (var m in _modules.ToList())
             {
                 _modules.Remove(m.Value.ModuleIdentifier);
@@ -1304,7 +1268,7 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
 
-            Start(_moduleConfigurations);
+            Start(moduleConfigurations);
         }
 
         private TimeSpan NowUntil(TimeSpan timeOfDay)
