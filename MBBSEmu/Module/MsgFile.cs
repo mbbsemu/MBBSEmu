@@ -51,10 +51,10 @@ namespace MBBSEmu.Module
         };
 
         private static bool IsIdentifier(char c) =>
-            Char.IsDigit(c) || (c >= 'A' && c <= 'Z');
+            char.IsDigit(c) || (c >= 'A' && c <= 'Z');
 
         private static bool IsAlnum(char c) =>
-            Char.IsLetterOrDigit(c);
+            char.IsLetterOrDigit(c);
 
         private static string FixLineEndings(string rawMessage) {
             var ret = new StringBuilder(rawMessage.Length + 16);
@@ -64,7 +64,7 @@ namespace MBBSEmu.Module
                 var c = rawMessage[i];
                 if (c == '\n')
                 {
-                    char next = i < (rawMessage.Length - 1) ? rawMessage[i + 1] : (char)0;
+                    var next = i < (rawMessage.Length - 1) ? rawMessage[i + 1] : (char)0;
                     if (!IsAlnum(next) && next != '%' && next != '(' && next != '"')
                     {
                         ret.Append('\r');
@@ -157,64 +157,61 @@ namespace MBBSEmu.Module
             * uint16_t ;   // count of languages
             * uint16_t ;   // count of messages
             */
-            using (var writer = File.Open(Path.Combine(_modulePath, FileNameAtRuntime), FileMode.Create))
+            using var writer = File.Open(Path.Combine(_modulePath, FileNameAtRuntime), FileMode.Create);
+            var offset = 0;
+            var offsets = new int[messages.Count];
+
+            // write out the languages (just messages[0])
+            writer.Write(GetStringBytes(language));
+
+            offset = language.Length + 1;
+
+            // write out each string with a null-terminator
+            var i = 0;
+            foreach (var message in messages)
             {
-                var offset = 0;
-                var offsets = new int[messages.Count];
+                offsets[i++] = offset;
 
-                // write out the languages (just messages[0])
-                writer.Write(GetStringBytes(language));
+                writer.Write(GetStringBytes(message));
+                offset += message.Length + 1;
+            }
 
-                offset = language.Length + 1;
+            var numberOfLanguages = 1;
+            var stringLengthArrayPointer = 0;
 
-                // write out each string with a null-terminator
-                var i = 0;
+            // write out the offset table first
+            var stringLocationsPointer = offset;
+            foreach (var msgOffset in offsets)
+                WriteUInt32(writer, msgOffset);
+
+            offset += 4 * offsets.Length;
+
+            // write out the file lengths if requested
+            if (writeStringLengthTable)
+            {
+                stringLengthArrayPointer = offset;
+
                 foreach (var message in messages)
-                {
-                    offsets[i++] = offset;
+                    WriteUInt32(writer, message.Length + 1);
 
-                    writer.Write(GetStringBytes(message));
-                    offset += message.Length + 1;
-                }
-
-                var numberOfLanguages = 1;
-                var numberOfMessages = messages.Count;
-                var stringLengthArrayPointer = 0;
-
-                // write out the offset table first
-                var stringLocationsPointer = offset;
-                foreach (var msgOffset in offsets)
-                    WriteUInt32(writer, msgOffset);
-
-                offset += 4 * offsets.Length;
-
-                // write out the file lengths if requested
-                if (writeStringLengthTable)
-                {
-                    stringLengthArrayPointer = offset;
-
-                    foreach (string message in messages)
-                        WriteUInt32(writer, message.Length + 1);
-
-                    // don't need to update offset since it's no longer referenced past this point
-                }
-                else
-                {
-                    // ptr to location list
-                    WriteUInt32(writer, stringLocationsPointer);
-                }
-
-                // language pointer, always 0
-                WriteUInt32(writer, 0);
-                // length array
-                WriteUInt32(writer, stringLengthArrayPointer);
+                // don't need to update offset since it's no longer referenced past this point
+            }
+            else
+            {
                 // ptr to location list
                 WriteUInt32(writer, stringLocationsPointer);
-                // count of languages
-                WriteUInt16(writer, (short)numberOfLanguages);
-                // count of messages
-                WriteUInt16(writer, (short)messages.Count);
             }
+
+            // language pointer, always 0
+            WriteUInt32(writer, 0);
+            // length array
+            WriteUInt32(writer, stringLengthArrayPointer);
+            // ptr to location list
+            WriteUInt32(writer, stringLocationsPointer);
+            // count of languages
+            WriteUInt16(writer, (short)numberOfLanguages);
+            // count of messages
+            WriteUInt16(writer, (short)messages.Count);
         }
     }
 }
