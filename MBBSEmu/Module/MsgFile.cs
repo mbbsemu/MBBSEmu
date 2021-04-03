@@ -50,10 +50,10 @@ namespace MBBSEmu.Module
             JUNK
         };
 
-        private static bool isidentifier(char c) =>
+        private static bool IsIdentifier(char c) =>
             Char.IsDigit(c) || (c >= 'A' && c <= 'Z');
 
-        private static bool isalnum(char c) =>
+        private static bool IsAlnum(char c) =>
             Char.IsLetterOrDigit(c);
 
         private static string FixLineEndings(string rawMessage) {
@@ -65,7 +65,7 @@ namespace MBBSEmu.Module
                 if (c == '\n')
                 {
                     char next = i < (rawMessage.Length - 1) ? rawMessage[i + 1] : (char)0;
-                    if (!isalnum(next) && next != '%' && next != '(' && next != '"')
+                    if (!IsAlnum(next) && next != '%' && next != '(' && next != '"')
                     {
                         ret.Append('\r');
                         continue;
@@ -94,7 +94,7 @@ namespace MBBSEmu.Module
                 var c = (char)b;
                 switch (state)
                 {
-                    case MsgParseState.NEWLINE when isidentifier(c):
+                    case MsgParseState.NEWLINE when IsIdentifier(c):
                         state = MsgParseState.IDENTIFIER;
                         identifier.Clear();
                         identifier.Append(c);
@@ -102,7 +102,7 @@ namespace MBBSEmu.Module
                     case MsgParseState.NEWLINE when c != '\n':
                         state = MsgParseState.JUNK;
                         break;
-                    case MsgParseState.IDENTIFIER when isidentifier(c):
+                    case MsgParseState.IDENTIFIER when IsIdentifier(c):
                         identifier.Append(c);
                         break;
                     case MsgParseState.IDENTIFIER when Char.IsWhiteSpace(c):
