@@ -91,7 +91,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(CpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, BlockingCollection<byte[]> stdout, TextWriter stderr, string path = "")
+        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, BlockingCollection<byte[]> stdout, TextWriter stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
