@@ -13,11 +13,11 @@ namespace MBBSEmu.DOS.Interrupts
         private ILogger _logger { get; init; }
         private readonly BlockingCollection<byte[]> _stdout;
 
-        private CpuRegisters _registers { get; init; }
+        private ICpuRegisters _registers { get; init; }
 
         public byte Vector => 0x10;
 
-        public Int10h(CpuRegisters registers, ILogger logger, BlockingCollection<byte[]> stdout)
+        public Int10h(ICpuRegisters registers, ILogger logger, BlockingCollection<byte[]> stdout)
         {
             _registers = registers;
             _logger = logger;
@@ -26,7 +26,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            _logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
+            //_logger.Error($"Interrupt AX {_registers.AX:X4} H:{_registers.AH:X2}");
 
             switch (_registers.AH)
             {

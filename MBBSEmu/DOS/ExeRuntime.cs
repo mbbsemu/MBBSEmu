@@ -52,7 +52,13 @@ namespace MBBSEmu.DOS
             Registers = new CpuRegisters();
             
             Registers = (ICpuRegisters)Cpu;
-            Cpu.Reset(Memory, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, sessionBase.DataFromClient, sessionBase.DataToClient, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
+            Cpu.Reset(Memory, null,
+                new List<IInterruptHandler>
+                {
+                    new Int21h(Registers, Memory, clock, _logger, fileUtility, sessionBase.DataFromClient,
+                        sessionBase.DataToClient, Console.Error, Environment.CurrentDirectory),
+                    new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger, sessionBase.DataToClient)
+                });
         }
 
         private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);
