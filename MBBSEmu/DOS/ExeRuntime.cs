@@ -35,6 +35,7 @@ namespace MBBSEmu.DOS
         public ICpuCore Cpu;
         public ICpuRegisters Registers;
         private ILogger _logger;
+        private SessionBase _sessionBase;
         private readonly FarPtr _programRealModeLoadAddress = new FarPtr(PROGRAM_START_ADDRESS + (PSP_LENGTH >> 4), 0);
         private readonly ushort _pspSegment = PROGRAM_START_ADDRESS;
         private ushort _environmentSegment;
@@ -43,7 +44,7 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, IStream stdin, IStream stdout, IStream stderr)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
         {
             _logger = logger;
             File = file;
@@ -67,6 +68,7 @@ namespace MBBSEmu.DOS
             clock,
             logger,
             fileUtility,
+            sessionBase,
             new BlockingCollectionReaderStream(sessionBase.DataFromClient),
             new BlockingCollectionWriterStream(sessionBase.DataToClient),
             new TextWriterStream(Console.Error)) {}
@@ -89,6 +91,8 @@ namespace MBBSEmu.DOS
         {
             while (!Registers.Halt)
                 Cpu.Tick();
+
+            _sessionBase?.Stop();
         }
 
         private string GetFullExecutingPath()

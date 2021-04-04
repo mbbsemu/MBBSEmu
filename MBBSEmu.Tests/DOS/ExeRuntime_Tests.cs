@@ -106,6 +106,7 @@ Printing environment variables from 0CDE
               _serviceResolver.GetService<IClock>(),
               _serviceResolver.GetService<ILogger>(),
               _serviceResolver.GetService<IFileUtility>(),
+              null,
               new TextReaderStream(Console.In),
               stdout,
               stdout);
