@@ -278,16 +278,6 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         public void Tick()
         {
-            // TODO figure out how we can remove this check, such as filling the
-            // memory core instruction set at 65535 to all halt instructions
-
-            // Check for segment end
-            if (Registers.CS == ushort.MaxValue)
-            {
-                Registers.Halt = true;
-                return;
-            }
-
 #if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
             _currentInstructionPointer.Segment = Registers.CS;
@@ -1799,6 +1789,8 @@ namespace MBBSEmu.CPU
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
+
+            Registers.Halt = Registers.CS == 0xFFFF;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
