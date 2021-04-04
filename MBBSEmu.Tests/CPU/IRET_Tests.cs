@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(0xFFFD, mbbsEmuCpuRegisters.IP);
             Assert.Equal(0xFFFE, mbbsEmuCpuRegisters.CS);
-            Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.F);
+            Assert.Equal(0xED1, mbbsEmuCpuRegisters.F);
             Assert.Equal(entrySP, mbbsEmuCpuRegisters.SP);
         }
     }

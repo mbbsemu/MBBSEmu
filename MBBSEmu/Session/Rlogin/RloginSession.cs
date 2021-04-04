@@ -1,15 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
 using NLog;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using System.Text;
 
 namespace MBBSEmu.Session.Rlogin
 {
@@ -33,8 +33,8 @@ namespace MBBSEmu.Session.Rlogin
     {
         private readonly PointerDictionary<SessionBase> _channelDictionary;
         private readonly AppSettings _configuration;
-        private readonly List<string> rloginStrings = new List<string>();
-        private readonly MemoryStream memoryStream = new MemoryStream(1024);
+        private readonly List<string> rloginStrings = new();
+        private readonly MemoryStream memoryStream = new(1024);
 
         public readonly string ModuleIdentifier;
 
@@ -78,10 +78,7 @@ namespace MBBSEmu.Session.Rlogin
             //Check to see if there is an available channel
             if (_channelDictionary.Count > _configuration.BBSChannels)
             {
-                var channelFullMsg =
-                    $"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|"
-                        .EncodeToANSIArray();
-                Send(channelFullMsg);
+                Send($"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|".EncodeToANSIArray());
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
@@ -90,11 +87,8 @@ namespace MBBSEmu.Session.Rlogin
             if (_channelDictionary.Values.Any(s => string.Equals(s.Username,
                 rloginStrings.First(s => !string.IsNullOrEmpty(s)), StringComparison.CurrentCultureIgnoreCase)))
             {
-                _logger.Info($"RLogin -- User already logged in");
-                var duplicateLoginMsg =
-                    $"\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|"
-                        .EncodeToANSIArray();
-                Send(duplicateLoginMsg);
+                _logger.Info("RLogin -- User already logged in");
+                Send("\r\n|RED||B|Duplicate user already logged in -- only 1 connection allowed per user.\r\n|RESET|".EncodeToANSIArray());
                 SessionState = EnumSessionState.LoggedOff;
                 return false;
             }
@@ -108,8 +102,16 @@ namespace MBBSEmu.Session.Rlogin
 
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
+                if (_mbbsHost.GetModule(ModuleIdentifier).ModuleConfig.ModuleEnabled == false)
+                {
+                    _logger.Warn($"User attempted to login to disabled module {ModuleIdentifier}");
+                    Send($"\r\n|RED||B|{ModuleIdentifier} is Disabled -- please try again later.\r\n|RESET|".EncodeToANSIArray());
+                    SessionState = EnumSessionState.LoggedOff;
+                    return false;
+                }
+
                 CurrentModule = _mbbsHost.GetModule(ModuleIdentifier);
-                InputBuffer.WriteByte((byte)CurrentModule.MenuOptionKey[0]);
+                InputBuffer.WriteByte((byte)CurrentModule.ModuleConfig.MenuOptionKey[0]);
                 SessionState = EnumSessionState.RloginEnteringModule;
             }
             else
@@ -126,25 +128,25 @@ namespace MBBSEmu.Session.Rlogin
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
              if (SessionState != EnumSessionState.Negotiating)
-            {
-                //Ugly WG3NT RLOGIN Extra Data Hack
-                if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
-                    return (null, 0);
+             {
+                 //Ugly WG3NT RLOGIN Extra Data Hack
+                 if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
+                     return (null, 0);
 
-                return (clientData, bytesReceived);
-            }
+                 return (clientData, bytesReceived);
+             }
 
-            for (var i = 0; i < bytesReceived; ++i)
-            {
-                if (ProcessIncomingByte(clientData[i]))
-                {
-                    // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
-                    var remaining = bytesReceived - i - 1;
-                    _logger.Debug($"Ignoring extra rlogin data: \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
-                }
-            }
+             for (var i = 0; i < bytesReceived; ++i)
+             {
+                 if (ProcessIncomingByte(clientData[i]))
+                 {
+                     // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
+                     var remaining = bytesReceived - i - 1;
+                     _logger.Debug($"Ignoring extra rlogin data: \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
+                 }
+             }
 
-            return (null, 0);
+             return (null, 0);
         }
     }
 }

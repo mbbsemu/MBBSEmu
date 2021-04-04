@@ -33,7 +33,7 @@ namespace MBBSEmu.DOS
         public MZFile File;
         public IMemoryCore Memory;
         public ICpuCore Cpu;
-        public readonly CpuRegisters Registers = new CpuRegisters();
+        public ICpuRegisters Registers;
         private ILogger _logger;
         private readonly FarPtr _programRealModeLoadAddress = new FarPtr(PROGRAM_START_ADDRESS + (PSP_LENGTH >> 4), 0);
         private readonly ushort _pspSegment = PROGRAM_START_ADDRESS;
@@ -50,14 +50,9 @@ namespace MBBSEmu.DOS
             Memory = new RealModeMemoryCore(0x8000, logger);
             Cpu = new CpuCore(_logger);
             Registers = new CpuRegisters();
-
-            Cpu.Reset(Memory, Registers, null,
-                new List<IInterruptHandler>
-                {
-                    new Int21h(Registers, Memory, clock, _logger, fileUtility, sessionBase.DataFromClient, sessionBase.DataToClient, Console.Error,
-                        Environment.CurrentDirectory),
-                    new Int1Ah(Registers, Memory, clock), new Int3Eh(), new Int10h(Registers, _logger, sessionBase.DataToClient)
-                });
+            
+            Registers = (ICpuRegisters)Cpu;
+            Cpu.Reset(Memory, null, new List<IInterruptHandler> { new Int21h(Registers, Memory, clock, _logger, fileUtility, Console.In, Console.Out, Console.Error, Environment.CurrentDirectory), new Int1Ah(Registers, Memory, clock), new Int3Eh() });
         }
 
         private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);

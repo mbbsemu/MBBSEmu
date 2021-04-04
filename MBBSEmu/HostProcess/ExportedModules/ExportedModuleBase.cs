@@ -68,7 +68,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
         private protected readonly ITextVariableService _textVariableService;
-        public CpuRegisters Registers;
+        public ICpuRegisters Registers;
 
         public MbbsModule Module;
 

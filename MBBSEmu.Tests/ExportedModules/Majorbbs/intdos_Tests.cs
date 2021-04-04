@@ -178,7 +178,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x1A, DS = 0x1000, DX = 0x3480};
+            var testRegisters = new CpuRegisters() {AH = 0x1A, DS = 0x1000, DX = 0x3480};
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -322,7 +322,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 (ushort)testRegistersArrayData.Length));
 
             //Verify Results
-            Assert.False(mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(mbbsEmuCpuRegisters.CarryFlag);
             Assert.Equal(2, testRegisters.DL); // C Drive
             Assert.Equal(dirPointer.Segment, mbbsEmuCpuRegisters.DS);
             Assert.Equal(dirPointer.Offset, testRegisters.SI);
@@ -353,7 +353,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.Equal(0xFFFF, testRegisters.BX);
-            Assert.False(testRegisters.F.IsFlagSet((ushort)EnumFlags.CF));
+            Assert.False(testRegisters.CarryFlag);
         }
 
         [Fact]

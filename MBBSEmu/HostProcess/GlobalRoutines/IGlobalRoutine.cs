@@ -17,6 +17,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// <param name="modules"></param>
         /// <returns></returns>
         bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions,
-            Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations);
+            Dictionary<string, MbbsModule> modules);
     }
 }

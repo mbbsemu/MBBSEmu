@@ -27,7 +27,7 @@ namespace MBBSEmu.DOS.Interrupts
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
 
         private ILogger _logger { get; init; }
-        public CpuRegisters Registers { get; set; }
+        public ICpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
         private BlockingCollection<byte> _stdin { get; init; }
@@ -200,12 +200,12 @@ namespace MBBSEmu.DOS.Interrupts
         }
 
         [MethodImpl(SubroutineCompilerOptimizations)]
-        private void ClearCarryFlag() => Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.CF);
+        private void ClearCarryFlag() => Registers.CarryFlag = false;
 
         [MethodImpl(SubroutineCompilerOptimizations)]
         private void SetCarryFlagErrorCodeInAX(DOSErrorCode code)
         {
-            Registers.F = Registers.F.SetFlag((ushort)EnumFlags.CF);
+            Registers.CarryFlag = true;
             Registers.AX = (ushort)code;
         }
 
@@ -688,7 +688,7 @@ namespace MBBSEmu.DOS.Interrupts
             _stdout.Clear();
             _stderr.Flush();
 
-            //_stdout.WriteLine($"Exiting With Exit Code: {_registers.AL}");
+            //_stdout.WriteLine($"Exiting With Exit Code: {_Registers.AL}");
             Registers.Halt = true;
         }
 

@@ -12,7 +12,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 {
     public class PageUserGlobal : IGlobalRoutine
     {
-        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
+        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
         {
             //Check minimum length for a /p command else exit
             if(command.Length < 6) return false;

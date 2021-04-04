@@ -11,15 +11,15 @@ namespace MBBSEmu.CPU.Benchmark
     {
         private static CpuCore mbbsEmuCpuCore;
         private static ProtectedModeMemoryCore mbbsEmuMemoryCore;
-        private static CpuRegisters mbbsEmuCpuRegisters;
+        private static ICpuRegisters mbbsEmuCpuRegisters;
         private static bool _isRunning;
 
         static Program()
         {
             mbbsEmuMemoryCore = new ProtectedModeMemoryCore(null);
-            mbbsEmuCpuRegisters = new CpuRegisters();
             mbbsEmuCpuCore = new CpuCore();
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, mbbsEmuCpuRegisters, null, null);
+            mbbsEmuCpuRegisters = (ICpuRegisters)mbbsEmuCpuCore;
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null);
         }
 
         static void Main(string[] args)
@@ -28,9 +28,9 @@ namespace MBBSEmu.CPU.Benchmark
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
             mbbsEmuMemoryCore.Clear();
-            mbbsEmuCpuRegisters.CS = 1;
-            mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuCpuRegisters.IP = 0;
+            mbbsEmuCpuCore.Registers.CS = 1;
+            mbbsEmuCpuCore.Registers.DS = 2;
+            mbbsEmuCpuCore.Registers.IP = 0;
 
             var instructions = new Assembler(16);
             var label_start = instructions.CreateLabel();
@@ -46,7 +46,6 @@ namespace MBBSEmu.CPU.Benchmark
 
             CreateCodeSegment(instructions);
             CreateDataSegment(new ReadOnlySpan<byte>());
-
 
             _isRunning = true;
             new Thread(RunThread).Start();

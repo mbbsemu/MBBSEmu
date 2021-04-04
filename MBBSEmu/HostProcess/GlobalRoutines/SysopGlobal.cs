@@ -25,7 +25,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         private readonly IAccountKeyRepository _accountKeyRepository;
         private readonly IGlobalCache _globalCache;
         private readonly IMessagingCenter _messagingCenter;
-        private List<ModuleConfiguration> _moduleConfigurations;
         private PointerDictionary<SessionBase> _sessions;
         private Dictionary<string, MbbsModule> _modules;
         private ushort _channelNumber;
@@ -38,7 +37,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _messagingCenter = messagingCenter;
         }
 
-        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules, List<ModuleConfiguration> moduleConfigurations)
+        public bool ProcessCommand(ReadOnlySpan<byte> command, ushort channelNumber, PointerDictionary<SessionBase> sessions, Dictionary<string, MbbsModule> modules)
         {
             //Fast Return
             if (command.Length < 5)
@@ -57,7 +56,6 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions = sessions;
             _channelNumber = channelNumber;
             _modules = modules;
-            _moduleConfigurations = moduleConfigurations;
 
             //Verify the command has at least one action
             if (command.IndexOf((byte)' ') == -1)
@@ -439,23 +437,21 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            var moduleIndex = _moduleConfigurations.FindIndex(i => i.ModuleIdentifier.Equals(commandSequence[2], StringComparison.InvariantCultureIgnoreCase));
-            
-            if (moduleIndex == 0)
+            var moduleChange = commandSequence[2].ToUpper();
+
+            if (!_modules.ContainsKey(moduleChange))
             {
                 _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Module -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
-            var moduleChange = _moduleConfigurations[moduleIndex];
-
-            if (moduleChange.ModuleEnabled)
+            if (_modules[moduleChange].ModuleConfig.ModuleEnabled)
             {
-                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{moduleChange.ModuleIdentifier} already enabled -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{_modules[moduleChange].ModuleIdentifier} already enabled -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
-            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, EnumMessageEvent.EnableModule, _modules[moduleChange].ModuleIdentifier);
         }
 
         /// <summary>
@@ -468,19 +464,25 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         {
             if (commandSequence.Count < 3)
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS DISABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
-            if (!_modules.ContainsKey(commandSequence[2].ToUpper()))
+            var moduleChange = commandSequence[2].ToUpper();
+
+            if (!_modules.ContainsKey(moduleChange))
             {
-                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Module -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Module -- Syntax: /SYS DISABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
                 return;
             }
 
-            var moduleChange = _modules.GetValueOrDefault(commandSequence[2].ToUpper());
+            if (_modules[moduleChange].ModuleConfig.ModuleEnabled == false)
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{_modules[commandSequence[2]].ModuleIdentifier} already disabled -- Syntax: /SYS DISABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
 
-            _messagingCenter.Send(this, EnumMessageEvent.DisableModule, moduleChange.ModuleIdentifier);
+            _messagingCenter.Send(this, EnumMessageEvent.DisableModule, _modules[moduleChange].ModuleIdentifier);
         }
 
         /// <summary>
@@ -492,9 +494,9 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         {
             _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Module Name----------------------Path-------------------------------Enabled-----\r\n".EncodeToANSIString());
 
-            foreach (var m in _moduleConfigurations)
+            foreach (var m in _modules)
             {
-                _sessions[_channelNumber].SendToClient($"{m.ModuleIdentifier,-33}{m.ModulePath,-35}{m.ModuleEnabled}\r\n");
+                _sessions[_channelNumber].SendToClient($"{m.Value.ModuleIdentifier,-33}{m.Value.ModulePath,-35}{m.Value.ModuleConfig.ModuleEnabled}\r\n");
             }
 
             _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());

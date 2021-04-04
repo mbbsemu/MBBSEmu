@@ -61,7 +61,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.SI.Should().Be((ushort)(ptr1.Offset + 16));
             mbbsEmuCpuRegisters.DI.Should().Be((ushort)(ptr2.Offset + 16));
             mbbsEmuCpuRegisters.CX.Should().Be(0);
-            mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF).Should().BeTrue();
+            mbbsEmuCpuRegisters.ZeroFlag.Should().BeTrue();
         }
     }
 }
