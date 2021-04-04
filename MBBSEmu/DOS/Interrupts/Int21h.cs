@@ -6,7 +6,6 @@ using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,9 +29,9 @@ namespace MBBSEmu.DOS.Interrupts
         public ICpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
-        private BlockingCollection<byte> _stdin { get; init; }
-        private BlockingCollection<byte[]> _stdout { get; init; }
-        private TextWriter _stderr { get; init; }
+        private IStream _stdin { get; init; }
+        private IStream _stdout { get; init; }
+        private IStream _stderr { get; init; }
 
         /// <summary>
         ///     Path of the current Execution Context
@@ -91,7 +90,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, BlockingCollection<byte> stdin, BlockingCollection<byte[]> stdout, TextWriter stderr, string path = "")
+        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, IStream stdin, IStream stdout, IStream stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
@@ -212,8 +211,8 @@ namespace MBBSEmu.DOS.Interrupts
         private void DirectStdinInputNoEcho_0x07()
         {
             Registers.DL = 0xFF;
-            var c = _stdin.Take();
-            _stdout.Add(new[] { c });
+            var c = _stdin.Read();
+            _stdout.Write(c);
             Registers.AL = c;
             Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
         }
@@ -245,8 +244,9 @@ namespace MBBSEmu.DOS.Interrupts
                 //Handle Keyboard Input
                 if (fileHandle == 0)
                 {
-                    var c = _stdin.Take();
-                    _stdout.Add(new[] { c });
+                    var c = _stdin.Read();
+                    _stdout.Write(c);
+
                     ClearCarryFlag();
 
                     //ENTER sends 0xD if you Console.ReadKey().KeyChar
@@ -254,7 +254,7 @@ namespace MBBSEmu.DOS.Interrupts
                     if (c == 0xD)
                     {
                         c = 0xA;
-                        _stdout.Add(new[] { c });
+                        _stdout.Write(c);
                     }
 
                     //Handle Character Input
@@ -343,8 +343,8 @@ namespace MBBSEmu.DOS.Interrupts
             // DOS - KEYBOARD INPUT (with echo)
             // Return: AL = character read
             // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-            var c = _stdin.Take();
-            _stdout.Add(new[] { c });
+            var c = _stdin.Read();
+            _stdout.Write(c);
             Registers.AL = c;
         }
 
@@ -456,7 +456,7 @@ namespace MBBSEmu.DOS.Interrupts
             while ((b = _memory.GetByte(src++)) != '$')
                 memoryStream.WriteByte(b);
 
-            _stdout.Add(memoryStream.ToArray());
+            _stdout.Write(memoryStream.ToArray());
         }
 
         private void GetDefaultDiskNumber_0x19()
@@ -596,12 +596,12 @@ namespace MBBSEmu.DOS.Interrupts
                     SetCarryFlagErrorCodeInAX(DOSErrorCode.WRITE_FAULT);
                     break;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Add(dataToWrite.ToArray());
+                    _stdout.Write(dataToWrite.ToArray());
                     ClearCarryFlag();
                     Registers.AX = numberOfBytes;
                     return;
                 case (ushort)FileHandle.STDERR:
-                    _stderr.Write(Encoding.ASCII.GetString(dataToWrite));
+                    _stderr.Write(dataToWrite.ToArray());
                     ClearCarryFlag();
                     Registers.AX = numberOfBytes;
                     return;
@@ -685,7 +685,7 @@ namespace MBBSEmu.DOS.Interrupts
                 AL = exit code
                 Return: never returns
             */
-            _stdout.Clear();
+            _stdout.Flush();
             _stderr.Flush();
 
             //_stdout.WriteLine($"Exiting With Exit Code: {_Registers.AL}");
@@ -841,13 +841,13 @@ namespace MBBSEmu.DOS.Interrupts
             switch (Registers.BX)
             {
                 case (ushort)FileHandle.STDIN:
-                    _stdin.Clear();
+                    _stdin.Dispose();
                     return;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Clear();
+                    _stdout.Dispose();
                     return;
                 case (ushort)FileHandle.STDERR:
-                    _stderr.Close();
+                    _stderr.Dispose();
                     return;
                 case (ushort)FileHandle.STDAUX:
                 case (ushort)FileHandle.STDPRN:

@@ -105,7 +105,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _previousBtrieveFile = new Stack<FarPtr>(10);
             _highResolutionTimer.Start();
 
-            _int21h = new Int21h(Registers, Module.Memory, _clock, _logger, _fileFinder, null, null, Console.Error, Module.ModulePath);
+            _int21h = new Int21h(Registers, Module.Memory, _clock, _logger, _fileFinder, null, null, new TextWriterStream(Console.Error), Module.ModulePath);
 
             //Add extra channel for "system full" message
             var _numberOfChannels = _configuration.BBSChannels + 1;

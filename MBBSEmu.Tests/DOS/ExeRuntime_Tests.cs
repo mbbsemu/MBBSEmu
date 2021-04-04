@@ -93,10 +93,10 @@ Printing environment variables from 0CDE
         }
 
         [Fact]
-        public void haha()
+        public void CMDLINE_EXE()
         {
             var stdoutStream = new MemoryStream();
-            var stdout = new StreamWriter(stdoutStream);
+            var stdout = new TextWriterStream(new StreamWriter(stdoutStream));
             var expectedOutput = GetExpectedOutput();
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
@@ -106,7 +106,7 @@ Printing environment variables from 0CDE
               _serviceResolver.GetService<IClock>(),
               _serviceResolver.GetService<ILogger>(),
               _serviceResolver.GetService<IFileUtility>(),
-              Console.In,
+              new TextReaderStream(Console.In),
               stdout,
               stdout);
 

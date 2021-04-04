@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
 using MBBSEmu.CPU;
+using MBBSEmu.IO;
 using NLog;
 
 namespace MBBSEmu.DOS.Interrupts
@@ -11,13 +12,13 @@ namespace MBBSEmu.DOS.Interrupts
         private const string ANSI_SET_CURSOR_POSITION = "\x1B[{0};{1}H";
 
         private ILogger _logger { get; init; }
-        private readonly BlockingCollection<byte[]> _stdout;
+        private readonly IStream _stdout;
 
         private ICpuRegisters _registers { get; init; }
 
         public byte Vector => 0x10;
 
-        public Int10h(ICpuRegisters registers, ILogger logger, BlockingCollection<byte[]> stdout)
+        public Int10h(ICpuRegisters registers, ILogger logger, IStream stdout)
         {
             _registers = registers;
             _logger = logger;
@@ -117,7 +118,7 @@ namespace MBBSEmu.DOS.Interrupts
             //Blank Whole Screen?
             if (_registers.AL == 0)
             {
-                _stdout.Add(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
+                _stdout.Write(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
                 return;
             }
 
@@ -135,7 +136,7 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private void SetCursorPosition_0x02()
         {
-            _stdout.Add(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _registers.DH, _registers.DL)));
+            _stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _registers.DH, _registers.DL)));
         }
     }
 }
