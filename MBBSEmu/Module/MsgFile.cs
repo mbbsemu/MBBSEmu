@@ -103,14 +103,18 @@ namespace MBBSEmu.Module
                     case MsgParseState.IDENTIFIER when IsIdentifier(c):
                         identifier.Append(c);
                         break;
-                    case MsgParseState.IDENTIFIER when Char.IsWhiteSpace(c):
+                    case MsgParseState.IDENTIFIER when char.IsWhiteSpace(c):
                         state = MsgParseState.SPACE;
+                        break;
+                    case MsgParseState.IDENTIFIER when c == '{':
+                        state = MsgParseState.BRACKET;
+                        str.Clear();
                         break;
                     case MsgParseState.SPACE when c == '{':
                         state = MsgParseState.BRACKET;
                         str.Clear();
                         break;
-                    case MsgParseState.SPACE when !Char.IsWhiteSpace(c):
+                    case MsgParseState.SPACE when !char.IsWhiteSpace(c):
                         state = MsgParseState.JUNK;
                         break;
                     case MsgParseState.BRACKET when c == '}':
