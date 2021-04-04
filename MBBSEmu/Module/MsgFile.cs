@@ -86,6 +86,7 @@ namespace MBBSEmu.Module
             var str = new StringBuilder();
             var language = "English/ANSI";
             var messages = new List<string>();
+            var last = (char)0;
 
             foreach (var b in fileToRead)
             {
@@ -117,6 +118,13 @@ namespace MBBSEmu.Module
                     case MsgParseState.SPACE when !char.IsWhiteSpace(c):
                         state = MsgParseState.JUNK;
                         break;
+                    case MsgParseState.BRACKET when c == '~' && last == '~':
+                        // double tilde, only output one tilde, so skip second output
+                        break;
+                    case MsgParseState.BRACKET when c == '}' && last == '~':
+                        // escaped ~}, change '~' we've already collected to '}'
+                        str.Replace('~', '}', str.Length - 1, 1);
+                        break;
                     case MsgParseState.BRACKET when c == '}':
                         var value = FixLineEndings(str.ToString());
 
@@ -135,6 +143,7 @@ namespace MBBSEmu.Module
                         state = MsgParseState.NEWLINE;
                         break;
                 }
+                last = c;
             }
 
             WriteMCV(language, messages);
