@@ -47,6 +47,7 @@ namespace MBBSEmu.DOS
         public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
         {
             _logger = logger;
+            _sessionBase = sessionBase;
             File = file;
             Memory = new RealModeMemoryCore(0x8000, logger);
             Cpu = new CpuCore(_logger);
