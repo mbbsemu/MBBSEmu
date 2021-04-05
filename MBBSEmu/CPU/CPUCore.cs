@@ -373,6 +373,7 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Wait:
                 case Mnemonic.Nop:
                 case Mnemonic.In:
+                    // TODO support in/out for timer
                     Registers.AL = _timer++;
                     break;
                 case Mnemonic.Out:

@@ -210,11 +210,8 @@ namespace MBBSEmu.DOS.Interrupts
 
         private void DirectStdinInputNoEcho_0x07()
         {
-            Registers.DL = 0xFF;
-            var c = _stdin.Read();
-            _stdout.Write(c);
-            Registers.AL = c;
-            Registers.F = Registers.F.ClearFlag((ushort)EnumFlags.ZF);
+            Registers.AL = _stdin.Read();
+            Registers.ZeroFlag = false;
         }
 
         private void ReadFromFileHandle_0x3F()
