@@ -2,7 +2,7 @@
   "profiles": {
     "MBBSHost": {
       "commandName": "Project",
-      "commandLineArgs": "-c modules.json -dbreset sysop"
+      "commandLineArgs": "-exe c:\\dos\\tc\\bin\\name.exe"
     }
   }
 }

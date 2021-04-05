@@ -6,7 +6,6 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -73,6 +72,8 @@ namespace MBBSEmu.CPU
         ///     Default Value for the SP Register (Stack Pointer)
         /// </summary>
         public const ushort STACK_BASE = 0xFFFE;
+
+        private byte _timer = 0;
 
         /// <summary>
         ///     Default Segment for the Stack in Memory
@@ -372,6 +373,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Wait:
                 case Mnemonic.Nop:
                 case Mnemonic.In:
+                    // TODO support in/out for timer
+                    Registers.AL = _timer++;
+                    break;
                 case Mnemonic.Out:
                     break;
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
@@ -710,7 +714,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -761,7 +772,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -818,7 +836,14 @@ namespace MBBSEmu.CPU
                                 throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}");
                         }
                     }
-
+                case OpKind.MemorySegSI:
+                    {
+                        return Memory.GetDWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
+                    }
+                case OpKind.MemorySegDI:
+                    {
+                        return Memory.GetDWord(Registers.GetValue(_currentInstruction.MemorySegment), Registers.DI);
+                    }
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
@@ -1143,7 +1168,7 @@ namespace MBBSEmu.CPU
                         return;
                     }
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op0Kind}");
+                    throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op1Kind}");
             }
         }
 
@@ -1766,7 +1791,7 @@ namespace MBBSEmu.CPU
             Registers.IP = Pop();
             Registers.CS = Pop();
 
-            Registers.Halt = Registers.CS == 0xFFFF;
+            Registers.Halt |= Registers.CS == 0xFFFF;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -1777,6 +1802,8 @@ namespace MBBSEmu.CPU
             //Pop N bytes (N/2 words) that were Pushed before the CALL
             if (_currentInstruction.Op0Kind == OpKind.Immediate16)
                 Registers.SP += GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination);
+
+            Registers.Halt |= Registers.CS == 0xFFFF;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -2698,7 +2725,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if(_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
 
                         //Loaded an Exported Function Delegate from Memory
@@ -2734,7 +2761,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector}:{_currentInstruction.Immediate16}");
+                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector:X4}:{_currentInstruction.Immediate16:X4}");
 #endif
 
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
@@ -2762,7 +2789,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
                         break;
                     }
@@ -2775,7 +2802,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                         if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
                         break;
                     }
@@ -2792,7 +2819,7 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
                             if (_showDebug)
-                                _logger.Info($"CALL {Registers.CS}:{Registers.IP}");
+                                _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
 #endif
 
                         }
@@ -3218,7 +3245,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Lodsb()
         {
-            Registers.AL = Memory.GetByte(Registers.DS, Registers.SI);
+            Registers.AL = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             if (Registers.DirectionFlag)
             {
@@ -3739,7 +3766,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Lodsw()
         {
-            Registers.AX = Memory.GetWord(Registers.DS, Registers.SI);
+            Registers.AX = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             if (Registers.DirectionFlag)
             {

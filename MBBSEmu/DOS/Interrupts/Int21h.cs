@@ -29,9 +29,9 @@ namespace MBBSEmu.DOS.Interrupts
         public ICpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
-        private TextReader _stdin { get; init; }
-        private TextWriter _stdout { get; init; }
-        private TextWriter _stderr { get; init; }
+        private IStream _stdin { get; init; }
+        private IStream _stdout { get; init; }
+        private IStream _stderr { get; init; }
 
         /// <summary>
         ///     Path of the current Execution Context
@@ -45,7 +45,8 @@ namespace MBBSEmu.DOS.Interrupts
         ///
         ///     Buffer used to hold information on the current Disk / IO operation
         /// </summary>
-        private FarPtr DiskTransferArea {
+        private FarPtr DiskTransferArea
+        {
             get
             {
                 if (_dta != null)
@@ -89,7 +90,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, TextReader stdin, TextWriter stdout, TextWriter stderr, string path = "")
+        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, IStream stdin, IStream stdout, IStream stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;
@@ -105,7 +106,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {_Registers.AX:X4} H:{_Registers.AH:X2}");
+            //_logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -170,7 +171,7 @@ namespace MBBSEmu.DOS.Interrupts
                     break;
                 case 0x44 when Registers.AL == 0x00:
                     GetDeviceInformation();
-                    return;
+                    break;
                 case 0x47:
                     GetCurrentDirectory_0x47();
                     break;
@@ -186,6 +187,12 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x62:
                     GetPSPAddress_0x62();
                     break;
+                case 0x33:
+                    ExtendedControlBreakChecking_0x33();
+                    break;
+                case 0x07:
+                    DirectStdinInputNoEcho_0x07();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 21h Function: 0x{Registers.AH:X2}");
             }
@@ -199,6 +206,12 @@ namespace MBBSEmu.DOS.Interrupts
         {
             Registers.CarryFlag = true;
             Registers.AX = (ushort)code;
+        }
+
+        private void DirectStdinInputNoEcho_0x07()
+        {
+            Registers.AL = _stdin.Read();
+            Registers.ZeroFlag = false;
         }
 
         private void ReadFromFileHandle_0x3F()
@@ -217,7 +230,7 @@ namespace MBBSEmu.DOS.Interrupts
             var bytesToRead = Registers.CX;
             var destPtr = new FarPtr(Registers.DS, Registers.DX);
 
-            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
+            if (!_fileHandles.TryGetValue(fileHandle, out var fileStream) && fileHandle > 0)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
                 return;
@@ -225,6 +238,29 @@ namespace MBBSEmu.DOS.Interrupts
 
             try
             {
+                //Handle Keyboard Input
+                if (fileHandle == 0)
+                {
+                    var c = _stdin.Read();
+                    _stdout.Write(c);
+
+                    ClearCarryFlag();
+
+                    //ENTER sends 0xD if you Console.ReadKey().KeyChar
+                    //We need to send 0xA as fgets() uses 0xA to denote end of input
+                    if (c == 0xD)
+                    {
+                        c = 0xA;
+                        _stdout.Write(c);
+                    }
+
+                    //Handle Character Input
+                    Registers.AX = 1;
+                    _memory.SetByte(destPtr, c);
+
+                    return;
+                }
+
                 var buf = new byte[bytesToRead];
                 var actualBytesRead = fileStream.Read(buf, 0, bytesToRead);
 
@@ -304,8 +340,8 @@ namespace MBBSEmu.DOS.Interrupts
             // DOS - KEYBOARD INPUT (with echo)
             // Return: AL = character read
             // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-            var c = (byte)_stdin.Read();
-            _stdout.Write((char)c);
+            var c = _stdin.Read();
+            _stdout.Write(c);
             Registers.AL = c;
         }
 
@@ -326,6 +362,15 @@ namespace MBBSEmu.DOS.Interrupts
             //             BX = maximum available
             //         CF clear if successful
             //             AX = segment of allocated memory block
+
+            if (_allocationStrategy == AllocationStrategy.LAST_FIT)
+            {
+                _logger.Warn("Returning 0x9FAE for top of heap");
+                ClearCarryFlag();
+                Registers.AX = 0x9FAE;
+                return;
+            }
+
             var ptr = _memory.Malloc((uint)(Registers.BX * 16));
             if (!ptr.IsNull() && ptr.Offset != 0)
                 throw new DataMisalignedException("RealMode allocator returned memory not on segment boundary");
@@ -408,7 +453,7 @@ namespace MBBSEmu.DOS.Interrupts
             while ((b = _memory.GetByte(src++)) != '$')
                 memoryStream.WriteByte(b);
 
-            _stdout.Write(Encoding.ASCII.GetString(memoryStream.ToArray()));
+            _stdout.Write(memoryStream.ToArray());
         }
 
         private void GetDefaultDiskNumber_0x19()
@@ -459,10 +504,10 @@ namespace MBBSEmu.DOS.Interrupts
             //DOS - GET CURRENT TIME
             //Return: CH = hour, CL = minute, DH = second, DL = 1/100 seconds
             var now = _clock.Now;
-            Registers.CH = (byte) now.Hour;
-            Registers.CL = (byte) now.Minute;
-            Registers.DH = (byte) now.Second;
-            Registers.DL = (byte) (now.Millisecond / 10);
+            Registers.CH = (byte)now.Hour;
+            Registers.CL = (byte)now.Minute;
+            Registers.DH = (byte)now.Second;
+            Registers.DL = (byte)(now.Millisecond / 10);
         }
 
         private void GetDiskTransferAreaAddress_0x2F()
@@ -540,18 +585,20 @@ namespace MBBSEmu.DOS.Interrupts
 
             var dataToWrite = _memory.GetArray(bufferPointer, numberOfBytes);
 
+            //_logger.Error($"Writing {numberOfBytes} to {fileHandle}");
+
             switch (fileHandle)
             {
                 case (ushort)FileHandle.STDIN:
                     SetCarryFlagErrorCodeInAX(DOSErrorCode.WRITE_FAULT);
                     break;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Write(Encoding.ASCII.GetString(dataToWrite));
+                    _stdout.Write(dataToWrite.ToArray());
                     ClearCarryFlag();
                     Registers.AX = numberOfBytes;
                     return;
                 case (ushort)FileHandle.STDERR:
-                    _stderr.Write(Encoding.ASCII.GetString(dataToWrite));
+                    _stderr.Write(dataToWrite.ToArray());
                     ClearCarryFlag();
                     Registers.AX = numberOfBytes;
                     return;
@@ -624,7 +671,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
 
-            Registers.BX = 0xFFFF;
+            // don't update BX, leave it alone to say we resized exactly as client requested
             ClearCarryFlag();
         }
 
@@ -672,7 +719,7 @@ namespace MBBSEmu.DOS.Interrupts
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             var foundFile = _fileUtility.FindFile(_path, fileName);
 
-            if(!File.Exists($"{_path}{foundFile}"))
+            if (!File.Exists($"{_path}{foundFile}"))
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
@@ -791,13 +838,13 @@ namespace MBBSEmu.DOS.Interrupts
             switch (Registers.BX)
             {
                 case (ushort)FileHandle.STDIN:
-                    _stdin.Close();
+                    _stdin.Dispose();
                     return;
                 case (ushort)FileHandle.STDOUT:
-                    _stdout.Close();
+                    _stdout.Dispose();
                     return;
                 case (ushort)FileHandle.STDERR:
-                    _stderr.Close();
+                    _stderr.Dispose();
                     return;
                 case (ushort)FileHandle.STDAUX:
                 case (ushort)FileHandle.STDPRN:
@@ -882,6 +929,17 @@ namespace MBBSEmu.DOS.Interrupts
             {
                 SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
             }
+        }
+
+        private void ExtendedControlBreakChecking_0x33()
+        {
+            if (Registers.AL == 0) //Get State
+            {
+                Registers.DL = 0; //Break OFF
+                return;
+            }
+
+            _logger.Warn("Setting Control-Break State currently Not Supported");
         }
 
         private int GetNextHandle()
