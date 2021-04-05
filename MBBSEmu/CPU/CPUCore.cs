@@ -73,8 +73,6 @@ namespace MBBSEmu.CPU
         /// </summary>
         public const ushort STACK_BASE = 0xFFFE;
 
-        private byte _timer = 0;
-
         /// <summary>
         ///     Default Segment for the Stack in Memory
         /// </summary>
@@ -125,17 +123,21 @@ namespace MBBSEmu.CPU
         /// </summary>
         private const MethodImplOptions OpcodeSubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
-        private readonly Dictionary<int, IInterruptHandler> _interruptHandlers;
+        private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
+        private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
         public CpuCore(ILogger logger) : this()
         {
             _logger = logger;
-            _interruptHandlers = new Dictionary<int, IInterruptHandler>();
         }
 
         public CpuCore()
         {
-
+            var pit = new ProgrammableIntervalTimer();
+            _ioPortHandlers[0x40] = pit;
+            _ioPortHandlers[0x41] = pit;
+            _ioPortHandlers[0x42] = pit;
+            _ioPortHandlers[0x43] = pit;
         }
 
         /// <summary>
@@ -372,11 +374,12 @@ namespace MBBSEmu.CPU
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Wait:
                 case Mnemonic.Nop:
+                    break;
                 case Mnemonic.In:
-                    // TODO support in/out for timer
-                    Registers.AL = _timer++;
+                    Op_In();
                     break;
                 case Mnemonic.Out:
+                    Op_Out();
                     break;
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
                     Registers.Halt = true;
@@ -1170,6 +1173,20 @@ namespace MBBSEmu.CPU
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Source: {_currentInstruction.Op1Kind}");
             }
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_In()
+        {
+            _logger.Error(this._currentInstruction);
+            throw new ArgumentException("test");
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Out()
+        {
+            _logger.Error(this._currentInstruction);
+            throw new ArgumentException("test");
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
