@@ -231,7 +231,24 @@ namespace MBBSEmu
                 {
                     var localSession = new LocalConsoleSession(_logger, "CONSOLE", null, null, false, false);
                     var mzFile = new MZFile(_exeFile);
-                    var exe = new ExeRuntime(mzFile, _serviceResolver.GetService<IClock>(), _logger, _serviceResolver.GetService<IFileUtility>(), localSession);
+                    ExeRuntime exe;
+                    if (_isConsoleSession)
+                        exe = new ExeRuntime(
+                            mzFile,
+                            _serviceResolver.GetService<IClock>(),
+                            _logger,
+                            _serviceResolver.GetService<IFileUtility>(),
+                            new LocalConsoleSession(_logger, "CONSOLE", null, null, false, false));
+                    else
+                        exe = new ExeRuntime(
+                            mzFile,
+                            _serviceResolver.GetService<IClock>(),
+                            _logger,
+                            _serviceResolver.GetService<IFileUtility>(),
+                            sessionBase: null,
+                            new TextReaderStream(Console.In),
+                            new TextWriterStream(Console.Out),
+                            new TextWriterStream(Console.Error));
                     exe.Load(programArgs);
                     exe.Run();
                     return;
