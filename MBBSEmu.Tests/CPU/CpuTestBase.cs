@@ -16,9 +16,9 @@ namespace MBBSEmu.Tests.CPU
         protected CpuTestBase()
         {
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(null);
-            mbbsEmuCpuCore = new CpuCore();
+            mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null, null);
         }
 
         protected void Reset()

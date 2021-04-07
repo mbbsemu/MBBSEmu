@@ -1,4 +1,5 @@
-﻿using MBBSEmu.CPU;
+﻿using MBBSEmu.BIOS;
+using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
 using MBBSEmu.DOS.Interrupts;
@@ -54,13 +55,25 @@ namespace MBBSEmu.DOS
             Registers = new CpuRegisters();
 
             Registers = (ICpuRegisters)Cpu;
-            Cpu.Reset(Memory, null,
+
+            var pit = new ProgrammableIntervalTimer(logger, clock);
+
+            Cpu.Reset(
+                Memory,
+                null,
                 new List<IInterruptHandler>
                 {
                     new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr),
                     new Int1Ah(Registers, Memory, clock),
                     new Int3Eh(),
                     new Int10h(Registers, _logger, stdout),
+                },
+                new Dictionary<int, IIOPort>
+                {
+                    {0x40, pit},
+                    {0x41, pit},
+                    {0x42, pit},
+                    {0x43, pit},
                 });
         }
 

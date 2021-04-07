@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
@@ -126,18 +127,9 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
-        public CpuCore(ILogger logger) : this()
+        public CpuCore(ILogger logger)
         {
             _logger = logger;
-        }
-
-        public CpuCore()
-        {
-            var pit = new ProgrammableIntervalTimer();
-            _ioPortHandlers[0x40] = pit;
-            _ioPortHandlers[0x41] = pit;
-            _ioPortHandlers[0x42] = pit;
-            _ioPortHandlers[0x43] = pit;
         }
 
         /// <summary>
@@ -146,8 +138,9 @@ namespace MBBSEmu.CPU
         /// <param name="memoryCore"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
+        /// <param name="ioPortHandlers"></param>
         public void Reset(IMemoryCore memoryCore,
-            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
+            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers)
         {
             //Setup Debug Pointers
             _currentInstructionPointer = FarPtr.Empty;
@@ -158,8 +151,18 @@ namespace MBBSEmu.CPU
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
             if (interruptHandlers != null)
+            {
+                _interruptHandlers.Clear();
                 foreach (var h in interruptHandlers)
                     _interruptHandlers.Add(h.Vector, h);
+            }
+
+            if (ioPortHandlers != null)
+            {
+                _ioPortHandlers.Clear();
+                foreach (var h in ioPortHandlers)
+                    _ioPortHandlers.Add(h.Key, h.Value);
+            }
 
             //Setup Memory Space
             Memory = memoryCore;
@@ -1178,15 +1181,19 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_In()
         {
-            _logger.Error(this._currentInstruction);
-            throw new ArgumentException("test");
+            var port = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var data = _ioPortHandlers[port].In(port);
+
+            Registers.SetValue(_currentInstruction.Op0Register, data);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Out()
         {
-            _logger.Error(this._currentInstruction);
-            throw new ArgumentException("test");
+            var port = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var data = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            _ioPortHandlers[port].Out(port, data);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]

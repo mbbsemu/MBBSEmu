@@ -8,5 +8,7 @@ namespace MBBSEmu.Date
   public interface IClock
   {
     DateTime Now { get; }
+
+    double CurrentTick { get; }
   }
 }

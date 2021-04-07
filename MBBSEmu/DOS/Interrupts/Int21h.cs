@@ -106,7 +106,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            //_logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
+            _logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -485,6 +485,8 @@ namespace MBBSEmu.DOS.Interrupts
             var newVectorPointer = new FarPtr(Registers.DS, Registers.DX);
 
             _interruptVectors[interruptVector] = newVectorPointer;
+
+            _logger.Info($"Set interrupt vector {interruptVector}");
         }
 
         private void GetCurrentDate_0x2A()
