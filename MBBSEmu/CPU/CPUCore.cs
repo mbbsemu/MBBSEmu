@@ -1023,12 +1023,12 @@ namespace MBBSEmu.CPU
                         {
                             case Register.DS when _currentInstruction.MemoryIndex == Register.None:
                             case Register.None when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)_currentInstruction.MemoryDisplacement;
+                                result = (ushort)_currentInstruction.MemoryDisplacement32;
                                 break;
                             case Register.BP when _currentInstruction.MemoryIndex == Register.None:
                                 {
 
-                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement);
+                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement32);
                                     break;
                                 }
 
@@ -1036,31 +1036,31 @@ namespace MBBSEmu.CPU
                                 {
 
                                     result = (ushort)(Registers.BP + Registers.SI +
-                                                       _currentInstruction.MemoryDisplacement);
+                                                       _currentInstruction.MemoryDisplacement32);
                                     break;
                                 }
 
                             case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
                                 {
                                     result = (ushort)(Registers.BP + Registers.DI +
-                                                       _currentInstruction.MemoryDisplacement);
+                                                       _currentInstruction.MemoryDisplacement32);
                                     break;
                                 }
 
                             case Register.BX when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement);
+                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement32);
                                 break;
                             case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
+                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement32 + Registers.SI);
                                 break;
                             case Register.BX when _currentInstruction.MemoryIndex == Register.DI:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.DI);
+                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement32 + Registers.DI);
                                 break;
                             case Register.SI when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.SI + _currentInstruction.MemoryDisplacement);
+                                result = (ushort)(Registers.SI + _currentInstruction.MemoryDisplacement32);
                                 break;
                             case Register.DI when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.DI + _currentInstruction.MemoryDisplacement);
+                                result = (ushort)(Registers.DI + _currentInstruction.MemoryDisplacement32);
                                 break;
                             default:
                                 throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
