@@ -13,11 +13,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
+using MBBSEmu.Server;
 using MBBSEmu.Session;
 
 namespace MBBSEmu.DOS
 {
-    public class ExeRuntime
+    public class ExeRuntime : IStoppable
     {
         /*
          Memory layout
@@ -44,6 +45,7 @@ namespace MBBSEmu.DOS
         private ushort _nextSegmentOffset => (ushort)(_environmentSegment - 1);
 
         private readonly Dictionary<string, string> _environmentVariables = new();
+        private readonly ProgrammableIntervalTimer _pit;
 
         public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
         {
@@ -56,7 +58,7 @@ namespace MBBSEmu.DOS
 
             Registers = (ICpuRegisters)Cpu;
 
-            var pit = new ProgrammableIntervalTimer(logger, clock);
+            _pit = new ProgrammableIntervalTimer(logger, clock, Memory, Cpu);
 
             Cpu.Reset(
                 Memory,
@@ -70,10 +72,10 @@ namespace MBBSEmu.DOS
                 },
                 new Dictionary<int, IIOPort>
                 {
-                    {0x40, pit},
-                    {0x41, pit},
-                    {0x42, pit},
-                    {0x43, pit},
+                    {0x40, _pit},
+                    {0x41, _pit},
+                    {0x42, _pit},
+                    {0x43, _pit},
                 });
         }
 
@@ -89,6 +91,11 @@ namespace MBBSEmu.DOS
 
         private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);
         private static ushort GetPreviousSegment(ushort segment, uint size) => (ushort)(segment - (size >> 4) - 1);
+
+        public void Stop()
+        {
+            _pit.Dispose();
+        }
 
         public bool Load(string[] args)
         {
@@ -107,6 +114,7 @@ namespace MBBSEmu.DOS
                 Cpu.Tick();
 
             _sessionBase?.Stop();
+            Stop();
         }
 
         private string GetFullExecutingPath()

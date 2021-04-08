@@ -106,7 +106,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         public void Handle()
         {
-            _logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
+            //_logger.Error($"Interrupt AX {Registers.AX:X4} H:{Registers.AH:X2}");
             switch (Registers.AH)
             {
                 case 0x3F:
@@ -486,7 +486,16 @@ namespace MBBSEmu.DOS.Interrupts
 
             _interruptVectors[interruptVector] = newVectorPointer;
 
-            _logger.Info($"Set interrupt vector {interruptVector}");
+            // and set it in real mode memory
+            var ptr = FarPtr.Empty + (4 * interruptVector);
+
+            if (_memory is RealModeMemoryCore)
+            {
+                ptr = FarPtr.Empty + (4 * interruptVector);
+                _memory.SetPointer(ptr, newVectorPointer);
+            }
+
+            _logger.Info($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
         }
 
         private void GetCurrentDate_0x2A()

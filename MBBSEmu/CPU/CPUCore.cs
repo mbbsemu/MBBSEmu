@@ -127,6 +127,8 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
+        private int _int0 = 0;
+
         public CpuCore(ILogger logger)
         {
             _logger = logger;
@@ -261,6 +263,15 @@ namespace MBBSEmu.CPU
 
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Interrupt(byte vectorNumber)
+        {
+            if (vectorNumber != 0)
+                throw new ArgumentException();
+
+            _int0 = 1;
+        }
+
         /// <summary>
         ///     Pushes a DWord to the Stack and decrements the Stack Pointer
         /// </summary>
@@ -277,12 +288,44 @@ namespace MBBSEmu.CPU
 #endif
         }
 
+        private void DoInterrupt(int vectorNumber)
+        {
+            // attempt to get memory from real mode memory core first
+            FarPtr interruptVector;
+            if (Memory is RealModeMemoryCore)
+                interruptVector = Memory.GetPointer(FarPtr.Empty + (4 * vectorNumber));
+            else
+                throw new ArgumentException();
+
+            if (interruptVector.Equals(FarPtr.Empty))
+            {
+                _logger.Error($"No interrupt handler, returning");
+                return;
+            }
+
+            _logger.Error($"Interrupt, jumping to {interruptVector}");
+
+            Push(Registers.F());
+            Push(Registers.CS);
+            Push(Registers.IP);
+
+            Registers.CS = interruptVector.Segment;
+            Registers.IP = interruptVector.Offset;
+        }
+
         /// <summary>
         ///     Ticks the emulated x86 Core one instruction from the current CS:IP
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         public void Tick()
         {
+            if (System.Threading.Interlocked.CompareExchange(ref _int0, 0, 1) == 1 &&
+                    Registers.InterruptFlag)
+            {
+                // do the interrupt
+                DoInterrupt(0);
+                return;
+            }
 #if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
             _currentInstructionPointer.Segment = Registers.CS;
@@ -298,7 +341,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true;
+            _showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 

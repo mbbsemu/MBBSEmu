@@ -39,5 +39,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         /// <param name="value"></param>
         void Push(ushort value);
+
+        void Interrupt(byte vectorNumber);
     }
 }

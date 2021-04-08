@@ -1,11 +1,13 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
+using MBBSEmu.Memory;
 using NLog;
 using System;
+using System.Threading;
 
 namespace MBBSEmu.BIOS
 {
-    public class ProgrammableIntervalTimer : IIOPort
+    public class ProgrammableIntervalTimer : IIOPort, IDisposable
     {
         public const double FREQUENCY = 1_193_181.666666666666666666;
 
@@ -37,11 +39,22 @@ namespace MBBSEmu.BIOS
 
         private readonly ILogger _logger;
         private readonly IClock _clock;
+        private readonly IMemoryCore _memoryCore;
+        private readonly ICpuCore _cpu;
+        private Timer _timer;
 
-        public ProgrammableIntervalTimer(ILogger logger, IClock clock)
+        public ProgrammableIntervalTimer(ILogger logger, IClock clock, IMemoryCore memory, ICpuCore cpu)
         {
             _logger = logger;
             _clock = clock;
+            _memoryCore = memory;
+            _cpu = cpu;
+        }
+
+        public void Dispose()
+        {
+            _timer?.Dispose();
+            _timer = null;
         }
 
         public byte In(byte channel)
@@ -109,6 +122,19 @@ namespace MBBSEmu.BIOS
 
             _channelConfig[pitChannel].AccessMode = accessMode;
             _channelConfig[pitChannel].OperatingMode = (OperatingMode)operatingMode;
+
+            if (pitChannel == 0 && operatingMode == (int)OperatingMode.MODE_0_INTERRUPT_ON_TERMINAL_COUNT)
+            {
+                var interval = TimeSpan.FromMilliseconds(1000 / 18);
+
+                if (_timer == null)
+                    _timer = new Timer(unused_arg => _cpu.Interrupt(0), null, TimeSpan.Zero, interval);
+            }
+            else if (_timer != null)
+            {
+                _timer.Dispose();
+                _timer = null;
+            }
 
             _logger?.Debug($"PIT channel {pitChannel} is now {accessMode}:{(OperatingMode)operatingMode}");
         }
