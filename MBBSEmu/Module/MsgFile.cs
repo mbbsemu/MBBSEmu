@@ -54,24 +54,28 @@ namespace MBBSEmu.Module
         private static bool IsAlnum(char c) =>
             char.IsLetterOrDigit(c);
 
-        private static string FixLineEndings(string rawMessage) {
-            var ret = new StringBuilder(rawMessage.Length + 16);
+        private static MemoryStream FixLineEndings(MemoryStream input)
+        {
+
+            var rawMessage = input.ToArray();
+            input.SetLength(0);
 
             for (var i = 0; i < rawMessage.Length; ++i)
             {
                 var c = rawMessage[i];
                 if (c == '\n')
                 {
-                    var next = i < (rawMessage.Length - 1) ? rawMessage[i + 1] : (char)0;
+                    var next = i < (rawMessage.Length - 1) ? (char)rawMessage[i + 1] : (char)0;
                     if (!IsAlnum(next) && next != '%' && next != '(' && next != '"')
                     {
-                        ret.Append('\r');
+                        input.WriteByte((byte)'\r');
                         continue;
                     }
                 }
-                ret.Append(c);
+                input.WriteByte(c);
             }
-            return ret.ToString();
+            input.WriteByte(0); //Null Terminate
+            return input;
         }
 
         /// <summary>
@@ -83,9 +87,9 @@ namespace MBBSEmu.Module
             var fileToRead = File.ReadAllBytes(Path.Combine(_modulePath, path));
             var state = MsgParseState.NEWLINE;
             var identifier = new StringBuilder();
-            var str = new StringBuilder();
-            var language = "English/ANSI";
-            var messages = new List<string>();
+            using var msgValue = new MemoryStream();
+            var language = Encoding.ASCII.GetBytes("English/ANSI\0");
+            var messages = new List<byte[]>();
             var last = (char)0;
 
             foreach (var b in fileToRead)
@@ -109,11 +113,11 @@ namespace MBBSEmu.Module
                         break;
                     case MsgParseState.IDENTIFIER when c == '{':
                         state = MsgParseState.BRACKET;
-                        str.Clear();
+                        msgValue.SetLength(0);
                         break;
                     case MsgParseState.SPACE when c == '{':
                         state = MsgParseState.BRACKET;
-                        str.Clear();
+                        msgValue.SetLength(0);
                         break;
                     case MsgParseState.SPACE when !char.IsWhiteSpace(c):
                         state = MsgParseState.JUNK;
@@ -123,21 +127,21 @@ namespace MBBSEmu.Module
                         break;
                     case MsgParseState.BRACKET when c == '}' && last == '~':
                         // escaped ~}, change '~' we've already collected to '}'
-                        str.Replace('~', '}', str.Length - 1, 1);
+                        EscapeBracket(msgValue);
                         break;
                     case MsgParseState.BRACKET when c == '}':
-                        var value = FixLineEndings(str.ToString());
+                        var value = FixLineEndings(msgValue);
 
                         if (identifier.ToString().Equals("LANGUAGE"))
-                            language = value;
+                            language = value.ToArray();
                         else
-                            messages.Add(value);
+                            messages.Add(value.ToArray());
 
                         state = MsgParseState.JUNK;
-                        str.Clear();
+                        msgValue.SetLength(0);
                         break;
                     case MsgParseState.BRACKET when c != '\r':
-                        str.Append(c);
+                        msgValue.WriteByte(b);
                         break;
                     case MsgParseState.JUNK when c == '\n':
                         state = MsgParseState.NEWLINE;
@@ -149,12 +153,18 @@ namespace MBBSEmu.Module
             WriteMCV(language, messages);
         }
 
-        private byte[] GetStringBytes(string str) => Encoding.ASCII.GetBytes(str + "\0");
+        private void EscapeBracket(MemoryStream input)
+        {
+            var arrayToParse = input.ToArray();
+            input.SetLength(0);
+            input.Write(arrayToParse[..^2]);
+            input.WriteByte((byte)'}');
+        }
 
         private void WriteUInt32(Stream stream, int value) => stream.Write(BitConverter.GetBytes(value));
         private void WriteUInt16(Stream stream, short value) => stream.Write(BitConverter.GetBytes(value));
 
-        private void WriteMCV(string language, List<string> messages, bool writeStringLengthTable = true)
+        private void WriteMCV(byte[] language, IList<byte[]> messages, bool writeStringLengthTable = true)
         {
             if (language.Length == 0)
                 throw new ArgumentException("Empty language, bad MSG parse");
@@ -169,13 +179,12 @@ namespace MBBSEmu.Module
             * uint16_t ;   // count of messages
             */
             using var writer = File.Open(Path.Combine(_modulePath, FileNameAtRuntime), FileMode.Create);
-            var offset = 0;
             var offsets = new int[messages.Count];
 
             // write out the languages (just messages[0])
-            writer.Write(GetStringBytes(language));
+            writer.Write(language);
 
-            offset = language.Length + 1;
+            var offset = language.Length;
 
             // write out each string with a null-terminator
             var i = 0;
@@ -183,8 +192,8 @@ namespace MBBSEmu.Module
             {
                 offsets[i++] = offset;
 
-                writer.Write(GetStringBytes(message));
-                offset += message.Length + 1;
+                writer.Write(message);
+                offset += message.Length;
             }
 
             var numberOfLanguages = 1;
