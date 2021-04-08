@@ -74,7 +74,7 @@ namespace MBBSEmu.Module
                 }
                 input.WriteByte(c);
             }
-
+            input.WriteByte(0); //Null Terminate
             return input;
         }
 
@@ -131,7 +131,6 @@ namespace MBBSEmu.Module
                         break;
                     case MsgParseState.BRACKET when c == '}':
                         var value = FixLineEndings(msgValue);
-                        value.WriteByte(0); //Null Terminate
 
                         if (identifier.ToString().Equals("LANGUAGE"))
                             language = value.ToArray();
