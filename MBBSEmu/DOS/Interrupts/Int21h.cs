@@ -912,8 +912,8 @@ namespace MBBSEmu.DOS.Interrupts
             */
             var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
 
-            FileMode fileMode = FileMode.Create;
-            FileAccess fileAccess = FileAccess.ReadWrite;
+            var fileMode = FileMode.Create;
+            var fileAccess = FileAccess.ReadWrite;
 
             //Setup the File Stream
             try
