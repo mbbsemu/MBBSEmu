@@ -250,6 +250,9 @@ namespace MBBSEmu
                             new TextWriterStream(Console.Error));
                     exe.Load(programArgs);
                     exe.Run();
+
+                    _runningServices.Add(exe);
+
                     return;
                 }
 

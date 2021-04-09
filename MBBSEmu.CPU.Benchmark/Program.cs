@@ -17,9 +17,9 @@ namespace MBBSEmu.CPU.Benchmark
         static Program()
         {
             mbbsEmuMemoryCore = new ProtectedModeMemoryCore(null);
-            mbbsEmuCpuCore = new CpuCore();
+            mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = (ICpuRegisters)mbbsEmuCpuCore;
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null, null);
         }
 
         static void Main(string[] args)

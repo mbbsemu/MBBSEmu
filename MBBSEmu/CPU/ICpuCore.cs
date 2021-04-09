@@ -15,7 +15,8 @@ namespace MBBSEmu.CPU
         /// <param name="memoryCore"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
-        void Reset(IMemoryCore memoryCore, CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers);
+        /// <param name="ioPortHandlers"></param>
+        void Reset(IMemoryCore memoryCore, CpuCore.InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers);
 
         /// <summary>
         ///     Resets the CPU to a startup state
@@ -38,5 +39,7 @@ namespace MBBSEmu.CPU
         /// </summary>
         /// <param name="value"></param>
         void Push(ushort value);
+
+        void Interrupt(byte vectorNumber);
     }
 }

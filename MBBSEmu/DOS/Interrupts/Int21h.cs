@@ -485,6 +485,17 @@ namespace MBBSEmu.DOS.Interrupts
             var newVectorPointer = new FarPtr(Registers.DS, Registers.DX);
 
             _interruptVectors[interruptVector] = newVectorPointer;
+
+            // and set it in real mode memory
+            var ptr = FarPtr.Empty + (4 * interruptVector);
+
+            if (_memory is RealModeMemoryCore)
+            {
+                ptr = FarPtr.Empty + (4 * interruptVector);
+                _memory.SetPointer(ptr, newVectorPointer);
+            }
+
+            _logger.Info($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
         }
 
         private void GetCurrentDate_0x2A()

@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
@@ -73,8 +74,6 @@ namespace MBBSEmu.CPU
         /// </summary>
         public const ushort STACK_BASE = 0xFFFE;
 
-        private byte _timer = 0;
-
         /// <summary>
         ///     Default Segment for the Stack in Memory
         /// </summary>
@@ -125,17 +124,12 @@ namespace MBBSEmu.CPU
         /// </summary>
         private const MethodImplOptions OpcodeSubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
-        private readonly Dictionary<int, IInterruptHandler> _interruptHandlers;
+        private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
+        private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
-        public CpuCore(ILogger logger) : this()
+        public CpuCore(ILogger logger)
         {
             _logger = logger;
-            _interruptHandlers = new Dictionary<int, IInterruptHandler>();
-        }
-
-        public CpuCore()
-        {
-
         }
 
         /// <summary>
@@ -144,8 +138,9 @@ namespace MBBSEmu.CPU
         /// <param name="memoryCore"></param>
         /// <param name="invokeExternalFunctionDelegate"></param>
         /// <param name="interruptHandlers"></param>
+        /// <param name="ioPortHandlers"></param>
         public void Reset(IMemoryCore memoryCore,
-            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers)
+            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers)
         {
             //Setup Debug Pointers
             _currentInstructionPointer = FarPtr.Empty;
@@ -156,8 +151,18 @@ namespace MBBSEmu.CPU
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
             if (interruptHandlers != null)
+            {
+                _interruptHandlers.Clear();
                 foreach (var h in interruptHandlers)
                     _interruptHandlers.Add(h.Vector, h);
+            }
+
+            if (ioPortHandlers != null)
+            {
+                _ioPortHandlers.Clear();
+                foreach (var h in ioPortHandlers)
+                    _ioPortHandlers.Add(h.Key, h.Value);
+            }
 
             //Setup Memory Space
             Memory = memoryCore;
@@ -254,6 +259,12 @@ namespace MBBSEmu.CPU
                 _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
 #endif
 
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public void Interrupt(byte vectorNumber)
+        {
+            // TODO schedule the CPU interrupt
         }
 
         /// <summary>
@@ -372,11 +383,12 @@ namespace MBBSEmu.CPU
                 //Instructions that do not set IP -- we'll just increment
                 case Mnemonic.Wait:
                 case Mnemonic.Nop:
+                    break;
                 case Mnemonic.In:
-                    // TODO support in/out for timer
-                    Registers.AL = _timer++;
+                    Op_In();
                     break;
                 case Mnemonic.Out:
+                    Op_Out();
                     break;
                 case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
                     Registers.Halt = true;
@@ -550,6 +562,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Cld:
                     Op_Cld();
+                    break;
+                case Mnemonic.Std:
+                    Op_Std();
                     break;
                 case Mnemonic.Lodsb:
                     Op_Lodsb();
@@ -1173,6 +1188,24 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_In()
+        {
+            var port = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var data = _ioPortHandlers[port].In(port);
+
+            Registers.SetValue(_currentInstruction.Op0Register, data);
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Out()
+        {
+            var port = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var data = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            _ioPortHandlers[port].Out(port, data);
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Aam()
         {
             var al = Registers.AL;
@@ -1790,6 +1823,10 @@ namespace MBBSEmu.CPU
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
+
+            //Pop N bytes (N/2 words) that were Pushed before the CALL
+            if (_currentInstruction.Op0Kind == OpKind.Immediate16)
+                Registers.SP += GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination);
 
             Registers.Halt |= Registers.CS == 0xFFFF;
         }
@@ -3238,6 +3275,12 @@ namespace MBBSEmu.CPU
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cld() => Registers.DirectionFlag = false;
+
+        /// <summary>
+        ///     Sets Direction Flag
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Std() => Registers.DirectionFlag = true;
 
         /// <summary>
         ///     Load byte at address DS:(E)SI into AL.
