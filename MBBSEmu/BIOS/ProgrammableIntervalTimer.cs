@@ -7,15 +7,17 @@ using System.Threading;
 
 namespace MBBSEmu.BIOS
 {
+    //http://staff.ustc.edu.cn/~xyfeng/research/cos/resources/BIOS/Resources/assembly/inttable.html
     public class ProgrammableIntervalTimer : IIOPort, IDisposable
     {
         public const double FREQUENCY = 1_193_181.666666666666666666;
 
         private enum AccessMode
         {
-            LO_THEN_HIBYTE_VALUE = 0,
+            LATCH_VALUE = 0,
             LOBYTE_ONLY = 1,
             HIBYTE_ONLY = 2,
+            LO_THEN_HIBYTE_VALUE = 3,
         }
 
         private enum OperatingMode
@@ -32,6 +34,7 @@ namespace MBBSEmu.BIOS
         {
             public AccessMode AccessMode;
             public OperatingMode OperatingMode;
+            public ushort latchedValue;
             public int counter;
         }
 
@@ -57,28 +60,39 @@ namespace MBBSEmu.BIOS
             _timer = null;
         }
 
-        public byte In(byte channel)
+        private ushort TickToUShort()
         {
-            channel -= 0x40;
-
             var elapsed = _clock.CurrentTick;
             var fractional = elapsed - Math.Truncate(elapsed);
             var current = FREQUENCY * (1.0 - fractional);
-            ushort value = (ushort)current;
+            return (ushort)current;
+        }
+
+        private byte ReadLowHighFrom(int channel, ushort value)
+        {
+            var counter = _channelConfig[channel].counter++;
+            if ((counter & 1) == 0)
+                return (byte)value;
+
+            return (byte)(value >> 8);
+        }
+
+        public byte In(byte channel)
+        {
+            channel -= 0x40;
 
             switch (_channelConfig[channel].AccessMode)
             {
                 case AccessMode.LOBYTE_ONLY:
                     _channelConfig[channel].counter = 0;
-                    return (byte)value;
+                    return (byte)TickToUShort();
                 case AccessMode.HIBYTE_ONLY:
                     _channelConfig[channel].counter = 0;
-                    return (byte)(value >> 8);
+                    return (byte)(TickToUShort() >> 8);
+                case AccessMode.LATCH_VALUE:
+                    return ReadLowHighFrom(channel, _channelConfig[channel].latchedValue);
                 case AccessMode.LO_THEN_HIBYTE_VALUE:
-                    var counter = _channelConfig[channel].counter++;
-                    if ((counter & 1) == 0)
-                        return (byte)value;
-                    return (byte)(value >> 8);
+                    return ReadLowHighFrom(channel, TickToUShort());
             }
             return 0;
         }
@@ -123,12 +137,15 @@ namespace MBBSEmu.BIOS
             _channelConfig[pitChannel].AccessMode = accessMode;
             _channelConfig[pitChannel].OperatingMode = (OperatingMode)operatingMode;
 
+            if (accessMode == AccessMode.LATCH_VALUE)
+                _channelConfig[pitChannel].latchedValue = TickToUShort();
+
             if (pitChannel == 0 && operatingMode == (int)OperatingMode.MODE_0_INTERRUPT_ON_TERMINAL_COUNT)
             {
                 var interval = TimeSpan.FromMilliseconds(1000 / 18);
 
                 if (_timer == null)
-                    _timer = new Timer(unused_arg => _cpu.Interrupt(0), null, TimeSpan.Zero, interval);
+                    _timer = new Timer(unused_arg => _cpu.Interrupt(8), null, TimeSpan.Zero, interval);
             }
             else if (_timer != null)
             {

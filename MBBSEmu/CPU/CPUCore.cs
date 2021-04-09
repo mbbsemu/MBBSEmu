@@ -127,8 +127,6 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
-        private int _int0 = 0;
-
         public CpuCore(ILogger logger)
         {
             _logger = logger;
@@ -263,13 +261,10 @@ namespace MBBSEmu.CPU
 
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public void Interrupt(byte vectorNumber)
         {
-            if (vectorNumber != 0)
-                throw new ArgumentException();
-
-            _int0 = 1;
+            // TODO schedule the CPU interrupt
         }
 
         /// <summary>
@@ -299,7 +294,7 @@ namespace MBBSEmu.CPU
 
             if (interruptVector.Equals(FarPtr.Empty))
             {
-                _logger.Error($"No interrupt handler, returning");
+                //_logger.Error($"No interrupt handler, returning");
                 return;
             }
 
@@ -319,13 +314,6 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         public void Tick()
         {
-            if (System.Threading.Interlocked.CompareExchange(ref _int0, 0, 1) == 1 &&
-                    Registers.InterruptFlag)
-            {
-                // do the interrupt
-                DoInterrupt(0);
-                return;
-            }
 #if DEBUG
             _currentInstructionPointer.Offset = Registers.IP;
             _currentInstructionPointer.Segment = Registers.CS;
@@ -341,7 +329,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            _showDebug = true;
+            //_showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 

@@ -1,24 +1,48 @@
 ﻿using Iced.Intel;
+using MBBSEmu.BIOS;
 using MBBSEmu.CPU;
+using MBBSEmu.Date;
 using MBBSEmu.Memory;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public abstract class CpuTestBase : TestBase
+    public abstract class CpuTestBase : TestBase, IDisposable
     {
         private protected CpuCore mbbsEmuCpuCore;
         private protected IMemoryCore mbbsEmuMemoryCore;
         private protected ProtectedModeMemoryCore mbbsEmuProtectedModeMemoryCore;
         private protected ICpuRegisters mbbsEmuCpuRegisters;
+        private protected readonly ProgrammableIntervalTimer pit;
+
+        private protected readonly FakeClock fakeClock = new FakeClock();
 
         protected CpuTestBase()
         {
-            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(null);
+            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(logger: null);
             mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null, null);
+
+            pit = new ProgrammableIntervalTimer(logger: null, fakeClock, mbbsEmuMemoryCore, mbbsEmuCpuCore);
+
+            mbbsEmuCpuCore.Reset(
+                mbbsEmuMemoryCore,
+                null,
+                null,
+                new Dictionary<int, IIOPort>
+                {
+                    {0x40, pit},
+                    {0x41, pit},
+                    {0x42, pit},
+                    {0x43, pit},
+                });
+        }
+
+        public void Dispose()
+        {
+            pit.Dispose();
         }
 
         protected void Reset()
