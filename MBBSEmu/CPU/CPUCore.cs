@@ -283,31 +283,6 @@ namespace MBBSEmu.CPU
 #endif
         }
 
-        private void DoInterrupt(int vectorNumber)
-        {
-            // attempt to get memory from real mode memory core first
-            FarPtr interruptVector;
-            if (Memory is RealModeMemoryCore)
-                interruptVector = Memory.GetPointer(FarPtr.Empty + (4 * vectorNumber));
-            else
-                throw new ArgumentException();
-
-            if (interruptVector.Equals(FarPtr.Empty))
-            {
-                //_logger.Error($"No interrupt handler, returning");
-                return;
-            }
-
-            _logger.Error($"Interrupt, jumping to {interruptVector}");
-
-            Push(Registers.F());
-            Push(Registers.CS);
-            Push(Registers.IP);
-
-            Registers.CS = interruptVector.Segment;
-            Registers.IP = interruptVector.Offset;
-        }
-
         /// <summary>
         ///     Ticks the emulated x86 Core one instruction from the current CS:IP
         /// </summary>
