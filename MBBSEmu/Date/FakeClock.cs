@@ -9,8 +9,8 @@ namespace MBBSEmu.Date
   {
     public DateTime Now { get; set; }
 
-    public double CurrentTick { get; set;
-    }
+    public double CurrentTick { get; set; }
+
     public FakeClock()
     {
       Now = DateTime.Now;

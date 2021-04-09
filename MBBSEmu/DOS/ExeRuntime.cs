@@ -58,7 +58,7 @@ namespace MBBSEmu.DOS
 
             Registers = (ICpuRegisters)Cpu;
 
-            _pit = new ProgrammableIntervalTimer(logger, clock, Memory, Cpu);
+            _pit = new ProgrammableIntervalTimer(logger, clock, Cpu);
 
             Cpu.Reset(
                 Memory,
