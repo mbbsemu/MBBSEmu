@@ -42,15 +42,13 @@ namespace MBBSEmu.BIOS
 
         private readonly ILogger _logger;
         private readonly IClock _clock;
-        private readonly IMemoryCore _memoryCore;
         private readonly ICpuCore _cpu;
         private Timer _timer;
 
-        public ProgrammableIntervalTimer(ILogger logger, IClock clock, IMemoryCore memory, ICpuCore cpu)
+        public ProgrammableIntervalTimer(ILogger logger, IClock clock, ICpuCore cpu)
         {
             _logger = logger;
             _clock = clock;
-            _memoryCore = memory;
             _cpu = cpu;
         }
 
@@ -129,7 +127,7 @@ namespace MBBSEmu.BIOS
                 throw new ArgumentException("BCD PIT not supported");
 
             var pitChannel = b >> 6;
-            AccessMode accessMode = (AccessMode)((b >> 4) & 0x3);
+            var accessMode = (AccessMode)((b >> 4) & 0x3);
             var operatingMode = ((b >> 1) & 0x7);
             if (operatingMode > 5)
                 operatingMode &= 0x3;
@@ -145,7 +143,7 @@ namespace MBBSEmu.BIOS
                 var interval = TimeSpan.FromMilliseconds(1000 / 18);
 
                 if (_timer == null)
-                    _timer = new Timer(unused_arg => _cpu.Interrupt(8), null, TimeSpan.Zero, interval);
+                    _timer = new Timer(_ => _cpu.Interrupt(8), null, TimeSpan.Zero, interval);
             }
             else if (_timer != null)
             {

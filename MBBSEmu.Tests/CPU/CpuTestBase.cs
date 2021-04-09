@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
 
-            pit = new ProgrammableIntervalTimer(logger: null, fakeClock, mbbsEmuMemoryCore, mbbsEmuCpuCore);
+            pit = new ProgrammableIntervalTimer(logger: null, fakeClock, mbbsEmuCpuCore);
 
             mbbsEmuCpuCore.Reset(
                 mbbsEmuMemoryCore,
