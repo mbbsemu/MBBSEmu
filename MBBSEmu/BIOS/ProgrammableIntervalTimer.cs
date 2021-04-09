@@ -142,8 +142,7 @@ namespace MBBSEmu.BIOS
             {
                 var interval = TimeSpan.FromMilliseconds(1000 / 18);
 
-                if (_timer == null)
-                    _timer = new Timer(_ => _cpu.Interrupt(8), null, TimeSpan.Zero, interval);
+                _timer ??= new Timer(_ => _cpu.Interrupt(8), null, TimeSpan.Zero, interval);
             }
             else if (_timer != null)
             {
