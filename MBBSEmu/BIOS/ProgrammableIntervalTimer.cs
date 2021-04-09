@@ -153,7 +153,7 @@ namespace MBBSEmu.BIOS
                 _timer = null;
             }
 
-            _logger?.Debug($"PIT channel {pitChannel} is now {accessMode}:{(OperatingMode)operatingMode}");
+            //_logger?.Debug($"PIT channel {pitChannel} is now {accessMode}:{(OperatingMode)operatingMode}");
         }
     }
 }
