@@ -304,7 +304,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            _showDebug = true;
+            //_showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -562,6 +562,9 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Cld:
                     Op_Cld();
+                    break;
+                case Mnemonic.Std:
+                    Op_Std();
                     break;
                 case Mnemonic.Lodsb:
                     Op_Lodsb();
@@ -3272,6 +3275,12 @@ namespace MBBSEmu.CPU
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cld() => Registers.DirectionFlag = false;
+
+        /// <summary>
+        ///     Sets Direction Flag
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Std() => Registers.DirectionFlag = true;
 
         /// <summary>
         ///     Load byte at address DS:(E)SI into AL.
