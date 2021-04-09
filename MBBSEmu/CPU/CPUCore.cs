@@ -304,7 +304,7 @@ namespace MBBSEmu.CPU
             //  Debugger.Break();
 
             //Show Debugging
-            //_showDebug = true;
+            _showDebug = true;
             //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
             //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
 
@@ -1820,6 +1820,10 @@ namespace MBBSEmu.CPU
         {
             Registers.IP = Pop();
             Registers.CS = Pop();
+
+            //Pop N bytes (N/2 words) that were Pushed before the CALL
+            if (_currentInstruction.Op0Kind == OpKind.Immediate16)
+                Registers.SP += GetOperandValueUInt16(OpKind.Immediate16, EnumOperandType.Destination);
 
             Registers.Halt |= Registers.CS == 0xFFFF;
         }
