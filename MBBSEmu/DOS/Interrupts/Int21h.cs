@@ -819,11 +819,11 @@ namespace MBBSEmu.DOS.Interrupts
                 AX = error code
                 CX = file attributes on get
             */
-            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             if (Registers.AL != 0)
                 throw new NotImplementedException();
 
-            var fileInfo = new FileInfo(file);
+            var fileName = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var fileInfo = new FileInfo(fileName);
             if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
@@ -910,14 +910,14 @@ namespace MBBSEmu.DOS.Interrupts
               CF clear if successful
                 AX = file handle
             */
-            var fullPath = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+
             FileMode fileMode = FileMode.Create;
             FileAccess fileAccess = FileAccess.ReadWrite;
 
             //Setup the File Stream
             try
             {
-
                 var fileStream = File.Open(fullPath, fileMode, fileAccess);
                 var handle = GetNextHandle();
                 // TODO set file attributes
@@ -960,7 +960,8 @@ namespace MBBSEmu.DOS.Interrupts
                     AX = file handle
             */
 
-            var fullPath = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;
             switch (Registers.AL)
@@ -1034,5 +1035,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             return DOSErrorCode.GENERAL_FAILURE;
         }
+
+        private static string FixDosPath(string path) => path.Replace('\\', Path.DirectorySeparatorChar);
     }
 }
