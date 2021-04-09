@@ -21,6 +21,8 @@ namespace MBBSEmu.DOS.Interrupts
     /// </summary>
     public class Int21h : IInterruptHandler
     {
+        public const int BTRIEVE_INTERRUPT = 123;
+
         public const MethodImplOptions SubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
@@ -100,7 +102,12 @@ namespace MBBSEmu.DOS.Interrupts
             _stdin = stdin;
             _stdout = stdout;
             _stderr = stderr;
-            _interruptVectors = new Dictionary<byte, FarPtr>();
+            _interruptVectors = new Dictionary<byte, FarPtr>()
+            {
+                // btrieve interrupt offset is always 0x33, that's how the library
+                // detects TSR presence
+                { BTRIEVE_INTERRUPT, new FarPtr(0x0F00, 0x0033) },
+            };
             _path = path;
         }
 
@@ -114,6 +121,9 @@ namespace MBBSEmu.DOS.Interrupts
                     break;
                 case 0x42:
                     MoveFilePointer_0x42();
+                    break;
+                case 0x3C:
+                    CreateFile_0x3C();
                     break;
                 case 0x3D:
                     OpenFile_0x3D();
@@ -296,7 +306,7 @@ namespace MBBSEmu.DOS.Interrupts
             */
             SeekOrigin seekOrigin;
             var fileHandle = Registers.BX;
-            var offset = (uint)(Registers.CX << 16 | Registers.DX);
+            var offset = (int)(Registers.CX << 16 | Registers.DX);
 
             switch (Registers.AL)
             {
@@ -680,7 +690,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
-            _logger.Warn($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
+            _logger.Debug($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
 
             // don't update BX, leave it alone to say we resized exactly as client requested
             ClearCarryFlag();
@@ -809,11 +819,11 @@ namespace MBBSEmu.DOS.Interrupts
                 AX = error code
                 CX = file attributes on get
             */
-            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             if (Registers.AL != 0)
                 throw new NotImplementedException();
 
-            var fileInfo = new FileInfo(file);
+            var fileName = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var fileInfo = new FileInfo(fileName);
             if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
@@ -881,6 +891,50 @@ namespace MBBSEmu.DOS.Interrupts
             fileStream.Dispose();
         }
 
+        private void CreateFile_0x3C()
+        {
+            /*
+            INT 21 - AH = 3Ch DOS 2+ - CREATE A FILE WITH HANDLE (CREAT)
+            CX = attributes for file
+                bit 0: read-only
+                1: hidden
+                2: system
+                3: volume label
+                4: reserved, must be zero (directory)
+                5: archive bit
+                7: if set, file is shareable under Novell NetWare
+            DS:DX = address of ASCIZ filename
+            Return:
+              CF set on error
+                AX = error code
+              CF clear if successful
+                AX = file handle
+            */
+            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+
+            var fileMode = FileMode.Create;
+            var fileAccess = FileAccess.ReadWrite;
+
+            //Setup the File Stream
+            try
+            {
+                var fileStream = File.Open(fullPath, fileMode, fileAccess);
+                var handle = GetNextHandle();
+                // TODO set file attributes
+
+                _logger.Debug($"Creating file {fullPath} as FD:{handle}");
+
+                _fileHandles[handle] = fileStream;
+
+                ClearCarryFlag();
+                Registers.AX = (ushort)handle;
+            }
+            catch (Exception ex)
+            {
+                SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
+            }
+        }
+
         private void OpenFile_0x3D()
         {
             /*
@@ -906,7 +960,8 @@ namespace MBBSEmu.DOS.Interrupts
                     AX = file handle
             */
 
-            var fullPath = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;
             switch (Registers.AL)
@@ -980,5 +1035,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             return DOSErrorCode.GENERAL_FAILURE;
         }
+
+        private static string FixDosPath(string path) => path.Replace('\\', Path.DirectorySeparatorChar);
     }
 }
