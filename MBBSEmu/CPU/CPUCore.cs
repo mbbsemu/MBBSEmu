@@ -3513,18 +3513,12 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fxch()
         {
-            var ST0 = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST1 = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
-            //var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            //var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            //var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
-
-            //TODO Handle invalid and infinity cases
-
-            //(ST0, ST1) = (ST1, ST0);
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST0)] = ST1;
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST0;
+            //Exchange values
+            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = STsource;
+            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)] = STdestination;
         }
 
         /// <summary>
@@ -3537,8 +3531,12 @@ namespace MBBSEmu.CPU
         {
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            
+            _logger.Warn($"ST0: {ST0}, ST1: {ST1}");
+            
+            var result = Math.Atan2(ST1, ST0);
 
-            var result = Math.Atan2(ST0, ST1);
+            _logger.Warn($"Math.Atan2 Result: {result}");
 
             //TODO Handle invalid and infinity cases
 
@@ -3563,9 +3561,13 @@ namespace MBBSEmu.CPU
             //var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.);
             //var divisor = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
 
+            _logger.Warn($"ST0: {ST0}, ST1: {ST1}");
+
             //TODO Handle invalid and infinity cases
 
             var result = Math.ScaleB(ST0, (int)ST1);
+
+            _logger.Warn($"Result: {result}");
 
             //Store result
             FpuStack[Registers.Fpu.GetStackTop()] = result;
