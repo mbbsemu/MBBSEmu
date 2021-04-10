@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.Memory
 
         _serviceResolver = new ServiceResolver(_fakeClock);
         _memory = new RealModeMemoryCore(_serviceResolver.GetService<ILogger>());
-        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<ILogger>(), _serviceResolver.GetService<IFileUtility>(), new StreamReader(_consoleInput), streamWriter, streamWriter);
+        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<ILogger>(), _serviceResolver.GetService<IFileUtility>(), new TextReaderStream(new StreamReader(_consoleInput)), new TextWriterStream(streamWriter), new TextWriterStream(streamWriter));
     }
 
     [Fact]
@@ -90,7 +90,7 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.CarryFlag.Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
       _registers.AH = 0x48;
@@ -98,7 +98,7 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.CarryFlag.Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT + 2);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT + 2);
     }
 
     [Fact]
@@ -126,18 +126,18 @@ namespace MBBSEmu.Tests.Memory
       _int21.Handle();
 
       _registers.CarryFlag.Should().BeFalse();
-      _registers.AX.Should().Be(RealModeMemoryCore.HEAP_BASE_SEGMENT);
+      _registers.AX.Should().Be(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT);
 
       _registers.AL = 0;
       _registers.AH = 0x49;
-      _registers.ES = RealModeMemoryCore.HEAP_BASE_SEGMENT;
+      _registers.ES = RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT;
       _registers.F = _registers.F.SetFlag((ushort)EnumFlags.CF);
 
       _int21.Handle();
 
       _registers.CarryFlag.Should().BeFalse();
 
-      _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.HEAP_BASE_SEGMENT, 0));
+      _memory.Malloc(0).Should().Be(new FarPtr(RealModeMemoryCore.DEFAULT_HEAP_BASE_SEGMENT, 0));
     }
 
     [Fact]

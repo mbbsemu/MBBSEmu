@@ -23,24 +23,28 @@ namespace MBBSEmu.Memory
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
         public const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
-        public const int HEAP_BASE_SEGMENT = 0x1000;
-        private readonly FarPtr HEAP_BASE = new FarPtr(HEAP_BASE_SEGMENT, 0);
-        private const int HEAP_MAX_SIZE = 64*1024;
+        public const int HEAP_MAX_SIZE = 64*1024;
+        public const ushort DEFAULT_HEAP_BASE_SEGMENT = 0x8000;
 
+        public readonly ushort _heapBaseSegment;
         private readonly byte[] _memory = new byte[MAX_REAL_MODE_MEMORY];
 
         private MemoryAllocator _memoryAllocator;
 
         private readonly Dictionary<int, Instruction> _instructionCache = new(128*1024);
 
-        public RealModeMemoryCore(ILogger logger) : base(logger)
+        public RealModeMemoryCore(ushort heapBaseSegment, ILogger logger) : base(logger)
         {
+            _heapBaseSegment = heapBaseSegment;
+
             // fill with halt instructions
-            Array.Fill(_memory, (byte)0xF4);
+            Array.Fill(_memory, (byte)0);
 
             // set alignment to 16 so that all allocations return a clean segment (which are 16 bytes)
-            _memoryAllocator = new MemoryAllocator(logger, HEAP_BASE, HEAP_MAX_SIZE, alignment: 16);
+            _memoryAllocator = new MemoryAllocator(logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
         }
+
+        public RealModeMemoryCore(ILogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) {}
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
 
@@ -61,14 +65,14 @@ namespace MBBSEmu.Memory
         public override void Free(FarPtr ptr)
         {
             // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
-            var adjustedPtr = new FarPtr(HEAP_BASE_SEGMENT, (ushort)(ptr.Offset + ((ptr.Segment - HEAP_BASE_SEGMENT) << 4)));
+            var adjustedPtr = new FarPtr(_heapBaseSegment, (ushort)(ptr.Offset + ((ptr.Segment - _heapBaseSegment) << 4)));
             _memoryAllocator.Free(adjustedPtr);
         }
 
         public int GetAllocatedMemorySize(FarPtr ptr)
         {
             // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
-            var adjustedPtr = new FarPtr(HEAP_BASE_SEGMENT, (ushort)(ptr.Offset + ((ptr.Segment - HEAP_BASE_SEGMENT) << 4)));
+            var adjustedPtr = new FarPtr(_heapBaseSegment, (ushort)(ptr.Offset + ((ptr.Segment - _heapBaseSegment) << 4)));
             return _memoryAllocator.GetAllocatedMemorySize(adjustedPtr);
         }
 
@@ -102,7 +106,7 @@ namespace MBBSEmu.Memory
             base.Clear();
 
             _instructionCache.Clear();
-            _memoryAllocator = new MemoryAllocator(_logger, HEAP_BASE, HEAP_MAX_SIZE, alignment: 16);
+            _memoryAllocator = new MemoryAllocator(_logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
             Array.Fill(_memory, (byte)0);
         }
     }

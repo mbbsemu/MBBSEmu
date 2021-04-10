@@ -41,12 +41,21 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
         public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
         {
             ModuleCpu = new CpuCore(logger);
-            ModuleCpuRegisters = (ICpuRegisters)ModuleCpu;
+            ModuleCpuRegisters = ModuleCpu;
             ModuleMemory = moduleMemory;
             ExportedModuleDictionary = exportedModuleDictionary;
             Path = path;
 
-            ModuleCpu.Reset(ModuleMemory, ExternalFunctionDelegate, new List<IInterruptHandler> { new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, Console.In, Console.Out, Console.Error, path), new Int3Eh(), new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock) });
+            ModuleCpu.Reset(
+                ModuleMemory,
+                ExternalFunctionDelegate,
+                new List<IInterruptHandler>
+                {
+                    new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, null, null, new TextWriterStream(Console.Error), path),
+                    new Int3Eh(),
+                    new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock)
+                },
+                ioPortHandlers: null);
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)

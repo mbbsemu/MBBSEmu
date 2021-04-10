@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace MBBSEmu.Date
 {
@@ -7,6 +8,10 @@ namespace MBBSEmu.Date
   /// </summary>
   public class SystemClock : IClock
   {
-    public DateTime Now { get => DateTime.Now; }
+    private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+
+    public DateTime Now => DateTime.Now;
+
+    public double CurrentTick => (double)_stopwatch.ElapsedTicks / (double)Stopwatch.Frequency;
   }
 }

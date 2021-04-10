@@ -55,7 +55,7 @@ namespace MBBSEmu.Tests.ExportedModules
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<ILogger>());
-            mbbsEmuCpuCore = new CpuCore();
+            mbbsEmuCpuCore = new CpuCore(_serviceResolver.GetService<ILogger>());
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
 
             var testModuleConfig = new ModuleConfiguration {ModulePath = modulePath, ModuleEnabled = true};
@@ -87,7 +87,7 @@ namespace MBBSEmu.Tests.ExportedModules
                 testSessions,
                 textVariableService);
 
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, ExportedFunctionDelegate, null);
+            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, ExportedFunctionDelegate, null, null);
         }
         private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {
