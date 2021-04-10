@@ -256,14 +256,14 @@ key-only file or a Get operation on a data only file */
             public byte number_only_if_explicit_key_flag_is_set;
             public byte acs_number;
 
-            public BtrieveKeySpec(BtrieveKey db)
+            public BtrieveKeySpec(BtrieveKeyDefinition db)
             {
-                position = db.PrimarySegment.Position;
-                length = db.PrimarySegment.Length;
-                flags = (ushort)db.PrimarySegment.Attributes;
+                position = db.Position;
+                length = db.Length;
+                flags = (ushort)db.Attributes;
                 number_of_keys = 0;
-                data_type = (byte)db.PrimarySegment.DataType;
-                null_value = db.PrimarySegment.NullValue;
+                data_type = (byte)db.DataType;
+                null_value = db.NullValue;
                 unused = 0;
                 number_only_if_explicit_key_flag_is_set = 0;
                 acs_number = db.RequiresACS ? (byte)1 : (byte)0;
@@ -302,9 +302,9 @@ key-only file or a Get operation on a data only file */
             // now write all this data
             var ptr = new FarPtr(command.data_buffer_segment, command.data_buffer_offset);
             ptr += new BtrieveFileSpec(db).WriteTo(_memory, ptr);
-            for (var i = 0; i < db.Keys.Count; ++i)
+            for (var i = (ushort)0; i < db.Keys.Count; ++i)
             {
-                ptr += new BtrieveKeySpec(db.Keys[(ushort)i]).WriteTo(_memory, ptr);
+                ptr += new BtrieveKeySpec(db.Keys[i].PrimarySegment).WriteTo(_memory, ptr);
             }
 
             return BtrieveError.Success;
