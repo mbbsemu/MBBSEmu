@@ -3428,14 +3428,18 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fxch()
         {
-            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0 = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            var ST1 = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+
+            //var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
+            //var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            //var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
             //TODO Handle invalid and infinity cases
 
-            (ST0, ST1) = (ST1, ST0);
-
+            //(ST0, ST1) = (ST1, ST0);
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST0)] = ST1;
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST0;
         }
 
         /// <summary>
@@ -3450,6 +3454,8 @@ namespace MBBSEmu.CPU
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
             var result = Math.Atan2(ST0, ST1);
+
+            //TODO Handle invalid and infinity cases
 
             //Store result at ST1
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
@@ -3466,8 +3472,11 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fscale()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST0)];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            //var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.);
+            //var divisor = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
 
             //TODO Handle invalid and infinity cases
 
