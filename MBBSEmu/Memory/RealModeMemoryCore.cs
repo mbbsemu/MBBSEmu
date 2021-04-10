@@ -45,10 +45,7 @@ namespace MBBSEmu.Memory
                 _memory = memory;
             }
 
-            public override int ReadByte()
-            {
-                return _memory[ip++];
-            }
+            public override int ReadByte() => _memory[ip++];
 
             public void SetCurrent(int position) => ip = position;
         }
