@@ -505,7 +505,8 @@ namespace MBBSEmu.DOS.Interrupts
                 _memory.SetPointer(ptr, newVectorPointer);
             }
 
-            _logger.Debug($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
+            if (interruptVector >= 8)
+                _logger.Debug($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
         }
 
         private void GetCurrentDate_0x2A()
@@ -690,7 +691,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
-            _logger.Debug($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
+            //_logger.Debug($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
 
             // don't update BX, leave it alone to say we resized exactly as client requested
             ClearCarryFlag();
