@@ -3986,7 +3986,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
                 unpackedMinutes, unpackedSeconds);
 
-            var timeString = unpackedTime.ToString("HH:mm:ss");
+            var timeString = $"{unpackedTime.ToString("HH:mm:ss")}\0";
             var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCTIME", (ushort) timeString.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
