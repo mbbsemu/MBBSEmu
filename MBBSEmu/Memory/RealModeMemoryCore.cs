@@ -31,11 +31,38 @@ namespace MBBSEmu.Memory
 
         private MemoryAllocator _memoryAllocator;
 
-        private readonly Dictionary<int, Instruction> _instructionCache = new(128*1024);
+        /// <summary>
+        ///     CodeReader implementation which feeds the Iced.Intel
+        ///     decoder based on our current IP.
+        /// </summary>
+        private class RealModeCodeReader : CodeReader
+        {
+            private readonly byte[] _memory;
+            private int ip = 0;
+
+            public RealModeCodeReader(byte[] memory)
+            {
+                _memory = memory;
+            }
+
+            public override int ReadByte()
+            {
+                return _memory[ip++];
+            }
+
+            public void SetCurrent(int position) => ip = position;
+        }
+
+        private readonly RealModeCodeReader _codeReader;
+
+        private readonly Decoder _decoder;
 
         public RealModeMemoryCore(ushort heapBaseSegment, ILogger logger) : base(logger)
         {
             _heapBaseSegment = heapBaseSegment;
+
+            _codeReader = new(_memory);
+            _decoder = Decoder.Create(16, _codeReader);
 
             // fill with halt instructions
             Array.Fill(_memory, (byte)0);
@@ -79,24 +106,13 @@ namespace MBBSEmu.Memory
         public Instruction GetInstruction(ushort segment, ushort instructionPointer)
         {
             var physicalAddress = VirtualToPhysicalAddress(segment, instructionPointer);
+            _codeReader.SetCurrent(physicalAddress);
 
-            if (_instructionCache.TryGetValue(physicalAddress, out var instruction))
-                return instruction;
-
-            var codeReader = new ByteArrayCodeReader(VirtualToPhysical(segment, instructionPointer).Slice(0, 10).ToArray());
-            var decoder = Decoder.Create(16, codeReader);
-            decoder.IP = instructionPointer;
-
-            instruction = decoder.Decode();
-            _instructionCache.Add(VirtualToPhysicalAddress(segment, instructionPointer), instruction);
-            return instruction;
+            _decoder.IP = instructionPointer;
+            return _decoder.Decode();
         }
 
-        public Instruction Recompile(ushort segment, ushort instructionPointer)
-        {
-            _instructionCache.Remove(VirtualToPhysicalAddress(segment, instructionPointer));
-            return GetInstruction(segment, instructionPointer);
-        }
+        public Instruction Recompile(ushort segment, ushort instructionPointer) => GetInstruction(segment, instructionPointer);
 
         public static int VirtualToPhysicalAddress(ushort segment, ushort offset) => ((segment << 4) + offset);
         public static FarPtr PhysicalToVirtualAddress(int offset) => new FarPtr((ushort)(offset >> 4), (ushort)(offset & 0xF));
@@ -105,7 +121,6 @@ namespace MBBSEmu.Memory
         {
             base.Clear();
 
-            _instructionCache.Clear();
             _memoryAllocator = new MemoryAllocator(_logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
             Array.Fill(_memory, (byte)0);
         }
