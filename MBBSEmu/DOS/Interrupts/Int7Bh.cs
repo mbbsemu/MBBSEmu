@@ -298,11 +298,10 @@ key-only file or a Get operation on a data only file */
             var requiredSize = Marshal.SizeOf(typeof(BtrieveFileSpec)) + (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec)));
             if (command.data_buffer_length < requiredSize)
                 return BtrieveError.DataBufferLengthOverrun;
-            // now write all this data
-            BtrieveFileSpec fileSpec = new BtrieveFileSpec(db);
 
+            // now write all this data
             var ptr = new FarPtr(command.data_buffer_segment, command.data_buffer_offset);
-            ptr += fileSpec.WriteTo(_memory, ptr);
+            ptr += new BtrieveFileSpec(db).WriteTo(_memory, ptr);
             for (var i = 0; i < db.Keys.Count; ++i)
             {
                 ptr += new BtrieveKeySpec(db.Keys[(ushort)i]).WriteTo(_memory, ptr);

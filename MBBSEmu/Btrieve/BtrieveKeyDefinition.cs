@@ -9,6 +9,12 @@ namespace MBBSEmu.Btrieve
     public class BtrieveKeyDefinition
     {
         /// <summary>
+        ///     ID of the btrieve Key from the database
+        /// </summary>
+        /// <value></value>
+        public int Id { get; set; }
+
+        /// <summary>
         ///     The number of the key, starting from 0. Databases have at least one key.
         /// </summary>
         /// <value></value>
