@@ -126,6 +126,29 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(-1, fclose(filep));
         }
 
+        [Fact]
+        public void fopen_emptyfile_read_verifyeof()
+        {
+            //Reset State
+            Reset();
+
+            var filePath = CreateTextFile("file.txt", string.Empty);
+
+            var filep = fopen("file.txt", "rb");
+            Assert.NotEqual(0, filep.Segment);
+            Assert.NotEqual(0, filep.Offset);
+
+            var memoryStream = new MemoryStream();
+            var dstBuf = mbbsEmuMemoryCore.AllocateVariable(null, 4096);
+
+            var elementsRead = fread(dstBuf, 1, 128, filep);
+
+            Assert.Equal(0, elementsRead);
+
+            var filepStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
+            Assert.True(filepStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
+        }
+
         [Theory]
         [InlineData("r", 2, 1)]
         [InlineData("r", 2, 2)]

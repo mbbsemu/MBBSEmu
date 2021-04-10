@@ -3315,6 +3315,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (fileStream.Position >= fileStream.Length)
             {
+                //Set EOF Flag
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+
                 Registers.AX = 0;
                 return;
             }
