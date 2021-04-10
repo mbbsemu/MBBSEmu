@@ -505,7 +505,7 @@ namespace MBBSEmu.DOS.Interrupts
                 _memory.SetPointer(ptr, newVectorPointer);
             }
 
-            _logger.Info($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
+            _logger.Debug($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
         }
 
         private void GetCurrentDate_0x2A()
@@ -877,13 +877,13 @@ namespace MBBSEmu.DOS.Interrupts
 
             var fileHandle = Registers.BX;
 
-            _logger.Debug($"Closing file {fileHandle}");
-
             if (!_fileHandles.TryGetValue(fileHandle, out var fileStream))
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.INVALID_HANDLE);
                 return;
             }
+
+            _logger.Debug($"Closing file {fileHandle}");
 
             _fileHandles.Remove(fileHandle);
 

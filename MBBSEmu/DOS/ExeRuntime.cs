@@ -69,6 +69,7 @@ namespace MBBSEmu.DOS
                     new Int1Ah(Registers, Memory, clock),
                     new Int3Eh(),
                     new Int10h(Registers, _logger, stdout),
+                    new Int7Bh(_logger, Registers, Memory),
                 },
                 new Dictionary<int, IIOPort>
                 {
