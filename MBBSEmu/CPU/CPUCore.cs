@@ -1209,7 +1209,14 @@ namespace MBBSEmu.CPU
         private void Op_In()
         {
             var port = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
-            var data = _ioPortHandlers[port].In(port);
+
+            if (!_ioPortHandlers.TryGetValue(port, out var ioport))
+            {
+                _logger.Warn($"Attempted access of unimplemented IO Port: {port}");
+                return;
+            }
+            
+            var data = ioport.In(port);
 
             Registers.SetValue(_currentInstruction.Op0Register, data);
         }
@@ -1218,9 +1225,16 @@ namespace MBBSEmu.CPU
         private void Op_Out()
         {
             var port = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Source);
+
+            if (!_ioPortHandlers.TryGetValue(port, out var ioport))
+            {
+                _logger.Warn($"Attempted access of unimplemented IO Port: {port}");
+                return;
+            }
+
             var data = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
-            _ioPortHandlers[port].Out(port, data);
+            ioport.Out(port, data);
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
