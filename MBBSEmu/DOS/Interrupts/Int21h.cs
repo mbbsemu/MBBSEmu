@@ -108,6 +108,10 @@ namespace MBBSEmu.DOS.Interrupts
                 // detects TSR presence
                 { BTRIEVE_INTERRUPT, new FarPtr(0x0F00, 0x0033) },
             };
+
+            if (path.Length == 0)
+                path = Directory.GetCurrentDirectory();
+
             _path = path;
         }
 
@@ -740,15 +744,31 @@ namespace MBBSEmu.DOS.Interrupts
             */
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             var foundFile = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, foundFile);
+            FileInfo fileInfo = new FileInfo(fullPath);
 
-            if (!File.Exists($"{_path}{foundFile}"))
+            if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
             }
 
             ClearCarryFlag();
-            throw new NotImplementedException();
+            Registers.AX = (ushort)DOSErrorCode.SUCCESS;
+
+            // write to DTA
+            _memory.SetByte(DiskTransferArea + 0x15, GetDOSFileAttributes(fileInfo));
+            _memory.SetWord(DiskTransferArea + 0x16, GetDOSFileTime(fileInfo));
+            _memory.SetWord(DiskTransferArea + 0x18, GetDOSFileDate(fileInfo));
+            _memory.SetDWord(DiskTransferArea + 0x1A, (uint)fileInfo.Length);
+
+            _memory.FillArray(DiskTransferArea + 0x1E, 13, (byte)' ');
+            _memory.SetByte(DiskTransferArea + 0x1E + 13, 0);
+
+            var upperFoundFile = Path.GetFileName(fileInfo.FullName).ToUpper();
+            _memory.SetArray(DiskTransferArea + 0x1E, Encoding.ASCII.GetBytes(upperFoundFile));
+
+            _logger.Error($"Writing to {DiskTransferArea}");
         }
 
         private void GetPSPAddress_0x62()
@@ -800,6 +820,29 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
+        private byte GetDOSFileAttributes(FileInfo fileInfo)
+        {
+            var fileAttributes = (byte)0;
+            if (fileInfo.IsReadOnly)
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.ReadOnly;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Hidden;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.System))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.System;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Directory;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Archive;
+
+            return fileAttributes;
+        }
+
+        private ushort GetDOSFileTime(FileInfo fileInfo)
+            => (ushort)((fileInfo.LastWriteTime.Hour << 11) + (fileInfo.LastWriteTime.Minute << 5) + (fileInfo.LastWriteTime.Second >> 1));
+
+        private ushort GetDOSFileDate(FileInfo fileInfo)
+            => (ushort)((fileInfo.LastWriteTime.Month << 5) + fileInfo.LastWriteTime.Day + ((fileInfo.LastWriteTime.Year - 1980) << 9));
+
         private void GetOrPutFileAttributes_0x43()
         {
             /*
@@ -831,18 +874,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
-            Registers.CX = 0;
-            if (fileInfo.IsReadOnly)
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.ReadOnly;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Hidden;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.System))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.System;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Directory;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
-
+            Registers.CX = GetDOSFileAttributes(fileInfo);
             ClearCarryFlag();
         }
 

@@ -1197,7 +1197,7 @@ namespace MBBSEmu.CPU
                 _logger.Warn($"Attempted access of unimplemented IO Port: {port}");
                 return;
             }
-            
+
             var data = ioport.In(port);
 
             Registers.SetValue(_currentInstruction.Op0Register, data);
