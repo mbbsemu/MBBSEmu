@@ -1,6 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -18,8 +16,7 @@ namespace MBBSEmu.Tests.CPU
             instructions.js(0);
             CreateCodeSegment(instructions);
 
-            if (signFlagValue)
-                mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.SF);
+            mbbsEmuCpuRegisters.SignFlag = signFlagValue;
 
             //Process Instruction
             mbbsEmuCpuCore.Tick();
@@ -53,8 +50,7 @@ namespace MBBSEmu.Tests.CPU
             instructions.jns(0);
             CreateCodeSegment(instructions);
 
-            if (signFlagValue)
-                mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.SF);
+            mbbsEmuCpuRegisters.SignFlag = signFlagValue;
 
             //Process Instruction
             mbbsEmuCpuCore.Tick();
