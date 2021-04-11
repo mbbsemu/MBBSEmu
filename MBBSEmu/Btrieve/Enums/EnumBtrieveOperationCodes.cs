@@ -26,6 +26,9 @@
         // Utility
         Open = 0x0,
         Close = 0x1,
+        Insert = 0x2,
+        Update = 0x3,
+        Delete = 0x4,
 
         // Acquire Operations
         [AcquiresData]
@@ -57,8 +60,12 @@
         [AcquiresData]
         AcquireLast = 0xD,
 
+        Create = 0xE,
         // Information Operations
         Stat = 0xF,
+        Extend = 0x10,
+        GetPosition = 0x16,
+        GetDirectChunkOrRecord = 0x17,
         SetOwner = 0x1D,
 
         // Step Operations, operates on physical offset not keys

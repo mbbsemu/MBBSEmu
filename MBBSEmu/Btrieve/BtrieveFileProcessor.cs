@@ -725,6 +725,8 @@ namespace MBBSEmu.Btrieve
         {
             switch (btrieveOperationCode)
             {
+                case EnumBtrieveOperationCodes.Delete:
+                    return Delete();
                 case EnumBtrieveOperationCodes.StepFirst:
                     return StepFirst();
                 case EnumBtrieveOperationCodes.StepLast:

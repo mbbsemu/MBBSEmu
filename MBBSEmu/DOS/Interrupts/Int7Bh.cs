@@ -1,5 +1,6 @@
 
 using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
@@ -63,13 +64,6 @@ key-only file or a Get operation on a data only file */
         ExclusiveAccess = -4
     }
 
-    public enum BtrieveOperation : ushort
-    {
-        Open = 0,
-        Close = 1,
-        Stat = 15,
-    }
-
     public struct BtrieveCommand
     {
         public ushort data_buffer_offset;
@@ -83,7 +77,7 @@ key-only file or a Get operation on a data only file */
         public ushort fcb_offset;
         public ushort fcb_segment;
 
-        public BtrieveOperation operation;
+        public EnumBtrieveOperationCodes operation;
 
         public ushort key_buffer_offset;
         public ushort key_buffer_segment;
@@ -143,7 +137,10 @@ key-only file or a Get operation on a data only file */
             else
                 status = Handle(command);
 
+            // return status code back to program
             _memory.SetWord(command.status_code_pointer_segment, command.status_code_pointer_offset, (ushort)status);
+            // and update data_buffer_length if it was updated in Handle
+            _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), command.data_buffer_length);
         }
 
         /// <summary>
@@ -154,12 +151,34 @@ key-only file or a Get operation on a data only file */
         {
             switch (command.operation)
             {
-                case BtrieveOperation.Open:
+                case EnumBtrieveOperationCodes.Open:
                     return Open(command);
-                case BtrieveOperation.Close:
+                case EnumBtrieveOperationCodes.Close:
                     return Close(command);
-                case BtrieveOperation.Stat:
+                case EnumBtrieveOperationCodes.Stat:
                     return Stat(command);
+                case EnumBtrieveOperationCodes.Delete:
+                    return Delete(command);
+                case EnumBtrieveOperationCodes.StepFirst:
+                case EnumBtrieveOperationCodes.StepLast:
+                case EnumBtrieveOperationCodes.StepNext:
+                case EnumBtrieveOperationCodes.StepPrevious:
+                    return Step(command);
+                case EnumBtrieveOperationCodes.AcquireFirst:
+                case EnumBtrieveOperationCodes.AcquireLast:
+                    return Acquire(command);
+                case EnumBtrieveOperationCodes.GetPosition:
+                    return GetPosition(command);
+                case EnumBtrieveOperationCodes.GetDirectChunkOrRecord:
+                    return GetDirectChunkOrRecord(command);
+                case EnumBtrieveOperationCodes.AcquireEqual:
+                    return GetEqual(command, copyData: true);
+                case EnumBtrieveOperationCodes.QueryEqual:
+                    return GetEqual(command, copyData: false);
+                case EnumBtrieveOperationCodes.Update:
+                    return Update(command);
+                case EnumBtrieveOperationCodes.Insert:
+                    return Insert(command);
                 default:
                     _logger.Error($"Unsupported Btrieve operation {command.operation}");
                     return BtrieveError.InvalidOperation;
@@ -310,6 +329,167 @@ key-only file or a Get operation on a data only file */
 
             return BtrieveError.Success;
         }
+
+        private BtrieveError Delete(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            if (!db.PerformOperation(0, ReadOnlySpan<byte>.Empty, command.operation))
+                return BtrieveError.InvalidPositioning;
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError Update(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
+            if (!db.Update(record))
+                return BtrieveError.DuplicateKeyValue;
+
+            // copy back the key if specified
+            if (command.key_number != 0xFF)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record));
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError Insert(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
+            if (db.Insert(record, LogLevel.Error) == 0)
+                return BtrieveError.DuplicateKeyValue;
+
+            // copy back the key if specified
+            if (command.key_number != 0xFF)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record));
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError Step(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            if (!db.PerformOperation(0, ReadOnlySpan<byte>.Empty, command.operation))
+                return BtrieveError.EOF;
+
+            var data = db.GetRecord();
+            if (data.Length > command.data_buffer_length)
+                return BtrieveError.DataBufferLengthOverrun;
+
+            _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
+            command.data_buffer_length = (ushort)data.Length;
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError Acquire(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            if (!db.PerformOperation(command.key_number, ReadOnlySpan<byte>.Empty, command.operation))
+                return BtrieveError.EOF;
+
+            var data = db.GetRecord();
+            if (data.Length > command.data_buffer_length)
+                return BtrieveError.DataBufferLengthOverrun;
+            if (db.Keys[command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
+
+            // copy data
+            _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
+            command.data_buffer_length = (ushort)data.Length;
+
+            // copy key
+            _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(data));
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError GetDirectChunkOrRecord(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            if (command.key_number == 0xFE)
+            {
+                _logger.Warn("GetChunk - not supported");
+                return BtrieveError.InvalidOperation;
+            }
+
+            var offset = _memory.GetDWord(command.data_buffer_segment, command.data_buffer_offset);
+            var record = db.GetRecord(offset);
+            if (record == null)
+                return BtrieveError.InvalidPositioning;
+
+            if (record.Data.Length > command.data_buffer_length)
+                return BtrieveError.DataBufferLengthOverrun;
+            if (command.key_number != 0xFF && db.Keys[command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
+
+            // copy data
+            _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, record.Data);
+            command.data_buffer_length = (ushort)record.Data.Length;
+
+            // copy key
+            if (command.key_number != 0xFF)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record.Data));
+
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError GetPosition(BtrieveCommand command)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            if (command.data_buffer_length < 4)
+                return BtrieveError.DataBufferLengthOverrun;
+
+            _memory.SetDWord(command.data_buffer_segment, command.data_buffer_offset, db.Position);
+            return BtrieveError.Success;
+        }
+
+        private BtrieveError GetEqual(BtrieveCommand command, bool copyData)
+        {
+            var db = GetOpenDatabase(command);
+            if (db == null)
+                return BtrieveError.FileNotOpen;
+
+            var key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset, command.key_buffer_length);
+            if (!db.PerformOperation(command.key_number, key, command.operation))
+                return BtrieveError.KeyValueNotFound;
+
+            var data = db.GetRecord();
+            if (copyData && data.Length > command.data_buffer_length)
+                return BtrieveError.DataBufferLengthOverrun;
+
+            // copy data
+            if (copyData)
+            {
+                _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
+                command.data_buffer_length = (ushort)data.Length;
+            }
+
+            return BtrieveError.Success;
+        }
+
         private Guid GetGUIDFromPosBlock(BtrieveCommand command) => new Guid(_memory.GetArray(command.position_block_segment, command.position_block_offset, 16));
 
         private BtrieveFileProcessor GetOpenDatabase(BtrieveCommand command) => _openFiles[GetGUIDFromPosBlock(command)];
