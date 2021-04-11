@@ -296,22 +296,21 @@ namespace MBBSEmu.Btrieve
 
             var cmd =
                 GetSqliteCommand(
-                    "SELECT id, number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment",
+                    "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment",
                     transaction);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                var id = reader.GetInt32(0);
-                var number = reader.GetInt32(1);
+                var number = reader.GetInt32(0);
                 var btrieveKeyDefinition = new BtrieveKeyDefinition()
                 {
                     Number = (ushort)number,
-                    Segment = reader.GetInt32(2) != 0,
-                    SegmentOf = reader.GetInt32(2) != 0 ? (ushort)number : (ushort)0,
-                    Attributes = (EnumKeyAttributeMask)reader.GetInt32(3),
-                    DataType = (EnumKeyDataType)reader.GetInt32(4),
-                    Offset = (ushort)reader.GetInt32(5),
-                    Length = (ushort)reader.GetInt32(6),
+                    Segment = reader.GetInt32(1) != 0,
+                    SegmentOf = reader.GetInt32(1) != 0 ? (ushort)number : (ushort)0,
+                    Attributes = (EnumKeyAttributeMask)reader.GetInt32(2),
+                    DataType = (EnumKeyDataType)reader.GetInt32(3),
+                    Offset = (ushort)reader.GetInt32(4),
+                    Length = (ushort)reader.GetInt32(5),
                 };
 
                 if (btrieveKeyDefinition.RequiresACS)

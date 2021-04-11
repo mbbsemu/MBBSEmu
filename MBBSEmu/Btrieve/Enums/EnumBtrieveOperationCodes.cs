@@ -1,6 +1,12 @@
 ﻿namespace MBBSEmu.Btrieve.Enums
 {
     /// <summary>
+    ///     Specifies whether the operation code requires a key value.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Field)]
+    public class RequiresKey : System.Attribute {}
+
+    /// <summary>
     ///     Specifies whether the operation code operates on a previous query.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
@@ -32,6 +38,7 @@
 
         // Acquire Operations
         [AcquiresData]
+        [RequiresKey]
         AcquireEqual = 0x5,
 
         [AcquiresData]
@@ -43,15 +50,19 @@
         AcquirePrevious = 0x7,
 
         [AcquiresData]
+        [RequiresKey]
         AcquireGreater = 0x8,
 
         [AcquiresData]
+        [RequiresKey]
         AcquireGreaterOrEqual = 0x9,
 
         [AcquiresData]
+        [RequiresKey]
         AcquireLess = 0xA,
 
         [AcquiresData]
+        [RequiresKey]
         AcquireLessOrEqual = 0xB,
 
         [AcquiresData]
@@ -93,6 +104,7 @@
 
         // Query Operations
         [QueryOnly]
+        [RequiresKey]
         QueryEqual = 0x37,
 
         [QueryOnly]
@@ -104,15 +116,19 @@
         QueryPrevious = 0x39,
 
         [QueryOnly]
+        [RequiresKey]
         QueryGreater = 0x3A,
 
         [QueryOnly]
+        [RequiresKey]
         QueryGreaterOrEqual = 0x3B,
 
         [QueryOnly]
+        [RequiresKey]
         QueryLess = 0x3C,
 
         [QueryOnly]
+        [RequiresKey]
         QueryLessOrEqual = 0x3D,
 
         [QueryOnly]
@@ -126,6 +142,14 @@
 
     public static class Extensions
     {
+        public static bool RequiresKey(this EnumBtrieveOperationCodes code)
+        {
+            var memberInstance = code.GetType().GetMember(code.ToString());
+            if (memberInstance.Length <= 0) return false;
+
+            return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(RequiresKey)) != null;
+        }
+
         public static bool UsesPreviousQuery(this EnumBtrieveOperationCodes code)
         {
             var memberInstance = code.GetType().GetMember(code.ToString());

@@ -84,7 +84,7 @@ key-only file or a Get operation on a data only file */
 
         public byte key_buffer_length;
 
-        public byte key_number;
+        public sbyte key_number;
 
         public ushort status_code_pointer_offset;
         public ushort status_code_pointer_segment;
@@ -166,15 +166,27 @@ key-only file or a Get operation on a data only file */
                     return Step(command);
                 case EnumBtrieveOperationCodes.AcquireFirst:
                 case EnumBtrieveOperationCodes.AcquireLast:
-                    return Acquire(command);
+                case EnumBtrieveOperationCodes.AcquireNext:
+                case EnumBtrieveOperationCodes.AcquirePrevious:
+                case EnumBtrieveOperationCodes.AcquireEqual:
+                case EnumBtrieveOperationCodes.AcquireGreater:
+                case EnumBtrieveOperationCodes.AcquireGreaterOrEqual:
+                case EnumBtrieveOperationCodes.AcquireLess:
+                case EnumBtrieveOperationCodes.AcquireLessOrEqual:
+                case EnumBtrieveOperationCodes.QueryFirst:
+                case EnumBtrieveOperationCodes.QueryLast:
+                case EnumBtrieveOperationCodes.QueryNext:
+                case EnumBtrieveOperationCodes.QueryPrevious:
+                case EnumBtrieveOperationCodes.QueryEqual:
+                case EnumBtrieveOperationCodes.QueryGreater:
+                case EnumBtrieveOperationCodes.QueryGreaterOrEqual:
+                case EnumBtrieveOperationCodes.QueryLess:
+                case EnumBtrieveOperationCodes.QueryLessOrEqual:
+                    return Query(command);
                 case EnumBtrieveOperationCodes.GetPosition:
                     return GetPosition(command);
                 case EnumBtrieveOperationCodes.GetDirectChunkOrRecord:
                     return GetDirectChunkOrRecord(command);
-                case EnumBtrieveOperationCodes.AcquireEqual:
-                    return GetEqual(command, copyData: true);
-                case EnumBtrieveOperationCodes.QueryEqual:
-                    return GetEqual(command, copyData: false);
                 case EnumBtrieveOperationCodes.Update:
                     return Update(command);
                 case EnumBtrieveOperationCodes.Insert:
@@ -336,7 +348,7 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
-            if (!db.PerformOperation(0, ReadOnlySpan<byte>.Empty, command.operation))
+            if (!db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation))
                 return BtrieveError.InvalidPositioning;
 
             return BtrieveError.Success;
@@ -353,8 +365,8 @@ key-only file or a Get operation on a data only file */
                 return BtrieveError.DuplicateKeyValue;
 
             // copy back the key if specified
-            if (command.key_number != 0xFF)
-                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record));
+            if (command.key_number >= 0)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(record));
 
             return BtrieveError.Success;
         }
@@ -370,8 +382,8 @@ key-only file or a Get operation on a data only file */
                 return BtrieveError.DuplicateKeyValue;
 
             // copy back the key if specified
-            if (command.key_number != 0xFF)
-                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record));
+            if (command.key_number >= 0)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(record));
 
             return BtrieveError.Success;
         }
@@ -382,7 +394,7 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
-            if (!db.PerformOperation(0, ReadOnlySpan<byte>.Empty, command.operation))
+            if (!db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation))
                 return BtrieveError.EOF;
 
             var data = db.GetRecord();
@@ -395,27 +407,36 @@ key-only file or a Get operation on a data only file */
             return BtrieveError.Success;
         }
 
-        private BtrieveError Acquire(BtrieveCommand command)
+        private BtrieveError Query(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
-            if (!db.PerformOperation(command.key_number, ReadOnlySpan<byte>.Empty, command.operation))
+            var key = ReadOnlySpan<byte>.Empty;
+            if (command.operation.RequiresKey())
+                key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset, command.key_buffer_length);
+
+            if (!db.PerformOperation(command.key_number, key, command.operation))
                 return BtrieveError.EOF;
 
             var data = db.GetRecord();
-            if (data.Length > command.data_buffer_length)
-                return BtrieveError.DataBufferLengthOverrun;
-            if (db.Keys[command.key_number].Length > command.key_buffer_length)
+
+            if (db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
                 return BtrieveError.KeyBufferTooShort;
 
-            // copy data
-            _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-            command.data_buffer_length = (ushort)data.Length;
+            if (command.operation.AcquiresData())
+            {
+                if (data.Length > command.data_buffer_length)
+                    return BtrieveError.DataBufferLengthOverrun;
+
+                // copy data
+                _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
+                command.data_buffer_length = (ushort)data.Length;
+            }
 
             // copy key
-            _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(data));
+            _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(data));
 
             return BtrieveError.Success;
         }
@@ -426,7 +447,7 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
-            if (command.key_number == 0xFE)
+            if (command.key_number == -2)
             {
                 _logger.Warn("GetChunk - not supported");
                 return BtrieveError.InvalidOperation;
@@ -439,7 +460,7 @@ key-only file or a Get operation on a data only file */
 
             if (record.Data.Length > command.data_buffer_length)
                 return BtrieveError.DataBufferLengthOverrun;
-            if (command.key_number != 0xFF && db.Keys[command.key_number].Length > command.key_buffer_length)
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
                 return BtrieveError.KeyBufferTooShort;
 
             // copy data
@@ -447,8 +468,8 @@ key-only file or a Get operation on a data only file */
             command.data_buffer_length = (ushort)record.Data.Length;
 
             // copy key
-            if (command.key_number != 0xFF)
-                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[command.key_number].ExtractKeyDataFromRecord(record.Data));
+            if (command.key_number >= 0)
+                _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(record.Data));
 
             return BtrieveError.Success;
         }
@@ -463,30 +484,6 @@ key-only file or a Get operation on a data only file */
                 return BtrieveError.DataBufferLengthOverrun;
 
             _memory.SetDWord(command.data_buffer_segment, command.data_buffer_offset, db.Position);
-            return BtrieveError.Success;
-        }
-
-        private BtrieveError GetEqual(BtrieveCommand command, bool copyData)
-        {
-            var db = GetOpenDatabase(command);
-            if (db == null)
-                return BtrieveError.FileNotOpen;
-
-            var key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset, command.key_buffer_length);
-            if (!db.PerformOperation(command.key_number, key, command.operation))
-                return BtrieveError.KeyValueNotFound;
-
-            var data = db.GetRecord();
-            if (copyData && data.Length > command.data_buffer_length)
-                return BtrieveError.DataBufferLengthOverrun;
-
-            // copy data
-            if (copyData)
-            {
-                _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-                command.data_buffer_length = (ushort)data.Length;
-            }
-
             return BtrieveError.Success;
         }
 
