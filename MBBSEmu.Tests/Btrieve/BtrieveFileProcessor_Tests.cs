@@ -108,7 +108,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 1,
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -119,7 +118,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 2,
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Integer,
@@ -130,7 +128,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 3,
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -141,7 +138,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 4,
                     Number = 3,
                     Attributes = EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.AutoInc,
@@ -210,7 +206,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[0].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 1,
                     Number = 0,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -221,7 +216,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[1].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 2,
                     Number = 1,
                     Attributes = EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Integer,
@@ -232,7 +226,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[2].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 3,
                     Number = 2,
                     Attributes = EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.Zstring,
@@ -243,7 +236,6 @@ namespace MBBSEmu.Tests.Btrieve
             btrieve.Keys[3].PrimarySegment.Should().BeEquivalentTo(
                 new BtrieveKeyDefinition()
                 {
-                    Id = 4,
                     Number = 3,
                     Attributes = EnumKeyAttributeMask.UseExtendedDataType,
                     DataType = EnumKeyDataType.AutoInc,

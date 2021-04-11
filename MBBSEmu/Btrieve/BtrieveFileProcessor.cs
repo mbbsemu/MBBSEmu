@@ -296,23 +296,21 @@ namespace MBBSEmu.Btrieve
 
             var cmd =
                 GetSqliteCommand(
-                    "SELECT id, number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment",
+                    "SELECT number, segment, attributes, data_type, offset, length FROM keys_t ORDER BY number, segment",
                     transaction);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                var id = reader.GetInt32(0);
-                var number = reader.GetInt32(1);
+                var number = reader.GetInt32(0);
                 var btrieveKeyDefinition = new BtrieveKeyDefinition()
                 {
-                    Id = (ushort)id,
                     Number = (ushort)number,
-                    Segment = reader.GetInt32(2) != 0,
-                    SegmentOf = reader.GetInt32(2) != 0 ? (ushort)number : (ushort)0,
-                    Attributes = (EnumKeyAttributeMask)reader.GetInt32(3),
-                    DataType = (EnumKeyDataType)reader.GetInt32(4),
-                    Offset = (ushort)reader.GetInt32(5),
-                    Length = (ushort)reader.GetInt32(6),
+                    Segment = reader.GetInt32(1) != 0,
+                    SegmentOf = reader.GetInt32(1) != 0 ? (ushort)number : (ushort)0,
+                    Attributes = (EnumKeyAttributeMask)reader.GetInt32(2),
+                    DataType = (EnumKeyDataType)reader.GetInt32(3),
+                    Offset = (ushort)reader.GetInt32(4),
+                    Length = (ushort)reader.GetInt32(5),
                 };
 
                 if (btrieveKeyDefinition.RequiresACS)
@@ -726,6 +724,8 @@ namespace MBBSEmu.Btrieve
         {
             switch (btrieveOperationCode)
             {
+                case EnumBtrieveOperationCodes.Delete:
+                    return Delete();
                 case EnumBtrieveOperationCodes.StepFirst:
                     return StepFirst();
                 case EnumBtrieveOperationCodes.StepLast:
@@ -1102,7 +1102,7 @@ namespace MBBSEmu.Btrieve
             createTableCommand.ExecuteNonQuery();
 
             const string insertIntoTableStatement =
-                "INSERT INTO keys_t(id, number, segment, attributes, data_type, offset, length, null_value) VALUES(@id, @number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
+                "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
             using var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
@@ -1111,7 +1111,6 @@ namespace MBBSEmu.Btrieve
             {
                 // only grab the first
                 cmd.Parameters.Clear();
-                cmd.Parameters.AddWithValue("@id", keyDefinition.Id);
                 cmd.Parameters.AddWithValue("@number", keyDefinition.Number);
                 cmd.Parameters.AddWithValue("@segment", keyDefinition.SegmentIndex);
                 cmd.Parameters.AddWithValue("@attributes", keyDefinition.Attributes);

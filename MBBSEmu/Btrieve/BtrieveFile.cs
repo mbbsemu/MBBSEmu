@@ -333,7 +333,6 @@ namespace MBBSEmu.Btrieve
 
             var totalKeys = KeyCount;
             var currentKeyNumber = (ushort)0;
-            var id = 1;
             while (currentKeyNumber < totalKeys)
             {
                 var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
@@ -346,7 +345,6 @@ namespace MBBSEmu.Btrieve
                     dataType = attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary) ? EnumKeyDataType.OldBinary : EnumKeyDataType.OldAscii;
 
                 var keyDefinition = new BtrieveKeyDefinition {
-                    Id = id++,
                     Number = currentKeyNumber,
                     Attributes = attributes,
                     DataType = dataType,

@@ -2450,6 +2450,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
+            // TODO SET LOGICAL POSITION FOR NEXT/PREVIOUS
+
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
 
