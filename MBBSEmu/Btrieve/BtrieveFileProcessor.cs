@@ -305,7 +305,6 @@ namespace MBBSEmu.Btrieve
                 var number = reader.GetInt32(1);
                 var btrieveKeyDefinition = new BtrieveKeyDefinition()
                 {
-                    Id = (ushort)id,
                     Number = (ushort)number,
                     Segment = reader.GetInt32(2) != 0,
                     SegmentOf = reader.GetInt32(2) != 0 ? (ushort)number : (ushort)0,
@@ -1102,7 +1101,7 @@ namespace MBBSEmu.Btrieve
             createTableCommand.ExecuteNonQuery();
 
             const string insertIntoTableStatement =
-                "INSERT INTO keys_t(id, number, segment, attributes, data_type, offset, length, null_value) VALUES(@id, @number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
+                "INSERT INTO keys_t(number, segment, attributes, data_type, offset, length, null_value) VALUES(@number, @segment, @attributes, @data_type, @offset, @length, @null_value)";
 
             // not using GetSqliteCommand since this is used once and caching it provides no benefit
             using var cmd = new SqliteCommand(insertIntoTableStatement, Connection);
@@ -1111,7 +1110,6 @@ namespace MBBSEmu.Btrieve
             {
                 // only grab the first
                 cmd.Parameters.Clear();
-                cmd.Parameters.AddWithValue("@id", keyDefinition.Id);
                 cmd.Parameters.AddWithValue("@number", keyDefinition.Number);
                 cmd.Parameters.AddWithValue("@segment", keyDefinition.SegmentIndex);
                 cmd.Parameters.AddWithValue("@attributes", keyDefinition.Attributes);

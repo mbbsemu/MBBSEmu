@@ -161,6 +161,7 @@ key-only file or a Get operation on a data only file */
                 case BtrieveOperation.Stat:
                     return Stat(command);
                 default:
+                    _logger.Error($"Unsupported Btrieve operation {command.operation}");
                     return BtrieveError.InvalidOperation;
             }
         }

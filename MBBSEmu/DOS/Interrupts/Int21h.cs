@@ -183,6 +183,9 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x40:
                     WriteToFileWithHandle_0x40();
                     break;
+                case 0x41:
+                    DeleteFile_0x41();
+                    break;
                 case 0x44 when Registers.AL == 0x00:
                     GetDeviceInformation();
                     break;
@@ -757,6 +760,7 @@ namespace MBBSEmu.DOS.Interrupts
             Registers.AX = (ushort)DOSErrorCode.SUCCESS;
 
             // write to DTA
+            // any data from 0->0x14 is reserved for us to use
             _memory.SetByte(DiskTransferArea + 0x15, GetDOSFileAttributes(fileInfo));
             _memory.SetWord(DiskTransferArea + 0x16, GetDOSFileTime(fileInfo));
             _memory.SetWord(DiskTransferArea + 0x18, GetDOSFileDate(fileInfo));
@@ -767,8 +771,6 @@ namespace MBBSEmu.DOS.Interrupts
 
             var upperFoundFile = Path.GetFileName(fileInfo.FullName).ToUpper();
             _memory.SetArray(DiskTransferArea + 0x1E, Encoding.ASCII.GetBytes(upperFoundFile));
-
-            _logger.Error($"Writing to {DiskTransferArea}");
         }
 
         private void GetPSPAddress_0x62()
@@ -842,6 +844,26 @@ namespace MBBSEmu.DOS.Interrupts
 
         private ushort GetDOSFileDate(FileInfo fileInfo)
             => (ushort)((fileInfo.LastWriteTime.Month << 5) + fileInfo.LastWriteTime.Day + ((fileInfo.LastWriteTime.Year - 1980) << 9));
+
+        private void DeleteFile_0x41()
+        {
+            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = _fileUtility.FindFile(_path, file);
+
+            try
+            {
+                File.Delete(fullPath);
+
+                Registers.AX = 0;
+                ClearCarryFlag();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Failed to delete {fullPath}:{ex.Message}");
+
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
+            }
+        }
 
         private void GetOrPutFileAttributes_0x43()
         {
@@ -993,7 +1015,8 @@ namespace MBBSEmu.DOS.Interrupts
                     AX = file handle
             */
 
-            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = _fileUtility.FindFile(_path, fileName);
 
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;
@@ -1026,6 +1049,7 @@ namespace MBBSEmu.DOS.Interrupts
             }
             catch (Exception ex)
             {
+                _logger.Error(ex, $"Failure {ex.Message}");
                 SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
             }
         }
