@@ -346,6 +346,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jg:
                     Op_Jg();
                     return;
+                case Mnemonic.Js:
+                    Op_Js();
+                    return;
+                case Mnemonic.Jns:
+                    Op_Jns();
+                    return;
                 case Mnemonic.Jge:
                     Op_Jge();
                     return;
@@ -532,6 +538,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fsub:
                     Op_Fsub();
                     break;
+                case Mnemonic.Fldpi:
+                    Op_Fldpi();
+                    break;
                 case Mnemonic.Fldz:
                     Op_Fldz();
                     break;
@@ -578,8 +587,17 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fld1:
                     Op_Fld1();
                     break;
+                case Mnemonic.Fxch:
+                    Op_Fxch();
+                    break;
+                case Mnemonic.Fpatan:
+                    Op_Fpatan();
+                    break;
                 case Mnemonic.Fsqrt:
                     Op_Fsqrt();
+                    break;
+                case Mnemonic.Fscale:
+                    Op_Fscale();
                     break;
                 case Mnemonic.Fdiv:
                     Op_Fdiv();
@@ -2255,6 +2273,34 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Js()
+        {
+            //SF == 1
+            if (Registers.SignFlag)
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.Length;
+            }
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Jns()
+        {
+            //SF == 0
+            if (!Registers.SignFlag)
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.Length;
+            }
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Test()
         {
             switch (_currentOperationSize)
@@ -3126,6 +3172,16 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Load π onto stack
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fldpi()
+        {
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.PI; //set ST(0) to π
+        }
+
+        /// <summary>
         ///     Floating Point Load Control Word
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -3447,6 +3503,85 @@ namespace MBBSEmu.CPU
         {
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = 1d;
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Exchanges the contents of registers ST(0) and ST(i). If no source operand is specified, the contents of ST(0) and ST(1) are exchanged.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fxch()
+        {
+            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //Exchange values
+            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = STsource;
+            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)] = STdestination;
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes the arctangent of the source operand in register ST(1) divided by the source operand in register ST(0), stores the result in ST(1), and pops the FPU register stack.
+        ///     The FPATAN instruction returns the angle between the X axis and the line from the origin to the point (X,Y), where Y (the ordinate) is ST(1) and X (the abscissa) is ST(0).
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fpatan()
+        {
+            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var result = (ST0x, ST1y)
+            switch
+            {
+                (double.NaN, double.NaN) => double.NaN,
+                var (x, y) when double.IsNaN(x) && y >= double.NegativeInfinity && y <= double.PositiveInfinity => double.NaN,
+                var (x, y) when double.IsNaN(x) && y >= -0 && y <= 0 => double.NaN,
+                var (x, y) when double.IsPositiveInfinity(x) && double.IsNaN(y) => double.NaN,
+                var (x, y) when double.IsNegativeInfinity(x) && double.IsNaN(y) => double.NaN,
+                _ => Math.Atan2(ST1y, ST0x)
+            };
+
+            //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
+
+            //Store result at ST1
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
+
+            //Pop the Stack making ST(1)->ST(0)
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Interprets the value contained in ST(1) as an integer and adds this value to the exponent of the number in ST.
+        ///
+        ///     Truncates the value in the source operand (toward 0) to an integral value and adds that value to the exponent
+        ///     of the destination operand. The destination and source operands are floating-point values located in registers ST(0) and ST(1), respectively.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fscale()
+        {
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            var result = (ST0, ST1)
+                switch
+                {
+                    (double.NaN, double.NaN) => double.NaN,
+                    var (st0, _) when double.IsNaN(st0) => double.NaN,
+                    var (_, st1) when double.IsNaN(st1) => double.NaN,
+                    var (st0, st1) when double.IsNegativeInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
+                    var (st0, st1) when double.IsPositiveInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
+                    var (st0, st1) when st0 == 0 && double.IsPositiveInfinity(st1) => double.NaN,
+                    _ => Math.ScaleB(ST0, (int)ST1)
+                };
+            
+            //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
+            
+            //Store result
+            FpuStack[Registers.Fpu.GetStackTop()] = result;
         }
 
         /// <summary>
