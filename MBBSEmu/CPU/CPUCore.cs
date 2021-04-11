@@ -3534,7 +3534,7 @@ namespace MBBSEmu.CPU
             
             _logger.Warn($"ST0: {ST0}, ST1: {ST1}");
             
-            var result = Math.Atan2(ST1, ST0);
+            var result = Math.Atan2(ST0, ST1);
 
             _logger.Warn($"Math.Atan2 Result: {result}");
 
