@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0d, 0d)]
         [InlineData(.005d, .00100d)]
         [InlineData(float.MaxValue, float.MinValue)]
-        public void FXCH_ST1ST4_Test(float ST0Value, float ST4Value)
+        public void FXCH_ST0ST4_Test(float ST0Value, float ST4Value)
         {
             Reset();
 
