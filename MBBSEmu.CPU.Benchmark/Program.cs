@@ -9,26 +9,38 @@ namespace MBBSEmu.CPU.Benchmark
 {
     class Program
     {
-        private static CpuCore mbbsEmuCpuCore;
-        private static ProtectedModeMemoryCore mbbsEmuMemoryCore;
-        private static ICpuRegisters mbbsEmuCpuRegisters;
-        private static bool _isRunning;
+        private CpuCore mbbsEmuCpuCore;
+        private ProtectedModeMemoryCore protectedModeMemoryCore;
+        private RealModeMemoryCore realModeMemoryCore;
+        private IMemoryCore memoryCore;
+        private ICpuRegisters mbbsEmuCpuRegisters;
+        private bool _isRunning;
 
-        static Program()
+        public static void Main(string[] args)
         {
-            mbbsEmuMemoryCore = new ProtectedModeMemoryCore(null);
-            mbbsEmuCpuCore = new CpuCore(logger: null);
-            mbbsEmuCpuRegisters = (ICpuRegisters)mbbsEmuCpuCore;
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, null, null, null);
+            new Program().Execute(args);
         }
 
-        static void Main(string[] args)
+        public Program() {}
+
+        private void Execute(string[] args)
         {
-            //Reset
+            var realMode = args.Length == 1 && (args[0].Equals("-realmode") || args[0].Equals("-real"));
+
+            if (realMode)
+                memoryCore = realModeMemoryCore = new RealModeMemoryCore(logger: null);
+            else
+                memoryCore = protectedModeMemoryCore = new ProtectedModeMemoryCore(null);
+
+            mbbsEmuCpuCore = new CpuCore(logger: null);
+            mbbsEmuCpuRegisters = (ICpuRegisters)mbbsEmuCpuCore;
+            mbbsEmuCpuCore.Reset(memoryCore, null, null, null);
+
+            // Reset
             mbbsEmuCpuRegisters.Zero();
             mbbsEmuCpuCore.Reset();
-            mbbsEmuMemoryCore.Clear();
-            mbbsEmuCpuCore.Registers.CS = 1;
+            memoryCore.Clear();
+            mbbsEmuCpuCore.Registers.CS = 0x1000;
             mbbsEmuCpuCore.Registers.DS = 2;
             mbbsEmuCpuCore.Registers.IP = 0;
 
@@ -55,13 +67,13 @@ namespace MBBSEmu.CPU.Benchmark
             _isRunning = false;
         }
 
-        private static void RunThread()
+        private void RunThread()
         {
             while(_isRunning)
                 mbbsEmuCpuCore.Tick();
         }
 
-        private static void MonitorThread()
+        private void MonitorThread()
         {
             while (_isRunning)
             {
@@ -71,7 +83,7 @@ namespace MBBSEmu.CPU.Benchmark
             }
         }
 
-        private static void CreateCodeSegment(Assembler instructions, ushort segmentOrdinal = 1)
+        private void CreateCodeSegment(Assembler instructions, ushort segmentOrdinal = 0x1000)
         {
             var stream = new MemoryStream();
             instructions.Assemble(new StreamCodeWriter(stream), 0);
@@ -79,8 +91,13 @@ namespace MBBSEmu.CPU.Benchmark
             CreateCodeSegment(stream.ToArray(), segmentOrdinal);
         }
 
-        private static void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
+        private void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 0x1000)
         {
+            if (realModeMemoryCore != null)
+            {
+                realModeMemoryCore.SetArray(segmentOrdinal, 0, byteCode);
+                return;
+            }
 
             //Decode the Segment
             var instructionList = new InstructionList();
@@ -96,15 +113,21 @@ namespace MBBSEmu.CPU.Benchmark
             CreateCodeSegment(instructionList, segmentOrdinal);
         }
 
-        private static void CreateCodeSegment(InstructionList instructionList, ushort segmentOrdinal = 1)
+        private void CreateCodeSegment(InstructionList instructionList, ushort segmentOrdinal = 0x1000)
         {
-            mbbsEmuMemoryCore.AddSegment(segmentOrdinal, instructionList);
+            protectedModeMemoryCore.AddSegment(segmentOrdinal, instructionList);
         }
 
-        private static void CreateDataSegment(ReadOnlySpan<byte> data, ushort segmentOrdinal = 2)
+        private void CreateDataSegment(ReadOnlySpan<byte> data, ushort segmentOrdinal = 2)
         {
-            mbbsEmuMemoryCore.AddSegment(segmentOrdinal);
-            mbbsEmuMemoryCore.SetArray(segmentOrdinal, 0, data);
+            if (realModeMemoryCore != null)
+            {
+                realModeMemoryCore.SetArray(segmentOrdinal, 0, data);
+                return;
+            }
+
+            protectedModeMemoryCore.AddSegment(segmentOrdinal);
+            protectedModeMemoryCore.SetArray(segmentOrdinal, 0, data);
         }
     }
 }
