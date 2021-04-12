@@ -35,6 +35,9 @@ namespace MBBSEmu.DOS.Interrupts
 
             switch (_registers.AH)
             {
+                case 0x01:
+                    SetCursorCharacteristics_0x01();
+                    return;
                 case 0x0F:
                     GetCurrentVideoMode_0x0F();
                     return;
@@ -56,6 +59,18 @@ namespace MBBSEmu.DOS.Interrupts
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported INT 10h Function: 0x{_registers.AH:X2}");
             }
+        }
+
+        /// <summary>
+        /// INT 10 - AH = 01h VIDEO - SET CURSOR CHARACTERISTICS
+        /// CH bits 0-4 = start line for cursor in character cell
+        /// bits 5-6 = blink attribute (00=normal, 01=invisible, 10=slow, 11=fast)
+        /// CL bits 0-4 = end line for cursor in character cell
+        /// Note: buggy on EGA systems--BIOS remaps cursor shape in 43 line modes, but returns unmapped cursor shape
+        /// </summary>
+        private void SetCursorCharacteristics_0x01()
+        {
+            // TODO implement me
         }
 
         /// <summary>
