@@ -22,6 +22,7 @@ namespace MBBSEmu.DOS.Interrupts
     public class Int21h : IInterruptHandler
     {
         public const int BTRIEVE_INTERRUPT = 123;
+        public const ushort DOS_MAX_HEAP_SEGMENT = 0x9FAE;
 
         public const MethodImplOptions SubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
@@ -380,11 +381,13 @@ namespace MBBSEmu.DOS.Interrupts
             //         CF clear if successful
             //             AX = segment of allocated memory block
 
+            // this is a special case done by Borland C programs. They set allocation strategy
+            // to last fit and allocate a single block of 16 bytes (1 page worth) in order to query
+            // the maximum addressable address.
             if (_allocationStrategy == AllocationStrategy.LAST_FIT)
             {
-                _logger.Warn("Returning 0x9FAE for top of heap");
                 ClearCarryFlag();
-                Registers.AX = 0x9FAE;
+                Registers.AX = DOS_MAX_HEAP_SEGMENT;
                 return;
             }
 
@@ -411,7 +414,10 @@ namespace MBBSEmu.DOS.Interrupts
             // Return: CF set on error
             //             AX = error code
             //         CF clear if successful
-            _memory.Free(new FarPtr(Registers.ES, 0));
+
+            if (Registers.ES != DOS_MAX_HEAP_SEGMENT)
+                _memory.Free(new FarPtr(Registers.ES, 0));
+
             // no status, so always say we're good
             ClearCarryFlag();
         }
