@@ -848,7 +848,8 @@ namespace MBBSEmu.DOS.Interrupts
         private void DeleteFile_0x41()
         {
             var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
-            var fullPath = _fileUtility.FindFile(_path, file);
+            var foundfile = _fileUtility.FindFile(_path, file);
+            var fullPath = Path.Combine(_path, foundfile);
 
             try
             {
@@ -888,8 +889,11 @@ namespace MBBSEmu.DOS.Interrupts
             if (Registers.AL != 0)
                 throw new NotImplementedException();
 
-            var fileName = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
-            var fileInfo = new FileInfo(fileName);
+            var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            fileName = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, fileName);
+
+            var fileInfo = new FileInfo(fullPath);
             if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
@@ -965,7 +969,9 @@ namespace MBBSEmu.DOS.Interrupts
               CF clear if successful
                 AX = file handle
             */
-            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var foundPath = _fileUtility.FindFile(_path, file);
+            var fullPath = Path.Combine(_path, foundPath);
 
             var fileMode = FileMode.Create;
             var fileAccess = FileAccess.ReadWrite;
