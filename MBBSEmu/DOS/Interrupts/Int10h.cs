@@ -1,13 +1,17 @@
-﻿using System.Collections.Concurrent;
-using System.Text;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.IO;
 using NLog;
+using System;
+using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
 {
     public class Int10h : IInterruptHandler
     {
+        private byte _cursorPositionX;
+
+        private byte _cursorPositionY;
+
         private const string ANSI_CLEAR_SCREEN = "\x1B[2J";
         private const string ANSI_SET_CURSOR_POSITION = "\x1B[{0};{1}H";
 
@@ -31,6 +35,9 @@ namespace MBBSEmu.DOS.Interrupts
 
             switch (_registers.AH)
             {
+                case 0x01:
+                    SetCursorCharacteristics_0x01();
+                    return;
                 case 0x0F:
                     GetCurrentVideoMode_0x0F();
                     return;
@@ -46,7 +53,24 @@ namespace MBBSEmu.DOS.Interrupts
                 case 0x02:
                     SetCursorPosition_0x02();
                     return;
+                case 0x03:
+                    GetCursorPosition_0x03();
+                    return;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unsupported INT 10h Function: 0x{_registers.AH:X2}");
             }
+        }
+
+        /// <summary>
+        /// INT 10 - AH = 01h VIDEO - SET CURSOR CHARACTERISTICS
+        /// CH bits 0-4 = start line for cursor in character cell
+        /// bits 5-6 = blink attribute (00=normal, 01=invisible, 10=slow, 11=fast)
+        /// CL bits 0-4 = end line for cursor in character cell
+        /// Note: buggy on EGA systems--BIOS remaps cursor shape in 43 line modes, but returns unmapped cursor shape
+        /// </summary>
+        private void SetCursorCharacteristics_0x01()
+        {
+            // TODO implement me
         }
 
         /// <summary>
@@ -58,9 +82,9 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private void GetCurrentVideoMode_0x0F()
         {
-            _registers.AH = 80; //Columns
-            _registers.BL = 0x10; //640x480 16 colors 80x25 text resolution
-            _registers.BH = 0x00; //Initial Page?
+            _registers.AH = 0x50; //Columns
+            _registers.AL = 0x03; //80x25 text resolution, 8x8 text res
+            _registers.BH = 0x02; //Initial Page?
         }
 
         /// <summary>
@@ -136,7 +160,29 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private void SetCursorPosition_0x02()
         {
-            _stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _registers.DH, _registers.DL)));
+            _cursorPositionX = _registers.DL;
+            _cursorPositionY = _registers.DH;
+            _stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _cursorPositionY, _cursorPositionX)));
+        }
+
+        /// <summary>
+        /// INT 10 - AH = 03h VIDEO - READ CURSOR POSITION
+        /// BH = page number
+        /// 0 in graphics modes
+        /// 0-3 in modes 2&amp;3
+        /// 0-7 in modes 0&amp;1
+        /// Return: DH,DL = row,column
+        /// CH = cursor start line
+        /// CL = cursor end line
+        /// </summary>
+        private void GetCursorPosition_0x03()
+        {
+            _registers.AX = 0;
+            _registers.BH = 2;
+            _registers.DH = _cursorPositionY; //Row
+            _registers.DL = _cursorPositionX; //Column
+            _registers.CH = 6; //Start Line
+            _registers.CL = 7; //End Line
         }
     }
 }

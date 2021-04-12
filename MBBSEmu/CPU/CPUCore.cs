@@ -1215,7 +1215,7 @@ namespace MBBSEmu.CPU
                 _logger.Warn($"Attempted access of unimplemented IO Port: {port}");
                 return;
             }
-            
+
             var data = ioport.In(port);
 
             Registers.SetValue(_currentInstruction.Op0Register, data);
@@ -3577,9 +3577,9 @@ namespace MBBSEmu.CPU
                     var (st0, st1) when st0 == 0 && double.IsPositiveInfinity(st1) => double.NaN,
                     _ => Math.ScaleB(ST0, (int)ST1)
                 };
-            
+
             //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
-            
+
             //Store result
             FpuStack[Registers.Fpu.GetStackTop()] = result;
         }

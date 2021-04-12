@@ -161,18 +161,30 @@ namespace MBBSEmu.Btrieve
             var loadedFileName = _fileFinder.FindFile(path, fileName);
 
             // If a .DB version exists, load it over the .DAT file
-            var dbFileName = loadedFileName.ToUpper().Replace(".DAT", ".DB");
-            var fullPath = Path.Combine(path, dbFileName);
+            var fullPathDAT = Path.Combine(path, loadedFileName);
+            var fullPathDB = Path.Combine(path, loadedFileName.ToUpper().Replace(".DAT", ".DB"));
 
-            if (File.Exists(fullPath))
+            FileInfo fileInfoDAT = new FileInfo(fullPathDAT);
+            FileInfo fileInfoDB = new FileInfo(fullPathDB);
+
+            // if both DAT/DB exist, check if the DAT has an a newer time, if so
+            // we want to reconvert it by deleting the DB
+            if (fileInfoDAT.Exists && fileInfoDB.Exists && fileInfoDAT.LastWriteTime > fileInfoDB.LastWriteTime)
             {
-                LoadSqlite(fullPath);
+                _logger.Warn($"{fullPathDAT} is newer than {fullPathDB}, reconverting the DAT -> DB");
+                File.Delete(fullPathDB);
+                fileInfoDB = new FileInfo(fullPathDB);
+            }
+
+            if (fileInfoDB.Exists)
+            {
+                LoadSqlite(fullPathDB);
             }
             else
             {
                 var btrieveFile = new BtrieveFile();
                 btrieveFile.LoadFile(_logger, path, loadedFileName);
-                CreateSqliteDB(fullPath, btrieveFile);
+                CreateSqliteDB(fullPathDB, btrieveFile);
             }
 
             //Set Position to First Record
@@ -724,6 +736,8 @@ namespace MBBSEmu.Btrieve
         {
             switch (btrieveOperationCode)
             {
+                case EnumBtrieveOperationCodes.Delete:
+                    return Delete();
                 case EnumBtrieveOperationCodes.StepFirst:
                     return StepFirst();
                 case EnumBtrieveOperationCodes.StepLast:

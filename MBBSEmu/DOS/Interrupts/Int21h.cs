@@ -22,6 +22,7 @@ namespace MBBSEmu.DOS.Interrupts
     public class Int21h : IInterruptHandler
     {
         public const int BTRIEVE_INTERRUPT = 123;
+        public const ushort DOS_MAX_HEAP_SEGMENT = 0x9FAE;
 
         public const MethodImplOptions SubroutineCompilerOptimizations = MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining;
 
@@ -108,6 +109,10 @@ namespace MBBSEmu.DOS.Interrupts
                 // detects TSR presence
                 { BTRIEVE_INTERRUPT, new FarPtr(0x0F00, 0x0033) },
             };
+
+            if (path.Length == 0)
+                path = Directory.GetCurrentDirectory();
+
             _path = path;
         }
 
@@ -178,6 +183,9 @@ namespace MBBSEmu.DOS.Interrupts
                     break;
                 case 0x40:
                     WriteToFileWithHandle_0x40();
+                    break;
+                case 0x41:
+                    DeleteFile_0x41();
                     break;
                 case 0x44 when Registers.AL == 0x00:
                     GetDeviceInformation();
@@ -373,11 +381,13 @@ namespace MBBSEmu.DOS.Interrupts
             //         CF clear if successful
             //             AX = segment of allocated memory block
 
+            // this is a special case done by Borland C programs. They set allocation strategy
+            // to last fit and allocate a single block of 16 bytes (1 page worth) in order to query
+            // the maximum addressable address.
             if (_allocationStrategy == AllocationStrategy.LAST_FIT)
             {
-                _logger.Warn("Returning 0x9FAE for top of heap");
                 ClearCarryFlag();
-                Registers.AX = 0x9FAE;
+                Registers.AX = DOS_MAX_HEAP_SEGMENT;
                 return;
             }
 
@@ -404,7 +414,10 @@ namespace MBBSEmu.DOS.Interrupts
             // Return: CF set on error
             //             AX = error code
             //         CF clear if successful
-            _memory.Free(new FarPtr(Registers.ES, 0));
+
+            if (Registers.ES != DOS_MAX_HEAP_SEGMENT)
+                _memory.Free(new FarPtr(Registers.ES, 0));
+
             // no status, so always say we're good
             ClearCarryFlag();
         }
@@ -505,7 +518,8 @@ namespace MBBSEmu.DOS.Interrupts
                 _memory.SetPointer(ptr, newVectorPointer);
             }
 
-            _logger.Debug($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
+            if (interruptVector >= 8)
+                _logger.Debug($"Set interrupt vector {interruptVector} at {ptr} to {newVectorPointer}");
         }
 
         private void GetCurrentDate_0x2A()
@@ -690,7 +704,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return;
             }
 
-            _logger.Debug($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
+            //_logger.Debug($"int21 0x4A: AdjustMemoryBlockSize called, from {segmentToAdjust:X4} to {Registers.BX * 16}. We don't really support it");
 
             // don't update BX, leave it alone to say we resized exactly as client requested
             ClearCarryFlag();
@@ -739,15 +753,30 @@ namespace MBBSEmu.DOS.Interrupts
             */
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
             var foundFile = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, foundFile);
+            FileInfo fileInfo = new FileInfo(fullPath);
 
-            if (!File.Exists($"{_path}{foundFile}"))
+            if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
             }
 
             ClearCarryFlag();
-            throw new NotImplementedException();
+            Registers.AX = (ushort)DOSErrorCode.SUCCESS;
+
+            // write to DTA
+            // any data from 0->0x14 is reserved for us to use
+            _memory.SetByte(DiskTransferArea + 0x15, GetDOSFileAttributes(fileInfo));
+            _memory.SetWord(DiskTransferArea + 0x16, GetDOSFileTime(fileInfo));
+            _memory.SetWord(DiskTransferArea + 0x18, GetDOSFileDate(fileInfo));
+            _memory.SetDWord(DiskTransferArea + 0x1A, (uint)fileInfo.Length);
+
+            _memory.FillArray(DiskTransferArea + 0x1E, 13, (byte)' ');
+            _memory.SetByte(DiskTransferArea + 0x1E + 13, 0);
+
+            var upperFoundFile = Path.GetFileName(fileInfo.FullName).ToUpper();
+            _memory.SetArray(DiskTransferArea + 0x1E, Encoding.ASCII.GetBytes(upperFoundFile));
         }
 
         private void GetPSPAddress_0x62()
@@ -799,6 +828,50 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
+        private byte GetDOSFileAttributes(FileInfo fileInfo)
+        {
+            var fileAttributes = (byte)0;
+            if (fileInfo.IsReadOnly)
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.ReadOnly;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Hidden;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.System))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.System;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Directory;
+            if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
+                fileAttributes |= (byte)EnumDirectoryAttributeFlags.Archive;
+
+            return fileAttributes;
+        }
+
+        private ushort GetDOSFileTime(FileInfo fileInfo)
+            => (ushort)((fileInfo.LastWriteTime.Hour << 11) + (fileInfo.LastWriteTime.Minute << 5) + (fileInfo.LastWriteTime.Second >> 1));
+
+        private ushort GetDOSFileDate(FileInfo fileInfo)
+            => (ushort)((fileInfo.LastWriteTime.Month << 5) + fileInfo.LastWriteTime.Day + ((fileInfo.LastWriteTime.Year - 1980) << 9));
+
+        private void DeleteFile_0x41()
+        {
+            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var foundfile = _fileUtility.FindFile(_path, file);
+            var fullPath = Path.Combine(_path, foundfile);
+
+            try
+            {
+                File.Delete(fullPath);
+
+                Registers.AX = 0;
+                ClearCarryFlag();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"Failed to delete {fullPath}:{ex.Message}");
+
+                SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
+            }
+        }
+
         private void GetOrPutFileAttributes_0x43()
         {
             /*
@@ -822,26 +895,18 @@ namespace MBBSEmu.DOS.Interrupts
             if (Registers.AL != 0)
                 throw new NotImplementedException();
 
-            var fileName = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
-            var fileInfo = new FileInfo(fileName);
+            var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            fileName = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, fileName);
+
+            var fileInfo = new FileInfo(fullPath);
             if (!fileInfo.Exists)
             {
                 SetCarryFlagErrorCodeInAX(DOSErrorCode.FILE_NOT_FOUND);
                 return;
             }
 
-            Registers.CX = 0;
-            if (fileInfo.IsReadOnly)
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.ReadOnly;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Hidden;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.System))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.System;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Directory))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Directory;
-            if (fileInfo.Attributes.HasFlag(FileAttributes.Archive))
-                Registers.CX |= (ushort)EnumDirectoryAttributeFlags.Archive;
-
+            Registers.CX = GetDOSFileAttributes(fileInfo);
             ClearCarryFlag();
         }
 
@@ -910,7 +975,9 @@ namespace MBBSEmu.DOS.Interrupts
               CF clear if successful
                 AX = file handle
             */
-            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var file = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var foundPath = _fileUtility.FindFile(_path, file);
+            var fullPath = Path.Combine(_path, foundPath);
 
             var fileMode = FileMode.Create;
             var fileAccess = FileAccess.ReadWrite;
@@ -960,7 +1027,8 @@ namespace MBBSEmu.DOS.Interrupts
                     AX = file handle
             */
 
-            var fullPath = FixDosPath(Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true)));
+            var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
+            var fullPath = _fileUtility.FindFile(_path, fileName);
 
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;
@@ -993,6 +1061,7 @@ namespace MBBSEmu.DOS.Interrupts
             }
             catch (Exception ex)
             {
+                _logger.Error(ex, $"Failure {ex.Message}");
                 SetCarryFlagErrorCodeInAX(ExceptionToErrorCode(ex));
             }
         }

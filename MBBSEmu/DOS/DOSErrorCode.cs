@@ -2,6 +2,7 @@ namespace MBBSEmu.DOS
 {
     public enum DOSErrorCode
     {
+        SUCCESS = 0,
         INVALID_FUNCTION_NUMBER = 1,
         FILE_NOT_FOUND = 2,
         PATH_NOT_FOUND = 3,
