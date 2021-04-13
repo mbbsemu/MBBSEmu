@@ -22,7 +22,6 @@ namespace MBBSEmu.Tests.Memory
     public class BtrieveRuntime_Tests : TestBase, IDisposable
     {
         private readonly string[] _runtimeFiles = { "BTRIEVE.EXE", "MBBSEMU.DAT" };
-        private readonly string[] _cmdLineArguments = {"MBBSEMU.DAT"};
 
         private string _modulePath;
         private ServiceResolver _serviceResolver;
@@ -49,9 +48,9 @@ namespace MBBSEmu.Tests.Memory
             }
         }
 
-        private static string GetExpectedOutput()
+        private static string GetExpectedOutput(string datPath)
         {
-            var expectedOutput = @"Successfully opened MBBSEMU.DAT!
+            var expectedOutput = $"Successfully opened {datPath}!" + @"
 record_length:     74
 page_size:         512
 number_of_keys:    4
@@ -86,11 +85,8 @@ key3_data_type: 15
         {
             var stdoutStream = new MemoryStream();
             var stdout = new TextWriterStream(new StreamWriter(stdoutStream));
-            var expectedOutput = GetExpectedOutput();
 
             CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
-
-            //Directory.SetCurrentDirectory(_modulePath);
 
             ExeRuntime exeRuntime = new ExeRuntime(
               new MZFile(Path.Combine(_modulePath, _runtimeFiles[0])),
@@ -102,14 +98,14 @@ key3_data_type: 15
               stdout,
               stdout);
 
-            exeRuntime.Load(_cmdLineArguments);
+            exeRuntime.Load(new string[] {Path.Combine(_modulePath, _runtimeFiles[1])});
             exeRuntime.Run();
 
             stdout.Flush();
             stdoutStream.Seek(0, SeekOrigin.Begin);
             var output = Encoding.ASCII.GetString(stdoutStream.ToArray());
 
-            //output.Should().Be(expectedOutput);
+            output.Should().Be(GetExpectedOutput(Path.Combine(_modulePath, _runtimeFiles[1])));
         }
     }
 }
