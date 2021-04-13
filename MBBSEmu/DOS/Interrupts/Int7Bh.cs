@@ -24,7 +24,7 @@ namespace MBBSEmu.DOS.Interrupts
         InvalidKeyNumber = 6,
         DifferentKeyNumber = 7,
         InvalidPositioning = 8,
-        EOF = 9 ,
+        EOF = 9,
         NonModifiableKeyValue = 10,
         InvalidFileName = 11,
         FileNotFound = 12,
@@ -418,7 +418,7 @@ key-only file or a Get operation on a data only file */
                 key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset, command.key_buffer_length);
 
             if (!db.PerformOperation(command.key_number, key, command.operation))
-                return BtrieveError.EOF;
+                return command.operation.RequiresKey() ? BtrieveError.KeyValueNotFound : BtrieveError.EOF;
 
             var data = db.GetRecord();
 
