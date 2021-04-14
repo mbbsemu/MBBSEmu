@@ -2,6 +2,7 @@ using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
@@ -20,6 +21,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -895,11 +897,11 @@ namespace MBBSEmu.HostProcess
         {
             var exe = cmdline.Split(' ')[0];
             var args = cmdline.Split(' ').Skip(1).ToArray();
-            exe = System.IO.Path.ChangeExtension(exe, ".EXE");
+            exe = Path.ChangeExtension(exe, ".EXE");
 
             exe = _fileUtility.FindFile(modulePath, exe);
 
-            var runtime = new MBBSEmu.DOS.ExeRuntime(
+            var runtime = new ExeRuntime(
                             new MBBSEmu.Disassembler.MZFile(exe),
                             Clock,
                             Logger,
