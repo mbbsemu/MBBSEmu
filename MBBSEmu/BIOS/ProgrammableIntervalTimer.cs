@@ -1,6 +1,6 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.Memory;
+using MBBSEmu.Server;
 using NLog;
 using System;
 using System.Threading;
@@ -8,7 +8,7 @@ using System.Threading;
 namespace MBBSEmu.BIOS
 {
     //http://staff.ustc.edu.cn/~xyfeng/research/cos/resources/BIOS/Resources/assembly/inttable.html
-    public class ProgrammableIntervalTimer : IIOPort, IDisposable
+    public class ProgrammableIntervalTimer : IIOPort, IStoppable, IDisposable
     {
         public const double FREQUENCY = 1_193_181.666666666666666666;
 
@@ -50,6 +50,12 @@ namespace MBBSEmu.BIOS
             _logger = logger;
             _clock = clock;
             _cpu = cpu;
+        }
+
+        public void Stop()
+        {
+            _timer?.Dispose();
+            _timer = null;
         }
 
         public void Dispose()

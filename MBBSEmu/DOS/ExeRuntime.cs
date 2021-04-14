@@ -18,7 +18,7 @@ using MBBSEmu.Session;
 
 namespace MBBSEmu.DOS
 {
-    public class ExeRuntime : IStoppable
+    public class ExeRuntime : IStoppable, IDisposable
     {
         /*
          Memory layout
@@ -95,7 +95,14 @@ namespace MBBSEmu.DOS
 
         public void Stop()
         {
+            _pit.Stop();
+        }
+
+        public void Dispose()
+        {
             _pit.Dispose();
+
+            Cpu.Dispose();
         }
 
         public bool Load(string[] args)

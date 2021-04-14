@@ -33,8 +33,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             Directory.CreateDirectory(mbbsModule.ModulePath);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
+
             majorbbs.Dispose();
 
             Directory.Delete(mbbsModule.ModulePath,  recursive: true);
@@ -206,7 +208,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
                 srcPtr.Offset,
                 srcPtr.Segment
             });
-            
+
             return mbbsEmuCpuRegisters.GetPointer();
         }
 
