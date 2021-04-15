@@ -105,7 +105,7 @@ namespace MBBSEmu.Memory
 
             _logger.Error($"Allocated segment {segmentNumber:X4} of size {size}");
 
-            size = Math.Max(2048, size);
+            //size = Math.Max(2048, size);
             _memorySegments[segmentNumber] = new byte[size];
         }
 
