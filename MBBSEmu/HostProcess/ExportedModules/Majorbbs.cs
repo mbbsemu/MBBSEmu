@@ -2544,6 +2544,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            _logger.Error($"insertBtv: {btrieveRecordPointer}:{currentBtrieveFile.RecordLength}");
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
             return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;

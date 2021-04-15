@@ -182,7 +182,10 @@ namespace MBBSEmu.Btrieve
                         case 8:
                             return BitConverter.ToUInt64(keyData);
                         default:
-                            throw new ArgumentException($"Bad unsigned integer key length {PrimarySegment.Length}");
+                            // data is LSB, sqlite blobs compare msb (using memcmp), so swap bytes prior to insert
+                            var copy = keyData.ToArray();
+                            Array.Reverse<byte>(copy);
+                            return copy;
                     }
                 case EnumKeyDataType.AutoInc:
                 case EnumKeyDataType.Integer:
@@ -238,10 +241,10 @@ namespace MBBSEmu.Btrieve
                 {
                     case EnumKeyDataType.AutoInc:
                         return "INTEGER NOT NULL UNIQUE";
-                    case EnumKeyDataType.Integer:
-                    case EnumKeyDataType.Unsigned:
-                    case EnumKeyDataType.UnsignedBinary:
-                    case EnumKeyDataType.OldBinary:
+                    case EnumKeyDataType.Integer when PrimarySegment.Length <= 8:
+                    case EnumKeyDataType.Unsigned when PrimarySegment.Length <= 8:
+                    case EnumKeyDataType.UnsignedBinary when PrimarySegment.Length <= 8:
+                    case EnumKeyDataType.OldBinary when PrimarySegment.Length <= 8:
                         type = "INTEGER";
                         break;
                     case EnumKeyDataType.String:

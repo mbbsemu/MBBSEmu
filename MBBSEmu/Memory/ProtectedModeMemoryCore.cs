@@ -103,6 +103,9 @@ namespace MBBSEmu.Memory
             if (_memorySegments[segmentNumber] != null)
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
+            _logger.Error($"Allocated segment {segmentNumber:X4} of size {size}");
+
+            size = Math.Max(2048, size);
             _memorySegments[segmentNumber] = new byte[size];
         }
 
