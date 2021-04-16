@@ -901,8 +901,10 @@ namespace MBBSEmu.HostProcess
 
             exe = _fileUtility.FindFile(modulePath, exe);
 
+            Logger.Info($"Running auxiliary program: {cmdline}");
+
             var runtime = new ExeRuntime(
-                            new MBBSEmu.Disassembler.MZFile(exe),
+                            new MBBSEmu.Disassembler.MZFile(Path.Combine(modulePath, exe)),
                             Clock,
                             Logger,
                             _fileUtility,
