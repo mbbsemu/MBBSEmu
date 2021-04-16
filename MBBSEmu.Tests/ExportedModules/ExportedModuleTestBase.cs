@@ -20,7 +20,7 @@ using System.Text;
 
 namespace MBBSEmu.Tests.ExportedModules
 {
-    public abstract class ExportedModuleTestBase : TestBase
+    public abstract class ExportedModuleTestBase : TestBase, IDisposable
     {
         // list of ordinals that use the __stdcall convention, which means the callee cleans up the
         // stack.
@@ -89,6 +89,13 @@ namespace MBBSEmu.Tests.ExportedModules
 
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, ExportedFunctionDelegate, null, null);
         }
+
+        public virtual void Dispose()
+        {
+            mbbsEmuCpuCore.Dispose();
+            mbbsModule.Dispose();
+        }
+
         private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
         {
             switch (ordinal)

@@ -16,8 +16,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Directory.CreateDirectory(mbbsModule.ModulePath);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
+
             Directory.Delete(mbbsModule.ModulePath, recursive: true);
         }
 
@@ -34,7 +36,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             if(axValue == 0)
                 CreateFile(oldFileName);
-            
+
             //Pointer to old and new filenames
             var fromNamePointer = mbbsEmuMemoryCore.AllocateVariable("FROM_NAME", (ushort) (oldFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(fromNamePointer, Encoding.ASCII.GetBytes(oldFileName));
@@ -43,8 +45,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(toNamePointer, Encoding.ASCII.GetBytes(newFileName));
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RENAME_ORDINAL, new List<FarPtr> {fromNamePointer, toNamePointer});
-            
-            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);    
+
+            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
             Assert.Equal(axValue == 0, File.Exists(Path.Combine(mbbsModule.ModulePath, newFileName)));
         }
 

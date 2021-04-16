@@ -14,7 +14,7 @@ namespace MBBSEmu.CPU
     /// <summary>
     ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
     /// </summary>
-    public class CpuCore : CpuRegisters, ICpuCore
+    public class CpuCore : CpuRegisters, ICpuCore, IDisposable
     {
         protected readonly ILogger _logger;
 
@@ -130,6 +130,21 @@ namespace MBBSEmu.CPU
         public CpuCore(ILogger logger)
         {
             _logger = logger;
+        }
+
+        public void Dispose()
+        {
+            foreach (var handler in _interruptHandlers.Values)
+            {
+                if (handler is IDisposable disposable)
+                    disposable.Dispose();
+            }
+
+            foreach (var handler in _ioPortHandlers.Values)
+            {
+                if (handler is IDisposable disposable)
+                    disposable.Dispose();
+            }
         }
 
         /// <summary>

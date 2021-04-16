@@ -107,12 +107,14 @@ key-only file or a Get operation on a data only file */
         private readonly IMemoryCore _memory;
         private readonly ICpuRegisters _registers;
         private readonly Dictionary<Guid, BtrieveFileProcessor> _openFiles = new();
+        private readonly string _path;
 
         public byte Vector => 0x7B;
 
-        public Int7Bh(ILogger logger, IFileUtility fileUtility, ICpuRegisters registers, IMemoryCore memory)
+        public Int7Bh(ILogger logger, string path, IFileUtility fileUtility, ICpuRegisters registers, IMemoryCore memory)
         {
             _logger = logger;
+            _path = path;
             _fileUtility = fileUtility;
             _registers = registers;
             _memory = memory;
@@ -203,7 +205,7 @@ key-only file or a Get operation on a data only file */
 
             // have to do a dance where we split up path + file since that's what
             // the processor wants
-            string path = null;
+            string path = _path;
 
             if (Path.IsPathFullyQualified(file))
             {

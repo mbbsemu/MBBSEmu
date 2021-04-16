@@ -23,8 +23,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Directory.CreateDirectory(mbbsModule.ModulePath);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
+
             Directory.Delete(mbbsModule.ModulePath, recursive: true);
         }
 

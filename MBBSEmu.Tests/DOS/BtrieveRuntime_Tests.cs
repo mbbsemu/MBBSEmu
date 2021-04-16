@@ -93,6 +93,7 @@ key3_data_type: 15
               _serviceResolver.GetService<IClock>(),
               _serviceResolver.GetService<ILogger>(),
               _serviceResolver.GetService<IFileUtility>(),
+              _modulePath,
               null,
               new TextReaderStream(Console.In),
               stdout,

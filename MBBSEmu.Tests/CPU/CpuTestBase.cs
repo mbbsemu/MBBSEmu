@@ -42,7 +42,7 @@ namespace MBBSEmu.Tests.CPU
 
         public void Dispose()
         {
-            pit.Dispose();
+            mbbsEmuCpuCore.Dispose();
         }
 
         protected void Reset()

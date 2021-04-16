@@ -2,6 +2,7 @@ using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
@@ -20,6 +21,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -35,7 +37,7 @@ namespace MBBSEmu.HostProcess
     ///     - Adding incoming connections to a Channel
     ///     - Processing the main MajorBBS/Worldgroup event loop
     /// </summary>
-    public class MbbsHost : IMbbsHost
+    public class MbbsHost : IMbbsHost, IDisposable
     {
         public ILogger Logger { get; init; }
         public IClock Clock { get; init; }
@@ -165,6 +167,14 @@ namespace MBBSEmu.HostProcess
             _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
 
             Logger.Info("Constructed MBBSEmu Host!");
+        }
+
+        public void Dispose()
+        {
+            foreach (var module in _modules)
+                module.Value.Dispose();
+
+            _modules.Clear();
         }
 
         /// <summary>
@@ -396,11 +406,12 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("finrou", module => Logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
 
             //clean up modules
-            foreach (var m in _modules.Keys)
+            foreach (var m in _modules)
             {
-                _modules.Remove(m);
+                m.Value.Dispose();
+                _modules.Remove(m.Key);
 
-                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m)).ToList();
+                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Key)).ToList();
 
                 foreach (var e in exportedFunctionsToRemove)
                 {
@@ -882,6 +893,32 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        private void RunProgram(string modulePath, string cmdline)
+        {
+            var exe = cmdline.Split(' ')[0];
+            var args = cmdline.Split(' ').Skip(1).ToArray();
+            exe = Path.ChangeExtension(exe, ".EXE");
+
+            exe = _fileUtility.FindFile(modulePath, exe);
+
+            Logger.Info($"Running auxiliary program: {cmdline}");
+
+            var runtime = new ExeRuntime(
+                            new MBBSEmu.Disassembler.MZFile(Path.Combine(modulePath, exe)),
+                            Clock,
+                            Logger,
+                            _fileUtility,
+                            modulePath,
+                            sessionBase: null,
+                            new TextReaderStream(Console.In),
+                            new TextWriterStream(Console.Out),
+                            new TextWriterStream(Console.Error));
+            runtime.Load(args);
+            runtime.Run();
+
+            runtime.Dispose();
+        }
+
         /// <summary>
         ///     Adds the specified module to the MBBS Host
         ///
@@ -931,6 +968,9 @@ namespace MBBSEmu.HostProcess
             {
                 if (!dll.EntryPoints.TryGetValue("_INIT_", out var entryPointer))
                     continue;
+
+                foreach (var bbsup in module.Mdf.BBSUp)
+                    RunProgram(module.ModulePath, bbsup);
 
                 Run(module.ModuleIdentifier, entryPointer, ushort.MaxValue);
             }
@@ -1254,8 +1294,11 @@ namespace MBBSEmu.HostProcess
             //Save current module config
             var moduleConfigurations = (from m in _modules select m.Value.ModuleConfig).ToList();
 
-            foreach (var m in _modules.ToList())
+            foreach (var m in _modules)
             {
+                var modulePath = m.Value.ModulePath;
+
+                m.Value.Dispose();
                 _modules.Remove(m.Value.ModuleIdentifier);
                 var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)).ToList();
 
@@ -1264,6 +1307,9 @@ namespace MBBSEmu.HostProcess
                     _exportedFunctions[e].Dispose();
                     _exportedFunctions.Remove(e);
                 }
+
+                foreach (var cleanup in m.Value.Mdf.Cleanup)
+                    RunProgram(modulePath, cleanup);
             }
 
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
