@@ -1039,7 +1039,7 @@ namespace MBBSEmu.DOS.Interrupts
             */
 
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
-            var fullPath = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, _fileUtility.FindFile(_path, fileName));
 
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;

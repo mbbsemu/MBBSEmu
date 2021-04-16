@@ -908,6 +908,7 @@ namespace MBBSEmu.HostProcess
                             Clock,
                             Logger,
                             _fileUtility,
+                            modulePath,
                             sessionBase: null,
                             new TextReaderStream(Console.In),
                             new TextWriterStream(Console.Out),

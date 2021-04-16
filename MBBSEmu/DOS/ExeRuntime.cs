@@ -46,10 +46,12 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
         private readonly ProgrammableIntervalTimer _pit;
+        private string _path;
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, string path, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
         {
             _logger = logger;
+            _path = path;
             _sessionBase = sessionBase;
             File = file;
             Memory = new RealModeMemoryCore(0x8000, logger);
@@ -65,11 +67,11 @@ namespace MBBSEmu.DOS
                 null,
                 new List<IInterruptHandler>
                 {
-                    new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr),
+                    new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr, _path),
                     new Int1Ah(Registers, Memory, clock),
                     new Int3Eh(),
                     new Int10h(Registers, _logger, stdout),
-                    new Int7Bh(_logger, fileUtility, Registers, Memory),
+                    new Int7Bh(_logger, _path, fileUtility, Registers, Memory),
                 },
                 new Dictionary<int, IIOPort>
                 {
@@ -80,11 +82,12 @@ namespace MBBSEmu.DOS
                 });
         }
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, SessionBase sessionBase) : this(
+        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, string path, SessionBase sessionBase) : this(
             file,
             clock,
             logger,
             fileUtility,
+            path,
             sessionBase,
             new BlockingCollectionReaderStream(sessionBase.DataFromClient),
             new BlockingCollectionWriterStream(sessionBase.DataToClient),
