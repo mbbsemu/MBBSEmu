@@ -44,6 +44,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(-1, fclose(filep));
         }
 
+        [Fact]
+        public void fflush_fails_bad_file()
+        {
+            var fakeFilePtr = mbbsEmuMemoryCore.Malloc(128);
+            Assert.Equal(-1, fflush(fakeFilePtr));
+            mbbsEmuMemoryCore.Free(fakeFilePtr);
+        }
+
         [Theory]
         [InlineData("w")]
         [InlineData("w+")]
@@ -263,6 +271,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var numElements = LOREM_IPSUM.Length / elementSize;
             Assert.Equal(numElements, fwrite(buffer, elementSize, (ushort) numElements , filep));
+            Assert.Equal(0, fflush(filep));
 
             Assert.Equal(0, fclose(filep));
 

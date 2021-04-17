@@ -2548,7 +2548,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            _logger.Error($"insertBtv: {btrieveRecordPointer}:{currentBtrieveFile.RecordLength}");
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
             return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;
@@ -3206,8 +3205,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
             if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
             {
-                _logger.Warn(
-                    $"({Module.ModuleIdentifier}) Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
                 Registers.AX = 0xFFFF;
                 return;
             }
