@@ -88,6 +88,9 @@ namespace MBBSEmu.Memory
         }
         public override void Free(FarPtr ptr)
         {
+            if (ptr.IsNull())
+                return;
+
             // ptr should have 0 offset, but we need to reconvert back to segment 0x1000 base.
             var adjustedPtr = new FarPtr(_heapBaseSegment, (ushort)(ptr.Offset + ((ptr.Segment - _heapBaseSegment) << 4)));
             _memoryAllocator.Free(adjustedPtr);

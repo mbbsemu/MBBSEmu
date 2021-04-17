@@ -59,6 +59,9 @@ namespace MBBSEmu.Memory
 
         public override void Free(FarPtr ptr)
         {
+            if (ptr.IsNull())
+                return;
+
             if (!_heapAllocators.TryGetValue(ptr.Segment, out var memoryAllocator))
             {
                 _logger.Error($"Attempted to deallocate memory from an unknown segment {ptr}");
