@@ -19,7 +19,7 @@ namespace MBBSEmu.DOS.Interrupts
     ///
     ///     This is implemented within the DOS Kernel
     /// </summary>
-    public class Int21h : IInterruptHandler
+    public class Int21h : IInterruptHandler, IDisposable
     {
         public const int BTRIEVE_INTERRUPT = 123;
         public const ushort DOS_MAX_HEAP_SEGMENT = 0x9FAE;
@@ -114,6 +114,17 @@ namespace MBBSEmu.DOS.Interrupts
                 path = Directory.GetCurrentDirectory();
 
             _path = path;
+        }
+
+        public void Dispose()
+        {
+            foreach (var v in _fileHandles)
+            {
+                v.Value.Close();
+                v.Value.Dispose();
+            }
+
+            _fileHandles.Clear();
         }
 
         public void Handle()
@@ -1028,7 +1039,7 @@ namespace MBBSEmu.DOS.Interrupts
             */
 
             var fileName = Encoding.ASCII.GetString(_memory.GetString(Registers.DS, Registers.DX, stripNull: true));
-            var fullPath = _fileUtility.FindFile(_path, fileName);
+            var fullPath = Path.Combine(_path, _fileUtility.FindFile(_path, fileName));
 
             FileMode fileMode = FileMode.Open;
             FileAccess fileAccess;

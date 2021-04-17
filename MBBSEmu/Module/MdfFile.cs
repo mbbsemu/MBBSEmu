@@ -14,7 +14,7 @@ namespace MBBSEmu.Module
         ///     MDF File Name
         /// </summary>
         private readonly string _mdfFile;
-        
+
         /// <summary>
         ///     Module Name defined in the MDF File
         /// </summary>
@@ -34,11 +34,14 @@ namespace MBBSEmu.Module
         ///     Module MSG files defined in the MDF File
         /// </summary>
         public List<string> MSGFiles { get; set; }
-        
+
         /// <summary>
         ///     List of DLL files Required by this Module to be loaded
         /// </summary>
         public List<string> Requires { get; set; }
+
+        public List<String> Cleanup { get; set; }
+        public List<String> BBSUp { get; set; }
 
         public MdfFile(string mdfFile)
         {
@@ -62,6 +65,9 @@ namespace MBBSEmu.Module
 
         private void Parse()
         {
+            List<String> cleanup = new();
+            List<String> bbsup = new();
+
             foreach (var line in File.ReadAllLines(_mdfFile))
             {
                 //Only lines that contain : are actual values
@@ -80,6 +86,16 @@ namespace MBBSEmu.Module
                     case "REQUIRES":
                         Requires = keyValuePair[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
                         break;
+                    case "CLEANUP":
+                        var value = keyValuePair[1].Trim();
+                        if (value.Length > 0)
+                            cleanup.Add(value);
+                        break;
+                    case "BBS UP":
+                        value = keyValuePair[1].Trim();
+                        if (value.Length > 0)
+                            bbsup.Add(value);
+                        break;
                     case "DLLS":
                         DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
@@ -94,6 +110,9 @@ namespace MBBSEmu.Module
                         break;
                 }
             }
+
+            Cleanup = cleanup;
+            BBSUp = bbsup;
         }
     }
 }

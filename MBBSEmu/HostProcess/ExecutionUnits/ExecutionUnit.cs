@@ -14,7 +14,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
     ///     Represents a single execution unit, everything that is required for a portion of code within a module
     ///     to be executed, including CPU, Memory, Registers, and Module Exports
     /// </summary>
-    public class ExecutionUnit
+    public class ExecutionUnit: IDisposable
     {
         /// <summary>
         ///     Module dedicated CPU Core
@@ -56,6 +56,11 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                     new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock)
                 },
                 ioPortHandlers: null);
+        }
+
+        public void Dispose()
+        {
+            ModuleCpu.Dispose();
         }
 
         private ReadOnlySpan<byte> ExternalFunctionDelegate(ushort ordinal, ushort functionOrdinal)

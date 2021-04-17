@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Memory;
+using System;
 
 namespace MBBSEmu.CPU
 {
     /// <summary>
     ///     Interface for CpuCore
     /// </summary>
-    public interface ICpuCore : ICpuRegisters
+    public interface ICpuCore : ICpuRegisters, IDisposable
     {
         /// <summary>
         ///     Resets the CPU back to a starting state

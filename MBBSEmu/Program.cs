@@ -237,6 +237,7 @@ namespace MBBSEmu
                             _serviceResolver.GetService<IClock>(),
                             _logger,
                             _serviceResolver.GetService<IFileUtility>(),
+                            Directory.GetCurrentDirectory(),
                             new LocalConsoleSession(_logger, "CONSOLE", null, null, false, false));
                     else
                         exe = new ExeRuntime(
@@ -244,6 +245,7 @@ namespace MBBSEmu
                             _serviceResolver.GetService<IClock>(),
                             _logger,
                             _serviceResolver.GetService<IFileUtility>(),
+                            Directory.GetCurrentDirectory(),
                             sessionBase: null,
                             new TextReaderStream(Console.In),
                             new TextWriterStream(Console.Out),

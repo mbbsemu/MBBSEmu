@@ -761,6 +761,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 205:
                     f_close();
                     break;
+                case 207:
+                    f_flush();
+                    break;
                 case 560:
                     sprintf();
                     break;
@@ -2416,7 +2419,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 #if DEBUG
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(btrieveFilePointer, BtvFileStruct.Size));
-            var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam));
+            var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam, stripNull: true));
             _logger.Debug($"({Module.ModuleIdentifier}) Setting current Btrieve file to {btvFileName} ({btrieveFilePointer})");
 #endif
         }
@@ -2544,6 +2547,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveRecordPointer = GetParameterPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
             return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;
@@ -3186,6 +3190,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary[fileStruct.curp.Offset].Close();
             FilePointerDictionary.Remove(fileStruct.curp.Offset);
 
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Flushes an Open File Pointer
+        ///
+        ///     Signature: int fclose(FILE* stream ). Returns 0 on success, EOF (-1) on failure
+        /// </summary>
+        private void f_flush()
+        {
+            var filePointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
+            if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            FilePointerDictionary[fileStruct.curp.Offset].Flush();
             Registers.AX = 0;
         }
 

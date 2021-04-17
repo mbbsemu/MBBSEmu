@@ -27,14 +27,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         protected const int FSEEK_ORDINAL = 266;
         protected const int FPUTS_ORDINAL = 1125;
         protected const int FGETS_ORDINAL = 210;
+        protected const int FFLUSH_ORDINAL = 207;
+
 
         protected FileTestBase() : base(Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}"))
         {
             Directory.CreateDirectory(mbbsModule.ModulePath);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
+            base.Dispose();
+
             majorbbs.Dispose();
 
             Directory.Delete(mbbsModule.ModulePath,  recursive: true);
@@ -206,7 +210,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
                 srcPtr.Offset,
                 srcPtr.Segment
             });
-            
+
             return mbbsEmuCpuRegisters.GetPointer();
         }
 
@@ -233,6 +237,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             });
 
             return mbbsEmuCpuRegisters.AX;
+        }
+
+        protected short fflush(FarPtr srcPtr)
+        {
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FFLUSH_ORDINAL, new List<FarPtr> { srcPtr });
+
+            return (short)mbbsEmuCpuRegisters.AX;
         }
 
         protected ushort setmode(ushort fileHandle, ushort fileMode)

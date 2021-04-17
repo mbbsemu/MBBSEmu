@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System;
 
 namespace MBBSEmu.Module
 {
@@ -25,7 +26,7 @@ namespace MBBSEmu.Module
     ///     - Full 16-Bit Memory Space for the Module (hence no relocation required)
     ///     - Execution Units for the Module (Multiple CPUs accessing shared memory space, used for subroutines)
     /// </summary>
-    public class MbbsModule
+    public class MbbsModule : IDisposable
     {
         protected readonly ILogger _logger;
         protected readonly IFileUtility _fileUtility;
@@ -241,6 +242,14 @@ namespace MBBSEmu.Module
 
                 _logger.Debug($"({ModuleIdentifier}) Located _INIT__: {initEntryPointPointer}");
                 dll.EntryPoints["_INIT_"] = initEntryPointPointer;
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var unit in ExecutionUnits)
+            {
+                unit.Dispose();
             }
         }
 
