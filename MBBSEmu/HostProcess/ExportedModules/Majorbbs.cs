@@ -3209,9 +3209,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            //Clean Up File Stream Pointer
-            var fileStream = FilePointerDictionary[fileStruct.curp.Offset];
-            fileStream.Flush();
+            FilePointerDictionary[fileStruct.curp.Offset].Flush();
             Registers.AX = 0;
         }
 
