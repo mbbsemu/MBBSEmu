@@ -427,6 +427,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 case 768:
                     return _tfsState.Data;
+                case 769:
+                    return _tfsbuf.Data;
+                case 770:
+                    return _tfspst.Data;
                 case 628:
                     return usrnum;
                 case 629:
