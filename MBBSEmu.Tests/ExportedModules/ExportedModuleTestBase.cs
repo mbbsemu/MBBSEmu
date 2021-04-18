@@ -87,7 +87,11 @@ namespace MBBSEmu.Tests.ExportedModules
                 testSessions,
                 textVariableService);
 
-            mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore, ExportedFunctionDelegate, null, null);
+            mbbsEmuCpuCore.Reset(
+                mbbsEmuMemoryCore,
+                (ordinal, functionOrdinal) => ExportedFunctionDelegate(ordinal, functionOrdinal, offsetsOnly:false),
+                null,
+                null);
         }
 
         public virtual void Dispose()
@@ -96,19 +100,19 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsModule.Dispose();
         }
 
-        private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal)
+        private ReadOnlySpan<byte> ExportedFunctionDelegate(ushort ordinal, ushort functionOrdinal, bool offsetsOnly)
         {
             switch (ordinal)
             {
                 case HostProcess.ExportedModules.Majorbbs.Segment:
                     {
                         majorbbs.SetRegisters(mbbsEmuCpuRegisters);
-                        return majorbbs.Invoke(functionOrdinal, offsetsOnly: false);
+                        return majorbbs.Invoke(functionOrdinal, offsetsOnly);
                     }
                 case HostProcess.ExportedModules.Galgsbl.Segment:
                     {
                         galgsbl.SetRegisters(mbbsEmuCpuRegisters);
-                        return galgsbl.Invoke(functionOrdinal, offsetsOnly: false);
+                        return galgsbl.Invoke(functionOrdinal, offsetsOnly);
                     }
                 default:
                     throw new Exception($"Unsupported Exported Module Segment: {ordinal}");
@@ -152,6 +156,9 @@ namespace MBBSEmu.Tests.ExportedModules
                 textVariableService);
 
         }
+
+        protected FarPtr GetOrdinalAddress(ushort moduleSegment, ushort apiOrdinal)
+            => new FarPtr(ExportedFunctionDelegate(moduleSegment, apiOrdinal, offsetsOnly: true));
 
         /// <summary>
         ///     Executes an x86 Instruction to call the specified Library/API Ordinal with the specified arguments
