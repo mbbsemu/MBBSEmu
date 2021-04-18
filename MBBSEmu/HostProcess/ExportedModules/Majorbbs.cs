@@ -48,6 +48,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             TFSEOF = 4
         }
 
+        public const ushort TFSBUF_MAX_LENGTH = 128;
+
         public FarPtr GlobalCommandHandler;
 
         private FarPtr _currentMcvFile
@@ -99,9 +101,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Int 21h handler
         /// </summary>
         private readonly Int21h _int21h;
+
+        //  --------- For TFS functions ---------
         private FarPtr _tfsState;
         private FarPtr _tfsbuf;
         private FarPtr _tfspst;
+        private StreamReader _tfsStreamReader;
+        //  -------------------------------------
 
         public new void Dispose()
         {
@@ -218,7 +224,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
             _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
             Module.Memory.SetWord(_tfsState, (ushort)TFStateCodes.TFSDUN);
-            _tfsbuf = Module.Memory.AllocateVariable("TFSBUF", 129);
+            _tfsbuf = Module.Memory.AllocateVariable("TFSBUF", TFSBUF_MAX_LENGTH + 1);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -1387,8 +1393,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return ret;
         }
 
-        private StreamReader _tfsStreamReader;
-
         private void tfsopn()
         {
             tfsabt();
@@ -1428,8 +1432,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (line != null)
                     {
                         line = line.TrimEnd() + "\0";
-                        if (line.Length > 129)
-                            line = line.Substring(0, 128) + "\0";
+                        if (line.Length > (TFSBUF_MAX_LENGTH + 1))
+                            line = line.Substring(0, TFSBUF_MAX_LENGTH) + "\0";
                         Module.Memory.SetArray(_tfsbuf, Encoding.ASCII.GetBytes(line));
                     }
                     else
@@ -1462,8 +1466,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var rest = line.Substring(prefix.Length).Trim();
             var newTfspst = _tfsbuf + (line.Length - rest.Length);
-
-            _logger.Error($"Searching \"{line}\" for \"{prefix}\": _tfspst is {newTfspst}:{Encoding.ASCII.GetString(Module.Memory.GetString(newTfspst, stripNull: true))}");
 
             Module.Memory.SetArray(_tfspst, newTfspst.Data);
             Registers.AX = rest.Length > 0 ? (ushort)1 : (ushort)0;

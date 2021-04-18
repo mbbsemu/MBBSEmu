@@ -57,6 +57,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private string tfspst => Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuMemoryCore.GetPointer(GetOrdinalAddress(HostProcess.ExportedModules.Majorbbs.Segment, TFSPST_ORDINAL)), stripNull: true));
 
         [Fact]
+        public void tfsopen_bad_file()
+        {
+            //Reset State
+            Reset();
+
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSDUN);
+
+            tfsopn("file.txt").Should().Be(0);
+        }
+
+        [Fact]
         public void tfsopen_open_and_close()
         {
             //Reset State
@@ -163,6 +174,35 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSEOF);
             tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSDUN);
+        }
+
+        [Fact]
+        public void tfsopen_open_and_read_huge_line()
+        {
+            //Reset State
+            Reset();
+
+            const string FILE_CONTENTS = "aaaa_aaaa_bbbb_bbbb_cccc_cccc_dddd_dddd_eeee_eeee_" +
+                "ffff_ffff_gggg_gggg_hhhh_hhhh_iiii_iiii_jjjj_jjjj_kkkk_kkkk_llll_llll_mmmm_mmmm_" +
+                "nnnn_nnnn_oooo_oooo_";
+
+            //Create Text File
+            var fileName = CreateTextFile("file.txt", FILE_CONTENTS);
+
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSDUN);
+
+            var nFiles = tfsopn("file.txt");
+            nFiles.Should().Be(1);
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSBGN);
+
+            tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSBOF);
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSBOF);
+
+            tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSLIN);
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSLIN);
+            tfsbuf.Should().Be(FILE_CONTENTS.Substring(0, 128));
+
+            tfsabt();
         }
     }
 }
