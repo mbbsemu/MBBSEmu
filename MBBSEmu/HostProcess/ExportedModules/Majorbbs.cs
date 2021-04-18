@@ -1438,6 +1438,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
                     break;
                 case TFStateCodes.TFSEOF:
+                    tfsabt(); // close the stream
                     tfstate = TFStateCodes.TFSDUN;
                     break;
             }
