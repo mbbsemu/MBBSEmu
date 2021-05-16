@@ -559,6 +559,7 @@ namespace MBBSEmu.HostProcess
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
             session.PromptCharacter = 0;
+            session.StatusChange = false;
 
             //Reset States
             session.Status = 0;
