@@ -39,6 +39,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
             STRING, // for cncnum()
         }
 
+        public enum TFStateCodes : ushort
+        {
+            TFSDUN = 0,
+            TFSBGN = 1,
+            TFSBOF = 2,
+            TFSLIN = 3,
+            TFSEOF = 4
+        }
+
+        public const ushort TFSBUF_MAX_LENGTH = 128;
+
         public FarPtr GlobalCommandHandler;
 
         private FarPtr _currentMcvFile
@@ -91,8 +102,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly Int21h _int21h;
 
+        //  --------- For TFS functions ---------
+        private FarPtr _tfsState;
+        private FarPtr _tfsbuf;
+        private FarPtr _tfspst;
+        private StreamReader _tfsStreamReader;
+        //  -------------------------------------
+
         public new void Dispose()
         {
+            _tfsStreamReader?.Dispose();
+
             base.Dispose();
         }
 
@@ -200,6 +220,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("NTVARS", 1); //We're setting the 1 defaulted below for SYSTEM
             Module.Memory.AllocateVariable("TXTVARS", TextvarStruct.Size * MaxTextVariables, true); //Up to 64 Text Variables per Module
             Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
+
+            _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
+            _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
+            Module.Memory.SetWord(_tfsState, (ushort)TFStateCodes.TFSDUN);
+            _tfsbuf = Module.Memory.AllocateVariable("TFSBUF", TFSBUF_MAX_LENGTH + 1);
 
             var ctypePointer = Module.Memory.AllocateVariable("CTYPE", 0x101);
 
@@ -406,6 +431,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
+                case 768:
+                    return _tfsState.Data;
+                case 769:
+                    return _tfsbuf.Data;
+                case 770:
+                    return _tfspst.Data;
                 case 628:
                     return usrnum;
                 case 629:
@@ -561,6 +592,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 548: //SETWIN -- set window parameters when drawing to video (Screen)
                 case 392: //LOCATE -- moves cursor (local screen, not telnet session)
                 case 513: //RSTWIN -- restore window parameters (local screen)
+                    break;
+                case 773:
+                    tfsopn();
+                    break;
+                case 774:
+                    tfsrdl();
+                    break;
+                case 775:
+                    tfspfx();
+                    break;
+                case 892:
+                    tfsabt();
                     break;
                 case 599:
                     time();
@@ -1348,6 +1391,92 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return ret;
+        }
+
+        private void tfsopn()
+        {
+            tfsabt();
+
+            var filespec = _fileFinder.FindFile(Module.ModulePath, GetParameterString(0, stripNull: true));
+            var fullPath = Path.Combine(Module.ModulePath, filespec);
+
+            try
+            {
+                _tfsStreamReader = new StreamReader(new FileStream(fullPath, FileMode.Open));
+                Module.Memory.SetWord(_tfsState, (ushort)TFStateCodes.TFSBGN);
+                Registers.AX = 1;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+                Registers.AX = 0;
+            }
+        }
+
+        private void tfsrdl()
+        {
+            // clear buffer first
+            Module.Memory.SetByte(_tfsbuf, 0);
+
+            var tfstate = (TFStateCodes)Module.Memory.GetWord(_tfsState);
+            switch (tfstate)
+            {
+                case TFStateCodes.TFSBGN:
+                    tfstate = TFStateCodes.TFSBOF;
+                    break;
+                case TFStateCodes.TFSBOF:
+                    tfstate = TFStateCodes.TFSLIN;
+                    goto case TFStateCodes.TFSLIN;
+                case TFStateCodes.TFSLIN:
+                    var line = _tfsStreamReader.ReadLine();
+                    if (line != null)
+                    {
+                        line = line.TrimEnd() + "\0";
+                        if (line.Length > (TFSBUF_MAX_LENGTH + 1))
+                            line = line.Substring(0, TFSBUF_MAX_LENGTH) + "\0";
+                        Module.Memory.SetArray(_tfsbuf, Encoding.ASCII.GetBytes(line));
+                    }
+                    else
+                    {
+                        tfstate = TFStateCodes.TFSEOF;
+                    }
+                    break;
+                case TFStateCodes.TFSEOF:
+                    tfsabt(); // close the stream
+                    tfstate = TFStateCodes.TFSDUN;
+                    break;
+            }
+
+            Module.Memory.SetWord(_tfsState, (ushort)tfstate);
+            Registers.AX = (ushort)tfstate;
+        }
+
+        private void tfspfx()
+        {
+            // sets tfspst from tfsbuf
+            var prefix = GetParameterString(0, stripNull: true);
+            var line = Encoding.ASCII.GetString(Module.Memory.GetString(_tfsbuf, stripNull: true));
+
+            if (!line.StartsWith(prefix))
+            {
+                Registers.AX = 0; // FALSE
+                Module.Memory.SetArray(_tfspst, FarPtr.Empty.Data); // tfspst = NULL
+                return;
+            }
+
+            var rest = line.Substring(prefix.Length).Trim();
+            var newTfspst = _tfsbuf + (line.Length - rest.Length);
+
+            Module.Memory.SetArray(_tfspst, newTfspst.Data);
+            Registers.AX = rest.Length > 0 ? (ushort)1 : (ushort)0;
+        }
+
+        private void tfsabt()
+        {
+            _tfsStreamReader?.Close();
+            _tfsStreamReader = null;
+
+            Module.Memory.SetWord(_tfsState, (ushort)TFStateCodes.TFSDUN);
         }
 
         /// <summary>
