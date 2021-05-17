@@ -102,6 +102,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly Int21h _int21h;
 
+        private readonly Dictionary<string, string> setCnfDictionary = new();
+
         //  --------- For TFS functions ---------
         private FarPtr _tfsState;
         private FarPtr _tfsbuf;
@@ -1357,9 +1359,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return null;
         }
 
-        // TODO move this to top
-        private readonly Dictionary<string, string> setCnfDictionary = new();
-
         private void setcnf()
         {
             string optnam = GetParameterString(0, stripNull: true);
@@ -1374,7 +1373,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             filenam = _fileFinder.FindFile(Module.ModulePath, filenam);
 
             MsgFile.UpdateValues(Path.Combine(Module.ModulePath, filenam), setCnfDictionary);
-            setCnfDictionary.Clear();
         }
 
         /// <summary>
