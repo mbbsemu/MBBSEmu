@@ -593,6 +593,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 392: //LOCATE -- moves cursor (local screen, not telnet session)
                 case 513: //RSTWIN -- restore window parameters (local screen)
                     break;
+                case 73:
+                    applyem();
+                    break;
+                case 535:
+                    setcnf();
+                    break;
                 case 773:
                     tfsopn();
                     break;
@@ -1349,6 +1355,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return null;
+        }
+
+        // TODO move this to top
+        private readonly Dictionary<string, string> setCnfDictionary = new();
+
+        private void setcnf()
+        {
+            string optnam = GetParameterString(0, stripNull: true);
+            string optval = GetParameterString(2, stripNull: true);
+
+            setCnfDictionary[optnam] = optval;
+        }
+
+        private void applyem()
+        {
+            string filenam = GetParameterString(0, stripNull: true);
+            filenam = _fileFinder.FindFile(Module.ModulePath, filenam);
+
+            MsgFile.UpdateValues(Path.Combine(Module.ModulePath, filenam), setCnfDictionary);
+            setCnfDictionary.Clear();
         }
 
         /// <summary>

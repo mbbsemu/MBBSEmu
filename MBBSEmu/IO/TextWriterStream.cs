@@ -13,7 +13,7 @@ namespace MBBSEmu.IO
             _writer = writer;
         }
 
-        public byte Read() => throw new NotSupportedException("Can't read from TextWriter");
+        public int ReadByte() => throw new NotSupportedException("Can't read from TextWriter");
 
         public void Write(byte c) => _writer.Write((char)c);
 
