@@ -291,6 +291,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// <param name="errorField"></param>
         private void ClearErrorMessage(SessionBase session, FsdFieldSpec errorField)
         {
+            if (errorField == null)
+                return;
+
             session.SendToClient($"\x1B[0;1m");
 
             SetCursorPosition(session, errorField.X, errorField.Y);
