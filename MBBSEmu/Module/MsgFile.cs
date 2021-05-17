@@ -294,7 +294,14 @@ namespace MBBSEmu.Module
                         state = MsgParseState.JUNK;
                         break;
                     case MsgParseState.BRACKET when c == ':':
-                        state = MsgParseState.BRACKET_REPLACE;
+                        var variable = identifier.ToString();
+                        if (values.ContainsKey(variable))
+                        {
+                            output.Write(Encoding.ASCII.GetBytes($": {values[variable]}"));
+
+                            state = MsgParseState.BRACKET_REPLACE;                            
+                            continue; // skip the output.Write
+                        }
                         break;
                     case MsgParseState.JUNK when c == '\n':
                         state = MsgParseState.NEWLINE;
@@ -303,7 +310,7 @@ namespace MBBSEmu.Module
                         continue; // skip the output.Write
                 }
 
-                //output.Write((byte)b);
+                output.Write((byte)b);
             }
         }
     }
