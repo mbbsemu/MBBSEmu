@@ -103,6 +103,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private readonly Int21h _int21h;
 
         private readonly Dictionary<string, string> setCnfDictionary = new();
+        private bool applyemCalled = false;
 
         //  --------- For TFS functions ---------
         private FarPtr _tfsState;
@@ -1364,6 +1365,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             string optnam = GetParameterString(0, stripNull: true);
             string optval = GetParameterString(2, stripNull: true);
 
+            // if updating a new value after an applyem, clear the dictionary and start anew
+            if (applyemCalled)
+            {
+                setCnfDictionary.Clear();
+                applyemCalled = false;
+            }
+
             setCnfDictionary[optnam] = optval;
         }
 
@@ -1373,6 +1381,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             filenam = _fileFinder.FindFile(Module.ModulePath, filenam);
 
             MsgFile.UpdateValues(Path.Combine(Module.ModulePath, filenam), setCnfDictionary);
+
+            applyemCalled = true;
         }
 
         /// <summary>
