@@ -241,8 +241,8 @@ namespace MBBSEmu.Module
         public static void UpdateValues(string filename, Dictionary<string, string> values)
         {
             var tmpPath = Path.GetTempFileName();
-            StreamStream input = new StreamStream(new FileStream(filename, FileMode.Open));
-            StreamStream output = new StreamStream(new FileStream(tmpPath, FileMode.OpenOrCreate));
+            var input = new StreamStream(new FileStream(filename, FileMode.Open));
+            var output = new StreamStream(new FileStream(tmpPath, FileMode.OpenOrCreate));
 
             UpdateValues(input, output, values);
 
@@ -299,7 +299,7 @@ namespace MBBSEmu.Module
                         {
                             output.Write(Encoding.ASCII.GetBytes($": {values[variable]}"));
 
-                            state = MsgParseState.BRACKET_REPLACE;                            
+                            state = MsgParseState.BRACKET_REPLACE;
                             continue; // skip the output.Write
                         }
                         break;

@@ -1362,8 +1362,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private void setcnf()
         {
-            string optnam = GetParameterString(0, stripNull: true);
-            string optval = GetParameterString(2, stripNull: true);
+            var optnam = GetParameterString(0, stripNull: true);
+            var optval = GetParameterString(2, stripNull: true);
 
             // if updating a new value after an applyem, clear the dictionary and start anew
             if (applyemCalled)
@@ -1377,7 +1377,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private void applyem()
         {
-            string filenam = GetParameterString(0, stripNull: true);
+            var filenam = GetParameterString(0, stripNull: true);
             filenam = _fileFinder.FindFile(Module.ModulePath, filenam);
 
             MsgFile.UpdateValues(Path.Combine(Module.ModulePath, filenam), setCnfDictionary);
