@@ -45,6 +45,7 @@ namespace MBBSEmu.Module
             IDENTIFIER,
             SPACE,
             BRACKET,
+            BRACKET_REPLACE,
             JUNK
         };
 
@@ -156,7 +157,7 @@ namespace MBBSEmu.Module
             WriteMCV(language, messages);
         }
 
-        private void EscapeBracket(MemoryStream input)
+        private static void EscapeBracket(MemoryStream input)
         {
             var arrayToParse = input.ToArray();
             input.SetLength(0);
@@ -235,6 +236,82 @@ namespace MBBSEmu.Module
             WriteUInt16(writer, (short)numberOfLanguages);
             // count of messages
             WriteUInt16(writer, (short)messages.Count);
+        }
+
+        public static void UpdateValues(string filename, Dictionary<string, string> values)
+        {
+            var tmpPath = Path.GetTempFileName();
+            var input = new StreamStream(new FileStream(filename, FileMode.Open));
+            var output = new StreamStream(new FileStream(tmpPath, FileMode.OpenOrCreate));
+
+            UpdateValues(input, output, values);
+
+            input.Dispose();
+            output.Dispose();
+
+            File.Move(tmpPath, filename, overwrite: true);
+        }
+
+        public static void UpdateValues(IStream input, IStream output, Dictionary<string, string> values)
+        {
+            var state = MsgParseState.NEWLINE;
+            var identifier = new StringBuilder();
+            int b;
+
+            while ((b = input.ReadByte()) != -1)
+            {
+                var c = (char)b;
+                switch (state)
+                {
+                    case MsgParseState.NEWLINE when IsIdentifier(c):
+                        state = MsgParseState.IDENTIFIER;
+                        identifier.Clear();
+                        identifier.Append(c);
+                        break;
+                    case MsgParseState.NEWLINE when c != '\n':
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.IDENTIFIER when IsIdentifier(c):
+                        identifier.Append(c);
+                        break;
+                    case MsgParseState.IDENTIFIER when c is '\r' or '\n':
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.IDENTIFIER when char.IsWhiteSpace(c):
+                        state = MsgParseState.SPACE;
+                        break;
+                    case MsgParseState.IDENTIFIER when c == '{':
+                        state = MsgParseState.BRACKET;
+                        break;
+                    case MsgParseState.SPACE when c == '{':
+                        state = MsgParseState.BRACKET;
+                        break;
+                    case MsgParseState.SPACE when !char.IsWhiteSpace(c):
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.BRACKET when c == '}':
+                    case MsgParseState.BRACKET_REPLACE when c == '}':
+                        state = MsgParseState.JUNK;
+                        break;
+                    case MsgParseState.BRACKET when c == ':':
+                        var variable = identifier.ToString();
+                        if (values.ContainsKey(variable))
+                        {
+                            output.Write(Encoding.ASCII.GetBytes($": {values[variable]}"));
+
+                            state = MsgParseState.BRACKET_REPLACE;
+                            continue; // skip the output.Write
+                        }
+                        break;
+                    case MsgParseState.JUNK when c == '\n':
+                        state = MsgParseState.NEWLINE;
+                        break;
+                    case MsgParseState.BRACKET_REPLACE:
+                        continue; // skip the output.Write
+                }
+
+                output.Write((byte)b);
+            }
         }
     }
 }
