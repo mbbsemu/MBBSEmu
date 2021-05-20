@@ -12,7 +12,7 @@ namespace MBBSEmu.IO
             _reader = reader;
         }
 
-        public byte Read() => (byte)_reader.Read();
+        public int ReadByte() => _reader.Read();
 
         public void Write(byte c) => throw new NotSupportedException("Can't write to TextReader");
 

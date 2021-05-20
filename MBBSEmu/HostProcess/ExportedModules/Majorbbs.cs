@@ -102,6 +102,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private readonly Int21h _int21h;
 
+        private readonly Dictionary<string, string> setCnfDictionary = new();
+        private bool applyemCalled = false;
+
         //  --------- For TFS functions ---------
         private FarPtr _tfsState;
         private FarPtr _tfsbuf;
@@ -592,6 +595,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 548: //SETWIN -- set window parameters when drawing to video (Screen)
                 case 392: //LOCATE -- moves cursor (local screen, not telnet session)
                 case 513: //RSTWIN -- restore window parameters (local screen)
+                    break;
+                case 73:
+                    applyem();
+                    break;
+                case 535:
+                    setcnf();
                     break;
                 case 773:
                     tfsopn();
@@ -1349,6 +1358,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             return null;
+        }
+
+        private void setcnf()
+        {
+            var optnam = GetParameterString(0, stripNull: true);
+            var optval = GetParameterString(2, stripNull: true);
+
+            // if updating a new value after an applyem, clear the dictionary and start anew
+            if (applyemCalled)
+            {
+                setCnfDictionary.Clear();
+                applyemCalled = false;
+            }
+
+            setCnfDictionary[optnam] = optval;
+        }
+
+        private void applyem()
+        {
+            var filenam = GetParameterString(0, stripNull: true);
+            filenam = _fileFinder.FindFile(Module.ModulePath, filenam);
+
+            MsgFile.UpdateValues(Path.Combine(Module.ModulePath, filenam), setCnfDictionary);
+
+            applyemCalled = true;
         }
 
         /// <summary>

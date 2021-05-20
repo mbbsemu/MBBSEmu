@@ -239,7 +239,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private void DirectStdinInputNoEcho_0x07()
         {
-            Registers.AL = _stdin.Read();
+            Registers.AL = (byte)_stdin.ReadByte();
             Registers.ZeroFlag = false;
         }
 
@@ -270,7 +270,7 @@ namespace MBBSEmu.DOS.Interrupts
                 //Handle Keyboard Input
                 if (fileHandle == 0)
                 {
-                    var c = _stdin.Read();
+                    var c = (byte)_stdin.ReadByte();
                     _stdout.Write(c);
 
                     ClearCarryFlag();
@@ -369,7 +369,7 @@ namespace MBBSEmu.DOS.Interrupts
             // DOS - KEYBOARD INPUT (with echo)
             // Return: AL = character read
             // TODO (check ^C/^BREAK) and if so EXECUTE int 23h
-            var c = _stdin.Read();
+            var c = (byte)_stdin.ReadByte();
             _stdout.Write(c);
             Registers.AL = c;
         }

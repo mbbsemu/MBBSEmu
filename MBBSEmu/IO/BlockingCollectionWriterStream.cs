@@ -12,7 +12,7 @@ namespace MBBSEmu.IO
             _collection = collection;
         }
 
-        public byte Read() => throw new NotSupportedException("Can't write to BlockingCollectionReaderStream");
+        public int ReadByte() => throw new NotSupportedException("Can't write to BlockingCollectionReaderStream");
 
         public void Write(byte c) => _collection.Add(new byte[] {c});
 
