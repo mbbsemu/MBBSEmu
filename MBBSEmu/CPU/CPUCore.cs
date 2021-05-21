@@ -2831,9 +2831,13 @@ namespace MBBSEmu.CPU
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
 
                         var offset = GetOperandOffset(OpKind.Memory);
-                        var pointer = Memory.GetPointer(Registers.GetValue(_currentInstruction.MemorySegment), offset);
-                        Registers.CS = pointer.Segment;
-                        Registers.IP = pointer.Offset;
+
+                        var destinationPointer = Registers.GetValue(_currentInstruction.MemorySegment) < 0xFF00
+                            ? Memory.GetPointer(Registers.GetValue(_currentInstruction.MemorySegment), offset)
+                            : new FarPtr(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+
+                        Registers.CS = destinationPointer.Segment;
+                        Registers.IP = destinationPointer.Offset;
 
 #if DEBUG
                         if(_showDebug)

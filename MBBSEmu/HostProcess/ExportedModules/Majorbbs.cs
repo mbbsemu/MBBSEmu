@@ -22,6 +22,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MBBSEmu.Resources;
+using NLog.Filters;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -1351,6 +1353,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 9000:
                     txtvars_delegate();
+                    break;
+                case 1191:
+                    bgnedt();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -8083,6 +8088,74 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dosTimeStruct = new TimeStruct(_clock.Now);
 
             Module.Memory.SetArray(timePointer, dosTimeStruct.Data);
+        }
+
+        /// <summary>
+        ///     Full Screen Editor
+        ///
+        ///     We re-use the FSD, using a pre-defined custom template, field spec, and formats (in Assets Folder)
+        /// </summary>
+        private void bgnedt()
+        {
+            //FSDROOM
+            var resourceManager = new ResourceManager();
+
+            var template = resourceManager.GetResource("MBBSEmu.Assets.fseTemplate.txt");
+            var fieldSpec = resourceManager.GetResource("MBBSEmu.Assets.fseFieldSpec.txt");
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", out var fsdBufferPointer))
+                fsdBufferPointer = Module.Memory.AllocateVariable($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldSpec-{ChannelNumber}", out var fsdFieldSpecPointer))
+                fsdFieldSpecPointer = Module.Memory.AllocateVariable($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+
+            //Zero out FSD Memory Areas
+            Module.Memory.SetZero(fsdBufferPointer, 0x2000);
+            Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
+
+            //Hydrate FSD Memory Areas with Values
+            Module.Memory.SetArray(fsdBufferPointer, template);
+            Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
+
+            //Establish a new FSD Status Struct for this Channel
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
+                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", out var newansPointer))
+                newansPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+
+            //Declare flddat -- allocating enough room for up to 100 fields
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", out var fsdfldPointer))
+                fsdfldPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+
+            var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
+            {
+                fldspc = fsdFieldSpecPointer,
+                flddat = fsdfldPointer,
+                newans = newansPointer
+            };
+
+            Module.Memory.SetArray($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
+
+            //FSDAPR
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
+
+            //FSDBKG
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
+            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
+
+            //FSDEGO
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenDisplay;
+
+            //Update fsdscb struct
+            var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
+            
+            Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+#if DEBUG
+            _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");
+#endif
         }
     }
 }

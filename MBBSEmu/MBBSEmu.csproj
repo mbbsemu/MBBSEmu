@@ -13,6 +13,9 @@
     <None Remove="Assets\BBSUSR.DB" />
     <None Remove="Assets\commandLineHelp.txt" />
     <None Remove="Assets\crashDetailsAPI.txt" />
+    <None Remove="Assets\fseDefaultFormats.txt" />
+    <None Remove="Assets\fseFieldSpec.txt" />
+    <None Remove="Assets\fseTemplate.txt" />
     <None Remove="Assets\login.ans" />
     <None Remove="Assets\signup.ans" />
     <None Remove="Assets\version.txt" />
@@ -42,6 +45,9 @@
     <EmbeddedResource Include="Assets\BBSUSR.DB" />
     <EmbeddedResource Include="Assets\commandLineHelp.txt" />
     <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
+    <EmbeddedResource Include="Assets\fseDefaultFormats.txt" />
+    <EmbeddedResource Include="Assets\fseFieldSpec.txt" />
+    <EmbeddedResource Include="Assets\fseTemplate.txt" />
     <EmbeddedResource Include="Assets\login.ans" />
     <EmbeddedResource Include="Assets\signup.ans" />
     <EmbeddedResource Include="Assets\version.txt" />

@@ -24,8 +24,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly ILogger _logger;
         private readonly IGlobalCache _globalCache;
 
-        private readonly Dictionary<int, FsdStatus> _fsdFields = new Dictionary<int, FsdStatus>();
-        private readonly FsdUtility _fsdUtility = new FsdUtility();
+        private readonly Dictionary<int, FsdStatus> _fsdFields = new();
+        private readonly FsdUtility _fsdUtility = new();
 
         private ushort _userInput;
 
