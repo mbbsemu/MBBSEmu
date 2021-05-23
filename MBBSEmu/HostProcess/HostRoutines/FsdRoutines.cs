@@ -212,14 +212,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 case EnumFsdFieldType.Text:
                 case EnumFsdFieldType.Secret:
                     {
-                        if (fsdStatus.SelectedField.Value.Length > fsdStatus.SelectedField.Maximum)
+                        if (fsdStatus.SelectedField.Value?.Length > fsdStatus.SelectedField.Maximum)
                         {
                             DisplayErrorMessage(session, fsdStatus.ErrorField, $"Enter at most {fsdStatus.SelectedField.Maximum} character(s)");
                             isValid = false;
                             break;
                         }
 
-                        if (fsdStatus.SelectedField.Value.Length < fsdStatus.SelectedField.Minimum)
+                        if (fsdStatus.SelectedField.Value?.Length < fsdStatus.SelectedField.Minimum)
                         {
                             DisplayErrorMessage(session, fsdStatus.ErrorField, $"Enter at least {fsdStatus.SelectedField.Minimum} character(s)");
                             isValid = false;
@@ -495,7 +495,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     case EnumFsdFieldType.Numeric:
                         {
                             //Don't let us input more than the field length
-                            if (_fsdFields[session.Channel].SelectedField.FieldLength == _fsdFields[session.Channel].SelectedField.Value.Length)
+                            if (_fsdFields[session.Channel].SelectedField.FieldLength == _fsdFields[session.Channel].SelectedField.Value?.Length)
                                 break;
 
                             //If it's numeric, ensure what was entered was in fact a number

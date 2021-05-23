@@ -8097,17 +8097,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void bgnedt()
         {
+            var textLength = GetParameter(0);
+            var textPointer = GetParameterPointer(1);
+            var topicLength = GetParameter(3);
+            var topicPointer = GetParameterPointer(4);
+            var onDoneEditing = GetParameterPointer(6);
+            var flags = GetParameter(8);
+
+            var topicString = Encoding.ASCII.GetBytes($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}");
+            var textString = Module.Memory.GetString(textPointer);
+
             //FSDROOM
             var resourceManager = new ResourceManager();
 
-            var template = resourceManager.GetResource("MBBSEmu.Assets.fseTemplate.txt");
+            var template = resourceManager.GetResource("MBBSEmu.Assets.fseTemplate.ans");
             var fieldSpec = resourceManager.GetResource("MBBSEmu.Assets.fseFieldSpec.txt");
 
-            if (!Module.Memory.TryGetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", out var fsdBufferPointer))
-                fsdBufferPointer = Module.Memory.AllocateVariable($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
-
-            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldSpec-{ChannelNumber}", out var fsdFieldSpecPointer))
-                fsdFieldSpecPointer = Module.Memory.AllocateVariable($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+            var fsdBufferPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+            var fsdFieldSpecPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
 
             //Zero out FSD Memory Areas
             Module.Memory.SetZero(fsdBufferPointer, 0x2000);
@@ -8118,15 +8125,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
 
             //Establish a new FSD Status Struct for this Channel
-            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
-                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
-
-            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", out var newansPointer))
-                newansPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+            var newansPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
 
             //Declare flddat -- allocating enough room for up to 100 fields
-            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", out var fsdfldPointer))
-                fsdfldPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+            var fsdfldPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
 
             var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
             {
@@ -8139,6 +8142,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //FSDAPR
             var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
+            Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", topicString);
 
             //FSDBKG
             ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
@@ -8156,6 +8160,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");
 #endif
+
+            Registers.Halt = true;
         }
     }
 }
