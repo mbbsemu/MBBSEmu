@@ -848,7 +848,7 @@ namespace MBBSEmu.HostProcess
                     }
 
                 //Enter or Return
-                case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
+                case 0xD when !session.TransparentMode && (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
                 {
                         //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
                         if (!session.TransparentMode && session.CharacterProcessed > 0)

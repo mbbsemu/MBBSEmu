@@ -11,6 +11,7 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
@@ -22,8 +23,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MBBSEmu.Resources;
-using NLog.Filters;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -8104,8 +8103,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var onDoneEditing = GetParameterPointer(6);
             var flags = GetParameter(8);
 
-            var topicString = Encoding.ASCII.GetBytes($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}");
-            var textString = Module.Memory.GetString(textPointer);
+            //This is where we'll build the Answers String to pass into the FSD Template
+            var answersString = new StringBuilder(topicLength + textLength);
+
+            //Compile a Topic Answer String
+            answersString.Append($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}");
+            
+            //Take the input text and split it out on new lines to we can hydrate the individual lines on the template
+            var rawText = Encoding.ASCII.GetString(Module.Memory.GetString(textPointer, true));
+            var split = rawText.Split('\r');
+            var lineNumber = 0;
+            for (var i = 0; i < split.Length; i++)
+            {
+                if (split[i].Length < 79)
+                {
+                    answersString.Append($"LINE{i}={split[i]}\0");
+                    lineNumber++;
+                    continue;
+                }
+
+                //Too much data for one line, we need to "word wrap."
+                while (split[i].Length > 79)
+                {
+                    answersString.Append($" LINE{lineNumber}={split[i].Substring(0, 79)}\0");
+                    split[i] = split[i][79..];
+                    lineNumber++;
+                }
+            }
+
+            //Double Null Terminated
+            answersString.Append('\0');
 
             //FSDROOM
             var resourceManager = new ResourceManager();
@@ -8142,20 +8169,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //FSDAPR
             var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
-            Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", topicString);
+            Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", Encoding.ASCII.GetBytes(answersString.ToString()));
 
             //FSDBKG
             ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
             ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
 
             //FSDEGO
-            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenDisplay;
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenEditor;
 
             //Update fsdscb struct
             var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
             var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
             
             Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+            //Set Exit Routine
+            var fsdWhenDoneRoutine = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer(fsdWhenDoneRoutine, onDoneEditing);
 
 #if DEBUG
             _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");

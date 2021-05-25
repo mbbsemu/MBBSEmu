@@ -39,12 +39,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             switch (session.SessionState)
             {
+                case EnumSessionState.EnteringFullScreenEditor:
                 case EnumSessionState.EnteringFullScreenDisplay:
                     EnteringFullScreenDisplay(session);
                     break;
+                case EnumSessionState.InFullScreenEditor:
                 case EnumSessionState.InFullScreenDisplay:
                     InFullScreenDisplay(session);
                     break;
+                case EnumSessionState.ExitingFullScreenEditor:
                 case EnumSessionState.ExitingFullScreenDisplay:
                     ExitingFullScreenDisplay(session);
                     break;
@@ -194,7 +197,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// <summary>
         ///     Verifies a specified field value passes the specified validation
         /// </summary>
-        /// <param name="field"></param>
+        /// <param name="session"></param>
+        /// <param name="fsdStatus"></param>
         private bool ValidateField(SessionBase session, FsdStatus fsdStatus)
         {
             var isValid = true;
@@ -306,6 +310,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void EnteringFullScreenDisplay(SessionBase session)
         {
+            //Grab Values from Memory
             var fieldSpec = session.CurrentModule.Memory.GetString($"FSD-FieldSpec-{session.Channel}", true);
             var fsdTemplate = session.CurrentModule.Memory.GetString($"FSD-TemplateBuffer-{session.Channel}");
             var answerPointer = session.CurrentModule.Memory.GetVariablePointer($"FSD-Answers-{session.Channel}");
@@ -320,7 +325,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
             _fsdUtility.GetFieldPositions(fsdTemplate, fsdStatus);
             _fsdUtility.GetFieldAnsi(fsdTemplate, fsdStatus);
 
-            session.SessionState = EnumSessionState.InFullScreenDisplay;
+            session.SessionState = session.SessionState == EnumSessionState.EnteringFullScreenDisplay
+                ? EnumSessionState.InFullScreenDisplay
+                : EnumSessionState.InFullScreenEditor;
 
             //Always reset on re-entry
             if (_fsdFields.ContainsKey(session.Channel))
@@ -348,7 +355,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         /// <summary>
         ///     Processes data sent by the user and sets the ASCII (0-127) value, or the EnumKeyCode value for special characters
         /// </summary>
-        /// <param name="userInput"></param>
+        /// <param name="session"></param>
         private ushort SetUserInput(SessionBase session)
         {
             var userInput = session.InputBuffer.ToArray();
@@ -376,7 +383,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 }
                 case 1 when userInput[0] != 0x1B: //ASCII
                     return userInput[0];
-                case var _ when userInput.Length > 3:
+                case > 3:
                     session.InputBuffer.SetLength(0);
                     break;
             }
@@ -481,7 +488,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            if (_userInput >= 32 && _userInput <= 126) //ASCII Character Input
+            if (_userInput is >= 32 and <= 126) //ASCII Character Input
             {
                 //Clear the input buffer
                 session.InputBuffer.SetLength(0);
@@ -540,11 +547,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
                             break;
                         }
-
                 }
             }
 
-            if (_userInput <= 31 || _userInput == 127) //Special Characters & Delete
+            if (_userInput is <= 31 or 127) //Special Characters & Delete
             {
                 switch (_userInput)
                 {
@@ -596,8 +602,28 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             //Hitting Enter on the last Field
                             if (_fsdFields[session.Channel].SelectedOrdinal ==
                                 _fsdFields[session.Channel].Fields.Count - 1)
-                                return;
+                            {
+                                //Final Field in FSE is for Savings
+                                if (session.SessionState == EnumSessionState.InFullScreenEditor)
+                                {
+                                    var fseFinalState =
+                                        session.CurrentModule.Memory.GetOrAllocateVariablePointer(
+                                            $"FSE-FinalStateCode-{session.Channel}", sizeof(ushort));
+                                    switch (_fsdFields[session.Channel].SelectedField.Value)
+                                    {
+                                        case "SAVE":
+                                            session.CurrentModule.Memory.SetWord(fseFinalState, 0);
+                                            break;
+                                        case "QUIT":
+                                            session.CurrentModule.Memory.SetWord(fseFinalState, 256);
+                                            break;
+                                    }
 
+                                    session.SessionState = EnumSessionState.ExitingFullScreenEditor;
+                                    return;
+                                }
+                            }
+                            
                             _fsdFields[session.Channel].SelectedOrdinal++;
 
                             //Keep going until we find a non-readonly field
@@ -616,8 +642,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var fsdscbStruct = GetFsdscbStruct(session);
 
             //Get Entry Point for "When Done" routine
-            var fsdWhenDonePointer = session.CurrentModule.Memory.GetVariablePointer($"FSD-WhenDoneRoutine-{session.Channel}");
-            var fsdWhenDoneRoutine = session.CurrentModule.Memory.GetPointer(fsdWhenDonePointer);
+            var fsdWhenDoneRoutine = session.CurrentModule.Memory.GetPointer($"FSD-WhenDoneRoutine-{session.Channel}");
 
             //Save FSD Status to Global Cache
             _globalCache.Set($"FSD-Status-{session.Channel}", _fsdFields[session.Channel]);
@@ -631,9 +656,16 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SendToClient("|RESET|".EncodeToANSIArray());
             session.SendToClient("|GREEN||B|".EncodeToANSIArray());
 
+            //Get Result Code if it was FSE or FSD
+            ushort resultCode = 0;
+            if (session.SessionState == EnumSessionState.ExitingFullScreenDisplay)
+                resultCode = (ushort) (fsdscbStruct.state == (byte) EnumFsdStateCodes.FSDSAV ? 1 : 0);
+            else if(session.SessionState == EnumSessionState.ExitingFullScreenEditor)
+                resultCode = session.CurrentModule.Memory.GetWord($"FSE-FinalStateCode-{session.Channel}");
+
             //Invoke When Done Routine
             var result = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, false,
-                new Queue<ushort>(new List<ushort> { (ushort)(fsdscbStruct.state == (byte)EnumFsdStateCodes.FSDSAV ? 1 : 0) }),
+                new Queue<ushort>(new List<ushort> { resultCode }),
                 0xF100); //3k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
 
             //Invokes STT on exit
