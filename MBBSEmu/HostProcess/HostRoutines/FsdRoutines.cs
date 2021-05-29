@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
@@ -10,6 +6,10 @@ using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using NLog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace MBBSEmu.HostProcess.HostRoutines
 {
@@ -652,6 +652,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.CurrentModule.Memory.SetZero(fsdscbStruct.newans, 0x800);
             session.CurrentModule.Memory.SetArray(fsdscbStruct.newans, Encoding.ASCII.GetBytes(answersString));
 
+            //Reset Screen for Exit
             SetCursorPosition(session, 0, 24);
             session.SendToClient("|RESET|".EncodeToANSIArray());
             session.SendToClient("|GREEN||B|".EncodeToANSIArray());
@@ -660,11 +661,24 @@ namespace MBBSEmu.HostProcess.HostRoutines
             ushort resultCode = 0;
             if (session.SessionState == EnumSessionState.ExitingFullScreenDisplay)
                 resultCode = (ushort) (fsdscbStruct.state == (byte) EnumFsdStateCodes.FSDSAV ? 1 : 0);
-            else if(session.SessionState == EnumSessionState.ExitingFullScreenEditor)
+            else if (session.SessionState == EnumSessionState.ExitingFullScreenEditor)
+            {
+                //Set FSE Result Code
                 resultCode = session.CurrentModule.Memory.GetWord($"FSE-FinalStateCode-{session.Channel}");
 
+                //Set FSE Text & Topic Values
+                var textPointer = session.CurrentModule.Memory.GetPointer($"FSE-TextPointer-{session.Channel}");
+                session.CurrentModule.Memory.SetArray(textPointer,
+                    Encoding.ASCII.GetBytes($"{CompileFSEText(session)}\0"));
+
+                var topicPointer = session.CurrentModule.Memory.GetPointer($"FSE-TopicPointer-{session.Channel}");
+                session.CurrentModule.Memory.SetArray(topicPointer,
+                    Encoding.ASCII.GetBytes($"{_fsdFields[session.Channel].Fields.First(x => x.Name == "TOPIC").Value}\0"));
+
+            }
+
             //Invoke When Done Routine
-            var result = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, false,
+            var _ = session.CurrentModule.Execute(fsdWhenDoneRoutine, session.Channel, true, false,
                 new Queue<ushort>(new List<ushort> { resultCode }),
                 0xF100); //3k from stack base of 0xFFFF, should be enough to not overlap with the existing program execution
 
@@ -672,6 +686,21 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SessionState = EnumSessionState.InModule;
             session.Status = 3;
             session.UsrPtr.Substt++;
+        }
+
+        /// <summary>
+        ///     Grabs the Multiple Lines from the FSD Template for the FSE and compiles it into a final response string
+        /// </summary>
+        /// <param name="session"></param>
+        private string CompileFSEText(SessionBase session)
+        {
+            var result = new StringBuilder();
+
+            foreach (var line in _fsdFields[session.Channel].Fields.Where(x => x.Name.StartsWith("LINE")))
+                result.Append($"{line.Value?.TrimEnd('\0')}\r");
+
+            //Trim off trailing blank lines
+            return result.ToString().TrimEnd('\r');
         }
     }
 }

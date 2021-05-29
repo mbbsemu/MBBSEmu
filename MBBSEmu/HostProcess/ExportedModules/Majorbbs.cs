@@ -8188,6 +8188,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fsdWhenDoneRoutine = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
             Module.Memory.SetPointer(fsdWhenDoneRoutine, onDoneEditing);
 
+            //Set Pointers for Topic & Text
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TextPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TextPointer-{ChannelNumber}", textPointer);
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TopicPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TopicPointer-{ChannelNumber}", topicPointer);
+
 #if DEBUG
             _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");
 #endif
