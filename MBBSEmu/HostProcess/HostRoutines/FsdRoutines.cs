@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
@@ -41,21 +42,55 @@ namespace MBBSEmu.HostProcess.HostRoutines
             {
                 case EnumSessionState.EnteringFullScreenEditor:
                 case EnumSessionState.EnteringFullScreenDisplay:
-                    EnteringFullScreenDisplay(session);
-                    break;
+                    {
+                        SetState(session);
+                        EnteringFullScreenDisplay(session);
+                        UpdateSession(session);
+                        break;
+                    }
                 case EnumSessionState.InFullScreenEditor:
                 case EnumSessionState.InFullScreenDisplay:
-                    InFullScreenDisplay(session);
-                    break;
+                    {
+                        SetState(session);
+                        InFullScreenDisplay(session);
+                        UpdateSession(session);
+                        break;
+                    }
                 case EnumSessionState.ExitingFullScreenEditor:
                 case EnumSessionState.ExitingFullScreenDisplay:
-                    ExitingFullScreenDisplay(session);
-                    break;
+                    {
+                        SetState(session);
+                        ExitingFullScreenDisplay(session);
+                        UpdateSession(session);
+                        break;
+                    }
                 default:
                     return false;
             }
-
             return true;
+        }
+
+        /// <summary>
+        ///     Sets any Memory States Required to process this Channel Event
+        /// </summary>
+        /// <param name="session"></param>
+        private void SetState(SessionBase session)
+        {
+            //Set VDA for current Session
+            var vdaChannelPointer = session.CurrentModule.Memory.GetOrAllocateVariablePointer($"VDA-{session.Channel}", Majorbbs.VOLATILE_DATA_SIZE);
+            session.CurrentModule.Memory.SetArray(vdaChannelPointer, session.VDA);
+            session.CurrentModule.Memory.SetArray(session.CurrentModule.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
+        }
+
+        /// <summary>
+        ///     Updates the Session with any information modified during execution that needs to persist
+        /// </summary>
+        /// <param name="session"></param>
+        private void UpdateSession(SessionBase session)
+        {
+            //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
+            if (session.CurrentModule.Memory.TryGetVariablePointer($"VDA-{session.Channel}", out var vdaPointer))
+                session.VDA = session.CurrentModule.Memory.GetArray(vdaPointer, Majorbbs.VOLATILE_DATA_SIZE).ToArray();
         }
 
         /// <summary>
@@ -361,26 +396,26 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var userInput = session.InputBuffer.ToArray();
 
             if (userInput.Length == 0 && session.CharacterProcessed == 0x8)
-                userInput = new byte[] {0x8};
+                userInput = new byte[] { 0x8 };
 
             switch (userInput.Length)
             {
                 case 3 when userInput[0] == 0x1B && userInput[1] == '[': //ANSI Sequence
-                {
-                    switch (userInput[2])
                     {
-                        case (byte) 'A':
-                            return (ushort) EnumKeyCodes.CRSUP;
-                        case (byte) 'B':
-                            return (ushort) EnumKeyCodes.CRSDN;
-                        default:
-                            session.InputBuffer.SetLength(0);
+                        switch (userInput[2])
+                        {
+                            case (byte)'A':
+                                return (ushort)EnumKeyCodes.CRSUP;
+                            case (byte)'B':
+                                return (ushort)EnumKeyCodes.CRSDN;
+                            default:
+                                session.InputBuffer.SetLength(0);
                                 _logger.Warn($"Unsupported ANSI Sequence {userInput}");
-                            break;
-                    }
+                                break;
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case 1 when userInput[0] != 0x1B: //ASCII
                     return userInput[0];
                 case > 3:
@@ -623,7 +658,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                                     return;
                                 }
                             }
-                            
+
                             _fsdFields[session.Channel].SelectedOrdinal++;
 
                             //Keep going until we find a non-readonly field
@@ -660,7 +695,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             //Get Result Code if it was FSE or FSD
             ushort resultCode = 0;
             if (session.SessionState == EnumSessionState.ExitingFullScreenDisplay)
-                resultCode = (ushort) (fsdscbStruct.state == (byte) EnumFsdStateCodes.FSDSAV ? 1 : 0);
+                resultCode = (ushort)(fsdscbStruct.state == (byte)EnumFsdStateCodes.FSDSAV ? 1 : 0);
             else if (session.SessionState == EnumSessionState.ExitingFullScreenEditor)
             {
                 //Set FSE Result Code
@@ -675,6 +710,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 session.CurrentModule.Memory.SetArray(topicPointer,
                     Encoding.ASCII.GetBytes($"{_fsdFields[session.Channel].Fields.First(x => x.Name == "TOPIC").Value}\0"));
 
+                //If the module is using VDA, we need to ensure this data is saved to the session before invoking the "when done" method
+                UpdateSession(session);
             }
 
             //Invoke When Done Routine

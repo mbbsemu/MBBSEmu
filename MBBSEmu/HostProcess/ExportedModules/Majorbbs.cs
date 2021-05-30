@@ -62,6 +62,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<FarPtr> _previousBtrieveFile;
 
+        /// <summary>
+        ///     Maximum Size of the VDA Area of Memory
+        /// </summary>
         public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
