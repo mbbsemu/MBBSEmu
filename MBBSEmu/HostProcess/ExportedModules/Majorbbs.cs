@@ -400,7 +400,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
             else if (ChannelDictionary[ChannelNumber].StatusChange)
             {
-                ChannelDictionary[ChannelNumber].Status = Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+                ChannelDictionary[ChannelNumber].Status = Module.Memory.GetWord("STATUS");
+
+                //We only want to trigger status change when deferred execution is set
+                if (ChannelDictionary[ChannelNumber].Status is not 240 or 5)
+                    ChannelDictionary[ChannelNumber].StatusChange = false;
             }
             else
             {
