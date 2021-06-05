@@ -8107,12 +8107,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var flags = GetParameter(8);
 
             //This is where we'll build the Answers String to pass into the FSD Template
-            var answersString = new StringBuilder(topicLength + textLength);
+            var answersString = new StringBuilder($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}", topicLength + textLength);
 
-            //Compile a Topic Answer String
-            answersString.Append($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}");
-            
-            //Take the input text and split it out on new lines to we can hydrate the individual lines on the template
+            //Take the input text and split it out on new lines so we can hydrate the individual lines on the template
             var rawText = Encoding.ASCII.GetString(Module.Memory.GetString(textPointer, true));
             var split = rawText.Split('\r');
             var lineNumber = 0;
@@ -8201,6 +8198,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");
 #endif
 
+            //Because control has been handed over to the FSD, we need to stop execution of the module routine
             Registers.Halt = true;
         }
     }

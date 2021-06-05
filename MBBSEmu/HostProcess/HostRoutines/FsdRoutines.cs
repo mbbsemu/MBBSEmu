@@ -395,6 +395,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             var userInput = session.InputBuffer.ToArray();
 
+            //Check to see if the user entered a backspace since it's not handled normally as userInput
             if (userInput.Length == 0 && session.CharacterProcessed == 0x8)
                 userInput = new byte[] { 0x8 };
 
