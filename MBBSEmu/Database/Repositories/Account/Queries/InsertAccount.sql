@@ -4,16 +4,14 @@
 	passwordSalt,
 	email,
 	createDate,
-	updateDate,
-	sex)
+	updateDate)
 VALUES (
 	@userName,
 	@passwordHash,
 	@passwordSalt,
 	@email,
 	datetime('now'),
-	datetime('now'),
-	@sex
+	datetime('now')
 );
 
 SELECT last_insert_rowid();

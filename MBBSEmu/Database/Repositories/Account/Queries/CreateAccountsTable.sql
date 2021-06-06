@@ -5,6 +5,5 @@
 	passwordSalt TEXT NOT NULL,
 	email TEXT NOT NULL COLLATE NOCASE,
 	createDate TEXT NOT NULL,
-	updateDate TEXT NOT NULL,
-	sex TEXT NOT NULL
+	updateDate TEXT NOT NULL
 );

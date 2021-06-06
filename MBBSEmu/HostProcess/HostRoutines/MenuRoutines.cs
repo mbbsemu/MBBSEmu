@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
@@ -243,9 +244,30 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
+            //Populate Session Variables from mbbsemu.db
             session.Username = account.userName;
             session.UsrAcc.credat = account.createDate.ToDosDate();
-            session.UsrAcc.sex = (byte) char.Parse(account.sex);
+
+            //Lookup User in BBSUSR
+            var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            //var result = accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(session.Username), EnumBtrieveOperationCodes.AcquireEqual);
+            var result = true;
+
+            if (!result)
+            {
+                session.SendToClient("\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n".EncodeToANSIArray());
+                session.Username = "";
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                return;
+            }
+
+            //Populate Session Variables from BBSUSR.db
+            //session.UsrAcc.sex = (byte) char.Parse(account.sex);
+            //session.UsrAcc.sex = (byte) accountBtrieve.GetRecord().GetValue(213);
+            //session.UsrAcc.sex = accountBtrieve.GetRecord().ElementAt(213);
+
+
+            //Start Session
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
 
@@ -580,7 +602,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.UsrAcc.sex = (byte) char.Parse(inputValue);
 
             //Create the user in the database
-            var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email, Convert.ToChar(session.UsrAcc.sex).ToString().ToUpper());
+            var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
             foreach (var c in _configuration.DefaultKeys)
                 _accountKeyRepository.InsertAccountKey(accountId, c);
 

@@ -200,7 +200,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             foreach (var a in _accountRepository.GetAccounts())
             {
-                _sessions[_channelNumber].SendToClient($"{a.userName,-29}{a.sex,-4}{a.email,-35}{a.createDate.ToShortDateString()}\r\n");
+                _sessions[_channelNumber].SendToClient($"{a.userName,-29}{a.accountId,-4}{a.email,-35}{a.createDate.ToShortDateString()}\r\n");
             }
 
             _sessions[_channelNumber].SendToClient("--------------------------------------------------------------------------------\r\n|RESET|".EncodeToANSIString());
@@ -277,7 +277,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             var userAccount = _accountRepository.GetAccountByUsername(userName);
 
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Reset Password for account: {userName}|RESET|\r\n".EncodeToANSIString());
-            _accountRepository.UpdateAccountById(userAccount.accountId, userAccount.userName, password1, userAccount.email, userAccount.sex);
+            _accountRepository.UpdateAccountById(userAccount.accountId, userAccount.userName, password1, userAccount.email);
         }
 
         /// <summary>
