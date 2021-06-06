@@ -64,6 +64,7 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IHostRoutine, MenuRoutines>(overrides);
             AddSingleton<IHostRoutine, FsdRoutines>(overrides);
             AddSingleton<IGlobalRoutine, UsersOnlineGlobal>(overrides);
+            AddSingleton<IGlobalRoutine, ChangeGenderGlobal>(overrides);
             AddSingleton<IGlobalRoutine, PageUserGlobal>(overrides);
             AddSingleton<IGlobalRoutine, SysopGlobal>(overrides);
             AddSingleton<IMbbsHost, MbbsHost>(overrides);
