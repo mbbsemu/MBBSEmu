@@ -33,14 +33,14 @@ namespace MBBSEmu.Database.Repositories.Account
             return result.Any();
         }
 
-        public int InsertAccount(string userName, string plaintextPassword, string email)
+        public int InsertAccount(string userName, string plaintextPassword, string email, string sex)
         {
             var passwordSaltBytes = GenerateSalt();
             var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(plaintextPassword), passwordSaltBytes);
             var passwordSalt = System.Convert.ToBase64String(passwordSaltBytes);
             var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
 
-            var result = Query<int>(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email });
+            var result = Query<int>(EnumQueries.InsertAccount, new { userName, passwordHash, passwordSalt, email, sex });
             return result.First();
         }
 
@@ -77,14 +77,14 @@ namespace MBBSEmu.Database.Repositories.Account
             Query(EnumQueries.DeleteAccountById, new {accountId});
         }
 
-        public void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email)
+        public void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email, string sex)
         {
             var passwordSaltBytes = GenerateSalt();
             var passwordHashBytes = CreateSHA512(Encoding.Default.GetBytes(plaintextPassword), passwordSaltBytes);
             var passwordSalt = System.Convert.ToBase64String(passwordSaltBytes);
             var passwordHash = System.Convert.ToBase64String(passwordHashBytes);
 
-            Query(EnumQueries.UpdateAccountById, new { accountId, userName, passwordHash, passwordSalt, email });
+            Query(EnumQueries.UpdateAccountById, new { accountId, userName, passwordHash, passwordSalt, email, sex });
         }
 
         public void Reset(string sysopPassword)
@@ -94,8 +94,8 @@ namespace MBBSEmu.Database.Repositories.Account
 
             CreateTable();
 
-            InsertAccount("sysop", sysopPassword, "sysop@mbbsemu.com");
-            InsertAccount("guest", "guest", "guest@mbbsemu.com");
+            InsertAccount("sysop", sysopPassword, "sysop@mbbsemu.com", "M");
+            InsertAccount("guest", "guest", "guest@mbbsemu.com", "M");
         }
 
         /// <summary>

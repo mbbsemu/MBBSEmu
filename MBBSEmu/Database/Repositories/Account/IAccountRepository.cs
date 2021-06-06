@@ -8,14 +8,14 @@ namespace MBBSEmu.Database.Repositories.Account
         bool CreateTable();
         bool TableExists();
         bool DropTable();
-        int InsertAccount(string userName, string plaintextPassword, string email);
+        int InsertAccount(string userName, string plaintextPassword, string email, string sex);
         AccountModel GetAccountByUsername(string userName);
         AccountModel GetAccountByEmail(string email);
         AccountModel GetAccountByUsernameAndPassword(string userName, string password);
         IEnumerable<AccountModel> GetAccounts();
         AccountModel GetAccountById(int accountId);
         void DeleteAccountById(int accountId);
-        void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email);
+        void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email, string sex);
         void Reset(string sysopPassword);
     }
 }

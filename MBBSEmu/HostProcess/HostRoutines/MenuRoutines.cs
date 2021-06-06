@@ -106,6 +106,12 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 case EnumSessionState.SignupEmailInput:
                     SignupEmailInput(session);
                     break;
+                case EnumSessionState.SignupGenderDisplay:
+                    SignupGenderDisplay(session);
+                    break;
+                case EnumSessionState.SignupGenderInput:
+                    SignupGenderInput(session);
+                    break;
                 case EnumSessionState.LoggingOffDisplay:
                     LoggingOffDisplay(session);
                     break;
@@ -239,6 +245,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             session.Username = account.userName;
             session.UsrAcc.credat = account.createDate.ToDosDate();
+            session.UsrAcc.sex = (byte) char.Parse(account.sex);
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
 
@@ -501,6 +508,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             if (session.Status != 3) return;
             session.Status = 0;
+
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
             if (inputValue != session.Password)
@@ -544,14 +552,41 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             session.Email = inputValue;
 
+            session.SessionState = EnumSessionState.SignupGenderDisplay;
+            session.InputBuffer.SetLength(0);
+        }
+
+        private void SignupGenderDisplay(SessionBase session)
+        {
+            session.SendToClient("\r\n|CYAN||B|Please enter your gender 'M' or 'F' (can be changed later):|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
+            session.SessionState = EnumSessionState.SignupGenderInput;
+        }
+
+        private void SignupGenderInput(SessionBase session)
+        {
+            if (session.Status != 3) return;
+            session.Status = 0;
+
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
+
+            if (inputValue.ToUpper() is not ("M" or "F"))
+            {
+                session.SendToClient("\r\n|RED||B|Please enter a valid gender selection ('M' or 'F').\r\n|RESET|".EncodeToANSIArray());
+                session.SessionState = EnumSessionState.SignupGenderDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
+            session.UsrAcc.sex = (byte) char.Parse(inputValue);
+
             //Create the user in the database
-            var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
+            var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email, Convert.ToChar(session.UsrAcc.sex).ToString().ToUpper());
             foreach (var c in _configuration.DefaultKeys)
                 _accountKeyRepository.InsertAccountKey(accountId, c);
 
             //Add The User to the BBS Btrieve User Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = session.UsrAcc.sex }.Data, LogLevel.Error);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

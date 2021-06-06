@@ -9,6 +9,7 @@ namespace MBBSEmu.Database.Repositories.Account.Model
         public string passwordHash { get; set; }
         public string passwordSalt { get; set; }
         public string email { get; set; }
+        public string sex { get; set; }
         public string userKey { get; set; }
         public DateTime createDate { get; set; }
         public DateTime updateDate { get; set; }

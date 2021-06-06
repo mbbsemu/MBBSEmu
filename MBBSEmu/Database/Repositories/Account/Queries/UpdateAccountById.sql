@@ -5,6 +5,7 @@ SET
 	passwordHash = @passwordHash,
 	passwordSalt = @passwordSalt,
 	email = @email,
-	updateDate = datetime('now')
+	updateDate = datetime('now'),
+	sex = @sex
 WHERE
 	accountId = @accountId
