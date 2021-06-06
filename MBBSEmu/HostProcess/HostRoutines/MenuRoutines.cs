@@ -248,11 +248,15 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.Username = account.userName;
             session.UsrAcc.credat = account.createDate.ToDosDate();
 
-            //Lookup User in BBSUSR
+            //Lookup User in BBSUSR.db
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            //var result = accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(session.Username), EnumBtrieveOperationCodes.AcquireEqual);
-            var result = true;
 
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
+            {
+                userid = Encoding.ASCII.GetBytes(session.Username.ToUpper()),
+                psword = Encoding.ASCII.GetBytes("<<HASHED>>")
+            }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+            
             if (!result)
             {
                 session.SendToClient("\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n".EncodeToANSIArray());
@@ -262,10 +266,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
 
             //Populate Session Variables from BBSUSR.db
-            //session.UsrAcc.sex = (byte) char.Parse(account.sex);
-            //session.UsrAcc.sex = (byte) accountBtrieve.GetRecord().GetValue(213);
-            //session.UsrAcc.sex = accountBtrieve.GetRecord().ElementAt(213);
-
+            session.UsrAcc.sex = accountBtrieve.GetRecord().ElementAt(213);
 
             //Start Session
             session.SessionState = EnumSessionState.LoginRoutines;

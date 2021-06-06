@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MBBSEmu.HostProcess.Structs;
 
 namespace MBBSEmu.HostProcess.GlobalRoutines
 {
@@ -238,7 +239,12 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             //Remove the User from the BBSUSR Database
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            var result = accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
+            
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
+                {
+                    userid = Encoding.ASCII.GetBytes(userAccount.userName.ToUpper()),
+                    psword = Encoding.ASCII.GetBytes("<<HASHED>>")
+                }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
 
             if (result)
                 accountBtrieve.Delete();
