@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
@@ -105,6 +106,12 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     break;
                 case EnumSessionState.SignupEmailInput:
                     SignupEmailInput(session);
+                    break;
+                case EnumSessionState.SignupGenderDisplay:
+                    SignupGenderDisplay(session);
+                    break;
+                case EnumSessionState.SignupGenderInput:
+                    SignupGenderInput(session);
                     break;
                 case EnumSessionState.LoggingOffDisplay:
                     LoggingOffDisplay(session);
@@ -237,8 +244,31 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
+            //Populate Session Variables from mbbsemu.db
             session.Username = account.userName;
             session.UsrAcc.credat = account.createDate.ToDosDate();
+
+            //Lookup User in BBSUSR.db
+            var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
+            {
+                userid = Encoding.ASCII.GetBytes(session.Username.ToUpper()),
+                psword = Encoding.ASCII.GetBytes("<<HASHED>>")
+            }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+            
+            if (!result)
+            {
+                session.SendToClient("\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n".EncodeToANSIArray());
+                session.Username = "";
+                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                return;
+            }
+
+            //Populate Session Variables from BBSUSR.db
+            session.UsrAcc.sex = accountBtrieve.GetRecord().ElementAt(213);
+
+            //Start Session
             session.SessionState = EnumSessionState.LoginRoutines;
             session.SessionTimer.Start();
 
@@ -501,6 +531,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             if (session.Status != 3) return;
             session.Status = 0;
+
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
             if (inputValue != session.Password)
@@ -544,6 +575,33 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             session.Email = inputValue;
 
+            session.SessionState = EnumSessionState.SignupGenderDisplay;
+            session.InputBuffer.SetLength(0);
+        }
+
+        private void SignupGenderDisplay(SessionBase session)
+        {
+            session.SendToClient("\r\n|CYAN||B|Please enter your gender 'M' or 'F' (can be changed later):|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
+            session.SessionState = EnumSessionState.SignupGenderInput;
+        }
+
+        private void SignupGenderInput(SessionBase session)
+        {
+            if (session.Status != 3) return;
+            session.Status = 0;
+
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
+
+            if (inputValue.ToUpper() is not ("M" or "F"))
+            {
+                session.SendToClient("\r\n|RED||B|Please enter a valid gender selection ('M' or 'F').\r\n|RESET|".EncodeToANSIArray());
+                session.SessionState = EnumSessionState.SignupGenderDisplay;
+                session.InputBuffer.SetLength(0);
+                return;
+            }
+
+            session.UsrAcc.sex = (byte) char.Parse(inputValue);
+
             //Create the user in the database
             var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email);
             foreach (var c in _configuration.DefaultKeys)
@@ -551,7 +609,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Add The User to the BBS Btrieve User Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>") }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = session.UsrAcc.sex }.Data, LogLevel.Error);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

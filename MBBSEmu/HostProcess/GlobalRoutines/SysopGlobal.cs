@@ -3,6 +3,7 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
@@ -138,6 +139,11 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                         ListModules();
                         break;
                     }
+                case "CHANGESEX":
+                    {
+                        ChangeSex(commandSequence);
+                        break;
+                    }
                 default:
                     return false;
             }
@@ -168,6 +174,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTACCOUNTS",-30} List all accounts".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"REMOVEACCOUNT <USER>",-30} Removes account".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"RESETPW <USER> <PW> <CONF PW>",-30} Resets password for an account".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CHANGESEX <USER>",-30} Changes Gender of a user".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"ADDKEY <USER> <KEY>",-30} Adds a Key to a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"REMOVEKEY <USER> <KEY>",-30} Removes a Key from a User".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"LISTKEYS <USER>",-30} Lists Keys for a User".EncodeToANSIString());
@@ -238,12 +245,70 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             //Remove the User from the BBSUSR Database
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            var result = accountBtrieve.PerformOperation(0, Encoding.ASCII.GetBytes(userAccount.userName),EnumBtrieveOperationCodes.AcquireEqual);
+            
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
+                {
+                    userid = Encoding.ASCII.GetBytes(userAccount.userName.ToUpper()),
+                    psword = Encoding.ASCII.GetBytes("<<HASHED>>")
+                }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
 
             if (result)
                 accountBtrieve.Delete();
 
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Removed account: {userName}|RESET|\r\n".EncodeToANSIString());
+        }
+
+        /// <summary>
+        ///     Sysop Command to change the gender/sex of a user's account
+        ///
+        ///     Syntax: /SYS CHANGESEX USER
+        /// </summary>
+        /// <param name="commandSequence"></param>
+        private void ChangeSex(IReadOnlyList<string> commandSequence)
+        {
+            if (commandSequence.Count() < 3)
+            {
+                _sessions[_channelNumber].SendToClient("\r\n|RESET||WHITE||B|Invalid Command -- Syntax: /SYS CHANGESEX <USER>|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            var userName = commandSequence[2];
+
+            //Verify the Account Exists
+            if (!IsValidUser(userName))
+                return;
+
+            if (_sessions.Values.Any(s => string.Equals(s.Username, userName, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Cannot change gender of a logged in user: {userName}|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            //Remove the User from the BBSUSR.db Database
+            var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
+            {
+                userid = Encoding.ASCII.GetBytes(userName.ToUpper()),
+                psword = Encoding.ASCII.GetBytes("<<HASHED>>")
+            }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+
+            if (!result)
+            {
+                _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Cannot find user in BBSUSR.db: {userName}|RESET|\r\n".EncodeToANSIString());
+                return;
+            }
+
+            //Lookup current gender
+            var accountGender = accountBtrieve.GetRecord().ElementAt(213);
+            accountGender = accountGender == (byte) 'F' ? (byte) 'M' : (byte) 'F';
+
+            var btrieveAccount = accountBtrieve.GetRecord();
+            btrieveAccount[213] = accountGender;
+
+            accountBtrieve.Update(btrieveAccount);
+
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Changed {userName} gender to: {Convert.ToChar(accountGender)}|RESET|\r\n".EncodeToANSIString());
         }
 
         /// <summary>
