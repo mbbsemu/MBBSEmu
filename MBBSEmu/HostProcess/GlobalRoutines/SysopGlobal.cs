@@ -301,7 +301,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             //Lookup current gender
             var accountGender = accountBtrieve.GetRecord().ElementAt(213);
-            accountGender = accountGender == 70 ? (byte) 77 : (byte) 70;
+            accountGender = accountGender == (byte) 'F' ? (byte) 'M' : (byte) 'F';
 
             var btrieveAccount = accountBtrieve.GetRecord();
             btrieveAccount[213] = accountGender;
