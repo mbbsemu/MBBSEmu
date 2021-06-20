@@ -785,7 +785,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (channel.DataToProcess && channel.Status == 3)
+            if (channel.DataToProcess && channel.GetStatus() == 3)
             {
                 Registers.AX = 3;
             }
@@ -917,7 +917,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var status = GetParameter(1);
 
-            ChannelDictionary[channel].Status = status;
+            ChannelDictionary[channel].Status.Enqueue(status);
             ChannelDictionary[channel].StatusChange = true;
 
             Module.Memory.SetWord("STATUS", status);

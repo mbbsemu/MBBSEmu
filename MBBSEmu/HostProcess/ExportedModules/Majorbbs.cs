@@ -316,7 +316,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
             ChannelDictionary[channelNumber].StatusChange = false;
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].Status);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].GetStatus());
 
             var userBasePointer = Module.Memory.GetVariablePointer("USER");
             var currentUserPointer = new FarPtr(userBasePointer.Data);
@@ -351,7 +351,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
             //Processing Channel Input
-            if (ChannelDictionary[channelNumber].Status == 3)
+            if (ChannelDictionary[channelNumber].GetStatus() == 3)
                 ProcessChannelInput(channelNumber);
         }
 
@@ -395,16 +395,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set the Channel Status
             if (ChannelDictionary[ChannelNumber].OutputEmptyStatus && !ChannelDictionary[ChannelNumber].StatusChange)
             {
-                ChannelDictionary[ChannelNumber].Status = 5;
+                ChannelDictionary[ChannelNumber].Status.Enqueue(5);
                 ChannelDictionary[ChannelNumber].StatusChange = true;
             }
             else if (ChannelDictionary[ChannelNumber].StatusChange)
             {
-                ChannelDictionary[ChannelNumber].Status = Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+                ChannelDictionary[ChannelNumber].Status.Enqueue(Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS")));
             }
             else
             {
-                ChannelDictionary[ChannelNumber].Status = 1;
+                ChannelDictionary[ChannelNumber].Status.Enqueue(1);
             }
 
             var userPointer = Module.Memory.GetVariablePointer("USER");
@@ -7847,7 +7847,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet((ushort)EnumRuntimeFlags.Concex)) return;
             Registers.Halt = true;
-            ChannelDictionary[ChannelNumber].Status = 0;
+            ChannelDictionary[ChannelNumber].Status.Clear();
+            ChannelDictionary[ChannelNumber].Status.Enqueue(0);
         }
 
         /// <summary>

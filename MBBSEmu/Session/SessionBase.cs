@@ -68,7 +68,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     MajorBBS User Status
         /// </summary>
-        public ushort Status { get; set; }
+        public Queue<ushort> Status { get; set; }
 
         /// <summary>
         ///     Status State has been changes
@@ -265,7 +265,7 @@ namespace MBBSEmu.Session
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
-            Status = 0;
+            Status = new Queue<ushort>();
             SessionTimer = new Stopwatch();
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
@@ -325,5 +325,13 @@ namespace MBBSEmu.Session
         public static bool shouldSendToClient(byte b) {
             return IS_CHARACTER_PRINTABLE[b];
         }
+
+        /// <summary>
+        ///     Safe Method for returning Status of a Channel
+        ///
+        ///     If the FIFO Queue is Empty, we return 0 (default)
+        /// </summary>
+        /// <returns></returns>
+        public ushort GetStatus() => Status.Count == 0 ? (ushort) 0 : Status.Peek();
     }
 }
