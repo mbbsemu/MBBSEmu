@@ -441,21 +441,6 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, MbbsModule module, ushort channel = ushort.MaxValue)
-        {
-            if (!module.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) return;
-
-            if (routineEntryPoint.Segment != 0 && routineEntryPoint.Offset != 0)
-            {
-#if DEBUG
-                Logger.Info($"Calling {routine} on module {module.ModuleIdentifier} for channel {channel}");
-#endif
-                preRunCallback?.Invoke(module);
-
-                Run(module.ModuleIdentifier, routineEntryPoint, channel);
-            }
-        }
-
         /// <summary>
         ///     Adds any incoming sessions to an available Channel
         /// </summary>
@@ -848,7 +833,7 @@ namespace MBBSEmu.HostProcess
                     }
 
                 //Enter or Return
-                case 0xD when !session.TransparentMode && session.SessionState != EnumSessionState.InFullScreenDisplay:
+                case 0xD when !session.TransparentMode && (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
                 {
                         //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
                         if (!session.TransparentMode && session.CharacterProcessed > 0)

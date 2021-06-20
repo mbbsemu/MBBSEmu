@@ -1,5 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
@@ -2824,40 +2823,6 @@ namespace MBBSEmu.CPU
 
             switch (_currentInstruction.Op0Kind)
             {
-                case OpKind.Memory when _currentInstruction.IsCallFarIndirect:
-                    {
-                        //Far call with target offset at memory location
-                        Push(Registers.CS);
-                        Push((ushort)(Registers.IP + _currentInstruction.Length));
-
-                        var offset = GetOperandOffset(OpKind.Memory);
-                        var pointer = Memory.GetPointer(Registers.GetValue(_currentInstruction.MemorySegment), offset);
-                        Registers.CS = pointer.Segment;
-                        Registers.IP = pointer.Offset;
-
-#if DEBUG
-                        if(_showDebug)
-                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
-
-                        //Loaded an Exported Function Delegate from Memory
-                        if (Registers.CS > 0xFF00)
-                        {
-                            var ipBeforeCall = Registers.IP;
-
-                            _invokeExternalFunctionDelegate(Registers.CS,
-                                Registers.IP);
-
-                            //Control Transfer occurred in the CALL, so we clean up the stack and return
-                            if (ipBeforeCall != Registers.IP)
-                                return;
-
-                            Registers.SetValue(Register.EIP, Pop());
-                            Registers.SetValue(Register.CS, Pop());
-                        }
-
-                        break;
-                    }
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
                     {
                         //We push CS:IP to the stack
@@ -2918,6 +2883,11 @@ namespace MBBSEmu.CPU
 #endif
                         break;
                     }
+                case OpKind.Memory when _currentInstruction.IsCallFarIndirect:
+                {
+                    Op_Call_CarFarIndirect_M16();
+                    break;
+                }
                 case OpKind.Memory:
                     {
                         //Pointer calling a SEG:OFF based on a pointer in memory
@@ -2942,10 +2912,60 @@ namespace MBBSEmu.CPU
 
                         break;
                     }
+
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown CALL: {_currentInstruction.Op0Kind}");
             }
 
+        }
+
+        /// <summary>
+        ///     Indirect Call Far
+        ///
+        ///     Destination Pointer is loaded from Memory Address
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Call_CarFarIndirect_M16()
+        {
+            //Far call with target offset at memory location
+            Push(Registers.CS);
+            Push((ushort)(Registers.IP + _currentInstruction.Length));
+
+            var offset = GetOperandOffset(OpKind.Memory);
+
+            //Detect if the Destination Pointer is an Exported Module or a location within the Module
+            var destinationPointer = Registers.GetValue(_currentInstruction.MemorySegment) < 0xFF00
+                ? Memory.GetPointer(Registers.GetValue(_currentInstruction.MemorySegment), offset)
+                : new FarPtr(Registers.GetValue(_currentInstruction.MemorySegment), offset);
+
+            Registers.CS = destinationPointer.Segment;
+            Registers.IP = destinationPointer.Offset;
+
+#if DEBUG
+            if (_showDebug)
+                _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
+#endif
+
+            //Loaded an Exported Function Delegate from Memory
+            if (Registers.CS > 0xFF00)
+            {
+                Push(Registers.BP);
+                Registers.BP = Registers.SP;
+
+                var ipBeforeCall = Registers.IP;
+
+                _invokeExternalFunctionDelegate(Registers.CS,
+                    Registers.IP);
+
+                //Control Transfer occurred in the CALL, so we clean up the stack and return
+                if (ipBeforeCall != Registers.IP)
+                    return;
+
+                Registers.SP = Registers.BP;
+                Registers.SetValue(Register.BP, Pop());
+                Registers.SetValue(Register.EIP, Pop());
+                Registers.SetValue(Register.CS, Pop());
+            }
         }
 
         /// <summary>
