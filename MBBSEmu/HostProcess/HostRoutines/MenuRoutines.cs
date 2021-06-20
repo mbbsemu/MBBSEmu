@@ -580,8 +580,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupGenderInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
