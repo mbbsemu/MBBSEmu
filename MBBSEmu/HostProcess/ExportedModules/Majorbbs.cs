@@ -11,6 +11,7 @@ using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
@@ -61,6 +62,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private readonly Stack<FarPtr> _previousBtrieveFile;
 
+        /// <summary>
+        ///     Maximum Size of the VDA Area of Memory
+        /// </summary>
         public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
@@ -1351,6 +1355,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 9000:
                     txtvars_delegate();
+                    break;
+                case 1191:
+                    bgnedt();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -8084,6 +8091,116 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var dosTimeStruct = new TimeStruct(_clock.Now);
 
             Module.Memory.SetArray(timePointer, dosTimeStruct.Data);
+        }
+
+        /// <summary>
+        ///     Full Screen Editor
+        ///
+        ///     We re-use the FSD, using a pre-defined custom template, field spec, and formats (in Assets Folder)
+        /// </summary>
+        private void bgnedt()
+        {
+            var textLength = GetParameter(0);
+            var textPointer = GetParameterPointer(1);
+            var topicLength = GetParameter(3);
+            var topicPointer = GetParameterPointer(4);
+            var onDoneEditing = GetParameterPointer(6);
+            var flags = GetParameter(8);
+
+            //This is where we'll build the Answers String to pass into the FSD Template
+            var answersString = new StringBuilder($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}", topicLength + textLength);
+
+            //Take the input text and split it out on new lines so we can hydrate the individual lines on the template
+            var rawText = Encoding.ASCII.GetString(Module.Memory.GetString(textPointer, true));
+            var split = rawText.Split('\r');
+            var lineNumber = 0;
+            for (var i = 0; i < split.Length; i++)
+            {
+                if (split[i].Length < 79)
+                {
+                    answersString.Append($"LINE{i}={split[i]}\0");
+                    lineNumber++;
+                    continue;
+                }
+
+                //Too much data for one line, we need to "word wrap."
+                while (split[i].Length > 79)
+                {
+                    answersString.Append($" LINE{lineNumber}={split[i].Substring(0, 79)}\0");
+                    split[i] = split[i][79..];
+                    lineNumber++;
+                }
+            }
+
+            //Double Null Terminated
+            answersString.Append('\0');
+
+            //FSDROOM
+            var resourceManager = new ResourceManager();
+
+            var template = resourceManager.GetResource("MBBSEmu.Assets.fseTemplate.ans");
+            var fieldSpec = resourceManager.GetResource("MBBSEmu.Assets.fseFieldSpec.txt");
+
+            var fsdBufferPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+            var fsdFieldSpecPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+
+            //Zero out FSD Memory Areas
+            Module.Memory.SetZero(fsdBufferPointer, 0x2000);
+            Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
+
+            //Hydrate FSD Memory Areas with Values
+            Module.Memory.SetArray(fsdBufferPointer, template);
+            Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
+
+            //Establish a new FSD Status Struct for this Channel
+            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+            var newansPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+
+            //Declare flddat -- allocating enough room for up to 100 fields
+            var fsdfldPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+
+            var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
+            {
+                fldspc = fsdFieldSpecPointer,
+                flddat = fsdfldPointer,
+                newans = newansPointer
+            };
+
+            Module.Memory.SetArray($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
+
+            //FSDAPR
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
+            Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", Encoding.ASCII.GetBytes(answersString.ToString()));
+
+            //FSDBKG
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
+            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
+
+            //FSDEGO
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenEditor;
+
+            //Update fsdscb struct
+            var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
+            
+            Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+            //Set Exit Routine
+            var fsdWhenDoneRoutine = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer(fsdWhenDoneRoutine, onDoneEditing);
+
+            //Set Pointers for Topic & Text
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TextPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TextPointer-{ChannelNumber}", textPointer);
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TopicPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TopicPointer-{ChannelNumber}", topicPointer);
+
+#if DEBUG
+            _logger.Debug($"Channel {ChannelNumber} entering Full Screen Editor");
+#endif
+
+            //Because control has been handed over to the FSD, we need to stop execution of the module routine
+            Registers.Halt = true;
         }
     }
 }

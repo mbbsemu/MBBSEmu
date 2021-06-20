@@ -443,21 +443,6 @@ namespace MBBSEmu.HostProcess
             }
         }
 
-        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, MbbsModule module, ushort channel = ushort.MaxValue)
-        {
-            if (!module.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) return;
-
-            if (routineEntryPoint.Segment != 0 && routineEntryPoint.Offset != 0)
-            {
-#if DEBUG
-                Logger.Info($"Calling {routine} on module {module.ModuleIdentifier} for channel {channel}");
-#endif
-                preRunCallback?.Invoke(module);
-
-                Run(module.ModuleIdentifier, routineEntryPoint, channel);
-            }
-        }
-
         /// <summary>
         ///     Adds any incoming sessions to an available Channel
         /// </summary>
