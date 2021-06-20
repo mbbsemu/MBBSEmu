@@ -322,7 +322,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Status Change
             //Set the Memory Value
             channel.Status.Enqueue(status);
-            
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), status);
+
             //Notify the Session that a Status Change has occured
             channel.StatusChange = true;
 
