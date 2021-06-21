@@ -70,11 +70,6 @@ namespace MBBSEmu.Session
         /// </summary>
         public Queue<ushort> Status { get; set; }
 
-        /// <summary>
-        ///     Status State has been changes
-        /// </summary>
-        public bool StatusChange { get; set; }
-
         private EnumSessionState _enumSessionState;
 
         public event EventHandler<EnumSessionState> OnSessionStateChanged;

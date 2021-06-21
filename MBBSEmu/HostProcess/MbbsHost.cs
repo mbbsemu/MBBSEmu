@@ -100,7 +100,7 @@ namespace MBBSEmu.HostProcess
         ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
         /// </summary>
         private readonly Timer _tickTimer;
-        private EventWaitHandle _timerEvent;
+        private readonly EventWaitHandle _timerEvent;
 
 
         /// <summary>
@@ -301,12 +301,12 @@ namespace MBBSEmu.HostProcess
                             var result = Run(m.ModuleIdentifier,
                                 m.GlobalCommandHandlers.First(), session.Channel);
 
-                            //Command Processed
-                            if (result != 0)
-                            {
-                                session.Status.Dequeue();
-                                continue;
-                            }
+                            //Command Not Processed
+                            if (result == 0) continue;
+
+                            //Otherwise dequeue the input status to denote we've handled it
+                            session.Status.Dequeue();
+                            break;
 
                         }
                     }
@@ -335,10 +335,11 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-
+                                if (session.OutputEmptyStatus && session.GetStatus() != 5 && session.DataToClient.Count == 0)
+                                    session.Status.Enqueue(5);
 
                                 //Did BTUCHI or a previous command cause a status change?
-                                if (session.StatusChange && (session.GetStatus() == 240 || session.GetStatus() == 5))
+                                if (session.GetStatus() == 240 || session.GetStatus() == 5)
                                 {
                                     ProcessSTSROU(session);
                                     break;
@@ -388,7 +389,6 @@ namespace MBBSEmu.HostProcess
                 ProcessRTIHDLR();
                 ProcessSYSCYC();
                 ProcessTasks();
-
             }
 
             Shutdown();
@@ -497,8 +497,6 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessSTTROU_EnteringModule(SessionBase session)
         {
-            session.StatusChange = false;
-
             if (session.GetStatus() != 3)
             {
                 session.Status.Clear();
@@ -552,7 +550,6 @@ namespace MBBSEmu.HostProcess
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
             session.PromptCharacter = 0;
-            session.StatusChange = false;
 
             //Reset States
             session.Status.Clear();
@@ -678,7 +675,6 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessSTSROU(SessionBase session)
         {
-            session.StatusChange = false;
             Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.MainModuleDll.EntryPoints["stsrou"],
                 session.Channel);
         }
@@ -709,6 +705,8 @@ namespace MBBSEmu.HostProcess
             foreach (var module in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (module.RtkickRoutines.Count == 0) continue;
+
+                
 
                 foreach (var (key, value) in module.RtkickRoutines.ToList())
                 {
@@ -858,7 +856,7 @@ namespace MBBSEmu.HostProcess
                         }
 
                         //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
-                        if (!session.StatusChange && session.GetStatus() == 240)
+                        if (session.GetStatus() == 240)
                         {
                             //Set Status == 3, which means there is a Command Ready
                             session.Status.Clear(); //Clear the 240
