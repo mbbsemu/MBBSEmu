@@ -93,9 +93,6 @@ namespace MBBSEmu.Session
 
                 PreSend();
 
-                if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
-                    EchoEmptyInvoke = true;
-
                 if (!tookData)
                 {
                     if (!Heartbeat()) {

@@ -403,8 +403,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ChannelDictionary[ChannelNumber].Status
                     .Enqueue(resultStatus);
 
-            //Also Queue up the Return Code
-            ChannelDictionary[ChannelNumber].Status.Enqueue(Registers.AX);
 
             //Save off the USRPTR area to the Channel
             var userPointer = Module.Memory.GetVariablePointer("USER");

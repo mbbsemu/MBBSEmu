@@ -376,8 +376,6 @@ namespace MBBSEmu.HostProcess
                     //Mark Data Processing for this Channel as Complete
                     session.DataToProcess = false;
 
-                    if (session.Status.Count > 0)
-                        session.Status.Dequeue();
                 }
 
 
@@ -386,6 +384,9 @@ namespace MBBSEmu.HostProcess
                 ProcessRTIHDLR();
                 ProcessSYSCYC();
                 ProcessTasks();
+
+                foreach (var c in _channelDictionary.Where(x => x.Value.Status.Count > 0))
+                    c.Value.Status.Dequeue();
             }
 
             Shutdown();
