@@ -335,9 +335,6 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-                                if (session.OutputEmptyStatus && session.GetStatus() != 5 && session.DataToClient.Count == 0)
-                                    session.Status.Enqueue(5);
-
                                 //Did BTUCHI or a previous command cause a status change?
                                 if (session.GetStatus() == 240 || session.GetStatus() == 5)
                                 {
@@ -373,7 +370,7 @@ namespace MBBSEmu.HostProcess
                                         break;
 
                             }
-                            break;
+                            break;        
                     }
 
                     //Mark Data Processing for this Channel as Complete

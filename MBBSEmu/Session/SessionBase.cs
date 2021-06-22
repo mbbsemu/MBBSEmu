@@ -227,13 +227,18 @@ namespace MBBSEmu.Session
             if (_textVariableService == null)
             {
                 SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
-                return;
+                
+            }
+            else
+            {
+                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+                var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
+
+                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
 
-            var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-            var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
-
-            SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+            if(OutputEmptyStatus && DataToClient.Count == 0)
+                Status.Enqueue(5);
         }
 
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));

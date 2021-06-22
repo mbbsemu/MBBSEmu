@@ -398,8 +398,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set the Channel Status
             var resultStatus = Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
 
-            //Check for OES and Return Status 5 if it's set
-
             //If STATUS was changed programatically, queue it up
             if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
                 ChannelDictionary[ChannelNumber].Status
