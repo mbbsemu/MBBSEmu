@@ -1033,30 +1033,22 @@ namespace MBBSEmu.CPU
                             case Register.BP:
                                 {
                                     result += Registers.BP;
-                                    switch (_currentInstruction.MemoryIndex)
-                                    {
-                                        case Register.SI:
-                                            result += Registers.SI;
-                                            break;
-                                        case Register.DI:
-                                            result += Registers.DI;
-                                            break;
-                                    }
+
+                                    if (_currentInstruction.MemoryIndex == Register.None)
+                                        break;
+
+                                    result += Registers.GetValue(_currentInstruction.MemoryIndex);
                                     break;
                                 }
 
                             case Register.BX:
                                 {
                                     result += Registers.BX;
-                                    switch (_currentInstruction.MemoryIndex)
-                                    {
-                                        case Register.SI:
-                                            result += Registers.SI;
-                                            break;
-                                        case Register.DI:
-                                            result += Registers.DI;
-                                            break;
-                                    }
+
+                                    if (_currentInstruction.MemoryIndex == Register.None)
+                                        break;
+
+                                    result += Registers.GetValue(_currentInstruction.MemoryIndex);
                                     break;
                                 }
 
