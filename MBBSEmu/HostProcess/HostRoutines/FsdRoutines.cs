@@ -640,7 +640,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                                 _fsdFields[session.Channel].Fields.Count - 1)
                             {
                                 //Final Field in FSE is for Savings
-                                if (session.SessionState == EnumSessionState.ExitingFullScreenDisplay)
+                                if (session.SessionState == EnumSessionState.InFullScreenEditor)
                                 {
                                     var fseFinalState =
                                         session.CurrentModule.Memory.GetOrAllocateVariablePointer(
@@ -654,6 +654,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
                                             session.CurrentModule.Memory.SetWord(fseFinalState, 256);
                                             break;
                                     }
+
+                                    session.SessionState = EnumSessionState.ExitingFullScreenEditor;
                                 }
 
                                 return;
