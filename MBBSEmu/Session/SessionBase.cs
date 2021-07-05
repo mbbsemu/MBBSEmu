@@ -236,14 +236,11 @@ namespace MBBSEmu.Session
 
                 SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
-
-            if (EchoEmptyInvokeEnabled && DataToClient.Count == 0)
-                EchoEmptyInvoke = true;
-
+            
             if (OutputEmptyStatus && DataToClient.Count == 0)
             {
                 //Only queue up the event if there's not one already in the buffer
-                if(!Status.Contains(5) || (GetStatus() == 5 && Status.Count(x=> x == 5) == 1))
+                if(!Status.Contains(5) || GetStatus() == 5 && Status.Count(x=> x == 5) == 1)
                     Status.Enqueue(5);
             }
         }
@@ -336,9 +333,9 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     Safe Method for returning Status of a Channel
         ///
-        ///     If the FIFO Queue is Empty, we return 0 (default)
+        ///     If the FIFO Queue is Empty, we return 1 (OK)
         /// </summary>
         /// <returns></returns>
-        public ushort GetStatus() => Status.Count == 0 ? (ushort) 0 : Status.Peek();
+        public ushort GetStatus() => Status.Count == 0 ? (ushort) 1 : Status.Peek();
     }
 }

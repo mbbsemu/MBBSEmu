@@ -265,7 +265,11 @@ namespace MBBSEmu.HostProcess
                     session.ProcessDataFromClient();
 
                     //Handle GSBL Chain of Events
-                    ProcessGSBLInputEvents(session);
+                    if (!ProcessGSBLInputEvents(session))
+                    {
+                        session.DataToProcess = false;
+                        continue;
+                    }
 
                     //Handle Character based Events
                     if (session.DataToProcess)
@@ -370,14 +374,13 @@ namespace MBBSEmu.HostProcess
                                         break;
 
                             }
-                            break;        
+                            break;
                     }
 
                     //Mark Data Processing for this Channel as Complete
                     session.DataToProcess = false;
 
                 }
-
 
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
@@ -619,7 +622,7 @@ namespace MBBSEmu.HostProcess
             initialStackValues.Enqueue(0xFFFF); //-1 is the keycode passed in
             initialStackValues.Enqueue(session.Channel);
 
-            var result = Run(session.CurrentModule.ModuleIdentifier,
+            var _ = Run(session.CurrentModule.ModuleIdentifier,
                 session.CharacterInterceptor,
                 session.Channel, true,
                 initialStackValues);
@@ -635,10 +638,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ProcessBTUCHI(SessionBase session)
+        private ushort ProcessBTUCHI(SessionBase session)
         {
-            var channelInputBufferSizeBefore = session.InputBuffer.Length;
-
             //Create Parameters for BTUCHI Routine
             var initialStackValues = new Queue<ushort>(2);
             initialStackValues.Enqueue(session.CharacterReceived);
@@ -653,6 +654,9 @@ namespace MBBSEmu.HostProcess
             //would clear out AH before assigning AL
             result &= 0xFF;
 
+            if (result == 0)
+                return result;
+
             session.CharacterProcessed = (byte)result;
 
             if (session.CharacterProcessed == 0xD)
@@ -660,6 +664,8 @@ namespace MBBSEmu.HostProcess
                 session.Status.Clear();
                 session.Status.Enqueue(3);
             }
+
+            return result;
         }
 
         /// <summary>
@@ -703,9 +709,7 @@ namespace MBBSEmu.HostProcess
             foreach (var module in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (module.RtkickRoutines.Count == 0) continue;
-
                 
-
                 foreach (var (key, value) in module.RtkickRoutines.ToList())
                 {
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > value.Delay * 1000)
@@ -762,6 +766,7 @@ namespace MBBSEmu.HostProcess
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
                 if (syscycPointer == FarPtr.Empty) continue;
 
+                Logger.Info(".");
                 Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
             }
         }
@@ -782,7 +787,7 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var r in m.TaskRoutines)
                 {
-                    //Create Parameters for BTUCHI Routine
+                    Logger.Info(".");
                     var initialStackValues = new Queue<ushort>(1);
                     initialStackValues.Enqueue((ushort)r.Key);
                     Run(m.ModuleIdentifier, r.Value, ushort.MaxValue, false, initialStackValues);
@@ -797,22 +802,30 @@ namespace MBBSEmu.HostProcess
         ///     from the serial channel.
         /// </summary>
         /// <param name="session"></param>
-        private void ProcessGSBLInputEvents(SessionBase session)
+        /// <returns>
+        ///     TRUE == Data Processed, Continue
+        ///     FALSE == Data Processed, Halt Processing on Channel
+        /// </returns>
+        private bool ProcessGSBLInputEvents(SessionBase session)
         {
+            //Quick Exit
+            if (session.CharacterInterceptor == null)
+                return true;
+                
+            //Invoke BTUCHI registered routine if one exists
+            if (session.DataToProcess)
+            {
+                return ProcessBTUCHI(session) != 0;
+            }
+
             //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-            if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
             {
                 ProcessEchoEmptyInvoke(session);
+                return true;
             }
-            //Invoke BTUCHI registered routine if one exists
-            else if (session.DataToProcess)
-            {
-                //First run it through BTUCHI?
-                if (session.CharacterInterceptor != null)
-                {
-                    ProcessBTUCHI(session);
-                }
-            }
+            
+            return true;
         }
 
         /// <summary>
@@ -841,7 +854,7 @@ namespace MBBSEmu.HostProcess
 
                 //Enter or Return
                 case 0xD when !session.TransparentMode && (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
-                {
+                    {
                         //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
                         if (!session.TransparentMode && session.CharacterProcessed > 0)
                             session.SendToClient(new byte[] { 0xD, 0xA });

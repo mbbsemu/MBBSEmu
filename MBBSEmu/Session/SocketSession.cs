@@ -91,6 +91,10 @@ namespace MBBSEmu.Session
                     return;
                 }
 
+                //If EchoEmpty is on, we actually sent data, AND there's no longer data to send, trigger
+                if (EchoEmptyInvokeEnabled && tookData && DataToClient.Count == 0)
+                    EchoEmptyInvoke = true;
+
                 PreSend();
 
                 if (!tookData)
