@@ -656,8 +656,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
                                     }
 
                                     session.SessionState = EnumSessionState.ExitingFullScreenEditor;
-                                    return;
                                 }
+
+                                return;
                             }
 
                             _fsdFields[session.Channel].SelectedOrdinal++;
