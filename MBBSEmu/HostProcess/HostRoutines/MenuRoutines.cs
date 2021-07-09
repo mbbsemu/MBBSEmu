@@ -161,9 +161,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginUsernameInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.Status != 3) return;
-            session.Status = 0;
-
+            if (session.GetStatus() != 3) return;
+            
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
             if (string.IsNullOrEmpty(inputValue))
@@ -225,8 +224,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginPasswordInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             //Get The Password
             session.Password = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
@@ -270,6 +268,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Start Session
             session.SessionState = EnumSessionState.LoginRoutines;
+            session.EchoSecureEnabled = false;
             session.SessionTimer.Start();
 
             if (_accountKeyRepository.GetAccountKeysByUsername(session.Username).Any(x => x.accountKey == "SYSOP"))
@@ -326,8 +325,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void MainMenuInput(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             if (session.InputBuffer.Length == 0)
             {
@@ -383,8 +381,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LogoffConfirmationInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).TrimEnd('\0').ToUpper();
 
@@ -431,8 +428,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupUsernameInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -489,8 +485,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -529,8 +524,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordConfirmInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -556,8 +550,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupEmailInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -587,8 +580,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupGenderInput(SessionBase session)
         {
-            if (session.Status != 3) return;
-            session.Status = 0;
+            if (session.GetStatus() != 3) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 

@@ -100,7 +100,7 @@ namespace MBBSEmu.HostProcess
         ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
         /// </summary>
         private readonly Timer _tickTimer;
-        private EventWaitHandle _timerEvent;
+        private readonly EventWaitHandle _timerEvent;
 
 
         /// <summary>
@@ -265,14 +265,18 @@ namespace MBBSEmu.HostProcess
                     session.ProcessDataFromClient();
 
                     //Handle GSBL Chain of Events
-                    ProcessGSBLInputEvents(session);
+                    if (!ProcessGSBLInputEvents(session))
+                    {
+                        session.DataToProcess = false;
+                        continue;
+                    }
 
                     //Handle Character based Events
                     if (session.DataToProcess)
                         ProcessIncomingCharacter(session);
 
                     //Global Command Handler
-                    if (session.Status == 3 && DoGlobalsAttribute.Get(session.SessionState))
+                    if (session.GetStatus() == 3 && DoGlobalsAttribute.Get(session.SessionState))
                     {
                         //Transfer Input Buffer to Command Buffer, but don't clear it
                         session.InputBuffer.WriteByte(0x0);
@@ -282,7 +286,7 @@ namespace MBBSEmu.HostProcess
                         if (_globalRoutines.Any(g =>
                             g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
                         {
-                            session.Status = 1;
+                            session.Status.Enqueue(1);
                             session.InputBuffer.SetLength(0);
 
                             //Redisplay Main Menu prompt after global if session is at Main Menu
@@ -291,6 +295,7 @@ namespace MBBSEmu.HostProcess
                                 session.SessionState = EnumSessionState.MainMenuInputDisplay;
                             }
 
+                            session.Status.Dequeue();
                             continue;
                         }
 
@@ -300,16 +305,13 @@ namespace MBBSEmu.HostProcess
                             var result = Run(m.ModuleIdentifier,
                                 m.GlobalCommandHandlers.First(), session.Channel);
 
-                            //Command Not Recognized
-                            if (result == 0)
-                            {
-                                //Because Status on Exit Sets to the Exit code of the module, we reset it back to 3
-                                session.Status = 3;
+                            //Command Not Processed
+                            if (result == 0) continue;
 
-                                continue;
-                            }
-
+                            //Otherwise dequeue the input status to denote we've handled it
+                            session.Status.Dequeue();
                             break;
+
                         }
                     }
 
@@ -337,17 +339,15 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-
-
                                 //Did BTUCHI or a previous command cause a status change?
-                                if (session.StatusChange && (session.Status == 240 || session.Status == 5))
+                                if (session.GetStatus() == 240 || session.GetStatus() == 5)
                                 {
                                     ProcessSTSROU(session);
                                     break;
                                 }
 
                                 //User Input Available? Invoke *STTROU
-                                if (session.Status == 3)
+                                if (session.GetStatus() == 3)
                                 {
                                     ProcessSTTROU(session);
                                 }
@@ -359,7 +359,7 @@ namespace MBBSEmu.HostProcess
 
                                     //Keep the user in Polling Status if the polling routine is still there
                                     if (session.PollingRoutine != FarPtr.Empty)
-                                        session.Status = 192;
+                                        session.Status.Enqueue(192);
                                 }
 
                                 break;
@@ -379,14 +379,17 @@ namespace MBBSEmu.HostProcess
 
                     //Mark Data Processing for this Channel as Complete
                     session.DataToProcess = false;
-                }
 
+                }
 
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
                 ProcessRTIHDLR();
                 ProcessSYSCYC();
                 ProcessTasks();
+
+                foreach (var c in _channelDictionary.Where(x => x.Value.Status.Count > 0))
+                    c.Value.Status.Dequeue();
             }
 
             Shutdown();
@@ -495,8 +498,12 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessSTTROU_EnteringModule(SessionBase session)
         {
-            session.StatusChange = false;
-            session.Status = 3;
+            if (session.GetStatus() != 3)
+            {
+                session.Status.Clear();
+                session.Status.Enqueue(3);
+            }
+
             session.SessionState = EnumSessionState.InModule;
             session.UsrPtr.State = session.CurrentModule.MainModuleDll.StateCode;
             ProcessSTTROU(session);
@@ -538,16 +545,15 @@ namespace MBBSEmu.HostProcess
         private void ExitModule(SessionBase session)
         {
             //Clear VDA
-            Array.Clear(session.VDA,0, Majorbbs.VOLATILE_DATA_SIZE);
+            Array.Clear(session.VDA, 0, Majorbbs.VOLATILE_DATA_SIZE);
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
             session.PromptCharacter = 0;
-            session.StatusChange = false;
 
             //Reset States
-            session.Status = 0;
+            session.Status.Clear();
             session.UsrPtr.Substt = 0;
 
             //Clear the Input Buffer
@@ -616,7 +622,7 @@ namespace MBBSEmu.HostProcess
             initialStackValues.Enqueue(0xFFFF); //-1 is the keycode passed in
             initialStackValues.Enqueue(session.Channel);
 
-            var result = Run(session.CurrentModule.ModuleIdentifier,
+            var _ = Run(session.CurrentModule.ModuleIdentifier,
                 session.CharacterInterceptor,
                 session.Channel, true,
                 initialStackValues);
@@ -632,10 +638,8 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ProcessBTUCHI(SessionBase session)
+        private ushort ProcessBTUCHI(SessionBase session)
         {
-            var channelInputBufferSizeBefore = session.InputBuffer.Length;
-
             //Create Parameters for BTUCHI Routine
             var initialStackValues = new Queue<ushort>(2);
             initialStackValues.Enqueue(session.CharacterReceived);
@@ -650,10 +654,18 @@ namespace MBBSEmu.HostProcess
             //would clear out AH before assigning AL
             result &= 0xFF;
 
+            if (result == 0)
+                return result;
+
             session.CharacterProcessed = (byte)result;
 
             if (session.CharacterProcessed == 0xD)
-                session.Status = 3;
+            {
+                session.Status.Clear();
+                session.Status.Enqueue(3);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -667,7 +679,6 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessSTSROU(SessionBase session)
         {
-            session.StatusChange = false;
             Run(session.CurrentModule.ModuleIdentifier, session.CurrentModule.MainModuleDll.EntryPoints["stsrou"],
                 session.Channel);
         }
@@ -698,7 +709,7 @@ namespace MBBSEmu.HostProcess
             foreach (var module in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
             {
                 if (module.RtkickRoutines.Count == 0) continue;
-
+                
                 foreach (var (key, value) in module.RtkickRoutines.ToList())
                 {
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > value.Delay * 1000)
@@ -755,6 +766,7 @@ namespace MBBSEmu.HostProcess
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
                 if (syscycPointer == FarPtr.Empty) continue;
 
+                Logger.Info(".");
                 Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
             }
         }
@@ -775,7 +787,7 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var r in m.TaskRoutines)
                 {
-                    //Create Parameters for BTUCHI Routine
+                    Logger.Info(".");
                     var initialStackValues = new Queue<ushort>(1);
                     initialStackValues.Enqueue((ushort)r.Key);
                     Run(m.ModuleIdentifier, r.Value, ushort.MaxValue, false, initialStackValues);
@@ -790,22 +802,30 @@ namespace MBBSEmu.HostProcess
         ///     from the serial channel.
         /// </summary>
         /// <param name="session"></param>
-        private void ProcessGSBLInputEvents(SessionBase session)
+        /// <returns>
+        ///     TRUE == Data Processed, Continue
+        ///     FALSE == Data Processed, Halt Processing on Channel
+        /// </returns>
+        private bool ProcessGSBLInputEvents(SessionBase session)
         {
+            //Quick Exit
+            if (session.CharacterInterceptor == null)
+                return true;
+                
+            //Invoke BTUCHI registered routine if one exists
+            if (session.DataToProcess)
+            {
+                return ProcessBTUCHI(session) != 0;
+            }
+
             //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-            if (session.EchoEmptyInvoke && session.CharacterInterceptor != null)
+            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
             {
                 ProcessEchoEmptyInvoke(session);
+                return true;
             }
-            //Invoke BTUCHI registered routine if one exists
-            else if (session.DataToProcess)
-            {
-                //First run it through BTUCHI?
-                if (session.CharacterInterceptor != null)
-                {
-                    ProcessBTUCHI(session);
-                }
-            }
+            
+            return true;
         }
 
         /// <summary>
@@ -834,16 +854,24 @@ namespace MBBSEmu.HostProcess
 
                 //Enter or Return
                 case 0xD when !session.TransparentMode && (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
-                {
+                    {
                         //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
                         if (!session.TransparentMode && session.CharacterProcessed > 0)
-                            session.SendToClient(new byte[] {0xD, 0xA});
+                            session.SendToClient(new byte[] { 0xD, 0xA });
+
+                        //If there's no status in the queue, we can bail here
+                        if (session.Status.Count == 0)
+                        {
+                            session.Status.Enqueue(3);
+                            break;
+                        }
 
                         //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
-                        if (!session.StatusChange && session.Status != 240)
+                        if (session.GetStatus() == 240)
                         {
                             //Set Status == 3, which means there is a Command Ready
-                            session.Status = 3;
+                            session.Status.Clear(); //Clear the 240
+                            session.Status.Enqueue(3); //Enqueue Status of 3
                             session.EchoSecureEnabled = false;
                         }
 
@@ -864,14 +892,21 @@ namespace MBBSEmu.HostProcess
                             session.InputBuffer.WriteByte(session.CharacterProcessed);
 
                             //If the client is in transparent mode, don't echo
-                            if (!session.TransparentMode &&
-                                (session.Status == 0 || session.Status == 1 || session.Status == 192))
+                            if (session.TransparentMode)
+                                break;
+
+                            if (session.Status.Count == 0 || session.GetStatus() == 0 || session.GetStatus() == 1 ||
+                               session.GetStatus() == 192)
                             {
-                                //Check for Secure Echo being Enabled
-                                session.SendToClient(session.EchoSecureEnabled
-                                    ? new[] {session.ExtUsrAcc.ech}
-                                    : new[] {session.CharacterReceived});
+
+                                {
+                                    //Check for Secure Echo being Enabled
+                                    session.SendToClient(session.EchoSecureEnabled
+                                        ? new[] { session.ExtUsrAcc.ech }
+                                        : new[] { session.CharacterReceived });
+                                }
                             }
+
                         }
 
                         break;
@@ -946,7 +981,7 @@ namespace MBBSEmu.HostProcess
                     Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
                 }
 
-                dll.StateCode = (short) (_modules.Count * 10 + i);
+                dll.StateCode = (short)(_modules.Count * 10 + i);
             }
 
             //Run INIT

@@ -321,10 +321,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Status Change
             //Set the Memory Value
+            channel.Status.Enqueue(status);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), status);
-
-            //Notify the Session that a Status Change has occured
-            channel.StatusChange = true;
+            
 
 #if DEBUG
             _logger.Debug($"Injecting Stauts {status} on channel {channelNumber}");
@@ -647,19 +646,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            //Notify the Session that a Status Change has occured
-            if (onoff == 1)
-            {
-                channel.OutputEmptyStatus = true;
-                channel.StatusChange = true;
-                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 5);
-            }
-            else
-            {
-                channel.OutputEmptyStatus = false;
-                channel.StatusChange = true;
-                Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 1);
-            }
+            //Notify the Session that a Status Change has occurred
+            channel.OutputEmptyStatus = onoff == 1;
 
 #if DEBUG
             _logger.Debug($"Value {onoff} for Channel {channelNumber}");
@@ -785,7 +773,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (channel.DataToProcess && channel.Status == 3)
+            if (channel.DataToProcess && channel.GetStatus() == 3)
             {
                 Registers.AX = 3;
             }
@@ -917,10 +905,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var channel = GetParameter(0);
             var status = GetParameter(1);
 
-            ChannelDictionary[channel].Status = status;
-            ChannelDictionary[channel].StatusChange = true;
-
-            Module.Memory.SetWord("STATUS", status);
+            ChannelDictionary[channel].Status.Enqueue(status);
 
 #if DEBUG
             _logger.Debug($"Injecting Status {status} on Channel {channel}");

@@ -182,7 +182,7 @@ namespace MBBSEmu
 
         private int GetTimerHertz(string key)
         {
-            if (!Int32.TryParse(ConfigurationRoot[key], out var timerHertz))
+            if (!int.TryParse(ConfigurationRoot[key], out var timerHertz))
             {
                 _logger.Warn($"{key} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: 36");
                 timerHertz = 36;

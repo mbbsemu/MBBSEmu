@@ -519,6 +519,10 @@ namespace MBBSEmu
             _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte) 'M' }.Data, LogLevel.Error);
             _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte) 'M' }.Data, LogLevel.Error);
 
+            //Reset BBSGEN
+            var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
+            _genbbBtrieve.DeleteAll();
+
             _logger.Info("Database Reset!");
         }
     }
