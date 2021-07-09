@@ -1017,49 +1017,61 @@ namespace MBBSEmu.CPU
             {
                 case OpKind.Memory:
                     {
+                        result = (ushort)_currentInstruction.MemoryDisplacement;
                         switch (_currentInstruction.MemoryBase)
                         {
-                            case Register.DS when _currentInstruction.MemoryIndex == Register.None:
-                            case Register.None when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)_currentInstruction.MemoryDisplacement;
-                                break;
-                            case Register.BP when _currentInstruction.MemoryIndex == Register.None:
+                            case Register.DS:
+                            case Register.None:
                                 {
-
-                                    result = (ushort)(Registers.BP + _currentInstruction.MemoryDisplacement);
+#if DEBUG
+                                    if (_currentInstruction.MemoryIndex != Register.None)
+                                        throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
+#endif
                                     break;
                                 }
 
-                            case Register.BP when _currentInstruction.MemoryIndex == Register.SI:
+                            case Register.BP:
                                 {
+                                    result += Registers.BP;
 
-                                    result = (ushort)(Registers.BP + Registers.SI +
-                                                       _currentInstruction.MemoryDisplacement);
+                                    if (_currentInstruction.MemoryIndex == Register.None)
+                                        break;
+
+                                    result += Registers.GetValue(_currentInstruction.MemoryIndex);
                                     break;
                                 }
 
-                            case Register.BP when _currentInstruction.MemoryIndex == Register.DI:
+                            case Register.BX:
                                 {
-                                    result = (ushort)(Registers.BP + Registers.DI +
-                                                       _currentInstruction.MemoryDisplacement);
+                                    result += Registers.BX;
+
+                                    if (_currentInstruction.MemoryIndex == Register.None)
+                                        break;
+
+                                    result += Registers.GetValue(_currentInstruction.MemoryIndex);
                                     break;
                                 }
 
-                            case Register.BX when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement);
+                            case Register.SI:
+                            {
+#if DEBUG
+                                if (_currentInstruction.MemoryIndex != Register.None)
+                                    throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
+#endif
+                                result += Registers.SI;
                                 break;
-                            case Register.BX when _currentInstruction.MemoryIndex == Register.SI:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.SI);
+                                }
+
+                            case Register.DI:
+                            {
+#if DEBUG
+                                if (_currentInstruction.MemoryIndex != Register.None)
+                                    throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
+#endif
+                                result += Registers.DI;
                                 break;
-                            case Register.BX when _currentInstruction.MemoryIndex == Register.DI:
-                                result = (ushort)(Registers.BX + _currentInstruction.MemoryDisplacement + Registers.DI);
-                                break;
-                            case Register.SI when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.SI + _currentInstruction.MemoryDisplacement);
-                                break;
-                            case Register.DI when _currentInstruction.MemoryIndex == Register.None:
-                                result = (ushort)(Registers.DI + _currentInstruction.MemoryDisplacement);
-                                break;
+                            }
+
                             default:
                                 throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
                         }
@@ -1267,7 +1279,8 @@ namespace MBBSEmu.CPU
         private void Op_Daa()
         {
             int res = Registers.AL;
-            if ((Registers.AL & 0xF) > 9 || Registers.AuxiliaryCarryFlag) {
+            if ((Registers.AL & 0xF) > 9 || Registers.AuxiliaryCarryFlag)
+            {
                 res += 6;
                 Registers.AuxiliaryCarryFlag = true;
             }
@@ -1276,7 +1289,8 @@ namespace MBBSEmu.CPU
                 Registers.AuxiliaryCarryFlag = false;
             }
 
-            if (res > 0x9F || Registers.CarryFlag) {
+            if (res > 0x9F || Registers.CarryFlag)
+            {
                 res += 0x60;
                 Registers.CarryFlag = true;
             }
@@ -1892,7 +1906,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Stosw()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 Memory.SetWord(Registers.ES, Registers.DI, Registers.AX);
 
                 if (Registers.DirectionFlag)
@@ -2884,10 +2899,10 @@ namespace MBBSEmu.CPU
                         break;
                     }
                 case OpKind.Memory when _currentInstruction.IsCallFarIndirect:
-                {
-                    Op_Call_CarFarIndirect_M16();
-                    break;
-                }
+                    {
+                        Op_Call_CarFarIndirect_M16();
+                        break;
+                    }
                 case OpKind.Memory:
                     {
                         //Pointer calling a SEG:OFF based on a pointer in memory
@@ -3048,7 +3063,7 @@ namespace MBBSEmu.CPU
         {
             Registers.SignFlag = Registers.AH.IsFlagSet((byte)EnumFlags.SF);
             Registers.ZeroFlag = Registers.AH.IsFlagSet((byte)EnumFlags.ZF);
-            Registers.AuxiliaryCarryFlag =Registers.AH.IsFlagSet((byte)EnumFlags.AF);
+            Registers.AuxiliaryCarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.AF);
             Registers.CarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.CF);
         }
 
@@ -3411,7 +3426,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Stosb()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
 
                 if (Registers.DirectionFlag)
@@ -3428,7 +3444,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cmpsb()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 var result = (byte)(Memory.GetByte(Registers.DS, Registers.SI) - Memory.GetByte(Registers.ES, Registers.DI));
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result);
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result);
@@ -3464,10 +3481,11 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Rep(Action action, bool isRepeCompatible = false)
         {
-            while (Registers.CX != 0) {
+            while (Registers.CX != 0)
+            {
                 action.Invoke();
                 Registers.CX--;
-	            if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.ZeroFlag) || (_currentInstruction.HasRepnePrefix && Registers.ZeroFlag))
+                if ((_currentInstruction.HasRepePrefix && isRepeCompatible && !Registers.ZeroFlag) || (_currentInstruction.HasRepnePrefix && Registers.ZeroFlag))
                     break;
             }
         }
@@ -3475,7 +3493,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Scasb()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 var destination = Registers.AL;
                 var source = Memory.GetByte(Registers.ES, Registers.DI);
 
@@ -3603,15 +3622,15 @@ namespace MBBSEmu.CPU
 
             var result = (ST0, ST1)
                 switch
-                {
-                    (double.NaN, double.NaN) => double.NaN,
-                    var (st0, _) when double.IsNaN(st0) => double.NaN,
-                    var (_, st1) when double.IsNaN(st1) => double.NaN,
-                    var (st0, st1) when double.IsNegativeInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
-                    var (st0, st1) when double.IsPositiveInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
-                    var (st0, st1) when st0 == 0 && double.IsPositiveInfinity(st1) => double.NaN,
-                    _ => Math.ScaleB(ST0, (int)ST1)
-                };
+            {
+                (double.NaN, double.NaN) => double.NaN,
+                var (st0, _) when double.IsNaN(st0) => double.NaN,
+                var (_, st1) when double.IsNaN(st1) => double.NaN,
+                var (st0, st1) when double.IsNegativeInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
+                var (st0, st1) when double.IsPositiveInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
+                var (st0, st1) when st0 == 0 && double.IsPositiveInfinity(st1) => double.NaN,
+                _ => Math.ScaleB(ST0, (int)ST1)
+            };
 
             //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
 
@@ -4023,7 +4042,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsb()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
 
                 if (Registers.DirectionFlag)
@@ -4045,7 +4065,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsw()
         {
-            Repeat(() => {
+            Repeat(() =>
+            {
                 Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
 
                 if (Registers.DirectionFlag)
@@ -4138,7 +4159,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private ushort Op_Movzx_16()
         {
-            var result = (ushort) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var result = (ushort)GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             return result;
         }
 
@@ -4162,8 +4183,8 @@ namespace MBBSEmu.CPU
 
             var result = sourceSize switch
             {
-                (1) => (uint) GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
-                (2) => (uint) GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (1) => (uint)GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
+                (2) => (uint)GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
                 _ => throw new NotImplementedException(),
             };
             return result;
