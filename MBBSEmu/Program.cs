@@ -314,7 +314,7 @@ namespace MBBSEmu
                     _menuOptionKey ??= "A";
 
                     //Load Command Line
-                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey });
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey, ModuleEnabled = true});
                 }
                 else if (_isModuleConfigFile)
                 {
