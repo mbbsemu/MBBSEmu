@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.True(mbbsEmuCpuRegisters.Halt);
-            Assert.Equal(0,testSessions[0].Status);
+            Assert.Equal(0,testSessions[0].GetStatus());
         }
 
         [Fact]
@@ -38,7 +38,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.False(mbbsEmuCpuRegisters.Halt);
-            Assert.Equal(0, testSessions[0].Status);
+            Assert.Equal(1, testSessions[0].GetStatus());
         }
     }
 }

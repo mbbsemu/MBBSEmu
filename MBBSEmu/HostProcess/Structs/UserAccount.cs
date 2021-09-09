@@ -380,7 +380,6 @@ namespace MBBSEmu.HostProcess.Structs
         {
             flags = 1; //Set everyone to having "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
-            sex = (byte)'M';  //Set everyone to male for now
             creds = 31337;
             scnwid = 80; //Screen Width to 80 Columns
             scnfse = 24; //Screen Height to 24 Lines

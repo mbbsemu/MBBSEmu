@@ -54,7 +54,7 @@ namespace MBBSEmu.Session.Enums
         SignupUsernameInput,
 
         /// <summary>
-        ///     User is Signing up, prompted for Password
+        ///     User is Signing up, prompted for Password, prompted for Gender
         /// </summary>
         SignupPasswordDisplay,
 
@@ -65,6 +65,9 @@ namespace MBBSEmu.Session.Enums
 
         SignupEmailDisplay,
         SignupEmailInput,
+
+        SignupGenderDisplay,
+        SignupGenderInput,
 
         /// <summary>
         ///     User is Signing up, prompted for Password Confirmation
@@ -122,6 +125,8 @@ namespace MBBSEmu.Session.Enums
         InFullScreenEditor,
 
         ExitingFullScreenDisplay,
+
+        ExitingFullScreenEditor,
 
         Disconnected
     }

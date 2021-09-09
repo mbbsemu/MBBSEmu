@@ -128,7 +128,6 @@ namespace MBBSEmu.HostProcess.Fsd
             //Get Template and Strip out ANSI Characters
             var templateString = Encoding.ASCII.GetString(StripAnsi(template));
 
-
             var currentY = 1; //ANSI x/y positions are 1 based, so first loop these will be 1,1
             var currentX = 0;
             var currentField = 0;

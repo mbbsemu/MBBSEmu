@@ -68,12 +68,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     MajorBBS User Status
         /// </summary>
-        public ushort Status { get; set; }
-
-        /// <summary>
-        ///     Status State has been changes
-        /// </summary>
-        public bool StatusChange { get; set; }
+        public Queue<ushort> Status { get; set; }
 
         private EnumSessionState _enumSessionState;
 
@@ -232,13 +227,22 @@ namespace MBBSEmu.Session
             if (_textVariableService == null)
             {
                 SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
-                return;
+                
             }
+            else
+            {
+                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+                var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
 
-            var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-            var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
-
-            SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+            }
+            
+            if (OutputEmptyStatus && DataToClient.Count == 0)
+            {
+                //Only queue up the event if there's not one already in the buffer
+                if(!Status.Contains(5) || GetStatus() == 5 && Status.Count(x=> x == 5) == 1)
+                    Status.Enqueue(5);
+            }
         }
 
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));
@@ -265,7 +269,7 @@ namespace MBBSEmu.Session
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
-            Status = 0;
+            Status = new Queue<ushort>();
             SessionTimer = new Stopwatch();
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
@@ -325,5 +329,13 @@ namespace MBBSEmu.Session
         public static bool shouldSendToClient(byte b) {
             return IS_CHARACTER_PRINTABLE[b];
         }
+
+        /// <summary>
+        ///     Safe Method for returning Status of a Channel
+        ///
+        ///     If the FIFO Queue is Empty, we return 1 (OK)
+        /// </summary>
+        /// <returns></returns>
+        public ushort GetStatus() => Status.Count == 0 ? (ushort) 1 : Status.Peek();
     }
 }

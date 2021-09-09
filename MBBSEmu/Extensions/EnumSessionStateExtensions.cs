@@ -47,6 +47,8 @@ namespace MBBSEmu.Extensions
                 case EnumSessionState.SignupUsernameDisplay:
                 case EnumSessionState.SignupEmailDisplay:
                 case EnumSessionState.SignupEmailInput:
+                case EnumSessionState.SignupGenderDisplay:
+                case EnumSessionState.SignupGenderInput:
                 case EnumSessionState.SignupPasswordDisplay:
                 case EnumSessionState.SignupPasswordInput:
                 case EnumSessionState.SignupPasswordConfirm:
