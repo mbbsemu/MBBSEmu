@@ -306,6 +306,9 @@ namespace MBBSEmu.Module
                 return;
             }
 
+            //Apply Absolute Offset Patches
+            ApplyAbsoluteOffSetPatches(requiredDll);
+
             requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
             ModuleDlls.Add(requiredDll);
 
@@ -332,6 +335,29 @@ namespace MBBSEmu.Module
             return Assembly.GetExecutingAssembly().GetTypes()
                 .Where(x => typeof(IExportedModule).IsAssignableFrom(x) && !x.IsInterface && !x.IsAbstract)
                 .Select(x => x.Name.ToUpper()).ToList();
+        }
+
+        /// <summary>
+        ///     Applies Absolute Offset Patches to a DLL File on Load before segments are parsed out and written to memory
+        /// </summary>
+        /// <param name="dllToPatch"></param>
+        /// <returns></returns>
+        private void ApplyAbsoluteOffSetPatches(MbbsDll dllToPatch)
+        {
+            //Return if no patches are defined in the module config JSON
+            if (ModuleConfig.Patches == null || !ModuleConfig.Patches.Any()) return;
+
+            //Return if we can't find any patches defined that are Absolute Offset Patches
+            if (ModuleConfig.Patches.Count(x => x.AbsoluteOffset > 0) == 0) return;
+
+            //Find Absolute Patches and apply them to the NE File
+            foreach (var p in ModuleConfig.Patches.Where(x => x.AbsoluteOffset > 0))
+            {
+                _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
+                var bytesToPatch = p.GetBytes();
+                Array.Copy(bytesToPatch.ToArray(), 0, dllToPatch.File.FileContent, p.AbsoluteOffset,
+                    bytesToPatch.Length);
+            }
         }
     }
 }

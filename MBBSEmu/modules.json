@@ -1,8 +1,17 @@
 {
   "Modules": [
     {
-      "Identifier": "LUNATIX",
-      "Path": "c:\\dos\\modules\\lunatix\\"
+      "Identifier": "MBBSEMU",
+      "Path": "c:\\dos\\modules\\mbbsemu\\",
+      "Patches": [
+        {
+          "Name": "Name To Caps",
+          "Description": "Changes Displayed name of Module to all caps", 
+          "AbsoluteOffset": 12910,
+          "PatchType": "Text",
+          "Patch" : "MBBSEMU" 
+        }
+      ] 
     }
   ]
 }
