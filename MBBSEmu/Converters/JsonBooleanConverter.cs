@@ -14,7 +14,14 @@ namespace MBBSEmu.Converters
             switch (reader.TokenType)
             {
                 case JsonTokenType.Number:
-                    return reader.GetInt32() == 1;
+                    {
+                        var value = reader.GetInt32();
+
+                        if (value is not 0 and not 1)
+                            throw new JsonException();
+
+                        return value == 1;
+                    }
                 case JsonTokenType.String:
                     {
                         var value = reader.GetString();
