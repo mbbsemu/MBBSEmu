@@ -6,7 +6,7 @@ namespace MBBSEmu.Module
     /// <summary>
     ///     Module Configuration
     /// </summary>
-        
+
     public class ModuleConfiguration
     {
         /// <summary>
@@ -31,7 +31,7 @@ namespace MBBSEmu.Module
         ///     Flag to determine if module should be loaded
         /// </summary>
         [JsonPropertyName("Enabled")]
-        public bool ModuleEnabled { get; set; }
+        public bool? ModuleEnabled { get; set; }
 
         /// <summary>
         ///     List of defined patches to apply at runtime

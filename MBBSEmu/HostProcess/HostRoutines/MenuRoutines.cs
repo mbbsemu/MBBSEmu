@@ -286,7 +286,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
                 if (modules.Values.Count > 19)
                 {
-                    var moduleList = modules.Values.OrderBy(x => x.ModuleConfig.MenuOptionKey.PadLeft(4, '0')).Where(x => x.ModuleConfig.ModuleEnabled).Select(m => new Tuple<string, string>(m.ModuleConfig.MenuOptionKey, m.ModuleDescription)).ToList();
+                    var moduleList = modules.Values.OrderBy(x => x.ModuleConfig.MenuOptionKey.PadLeft(4, '0')).Where(x => (bool)x.ModuleConfig.ModuleEnabled).Select(m => new Tuple<string, string>(m.ModuleConfig.MenuOptionKey, m.ModuleDescription)).ToList();
                     var columnSeed = moduleList.Count / 2;
                     var columnFlag = moduleList.Count % 2;
                     if (columnFlag == 1)
@@ -301,7 +301,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 }
                 else
                 {
-                    foreach (var m in modules.Values.OrderBy(x => x.ModuleConfig.MenuOptionKey.PadLeft(4, '0')).Where(x => x.ModuleConfig.ModuleEnabled))
+                    foreach (var m in modules.Values.OrderBy(x => x.ModuleConfig.MenuOptionKey.PadLeft(4, '0')).Where(x => (bool)x.ModuleConfig.ModuleEnabled))
                     {
                         session.SendToClient($"   |CYAN||B|{m.ModuleConfig.MenuOptionKey.PadRight(modules.Count > 9 ? 2 : 1, ' ')}|YELLOW| ... {m.ModuleDescription}\r\n".EncodeToANSIArray());
                     }
@@ -347,7 +347,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            var selectedMenuItem = modules.Values.FirstOrDefault(m => m.ModuleConfig.MenuOptionKey.Equals(inputCommand, StringComparison.InvariantCultureIgnoreCase) && m.ModuleConfig.ModuleEnabled);
+            var selectedMenuItem = modules.Values.FirstOrDefault(m => m.ModuleConfig.MenuOptionKey.Equals(inputCommand, StringComparison.InvariantCultureIgnoreCase) && (bool)m.ModuleConfig.ModuleEnabled);
 
             //Check to see if input matched a module, if not redisplay menu
             if (selectedMenuItem == null)

@@ -1,4 +1,5 @@
 using MBBSEmu.Btrieve;
+using MBBSEmu.Converters;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
@@ -17,7 +18,6 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using NLog.Layouts;
 using NLog.Targets;
@@ -95,9 +95,9 @@ namespace MBBSEmu
         /// <summary>
         ///     Module Configuration
         /// </summary>
-        private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
+        private readonly List<ModuleConfiguration> _moduleConfigurations = new();
 
-        private readonly List<IStoppable> _runningServices = new List<IStoppable>();
+        private readonly List<IStoppable> _runningServices = new();
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
@@ -325,10 +325,11 @@ namespace MBBSEmu
 
                     var options = new JsonSerializerOptions
                     {
-                        Converters ={
+                        Converters = {
+                            new JsonBooleanConverter(),
                             new JsonStringEnumConverter()
-                        },
-
+                            
+                        }
                     };
 
                     var moduleConfigurationFile =
@@ -336,8 +337,7 @@ namespace MBBSEmu
 
                     foreach (var m in moduleConfigurationFile.Modules)
                     {
-                        //Check to see if module is enabled
-                        //var moduleEnabled = m["Enabled"] != "0";
+                        m.ModuleEnabled ??= true;
 
                         //Check for Non Character/Number in MenuOptionKey and Length of 2 or less
                         if (!string.IsNullOrEmpty(m.MenuOptionKey) && !(m.MenuOptionKey).All(char.IsLetterOrDigit))

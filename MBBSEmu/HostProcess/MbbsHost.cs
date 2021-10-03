@@ -187,7 +187,7 @@ namespace MBBSEmu.HostProcess
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m));
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && m.Value.ModuleConfig.ModuleEnabled))
+            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
             {
                 Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
                 moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
@@ -426,7 +426,7 @@ namespace MBBSEmu.HostProcess
 
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
         {
-            foreach (var m in _modules.Values.Where(x => x.ModuleConfig.ModuleEnabled))
+            foreach (var m in _modules.Values.Where(x => (bool)x.ModuleConfig.ModuleEnabled))
             {
                 if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
 
@@ -706,7 +706,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessRTKICK()
         {
             //Check for any rtkick routines
-            foreach (var module in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
+            foreach (var module in _modules.Values.Where(m => (bool)m.ModuleConfig.ModuleEnabled))
             {
                 if (module.RtkickRoutines.Count == 0) continue;
                 
@@ -743,7 +743,7 @@ namespace MBBSEmu.HostProcess
             //Too soon? Bail.
             if (_realTimeStopwatch.ElapsedMilliseconds <= 55) return;
 
-            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
+            foreach (var m in _modules.Values.Where(m => (bool)m.ModuleConfig.ModuleEnabled))
             {
                 if (m.RtihdlrRoutines.Count == 0) continue;
 
@@ -761,7 +761,7 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void ProcessSYSCYC()
         {
-            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
+            foreach (var m in _modules.Values.Where(m => (bool)m.ModuleConfig.ModuleEnabled))
             {
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
                 if (syscycPointer == FarPtr.Empty) continue;
@@ -780,7 +780,7 @@ namespace MBBSEmu.HostProcess
         private void ProcessTasks()
         {
             //Run task routines
-            foreach (var m in _modules.Values.Where(m => m.ModuleConfig.ModuleEnabled))
+            foreach (var m in _modules.Values.Where(m => (bool)m.ModuleConfig.ModuleEnabled))
             {
                 if (m.TaskRoutines.Count == 0) continue;
 
