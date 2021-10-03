@@ -15,7 +15,7 @@ namespace MBBSEmu.Resources
     public class ResourceManager : IResourceManager
     {
         private readonly Assembly _assembly;
-        private readonly Dictionary<string, byte[]> _resourceCache = new Dictionary<string, byte[]>();
+        private readonly Dictionary<string, byte[]> _resourceCache = new();
         private static readonly byte[] utf8bom = {0xEF, 0xBB, 0xBF};
 
         public ResourceManager() : this(Assembly.GetExecutingAssembly()) {}
@@ -32,14 +32,14 @@ namespace MBBSEmu.Resources
 
         public ReadOnlySpan<byte> GetResource(string key)
         {
-            if (!_resourceCache.TryGetValue(key, out var result))
-            {
-                using var resourceStream = _assembly.GetManifestResourceStream(key);
-                using var binaryReader = new BinaryReader(resourceStream ?? throw new InvalidOperationException(
-                                                              $"Unable to open Stream for Embedded Resource {key}"));
-                result = binaryReader.ReadBytes((int) resourceStream.Length);
-                _resourceCache.Add(key, result);
-            }
+            if (_resourceCache.TryGetValue(key, out var result)) 
+                return result;
+
+            using var resourceStream = _assembly.GetManifestResourceStream(key);
+            using var binaryReader = new BinaryReader(resourceStream ?? throw new InvalidOperationException(
+                $"Unable to open Stream for Embedded Resource {key}"));
+            result = binaryReader.ReadBytes((int) resourceStream.Length);
+            _resourceCache.Add(key, result);
 
             return result;
         }
@@ -55,7 +55,7 @@ namespace MBBSEmu.Resources
 
             //Files Saved by Visual Studio are UTF-8 by default, so convert them to ASCII and strip UTF-8 byte order mark
             if (result.Length > 3 &&  result.Slice(0, 3).SequenceEqual(utf8bom))
-                return Encoding.ASCII.GetString(result.Slice(3));
+                return Encoding.ASCII.GetString(result[3..]);
 
             return Encoding.ASCII.GetString(result);
         }

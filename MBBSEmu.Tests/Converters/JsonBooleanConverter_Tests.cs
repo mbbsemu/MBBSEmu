@@ -4,7 +4,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Converters
 {
-    public class JsonBooleanConverter_Tests
+    public class JsonBooleanConverter_Tests : TestBase
     {
 
         internal class TestResult

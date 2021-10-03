@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Module_Multiple_NoPatch.json" />
+    <None Remove="Assets\Module_Multiple_Patch.json" />
+    <None Remove="Assets\Module_Single_NoPatch.json" />
+    <None Remove="Assets\Module_Single_Patch.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="5.10.3" />
     <PackageReference Include="Iced" Version="1.10.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
@@ -35,6 +42,10 @@
     <EmbeddedResource Include="Assets\MBBSEMU.MCV" />
     <EmbeddedResource Include="Assets\MBBSEMU.MDF" />
     <EmbeddedResource Include="Assets\MBBSEMU.MSG" />
+    <EmbeddedResource Include="Assets\Module_Multiple_NoPatch.json" />
+    <EmbeddedResource Include="Assets\Module_Multiple_Patch.json" />
+    <EmbeddedResource Include="Assets\Module_Single_NoPatch.json" />
+    <EmbeddedResource Include="Assets\Module_Single_Patch.json" />
   </ItemGroup>
 
   <ItemGroup>

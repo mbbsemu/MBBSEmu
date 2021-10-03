@@ -1,4 +1,4 @@
-{
+﻿{
   "Modules": [
     {
       "Identifier": "MBBSEMU",
@@ -6,11 +6,11 @@
       "Enabled": 0,
       "Patches": [
         {
-          "Name": "Name To Caps",
-          "Description": "Changes Displayed name of Module to all caps",
-          "AbsoluteOffset": 12910,
+          "Name": "Test Patch 1",
+          "Description": "Patch 1 for a Unit Test",
+          "AbsoluteOffset": 200,
           "PatchType": "Hex",
-          "Patch": "4D424253454D55"
+          "Patch": "000102030405"
         }
       ]
     }
