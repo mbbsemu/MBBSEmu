@@ -14,10 +14,7 @@ namespace MBBSEmu.Converters
             switch (reader.TokenType)
             {
                 case JsonTokenType.Number:
-                    {
-                        var stringValue = reader.GetInt32();
-                        return stringValue == 1;
-                    }
+                    return reader.GetInt32() == 1;
                 case JsonTokenType.String:
                     {
                         var value = reader.GetString();
@@ -25,19 +22,16 @@ namespace MBBSEmu.Converters
                         if (value == null)
                             throw new JsonException();
 
-                        var chkValue = value.ToLower();
-
-                        switch (chkValue)
+                        return value.ToLower() switch
                         {
-                            case "1":
-                            case "true":
-                                return true;
-                            case "0":
-                            case "false":
-                                return false;
-                            default:
-                                throw new JsonException();
-                        }
+                            "1" => true,
+                            "true" => true,
+                            "yes" => true,
+                            "0" => false,
+                            "false" => false,
+                            "no" => false,
+                            _ => throw new JsonException()
+                        };
                     }
                 case JsonTokenType.True:
                     return true;
