@@ -9,8 +9,8 @@
           "Name": "Name To Caps",
           "Description": "Changes Displayed name of Module to all caps",
           "AbsoluteOffset": 12910,
-          "PatchType": "Hex",
-          "Patch": "4D424253454D55"
+          "PatchType": "Text",
+          "Patch": "PATCHED"
         }
       ]
     }

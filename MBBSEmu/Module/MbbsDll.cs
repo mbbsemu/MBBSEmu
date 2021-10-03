@@ -2,6 +2,7 @@
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -47,11 +48,9 @@ namespace MBBSEmu.Module
             _logger = logger;
             
             EntryPoints = new Dictionary<string, FarPtr>();
-            
-            
         }
         
-        public bool Load(string file, string path)
+        public bool Load(string file, string path, IEnumerable<ModulePatch> modulePatches)
         {
             var neFile = _fileUtility.FindFile(path, $"{file}.DLL");
             var fullNeFilePath = Path.Combine(path, neFile);
@@ -60,7 +59,18 @@ namespace MBBSEmu.Module
                 _logger.Warn($"Unable to Load {neFile}");
                 return false;
             }
-            File = new NEFile(_logger, fullNeFilePath);
+
+            var fileData = System.IO.File.ReadAllBytes(fullNeFilePath);
+
+            foreach (var p in modulePatches)
+            {
+                _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
+                var bytesToPatch = p.GetBytes();
+                Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
+                    bytesToPatch.Length);
+            }
+
+            File = new NEFile(_logger, fullNeFilePath, fileData);
             return true;
         }
     }
