@@ -62,12 +62,15 @@ namespace MBBSEmu.Module
 
             var fileData = System.IO.File.ReadAllBytes(fullNeFilePath);
 
-            foreach (var p in modulePatches)
+            if (modulePatches != null)
             {
-                _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
-                var bytesToPatch = p.GetBytes();
-                Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
-                    bytesToPatch.Length);
+                foreach (var p in modulePatches)
+                {
+                    _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
+                    var bytesToPatch = p.GetBytes();
+                    Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
+                        bytesToPatch.Length);
+                }
             }
 
             File = new NEFile(_logger, fullNeFilePath, fileData);
