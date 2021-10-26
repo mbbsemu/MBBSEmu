@@ -8203,7 +8203,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.Halt = true;
         }
 
-        public void cncuid()
+        /// <summary>
+        ///     Expect a Variable Length User-ID (only valid User-ID Characters up to a valid User-ID Length)
+        ///
+        ///     Signature: char *cncuid(void)
+        /// </summary>
+        private void cncuid()
         {
             //gets the "next" pointer for the input string
             var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
