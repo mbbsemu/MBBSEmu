@@ -3,25 +3,25 @@ using Xunit;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public class CWD_Tests :CpuTestBase
+    public class CDQ_Tests :CpuTestBase
     {
         [Theory]
-        [InlineData(0x1, 0x0)]
-        [InlineData(0x8000, 0xFFFF)]
-        public void CWD_ClearFlags(ushort axValue, ushort dxValue)
+        [InlineData(0x7FFFFFFF, 0x0)]
+        [InlineData(0x80000000, 0xFFFFFFFF)]
+        public void CDQ_ClearFlags(uint eaxValue, uint edxValue)
         {
             Reset();
-            mbbsEmuCpuRegisters.AX = axValue;
+            mbbsEmuCpuRegisters.EAX = eaxValue;
             var instructions = new Assembler(16);
-            instructions.cwd();
+            instructions.cdq();
             CreateCodeSegment(instructions);
 
             //Process Instruction
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(dxValue, mbbsEmuCpuRegisters.DX);
+            Assert.Equal(eaxValue, mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(edxValue, mbbsEmuCpuRegisters.EDX);
 
             //Verify Flags
             Assert.False(mbbsEmuCpuRegisters.CarryFlag);
