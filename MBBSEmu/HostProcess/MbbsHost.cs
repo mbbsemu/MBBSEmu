@@ -766,7 +766,6 @@ namespace MBBSEmu.HostProcess
                 var syscycPointer = m.Memory.GetPointer(m.Memory.GetVariablePointer("SYSCYC"));
                 if (syscycPointer == FarPtr.Empty) continue;
 
-                Logger.Info(".");
                 Run(m.ModuleIdentifier, syscycPointer, ushort.MaxValue);
             }
         }
@@ -787,7 +786,6 @@ namespace MBBSEmu.HostProcess
 
                 foreach (var r in m.TaskRoutines)
                 {
-                    Logger.Info(".");
                     var initialStackValues = new Queue<ushort>(1);
                     initialStackValues.Enqueue((ushort)r.Key);
                     Run(m.ModuleIdentifier, r.Value, ushort.MaxValue, false, initialStackValues);
