@@ -259,6 +259,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             {
                 session.SendToClient("\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n".EncodeToANSIArray());
                 session.Username = "";
+                session.EchoSecureEnabled = false;
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
