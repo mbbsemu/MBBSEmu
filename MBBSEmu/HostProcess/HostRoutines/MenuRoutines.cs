@@ -238,6 +238,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             {
                 session.SendToClient("\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
                 session.Username = "";
+                session.EchoSecureEnabled = false;
                 session.SessionState = EnumSessionState.LoginUsernameDisplay;
                 return;
             }
@@ -545,6 +546,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupEmailDisplay(SessionBase session)
         {
+            session.EchoSecureEnabled = false;
             session.SendToClient("\r\n|CYAN||B|Please enter a valid e-Mail Address:|RESET|\r\n|WHITE||B|".EncodeToANSIArray());
             session.SessionState = EnumSessionState.SignupEmailInput;
         }

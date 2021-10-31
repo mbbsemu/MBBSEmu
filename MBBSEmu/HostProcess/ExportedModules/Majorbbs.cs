@@ -594,6 +594,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 548: //SETWIN -- set window parameters when drawing to video (Screen)
                 case 392: //LOCATE -- moves cursor (local screen, not telnet session)
                 case 513: //RSTWIN -- restore window parameters (local screen)
+                case 82: //BAUDAT -- Set color attribute based on baud, ignoring as ANSI is always on
+                case 549: //SHOCHL -- Show legend for channel with any attribute, ignoring
                     break;
                 case 73:
                     applyem();
@@ -2273,8 +2275,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
                 ? (ushort)1
                 : (ushort)0;
-#if DEBUG
+
+            //Log and let user know if they have no access
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            if (Registers.AX == 0)
+            {
+                ChannelDictionary[ChannelNumber].SendToClient($"\r\n|RED||B|Access Denied -- {lockName} key is required\r\n|RESET|".EncodeToANSIArray());
+                _logger.Info($"User {ChannelDictionary[ChannelNumber].Username} was denied access -- {lockName} key is required");
+            }
+#if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for Haskey({lockName})");
 #endif
         }
@@ -5794,7 +5803,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             RealignStack(8);
         }
-
 
         /// <summary>
         ///     Get a Btrieve record (bomb if not there)
