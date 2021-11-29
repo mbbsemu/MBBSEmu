@@ -18,7 +18,7 @@ namespace MBBSEmu.Tests.Memory
     public void ToArray()
     {
       var farPtr = new FarPtr((new byte[] {0x10,0x20,0x30,0x40}));
-      farPtr.Data.Should().ContainInOrder(new[] { 0x10, 0x20, 0x30, 0x40 });
+      farPtr.Data.Should().ContainInOrder(0x10, 0x20, 0x30, 0x40);
     }
 
     [Fact]
