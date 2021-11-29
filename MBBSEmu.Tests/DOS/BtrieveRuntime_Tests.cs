@@ -1,24 +1,20 @@
 using FluentAssertions;
-using MBBSEmu.CPU;
 using MBBSEmu.Database.Session;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
-using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS;
-using MBBSEmu.Extensions;
 using MBBSEmu.IO;
-using MBBSEmu.Memory;
 using MBBSEmu.Resources;
 using NLog;
-using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
 {
+    [Collection("Non-Parallel")]
     public class BtrieveRuntime_Tests : TestBase, IDisposable
     {
         private readonly string[] _runtimeFiles = { "BTRIEVE.EXE", "MBBSEMU.DAT" };

@@ -107,9 +107,9 @@ namespace MBBSEmu.Database.Repositories.Account
         /// <returns></returns>
         private byte[] GenerateSalt(int saltLength = 32)
         {
-            using var rngCryptoServiceProvider = new RNGCryptoServiceProvider();
+            using var rngProvider = RandomNumberGenerator.Create();
             var randomBytes = new byte[saltLength];
-            rngCryptoServiceProvider.GetBytes(randomBytes);
+            rngProvider.GetBytes(randomBytes);
             return randomBytes;
         }
 
