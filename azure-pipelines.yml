@@ -21,6 +21,11 @@ variables:
 steps:
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
 
+- task: NuGetToolInstaller@1
+      inputs:
+        versionSpec: ''
+        checkLatest: true
+
 - task: NuGetCommand@2
   inputs:
     command: 'restore'
