@@ -13,7 +13,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  netVersion: 'net5.0'
+  netVersion: 'net6.0'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
   currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime), 1)]
   buildNumber: $(currentDate)-$(currentBuildCounter)
