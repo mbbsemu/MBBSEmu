@@ -5,6 +5,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Non-Parallel")]
     public class BtrievePrint_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

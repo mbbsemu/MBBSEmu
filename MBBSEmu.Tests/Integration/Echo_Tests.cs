@@ -3,6 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Non-Parallel")]
     public class Echo_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

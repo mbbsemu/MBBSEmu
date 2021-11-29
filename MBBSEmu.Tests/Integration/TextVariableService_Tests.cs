@@ -6,6 +6,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Non-Parallel")]
     public class TextVariableService_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]
