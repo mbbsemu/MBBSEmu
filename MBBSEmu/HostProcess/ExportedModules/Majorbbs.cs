@@ -2280,8 +2280,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
             if (Registers.AX == 0)
             {
-                ChannelDictionary[ChannelNumber].SendToClient($"\r\n|RED||B|Access Denied -- {lockName} key is required\r\n|RESET|".EncodeToANSIArray());
-                _logger.Info($"User {ChannelDictionary[ChannelNumber].Username} was denied access -- {lockName} key is required");
+#if DEBUG
+                _logger.Debug($"User {ChannelDictionary[ChannelNumber].Username} was denied access -- {lockName} key is required");
+#endif
             }
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for Haskey({lockName})");
