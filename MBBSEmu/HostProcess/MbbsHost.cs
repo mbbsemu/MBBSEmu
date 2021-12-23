@@ -857,13 +857,6 @@ namespace MBBSEmu.HostProcess
                         if (!session.TransparentMode && session.CharacterProcessed > 0)
                             session.SendToClient(new byte[] { 0xD, 0xA });
 
-                        //If there's no status in the queue, we can bail here
-                        if (session.Status.Count == 0)
-                        {
-                            session.Status.Enqueue(3);
-                            break;
-                        }
-
                         //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
                         if (session.GetStatus() == 240)
                         {
@@ -871,8 +864,11 @@ namespace MBBSEmu.HostProcess
                             session.Status.Clear(); //Clear the 240
                             session.Status.Enqueue(3); //Enqueue Status of 3
                             session.EchoSecureEnabled = false;
+                            break;
                         }
 
+                        //Always Enqueue Input Ready
+                        session.Status.Enqueue(3);
                         break;
                     }
 
