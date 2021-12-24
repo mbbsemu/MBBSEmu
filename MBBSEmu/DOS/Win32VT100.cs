@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Runtime.InteropServices;
 
 namespace MBBSEmu.DOS
@@ -34,25 +35,40 @@ namespace MBBSEmu.DOS
         [DllImport("kernel32.dll")]
         public static extern uint GetLastError();
 
+        private readonly ILogger _logger;
+
+        public Win32VT100(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         public void Enable()
         {
-            var iStdIn = GetStdHandle(STD_INPUT_HANDLE);
-            var iStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            try
+            {
+                var iStdIn = GetStdHandle(STD_INPUT_HANDLE);
+                var iStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
-            if (!GetConsoleMode(iStdIn, out var inConsoleMode))
-                throw new Exception("Failed to get Input Console Mode");
+                if (!GetConsoleMode(iStdIn, out var inConsoleMode))
+                    throw new Exception("Failed to get Input Console Mode");
 
-            if (!GetConsoleMode(iStdOut, out var outConsoleMode))
-                throw new Exception("Failed to get Output Console Mode");
+                if (!GetConsoleMode(iStdOut, out var outConsoleMode))
+                    throw new Exception("Failed to get Output Console Mode");
 
-            inConsoleMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
-            outConsoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
+                inConsoleMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+                outConsoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
 
-            if (!SetConsoleMode(iStdIn, inConsoleMode))
-                throw new Exception($"Failed to set Input Console Mode, Error Code: {GetLastError()}");
+                if (!SetConsoleMode(iStdIn, inConsoleMode))
+                    throw new Exception($"Failed to set Input Console Mode, Error Code: {GetLastError()}");
 
-            if (!SetConsoleMode(iStdOut, outConsoleMode))
-                throw new Exception($"Failed to set Output Console Mode, Error Code: {GetLastError()}");
+                if (!SetConsoleMode(iStdOut, outConsoleMode))
+                    throw new Exception($"Failed to set Output Console Mode, Error Code: {GetLastError()}");
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e);
+                _logger.Error("VT100 Emulation is not enabled, and displaying ANSI characters might not work properly.");
+            }
         }
     }
 }

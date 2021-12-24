@@ -71,7 +71,7 @@ namespace MBBSEmu.Session.LocalConsole
 
             //Detect if we're on Windows and enable VT100 on the current Terminal Window
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                new Win32VT100().Enable();
+                new Win32VT100(_logger).Enable();
 
             if(disableLogging)
                 (_logger as CustomLogger)?.DisableConsoleLogging();
