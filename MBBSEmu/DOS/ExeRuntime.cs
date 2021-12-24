@@ -6,15 +6,14 @@ using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
-using NLog;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
+using NLog;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace MBBSEmu.DOS
 {
@@ -121,6 +120,10 @@ namespace MBBSEmu.DOS
 
         public void Run()
         {
+            //Detect if we're on Windows and enable VT100 on the current Terminal Window
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                new Win32VT100().Enable();
+
             while (!Registers.Halt)
                 Cpu.Tick();
 

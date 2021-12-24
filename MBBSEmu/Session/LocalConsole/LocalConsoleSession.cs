@@ -1,3 +1,4 @@
+using MBBSEmu.DOS;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace MBBSEmu.Session.LocalConsole
+namespace MBBSEmu.DOS
 {
     /// <summary>
     ///     Enables VT100 Terminal Emulation with Command Console by calling SetConsoleMode through an external call to the Kernel
