@@ -245,8 +245,10 @@ namespace MBBSEmu.Btrieve
         ///     Validates the Btrieve database being loaded
         /// </summary>
         /// <returns>True if valid. If false, the string is the error message.</returns>
-        private (bool, string) ValidateDatabase()
+        private (bool isValid, string errorMessage) ValidateDatabase()
         {
+            if (Data.Length < 2)
+                return (false, $"Btrieve File Is Empty/Invalid Length ({Data.Length} bytes)");
             if (Data[0] == 'F' && Data[1] == 'C')
                 return (false, $"Cannot import v6 Btrieve database {FileName} - only v5 databases are supported for now. Please contact your ISV for a downgraded database.");
             if (Data[0] != 0 && Data[1] != 0 && Data[2] != 0 && Data[3] != 0)
@@ -583,7 +585,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Reads the page offset from the fragment array
         /// </summary>
-        /// <param name="arrayEntry">Fragment arran entry, size of 2 bytes</param>
+        /// <param name="arrayEntry">Fragment array entry, size of 2 bytes</param>
         /// <returns>The offset and a boolean indicating the offset contains a next pointer</returns>
         private static (uint, bool) GetPageOffsetFromFragmentArray(ReadOnlySpan<byte> arrayEntry)
         {
