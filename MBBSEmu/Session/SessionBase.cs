@@ -227,7 +227,7 @@ namespace MBBSEmu.Session
             if (_textVariableService == null)
             {
                 SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
-                
+
             }
             else
             {
@@ -236,7 +236,7 @@ namespace MBBSEmu.Session
 
                 SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
-            
+
             if (OutputEmptyStatus && DataToClient.Count == 0)
             {
                 //Only queue up the event if there's not one already in the buffer
@@ -281,9 +281,9 @@ namespace MBBSEmu.Session
             _enumSessionState = startingSessionState;
             SessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
             {
-                {"CHANNEL", () => Channel.ToString()}, 
-                {"USERID", () => Username}, 
-                {"BAUD", () => UsrPtr.Baud.ToString() }, 
+                {"CHANNEL", () => Channel.ToString()},
+                {"USERID", () => Username},
+                {"BAUD", () => UsrPtr.Baud.ToString() },
                 {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
                 {"CREDITS", () => UsrAcc.creds.ToString() },
                 {"CREATION_DATE", () => UsrAcc.credat != 0 ? UsrAcc.credat.FromDosDate().ToShortDateString() : mbbsHost.Clock.Now.ToShortDateString()},
@@ -295,7 +295,7 @@ namespace MBBSEmu.Session
                     }
                 }
             };
-            
+
             OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
         }
 
@@ -317,6 +317,9 @@ namespace MBBSEmu.Session
             var printableCharacters = Enumerable.Repeat(true, 256).ToArray();
 
             printableCharacters[0] = false; // \0
+            printableCharacters[1] = false; // mmud crap
+            printableCharacters[2] = false;
+            printableCharacters[3] = false;
             printableCharacters[17] = false; // DC1   used by T-LORD
             printableCharacters[18] = false; // DC2
             printableCharacters[19] = false; // DC3
