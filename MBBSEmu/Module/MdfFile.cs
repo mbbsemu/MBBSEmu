@@ -40,8 +40,8 @@ namespace MBBSEmu.Module
         /// </summary>
         public List<string> Requires { get; set; }
 
-        public List<String> Cleanup { get; set; }
-        public List<String> BBSUp { get; set; }
+        public List<string> Cleanup { get; set; }
+        public List<string> BBSUp { get; set; }
 
         public MdfFile(string mdfFile)
         {
@@ -65,8 +65,8 @@ namespace MBBSEmu.Module
 
         private void Parse()
         {
-            List<String> cleanup = new();
-            List<String> bbsup = new();
+            List<string> cleanup = new();
+            List<string> bbsup = new();
 
             foreach (var line in File.ReadAllLines(_mdfFile))
             {
