@@ -28,6 +28,7 @@ namespace MBBSEmu.Session
     {
         public const int MAX_LINE = 512;
         public const int MAX_OUTPUT_BUFFER = 4096;
+        public const int DEFAULT_TERMINAL_COLUMNS = 80;
 
         protected delegate void SendToClientDelegate(byte[] dataToSend);
 
@@ -310,7 +311,7 @@ namespace MBBSEmu.Session
                                 lineBuffer[lineBufferLength] = b;
                                 lineBufferToRawBuffer[lineBufferLength++] = rawBufferLength - 1;
                                 // overflow to the next line
-                                if (lineBufferLength > 80) {
+                                if (lineBufferLength > TerminalColumns) {
                                     if (Char.IsWhiteSpace((char) b)) {
                                         // erase the space from the raw buffer and replace with \r\n
                                         rawBuffer[rawBufferLength - 1] = (byte) '\r';
@@ -428,6 +429,7 @@ namespace MBBSEmu.Session
             _mbbsHost = mbbsHost;
             _textVariableService = textVariableService;
             SessionId = sessionId;
+            TerminalColumns = DEFAULT_TERMINAL_COLUMNS;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
