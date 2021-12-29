@@ -22,15 +22,13 @@ namespace MBBSEmu.Session
         public const byte ESCAPE = 0x1B;
         public const int MAX_LINE = 512;
         public const int MAX_OUTPUT_BUFFER = 4096;
-        
+
         public delegate void SendToClientDelegate(byte[] dataToSend);
 
         public SendToClientDelegate SendToClientMethod { get; set; }
 
         /// <summary>
         /// How many columns are supported by the client's terminal.
-        /// 
-        /// TODO(tjeffreys): Update based on telnet data
         /// </summary>
         public int TerminalColumns { get; set; }
 
@@ -44,9 +42,9 @@ namespace MBBSEmu.Session
         private ParseState _parseState = ParseState.APS_NORMAL;
 
         /// <summary>
-        /// Contains all the characters accumulated by parsing outgoing data, 
+        /// Contains all the characters accumulated by parsing outgoing data,
         /// for keeping track of cursor position.
-        /// 
+        ///
         /// Does not contain any ANSI characters - these are filtered out.
         /// </summary>
         private readonly byte[] lineBuffer = new byte[MAX_LINE];
@@ -54,17 +52,17 @@ namespace MBBSEmu.Session
         /// How many characters are valid in lineBuffer
         /// </summary>
         private int lineBufferLength = 0;
-        
+
         /// <summary>
         /// A mapping between lineBuffer to rawBuffer.
-        /// 
-        /// Each index in this array (which is a printable character) maps to 
+        ///
+        /// Each index in this array (which is a printable character) maps to
         /// the data area where the character is in rawBuffer.
         /// </summary>
         private readonly int[] lineBufferToRawBuffer = new int[MAX_LINE];
-        
+
         /// <summary>
-        /// Contains all the bytes accumulated by parsing outgoing data, 
+        /// Contains all the bytes accumulated by parsing outgoing data,
         /// including ANSI characters. This array is output to our clients.
         /// </summary>
         private readonly byte[] rawBuffer = new byte[MAX_OUTPUT_BUFFER];
@@ -118,17 +116,17 @@ namespace MBBSEmu.Session
                         break;
                 }
             }
-            
+
             // output our raw buffer
             SendToClientMethod(rawBuffer.AsSpan().Slice(0, rawBufferLength).ToArray());
-            rawBufferLength = 0;            
+            rawBufferLength = 0;
         }
 
         /// <summary>
         /// Performs a line break
         /// </summary>
         /// <param name="b">The character following the full line</param>
-        private void doLineBreak(byte b) 
+        private void doLineBreak(byte b)
         {
             if (Char.IsWhiteSpace((char) b)) {
                 // erase the space from the raw buffer and replace with \r\n
@@ -141,24 +139,24 @@ namespace MBBSEmu.Session
             {
                 // scan for the last space to know where to break the line
                 int lastSpaceIndex = lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && !Char.IsWhiteSpace((char) lineBuffer[lastSpaceIndex])) 
+                while ((lastSpaceIndex >= 0) && !Char.IsWhiteSpace((char) lineBuffer[lastSpaceIndex]))
                 {
                     --lastSpaceIndex;
                 }
 
                 if (lastSpaceIndex < 0)
-                { 
+                {
                     // no spaces = one huge line (shouldn't really happen), just break it up by inserting \r\n
                     rawBuffer[rawBufferLength - 1] = (byte) '\r';
                     rawBuffer[rawBufferLength] = (byte) '\n';
                     rawBuffer[rawBufferLength + 1] = b;
-                    
+
                     lineBuffer[0] = b;
                     lineBufferToRawBuffer[0] = rawBufferLength + 1;
                     lineBufferLength = 1;
-                    
-                    rawBufferLength  += 2;                    
-                } 
+
+                    rawBufferLength  += 2;
+                }
                 else
                 {
                     // i is the location to place the \r\n
@@ -175,7 +173,7 @@ namespace MBBSEmu.Session
                     rawBuffer[insertIndex + 0] = (byte) '\r';
                     rawBuffer[insertIndex + 1] = (byte) '\n';
                     ++rawBufferLength;
-                    
+
                     // setup the new line buffer
                     int chars_to_adjust = lineBufferLength - (lastSpaceIndex + 1);
                     int j, k;
