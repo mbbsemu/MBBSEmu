@@ -26,13 +26,17 @@ namespace MBBSEmu.Session
     /// </summary>
     public abstract class SessionBase : IStoppable
     {
-        public const int MAX_LINE = 512;
-        public const int MAX_OUTPUT_BUFFER = 4096;
         public const int DEFAULT_TERMINAL_COLUMNS = 80;
 
         protected delegate void SendToClientDelegate(byte[] dataToSend);
 
-        protected SendToClientDelegate SendToClientMethod;
+        private SendToClientDelegate _sendToClientMethod;
+
+        protected SendToClientDelegate SendToClientMethod
+        {
+            get => _sendToClientMethod;
+            set { _sendToClientMethod = value; _lineBreaker.SendToClientMethod = (buffer => value.Invoke(buffer)); }
+        }
 
         /// <summary>
         ///     Specifies the Type of Session the user is currently using
@@ -218,168 +222,22 @@ namespace MBBSEmu.Session
 
         private readonly ITextVariableService _textVariableService;
 
+        private readonly LineBreaker _lineBreaker = new LineBreaker();
+
         protected readonly IMbbsHost _mbbsHost;
 
-        protected int _cursorPos = 0;
-
-        private enum ParseState {
-            APS_NORMAL,
-            APS_ESCAPE,
-            APS_ESCAPE_BRACKET,
+        public int TerminalColumns
+          {
+            get => _lineBreaker.TerminalColumns;
+            set { _lineBreaker.TerminalColumns = value; }
         }
-
-
-        private ParseState _parseState = ParseState.APS_NORMAL;
-
-        /// <summary>
-        /// Contains all the characters accumulated by parsing outgoing data, 
-        /// for keeping track of cursor position.
-        /// 
-        /// Does not contain any ANSI characters - these are filtered out.
-        /// </summary>
-        private readonly byte[] lineBuffer = new byte[MAX_LINE];
-        /// <summary>
-        /// How many characters are valid in lineBuffer
-        /// </summary>
-        private int lineBufferLength = 0;
-        
-        /// <summary>
-        /// A mapping between lineBuffer to rawBuffer.
-        /// 
-        /// Each index in this array (which is a printable character) maps to 
-        /// the data area where the character is in rawBuffer.
-        /// </summary>
-        private readonly int[] lineBufferToRawBuffer = new int[MAX_LINE];
-        
-        /// <summary>
-        /// Contains all the bytes accumulated by parsing outgoing data, 
-        /// including ANSI characters. This array is output to our clients.
-        /// </summary>
-        private readonly byte[] rawBuffer = new byte[MAX_OUTPUT_BUFFER];
-        /// <summary>
-        /// How many bytes are valid in rawBuffer
-        /// </summary>
-        private int rawBufferLength = 0;
-        
-        /// <summary>
-        /// How many columns are supported by the client's terminal.
-        /// 
-        /// TODO(tjeffreys): Update based on telnet data
-        /// </summary>
-        public int TerminalColumns  {get; set; }
 
         /// <summary>
         /// Breaks buffer into lines and calls SendToClientMethod afterwards.
         /// </summary>
         /// <param name="buffer">Raw output buffer going to a client</param>
-        private void SendBreakingIntoLines(byte[] buffer)
-        {
-            foreach(byte b in buffer)
-            {
-                rawBuffer[rawBufferLength++] = b;
-
-                switch (_parseState)
-                {
-                     case ParseState.APS_ESCAPE:
-                        if (b == '[')
-                        {
-                            _parseState = ParseState.APS_ESCAPE_BRACKET;
-                        }
-                        else
-                        {
-                            _parseState = ParseState.APS_NORMAL;  // TODO improper
-                        }
-                        break;
-                    case ParseState.APS_ESCAPE_BRACKET:
-                        if (Char.IsLetter((char) b))
-                        {
-                            _parseState = ParseState.APS_NORMAL;
-                        }
-                        break;
-                    case ParseState.APS_NORMAL:
-                        switch (b)
-                        {
-                            case (byte) '\r':
-                                lineBufferLength = 0; // line ended, erase accumulated data in lineBuffer
-                                break;
-                            case 0x1B: // escape
-                                _parseState = ParseState.APS_ESCAPE;
-                                break;
-                            case (byte) '\n':  // ignore
-                                break;
-                            default:
-                                lineBuffer[lineBufferLength] = b;
-                                lineBufferToRawBuffer[lineBufferLength++] = rawBufferLength - 1;
-                                // overflow to the next line
-                                if (lineBufferLength > TerminalColumns) {
-                                    if (Char.IsWhiteSpace((char) b)) {
-                                        // erase the space from the raw buffer and replace with \r\n
-                                        rawBuffer[rawBufferLength - 1] = (byte) '\r';
-                                        rawBuffer[rawBufferLength++] = (byte) '\n';
-                                        // erase line build-up
-                                        lineBufferLength = 0;
-                                    }
-                                    else
-                                    {
-                                        // scan for the last space
-                                        int i = lineBufferLength - 1;
-                                        while ((i >= 0) && !Char.IsWhiteSpace((char) lineBuffer[i])) 
-                                        {
-                                            --i;
-                                        }
-
-                                        if (i < 0)
-                                        { 
-                                            // failure, one huge line, don't insert anything
-                                            lineBufferLength = 0;
-                                        } 
-                                        else
-                                        {
-                                            // i is the location to place the \r\n
-                                            int insertIndex = lineBufferToRawBuffer[i];
-                                            int moveLen = rawBufferLength - insertIndex;
-                                            // shift stuff up to make room for \n
-                                            if (moveLen <= 0) {
-                                                throw new InvalidOperationException("Whoops");
-                                            }
-
-                                            Array.Copy(rawBuffer, insertIndex, rawBuffer, insertIndex + 1, moveLen);
-                                            // now insert, this destroys the space previously there and
-                                            // replaces with \r\n
-                                            rawBuffer[insertIndex + 0] = (byte) '\r';
-                                            rawBuffer[insertIndex + 1] = (byte) '\n';
-                                            ++rawBufferLength;
-
-                                            // setup the new line buffer
-                                            int chars_to_adjust = lineBufferLength - (i + 1);
-                                            int j, k;
-
-                                            Array.Copy(lineBuffer, i + 1, lineBuffer, 0, chars_to_adjust);
-
-                                            // adjust the raw pointers since we increased the pointer
-                                            // above
-                                            for (k = 0, j = (i + 1); j < lineBufferLength; ++j, ++k)
-                                            {
-                                                // copy entire thing
-                                                lineBufferToRawBuffer[k] = lineBufferToRawBuffer[j];
-                                                // increase the raw pointer
-                                                ++lineBufferToRawBuffer[k];
-                                            }
-                                            lineBufferLength = chars_to_adjust;
-                                        }
-                                    }
-                                }
-                                break;
-                        }
-                        break;
-                }
-            }
-            
-            // output our raw buffer
-            SendToClientMethod(rawBuffer.AsSpan().Slice(0, rawBufferLength).ToArray());
-            rawBufferLength = 0;            
-        }
-
+        private void SendBreakingIntoLines(byte[] buffer) => _lineBreaker.SendBreakingIntoLines(buffer);
+        
         /// <summary>
         ///     Helper Method to send data to the client synchronously
         /// </summary>
