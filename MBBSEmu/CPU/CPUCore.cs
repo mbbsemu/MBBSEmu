@@ -701,6 +701,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Mul:
                     Op_Mul();
                     break;
+                case Mnemonic.Cdq:
+                    Op_Cdq();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -1328,7 +1331,13 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Cwd()
         {
-            Registers.DX = (ushort)(Registers.AX.IsBitSet(15) ? 0xFFFF : 0x0000);
+            Registers.DX = Registers.AX.IsNegative() ? (ushort)0xFFFF : (ushort)0x0000;
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Cdq()
+        {
+            Registers.EDX = Registers.EAX.IsNegative() ? 0xFFFFFFFF : 0;
         }
 
 

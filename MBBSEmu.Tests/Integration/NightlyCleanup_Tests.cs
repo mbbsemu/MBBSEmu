@@ -8,6 +8,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Integration
 {
+    [Collection("Non-Parallel")]
     public class NightlyCleanup_Tests : MBBSEmuIntegrationTestBase
     {
         [Fact]

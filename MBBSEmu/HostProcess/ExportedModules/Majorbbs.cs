@@ -429,6 +429,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //_logger.Info($"Invoking MAJORBBS.DLL:{Ordinals.MAJORBBS[ordinal]}");
 
+            //First block of Switch Values are for Exported Properties
             switch (ordinal)
             {
                 case 768:
@@ -576,6 +577,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return new FarPtr(Segment, ordinal).Data;
             }
 
+            //Second Block of Switch Values are for Exported Methods
             switch (ordinal)
             {
                 //Ignored Ordinals
@@ -592,6 +594,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 548: //SETWIN -- set window parameters when drawing to video (Screen)
                 case 392: //LOCATE -- moves cursor (local screen, not telnet session)
                 case 513: //RSTWIN -- restore window parameters (local screen)
+                case 82: //BAUDAT -- Set color attribute based on baud, ignoring as ANSI is always on
+                case 549: //SHOCHL -- Show legend for channel with any attribute, ignoring
                     break;
                 case 73:
                     applyem();
@@ -1351,6 +1355,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 1191:
                     bgnedt();
+                    break;
+                case 129:
+                    cncuid();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -2268,8 +2275,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
                 ? (ushort)1
                 : (ushort)0;
-#if DEBUG
+
+            //Log and let user know if they have no access
             var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            if (Registers.AX == 0)
+            {
+#if DEBUG
+                _logger.Debug($"User {ChannelDictionary[ChannelNumber].Username} was denied access -- {lockName} key is required");
+#endif
+            }
+#if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for Haskey({lockName})");
 #endif
         }
@@ -5790,7 +5805,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             RealignStack(8);
         }
 
-
         /// <summary>
         ///     Get a Btrieve record (bomb if not there)
         ///
@@ -8196,6 +8210,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Because control has been handed over to the FSD, we need to stop execution of the module routine
             Registers.Halt = true;
+        }
+
+        /// <summary>
+        ///     Expect a Variable Length User-ID (only valid User-ID Characters up to a valid User-ID Length)
+        ///
+        ///     Signature: char *cncuid(void)
+        /// </summary>
+        private void cncuid()
+        {
+            //gets the "next" pointer for the input string
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            
+            //create return poitner and zero it out
+            var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCUID", UserAccount.UIDSIZ);
+            Module.Memory.SetZero(returnPointer, UserAccount.UIDSIZ);
+
+            //Iterate through nxtcmd until we hit an invalid character or reach the limit of the uid number of characters
+            for (ushort i = 0; i < UserAccount.UIDSIZ; i++)
+            {
+                //Evaluate Value at pointer, and continue if a valid printable character
+                if(Module.Memory.GetByte(nxtcmdPointer + i) is >= 32 and <= 126)
+                    continue;
+
+                //Set our Return Values
+                Module.Memory.SetArray(returnPointer, Module.Memory.GetArray(nxtcmdPointer, i));
+                Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + i);
+                break;
+            }
+            
+            //Sets DX:AX registers to the return value
+            Registers.SetPointer(returnPointer);
         }
     }
 }

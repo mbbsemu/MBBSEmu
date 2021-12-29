@@ -9,17 +9,22 @@ trigger:
       - master
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'windows-2022'
 
 variables:
   buildConfiguration: 'Release'
-  netVersion: 'net5.0'
+  netVersion: 'net6.0'
   currentDate: $[upper(format('{0:MMddyy}', pipeline.startTime))]
   currentBuildCounter: $[counter(format('{0:MMddyy}', pipeline.startTime), 1)]
   buildNumber: $(currentDate)-$(currentBuildCounter)
 
 steps:
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
+
+- task: NuGetToolInstaller@1
+  inputs:
+    versionSpec: ''
+    checkLatest: true
 
 - task: NuGetCommand@2
   inputs:

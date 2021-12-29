@@ -2,18 +2,36 @@
 
 ## Quick start
 
-These environment and build steps were tested on a Windows 10 PC and macOS Catalina laptop. Updated 2020-08-11.
+These environment and build steps were tested on a Windows 11 PC and macOS Catalina laptop. Updated 2021-12-28.
 
 We expect the overall process to remain the same; however some steps may shift slightly over time. We'll keep this updated to the best of our ability.
 
 ### Prerequisites
 
-* .NET Core SDK 5.0
-  * 5.0.100 at the time of this writing
+* .NET Core SDK 6
+  * 6.0.101 at the time of this writing
   * x64 was used; not sure about other versions
+  * Ubuntu Linux 21.10
+    * Following [Microsoft's installation instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu#2110-)
+    * Install Microsoft package repository
+
+```
+wget https://packages.microsoft.com/config/ubuntu/21.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm packages-microsoft-prod.deb
+```
+
+* Install .net sdk
+
+```
+sudo apt-get update; \
+  sudo apt-get install -y apt-transport-https && \
+  sudo apt-get update && \
+  sudo apt-get install -y dotnet-sdk-6.0
+```
   * Windows
     * Installed via [chocolatey](https://chocolatey.org/) - [chocolately .NET Core SDK](https://chocolatey.org/packages/dotnetcore-sdk)
-    * `choco install dotnetcore-sdk --version 5.0.100`
+    * `choco install dotnetcore-sdk`
   * macOS
     * Installed via [Homebrew](https://brew.sh) - [Homebrew .NET Core SDK](https://formulae.brew.sh/cask/dotnet-sdk)
     * `brew cask install dotnet-sdk`
