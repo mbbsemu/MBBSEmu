@@ -190,8 +190,8 @@ namespace MBBSEmu.Session.Telnet
         {
             if (args.Option == EnumIacOptions.NegotiateAboutWindowSize)
             {
-                int columns = args.Data[0] << 8 | args.Data[1];
-                int rows = args.Data[2] << 8 | args.Data[3];
+                var columns = args.Data[0] << 8 | args.Data[1];
+                var rows = args.Data[2] << 8 | args.Data[3];
 
                 TerminalColumns = columns;
 

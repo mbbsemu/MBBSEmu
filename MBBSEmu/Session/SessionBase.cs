@@ -35,7 +35,11 @@ namespace MBBSEmu.Session
         protected SendToClientDelegate SendToClientMethod
         {
             get => _sendToClientMethod;
-            set { _sendToClientMethod = value; _lineBreaker.SendToClientMethod = (buffer => value.Invoke(buffer)); }
+            set
+            {
+                _sendToClientMethod = value;
+                _lineBreaker.SendToClientMethod = value.Invoke;
+            }
         }
 
         /// <summary>
@@ -237,7 +241,7 @@ namespace MBBSEmu.Session
         /// </summary>
         /// <param name="buffer">Raw output buffer going to a client</param>
         private void SendBreakingIntoLines(byte[] buffer) => _lineBreaker.SendBreakingIntoLines(buffer);
-        
+
         /// <summary>
         ///     Helper Method to send data to the client synchronously
         /// </summary>

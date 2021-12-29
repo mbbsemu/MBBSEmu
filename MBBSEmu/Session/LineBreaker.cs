@@ -1,19 +1,4 @@
-using MBBSEmu.Extensions;
-using MBBSEmu.HostProcess;
-using MBBSEmu.HostProcess.ExportedModules;
-using MBBSEmu.HostProcess.Structs;
-using MBBSEmu.Memory;
-using MBBSEmu.Module;
-using MBBSEmu.Server;
-using MBBSEmu.Session.Enums;
-using MBBSEmu.TextVariables;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace MBBSEmu.Session
 {
@@ -77,7 +62,7 @@ namespace MBBSEmu.Session
         /// <param name="buffer">Raw output buffer going to a client</param>
         public void SendBreakingIntoLines(byte[] buffer)
         {
-            foreach(byte b in buffer)
+            foreach(var b in buffer)
             {
                 rawBuffer[rawBufferLength++] = b;
 
@@ -89,7 +74,7 @@ namespace MBBSEmu.Session
                      case ParseState.APS_ESCAPE when b != ESCAPE:
                         _parseState = ParseState.APS_NORMAL;  // this happens if we receive an escape not followed by [, which shouldn't happen
                         break;
-                    case ParseState.APS_ESCAPE_BRACKET when Char.IsLetter((char) b): // ANSI tags are terminated with letters
+                    case ParseState.APS_ESCAPE_BRACKET when char.IsLetter((char) b): // ANSI tags are terminated with letters
                         _parseState = ParseState.APS_NORMAL;
                         break;
                     case ParseState.APS_NORMAL:
@@ -114,6 +99,9 @@ namespace MBBSEmu.Session
                                 break;
                         }
                         break;
+                    default:
+                        // just eat up the character, often used when in APS_ESCAPE_BRACKET when waiting for the ending ANSI tag
+                        break;
                 }
             }
 
@@ -128,7 +116,7 @@ namespace MBBSEmu.Session
         /// <param name="b">The character following the full line</param>
         private void doLineBreak(byte b)
         {
-            if (Char.IsWhiteSpace((char) b)) {
+            if (char.IsWhiteSpace((char) b)) {
                 // erase the space from the raw buffer and replace with \r\n
                 rawBuffer[rawBufferLength - 1] = (byte) '\r';
                 rawBuffer[rawBufferLength++] = (byte) '\n';
@@ -138,8 +126,8 @@ namespace MBBSEmu.Session
             else
             {
                 // scan for the last space to know where to break the line
-                int lastSpaceIndex = lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && !Char.IsWhiteSpace((char) lineBuffer[lastSpaceIndex]))
+                var lastSpaceIndex = lineBufferLength - 1;
+                while ((lastSpaceIndex >= 0) && !char.IsWhiteSpace((char) lineBuffer[lastSpaceIndex]))
                 {
                     --lastSpaceIndex;
                 }
@@ -160,8 +148,8 @@ namespace MBBSEmu.Session
                 else
                 {
                     // i is the location to place the \r\n
-                    int insertIndex = lineBufferToRawBuffer[lastSpaceIndex];
-                    int moveLen = rawBufferLength - insertIndex;
+                    var insertIndex = lineBufferToRawBuffer[lastSpaceIndex];
+                    var moveLen = rawBufferLength - insertIndex;
                     // shift stuff up to make room for \n
                     if (moveLen <= 0) {
                         throw new InvalidOperationException("Whoops");
@@ -175,7 +163,7 @@ namespace MBBSEmu.Session
                     ++rawBufferLength;
 
                     // setup the new line buffer
-                    int chars_to_adjust = lineBufferLength - (lastSpaceIndex + 1);
+                    var chars_to_adjust = lineBufferLength - (lastSpaceIndex + 1);
                     int j, k;
 
                     Array.Copy(lineBuffer, lastSpaceIndex + 1, lineBuffer, 0, chars_to_adjust);
