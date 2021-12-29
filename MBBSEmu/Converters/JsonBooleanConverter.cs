@@ -49,17 +49,6 @@ namespace MBBSEmu.Converters
             }
         }
 
-        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options)
-        {
-            switch (value)
-            {
-                case true:
-                    writer.WriteStringValue("1");
-                    break;
-                case false:
-                    writer.WriteStringValue("0");
-                    break;
-            }
-        }
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) => writer.WriteStringValue(value ? "1" : "0");
     }
 }
