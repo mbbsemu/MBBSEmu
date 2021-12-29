@@ -510,7 +510,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 return;
             }
 
-            if (_modules[moduleChange].ModuleConfig.ModuleEnabled)
+            if ((bool)_modules[moduleChange].ModuleConfig.ModuleEnabled)
             {
                 _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{_modules[moduleChange].ModuleIdentifier} already enabled -- Syntax: /SYS ENABLE <MODULEID>|RESET|\r\n".EncodeToANSIString());
                 return;

@@ -1,0 +1,33 @@
+﻿{
+  "Modules": [
+    {
+      "Identifier": "MBBSEMU",
+      "Path": "c:\\dos\\modules\\mbbsemu\\",
+      "Enabled": true,
+      "MenuOptionKey" :  "1", 
+      "Patches": [
+        {
+          "Name": "Test Patch 1",
+          "Description": "Patch 1 for a Unit Test",
+          "AbsoluteOffset": 200,
+          "PatchType": "Hex",
+          "Patch": "000102030405"
+        }
+      ]
+    },
+    {
+      "Identifier": "MBBSEMU2",
+      "Path": "c:\\dos\\modules\\mbbsemu2\\",
+      "Enabled": false,
+      "Patches": [
+        {
+          "Name": "Test Patch 2",
+          "Description": "Patch 2 for a Unit Test",
+          "AbsoluteOffset": 100,
+          "PatchType": "Text",
+          "Patch": "TEST PATCH"
+        }
+      ]
+    }
+  ]
+}

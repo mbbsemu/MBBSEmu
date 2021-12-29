@@ -1,0 +1,15 @@
+﻿{
+  "Modules": [
+    {
+      "Identifier": "MBBSEMU",
+      "Path": "c:\\dos\\modules\\mbbsemu\\",
+      "Enabled": true
+    },
+    {
+      "Identifier": "MBBSEMU2",
+      "Path": "c:\\dos\\modules\\mbbsemu2\\",
+      "Enabled": false,
+      "MenuOptionKey" :  "A" 
+    }
+  ]
+}

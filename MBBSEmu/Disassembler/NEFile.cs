@@ -32,12 +32,11 @@ namespace MBBSEmu.Disassembler
 
         private ILogger _logger;
 
-        public NEFile(ILogger logger, string file)
+        public NEFile(ILogger logger, string fullFilePath, ReadOnlySpan<byte> data)
         {
             _logger = logger;
-
-            FileContent = File.ReadAllBytes(file);
-            var f = new FileInfo(file);
+            FileContent = data.ToArray();
+            var f = new FileInfo(fullFilePath);
             Path = f.DirectoryName + System.IO.Path.DirectorySeparatorChar;
             FileName = f.Name;
             Load();
@@ -47,7 +46,7 @@ namespace MBBSEmu.Disassembler
         {
             Path = "test";
             FileName = "test";
-            FileContent = new byte[0];
+            FileContent = Array.Empty<byte>();
             SegmentTable = new List<Segment>();
             ResidentNameTable = new List<ResidentName>();
             ModuleReferenceTable = new List<ModuleReference>();
