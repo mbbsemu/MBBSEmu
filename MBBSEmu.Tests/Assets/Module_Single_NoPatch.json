@@ -1,0 +1,9 @@
+{
+  "Modules": [
+    {
+      "Identifier": "MBBSEMU",
+      "Path": "c:\\dos\\modules\\mbbsemu\\",
+      "Enabled": "true"
+    }
+  ]
+}

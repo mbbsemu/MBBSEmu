@@ -310,7 +310,7 @@ namespace MBBSEmu.Module
         private void LoadModuleDll(string dllToLoad)
         {
             var requiredDll = new MbbsDll(_fileUtility, _logger);
-            if (!requiredDll.Load(dllToLoad, ModulePath))
+            if (!requiredDll.Load(dllToLoad, ModulePath, ModuleConfig.Patches?.Where(x => x.AbsoluteOffset > 0).ToList()))
             {
                 _logger.Error($"Unable to load {dllToLoad}");
                 return;

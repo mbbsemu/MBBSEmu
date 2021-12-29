@@ -1,4 +1,5 @@
 using MBBSEmu.Btrieve;
+using MBBSEmu.Converters;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
@@ -17,7 +18,6 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
-using Microsoft.Extensions.Configuration;
 using NLog;
 using NLog.Layouts;
 using NLog.Targets;
@@ -26,6 +26,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MBBSEmu
 {
@@ -93,9 +95,9 @@ namespace MBBSEmu
         /// <summary>
         ///     Module Configuration
         /// </summary>
-        private readonly List<ModuleConfiguration> _moduleConfigurations = new List<ModuleConfiguration>();
+        private readonly List<ModuleConfiguration> _moduleConfigurations = new();
 
-        private readonly List<IStoppable> _runningServices = new List<IStoppable>();
+        private readonly List<IStoppable> _runningServices = new();
         private int _cancellationRequests = 0;
 
         private ServiceResolver _serviceResolver;
@@ -207,15 +209,15 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-CONSOLE":
-                        {
-                            //Check to see if running Windows and earlier then Windows 8.0
-                            if (OperatingSystem.IsWindows() && !OperatingSystem.IsWindowsVersionAtLeast(6, 2))
                             {
-                                throw new ArgumentException("Console not supported on versions of Windows earlier than 8.0");
-                            }
+                                //Check to see if running Windows and earlier then Windows 8.0
+                                if (OperatingSystem.IsWindows() && !OperatingSystem.IsWindowsVersionAtLeast(6, 2))
+                                {
+                                    throw new ArgumentException("Console not supported on versions of Windows earlier than 8.0");
+                                }
 
-                            _isConsoleSession = true;
-                            break;
+                                _isConsoleSession = true;
+                                break;
                             }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
@@ -314,65 +316,72 @@ namespace MBBSEmu
                     _menuOptionKey ??= "A";
 
                     //Load Command Line
-                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey, ModuleEnabled = true});
+                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey, ModuleEnabled = true });
                 }
                 else if (_isModuleConfigFile)
                 {
                     var menuOptionKeys = new List<string>();
                     var autoMenuOptionSeed = 1;
 
-                    //Load Config File
-                    var moduleConfiguration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                        .AddJsonFile(_moduleConfigFileName, false, true).Build();
-
-                    foreach (var m in moduleConfiguration.GetSection("Modules").GetChildren())
+                    var options = new JsonSerializerOptions
                     {
-                        //Check to see if module is enabled
-                        var moduleEnabled = m["Enabled"] != "0";
+                        Converters = {
+                            new JsonBooleanConverter(),
+                            new JsonStringEnumConverter()
+                            
+                        }
+                    };
+
+                    var moduleConfigurationFile =
+                        JsonSerializer.Deserialize<ModuleConfigurationFile>(File.ReadAllText(_moduleConfigFileName), options);
+
+                    foreach (var m in moduleConfigurationFile.Modules)
+                    {
+                        m.ModuleEnabled ??= true;
 
                         //Check for Non Character/Number in MenuOptionKey and Length of 2 or less
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && !(m["MenuOptionKey"]).All(char.IsLetterOrDigit))
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && !(m.MenuOptionKey).All(char.IsLetterOrDigit))
                         {
-                            _logger.Error($"Invalid menu option key character (NOT A-Z or 0-9) for {m["Identifier"]}, auto assigning menu option key");
-                            m["MenuOptionKey"] = "";
+                            _logger.Error($"Invalid menu option key character (NOT A-Z or 0-9) for {m.ModuleIdentifier}, auto assigning menu option key");
+                            m.MenuOptionKey = "";
                         }
 
                         //Check MenuOptionKey is Length of 2 or less
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && m["MenuOptionKey"].Length > 2)
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && m.MenuOptionKey.Length > 2)
                         {
-                            _logger.Error($"Invalid menu option key length (MAX Length: 2) {m["Identifier"]}, auto assigning menu option key");
-                            m["MenuOptionKey"] = "";
+                            _logger.Error($"Invalid menu option key length (MAX Length: 2) {m.ModuleIdentifier}, auto assigning menu option key");
+                            m.MenuOptionKey = "";
                         }
 
                         //Check for duplicate MenuOptionKey
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]) && _moduleConfigurations.Any(x => x.MenuOptionKey == m["MenuOptionKey"]) && menuOptionKeys.Any(x => x.Equals(m["MenuOptionKey"])))
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && _moduleConfigurations.Any(x => x.MenuOptionKey == m.MenuOptionKey) && menuOptionKeys.Any(x => x.Equals(m.MenuOptionKey)))
                         {
-                            _logger.Error($"Duplicate menu option key for {m["Identifier"]}, auto assigning menu option key");
-                            m["MenuOptionKey"] = "";
+                            _logger.Error($"Duplicate menu option key for {m.ModuleIdentifier}, auto assigning menu option key");
+                            m.MenuOptionKey = "";
                         }
 
                         //Check for duplicate module in moduleConfig
-                        if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m["Identifier"]))
+                        if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m.ModuleIdentifier))
                         {
-                            _logger.Error($"Module {m["Identifier"]} already loaded, duplicate instance not loaded");
+                            _logger.Error($"Module {m.ModuleIdentifier} already loaded, duplicate instance not loaded");
                             continue;
                         }
 
                         //If MenuOptionKey, add to list
-                        if (!string.IsNullOrEmpty(m["MenuOptionKey"]))
-                            menuOptionKeys.Add(m["MenuOptionKey"]);
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey))
+                            menuOptionKeys.Add(m.MenuOptionKey);
 
                         //Check for missing MenuOptionKey, assign, add to list
-                        if (string.IsNullOrEmpty(m["MenuOptionKey"]))
+                        if (string.IsNullOrEmpty(m.MenuOptionKey))
                         {
-                            m["MenuOptionKey"] = autoMenuOptionSeed.ToString();
+                            m.MenuOptionKey = autoMenuOptionSeed.ToString();
                             autoMenuOptionSeed++;
-                            menuOptionKeys.Add(m["MenuOptionKey"]);
+                            menuOptionKeys.Add(m.MenuOptionKey);
                         }
 
                         //Load Modules
-                        _logger.Info($"Loading {m["Identifier"]}");
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = m["Identifier"], ModulePath = m["Path"], MenuOptionKey = m["MenuOptionKey"], ModuleEnabled = moduleEnabled});
+                        _logger.Info($"Loading {m.ModuleIdentifier}");
+                        _moduleConfigurations.Add(m);
                     }
                 }
                 else
@@ -516,8 +525,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte) 'M' }.Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte) 'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
