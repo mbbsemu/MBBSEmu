@@ -152,15 +152,14 @@ namespace MBBSEmu.Session
         {
             switch (ansiCommand)
             {
-                // H or 2J reset position to 0,0
+                // H resets position to 0,0 with no arguments
                 case 'H' when _values.Count == 0:
-                case 'J' when _values.Count == 1 && _values[0] == 2:
                     _lineBufferLength = 0;
                     break;
                 // H/f move cursor to line/column
                 case 'H' when _values.Count == 2:
                 case 'f' when _values.Count == 2:
-                    _lineBufferLength = _values[1]; // _values are line/column
+                    _lineBufferLength = _values[1] - 1; // _values are line/column (1-based)
                     break;
                 // move columns right
                 case 'C' when _values.Count == 1:
@@ -172,7 +171,7 @@ namespace MBBSEmu.Session
                     break;
                 // move to column
                 case 'G' when _values.Count == 1:
-                    _lineBufferLength = _values[0];
+                    _lineBufferLength = _values[0] - 1; // 1-based
                     break;
                 default:
                     // skip, we aren't interested in these ansi codes
