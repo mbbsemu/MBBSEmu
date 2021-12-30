@@ -8,6 +8,7 @@ namespace MBBSEmu.Tests.Session
     public class SessionBase_Tests
     {
         private const string RED = "\x1B[31;48;4m";
+        private const string RESET_TERM = "\x1B[2J";
 
         private readonly TestSession testSession = new TestSession(null, null);
 
@@ -22,8 +23,8 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void normalBreaksWithAnsi()
         {
-            testSession.SendToClient($"{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED} {RED}fourteen fifteen sixteen\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be($"{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED}");
+            testSession.SendToClient($"{RESET_TERM}{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED} {RED}fourteen fifteen sixteen\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be($"{RESET_TERM}{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED}");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be($"{RED}fourteen fifteen sixteen");
         }
 
