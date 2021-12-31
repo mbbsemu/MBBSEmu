@@ -890,7 +890,7 @@ namespace MBBSEmu.HostProcess
                             if (session.TransparentMode)
                                 break;
 
-                            if (session.Status.Count == 0 || session.GetStatus() == UserStatus.RING ||
+                            if (session.Status.Count == 0 || session.GetStatus() == UserStatus.UNUSED || session.GetStatus() == UserStatus.RING ||
                                session.GetStatus() == UserStatus.POLSTS)
                             {
 

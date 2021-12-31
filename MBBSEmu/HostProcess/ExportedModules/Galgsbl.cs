@@ -326,7 +326,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort) status);
 
 #if DEBUG
-            _logger.Debug($"Injecting Statis {status} on channel {channelNumber}");
+            _logger.Debug($"Injecting Status {status} on channel {channelNumber}");
 #endif
 
             Registers.AX = 0;

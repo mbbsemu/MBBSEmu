@@ -8223,7 +8223,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //gets the "next" pointer for the input string
             var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
 
-            //create return poitner and zero it out
+            //create return pointer and zero it out
             var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCUID", UserAccount.UIDSIZ);
             Module.Memory.SetZero(returnPointer, UserAccount.UIDSIZ);
 
