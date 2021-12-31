@@ -1,5 +1,6 @@
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
@@ -26,9 +27,21 @@ namespace MBBSEmu.Session
     /// </summary>
     public abstract class SessionBase : IStoppable
     {
+        public const int DEFAULT_TERMINAL_COLUMNS = 80;
+
         protected delegate void SendToClientDelegate(byte[] dataToSend);
 
-        protected SendToClientDelegate SendToClientMethod;
+        private SendToClientDelegate _sendToClientMethod;
+
+        protected SendToClientDelegate SendToClientMethod
+        {
+            get => _sendToClientMethod;
+            set
+            {
+                _sendToClientMethod = value;
+                _lineBreaker.SendToClientMethod = value.Invoke;
+            }
+        }
 
         /// <summary>
         ///     Specifies the Type of Session the user is currently using
@@ -68,7 +81,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     MajorBBS User Status
         /// </summary>
-        public Queue<ushort> Status { get; set; }
+        public Queue<EnumUserStatus> Status { get; set; }
 
         private EnumSessionState _enumSessionState;
 
@@ -214,7 +227,21 @@ namespace MBBSEmu.Session
 
         private readonly ITextVariableService _textVariableService;
 
+        private readonly LineBreaker _lineBreaker = new LineBreaker();
+
         protected readonly IMbbsHost _mbbsHost;
+
+        public int TerminalColumns
+          {
+            get => _lineBreaker.TerminalColumns;
+            set { _lineBreaker.TerminalColumns = value; }
+        }
+
+        /// <summary>
+        /// Breaks buffer into lines and calls SendToClientMethod afterwards.
+        /// </summary>
+        /// <param name="buffer">Raw output buffer going to a client</param>
+        private void SendBreakingIntoLines(byte[] buffer) => _lineBreaker.SendBreakingIntoLines(buffer);
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
@@ -226,22 +253,21 @@ namespace MBBSEmu.Session
 
             if (_textVariableService == null)
             {
-                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
-
+                SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
             }
             else
             {
                 var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
                 var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
 
-                SendToClientMethod(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+                SendBreakingIntoLines(dataToSendProcessed.Where(shouldSendToClient).ToArray());
             }
 
             if (OutputEmptyStatus && DataToClient.Count == 0)
             {
                 //Only queue up the event if there's not one already in the buffer
-                if(!Status.Contains(5) || GetStatus() == 5 && Status.Count(x=> x == 5) == 1)
-                    Status.Enqueue(5);
+                if(!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x=> x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
+                    Status.Enqueue(EnumUserStatus.OUTPUT_BUFFER_EMPTY);
             }
         }
 
@@ -256,7 +282,7 @@ namespace MBBSEmu.Session
         public void SendToClientRaw(byte[] dataToSend)
         {
             if (OutputEnabled)
-                SendToClientMethod(dataToSend.Where(shouldSendToClient).ToArray());
+                SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
         }
 
         public abstract void Stop();
@@ -266,10 +292,11 @@ namespace MBBSEmu.Session
             _mbbsHost = mbbsHost;
             _textVariableService = textVariableService;
             SessionId = sessionId;
+            TerminalColumns = DEFAULT_TERMINAL_COLUMNS;
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
-            Status = new Queue<ushort>();
+            Status = new Queue<EnumUserStatus>();
             SessionTimer = new Stopwatch();
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
@@ -329,9 +356,7 @@ namespace MBBSEmu.Session
             return printableCharacters;
         }
 
-        public static bool shouldSendToClient(byte b) {
-            return IS_CHARACTER_PRINTABLE[b];
-        }
+        public static bool shouldSendToClient(byte b) => IS_CHARACTER_PRINTABLE[b];
 
         /// <summary>
         ///     Safe Method for returning Status of a Channel
@@ -339,6 +364,6 @@ namespace MBBSEmu.Session
         ///     If the FIFO Queue is Empty, we return 1 (OK)
         /// </summary>
         /// <returns></returns>
-        public ushort GetStatus() => Status.Count == 0 ? (ushort) 1 : Status.Peek();
+        public EnumUserStatus GetStatus() => Status.Count == 0 ? EnumUserStatus.RINGING : Status.Peek();
     }
 }

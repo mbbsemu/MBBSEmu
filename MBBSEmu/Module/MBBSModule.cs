@@ -316,7 +316,7 @@ namespace MBBSEmu.Module
                 return;
             }
 
-            requiredDll.SegmentOffset = (ushort)(ModuleDlls.Sum(x => x.File.SegmentTable.Count) + 1);
+            requiredDll.SegmentOffset = (ushort)ModuleDlls.Sum(x => x.File.SegmentTable.Count);
             ModuleDlls.Add(requiredDll);
 
             _logger.Info($"Loaded {dllToLoad}");

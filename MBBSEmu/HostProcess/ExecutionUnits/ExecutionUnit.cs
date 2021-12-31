@@ -14,7 +14,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
     ///     Represents a single execution unit, everything that is required for a portion of code within a module
     ///     to be executed, including CPU, Memory, Registers, and Module Exports
     /// </summary>
-    public class ExecutionUnit: IDisposable
+    public class ExecutionUnit : IDisposable
     {
         /// <summary>
         ///     Module dedicated CPU Core
@@ -125,11 +125,12 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             while (!ModuleCpuRegisters.Halt)
                 ModuleCpu.Tick();
 
-            //Update Session State
-            if (!bypassState && channelNumber != ushort.MaxValue && initialStackValues == null)
-                ExportedModuleDictionary[Majorbbs.Segment].UpdateSession(channelNumber);
+            //Return Registers if we're not updating state on exit
+            if (bypassState || channelNumber == ushort.MaxValue || initialStackValues is { Count: > 0 })
+                return ModuleCpuRegisters;
 
-            //Return Registers
+            //Update Our State
+            ExportedModuleDictionary[Majorbbs.Segment].UpdateSession(channelNumber);
             return ModuleCpuRegisters;
         }
     }

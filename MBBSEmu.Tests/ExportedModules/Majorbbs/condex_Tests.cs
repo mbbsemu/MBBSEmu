@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using Xunit;
@@ -23,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.True(mbbsEmuCpuRegisters.Halt);
-            Assert.Equal(0,testSessions[0].GetStatus());
+            Assert.Equal(EnumUserStatus.UNUSED, testSessions[0].GetStatus());
         }
 
         [Fact]
@@ -38,7 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.False(mbbsEmuCpuRegisters.Halt);
-            Assert.Equal(1, testSessions[0].GetStatus());
+            Assert.Equal(EnumUserStatus.RINGING, testSessions[0].GetStatus());
         }
     }
 }

@@ -40,6 +40,7 @@ namespace MBBSEmu.Session.Telnet
                 {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue { Local = true, Remote = true}},
                 {EnumIacOptions.Echo, new TelnetOptionsValue { Local = true, Remote = false}},
                 {EnumIacOptions.SuppressGoAhead, new TelnetOptionsValue { Local = true, Remote = true}},
+                {EnumIacOptions.NegotiateAboutWindowSize, new TelnetOptionsValue { Local = true, Remote = true }},
             };
 
         private readonly IacFilter _iacFilter;
@@ -51,6 +52,7 @@ namespace MBBSEmu.Session.Telnet
 
             _iacFilter = new IacFilter(logger);
             _iacFilter.IacVerbReceived += OnIacVerbReceived;
+            _iacFilter.IacSubnegotiationReceived += OnIacSubnegotiationReceived;
             _configuration = configuration;
 
             _heartbeat = _configuration.TelnetHeartbeat;
@@ -181,6 +183,21 @@ namespace MBBSEmu.Session.Telnet
             if (msIacToSend.Length > 0)
             {
                 base.Send(msIacToSend.ToArray());
+            }
+        }
+
+        private void OnIacSubnegotiationReceived(object sender, IacFilter.IacSubnegotiationEventArgs args)
+        {
+            if (args.Option == EnumIacOptions.NegotiateAboutWindowSize)
+            {
+                var columns = args.Data[0] << 8 | args.Data[1];
+                var rows = args.Data[2] << 8 | args.Data[3];
+
+                TerminalColumns = columns;
+
+                UsrAcc.scnwid = (byte) columns;
+                UsrAcc.scnbrk = (byte) rows;
+                UsrAcc.scnfse = (byte) rows;
             }
         }
     }
