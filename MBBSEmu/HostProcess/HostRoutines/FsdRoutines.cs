@@ -1,4 +1,5 @@
 ﻿using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
@@ -723,7 +724,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Invokes STT on exit
             session.SessionState = EnumSessionState.InModule;
-            session.Status.Enqueue(3);
+            session.Status.Enqueue(UserStatus.CRSTG);
             session.UsrPtr.Substt++;
         }
 

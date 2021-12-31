@@ -10,6 +10,7 @@ using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
@@ -161,8 +162,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginUsernameInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.GetStatus() != 3) return;
-            
+            if (session.GetStatus() != UserStatus.CRSTG) return;
+
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
             if (string.IsNullOrEmpty(inputValue))
@@ -224,7 +225,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginPasswordInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             //Get The Password
             session.Password = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
@@ -255,7 +256,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 userid = Encoding.ASCII.GetBytes(session.Username.ToUpper()),
                 psword = Encoding.ASCII.GetBytes("<<HASHED>>")
             }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
-            
+
             if (!result)
             {
                 session.SendToClient("\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n".EncodeToANSIArray());
@@ -327,7 +328,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void MainMenuInput(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             if (session.InputBuffer.Length == 0)
             {
@@ -383,7 +384,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LogoffConfirmationInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).TrimEnd('\0').ToUpper();
 
@@ -430,7 +431,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupUsernameInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -487,7 +488,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -526,7 +527,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordConfirmInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -553,7 +554,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupEmailInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -583,7 +584,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupGenderInput(SessionBase session)
         {
-            if (session.GetStatus() != 3) return;
+            if (session.GetStatus() != UserStatus.CRSTG) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 

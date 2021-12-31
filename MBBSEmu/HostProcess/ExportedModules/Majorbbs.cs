@@ -6,6 +6,7 @@ using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
@@ -319,7 +320,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), ChannelDictionary[channelNumber].GetStatus());
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort) ChannelDictionary[channelNumber].GetStatus());
 
             var userBasePointer = Module.Memory.GetVariablePointer("USER");
             var currentUserPointer = new FarPtr(userBasePointer.Data);
@@ -354,7 +355,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
             //Processing Channel Input
-            if (ChannelDictionary[channelNumber].GetStatus() == 3)
+            if (ChannelDictionary[channelNumber].GetStatus() == UserStatus.CRSTG)
                 ProcessChannelInput(channelNumber);
         }
 
@@ -396,7 +397,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
 
             //Set the Channel Status
-            var resultStatus = Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            var resultStatus = (UserStatus) Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
 
             //If STATUS was changed programatically, queue it up
             if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
@@ -7864,7 +7865,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet((ushort)EnumRuntimeFlags.Concex)) return;
             Registers.Halt = true;
             ChannelDictionary[ChannelNumber].Status.Clear();
-            ChannelDictionary[ChannelNumber].Status.Enqueue(0);
+            ChannelDictionary[ChannelNumber].Status.Enqueue(UserStatus.UNUSED);
         }
 
         /// <summary>
@@ -8221,7 +8222,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             //gets the "next" pointer for the input string
             var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
-            
+
             //create return poitner and zero it out
             var returnPointer = Module.Memory.GetOrAllocateVariablePointer("CNCUID", UserAccount.UIDSIZ);
             Module.Memory.SetZero(returnPointer, UserAccount.UIDSIZ);
@@ -8238,7 +8239,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + i);
                 break;
             }
-            
+
             //Sets DX:AX registers to the return value
             Registers.SetPointer(returnPointer);
         }
