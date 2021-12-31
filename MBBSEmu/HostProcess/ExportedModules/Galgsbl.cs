@@ -312,7 +312,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void btuinj()
         {
             var channelNumber = GetParameter(0);
-            var status = (UserStatus) GetParameter(1);
+            var status = (EnumUserStatus) GetParameter(1);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
@@ -773,9 +773,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (channel.DataToProcess && channel.GetStatus() == UserStatus.CRSTG)
+            if (channel.DataToProcess && channel.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
             {
-                Registers.AX = (ushort) UserStatus.CRSTG;
+                Registers.AX = (ushort) EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE;
             }
             else
             {
@@ -903,7 +903,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void chiinj()
         {
             var channel = GetParameter(0);
-            var status = (UserStatus) GetParameter(1);
+            var status = (EnumUserStatus) GetParameter(1);
 
             ChannelDictionary[channel].Status.Enqueue(status);
 

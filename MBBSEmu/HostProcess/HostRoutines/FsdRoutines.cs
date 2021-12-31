@@ -724,7 +724,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Invokes STT on exit
             session.SessionState = EnumSessionState.InModule;
-            session.Status.Enqueue(UserStatus.CRSTG);
+            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
             session.UsrPtr.Substt++;
         }
 

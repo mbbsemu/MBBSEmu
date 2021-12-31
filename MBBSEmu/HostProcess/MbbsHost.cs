@@ -277,7 +277,7 @@ namespace MBBSEmu.HostProcess
                         ProcessIncomingCharacter(session);
 
                     //Global Command Handler
-                    if (session.GetStatus() == UserStatus.CRSTG && DoGlobalsAttribute.Get(session.SessionState))
+                    if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE && DoGlobalsAttribute.Get(session.SessionState))
                     {
                         //Transfer Input Buffer to Command Buffer, but don't clear it
                         session.InputBuffer.WriteByte(0x0);
@@ -287,7 +287,7 @@ namespace MBBSEmu.HostProcess
                         if (_globalRoutines.Any(g =>
                             g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
                         {
-                            session.Status.Enqueue(UserStatus.RING);
+                            session.Status.Enqueue(EnumUserStatus.RINGING);
                             session.InputBuffer.SetLength(0);
 
                             //Redisplay Main Menu prompt after global if session is at Main Menu
@@ -341,14 +341,14 @@ namespace MBBSEmu.HostProcess
                         case EnumSessionState.InModule:
                             {
                                 //Did BTUCHI or a previous command cause a status change?
-                                if (session.GetStatus() == UserStatus.CYCLE || session.GetStatus() == UserStatus.OUTMT)
+                                if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY)
                                 {
                                     ProcessSTSROU(session);
                                     break;
                                 }
 
                                 //User Input Available? Invoke *STTROU
-                                if (session.GetStatus() == UserStatus.CRSTG)
+                                if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
                                 {
                                     ProcessSTTROU(session);
                                 }
@@ -360,7 +360,7 @@ namespace MBBSEmu.HostProcess
 
                                     //Keep the user in Polling Status if the polling routine is still there
                                     if (session.PollingRoutine != FarPtr.Empty)
-                                        session.Status.Enqueue(UserStatus.POLSTS);
+                                        session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
                                 }
 
                                 break;
@@ -499,10 +499,10 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessSTTROU_EnteringModule(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG)
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
             {
                 session.Status.Clear();
-                session.Status.Enqueue(UserStatus.CRSTG);
+                session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
             }
 
             session.SessionState = EnumSessionState.InModule;
@@ -663,7 +663,7 @@ namespace MBBSEmu.HostProcess
             if (session.CharacterProcessed == 0xD)
             {
                 session.Status.Clear();
-                session.Status.Enqueue(UserStatus.CRSTG);
+                session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
             }
 
             return result;
@@ -859,17 +859,17 @@ namespace MBBSEmu.HostProcess
                             session.SendToClient(new byte[] { 0xD, 0xA });
 
                         //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
-                        if (session.GetStatus() == UserStatus.CYCLE)
+                        if (session.GetStatus() == EnumUserStatus.CYCLE)
                         {
                             //Set Status == 3, which means there is a Command Ready
                             session.Status.Clear(); //Clear the 240
-                            session.Status.Enqueue(UserStatus.CRSTG); //Enqueue Status of 3
+                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE); //Enqueue Status of 3
                             session.EchoSecureEnabled = false;
                             break;
                         }
 
                         //Always Enqueue Input Ready
-                        session.Status.Enqueue(UserStatus.CRSTG);
+                        session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
                         break;
                     }
 
@@ -890,8 +890,8 @@ namespace MBBSEmu.HostProcess
                             if (session.TransparentMode)
                                 break;
 
-                            if (session.Status.Count == 0 || session.GetStatus() == UserStatus.UNUSED || session.GetStatus() == UserStatus.RING ||
-                               session.GetStatus() == UserStatus.POLSTS)
+                            if (session.Status.Count == 0 || session.GetStatus() == EnumUserStatus.UNUSED || session.GetStatus() == EnumUserStatus.RINGING ||
+                               session.GetStatus() == EnumUserStatus.POLLING_STATUS)
                             {
 
                                 {

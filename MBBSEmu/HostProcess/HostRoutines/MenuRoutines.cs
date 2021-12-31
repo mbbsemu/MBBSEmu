@@ -162,7 +162,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginUsernameInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -225,7 +225,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private void LoginPasswordInput(SessionBase session)
         {
             //Only Process on CR
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             //Get The Password
             session.Password = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
@@ -328,7 +328,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void MainMenuInput(SessionBase session, Dictionary<string, MbbsModule> modules)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             if (session.InputBuffer.Length == 0)
             {
@@ -384,7 +384,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LogoffConfirmationInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).TrimEnd('\0').ToUpper();
 
@@ -431,7 +431,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupUsernameInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -488,7 +488,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -527,7 +527,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupPasswordConfirmInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -554,7 +554,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupEmailInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 
@@ -584,7 +584,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void SignupGenderInput(SessionBase session)
         {
-            if (session.GetStatus() != UserStatus.CRSTG) return;
+            if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
             var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
 

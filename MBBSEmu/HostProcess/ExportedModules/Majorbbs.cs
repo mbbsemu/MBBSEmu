@@ -355,7 +355,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
             //Processing Channel Input
-            if (ChannelDictionary[channelNumber].GetStatus() == UserStatus.CRSTG)
+            if (ChannelDictionary[channelNumber].GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
                 ProcessChannelInput(channelNumber);
         }
 
@@ -397,7 +397,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
 
             //Set the Channel Status
-            var resultStatus = (UserStatus) Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            var resultStatus = (EnumUserStatus) Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
 
             //If STATUS was changed programatically, queue it up
             if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
@@ -7865,7 +7865,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!ChannelDictionary[ChannelNumber].UsrPtr.Flags.IsFlagSet((ushort)EnumRuntimeFlags.Concex)) return;
             Registers.Halt = true;
             ChannelDictionary[ChannelNumber].Status.Clear();
-            ChannelDictionary[ChannelNumber].Status.Enqueue(UserStatus.UNUSED);
+            ChannelDictionary[ChannelNumber].Status.Enqueue(EnumUserStatus.UNUSED);
         }
 
         /// <summary>

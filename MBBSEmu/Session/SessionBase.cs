@@ -81,7 +81,7 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     MajorBBS User Status
         /// </summary>
-        public Queue<UserStatus> Status { get; set; }
+        public Queue<EnumUserStatus> Status { get; set; }
 
         private EnumSessionState _enumSessionState;
 
@@ -266,8 +266,8 @@ namespace MBBSEmu.Session
             if (OutputEmptyStatus && DataToClient.Count == 0)
             {
                 //Only queue up the event if there's not one already in the buffer
-                if(!Status.Contains(UserStatus.OUTMT) || GetStatus() == UserStatus.OUTMT && Status.Count(x=> x == UserStatus.OUTMT) == 1)
-                    Status.Enqueue(UserStatus.OUTMT);
+                if(!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x=> x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
+                    Status.Enqueue(EnumUserStatus.OUTPUT_BUFFER_EMPTY);
             }
         }
 
@@ -296,7 +296,7 @@ namespace MBBSEmu.Session
             UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
-            Status = new Queue<UserStatus>();
+            Status = new Queue<EnumUserStatus>();
             SessionTimer = new Stopwatch();
             DataToClient = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
             DataFromClient = new BlockingCollection<byte>(new ConcurrentQueue<byte>());
@@ -364,6 +364,6 @@ namespace MBBSEmu.Session
         ///     If the FIFO Queue is Empty, we return 1 (OK)
         /// </summary>
         /// <returns></returns>
-        public UserStatus GetStatus() => Status.Count == 0 ? UserStatus.RING : Status.Peek();
+        public EnumUserStatus GetStatus() => Status.Count == 0 ? EnumUserStatus.RINGING : Status.Peek();
     }
 }
