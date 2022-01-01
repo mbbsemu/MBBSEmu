@@ -7,7 +7,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
     public class sameto_Tests : ExportedModuleTestBase
     {
-        private const int SAMETO_ORDINAL = 521;
+        private const int SAMETO_ORDINAL = 522;
 
         [Theory]
         //Actual examples from the documentation! XD
