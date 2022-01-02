@@ -9,14 +9,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         private const int ENDCNC_ORDINAL = 191;
 
-        [Theory]
-
         //Simple commands with nxtcmd == input
+        [Theory]
         [InlineData("123 ABC\0", 1, 0, "23\0ABC\0", 2)]
         [InlineData("123 ABC\0", 3, 0, "ABC\0", 1)]
         [InlineData("123 ABC\0", 4, 0, "ABC\0", 1)]
         [InlineData("123 ABC\0", 5, 0, "BC\0", 1)]
-        [InlineData("\0", 0, 1, "", 0)]
+        [InlineData("\0", 0, 1, "\0", 0)]
         public void endcnc_Test(string inputString, ushort nxtcmdStartingOffset, char expectedResult, string expectedInputString, ushort expectedMargc)
         {
             //Reset State
@@ -26,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var inputLength = (ushort)inputString.Length;
 
             mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString));
-            mbbsModule.Memory.SetWord("INPLEN", inputLength);
+            mbbsModule.Memory.SetWord("INPLEN", (ushort) (inputLength - 1));
 
             //Set nxtcmd
             var currentNxtcmd = mbbsEmuMemoryCore.GetPointer("NXTCMD");
@@ -38,7 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Gather Results
             var actualResult = mbbsEmuCpuCore.Registers.AX;
-            var actualInputString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray("INPUT", mbbsEmuMemoryCore.GetWord("INPLEN")));
+            var actualInputString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray("INPUT", (ushort) (mbbsEmuMemoryCore.GetWord("INPLEN") + 1)));
             var actualMargc = mbbsEmuMemoryCore.GetWord("MARGC");
             //Verify Results
             Assert.Equal(expectedInputString, actualInputString);

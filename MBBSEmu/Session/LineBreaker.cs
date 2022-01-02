@@ -5,6 +5,8 @@ namespace MBBSEmu.Session
 {
     public class LineBreaker
     {
+        public const byte BACKSPACE = 8;
+        public const byte DELETE = 127;
         public const byte ESCAPE = 0x1B;
         public const int MAX_LINE = 512;
         public const int MAX_OUTPUT_BUFFER = 4096;
@@ -124,7 +126,11 @@ namespace MBBSEmu.Session
                             case ESCAPE: // escape
                                 _parseState = ParseState.ESCAPE;
                                 break;
+                            case DELETE:       // ignore
                             case (byte) '\n':  // ignore
+                                break;
+                            case BACKSPACE:
+                                _lineBufferLength = Math.Max(0, _lineBufferLength - 1);
                                 break;
                             default:
                                 _lineBuffer[_lineBufferLength] = b;

@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Input Values
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
-            mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
+            mbbsEmuMemoryCore.SetWord("INPLEN", (ushort) (inputCommand.Length - 1));
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RSTRIN_ORDINAL, new List<FarPtr>());
 
