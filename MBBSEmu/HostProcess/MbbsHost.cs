@@ -356,11 +356,9 @@ namespace MBBSEmu.HostProcess
                                 //If the channel has been registered with BEGIN_POLLING
                                 if (session.PollingRoutine != null)
                                 {
+                                    session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
                                     ProcessPollingRoutine(session);
-
-                                    //Keep the user in Polling Status if the polling routine is still there
-                                    if (session.PollingRoutine != FarPtr.Empty)
-                                        session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
+                                    session.Status.Dequeue();
                                 }
 
                                 break;
@@ -852,7 +850,7 @@ namespace MBBSEmu.HostProcess
                     }
 
                 //Enter or Return
-                case 0xD when !session.TransparentMode && (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
+                case 0xD when (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
                     {
                         //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
                         if (!session.TransparentMode && session.CharacterProcessed > 0)

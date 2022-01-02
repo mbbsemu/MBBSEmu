@@ -370,10 +370,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
             Module.Memory.SetZero(inputPointer, 0xFF);
             var inputFromChannel = ChannelDictionary[channelNumber].InputCommand;
-            var inputLength = (ushort)ChannelDictionary[ChannelNumber].InputCommand.Length;
+            var inputLength = (ushort)(ChannelDictionary[ChannelNumber].InputCommand.Length - 1);
             Module.Memory.SetArray(inputPointer, inputFromChannel);
             Module.Memory.SetByte(inputPointer + inputFromChannel.Length, 0);
-            Module.Memory.SetWord("INPLEN", inputLength);
+            inputLength = setINPLEN(inputPointer);
 
             ChannelDictionary[channelNumber].UsrPtr.Flags = 0;
 
@@ -381,9 +381,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Set Concex flag on 0 input
             //TODO -- Need to verify this is correct
-            if (Module.Memory.GetWord("INPLEN") == 0)
+            if (inputLength == 0)
                 ChannelDictionary[channelNumber].UsrPtr.Flags |= (uint)EnumRuntimeFlags.Concex;
-
         }
 
         /// <summary>
@@ -3717,7 +3716,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (inputLength == 0)
                 return;
 
-            for (var i = inputPointer.Offset; i < inputPointer.Offset + (inputLength - 1); i++)
+            for (var i = inputPointer.Offset; i < inputPointer.Offset + inputLength; i++)
             {
                 if (Module.Memory.GetByte(inputPointer.Segment, i) == 0)
                     Module.Memory.SetByte(inputPointer.Segment, i, (byte)' ');
@@ -4289,9 +4288,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 margvPointer.Offset += FarPtr.Size;
 
             }
-            Module.Memory.SetWord("INPLEN", (ushort)parsedInput.Length);
+
             Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
             Module.Memory.SetWord("MARGC", margCount);
+            //setINPLEN();
         }
 
         /// <summary>
@@ -5577,7 +5577,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
             var inputLength = Module.Memory.GetWord("INPLEN");
 
-            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset) + 1;
 
             //Check to see if nxtcmd is on a space, if so, increment it by 1
             if (Module.Memory.GetByte(nxtcmdPointer) == 0x20)
@@ -5595,7 +5595,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Get Remaining Characters & Save to Input
             var remainingInput = Module.Memory.GetArray(nxtcmdPointer, (ushort)(remainingCharactersInCommand));
             Module.Memory.SetArray(inputPointer, remainingInput);
-            Module.Memory.SetWord("INPLEN", (ushort)remainingCharactersInCommand);
+            setINPLEN(inputPointer);
             Module.Memory.SetPointer("NXTCMD", inputPointer);
             parsin();
 
@@ -5647,7 +5647,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(nxtcmdPointer);
 
             //Set NXTCMD to the end of the INPUT
-            var newNxtcmd = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength - 1));
+            var newNxtcmd = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength));
             Module.Memory.SetPointer("NXTCMD", newNxtcmd);
         }
 
@@ -8242,6 +8242,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //Sets DX:AX registers to the return value
             Registers.SetPointer(returnPointer);
+        }
+
+        /// <summary>
+        /// Sets the INPLEN variable based on the length of INPUT
+        /// </summary>
+        /// <returns>The value written to INPLEN</returns>
+        private ushort setINPLEN() => setINPLEN(Module.Memory.GetVariablePointer("INPUT"));
+
+        /// <summary>
+        /// Sets the INPLEN variable based on the length of the string from input
+        /// </summary>
+        /// <param name="input">Null-terminated string pointer</param>
+        /// <returns>The value written to INPLEN</returns>
+        private ushort setINPLEN(FarPtr input)
+        {
+            var sz = (ushort) Module.Memory.GetString(input, true).Length;
+
+            Module.Memory.SetWord("INPLEN", sz);
+
+            return sz;
         }
     }
 }
