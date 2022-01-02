@@ -859,6 +859,13 @@ namespace MBBSEmu.HostProcess
                         //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
                         if (session.GetStatus() == EnumUserStatus.CYCLE)
                         {
+                            //If we're cycling, ignore \r for triggering STTROU and add it to the input buffer for STSROU to handle
+                            if (session.TransparentMode)
+                            {
+                                session.InputBuffer.WriteByte(session.CharacterProcessed);
+                                break;
+                            }
+
                             //Set Status == 3, which means there is a Command Ready
                             session.Status.Clear(); //Clear the 240
                             session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE); //Enqueue Status of 3
@@ -868,6 +875,7 @@ namespace MBBSEmu.HostProcess
 
                         //Always Enqueue Input Ready
                         session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
+
                         break;
                     }
 
