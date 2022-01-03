@@ -680,7 +680,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Sets Screen Width (ignored)
+        ///     Sets Screen Width, controls word breaking
         /// </summary>
         private void btutsw()
         {
