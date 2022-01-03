@@ -239,7 +239,6 @@ namespace MBBSEmu.Session
             get => _wordWrapWidth;
             set
             {
-
                 var changed = _wordWrapWidth != value;
                 _wordWrapWidth = value;
                 if (changed)
@@ -248,7 +247,7 @@ namespace MBBSEmu.Session
                 }
                 if (value > 0)
                 {
-                    _lineBreaker.TerminalColumns = value;
+                    _lineBreaker.WordWrapWidth = value;
                 }
             }
         }
