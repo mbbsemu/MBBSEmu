@@ -684,12 +684,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btutsw()
         {
-            var channel = GetParameter(0);
+            var channelNumber = GetParameter(0);
             var width = GetParameter(1);
 
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
 #if DEBUG
-            _logger.Warn($"Set Screen Width for Channel {channel} to {width}");
+            _logger.Warn($"Set Screen Width for Channel {channelNumber} to {width}");
 #endif
+            channel.WordWrapWidth = width;
+
             Registers.AX = 0;
         }
 

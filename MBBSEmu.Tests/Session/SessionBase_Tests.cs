@@ -15,6 +15,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void normalBreaks()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient("Testing one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("Testing one two three four five six seven eight nine ten eleven twelve thirteen");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("fourteen fifteen sixteen");
@@ -23,6 +24,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void normalBreaksWithAnsi()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient($"{RESET_TERM}{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED} {RED}fourteen fifteen sixteen\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be($"{RESET_TERM}{RED}Testing {RED}one{RED} {RED}two three four five six seven eight nine ten eleven twelve{RED} {RED}thirteen{RED}");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be($"{RED}fourteen fifteen sixteen");
@@ -31,6 +33,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void longBreakWithWhitespaceAfterwards()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient("01234567890123456789012345678901234567890123456789012345678901234567890123456789 testing\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("testing");
@@ -39,6 +42,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void longBreakWithNoWhitespaceAfterwards()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 testing\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("0123456789 testing");
@@ -47,6 +51,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void longBreakWithNoWhitespaceAfterwardsMultiline()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 testing champion agreement platitude advancement antidisestablishmentarianism\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("0123456789 testing champion agreement platitude advancement");
@@ -56,6 +61,7 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void manyLongBreaks()
         {
+            testSession.WordWrapWidth = 80;
             testSession.SendToClient(
                 "01234567890123456789012345678901234567890123456789012345678901234567890123456789 " +
                 "01234567890123456789012345678901234567890123456789012345678901234567890123456789 " +
@@ -65,6 +71,22 @@ namespace MBBSEmu.Tests.Session
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("testing");
+        }
+
+        [Theory]
+        [InlineData(4, "test one two three\r\n", "test", "one", "two", "thre", "e")]
+        [InlineData(0, "test one two three\r\n", "test one two three")]
+        [InlineData(4, "test\r\none two three\r\n", "test", "one", "two", "thre", "e")]
+        public void edgeCasesTest(int wordWrapWidth, params string[] strings)
+        {
+            testSession.WordWrapWidth = wordWrapWidth;
+
+            testSession.SendToClient(strings[0]);
+
+            for (int i = 1; i < strings.Length; ++i)
+            {
+                testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(strings[i]);
+            }
         }
     }
 }

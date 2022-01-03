@@ -64,6 +64,14 @@ namespace MBBSEmu.Session
         private int _accumulator = 0;
         private List<int> _values = new List<int>();
 
+        public void Reset()
+        {
+            _lineBufferLength = 0;
+            _rawBufferLength = 0;
+            _accumulator = 0;
+            _values.Clear();
+        }
+
         /// <summary>
         /// Breaks buffer into lines and calls SendToClientMethod afterwards.
         /// </summary>
