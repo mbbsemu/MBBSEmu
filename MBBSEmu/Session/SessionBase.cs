@@ -231,17 +231,42 @@ namespace MBBSEmu.Session
 
         protected readonly IMbbsHost _mbbsHost;
 
-        public int TerminalColumns
-          {
-            get => _lineBreaker.TerminalColumns;
-            set { _lineBreaker.TerminalColumns = value; }
+        public int TerminalColumns { get; set; }
+
+        private int _wordWrapWidth = 0;
+        public int WordWrapWidth
+        {
+            get => _wordWrapWidth;
+            set
+            {
+                var changed = _wordWrapWidth != value;
+                _wordWrapWidth = value;
+                if (changed)
+                {
+                    _lineBreaker.Reset();
+                }
+                if (value > 0)
+                {
+                    _lineBreaker.WordWrapWidth = value;
+                }
+            }
         }
 
         /// <summary>
         /// Breaks buffer into lines and calls SendToClientMethod afterwards.
         /// </summary>
         /// <param name="buffer">Raw output buffer going to a client</param>
-        private void SendBreakingIntoLines(byte[] buffer) => _lineBreaker.SendBreakingIntoLines(buffer);
+        private void SendBreakingIntoLines(byte[] buffer)
+        {
+            if (WordWrapWidth > 0)
+            {
+                _lineBreaker.SendBreakingIntoLines(buffer);
+            }
+            else
+            {
+                SendToClientMethod(buffer);
+            }
+        }
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously

@@ -18,7 +18,7 @@ namespace MBBSEmu.Session
         /// <summary>
         /// How many columns are supported by the client's terminal.
         /// </summary>
-        public int TerminalColumns { get; set; }
+        public int WordWrapWidth { get; set; }
 
         private enum ParseState {
             NORMAL,
@@ -63,6 +63,14 @@ namespace MBBSEmu.Session
 
         private int _accumulator = 0;
         private List<int> _values = new List<int>();
+
+        public void Reset()
+        {
+            _lineBufferLength = 0;
+            _rawBufferLength = 0;
+            _accumulator = 0;
+            _values.Clear();
+        }
 
         /// <summary>
         /// Breaks buffer into lines and calls SendToClientMethod afterwards.
@@ -136,7 +144,7 @@ namespace MBBSEmu.Session
                                 _lineBuffer[_lineBufferLength] = b;
                                 _lineBufferToRawBuffer[_lineBufferLength++] = _rawBufferLength - 1;
                                 // overflow to the next line
-                                if (_lineBufferLength > TerminalColumns)
+                                if (_lineBufferLength > WordWrapWidth)
                                 {
                                     doLineBreak(b);
                                 }
