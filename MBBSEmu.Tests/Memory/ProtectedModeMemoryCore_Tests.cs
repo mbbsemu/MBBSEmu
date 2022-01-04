@@ -1,4 +1,5 @@
-﻿using MBBSEmu.DependencyInjection;
+﻿using FluentAssertions;
+using MBBSEmu.DependencyInjection;
 using MBBSEmu.Memory;
 using NLog;
 using System.Text;
@@ -24,8 +25,24 @@ namespace MBBSEmu.Tests.Memory
 
             var stringFromMemory = Encoding.ASCII.GetString((memoryCore as IMemoryCore).GetString(1, testStringOffset, stripNull: false));
 
-            Assert.Equal(testString, stringFromMemory);
+            stringFromMemory.Should().Be(testString);
+        }
 
+        [Fact]
+        public void MultiSegmentAllocation()
+        {
+            var memoryCore = new ProtectedModeMemoryCore(_logger);
+            var data1 = memoryCore.Malloc(0xFF00);
+            data1.Should().NotBeNull();
+
+            var data2 = memoryCore.Malloc(0xFF00);
+            data2.Should().NotBeNull();
+            data2.Segment.Should().NotBe(data1.Segment);
+
+            var data3 = memoryCore.Malloc(0xFF00);
+            data3.Should().NotBeNull();
+            data3.Segment.Should().NotBe(data2.Segment);
+            data3.Segment.Should().NotBe(data1.Segment);
         }
     }
 }
