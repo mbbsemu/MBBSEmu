@@ -201,13 +201,7 @@ namespace MBBSEmu.Btrieve
 
             FullPath = fullPath;
 
-            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
-            {
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                DataSource = fullPath,
-            }.ToString();
-
-            Connection = new SqliteConnection(connectionString);
+            Connection = new SqliteConnection(GetDefaultConnectionStringBuilder(fullPath).ToString());
             Connection.Open();
 
             LoadSqliteMetadata();
@@ -1145,16 +1139,13 @@ namespace MBBSEmu.Btrieve
 
             FullPath = fullpath;
 
-            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
-            {
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                DataSource = fullpath,
-            }.ToString();
-
-            CreateSqliteDBWithConnectionString(connectionString, btrieveFile);
+            CreateSqliteDBWithConnectionString(GetDefaultConnectionStringBuilder(fullpath), btrieveFile);
         }
 
-        public void CreateSqliteDBWithConnectionString(string connectionString, BtrieveFile btrieveFile)
+        public void CreateSqliteDBWithConnectionString(SqliteConnectionStringBuilder connectionString, BtrieveFile btrieveFile) =>
+            CreateSqliteDBWithConnectionString(connectionString.ToString(), btrieveFile);
+
+        private void CreateSqliteDBWithConnectionString(string connectionString, BtrieveFile btrieveFile)
         {
             Connection = new SqliteConnection(connectionString);
             Connection.Open();
@@ -1183,5 +1174,12 @@ namespace MBBSEmu.Btrieve
             cmd.Parameters.Clear();
             return cmd;
         }
+
+        public static SqliteConnectionStringBuilder GetDefaultConnectionStringBuilder(string filepath) => new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
+            {
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+                DataSource = filepath,
+                Pooling = false,
+            };
     }
 }
