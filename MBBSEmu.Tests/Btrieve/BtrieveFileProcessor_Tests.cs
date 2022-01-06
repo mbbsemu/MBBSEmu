@@ -155,12 +155,7 @@ namespace MBBSEmu.Tests.Btrieve
 
         private void AssertSqlStructure(string fullPath)
         {
-            var connectionString = new SqliteConnectionStringBuilder()
-            {
-                Mode = SqliteOpenMode.ReadWriteCreate,
-                DataSource = fullPath,
-            }.ToString();
-
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder(fullPath).ToString();
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
 
@@ -1169,7 +1164,8 @@ namespace MBBSEmu.Tests.Btrieve
         public void CreatesACS()
         {
             var btrieve = new BtrieveFileProcessor();
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
 
@@ -1188,7 +1184,8 @@ namespace MBBSEmu.Tests.Btrieve
         public void ACSSeekByKey()
         {
             var btrieve = new BtrieveFileProcessor();
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
 
@@ -1207,7 +1204,8 @@ namespace MBBSEmu.Tests.Btrieve
         public void ACSInsertDuplicateFails()
         {
             var btrieve = new BtrieveFileProcessor();
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateACSBtrieveFile());
 
@@ -1236,7 +1234,8 @@ namespace MBBSEmu.Tests.Btrieve
         public void KeylessDatabaseEnumeration()
         {
             var btrieve = new BtrieveFileProcessor();
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateKeylessBtrieveFile());
 
@@ -1266,7 +1265,8 @@ namespace MBBSEmu.Tests.Btrieve
         public void KeylessDataQueryFails()
         {
             var btrieve = new BtrieveFileProcessor();
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, CreateKeylessBtrieveFile());
 

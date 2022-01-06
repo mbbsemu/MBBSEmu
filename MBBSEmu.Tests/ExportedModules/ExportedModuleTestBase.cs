@@ -11,6 +11,7 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
+using Microsoft.Data.Sqlite;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -290,7 +291,8 @@ namespace MBBSEmu.Tests.ExportedModules
         protected void AllocateBB(BtrieveFile btrieveFile, ushort maxRecordLength)
         {
             var btrieve = new BtrieveFileProcessor() { FullPath = Path.Combine(mbbsModule.ModulePath, btrieveFile.FileName) };
-            var connectionString = "Data Source=acs.db;Mode=Memory";
+            var connectionString = BtrieveFileProcessor.GetDefaultConnectionStringBuilder("acs.db");
+            connectionString.Mode = SqliteOpenMode.Memory;
 
             btrieve.CreateSqliteDBWithConnectionString(connectionString, btrieveFile);
             majorbbs.AllocateBB(btrieve, maxRecordLength, Path.GetFileName(btrieve.FullPath));
