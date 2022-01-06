@@ -40,6 +40,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%%%%", "%%", null)] //Escaped %
         [InlineData("%%%%%", "%%%", null)] //Escaped & Unescaped %
         [InlineData("%%%%% ", "%%% ", null)] //Escaped & Unescaped %
+        [InlineData("%-8s", "gold crowns", "gold crowns")] 
+        [InlineData("%-8s", "gold    ", "gold")] 
         public void sprintf_Test(string formatString, string expectedString, params object[] values)
         {
             Reset();
