@@ -128,6 +128,7 @@ namespace MBBSEmu.Btrieve
             {
                 cmd.Dispose();
             }
+            _sqlCommands.Clear();
 
             Connection.Close();
             Connection.Dispose();

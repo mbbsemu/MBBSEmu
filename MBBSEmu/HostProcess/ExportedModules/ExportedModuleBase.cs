@@ -295,7 +295,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 var controlStart = i;
 
                 //Handle escaped %% as a single % -- or if % is the last character in a string
-                if (stringToParse[i] == '%')
+                if (stringToParse[i] == '%' && (i + 1) < stringToParse.Length)
                 {
                     switch ((char)stringToParse[i + 1])
                     {
@@ -317,7 +317,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
 
                 //Found a Control Character
-                if (stringToParse[i] == '%' && stringToParse[i + 1] != '%')
+                if (stringToParse[i] == '%' && (i + 1) < stringToParse.Length && stringToParse[i + 1] != '%')
                 {
                     using var msFormattedValue = new MemoryStream();
                     i++;
