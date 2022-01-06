@@ -23,6 +23,8 @@ namespace MBBSEmu.Btrieve
             public void Dispose()
             {
                 DataReader?.Dispose();
+                // Purposefully not Disposing of Command because it's likely cached by BtrieveFileProcessor, so let that class
+                // handle the cleanup
             }
         }
 
