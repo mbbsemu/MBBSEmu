@@ -7,6 +7,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,6 +36,10 @@ namespace MBBSEmu.Tests.Integration
 
         public void Dispose()
         {
+            _serviceResolver.Dispose();
+
+            SqliteConnection.ClearAllPools();
+
             Directory.Delete(_modulePath, recursive: true);
         }
 

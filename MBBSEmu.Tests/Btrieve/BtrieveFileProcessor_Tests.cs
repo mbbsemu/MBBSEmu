@@ -78,6 +78,8 @@ namespace MBBSEmu.Tests.Btrieve
 
         public void Dispose()
         {
+            SqliteConnection.ClearAllPools();
+
             Directory.Delete(_modulePath, recursive: true);
         }
 

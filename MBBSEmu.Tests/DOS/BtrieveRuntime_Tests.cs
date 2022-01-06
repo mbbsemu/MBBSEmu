@@ -6,6 +6,7 @@ using MBBSEmu.Disassembler;
 using MBBSEmu.DOS;
 using MBBSEmu.IO;
 using MBBSEmu.Resources;
+using Microsoft.Data.Sqlite;
 using NLog;
 using System;
 using System.IO;
@@ -33,6 +34,8 @@ namespace MBBSEmu.Tests.Memory
 
         public void Dispose()
         {
+            SqliteConnection.ClearAllPools();
+
             Directory.Delete(_modulePath, recursive: true);
         }
 
