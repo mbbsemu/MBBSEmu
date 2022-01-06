@@ -1,13 +1,13 @@
-﻿using System;
+﻿using FluentAssertions;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
-    public class prf_Tests : ExportedModuleTestBase
+    public class sprintf_Tests : ExportedModuleTestBase
     {
-        private const int PRF_ORDINAL = 474;
+        private const int SPRINTF_ORDINAL = 560;
 
         private List<ushort> parameters = new List<ushort>();
 
@@ -40,14 +40,19 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%%%%", "%%", null)] //Escaped %
         [InlineData("%%%%%", "%%%", null)] //Escaped & Unescaped %
         [InlineData("%%%%% ", "%%% ", null)] //Escaped & Unescaped %
-        public void prf_Test(string inputString, string expectedString, params object[] values)
+        public void sprintf_Test(string formatString, string expectedString, params object[] values)
         {
             Reset();
 
-            var inputStingParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(inputString.Length + 1));
-            mbbsEmuMemoryCore.SetArray(inputStingParameterPointer, Encoding.ASCII.GetBytes(inputString));
-            parameters.Add(inputStingParameterPointer.Offset);
-            parameters.Add(inputStingParameterPointer.Segment);
+            var destBuffer = mbbsEmuMemoryCore.Malloc((ushort)(expectedString.Length * 2));
+            var formatStringParameterPointer = mbbsEmuMemoryCore.Malloc((ushort)(formatString.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatStringParameterPointer, Encoding.ASCII.GetBytes(formatString));
+
+            parameters.Add(destBuffer.Offset);
+            parameters.Add(destBuffer.Segment);
+
+            parameters.Add(formatStringParameterPointer.Offset);
+            parameters.Add(formatStringParameterPointer.Segment);
 
             if (values != null)
             {
@@ -56,19 +61,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                     parameters.Add(p);
             }
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PRF_ORDINAL, parameters);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPRINTF_ORDINAL, parameters);
 
-            Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("PRFBUF", true)));
-        }
-
-        protected override void Reset()
-        {
-            parameters = new List<ushort>();
-            base.Reset();
-
-            //Reset PRFPTR
-            mbbsEmuMemoryCore.SetPointer("PRFPTR", mbbsEmuMemoryCore.GetVariablePointer("PRFBUF"));
-            mbbsEmuMemoryCore.SetZero(mbbsEmuMemoryCore.GetVariablePointer("PRFBUF"), 0x4000);
+            Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(destBuffer, true)).Should().Be(expectedString);
         }
     }
 }
