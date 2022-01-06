@@ -644,10 +644,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 msFormattedValue.Write(valueCache);
                             }
                         }
-
-                        //Need to truncate -- EZPZ
-                        if (msFormattedValue.Length > stringWidth)
-                            msFormattedValue.SetLength(stringWidth);
                     }
                     msOutput.Write(msFormattedValue.ToArray());
                     continue;
