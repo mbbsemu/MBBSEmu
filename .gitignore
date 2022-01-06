@@ -354,3 +354,6 @@ MigrationBackup/
 
 # VSCode working folder
 .vscode/
+
+# Launch Settings
+MBBSEmu/Properties/launchSettings.json
