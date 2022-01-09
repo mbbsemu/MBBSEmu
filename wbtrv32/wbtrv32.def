@@ -1,0 +1,4 @@
+LIBRARY
+
+EXPORTS
+   BTRCALL   @1
