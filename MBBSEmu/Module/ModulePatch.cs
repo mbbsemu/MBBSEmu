@@ -1,6 +1,7 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
+using System;
+using System.Collections.Generic;
 using System.Text;
-using System.Text.Json.Serialization;
 
 namespace MBBSEmu.Module
 {
@@ -15,8 +16,8 @@ namespace MBBSEmu.Module
 
         public string Name { get; set; }
         public string Description { get; set; }
-        public ushort Segment { get; set; }
-        public ushort Offset { get; set; }
+        public List<FarPtr> Addresses { get; set; }
+        public FarPtr Address { get; set; }
         public uint AbsoluteOffset { get; set; }
         public EnumModulePatchType PatchType { get; set; }
         public string Patch { get; set; }

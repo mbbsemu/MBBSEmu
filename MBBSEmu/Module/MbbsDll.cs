@@ -5,6 +5,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace MBBSEmu.Module
 {
@@ -46,10 +47,10 @@ namespace MBBSEmu.Module
         {
             _fileUtility = fileUtility;
             _logger = logger;
-            
+
             EntryPoints = new Dictionary<string, FarPtr>();
         }
-        
+
         public bool Load(string file, string path, IEnumerable<ModulePatch> modulePatches)
         {
             var neFile = _fileUtility.FindFile(path, $"{file}.DLL");
@@ -62,18 +63,32 @@ namespace MBBSEmu.Module
 
             var fileData = System.IO.File.ReadAllBytes(fullNeFilePath);
 
-            if (modulePatches != null)
+            //Absolute Offset Patching
+
+            foreach (var p in modulePatches?.Where(x => x.AbsoluteOffset > 0))
             {
-                foreach (var p in modulePatches)
-                {
-                    _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
-                    var bytesToPatch = p.GetBytes();
-                    Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
-                        bytesToPatch.Length);
-                }
+                _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
+                var bytesToPatch = p.GetBytes();
+                Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
+                    bytesToPatch.Length);
             }
 
             File = new NEFile(_logger, fullNeFilePath, fileData);
+
+            //Offset Patching
+            foreach (var p in modulePatches?.Where(x => x.Addresses.Count > 0 || x.Address != null))
+            {
+                if (p.Address != null && p.Addresses == null)
+                    p.Addresses = new List<FarPtr>() { p.Address };
+
+                foreach (var a in p.Addresses)
+                {
+                    var bytesToPatch = p.GetBytes();
+                    _logger.Info($"Applying Patch: {p.Name} to {a}");
+                    Array.Copy(bytesToPatch.ToArray(), 0, File.SegmentTable.First(x=> x.Ordinal == a.Segment).Data, a.Offset,
+                        bytesToPatch.Length);
+                }
+            }
             return true;
         }
     }
