@@ -1,6 +1,7 @@
 ﻿using MBBSEmu.Disassembler;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -62,12 +63,20 @@ namespace MBBSEmu.Module
             }
 
             var fileData = System.IO.File.ReadAllBytes(fullNeFilePath);
+            var fileCRC32 = BitConverter.ToString(new Crc32().ComputeHash(fileData)).Replace("-", string.Empty);
 
             //Absolute Offset Patching
+            //We perform Absolute Patching here as this is the last stop before the data is loaded into the NE file and split into Segments
             if (modulePatches != null)
             {
                 foreach (var p in modulePatches.Where(x => x?.AbsoluteOffset > 0))
                 {
+                    if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
+                    {
+                        _logger.Error($"Unable to apply patch {p.Name}: Module CRC32 Mismatch (Expected: {p.CRC32}, Actual: {fileCRC32})");
+                        continue;
+                    }
+
                     _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
                     var bytesToPatch = p.GetBytes();
                     Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
@@ -82,6 +91,12 @@ namespace MBBSEmu.Module
             {
                 foreach (var p in modulePatches.Where(x => x.Addresses.Count > 0 || x.Address != null))
                 {
+                    if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
+                    {
+                        _logger.Error($"Unable to apply patch {p.Name}: Module CRC32 Mismatch (Expected: {p.CRC32}, Actual: {fileCRC32})");
+                        continue;
+                    }
+
                     if (p.Address != null && p.Addresses == null)
                         p.Addresses = new List<FarPtr>() { p.Address };
 

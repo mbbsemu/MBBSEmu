@@ -21,6 +21,7 @@ namespace MBBSEmu.Module
         public uint AbsoluteOffset { get; set; }
         public EnumModulePatchType PatchType { get; set; }
         public string Patch { get; set; }
+        public string CRC32 { get; set; }
 
         /// <summary>
         ///     Returns bytes for the patch depending on the Patch Type
