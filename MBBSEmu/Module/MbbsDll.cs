@@ -69,7 +69,7 @@ namespace MBBSEmu.Module
             //We perform Absolute Patching here as this is the last stop before the data is loaded into the NE file and split into Segments
             if (modulePatches != null)
             {
-                foreach (var p in modulePatches.Where(x => x?.AbsoluteOffset > 0))
+                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && x.AbsoluteOffset > 0))
                 {
                     if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
                     {
@@ -89,7 +89,7 @@ namespace MBBSEmu.Module
             //Address Patching
             if (modulePatches != null)
             {
-                foreach (var p in modulePatches.Where(x => x.Addresses.Count > 0 || x.Address != null))
+                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && (x.Addresses.Count > 0 || x.Address != null)))
                 {
                     if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
                     {
