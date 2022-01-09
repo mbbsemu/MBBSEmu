@@ -32,7 +32,7 @@ namespace MBBSEmu.Disassembler
         public List<NonResidentName> NonResidentNameTable;
 
         /// <summary>
-        ///  SHA256 Hash of the Loaded File
+        ///  CRC32 of the Loaded File
         /// </summary>
         public string CRC32 { get; set; }
 
