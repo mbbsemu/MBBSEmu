@@ -64,31 +64,38 @@ namespace MBBSEmu.Module
             var fileData = System.IO.File.ReadAllBytes(fullNeFilePath);
 
             //Absolute Offset Patching
-
-            foreach (var p in modulePatches?.Where(x => x.AbsoluteOffset > 0))
+            if (modulePatches != null)
             {
-                _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
-                var bytesToPatch = p.GetBytes();
-                Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
-                    bytesToPatch.Length);
+                foreach (var p in modulePatches.Where(x => x?.AbsoluteOffset > 0))
+                {
+                    _logger.Info($"Applying Patch: {p.Name} to Absolute Offet {p.AbsoluteOffset}");
+                    var bytesToPatch = p.GetBytes();
+                    Array.Copy(bytesToPatch.ToArray(), 0, fileData, p.AbsoluteOffset,
+                        bytesToPatch.Length);
+                }
             }
 
             File = new NEFile(_logger, fullNeFilePath, fileData);
 
-            //Offset Patching
-            foreach (var p in modulePatches?.Where(x => x.Addresses.Count > 0 || x.Address != null))
+            //Address Patching
+            if (modulePatches != null)
             {
-                if (p.Address != null && p.Addresses == null)
-                    p.Addresses = new List<FarPtr>() { p.Address };
-
-                foreach (var a in p.Addresses)
+                foreach (var p in modulePatches.Where(x => x.Addresses.Count > 0 || x.Address != null))
                 {
-                    var bytesToPatch = p.GetBytes();
-                    _logger.Info($"Applying Patch: {p.Name} to {a}");
-                    Array.Copy(bytesToPatch.ToArray(), 0, File.SegmentTable.First(x=> x.Ordinal == a.Segment).Data, a.Offset,
-                        bytesToPatch.Length);
+                    if (p.Address != null && p.Addresses == null)
+                        p.Addresses = new List<FarPtr>() { p.Address };
+
+                    foreach (var a in p.Addresses)
+                    {
+                        var bytesToPatch = p.GetBytes();
+                        _logger.Info($"Applying Patch: {p.Name} to {a}");
+                        Array.Copy(bytesToPatch.ToArray(), 0, File.SegmentTable.First(x => x.Ordinal == a.Segment).Data,
+                            a.Offset,
+                            bytesToPatch.Length);
+                    }
                 }
             }
+
             return true;
         }
     }
