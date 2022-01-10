@@ -80,6 +80,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="NLog" Version="4.7.12" />
+    <PackageReference Include="SQLitePCLRaw.bundle_winsqlite3" Version="2.0.7" />
   </ItemGroup>
 
   <ItemGroup>

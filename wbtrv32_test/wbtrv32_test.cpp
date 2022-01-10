@@ -8,9 +8,10 @@
 int main()
 {
     unsigned char positionBlock[256];
-    const char *fileName = "WCCUSERS.DAT";
+    const char *fileName = "C:\\Users\\tcj\\WCCUSERS.DAT";
 
-    BTRCALL(2, positionBlock, const_cast<char*>(fileName), strlen(fileName) + 1, 0, NULL, 0);
+    // open is 0
+    BTRCALL(0, positionBlock, NULL, 0, const_cast<char*>(fileName), strlen(fileName) + 1, 0);
     std::cout << "Hello World!\n";
 }
 

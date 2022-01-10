@@ -152,6 +152,23 @@
       <Project>{d2455c16-2937-45fc-ac5f-10a3734afed4}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Iced">
+      <HintPath>..\MBBSEmu\bin\Debug\net6.0\Iced.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Data.Sqlite">
+      <HintPath>..\MBBSEmu\bin\Debug\net6.0\Microsoft.Data.Sqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="SQLitePCLRaw.batteries_v2">
+      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.batteries_v2.dll</HintPath>
+    </Reference>
+    <Reference Include="SQLitePCLRaw.core">
+      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.core.dll</HintPath>
+    </Reference>
+    <Reference Include="SQLitePCLRaw.provider.e_sqlite3">
+      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.provider.e_sqlite3.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
