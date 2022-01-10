@@ -8,7 +8,7 @@
 int main()
 {
     unsigned char positionBlock[256];
-    const char *fileName = "C:\\Users\\tcj\\WCCUSERS.DAT";
+    const char *fileName = "C:\\Users\\tcj\\WCCUSER2.DAT";
 
     // open is 0
     BTRCALL(0, positionBlock, NULL, 0, const_cast<char*>(fileName), strlen(fileName) + 1, 0);

@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 namespace MBBSEmu.Memory
 {
-    public class NoOpMemoryCore : IMemoryCore
+    /// <summary>
+    /// An IMemoryCore which throws NotImplementedException for everything
+    /// </summary>
+    public class NotImplementedMemoryCore : IMemoryCore
     {
         public virtual FarPtr AllocateBigMemoryBlock(ushort quantity, ushort size)
         {
