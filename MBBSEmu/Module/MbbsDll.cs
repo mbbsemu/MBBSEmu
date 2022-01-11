@@ -89,16 +89,13 @@ namespace MBBSEmu.Module
             //Address Patching
             if (modulePatches != null)
             {
-                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && (x.Addresses.Count > 0 || x.Address != null)))
+                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && x.Addresses.Count > 0))
                 {
                     if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
                     {
                         _logger.Error($"Unable to apply patch {p.Name}: Module CRC32 Mismatch (Expected: {p.CRC32}, Actual: {fileCRC32})");
                         continue;
                     }
-
-                    if (p.Address != null && p.Addresses == null)
-                        p.Addresses = new List<FarPtr>() { p.Address };
 
                     foreach (var a in p.Addresses)
                     {

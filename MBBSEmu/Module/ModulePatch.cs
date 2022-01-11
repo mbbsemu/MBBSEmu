@@ -17,7 +17,6 @@ namespace MBBSEmu.Module
         public string Name { get; set; }
         public string Description { get; set; }
         public List<FarPtr> Addresses { get; set; }
-        public FarPtr Address { get; set; }
         public uint AbsoluteOffset { get; set; }
         public EnumModulePatchType PatchType { get; set; }
         public string Patch { get; set; }
