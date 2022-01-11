@@ -8,9 +8,7 @@ using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using NLog;
-using System.Collections.Generic;
 using System.IO;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
