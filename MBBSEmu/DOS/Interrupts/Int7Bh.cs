@@ -110,6 +110,11 @@ key-only file or a Get operation on a data only file */
 
         public byte Vector => 0x7B;
 
+        public Int7Bh(IFileUtility fileUtility, IMemoryCore memoryCore) : this(null, Directory.GetCurrentDirectory(), fileUtility, null, memoryCore)
+        {
+            
+        }
+
         public Int7Bh(ILogger logger, string path, IFileUtility fileUtility, ICpuRegisters registers, IMemoryCore memory)
         {
             _logger = logger;
@@ -148,7 +153,7 @@ key-only file or a Get operation on a data only file */
         ///     Handles the btrieve command
         /// </summary>
         /// <returns>BtrieveError to return to the caller</returns>
-        private BtrieveError Handle(BtrieveCommand command)
+        public BtrieveError Handle(BtrieveCommand command)
         {
             switch (command.operation)
             {
