@@ -327,8 +327,8 @@ namespace MBBSEmu
                     {
                         Converters = {
                             new JsonBooleanConverter(),
-                            new JsonStringEnumConverter()
-                            
+                            new JsonStringEnumConverter(),
+                            new JsonFarPtrConverter()
                         }
                     };
 

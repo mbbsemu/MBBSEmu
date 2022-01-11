@@ -953,6 +953,7 @@ namespace MBBSEmu.HostProcess
         public void AddModule(MbbsModule module)
         {
             Logger.Info($"({module.ModuleIdentifier}) Adding Module...");
+            Logger.Info($"({module.ModuleIdentifier}) CRC32: {module.MainModuleDll.File.CRC32}");
 
             //Setup Exported Modules
             module.ExportedModuleDictionary.Add(Majorbbs.Segment, GetFunctions(module, "MAJORBBS"));
