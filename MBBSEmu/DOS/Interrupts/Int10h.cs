@@ -142,7 +142,7 @@ namespace MBBSEmu.DOS.Interrupts
             //Blank Whole Screen?
             if (_registers.AL == 0)
             {
-                _stdout.Write(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
+                //_stdout.Write(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
                 return;
             }
 
@@ -162,7 +162,7 @@ namespace MBBSEmu.DOS.Interrupts
         {
             _cursorPositionX = _registers.DL;
             _cursorPositionY = _registers.DH;
-            _stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _cursorPositionY, _cursorPositionX)));
+            //_stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _cursorPositionY, _cursorPositionX)));
         }
 
         /// <summary>
