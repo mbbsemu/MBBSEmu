@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace MBBSEmu.Memory
 {
@@ -44,6 +45,19 @@ namespace MBBSEmu.Memory
         {
             Segment = pointer.Segment;
             Offset = pointer.Offset;
+        }
+
+        public FarPtr(string pointer)
+        {
+            var splitPointer = pointer.Split(':');
+
+            if (splitPointer.Length != 2
+                || !ushort.TryParse(splitPointer[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedSegment)
+                || !ushort.TryParse(splitPointer[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedOffset))
+                throw new ArgumentException($"Invalid Pointer String: {pointer}");
+
+            Segment = parsedSegment;
+            Offset = parsedOffset;
         }
 
         public void FromSpan(ReadOnlySpan<byte> farPtrSpan)

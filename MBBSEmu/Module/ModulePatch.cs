@@ -1,6 +1,7 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
+using System;
+using System.Collections.Generic;
 using System.Text;
-using System.Text.Json.Serialization;
 
 namespace MBBSEmu.Module
 {
@@ -15,11 +16,17 @@ namespace MBBSEmu.Module
 
         public string Name { get; set; }
         public string Description { get; set; }
-        public ushort Segment { get; set; }
-        public ushort Offset { get; set; }
+        public List<FarPtr> Addresses { get; set; }
         public uint AbsoluteOffset { get; set; }
         public EnumModulePatchType PatchType { get; set; }
         public string Patch { get; set; }
+        public string CRC32 { get; set; }
+        private bool? _enabled;
+        public bool? Enabled
+        {
+            get => _enabled ?? true;
+            set => _enabled = value;
+        }
 
         /// <summary>
         ///     Returns bytes for the patch depending on the Patch Type

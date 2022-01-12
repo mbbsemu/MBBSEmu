@@ -1,9 +1,10 @@
+using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Util;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using MBBSEmu.Disassembler.Artifacts;
 
 namespace MBBSEmu.Disassembler
 {
@@ -30,12 +31,18 @@ namespace MBBSEmu.Disassembler
         public List<Entry> EntryTable;
         public List<NonResidentName> NonResidentNameTable;
 
+        /// <summary>
+        ///  CRC32 of the Loaded File
+        /// </summary>
+        public string CRC32 { get; set; }
+
         private ILogger _logger;
 
         public NEFile(ILogger logger, string fullFilePath, ReadOnlySpan<byte> data)
         {
             _logger = logger;
             FileContent = data.ToArray();
+            CRC32 = BitConverter.ToString(new Crc32().ComputeHash(FileContent)).Replace("-", string.Empty);
             var f = new FileInfo(fullFilePath);
             Path = f.DirectoryName + System.IO.Path.DirectorySeparatorChar;
             FileName = f.Name;

@@ -95,6 +95,11 @@ namespace MBBSEmu.DOS.Interrupts
 
         public byte Vector => 0x7B;
 
+        public Int7Bh(IFileUtility fileUtility, IMemoryCore memoryCore) : this(null, Directory.GetCurrentDirectory(), fileUtility, null, memoryCore)
+        {
+
+        }
+
         public Int7Bh(ILogger logger, string path, IFileUtility fileUtility, ICpuRegisters registers, IMemoryCore memory)
         {
             _logger = logger;
