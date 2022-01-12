@@ -1181,12 +1181,5 @@ namespace MBBSEmu.Btrieve
                 DataSource = filepath,
                 Pooling = false,
             };
-
-        public static void InitSqlite()
-        {
-            var s = Directory.GetCurrentDirectory();
-            SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_winsqlite3());
-            SQLitePCL.Batteries.Init();
-        }
     }
 }
