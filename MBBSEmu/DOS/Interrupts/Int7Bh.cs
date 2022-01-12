@@ -522,6 +522,9 @@ namespace MBBSEmu.DOS.Interrupts
             return processor;
         }
 
+        /// <summary>
+        /// Unmarshals bytes into the appropriate structure
+        /// </summary>
         public static unsafe T ByteArrayToStructure<T>(byte[] bytes) where T : struct
         {
             fixed (byte* ptr = &bytes[0])
@@ -530,6 +533,9 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
+        /// <summary>
+        /// Retrieves the BtrieveFileProcess from the specific guid - meant to be used only in tests.
+        /// </summary>
         public BtrieveFileProcessor GetFromGUID(Guid guid) => _openFiles[guid];
     }
 }

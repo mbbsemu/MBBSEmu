@@ -748,7 +748,29 @@ namespace MBBSEmu.Tests.Memory
       record.Key2.Should().Be("In orbe terrarum, optimus sum");
     }
 
-    // TODO - read Lchunk logical currency
+    [Fact]
+    public void GetChunk()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        key_number = -2
+      };
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.InvalidOperation);
+    }
+
+    // TODO - read direct logical currency
 
     private void Handle(DOSInterruptBtrieveCommand command)
     {
