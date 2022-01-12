@@ -1,13 +1,15 @@
 using FluentAssertions;
 using MBBSEmu.Btrieve.Enums;
+using MBBSEmu.Btrieve;
 using MBBSEmu.CPU;
+using MBBSEmu.Database.Session;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Resources;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
-using MBBSEmu.Database.Session;
+using MBBSEmu.Testing;
 using NLog;
 using System;
 using System.IO;
@@ -187,7 +189,7 @@ namespace MBBSEmu.Tests.Memory
       var size = Marshal.SizeOf(typeof(Int7Bh.BtrieveFileSpec));
       var btrieveFileSpec = Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveFileSpec>(_memory.GetArray(ptr, (ushort) size).ToArray());
 
-      btrieveFileSpec.record_length.Should().Be(74);
+      btrieveFileSpec.record_length.Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       btrieveFileSpec.number_of_keys.Should().Be(4);
       btrieveFileSpec.number_of_records.Should().Be(4);
       btrieveFileSpec.flags.Should().Be(0);
@@ -297,7 +299,9 @@ namespace MBBSEmu.Tests.Memory
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(74);
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      // data should contain the proper record values
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(-615634567);
 
       // GetPosition
       command = new DOSInterruptBtrieveCommand()
@@ -318,8 +322,433 @@ namespace MBBSEmu.Tests.Memory
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
       _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(4);
+      // position should be 4 now since we have 4 records
       _memory.GetDWord(dataBuffer).Should().Be(4);
     }
+
+    [Fact]
+    public void QueryKeyBufferTooShort()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.AcquireEqual,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 16, // should be 32
+        key_number = 2
+      };
+
+      _memory.SetArray(keyBuffer, Encoding.ASCII.GetBytes("StringValue\0"));
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.KeyBufferTooShort);
+    }
+
+    [Fact]
+    public void QueryDataBufferLengthOverrun()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.AcquireEqual,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = 0,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 2
+      };
+
+      _memory.SetArray(keyBuffer, Encoding.ASCII.GetBytes("StringValue\0"));
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+    }
+
+    [Fact]
+    public void Query()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.AcquireEqual,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 2
+      };
+
+      _memory.SetArray(keyBuffer, Encoding.ASCII.GetBytes("StringValue\0"));
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
+      // data_buffer_length should be updated
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      // data should contain the proper record values
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key2.Should().Be("StringValue");
+      Encoding.ASCII.GetString(_memory.GetString(keyBuffer, true)).Should().Be("StringValue");
+    }
+
+    [Fact]
+    public void Insert()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Insert,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 0
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
+      // data_buffer_length should be updated
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      // key should have been returned
+      Encoding.ASCII.GetString(_memory.GetString(keyBuffer, true)).Should().Be("Paladine");
+      // did we add the record?
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(5);
+    }
+
+    [Fact]
+    public void InsertDuplicateKeyValue()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Insert,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 0
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DuplicateKeyValue);
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+    }
+
+    [Fact]
+    public void InsertKeyBufferTooShort()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Insert,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 0,
+        key_number = 0
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.KeyBufferTooShort);
+
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+    }
+
+    [Fact]
+    public void Delete()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Delete,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+      };
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
+
+      // did we delete the record?
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(3);
+    }
+
+    [Fact]
+    public void DeleteEmpty()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+
+      GetBtrieveFileProcessor(positionBlock).DeleteAll();
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Delete,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+      };
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.InvalidPositioning);
+
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(0);
+    }
+
+    [Fact]
+    public void UpdateNonModifiableFailure()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Update,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 0
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.NonModifiableKeyValue);
+
+      // assert value didn't change
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+
+      record = new MBBSEmuRecordStruct(GetBtrieveFileProcessor(positionBlock).GetRecord());
+      record.Key0.Should().Be("Sysop");
+      record.Key1.Should().Be(3444);
+      record.Key2.Should().Be("3444");
+    }
+
+    [Fact]
+    public void UpdateKeyConstraintFailure()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Update,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 1
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DuplicateKeyValue);
+      // assert value didn't change
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+
+      record = new MBBSEmuRecordStruct(GetBtrieveFileProcessor(positionBlock).GetRecord());
+      record.Key0.Should().Be("Sysop");
+      record.Key1.Should().Be(3444);
+      record.Key2.Should().Be("3444");
+    }
+
+    [Fact]
+    public void UpdateKeyBufferTooShort()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Update,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 1,
+        key_number = 1
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.KeyBufferTooShort);
+      // assert value didn't change
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+
+      record = new MBBSEmuRecordStruct(GetBtrieveFileProcessor(positionBlock).GetRecord());
+      record.Key0.Should().Be("Sysop");
+      record.Key1.Should().Be(3444);
+      record.Key2.Should().Be("3444");
+    }
+
+    [Fact]
+    public void Update()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.Update,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 1
+      };
+
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
+      _memory.SetArray(dataBuffer, record.Data);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
+
+      // key value should be returned
+      _memory.GetDWord(keyBuffer).Should().Be(31337);
+
+      GetBtrieveFileProcessor(positionBlock).GetRecordCount().Should().Be(4);
+
+      record = new MBBSEmuRecordStruct(GetBtrieveFileProcessor(positionBlock).GetRecord());
+      record.Key0.Should().Be("Sysop");
+      record.Key1.Should().Be(31337);
+      record.Key2.Should().Be("In orbe terrarum, optimus sum");
+    }
+
+    // TODO - read chunk logical currency
 
     private void Handle(DOSInterruptBtrieveCommand command)
     {
@@ -340,5 +769,7 @@ namespace MBBSEmu.Tests.Memory
       Marshal.FreeHGlobal(ptr);
       return ret;
     }
+
+    private BtrieveFileProcessor GetBtrieveFileProcessor(FarPtr positionBlock) => _int7B.GetFromGUID(new Guid(_memory.GetArray(positionBlock, 16).ToArray()));
   }
 }

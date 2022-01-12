@@ -12,48 +12,6 @@ using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
 {
-    public enum BtrieveError : ushort
-    {
-        Success = 0,
-        InvalidOperation = 1,
-        IOError = 2,
-        FileNotOpen = 3,
-        KeyValueNotFound = 4,
-        DuplicateKeyValue = 5,
-        InvalidKeyNumber = 6,
-        DifferentKeyNumber = 7,
-        InvalidPositioning = 8,
-        EOF = 9,
-        NonModifiableKeyValue = 10,
-        InvalidFileName = 11,
-        FileNotFound = 12,
-        ExtendedFileError = 13,
-        PreImageOpenError = 14,
-        PreImageIOError = 15,
-        ExpansionError = 16,
-        CloseError = 17,
-        DiskFull = 18,
-        UnrecoverableError = 19,
-        RecordManagerInactive = 20,
-        KeyBufferTooShort = 21,
-        DataBufferLengthOverrun = 22,
-        PositionBlockLength = 23,
-        PageSizeError = 24,
-        CreateIOError = 25,
-        InvalidNumberOfKeys = 26,
-        InvalidKeyPosition = 27,
-        BadRecordLength = 28,
-        BadKeyLength = 29,
-        NotBtrieveFile = 30,
-        TransactionIsActive = 37,
-        /* Btrieve version 5.x returns this status code
-if you attempt to perform a Step, Update, or Delete operation on a
-key-only file or a Get operation on a data only file */
-        OperationNotAllowed = 41,
-        AccessDenied = 46,
-        InvalidInterface = 53,
-    }
-
     enum BtrieveOpenMode : short
     {
         Normal = 0,
@@ -261,7 +219,10 @@ key-only file or a Get operation on a data only file */
             BtrieveFileProcessor db;
             try
             {
-                db = new(_fileUtility, path, file, cacheSize: 8);
+                db = new(_fileUtility, path, file, cacheSize: 8)
+                {
+                     BtrieveDriverMode = true,
+                };
                 // add to my list of open files
                 var guid = Guid.NewGuid();
                 _openFiles[guid] = db;
@@ -409,9 +370,13 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
+
             var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
-            if (!db.Update(record))
-                return BtrieveError.DuplicateKeyValue;
+            var errorCode = db.Update(record);
+            if (errorCode != BtrieveError.Success)
+                return errorCode;
 
             // copy back the key if specified
             if (command.key_number >= 0)
@@ -425,6 +390,9 @@ key-only file or a Get operation on a data only file */
             var db = GetOpenDatabase(command);
             if (db == null)
                 return BtrieveError.FileNotOpen;
+
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
 
             var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
             if (db.Insert(record, LogLevel.Error) == 0)
@@ -504,6 +472,9 @@ key-only file or a Get operation on a data only file */
                 return (BtrieveError.InvalidOperation, length);
             }
 
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return (BtrieveError.KeyBufferTooShort, length);
+
             var offset = _memory.GetDWord(command.data_buffer_segment, command.data_buffer_offset);
             var record = db.GetRecord(offset);
             if (record == null)
@@ -511,8 +482,6 @@ key-only file or a Get operation on a data only file */
 
             if (record.Data.Length > command.data_buffer_length)
                 return (BtrieveError.DataBufferLengthOverrun, length);
-            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
-                return (BtrieveError.KeyBufferTooShort, length);
 
             // copy data
             _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, record.Data);
@@ -560,5 +529,7 @@ key-only file or a Get operation on a data only file */
                 return (T)Marshal.PtrToStructure((IntPtr)ptr, typeof(T));
             }
         }
+
+        public BtrieveFileProcessor GetFromGUID(Guid guid) => _openFiles[guid];
     }
 }
