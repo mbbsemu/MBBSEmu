@@ -191,7 +191,7 @@ namespace MBBSEmu.DOS.Interrupts
                 case EnumBtrieveOperationCodes.GetPosition:
                     return GetPosition(command);
                 case EnumBtrieveOperationCodes.GetDirectChunkOrRecord:
-                    return GetDirectChunkOrRecord(command);
+                    return GetDirectRecord(command);
                 case EnumBtrieveOperationCodes.Update:
                     return (Update(command), command.data_buffer_length);
                 case EnumBtrieveOperationCodes.Insert:
@@ -459,7 +459,7 @@ namespace MBBSEmu.DOS.Interrupts
             return (BtrieveError.Success, length);
         }
 
-        private (BtrieveError, ushort) GetDirectChunkOrRecord(BtrieveCommand command)
+        private (BtrieveError, ushort) GetDirectRecord(BtrieveCommand command)
         {
             var length = command.data_buffer_length;
             var db = GetOpenDatabase(command);
@@ -476,7 +476,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return (BtrieveError.KeyBufferTooShort, length);
 
             var offset = _memory.GetDWord(command.data_buffer_segment, command.data_buffer_offset);
-            var record = db.GetRecord(offset);
+            var record = db.GetRecord(offset, command.key_number);
             if (record == null)
                 return (BtrieveError.InvalidPositioning, length);
 

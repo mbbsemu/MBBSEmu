@@ -451,7 +451,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Returns the Record at the specified Offset, while also updating Position to match.
+        ///     Returns the Record at the specified physical ffset, while also updating Position to match.
         /// </summary>
         public BtrieveRecord GetRecord(uint offset)
         {
@@ -474,6 +474,17 @@ namespace MBBSEmu.Btrieve
             {
                 reader.Close();
             }
+        }
+
+        /// <summary>
+        ///     Returns the Record at the specified physical offset, updating Position and setting logical currency.
+        /// </summary>
+        /// <param name="offset">physical offset of the record</param>
+        /// <param name="keyNumber">key number to set logical currency on</param>
+        /// <returns></returns>
+        public BtrieveRecord GetRecord(uint offset, int keyNumber)
+        {
+            return GetRecord(offset);
         }
 
         /// <summary>

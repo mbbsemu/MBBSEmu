@@ -748,7 +748,7 @@ namespace MBBSEmu.Tests.Memory
       record.Key2.Should().Be("In orbe terrarum, optimus sum");
     }
 
-    // TODO - read chunk logical currency
+    // TODO - read Lchunk logical currency
 
     private void Handle(DOSInterruptBtrieveCommand command)
     {
