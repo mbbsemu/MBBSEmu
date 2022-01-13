@@ -863,25 +863,24 @@ namespace MBBSEmu.DOS.Interrupts
         data_buffer_segment = dataBuffer.Segment,
         data_buffer_offset = dataBuffer.Offset,
         data_buffer_length = 1,
-        key_number = -1, // no logical currency
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 1, // no logical currency
       };
 
       // data buffer contains the physical offset to read
-      _memory.SetDWord(dataBuffer, 1);
+      _memory.SetDWord(dataBuffer, 2);
 
       Handle(command);
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
-    }
 
-    /* sqlite> select * from data_t;
-        id          data        key_0       key_1       key_2       key_3
-        ----------  ----------  ----------  ----------  ----------  ----------
-        1                       Sysop       3444        3444        1
-        2                       Sysop       7776        7776        2
-        3                       Sysop       1052234073  StringValu  3
-        4                       Sysop       -615634567  stringValu  4
-    */
+      // now we need to validate logical currency by stepping through based on key_number == 1, there is one previous record, and then nothing
+      var btrieve = GetBtrieveFileProcessor(positionBlock);
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+    }
 
     [Fact]
     public void GetDirectRecord()

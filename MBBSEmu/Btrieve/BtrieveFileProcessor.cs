@@ -491,6 +491,7 @@ namespace MBBSEmu.Btrieve
                 var keyData = new byte[key.Length];
                 key.ExtractKeyDataFromRecord(ret.ToSpan()).CopyTo(keyData.AsSpan());
 
+                PreviousQuery?.Dispose();
                 PreviousQuery = new BtrieveQuery(this)
                 {
                     Direction = BtrieveQuery.CursorDirection.Seek,
