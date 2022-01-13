@@ -156,8 +156,8 @@ namespace MBBSEmu.DOS.Interrupts
         /// <summary>
         ///     Handles the btrieve command
         /// </summary>
-        /// <returns>BtrieveError to return to the caller</returns>
-        private (BtrieveError, ushort) Handle(BtrieveCommand command)
+        /// <returns>BtrieveError to return to the caller, as well as the data length returned from any operation returning data</returns>
+        public (BtrieveError, ushort) Handle(BtrieveCommand command)
         {
             switch (command.operation)
             {

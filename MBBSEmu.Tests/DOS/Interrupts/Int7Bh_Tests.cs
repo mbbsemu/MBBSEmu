@@ -5,11 +5,11 @@ using MBBSEmu.CPU;
 using MBBSEmu.Database.Session;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
-using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Resources;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
 using MBBSEmu.Testing;
+using MBBSEmu.Tests;
 using NLog;
 using System;
 using System.IO;
@@ -18,8 +18,19 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Xunit;
 
-namespace MBBSEmu.Tests.Memory
+namespace MBBSEmu.DOS.Interrupts
 {
+  /* Data layout as follows:
+
+    sqlite> select * from data_t;
+        id          data        key_0       key_1       key_2       key_3
+        ----------  ----------  ----------  ----------  ----------  ----------
+        1                       Sysop       3444        3444        1
+        2                       Sysop       7776        7776        2
+        3                       Sysop       1052234073  StringValu  3
+        4                       Sysop       -615634567  stringValu  4
+    */
+
   public class Int7Bh_Tests : TestBase, IDisposable
   {
     private readonly string[] _runtimeFiles = { "MBBSEMU.DB" };
@@ -749,7 +760,7 @@ namespace MBBSEmu.Tests.Memory
     }
 
     [Fact]
-    public void GetChunk()
+    public void GetChunkUnsupported()
     {
       // StepLast
       var positionBlock = OpenDatabase();
@@ -763,6 +774,177 @@ namespace MBBSEmu.Tests.Memory
         status_code_pointer_segment = _statusCodePointer.Segment,
         status_code_pointer_offset = _statusCodePointer.Offset,
         key_number = -2
+      };
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.InvalidOperation);
+    }
+
+    [Fact]
+    public void GetDirectRecordKeyBufferTooShort()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 1,
+        key_number = 1
+      };
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.KeyBufferTooShort);
+    }
+
+    [Fact]
+    public void GetDirectRecordBadIndex()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(1024);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = 1024,
+        key_number = -1, // no logical currency
+      };
+
+      // data buffer contains the physical offset to read
+      _memory.SetDWord(dataBuffer, 0);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.InvalidPositioning);
+
+      // data buffer contains the physical offset to read
+      _memory.SetDWord(dataBuffer, 5);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.InvalidPositioning);
+    }
+
+    [Fact]
+    public void GetDirectRecordDataBufferLengthOverrun()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(1024);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = 1,
+        key_number = -1, // no logical currency
+      };
+
+      // data buffer contains the physical offset to read
+      _memory.SetDWord(dataBuffer, 1);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+    }
+
+    /* sqlite> select * from data_t;
+        id          data        key_0       key_1       key_2       key_3
+        ----------  ----------  ----------  ----------  ----------  ----------
+        1                       Sysop       3444        3444        1
+        2                       Sysop       7776        7776        2
+        3                       Sysop       1052234073  StringValu  3
+        4                       Sysop       -615634567  stringValu  4
+    */
+
+    [Fact]
+    public void GetDirectRecord()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+      var dataBuffer = _memory.Malloc(1024);
+      var keyBuffer = _memory.Malloc(32);
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
+        data_buffer_segment = dataBuffer.Segment,
+        data_buffer_offset = dataBuffer.Offset,
+        data_buffer_length = 1024,
+        key_buffer_segment = keyBuffer.Segment,
+        key_buffer_offset = keyBuffer.Offset,
+        key_buffer_length = 32,
+        key_number = 1,
+      };
+
+      // data buffer contains the physical offset to read
+      _memory.SetDWord(dataBuffer, 2);
+
+      Handle(command);
+
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
+      // data_buffer_length should be updated
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      // data should contain the proper record values
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(7776);
+      _memory.GetDWord(keyBuffer).Should().Be(7776);
+
+      // now we need to validate logical currency by stepping through based on key_number == 1, there is one previous record, and then nothing
+      var btrieve = GetBtrieveFileProcessor(positionBlock);
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeFalse();
+    }
+
+    [Fact]
+    public void InvalidOperation()
+    {
+      // StepLast
+      var positionBlock = OpenDatabase();
+
+      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      {
+        operation = EnumBtrieveOperationCodes.SetOwner,
+        interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+        position_block_segment = positionBlock.Segment,
+        position_block_offset = positionBlock.Offset,
+        status_code_pointer_segment = _statusCodePointer.Segment,
+        status_code_pointer_offset = _statusCodePointer.Offset,
       };
 
       Handle(command);

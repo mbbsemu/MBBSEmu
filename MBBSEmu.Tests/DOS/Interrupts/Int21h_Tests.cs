@@ -2,16 +2,15 @@ using FluentAssertions;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
-using MBBSEmu.DOS.Interrupts;
-using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Memory;
+using MBBSEmu.Tests;
 using NLog;
 using System.IO;
 using Xunit;
 
-namespace MBBSEmu.Tests.Memory
+namespace MBBSEmu.DOS.Interrupts
 {
   public class Int21h_Tests : TestBase
   {

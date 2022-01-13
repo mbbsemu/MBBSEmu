@@ -484,7 +484,23 @@ namespace MBBSEmu.Btrieve
         /// <returns></returns>
         public BtrieveRecord GetRecord(uint offset, int keyNumber)
         {
-            return GetRecord(offset);
+            var ret = GetRecord(offset);
+            if (keyNumber >= 0)
+            {
+                var key = Keys[(ushort)keyNumber];
+                var keyData = new byte[key.Length];
+                key.ExtractKeyDataFromRecord(ret.ToSpan()).CopyTo(keyData.AsSpan());
+
+                PreviousQuery = new BtrieveQuery(this)
+                {
+                    Direction = BtrieveQuery.CursorDirection.Seek,
+                    Position = offset,
+                    Key = key,
+                    KeyData = keyData,
+                    LastKey = key.ExtractKeyInRecordToSqliteObject(ret.ToSpan()),
+                };
+            }
+            return ret;
         }
 
         /// <summary>

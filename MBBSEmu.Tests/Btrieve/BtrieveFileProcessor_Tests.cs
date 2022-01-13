@@ -15,6 +15,17 @@ using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
 {
+    /* Data layout as follows:
+
+    sqlite> select * from data_t;
+        id          data        key_0       key_1       key_2       key_3
+        ----------  ----------  ----------  ----------  ----------  ----------
+        1                       Sysop       3444        3444        1
+        2                       Sysop       7776        7776        2
+        3                       Sysop       1052234073  StringValu  3
+        4                       Sysop       -615634567  stringValu  4
+    */
+
     [Collection("Non-Parallel")]
     public class BtrieveFileProcessor_Tests : TestBase, IDisposable
     {
