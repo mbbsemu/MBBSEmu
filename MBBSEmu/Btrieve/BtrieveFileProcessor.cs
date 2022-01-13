@@ -73,6 +73,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public SqliteConnection Connection;
 
+        public bool BtrieveDriverMode { get; set; }
+
         /// <summary>
         ///     An offset -> BtrieveRecord cache used to speed up record access by reducing Sqlite
         ///     lookups.
@@ -449,7 +451,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Returns the Record at the specified Offset, while also updating Position to match.
+        ///     Returns the Record at the specified physical offset, while also updating Position to match.
         /// </summary>
         public BtrieveRecord GetRecord(uint offset)
         {
@@ -475,14 +477,42 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
+        ///     Returns the Record at the specified physical offset, updating Position and setting logical currency.
+        /// </summary>
+        /// <param name="offset">physical offset of the record</param>
+        /// <param name="keyNumber">key number to set logical currency on</param>
+        /// <returns></returns>
+        public BtrieveRecord GetRecord(uint offset, int keyNumber)
+        {
+            var ret = GetRecord(offset);
+            if (keyNumber >= 0)
+            {
+                var key = Keys[(ushort)keyNumber];
+                var keyData = new byte[key.Length];
+                key.ExtractKeyDataFromRecord(ret.ToSpan()).CopyTo(keyData.AsSpan());
+
+                PreviousQuery?.Dispose();
+                PreviousQuery = new BtrieveQuery(this)
+                {
+                    Direction = BtrieveQuery.CursorDirection.Seek,
+                    Position = offset,
+                    Key = key,
+                    KeyData = keyData,
+                    LastKey = key.ExtractKeyInRecordToSqliteObject(ret.ToSpan()),
+                };
+            }
+            return ret;
+        }
+
+        /// <summary>
         ///     Updates the Record at the current Position.
         /// </summary>
-        public bool Update(byte[] recordData) => Update(Position, recordData);
+        public BtrieveError Update(byte[] recordData) => Update(Position, recordData);
 
         /// <summary>
         ///     Updates the Record at the specified Offset.
         /// </summary>
-        public bool Update(uint offset, byte[] recordData)
+        public BtrieveError Update(uint offset, byte[] recordData)
         {
             if (VariableLengthRecords && recordData.Length != RecordLength)
                 _logger.Debug($"Updating variable length record of {recordData.Length} bytes into {FullPath}");
@@ -499,7 +529,7 @@ namespace MBBSEmu.Btrieve
             if (!InsertAutoincrementValues(transaction, recordData))
             {
                 transaction.Rollback();
-                return false;
+                return BtrieveError.DuplicateKeyValue;
             }
 
             string updateSql;
@@ -536,7 +566,10 @@ namespace MBBSEmu.Btrieve
                 // emulating strange MBBS behavior here. If an update fails on a constraint check,
                 // it returns 0. If a key is modified, it catastro's
                 if (ex.SqliteErrorCode == SQLITE_CONSTRAINT && ex.SqliteExtendedErrorCode == SQLITE_CONSTRAINT_UNIQUE)
-                    return false;
+                    return BtrieveError.DuplicateKeyValue;
+
+                if (BtrieveDriverMode && ex.SqliteErrorCode == SQLITE_CONSTRAINT && ex.SqliteExtendedErrorCode == SQLITE_CONSTRAINT_TRIGGER)
+                    return BtrieveError.NonModifiableKeyValue;
 
                 throw;
             }
@@ -553,10 +586,10 @@ namespace MBBSEmu.Btrieve
             }
 
             if (queryResult == 0)
-                return false;
+                return BtrieveError.InvalidKeyNumber;
 
             _cache[offset] = new BtrieveRecord(offset, recordData);
-            return true;
+            return BtrieveError.Success;
         }
 
         /// <summary>

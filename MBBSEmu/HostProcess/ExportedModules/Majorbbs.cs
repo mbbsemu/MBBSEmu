@@ -2696,7 +2696,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort)currentBtrieveFile.RecordLength);
 
-            return currentBtrieveFile.Update(dataToWrite.ToArray());
+            return currentBtrieveFile.Update(dataToWrite.ToArray()) == BtrieveError.Success;
         }
 
         /// <summary>

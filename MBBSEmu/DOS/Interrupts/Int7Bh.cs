@@ -12,48 +12,6 @@ using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
 {
-    public enum BtrieveError
-    {
-        Success = 0,
-        InvalidOperation = 1,
-        IOError = 2,
-        FileNotOpen = 3,
-        KeyValueNotFound = 4,
-        DuplicateKeyValue = 5,
-        InvalidKeyNumber = 6,
-        DifferentKeyNumber = 7,
-        InvalidPositioning = 8,
-        EOF = 9,
-        NonModifiableKeyValue = 10,
-        InvalidFileName = 11,
-        FileNotFound = 12,
-        ExtendedFileError = 13,
-        PreImageOpenError = 14,
-        PreImageIOError = 15,
-        ExpansionError = 16,
-        CloseError = 17,
-        DiskFull = 18,
-        UnrecoverableError = 19,
-        RecordManagerInactive = 20,
-        KeyBufferTooShort = 21,
-        DataBufferLengthOverrun = 22,
-        PositionBlockLength = 23,
-        PageSizeError = 24,
-        CreateIOError = 25,
-        InvalidNumberOfKeys = 26,
-        InvalidKeyPosition = 27,
-        BadRecordLength = 28,
-        BadKeyLength = 29,
-        NotBtrieveFile = 30,
-        TransactionIsActive = 37,
-        /* Btrieve version 5.x returns this status code
-if you attempt to perform a Step, Update, or Delete operation on a
-key-only file or a Get operation on a data only file */
-        OperationNotAllowed = 41,
-        AccessDenied = 46,
-        InvalidInterface = 53,
-    }
-
     enum BtrieveOpenMode : short
     {
         Normal = 0,
@@ -64,6 +22,32 @@ key-only file or a Get operation on a data only file */
     }
 
     public struct BtrieveCommand
+    {
+        public EnumBtrieveOperationCodes operation;
+
+        public ushort position_block_offset;
+        public ushort position_block_segment;
+
+        public ushort data_buffer_offset;
+        public ushort data_buffer_segment;
+
+        public ushort data_buffer_length;
+
+        public ushort key_buffer_offset;
+        public ushort key_buffer_segment;
+
+        public ushort key_buffer_length;
+
+        public short key_number;
+    }
+
+    /// <summary>
+    /// In-memory layout of the command received by the int7b Btrieve interrupt handler.
+    ///
+    /// Do not change this structure in any way.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct DOSInterruptBtrieveCommand
     {
         public ushort data_buffer_offset;
         public ushort data_buffer_segment;
@@ -88,7 +72,7 @@ key-only file or a Get operation on a data only file */
         public ushort status_code_pointer_offset;
         public ushort status_code_pointer_segment;
 
-        public ushort interface_id; // should always be 0x6176
+        public ushort interface_id; // should always be EXPECTED_INTERFACE_ID
     }
 
     // https://docs.actian.com/psql/psqlv13/index.html#page/btrieveapi/btrintro.htm
@@ -100,6 +84,7 @@ key-only file or a Get operation on a data only file */
     public class Int7Bh : IInterruptHandler, IDisposable
     {
         public const int BTRIEVE_COMMAND_STRUCT_LENGTH = 28;
+        public const ushort EXPECTED_INTERFACE_ID = 0x6176;
 
         private readonly ILogger _logger;
         private readonly IFileUtility _fileUtility;
@@ -112,7 +97,7 @@ key-only file or a Get operation on a data only file */
 
         public Int7Bh(IFileUtility fileUtility, IMemoryCore memoryCore) : this(null, Directory.GetCurrentDirectory(), fileUtility, null, memoryCore)
         {
-            
+
         }
 
         public Int7Bh(ILogger logger, string path, IFileUtility fileUtility, ICpuRegisters registers, IMemoryCore memory)
@@ -135,36 +120,55 @@ key-only file or a Get operation on a data only file */
         public void Handle()
         {
             // DS:DX is argument
-            var command = ByteArrayToStructure<BtrieveCommand>(_memory.GetArray(_registers.DS, _registers.DX, BTRIEVE_COMMAND_STRUCT_LENGTH).ToArray());
+            var command = ByteArrayToStructure<DOSInterruptBtrieveCommand>(_memory.GetArray(_registers.DS, _registers.DX, BTRIEVE_COMMAND_STRUCT_LENGTH).ToArray());
             var status = BtrieveError.InvalidInterface;
+            var data_buffer_length = command.data_buffer_length;
 
-            if (command.interface_id != 0x6176)
+            if (command.interface_id != EXPECTED_INTERFACE_ID)
                 _logger.Warn($"Client specified invalid interface_id {command.interface_id:X4}");
             else
-                status = Handle(command);
+                (status, data_buffer_length) = Handle(command);
 
             // return status code back to program
             _memory.SetWord(command.status_code_pointer_segment, command.status_code_pointer_offset, (ushort)status);
             // and update data_buffer_length if it was updated in Handle
-            _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), command.data_buffer_length);
+            _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), data_buffer_length);
+        }
+
+        private (BtrieveError, ushort) Handle(DOSInterruptBtrieveCommand command)
+        {
+            var actualCommand = new BtrieveCommand() {
+                operation = command.operation,
+                position_block_segment = command.position_block_segment,
+                position_block_offset = command.position_block_offset,
+                data_buffer_segment = command.data_buffer_segment,
+                data_buffer_offset = command.data_buffer_offset,
+                data_buffer_length = command.data_buffer_length,
+                key_buffer_segment = command.key_buffer_segment,
+                key_buffer_offset = command.key_buffer_offset,
+                key_buffer_length = command.key_buffer_length,
+                key_number = command.key_number
+            };
+
+            return Handle(actualCommand);
         }
 
         /// <summary>
         ///     Handles the btrieve command
         /// </summary>
-        /// <returns>BtrieveError to return to the caller</returns>
-        public BtrieveError Handle(BtrieveCommand command)
+        /// <returns>BtrieveError to return to the caller, as well as the data length returned from any operation returning data</returns>
+        public (BtrieveError, ushort) Handle(BtrieveCommand command)
         {
             switch (command.operation)
             {
                 case EnumBtrieveOperationCodes.Open:
-                    return Open(command);
+                    return (Open(command), command.data_buffer_length);
                 case EnumBtrieveOperationCodes.Close:
-                    return Close(command);
+                    return (Close(command), command.data_buffer_length);
                 case EnumBtrieveOperationCodes.Stat:
                     return Stat(command);
                 case EnumBtrieveOperationCodes.Delete:
-                    return Delete(command);
+                    return (Delete(command), command.data_buffer_length);
                 case EnumBtrieveOperationCodes.StepFirst:
                 case EnumBtrieveOperationCodes.StepLast:
                 case EnumBtrieveOperationCodes.StepNext:
@@ -192,21 +196,21 @@ key-only file or a Get operation on a data only file */
                 case EnumBtrieveOperationCodes.GetPosition:
                     return GetPosition(command);
                 case EnumBtrieveOperationCodes.GetDirectChunkOrRecord:
-                    return GetDirectChunkOrRecord(command);
+                    return GetDirectRecord(command);
                 case EnumBtrieveOperationCodes.Update:
-                    return Update(command);
+                    return (Update(command), command.data_buffer_length);
                 case EnumBtrieveOperationCodes.Insert:
-                    return Insert(command);
+                    return (Insert(command), command.data_buffer_length);
                 default:
                     _logger.Error($"Unsupported Btrieve operation {command.operation}");
-                    return BtrieveError.InvalidOperation;
+                    return (BtrieveError.InvalidOperation, command.data_buffer_length);
             }
         }
 
         private BtrieveError Open(BtrieveCommand command)
         {
             var file = Encoding.ASCII.GetString(_memory.GetString(command.key_buffer_segment, command.key_buffer_offset, stripNull: true));
-
+            var openMode = (BtrieveOpenMode) command.key_number;
             // have to do a dance where we split up path + file since that's what
             // the processor wants
             string path = _path;
@@ -220,7 +224,10 @@ key-only file or a Get operation on a data only file */
             BtrieveFileProcessor db;
             try
             {
-                db = new(_fileUtility, path, file, cacheSize: 8);
+                db = new(_fileUtility, path, file, cacheSize: 8)
+                {
+                     BtrieveDriverMode = true,
+                };
                 // add to my list of open files
                 var guid = Guid.NewGuid();
                 _openFiles[guid] = db;
@@ -231,7 +238,7 @@ key-only file or a Get operation on a data only file */
                 return BtrieveError.Success;
             }
             catch (FileNotFoundException) {
-                _logger.Error($"Can't open btrieve file {file}");
+                _logger.Error($"Can't open btrieve file {file} with openMode {openMode}");
                 return BtrieveError.FileNotFound;
             }
         }
@@ -248,6 +255,7 @@ key-only file or a Get operation on a data only file */
             return BtrieveError.Success;
         }
 
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct BtrieveFileSpec
         {
             public ushort record_length;
@@ -282,6 +290,7 @@ key-only file or a Get operation on a data only file */
             }
         }
 
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct BtrieveKeySpec
         {
             public ushort position;
@@ -322,20 +331,20 @@ key-only file or a Get operation on a data only file */
             }
         }
 
-        private BtrieveError Stat(BtrieveCommand command)
+        private (BtrieveError, ushort) Stat(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
-                return BtrieveError.FileNotOpen;
+                return (BtrieveError.FileNotOpen, command.data_buffer_length);
 
             // if they specify space for the expanded file name, null it out since we
             // don't support spanning
             if (command.key_buffer_length > 0)
                 _memory.SetByte(command.key_buffer_segment, command.key_buffer_offset, 0);
 
-            var requiredSize = Marshal.SizeOf(typeof(BtrieveFileSpec)) + (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec)));
+            var requiredSize = (ushort) (Marshal.SizeOf(typeof(BtrieveFileSpec)) + (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec))));
             if (command.data_buffer_length < requiredSize)
-                return BtrieveError.DataBufferLengthOverrun;
+                return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
 
             // now write all this data
             var ptr = new FarPtr(command.data_buffer_segment, command.data_buffer_offset);
@@ -345,7 +354,7 @@ key-only file or a Get operation on a data only file */
                 ptr += new BtrieveKeySpec(db.Keys[i].PrimarySegment).WriteTo(_memory, ptr);
             }
 
-            return BtrieveError.Success;
+            return (BtrieveError.Success, requiredSize);
         }
 
         private BtrieveError Delete(BtrieveCommand command)
@@ -366,9 +375,13 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
+
             var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
-            if (!db.Update(record))
-                return BtrieveError.DuplicateKeyValue;
+            var errorCode = db.Update(record);
+            if (errorCode != BtrieveError.Success)
+                return errorCode;
 
             // copy back the key if specified
             if (command.key_number >= 0)
@@ -383,6 +396,9 @@ key-only file or a Get operation on a data only file */
             if (db == null)
                 return BtrieveError.FileNotOpen;
 
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return BtrieveError.KeyBufferTooShort;
+
             var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
             if (db.Insert(record, LogLevel.Error) == 0)
                 return BtrieveError.DuplicateKeyValue;
@@ -394,115 +410,137 @@ key-only file or a Get operation on a data only file */
             return BtrieveError.Success;
         }
 
-        private BtrieveError Step(BtrieveCommand command)
+        private (BtrieveError, ushort) Step(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
-                return BtrieveError.FileNotOpen;
+                return (BtrieveError.FileNotOpen, command.data_buffer_length);
 
             if (!db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation))
-                return BtrieveError.EOF;
+                return (BtrieveError.EOF, command.data_buffer_length);
 
             var data = db.GetRecord();
             if (data.Length > command.data_buffer_length)
-                return BtrieveError.DataBufferLengthOverrun;
+                return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
 
             _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-            command.data_buffer_length = (ushort)data.Length;
 
-            return BtrieveError.Success;
+            return (BtrieveError.Success, (ushort) data.Length);
         }
 
-        private BtrieveError Query(BtrieveCommand command)
+        private (BtrieveError, ushort) Query(BtrieveCommand command)
         {
+            var length = command.data_buffer_length;
+
             var db = GetOpenDatabase(command);
             if (db == null)
-                return BtrieveError.FileNotOpen;
+                return (BtrieveError.FileNotOpen, length);
 
             var key = ReadOnlySpan<byte>.Empty;
             if (command.operation.RequiresKey())
                 key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset, command.key_buffer_length);
 
             if (!db.PerformOperation(command.key_number, key, command.operation))
-                return command.operation.RequiresKey() ? BtrieveError.KeyValueNotFound : BtrieveError.EOF;
+                return (command.operation.RequiresKey() ? BtrieveError.KeyValueNotFound : BtrieveError.EOF, length);
 
             var data = db.GetRecord();
 
             if (db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
-                return BtrieveError.KeyBufferTooShort;
+                return (BtrieveError.KeyBufferTooShort, length);
 
             if (command.operation.AcquiresData())
             {
                 if (data.Length > command.data_buffer_length)
-                    return BtrieveError.DataBufferLengthOverrun;
+                    return (BtrieveError.DataBufferLengthOverrun, length);
 
                 // copy data
                 _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-                command.data_buffer_length = (ushort)data.Length;
+                length = (ushort) data.Length;
             }
 
             // copy key
             _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(data));
 
-            return BtrieveError.Success;
+            return (BtrieveError.Success, length);
         }
 
-        private BtrieveError GetDirectChunkOrRecord(BtrieveCommand command)
+        private (BtrieveError, ushort) GetDirectRecord(BtrieveCommand command)
         {
+            var length = command.data_buffer_length;
             var db = GetOpenDatabase(command);
             if (db == null)
-                return BtrieveError.FileNotOpen;
+                return (BtrieveError.FileNotOpen, length);
 
             if (command.key_number == -2)
             {
                 _logger.Warn("GetChunk - not supported");
-                return BtrieveError.InvalidOperation;
+                return (BtrieveError.InvalidOperation, length);
             }
 
+            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+                return (BtrieveError.KeyBufferTooShort, length);
+
             var offset = _memory.GetDWord(command.data_buffer_segment, command.data_buffer_offset);
-            var record = db.GetRecord(offset);
+            var record = db.GetRecord(offset, command.key_number);
             if (record == null)
-                return BtrieveError.InvalidPositioning;
+                return (BtrieveError.InvalidPositioning, length);
 
             if (record.Data.Length > command.data_buffer_length)
-                return BtrieveError.DataBufferLengthOverrun;
-            if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
-                return BtrieveError.KeyBufferTooShort;
+                return (BtrieveError.DataBufferLengthOverrun, length);
 
             // copy data
             _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, record.Data);
-            command.data_buffer_length = (ushort)record.Data.Length;
+            length = (ushort)record.Data.Length;
 
             // copy key
             if (command.key_number >= 0)
                 _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset, db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(record.Data));
 
-            return BtrieveError.Success;
+            return (BtrieveError.Success, length);
         }
 
-        private BtrieveError GetPosition(BtrieveCommand command)
+        private (BtrieveError, ushort) GetPosition(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
-                return BtrieveError.FileNotOpen;
+                return (BtrieveError.FileNotOpen, command.data_buffer_length);
 
             if (command.data_buffer_length < 4)
-                return BtrieveError.DataBufferLengthOverrun;
+                return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
 
             _memory.SetDWord(command.data_buffer_segment, command.data_buffer_offset, db.Position);
-            return BtrieveError.Success;
+            return (BtrieveError.Success, 4);
         }
 
         private Guid GetGUIDFromPosBlock(BtrieveCommand command) => new Guid(_memory.GetArray(command.position_block_segment, command.position_block_offset, 16));
 
-        private BtrieveFileProcessor GetOpenDatabase(BtrieveCommand command) => _openFiles[GetGUIDFromPosBlock(command)];
+        /// <summary>
+        /// Returns the open database from the given command's position block.
+        /// </summary>
+        /// <returns>A valid processor if already opened, or null if not found/not open</returns>
+        private BtrieveFileProcessor GetOpenDatabase(BtrieveCommand command)
+        {
+            if (!_openFiles.TryGetValue(GetGUIDFromPosBlock(command), out var processor))
+            {
+                processor = null;
+            }
+            return processor;
+        }
 
-        unsafe T ByteArrayToStructure<T>(byte[] bytes) where T : struct
+        /// <summary>
+        /// Unmarshals bytes into the appropriate structure
+        /// </summary>
+        public static unsafe T ByteArrayToStructure<T>(byte[] bytes) where T : struct
         {
             fixed (byte* ptr = &bytes[0])
             {
                 return (T)Marshal.PtrToStructure((IntPtr)ptr, typeof(T));
             }
         }
+
+        /// <summary>
+        /// Retrieves the BtrieveFileProcess from the specific guid - meant to be used only in tests.
+        /// </summary>
+        public BtrieveFileProcessor GetFromGUID(Guid guid) => _openFiles[guid];
     }
 }
