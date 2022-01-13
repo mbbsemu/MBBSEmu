@@ -451,7 +451,7 @@ namespace MBBSEmu.Btrieve
         }
 
         /// <summary>
-        ///     Returns the Record at the specified physical ffset, while also updating Position to match.
+        ///     Returns the Record at the specified physical offset, while also updating Position to match.
         /// </summary>
         public BtrieveRecord GetRecord(uint offset)
         {

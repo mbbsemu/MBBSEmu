@@ -137,7 +137,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private (BtrieveError, ushort) Handle(DOSInterruptBtrieveCommand command)
         {
-            BtrieveCommand actualCommand = new BtrieveCommand() {
+            var actualCommand = new BtrieveCommand() {
                 operation = command.operation,
                 position_block_segment = command.position_block_segment,
                 position_block_offset = command.position_block_offset,
@@ -210,7 +210,7 @@ namespace MBBSEmu.DOS.Interrupts
         private BtrieveError Open(BtrieveCommand command)
         {
             var file = Encoding.ASCII.GetString(_memory.GetString(command.key_buffer_segment, command.key_buffer_offset, stripNull: true));
-
+            var openMode = (BtrieveOpenMode) command.key_number;
             // have to do a dance where we split up path + file since that's what
             // the processor wants
             string path = _path;
@@ -238,7 +238,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return BtrieveError.Success;
             }
             catch (FileNotFoundException) {
-                _logger.Error($"Can't open btrieve file {file}");
+                _logger.Error($"Can't open btrieve file {file} with openMode {openMode}");
                 return BtrieveError.FileNotFound;
             }
         }

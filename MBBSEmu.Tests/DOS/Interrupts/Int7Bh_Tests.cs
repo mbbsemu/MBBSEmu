@@ -40,9 +40,9 @@ namespace MBBSEmu.DOS.Interrupts
     private readonly ServiceResolver _serviceResolver;
     private readonly IMemoryCore _memory;
     private readonly Int7Bh _int7B;
-    private string _modulePath;
-    private FarPtr _dataBuffer;
-    private FarPtr _statusCodePointer;
+    private readonly string _modulePath;
+    private readonly FarPtr _dataBuffer;
+    private readonly FarPtr _statusCodePointer;
 
     public Int7Bh_Tests()
     {
@@ -84,7 +84,7 @@ namespace MBBSEmu.DOS.Interrupts
     [Fact]
     public void InvalidInterface()
     {
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         interface_id = 0xDEAD,
         status_code_pointer_segment = _statusCodePointer.Segment,
@@ -100,7 +100,7 @@ namespace MBBSEmu.DOS.Interrupts
     [Fact]
     public void StatWithoutOpeningDatabase()
     {
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Stat,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -120,7 +120,7 @@ namespace MBBSEmu.DOS.Interrupts
       var fileName = _memory.Malloc(16);
       _memory.SetArray(fileName, Encoding.ASCII.GetBytes("MBBSEMU.DAT\0"));
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Open,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -150,7 +150,7 @@ namespace MBBSEmu.DOS.Interrupts
       var spanString = _memory.Malloc(1);
       _memory.SetByte(spanString, 0xFF);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Stat,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -179,7 +179,7 @@ namespace MBBSEmu.DOS.Interrupts
 
       var dataBuffer = _memory.Malloc(1024);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Stat,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -250,7 +250,7 @@ namespace MBBSEmu.DOS.Interrupts
     {
       var positionBlock = OpenDatabase();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Close,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -270,7 +270,7 @@ namespace MBBSEmu.DOS.Interrupts
     {
       var positionBlock = OpenDatabase();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.StepLast,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -293,7 +293,7 @@ namespace MBBSEmu.DOS.Interrupts
       var positionBlock = OpenDatabase();
       var dataBuffer = _memory.Malloc(1024);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.StepLast,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -345,7 +345,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.AcquireEqual,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -377,7 +377,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.AcquireEqual,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -409,7 +409,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.AcquireEqual,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -446,7 +446,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Insert,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -485,7 +485,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Insert,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -519,7 +519,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Insert,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -552,7 +552,7 @@ namespace MBBSEmu.DOS.Interrupts
       // StepLast
       var positionBlock = OpenDatabase();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Delete,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -578,7 +578,7 @@ namespace MBBSEmu.DOS.Interrupts
 
       GetBtrieveFileProcessor(positionBlock).DeleteAll();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Delete,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -603,7 +603,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Update,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -644,7 +644,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Update,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -684,7 +684,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Update,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -724,7 +724,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.Update,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -765,7 +765,7 @@ namespace MBBSEmu.DOS.Interrupts
       // StepLast
       var positionBlock = OpenDatabase();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -788,7 +788,7 @@ namespace MBBSEmu.DOS.Interrupts
       var positionBlock = OpenDatabase();
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -815,7 +815,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(1024);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -852,7 +852,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(1024);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -890,7 +890,7 @@ namespace MBBSEmu.DOS.Interrupts
       var dataBuffer = _memory.Malloc(1024);
       var keyBuffer = _memory.Malloc(32);
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
@@ -936,7 +936,7 @@ namespace MBBSEmu.DOS.Interrupts
       // StepLast
       var positionBlock = OpenDatabase();
 
-      DOSInterruptBtrieveCommand command = new DOSInterruptBtrieveCommand()
+      var command = new DOSInterruptBtrieveCommand()
       {
         operation = EnumBtrieveOperationCodes.SetOwner,
         interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
