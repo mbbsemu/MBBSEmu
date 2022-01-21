@@ -12,7 +12,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{FD249CEF-1D4E-4E28-87A8-E734C7B94D89}</ProjectGuid>
+    <ProjectGuid>{DDC3336E-C4BD-44BB-A893-9611F1BD0243}</ProjectGuid>
     <Keyword>NetCoreCProj</Keyword>
     <RootNamespace>wbtrv32</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
@@ -45,7 +45,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)\bin\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\tmpobj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)\bin\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\tmpobj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -94,26 +101,15 @@
     <None Include="wbtrv32.def" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MBBSEmu\MBBSEmu.csproj">
+    <ProjectReference Include="..\..\MBBSEmu\MBBSEmu.csproj">
       <Project>{d2455c16-2937-45fc-ac5f-10a3734afed4}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Iced">
-      <HintPath>..\MBBSEmu\bin\Debug\net6.0\Iced.dll</HintPath>
+    <Reference Include="netsqlite">
+      <HintPath>..\netsqlite\bin\Debug\net6.0\netsqlite.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Data.Sqlite">
-      <HintPath>..\MBBSEmu\bin\Debug\net6.0\Microsoft.Data.Sqlite.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.batteries_v2">
-      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.batteries_v2.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.core">
-      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.core.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.provider.e_sqlite3">
-      <HintPath>..\MBBSEmu\bin\Debug\net6.0\SQLitePCLRaw.provider.e_sqlite3.dll</HintPath>
-    </Reference>
+    <Reference Include="SQLitePCLRaw.core, Version=2.0.6.1341, Culture=neutral, PublicKeyToken=1488e028ca7ab535" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

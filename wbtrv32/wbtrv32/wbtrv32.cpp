@@ -7,6 +7,7 @@ using namespace MBBSEmu::Btrieve;
 using namespace MBBSEmu::DOS::Interrupts;
 using namespace MBBSEmu::IO;
 using namespace MBBSEmu::Memory;
+using namespace NetSQLite;
 using namespace System;
 
 msclr::auto_gcroot<Int7Bh^> _int7b;
@@ -61,9 +62,13 @@ private:
     }
 };
 
-int BTRV_API BTRCALL(WORD wOperation, LPVOID lpPositionBlock, LPVOID lpDataBuffer, DWORD dwDataBufferLength, LPVOID lpKeyBuffer, WORD bKeyLength, SHORT bKeyNumber) {
+static void initSqlite() {
+    SQLiteInitializer::Initialize();
+}
+
+extern "C" int __stdcall BTRCALL(WORD wOperation, LPVOID lpPositionBlock, LPVOID lpDataBuffer, LPDWORD dwDataBufferLength, LPVOID lpKeyBuffer, BYTE bKeyLength, CHAR sbKeyNumber) {
     if (!_int7b) {
-        BtrieveFileProcessor::InitSqlite();
+        initSqlite();
         _int7b = gcnew MBBSEmu::DOS::Interrupts::Int7Bh(FileUtility::CreateForTest(), gcnew ProtectedMode32Bit());
     }
 
@@ -75,13 +80,19 @@ int BTRV_API BTRCALL(WORD wOperation, LPVOID lpPositionBlock, LPVOID lpDataBuffe
     b.position_block_segment = reinterpret_cast<DWORD>(lpPositionBlock) >> 16;
     b.position_block_offset = reinterpret_cast<DWORD>(lpPositionBlock) & 0xFFFF;
 
-    b.data_buffer_length = (WORD)dwDataBufferLength;
+    b.data_buffer_length = dwDataBufferLength ? *dwDataBufferLength : 0;
 
     b.key_buffer_segment = reinterpret_cast<DWORD>(lpKeyBuffer) >> 16;
     b.key_buffer_offset = reinterpret_cast<DWORD>(lpKeyBuffer) & 0xFFFF;
 
-    b.key_number = static_cast<char>(bKeyNumber);
-    b.key_buffer_length = static_cast<unsigned char>(bKeyLength);
+    b.key_buffer_length = bKeyLength;
+    b.key_number = sbKeyNumber;
+    
+    System::ValueTuple<MBBSEmu::Btrieve::Enums::BtrieveError, uint>^ result = _int7b->Handle(b);
 
-    return static_cast<int>(_int7b->Handle(b));
+    if (dwDataBufferLength) {
+        *dwDataBufferLength = result->Item2;
+    }
+
+    return static_cast<int>(result->Item1);
 }

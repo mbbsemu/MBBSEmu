@@ -31,14 +31,14 @@ namespace MBBSEmu.DOS.Interrupts
         public ushort data_buffer_offset;
         public ushort data_buffer_segment;
 
-        public ushort data_buffer_length;
+        public uint data_buffer_length;
 
         public ushort key_buffer_offset;
         public ushort key_buffer_segment;
 
-        public ushort key_buffer_length;
+        public byte key_buffer_length;
 
-        public short key_number;
+        public sbyte key_number;
     }
 
     /// <summary>
@@ -122,7 +122,7 @@ namespace MBBSEmu.DOS.Interrupts
             // DS:DX is argument
             var command = ByteArrayToStructure<DOSInterruptBtrieveCommand>(_memory.GetArray(_registers.DS, _registers.DX, BTRIEVE_COMMAND_STRUCT_LENGTH).ToArray());
             var status = BtrieveError.InvalidInterface;
-            var data_buffer_length = command.data_buffer_length;
+            var data_buffer_length = (uint) command.data_buffer_length;
 
             if (command.interface_id != EXPECTED_INTERFACE_ID)
                 _logger.Warn($"Client specified invalid interface_id {command.interface_id:X4}");
@@ -132,10 +132,10 @@ namespace MBBSEmu.DOS.Interrupts
             // return status code back to program
             _memory.SetWord(command.status_code_pointer_segment, command.status_code_pointer_offset, (ushort)status);
             // and update data_buffer_length if it was updated in Handle
-            _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), data_buffer_length);
+            _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), (ushort) data_buffer_length);
         }
 
-        private (BtrieveError, ushort) Handle(DOSInterruptBtrieveCommand command)
+        private (BtrieveError, uint) Handle(DOSInterruptBtrieveCommand command)
         {
             var actualCommand = new BtrieveCommand() {
                 operation = command.operation,
@@ -157,7 +157,7 @@ namespace MBBSEmu.DOS.Interrupts
         ///     Handles the btrieve command
         /// </summary>
         /// <returns>BtrieveError to return to the caller, as well as the data length returned from any operation returning data</returns>
-        public (BtrieveError, ushort) Handle(BtrieveCommand command)
+        public (BtrieveError, uint) Handle(BtrieveCommand command)
         {
             switch (command.operation)
             {
@@ -331,7 +331,7 @@ namespace MBBSEmu.DOS.Interrupts
             }
         }
 
-        private (BtrieveError, ushort) Stat(BtrieveCommand command)
+        private (BtrieveError, uint) Stat(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
@@ -378,7 +378,7 @@ namespace MBBSEmu.DOS.Interrupts
             if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
                 return BtrieveError.KeyBufferTooShort;
 
-            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
+            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, (ushort) command.data_buffer_length).ToArray();
             var errorCode = db.Update(record);
             if (errorCode != BtrieveError.Success)
                 return errorCode;
@@ -399,7 +399,7 @@ namespace MBBSEmu.DOS.Interrupts
             if (command.key_number >= 0 && db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
                 return BtrieveError.KeyBufferTooShort;
 
-            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
+            var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, (ushort) command.data_buffer_length).ToArray();
             if (db.Insert(record, LogLevel.Error) == 0)
                 return BtrieveError.DuplicateKeyValue;
 
@@ -410,7 +410,7 @@ namespace MBBSEmu.DOS.Interrupts
             return BtrieveError.Success;
         }
 
-        private (BtrieveError, ushort) Step(BtrieveCommand command)
+        private (BtrieveError, uint) Step(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
@@ -428,7 +428,7 @@ namespace MBBSEmu.DOS.Interrupts
             return (BtrieveError.Success, (ushort) data.Length);
         }
 
-        private (BtrieveError, ushort) Query(BtrieveCommand command)
+        private (BtrieveError, uint) Query(BtrieveCommand command)
         {
             var length = command.data_buffer_length;
 
@@ -464,7 +464,7 @@ namespace MBBSEmu.DOS.Interrupts
             return (BtrieveError.Success, length);
         }
 
-        private (BtrieveError, ushort) GetDirectRecord(BtrieveCommand command)
+        private (BtrieveError, uint) GetDirectRecord(BtrieveCommand command)
         {
             var length = command.data_buffer_length;
             var db = GetOpenDatabase(command);
@@ -499,7 +499,7 @@ namespace MBBSEmu.DOS.Interrupts
             return (BtrieveError.Success, length);
         }
 
-        private (BtrieveError, ushort) GetPosition(BtrieveCommand command)
+        private (BtrieveError, uint) GetPosition(BtrieveCommand command)
         {
             var db = GetOpenDatabase(command);
             if (db == null)
