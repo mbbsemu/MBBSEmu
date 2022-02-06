@@ -9,7 +9,7 @@ namespace MBBSEmu.Session
         public const byte DELETE = 127;
         public const byte ESCAPE = 0x1B;
         public const int MAX_LINE = 512;
-        public const int MAX_OUTPUT_BUFFER = 4096;
+        public const int MAX_OUTPUT_BUFFER = 16 * 1024;
 
         public delegate void SendToClientDelegate(byte[] dataToSend);
 
