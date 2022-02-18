@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MBBSEmu.Session;
 using System;
+using System.Text;
 using Xunit;
 
 namespace MBBSEmu.Tests.Session
@@ -87,6 +88,31 @@ namespace MBBSEmu.Tests.Session
             {
                 testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(strings[i]);
             }
+        }
+
+        [Fact]
+        public void flushingTest()
+        {
+            int lines = 0;
+            StringBuilder builder = new StringBuilder();
+
+            // build up a string of 128k characters, much larger than our buffer size
+            while (builder.Length < (128 * 1024)) {
+                builder.Append("This is a long line of text that we repeat\r\n");
+                ++lines;
+            }
+
+            testSession.WordWrapWidth = 80;
+            testSession.SendToClient(builder.ToString()); // send all at once
+
+            while (lines-- > 0)
+            {
+                testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("This is a long line of text that we repeat");
+            }
+
+            // should be no lines left to read
+            Assert.Throws<TimeoutException>(() => testSession.GetLine(TimeSpan.FromMilliseconds(100)));
+
         }
     }
 }

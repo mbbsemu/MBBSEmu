@@ -9,7 +9,14 @@ namespace MBBSEmu.Session
         public const byte DELETE = 127;
         public const byte ESCAPE = 0x1B;
         public const int MAX_LINE = 512;
-        public const int MAX_OUTPUT_BUFFER = 16 * 1024;
+        /// <summary>
+        /// Maximum size of the line buffer used to accumulate broken lines
+        /// </summary>
+        public const int MAX_OUTPUT_BUFFER = 8 * 1024;
+        /// <summary>
+        /// Length of data stored in _rawBuffer before flushing to prevent overflow, 75% of MAX_OUTPUT_BUFFER
+        /// </summary>
+        public const int OUTPUT_BUFFER_FLUSH_THRESHOLD = (3 * MAX_OUTPUT_BUFFER / 4);
 
         public delegate void SendToClientDelegate(byte[] dataToSend);
 
@@ -130,6 +137,12 @@ namespace MBBSEmu.Session
                         {
                             case (byte) '\r':
                                 _lineBufferLength = 0; // line ended, erase accumulated data in lineBuffer
+                                if (_rawBufferLength >= OUTPUT_BUFFER_FLUSH_THRESHOLD)
+                                {
+                                    // output our raw buffer
+                                    SendToClientMethod(_rawBuffer.AsSpan().Slice(0, _rawBufferLength).ToArray());
+                                    _rawBufferLength = 0;
+                                }
                                 break;
                             case ESCAPE: // escape
                                 _parseState = ParseState.ESCAPE;
