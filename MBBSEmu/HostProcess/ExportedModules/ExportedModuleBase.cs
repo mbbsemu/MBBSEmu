@@ -681,7 +681,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var txtvarsFound = _textVariableService.ExtractVariableDefinitions(outputBuffer);
 
-            var txtvarDictionary = ChannelDictionary[ChannelNumber].SessionVariables;
+            //This can happen if a channel disconnects during the processing of the main loop
+            if (!ChannelDictionary.TryGetValue(ChannelNumber, out var channelSession))
+                return outputBuffer;
+
+            var txtvarDictionary = channelSession.SessionVariables;
 
             //Get Their Values
             var txtvarMemoryBase = Module.Memory.GetVariablePointer("TXTVARS");
