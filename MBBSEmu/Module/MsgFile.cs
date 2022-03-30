@@ -40,13 +40,37 @@ namespace MBBSEmu.Module
             BuildMCV();
         }
 
-        private enum MsgParseState {
-            NEWLINE,
-            IDENTIFIER,
-            SPACE,
-            BRACKET,
-            BRACKET_REPLACE,
-            JUNK
+        public enum MsgParseState
+        {
+            /// <summary>
+            ///     Data Before Identifier Characters
+            /// </summary>
+            PREKEY,
+
+            /// <summary>
+            ///     Data for Identifier
+            /// </summary>
+            KEY,
+
+            /// <summary>
+            ///     Data Post Identifier
+            /// </summary>
+            POSTKEY,
+
+            /// <summary>
+            ///     Data In Value
+            /// </summary>
+            VALUE,
+
+            /// <summary>
+            ///     Post Value (Type, Length, etc.)
+            /// </summary>
+            POSTVALUE,
+
+            /// <summary>
+            ///     If an escaped bracket is encountered as part of a message
+            /// </summary>
+            ESCAPEBRACKET,
         };
 
         private static bool IsIdentifier(char c) =>
@@ -85,73 +109,205 @@ namespace MBBSEmu.Module
         private void BuildMCV()
         {
             var path = _fileUtility.FindFile(_modulePath, Path.ChangeExtension(_moduleName, ".MSG"));
-            var fileToRead = File.ReadAllBytes(Path.Combine(_modulePath, path));
-            var state = MsgParseState.NEWLINE;
-            var identifier = new StringBuilder();
-            using var msgValue = new MemoryStream();
+            var msgFileData = File.ReadAllBytes(Path.Combine(_modulePath, path));
             var language = Encoding.ASCII.GetBytes("English/ANSI\0");
-            var messages = new List<byte[]>();
-            var last = (char)0;
 
-            foreach (var b in fileToRead)
+            var messages = ExtractMsgValues(msgFileData);
+
+            WriteMCV(language, messages);
+        }
+
+        private IList<byte[]> ExtractMsgValues(ReadOnlySpan<byte> msgData, Dictionary<string, string> valueOverrides = null)
+        {
+            var result = new List<byte[]>();
+
+            var state = MsgParseState.PREKEY;
+            var msgKey = new StringBuilder();
+            using var msgValue = new MemoryStream();
+            var previousCharacter = (char)0;
+
+            foreach (var b in msgData)
             {
                 var c = (char)b;
                 switch (state)
                 {
-                    case MsgParseState.NEWLINE when IsIdentifier(c):
-                        state = MsgParseState.IDENTIFIER;
-                        identifier.Clear();
-                        identifier.Append(c);
-                        break;
-                    case MsgParseState.NEWLINE when c != '\n':
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.IDENTIFIER when IsIdentifier(c):
-                        identifier.Append(c);
-                        break;
-                    case MsgParseState.IDENTIFIER when char.IsWhiteSpace(c):
-                        state = MsgParseState.SPACE;
-                        break;
-                    case MsgParseState.IDENTIFIER when c == '{':
-                        state = MsgParseState.BRACKET;
-                        msgValue.SetLength(0);
-                        break;
-                    case MsgParseState.SPACE when c == '{':
-                        state = MsgParseState.BRACKET;
-                        msgValue.SetLength(0);
-                        break;
-                    case MsgParseState.SPACE when !char.IsWhiteSpace(c):
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.BRACKET when c == '~' && last == '~':
-                        // double tilde, only output one tilde, so skip second output
-                        break;
-                    case MsgParseState.BRACKET when c == '}' && last == '~':
-                        // escaped ~}, change '~' we've already collected to '}'
-                        EscapeBracket(msgValue);
-                        break;
-                    case MsgParseState.BRACKET when c == '}':
-                        var value = FixLineEndings(msgValue);
+                    case MsgParseState.PREKEY:
+                        {
+                            c = ProcessPreKey(c, out state);
 
-                        if (identifier.ToString().Equals("LANGUAGE"))
-                            language = value.ToArray();
-                        else
-                            messages.Add(value.ToArray());
+                            if (c > 0)
+                                msgKey.Append(c);
 
-                        state = MsgParseState.JUNK;
-                        msgValue.SetLength(0);
-                        break;
-                    case MsgParseState.BRACKET when c != '\r':
-                        msgValue.WriteByte(b);
-                        break;
-                    case MsgParseState.JUNK when c == '\n':
-                        state = MsgParseState.NEWLINE;
+                            break;
+                        }
+                    case MsgParseState.KEY:
+                        {
+                            c = ProcessKey(c, out state);
+
+                            if (c > 0)
+                                msgKey.Append(c);
+
+                            //Check Overrides
+                            if (valueOverrides != null && state == MsgParseState.POSTKEY)
+                            {
+                                if(valueOverrides.ContainsKey(msgKey.ToString()))
+                                {
+                                    //Handle Overrides
+                                }
+                            }
+                            break;
+                        }
+                    case MsgParseState.POSTKEY:
+                        {
+                            ProcessPostKey(c, out state);
+                            break;
+                        }
+                    case MsgParseState.VALUE:
+                        {
+                            c = ProcessValue(c, previousCharacter, out state);
+
+                            if (state == MsgParseState.ESCAPEBRACKET)
+                            {
+                                EscapeBracket(msgValue);
+                                state = MsgParseState.VALUE;
+                                break;
+                            }
+
+                            //End of Value, Write to Output
+                            if (c == 0 && state == MsgParseState.POSTVALUE)
+                            {
+                                if (msgKey.ToString().ToUpper() == "LANGUAGE")
+                                {
+                                    //Ignore for now, it's always "English/ANSI"
+                                }
+                                else
+                                {
+                                    result.Add(FixLineEndings(msgValue).ToArray());
+                                }
+
+                                //Reset Buffers
+                                msgValue.SetLength(0);
+                                msgKey.Clear();
+                                break;
+                            }
+
+                            if (c > 0)
+                                msgValue.WriteByte((byte)c);
+                            break;
+                        }
+                    case MsgParseState.POSTVALUE:
+                        {
+                            ProcessPostValue(c, out state);
+                            break;
+                        }
+                    default:
                         break;
                 }
-                last = c;
+
+                previousCharacter = c;
             }
 
-            WriteMCV(language, messages);
+            return result;
+        }
+
+        /// <summary>
+        ///     Handles processing of the characters prior to a Key in an entry in a MSG file
+        /// </summary>
+        /// <param name="inputCharacter"></param>
+        /// <param name="resultState"></param>
+        /// <returns></returns>
+        public char ProcessPreKey(char inputCharacter, out MsgParseState resultState)
+        {
+            if (IsIdentifier(inputCharacter))
+            {
+                resultState = MsgParseState.KEY;
+                return inputCharacter;
+            }
+
+            resultState = MsgParseState.PREKEY;
+            return (char)0;
+        }
+
+        /// <summary>
+        ///     Handles processing of the characters in a Key of an entry in a MSG File
+        /// </summary>
+        /// <param name="inputCharacter"></param>
+        /// <param name="resultState"></param>
+        /// <returns></returns>
+        public char ProcessKey(char inputCharacter, out MsgParseState resultState)
+        {
+            if (IsIdentifier(inputCharacter))
+            {
+                resultState = MsgParseState.KEY;
+                return inputCharacter;
+            }
+
+            resultState = MsgParseState.POSTKEY;
+            return (char)0;
+        }
+
+        /// <summary>
+        ///     Handles processing the characters after the Key of an entry in a MSG File
+        /// </summary>
+        /// <param name="inputCharacter"></param>
+        /// <param name="resultState"></param>
+        public void ProcessPostKey(char inputCharacter, out MsgParseState resultState)
+        {
+            if (inputCharacter == '{')
+            {
+                resultState = MsgParseState.VALUE;
+                return;
+            }
+
+            resultState = MsgParseState.POSTKEY;
+        }
+
+        /// <summary>
+        ///     Handles processing the values between the curly brackets in an MSG File
+        /// </summary>
+        /// <param name="inputCharacter"></param>
+        /// <param name="previousCharacter"></param>
+        /// <param name="resultState"></param>
+        /// <returns></returns>
+        public char ProcessValue(char inputCharacter, char previousCharacter, out MsgParseState resultState)
+        {
+            if (inputCharacter == '}')
+            {
+                //Escaped Bracket
+                if (previousCharacter == '~')
+                {
+                    resultState = MsgParseState.ESCAPEBRACKET;
+                    return (char)0;
+                }
+
+                //Valid Ending Bracket
+                resultState = MsgParseState.POSTVALUE;
+                return (char)0;
+            }
+
+            resultState = MsgParseState.VALUE;
+
+            //Escaped Tilde
+            if (inputCharacter == '~' && previousCharacter == '~')
+                return (char)0;
+
+            return inputCharacter;
+        }
+
+        /// <summary>
+        ///     Handles processing the characters after the final value curly bracket in an MSG file
+        /// </summary>
+        /// <param name="inputCharacter"></param>
+        /// <param name="resultState"></param>
+        public void ProcessPostValue(char inputCharacter, out MsgParseState resultState)
+        {
+            if (inputCharacter == '\n')
+            {
+                resultState = MsgParseState.PREKEY;
+                return;
+            }
+
+            resultState = MsgParseState.POSTVALUE;
         }
 
         private static void EscapeBracket(MemoryStream input)
@@ -241,7 +397,7 @@ namespace MBBSEmu.Module
             var input = new StreamStream(new FileStream(filename, FileMode.Open));
             var output = new StreamStream(new FileStream(tmpPath, FileMode.OpenOrCreate));
 
-            UpdateValues(input, output, values);
+            //UpdateValues(input, output, values);
 
             input.Dispose();
             output.Dispose();
@@ -249,66 +405,5 @@ namespace MBBSEmu.Module
             File.Move(tmpPath, filename, overwrite: true);
         }
 
-        public static void UpdateValues(IStream input, IStream output, Dictionary<string, string> values)
-        {
-            var state = MsgParseState.NEWLINE;
-            var identifier = new StringBuilder();
-            int b;
-
-            while ((b = input.ReadByte()) != -1)
-            {
-                var c = (char)b;
-                switch (state)
-                {
-                    case MsgParseState.NEWLINE when IsIdentifier(c):
-                        state = MsgParseState.IDENTIFIER;
-                        identifier.Clear();
-                        identifier.Append(c);
-                        break;
-                    case MsgParseState.NEWLINE when c != '\n':
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.IDENTIFIER when IsIdentifier(c):
-                        identifier.Append(c);
-                        break;
-                    case MsgParseState.IDENTIFIER when c is '\r' or '\n':
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.IDENTIFIER when char.IsWhiteSpace(c):
-                        state = MsgParseState.SPACE;
-                        break;
-                    case MsgParseState.IDENTIFIER when c == '{':
-                        state = MsgParseState.BRACKET;
-                        break;
-                    case MsgParseState.SPACE when c == '{':
-                        state = MsgParseState.BRACKET;
-                        break;
-                    case MsgParseState.SPACE when !char.IsWhiteSpace(c):
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.BRACKET when c == '}':
-                    case MsgParseState.BRACKET_REPLACE when c == '}':
-                        state = MsgParseState.JUNK;
-                        break;
-                    case MsgParseState.BRACKET when c == ':':
-                        var variable = identifier.ToString();
-                        if (values.ContainsKey(variable))
-                        {
-                            output.Write(Encoding.ASCII.GetBytes($": {values[variable]}"));
-
-                            state = MsgParseState.BRACKET_REPLACE;
-                            continue; // skip the output.Write
-                        }
-                        break;
-                    case MsgParseState.JUNK when c == '\n':
-                        state = MsgParseState.NEWLINE;
-                        break;
-                    case MsgParseState.BRACKET_REPLACE:
-                        continue; // skip the output.Write
-                }
-
-                output.Write((byte)b);
-            }
-        }
     }
 }
