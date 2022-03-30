@@ -109,9 +109,6 @@ namespace MBBSEmu.Module
                     case MsgParseState.IDENTIFIER when IsIdentifier(c):
                         identifier.Append(c);
                         break;
-                    case MsgParseState.IDENTIFIER when c is '\r' or '\n':
-                        state = MsgParseState.JUNK;
-                        break;
                     case MsgParseState.IDENTIFIER when char.IsWhiteSpace(c):
                         state = MsgParseState.SPACE;
                         break;
