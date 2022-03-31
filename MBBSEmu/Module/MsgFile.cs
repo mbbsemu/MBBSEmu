@@ -81,7 +81,6 @@ namespace MBBSEmu.Module
 
         private static MemoryStream FixLineEndings(MemoryStream input)
         {
-
             var rawMessage = input.ToArray();
             input.SetLength(0);
 
@@ -117,7 +116,7 @@ namespace MBBSEmu.Module
             WriteMCV(language, messages);
         }
 
-        private IList<byte[]> ExtractMsgValues(ReadOnlySpan<byte> msgData, Dictionary<string, string> valueOverrides = null)
+        private static IList<byte[]> ExtractMsgValues(ReadOnlySpan<byte> msgData)
         {
             var result = new List<byte[]>();
 
@@ -147,19 +146,19 @@ namespace MBBSEmu.Module
                             if (c > 0)
                                 msgKey.Append(c);
 
-                            //Check Overrides
-                            if (valueOverrides != null && state == MsgParseState.POSTKEY)
-                            {
-                                if(valueOverrides.ContainsKey(msgKey.ToString()))
-                                {
-                                    //Handle Overrides
-                                }
-                            }
                             break;
                         }
                     case MsgParseState.POSTKEY:
                         {
                             ProcessPostKey(c, out state);
+
+                            //Reset Key
+                            if (state == MsgParseState.KEY)
+                            {
+                                msgKey.Clear();
+                                msgKey.Append(c);
+                            }
+
                             break;
                         }
                     case MsgParseState.VALUE:
@@ -216,7 +215,7 @@ namespace MBBSEmu.Module
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
         /// <returns></returns>
-        public char ProcessPreKey(char inputCharacter, out MsgParseState resultState)
+        public static char ProcessPreKey(char inputCharacter, out MsgParseState resultState)
         {
             if (IsIdentifier(inputCharacter))
             {
@@ -234,7 +233,7 @@ namespace MBBSEmu.Module
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
         /// <returns></returns>
-        public char ProcessKey(char inputCharacter, out MsgParseState resultState)
+        public static char ProcessKey(char inputCharacter, out MsgParseState resultState)
         {
             if (IsIdentifier(inputCharacter))
             {
@@ -251,11 +250,18 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
-        public void ProcessPostKey(char inputCharacter, out MsgParseState resultState)
+        public static void ProcessPostKey(char inputCharacter, out MsgParseState resultState)
         {
             if (inputCharacter == '{')
             {
                 resultState = MsgParseState.VALUE;
+                return;
+            }
+
+            //If we find a character that's an key value in Post Key, we're probably processing a text block so reset
+            if (IsIdentifier(inputCharacter))
+            {
+                resultState = MsgParseState.KEY;
                 return;
             }
 
@@ -269,7 +275,7 @@ namespace MBBSEmu.Module
         /// <param name="previousCharacter"></param>
         /// <param name="resultState"></param>
         /// <returns></returns>
-        public char ProcessValue(char inputCharacter, char previousCharacter, out MsgParseState resultState)
+        public static char ProcessValue(char inputCharacter, char previousCharacter, out MsgParseState resultState)
         {
             if (inputCharacter == '}')
             {
@@ -299,7 +305,7 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
-        public void ProcessPostValue(char inputCharacter, out MsgParseState resultState)
+        public static void ProcessPostValue(char inputCharacter, out MsgParseState resultState)
         {
             if (inputCharacter == '\n')
             {
@@ -397,7 +403,7 @@ namespace MBBSEmu.Module
             var input = new StreamStream(new FileStream(filename, FileMode.Open));
             var output = new StreamStream(new FileStream(tmpPath, FileMode.OpenOrCreate));
 
-            //UpdateValues(input, output, values);
+            UpdateValues(input, output, values);
 
             input.Dispose();
             output.Dispose();
@@ -405,5 +411,19 @@ namespace MBBSEmu.Module
             File.Move(tmpPath, filename, overwrite: true);
         }
 
+        public static void UpdateValues(IStream input, IStream output, Dictionary<string, string> values)
+        {
+            //Read The Full Input
+            var inputData = new MemoryStream();
+            var inputByte = input.ReadByte();
+            while (inputByte != -1)
+            {
+                inputData.WriteByte((byte)inputByte);
+                inputByte = input.ReadByte();
+            }
+
+            //foreach(var e in ExtractMsgValues(inputData.ToArray(), values))
+                //output.Write(e);
+        }
     }
 }
