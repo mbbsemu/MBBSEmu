@@ -250,22 +250,23 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
-        public static void ProcessPostKey(char inputCharacter, out MsgParseState resultState)
+        public static char ProcessPostKey(char inputCharacter, out MsgParseState resultState)
         {
             if (inputCharacter == '{')
             {
                 resultState = MsgParseState.VALUE;
-                return;
+                return inputCharacter;
             }
 
             //If we find a character that's an key value in Post Key, we're probably processing a text block so reset
             if (IsIdentifier(inputCharacter))
             {
                 resultState = MsgParseState.KEY;
-                return;
+                return inputCharacter;
             }
 
             resultState = MsgParseState.POSTKEY;
+            return inputCharacter;
         }
 
         /// <summary>
@@ -309,15 +310,16 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="inputCharacter"></param>
         /// <param name="resultState"></param>
-        public static void ProcessPostValue(char inputCharacter, out MsgParseState resultState)
+        public static char ProcessPostValue(char inputCharacter, out MsgParseState resultState)
         {
             if (inputCharacter == '\n')
             {
                 resultState = MsgParseState.PREKEY;
-                return;
+                return inputCharacter;
             }
 
             resultState = MsgParseState.POSTVALUE;
+            return inputCharacter;
         }
 
         private static void EscapeBracket(MemoryStream input)
@@ -417,17 +419,104 @@ namespace MBBSEmu.Module
 
         public static void UpdateValues(IStream input, IStream output, Dictionary<string, string> values)
         {
-            //Read The Full Input
-            var inputData = new MemoryStream();
-            var inputByte = input.ReadByte();
-            while (inputByte != -1)
-            {
-                inputData.WriteByte((byte)inputByte);
-                inputByte = input.ReadByte();
-            }
+            var result = new List<byte[]>();
 
-            //foreach(var e in ExtractMsgValues(inputData.ToArray(), values))
-                //output.Write(e);
+            var state = MsgParseState.PREKEY;
+            var msgKey = new StringBuilder();
+            using var msgValue = new MemoryStream();
+            var previousCharacter = (char)0;
+            int b;
+
+            while ((b = input.ReadByte()) != -1)
+            {
+                var c = (char)b;
+                switch (state)
+                {
+                    case MsgParseState.PREKEY:
+                        {
+                            c = ProcessPreKey(c, out state);
+
+                            if (c > 0)
+                                output.Write((byte)c);
+
+                            break;
+                        }
+                    case MsgParseState.KEY:
+                        {
+                            c = ProcessKey(c, out state);
+
+                            if (c > 0)
+                            {
+                                output.Write((byte)c);
+                                msgKey.Append(c);
+                            }
+
+                            break;
+                        }
+                    case MsgParseState.POSTKEY:
+                        {
+                            c = ProcessPostKey(c, out state);
+
+                            if (c > 0)
+                                output.Write((byte)c);
+
+                            break;
+                        }
+                    case MsgParseState.VALUE:
+                        {
+                            c = ProcessValue(c, previousCharacter, out state);
+
+                            if (state == MsgParseState.ESCAPEBRACKET)
+                            {
+                                EscapeBracket(msgValue);
+                                state = MsgParseState.VALUE;
+                                break;
+                            }
+
+                            //End of Value, Write to Output
+                            if (c == 0 && state == MsgParseState.POSTVALUE)
+                            {
+                                if (msgKey.ToString().ToUpper() == "LANGUAGE")
+                                {
+                                    //Ignore for now, it's always "English/ANSI"
+                                }
+                                else
+                                {
+                                    if(values.ContainsKey(msgKey.ToString()))
+                                    {
+                                        output.Write(Encoding.ASCII.GetBytes(values[msgKey.ToString()]));
+                                        output.Write((byte)'}');
+                                    }
+                                    else
+                                    {
+                                        output.Write(msgValue.ToArray());
+                                        output.Write((byte)'}');
+                                    }
+                                }
+
+                                //Reset Buffers
+                                msgValue.SetLength(0);
+                                msgKey.Clear();
+                                break;
+                            }
+
+                            if (c > 0)
+                                msgValue.WriteByte((byte)c);
+
+                            break;
+                        }
+                    case MsgParseState.POSTVALUE:
+                        {
+                            c= ProcessPostValue(c, out state);
+                            output.Write((byte)c);
+                            break;
+                        }
+                    default:
+                        break;
+                }
+
+                previousCharacter = c;
+            }
         }
     }
 }
