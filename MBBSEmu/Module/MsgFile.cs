@@ -297,6 +297,10 @@ namespace MBBSEmu.Module
             if (inputCharacter == '~' && previousCharacter == '~')
                 return (char)0;
 
+            //Ignore Newline
+            if (inputCharacter == '\r')
+                return (char)0;
+
             return inputCharacter;
         }
 
