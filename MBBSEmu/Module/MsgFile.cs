@@ -123,7 +123,7 @@ namespace MBBSEmu.Module
         /// </summary>
         /// <param name="msgData"></param>
         /// <returns></returns>
-        private static IList<byte[]> ExtractMsgValues(ReadOnlySpan<byte> msgData)
+        public static IList<byte[]> ExtractMsgValues(ReadOnlySpan<byte> msgData)
         {
             var result = new List<byte[]>();
 

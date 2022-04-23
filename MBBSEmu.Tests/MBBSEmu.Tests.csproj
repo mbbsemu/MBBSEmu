@@ -11,6 +11,7 @@
     <None Remove="Assets\Module_Multiple_Patch.json" />
     <None Remove="Assets\Module_Single_NoPatch.json" />
     <None Remove="Assets\Module_Single_Patch.json" />
+    <None Remove="Assets\MSG_MajorMUD_Test.msg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -46,6 +47,7 @@
     <EmbeddedResource Include="Assets\Module_Multiple_Patch.json" />
     <EmbeddedResource Include="Assets\Module_Single_NoPatch.json" />
     <EmbeddedResource Include="Assets\Module_Single_Patch.json" />
+    <EmbeddedResource Include="Assets\MSG_MajorMUD_Test.msg" />
   </ItemGroup>
 
   <ItemGroup>

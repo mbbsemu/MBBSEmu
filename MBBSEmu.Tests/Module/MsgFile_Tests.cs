@@ -211,5 +211,16 @@ namespace MBBSEmu.Tests.Module
             Assert.Equal(expectedState, resultState);
         }
 
+        [Fact]
+        public void LoadMsg_MajorMud()
+        {
+            var sourceMessage = Load("MSG_MajorMUD_Test.msg");
+
+            var msgValues = MsgFile.ExtractMsgValues(sourceMessage.ToArray());
+
+            Assert.Equal("This is topic 1: value\0", Encoding.ASCII.GetString(msgValues[4]));
+            Assert.Equal("This is topic 2: value\0", Encoding.ASCII.GetString(msgValues[6]));
+            Assert.Equal("This is topic 3: value\0", Encoding.ASCII.GetString(msgValues[7]));
+        }
     }
 }
