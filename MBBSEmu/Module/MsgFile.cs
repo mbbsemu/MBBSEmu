@@ -237,7 +237,13 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public static char ProcessKey(char inputCharacter, out MsgParseState resultState)
         {
-            resultState = IsIdentifier(inputCharacter) ? MsgParseState.KEY : MsgParseState.POSTKEY;
+            resultState = inputCharacter switch
+            {
+                var s when IsIdentifier(s) => MsgParseState.KEY,
+                var s when s == '{' => MsgParseState.VALUE, //If there is no white space between the KEY name and the curly bracket for value
+                _ => MsgParseState.POSTKEY
+            };
+
             return inputCharacter;
         }
 

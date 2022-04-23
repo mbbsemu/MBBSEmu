@@ -165,7 +165,7 @@ namespace MBBSEmu.Tests.Module
         [InlineData('\r', MsgFile.MsgParseState.POSTKEY)]
         [InlineData('\n', MsgFile.MsgParseState.POSTKEY)]
         [InlineData('!', MsgFile.MsgParseState.POSTKEY)]
-        [InlineData('{', MsgFile.MsgParseState.POSTKEY)]
+        [InlineData('{', MsgFile.MsgParseState.VALUE)]
         [InlineData('}', MsgFile.MsgParseState.POSTKEY)]
         public void ProcessKey_Tests(char currentCharacter, MsgFile.MsgParseState expectedState)
         {
@@ -212,7 +212,7 @@ namespace MBBSEmu.Tests.Module
         }
 
         [Fact]
-        public void LoadMsg_MajorMud()
+        public void LoadMsg_IntegrationTest()
         {
             var sourceMessage = Load("IntegrationTest.msg");
 
