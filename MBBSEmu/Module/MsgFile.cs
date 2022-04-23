@@ -420,6 +420,10 @@ namespace MBBSEmu.Module
         /// <summary>
         ///     Takes an input MSG File (Stream) and writes an output MSG File (Stream), replacing 
         ///     the values for the specified KEYs with the specified VALUEs in dictionary parameter
+        ///     
+        ///     While similar to the above method for extracting values, we need to recreate the file
+        ///     byte for byte with only the values replaced. There are differences in how each state is 
+        ///     handled between key extraction and value updates, hence needing its own method.
         /// </summary>
         /// <param name="input"></param>
         /// <param name="output"></param>
