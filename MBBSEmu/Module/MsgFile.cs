@@ -317,7 +317,7 @@ namespace MBBSEmu.Module
         {
             var arrayToParse = input.ToArray();
             input.SetLength(0);
-            input.Write(arrayToParse[..^2]);
+            input.Write(arrayToParse[..^1]);
             input.WriteByte((byte)'}');
         }
 
