@@ -214,13 +214,14 @@ namespace MBBSEmu.Tests.Module
         [Fact]
         public void LoadMsg_MajorMud()
         {
-            var sourceMessage = Load("MSG_MajorMUD_Test.msg");
+            var sourceMessage = Load("IntegrationTest.msg");
 
             var msgValues = MsgFile.ExtractMsgValues(sourceMessage.ToArray());
 
             Assert.Equal("This is topic 1: value\0", Encoding.ASCII.GetString(msgValues[4]));
             Assert.Equal("This is topic 2: value\0", Encoding.ASCII.GetString(msgValues[6]));
             Assert.Equal("This is topic 3: value\0", Encoding.ASCII.GetString(msgValues[7]));
+            Assert.Equal("Escaped ~ Values } Test\0", Encoding.ASCII.GetString(msgValues[8]));
         }
     }
 }

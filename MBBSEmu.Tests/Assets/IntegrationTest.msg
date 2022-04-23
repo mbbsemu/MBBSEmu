@@ -16,4 +16,6 @@ String
 
 TEST3 {This is topic 3: value} S 40 Help Topic 3 String
 
+TEST4 {Escaped ~~ Values ~} Test}
+
 LEVEL8 {FSE Help Messages}
