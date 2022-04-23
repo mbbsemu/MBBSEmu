@@ -496,7 +496,6 @@ namespace MBBSEmu.Module
                             //End of Value, Write to Output
                             if (c == 0 && state == MsgParseState.POSTVALUE)
                             {
-                                _logger.Debug($"Processing Key {msgKey}");
                                 if (msgKey.ToString().ToUpper() != "LANGUAGE" && values.ContainsKey(msgKey.ToString()))
                                 {
                                     var msgValueComponents = Encoding.ASCII.GetString(msgValue.ToArray()).Split(':', StringSplitOptions.None);
