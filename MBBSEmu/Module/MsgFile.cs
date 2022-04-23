@@ -134,7 +134,7 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessPreKey(c, out state);
 
-                            if (c > 0)
+                            if (state == MsgParseState.KEY)
                                 msgKey.Append(c);
 
                             break;
@@ -143,7 +143,7 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessKey(c, out state);
 
-                            if (c > 0)
+                            if (state == MsgParseState.KEY)
                                 msgKey.Append(c);
 
                             break;
@@ -192,6 +192,7 @@ namespace MBBSEmu.Module
 
                             if (c > 0)
                                 msgValue.WriteByte((byte)c);
+
                             break;
                         }
                     case MsgParseState.POSTVALUE:
@@ -217,14 +218,8 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public static char ProcessPreKey(char inputCharacter, out MsgParseState resultState)
         {
-            if (IsIdentifier(inputCharacter))
-            {
-                resultState = MsgParseState.KEY;
-                return inputCharacter;
-            }
-
-            resultState = MsgParseState.PREKEY;
-            return (char)0;
+            resultState = IsIdentifier(inputCharacter) ? MsgParseState.KEY : MsgParseState.PREKEY;
+            return inputCharacter;
         }
 
         /// <summary>
@@ -235,14 +230,8 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public static char ProcessKey(char inputCharacter, out MsgParseState resultState)
         {
-            if (IsIdentifier(inputCharacter))
-            {
-                resultState = MsgParseState.KEY;
-                return inputCharacter;
-            }
-
-            resultState = MsgParseState.POSTKEY;
-            return (char)0;
+            resultState = IsIdentifier(inputCharacter) ? MsgParseState.KEY : MsgParseState.POSTKEY;
+            return inputCharacter;
         }
 
         /// <summary>
@@ -312,13 +301,8 @@ namespace MBBSEmu.Module
         /// <param name="resultState"></param>
         public static char ProcessPostValue(char inputCharacter, out MsgParseState resultState)
         {
-            if (inputCharacter == '\n')
-            {
-                resultState = MsgParseState.PREKEY;
-                return inputCharacter;
-            }
+            resultState = inputCharacter == '\n' ? MsgParseState.PREKEY : MsgParseState.POSTVALUE;
 
-            resultState = MsgParseState.POSTVALUE;
             return inputCharacter;
         }
 
@@ -419,8 +403,6 @@ namespace MBBSEmu.Module
 
         public static void UpdateValues(IStream input, IStream output, Dictionary<string, string> values)
         {
-            var result = new List<byte[]>();
-
             var state = MsgParseState.PREKEY;
             var msgKey = new StringBuilder();
             using var msgValue = new MemoryStream();
@@ -436,8 +418,10 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessPreKey(c, out state);
 
-                            if (c > 0)
-                                output.Write((byte)c);
+                            if (state == MsgParseState.KEY)
+                                msgKey.Append(c);
+
+                            output.Write((byte)c);
 
                             break;
                         }
@@ -445,11 +429,12 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessKey(c, out state);
 
-                            if (c > 0)
-                            {
-                                output.Write((byte)c);
+                            //If we're still in the key
+                            if (state == MsgParseState.KEY)
                                 msgKey.Append(c);
-                            }
+
+                            //Always the found character
+                            output.Write((byte)c);
 
                             break;
                         }
@@ -457,13 +442,20 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessPostKey(c, out state);
 
-                            if (c > 0)
-                                output.Write((byte)c);
+                            output.Write((byte)c);
+
+                            if (state == MsgParseState.KEY)
+                            {
+                                //We've reset back to key, clear out the key and begin appending again
+                                msgKey.Clear();
+                                msgKey.Append(c);
+                            }
 
                             break;
                         }
                     case MsgParseState.VALUE:
                         {
+                            var originalCharacter = c;
                             c = ProcessValue(c, previousCharacter, out state);
 
                             if (state == MsgParseState.ESCAPEBRACKET)
@@ -476,23 +468,35 @@ namespace MBBSEmu.Module
                             //End of Value, Write to Output
                             if (c == 0 && state == MsgParseState.POSTVALUE)
                             {
-                                if (msgKey.ToString().ToUpper() == "LANGUAGE")
+                                _logger.Debug($"Processing Key {msgKey}");
+                                if (msgKey.ToString().ToUpper() != "LANGUAGE" && values.ContainsKey(msgKey.ToString()))
                                 {
-                                    //Ignore for now, it's always "English/ANSI"
+                                    var msgValueComponents = Encoding.ASCII.GetString(msgValue.ToArray()).Split(':', StringSplitOptions.None);
+
+                                    if (msgValueComponents.Length > 2)
+                                        throw new ArgumentOutOfRangeException("Unable to locate Value in MSG File Entry to Update");
+
+                                    output.Write(Encoding.ASCII.GetBytes(msgValueComponents[0]));
+                                    output.Write((byte)':');
+
+                                    //Fill in any white space
+                                    foreach (var valueCharacter in msgValueComponents[1])
+                                    {
+                                        if (valueCharacter != ' ')
+                                            break;
+
+                                        output.Write((byte)' ');
+                                    }
+
+                                    output.Write(Encoding.ASCII.GetBytes(values[msgKey.ToString()]));
+                                    output.Write((byte)'}');
                                 }
                                 else
                                 {
-                                    if(values.ContainsKey(msgKey.ToString()))
-                                    {
-                                        output.Write(Encoding.ASCII.GetBytes(values[msgKey.ToString()]));
-                                        output.Write((byte)'}');
-                                    }
-                                    else
-                                    {
-                                        output.Write(msgValue.ToArray());
-                                        output.Write((byte)'}');
-                                    }
+                                    output.Write(msgValue.ToArray());
+                                    output.Write((byte)'}');
                                 }
+
 
                                 //Reset Buffers
                                 msgValue.SetLength(0);
@@ -500,14 +504,14 @@ namespace MBBSEmu.Module
                                 break;
                             }
 
-                            if (c > 0)
-                                msgValue.WriteByte((byte)c);
+                            msgValue.WriteByte((byte)originalCharacter);
+
 
                             break;
                         }
                     case MsgParseState.POSTVALUE:
                         {
-                            c= ProcessPostValue(c, out state);
+                            c = ProcessPostValue(c, out state);
                             output.Write((byte)c);
                             break;
                         }
