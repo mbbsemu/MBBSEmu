@@ -138,10 +138,10 @@ namespace MBBSEmu.Tests.Module
         }
 
         [Theory]
-        [InlineData('A', MsgFile.MsgParseState.KEY)]
-        [InlineData('Z', MsgFile.MsgParseState.KEY)]
-        [InlineData('1', MsgFile.MsgParseState.KEY)]
-        [InlineData('0', MsgFile.MsgParseState.KEY)]
+        [InlineData('A', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('Z', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('1', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('0', MsgFile.MsgParseState.IDENTIFIER)]
         [InlineData(' ', MsgFile.MsgParseState.PREKEY)]
         [InlineData('\r', MsgFile.MsgParseState.PREKEY)]
         [InlineData('\n', MsgFile.MsgParseState.PREKEY)]
@@ -157,10 +157,10 @@ namespace MBBSEmu.Tests.Module
         }
 
         [Theory]
-        [InlineData('A', MsgFile.MsgParseState.KEY)]
-        [InlineData('Z', MsgFile.MsgParseState.KEY)]
-        [InlineData('1', MsgFile.MsgParseState.KEY)]
-        [InlineData('0', MsgFile.MsgParseState.KEY)]
+        [InlineData('A', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('Z', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('1', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('0', MsgFile.MsgParseState.IDENTIFIER)]
         [InlineData(' ', MsgFile.MsgParseState.POSTKEY)]
         [InlineData('\r', MsgFile.MsgParseState.POSTKEY)]
         [InlineData('\n', MsgFile.MsgParseState.POSTKEY)]
@@ -179,10 +179,10 @@ namespace MBBSEmu.Tests.Module
         [InlineData('{', MsgFile.MsgParseState.VALUE)]
         [InlineData('\r', MsgFile.MsgParseState.POSTKEY)] //MajorMUD puts the key on its own line
         [InlineData('\n', MsgFile.MsgParseState.POSTKEY)] //MajorMUD puts the key on its own line
-        [InlineData('A', MsgFile.MsgParseState.KEY)]
-        [InlineData('Z', MsgFile.MsgParseState.KEY)]
-        [InlineData('1', MsgFile.MsgParseState.KEY)]
-        [InlineData('0', MsgFile.MsgParseState.KEY)]
+        [InlineData('A', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('Z', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('1', MsgFile.MsgParseState.IDENTIFIER)]
+        [InlineData('0', MsgFile.MsgParseState.IDENTIFIER)]
         [InlineData(' ', MsgFile.MsgParseState.POSTKEY)]
         public void ProcessPostKey_Tests(char currentCharacter, MsgFile.MsgParseState expectedState)
         {

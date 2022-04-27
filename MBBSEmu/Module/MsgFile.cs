@@ -50,7 +50,7 @@ namespace MBBSEmu.Module
             /// <summary>
             ///     Data for Identifier
             /// </summary>
-            KEY,
+            IDENTIFIER,
 
             /// <summary>
             ///     Data Post Identifier
@@ -141,16 +141,16 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessPreKey(c, out state);
 
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                                 msgKey.Append(c);
 
                             break;
                         }
-                    case MsgParseState.KEY:
+                    case MsgParseState.IDENTIFIER:
                         {
                             c = ProcessKey(c, out state);
 
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                                 msgKey.Append(c);
 
                             break;
@@ -160,7 +160,7 @@ namespace MBBSEmu.Module
                             ProcessPostKey(c, out state);
 
                             //Reset Key
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                             {
                                 msgKey.Clear();
                                 msgKey.Append(c);
@@ -225,7 +225,7 @@ namespace MBBSEmu.Module
         /// <returns></returns>
         public static char ProcessPreKey(char inputCharacter, out MsgParseState resultState)
         {
-            resultState = IsIdentifier(inputCharacter) ? MsgParseState.KEY : MsgParseState.PREKEY;
+            resultState = IsIdentifier(inputCharacter) ? MsgParseState.IDENTIFIER : MsgParseState.PREKEY;
             return inputCharacter;
         }
 
@@ -239,7 +239,7 @@ namespace MBBSEmu.Module
         {
             resultState = inputCharacter switch
             {
-                var s when IsIdentifier(s) => MsgParseState.KEY,
+                var s when IsIdentifier(s) => MsgParseState.IDENTIFIER,
                 var s when s == '{' => MsgParseState.VALUE, //If there is no white space between the KEY name and the curly bracket for value
                 _ => MsgParseState.POSTKEY
             };
@@ -263,7 +263,7 @@ namespace MBBSEmu.Module
             //If we find a character that's an key value in Post Key, we're probably processing a text block so reset
             if (IsIdentifier(inputCharacter))
             {
-                resultState = MsgParseState.KEY;
+                resultState = MsgParseState.IDENTIFIER;
                 return inputCharacter;
             }
 
@@ -452,19 +452,19 @@ namespace MBBSEmu.Module
                         {
                             c = ProcessPreKey(c, out state);
 
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                                 msgKey.Append(c);
 
                             output.Write((byte)c);
 
                             break;
                         }
-                    case MsgParseState.KEY:
+                    case MsgParseState.IDENTIFIER:
                         {
                             c = ProcessKey(c, out state);
 
                             //If we're still in the key
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                                 msgKey.Append(c);
 
                             //Always the found character
@@ -478,7 +478,7 @@ namespace MBBSEmu.Module
 
                             output.Write((byte)c);
 
-                            if (state == MsgParseState.KEY)
+                            if (state == MsgParseState.IDENTIFIER)
                             {
                                 //We've reset back to key, clear out the key and begin appending again
                                 msgKey.Clear();
