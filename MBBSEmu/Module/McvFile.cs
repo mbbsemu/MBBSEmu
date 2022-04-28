@@ -202,7 +202,7 @@ namespace MBBSEmu.Module
 
             for (var i = 1; i <= message.Length; i++)
             {
-                if (message[^i] == 0x3A || message[^i] == 0x20)
+                if (message[^i] == ':' || message[^i] == ' ')
                     return message.Slice(message.Length - i, i);
             }
 
