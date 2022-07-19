@@ -605,7 +605,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Add The User to the BBS Btrieve User Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = session.UsrAcc.sex }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = session.UsrAcc.sex }.Data, Microsoft.Extensions.Logging.LogLevel.Error);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);

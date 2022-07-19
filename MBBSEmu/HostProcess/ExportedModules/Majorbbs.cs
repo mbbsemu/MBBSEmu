@@ -2543,7 +2543,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrievefileName = GetParameterString(0, true);
             var maxRecordLength = GetParameter(2);
 
-            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, btrievefileName, _configuration.BtrieveCacheSize);
+            var foundFile = _fileFinder.FindFile(Module.ModulePath, btrievefileName);
+            var btrieveFile = new BtrieveFileProcessor(Module.ModulePath, foundFile, _configuration.BtrieveCacheSize);
 
             var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, btrievefileName);
 
@@ -2706,7 +2707,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            if (!insertBtv(LogLevel.Fatal))
+            if (!insertBtv(Microsoft.Extensions.Logging.LogLevel.Critical))
                 throw new SystemException("Failed to insert database record");
         }
 
@@ -2718,10 +2719,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
-            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
+            Registers.AX = insertBtv(Microsoft.Extensions.Logging.LogLevel.Debug) ? (ushort)1 : (ushort)0;
         }
 
-        private bool insertBtv(LogLevel logLevel)
+        private bool insertBtv(Microsoft.Extensions.Logging.LogLevel logLevel)
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
@@ -2745,7 +2746,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
+            currentBtrieveFile.Insert(record.ToArray(), Microsoft.Extensions.Logging.LogLevel.Error);
         }
 
         /// <summary>

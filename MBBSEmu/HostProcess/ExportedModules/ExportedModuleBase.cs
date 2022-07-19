@@ -1132,9 +1132,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var btrieveNamePointer = new FarPtr(baseSegment, 0x100); //File Name Pointer
             var btrieveDataPointer = new FarPtr(baseSegment, 0x200); //Record Data Pointer
 
+            var foundFile = _fileFinder.FindFile(Directory.GetCurrentDirectory(), fileName);
             //Some Btrieve Processors can be declared elsewhere in the system, so verify the processor doesn't already exist before creating
             if (!_globalCache.ContainsKey($"{variableName}-PROCESSOR"))
-                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(_fileFinder, Directory.GetCurrentDirectory(), fileName, _configuration.BtrieveCacheSize));
+                _globalCache.Set($"{variableName}-PROCESSOR", new BtrieveFileProcessor(Directory.GetCurrentDirectory(), foundFile, _configuration.BtrieveCacheSize));
 
             //Setup the Pointer to the Global Address -- ensuring each module is referencing the same Pointer & Processor
             if (!_globalCache.ContainsKey($"{variableName}-POINTER"))

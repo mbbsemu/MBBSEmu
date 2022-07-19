@@ -174,7 +174,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 {
                                     //Get the File Name to oPen
                                     var fileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvda.keyseg, 0, true));
-                                    var btvFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, fileName, _configuration.BtrieveCacheSize);
+                                    var foundFile = _fileFinder.FindFile(Module.ModulePath, fileName);
+                                    var btvFile = new BtrieveFileProcessor(Module.ModulePath, foundFile, _configuration.BtrieveCacheSize);
 
                                     //Setup Pointers
                                     var btvFileStructPointer = new FarPtr(btvda.posblkseg, btvda.posblkoff);

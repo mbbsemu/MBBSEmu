@@ -221,12 +221,12 @@ namespace MBBSEmu.DOS.Interrupts
                 file = Path.GetFileName(file);
             }
 
-            BtrieveFileProcessor db;
             try
             {
-                db = new(_fileUtility, path, file, cacheSize: 8)
+                var foundFile = _fileUtility.FindFile(path, file);
+                var db = new BtrieveFileProcessor(path, foundFile, cacheSize: 8)
                 {
-                     BtrieveDriverMode = true,
+                    BtrieveDriverMode = true,
                 };
                 // add to my list of open files
                 var guid = Guid.NewGuid();
@@ -400,7 +400,7 @@ namespace MBBSEmu.DOS.Interrupts
                 return BtrieveError.KeyBufferTooShort;
 
             var record = _memory.GetArray(command.data_buffer_segment, command.data_buffer_offset, command.data_buffer_length).ToArray();
-            if (db.Insert(record, LogLevel.Error) == 0)
+            if (db.Insert(record, Microsoft.Extensions.Logging.LogLevel.Error) == 0)
                 return BtrieveError.DuplicateKeyValue;
 
             // copy back the key if specified

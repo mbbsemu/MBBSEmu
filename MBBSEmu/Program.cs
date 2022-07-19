@@ -288,7 +288,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
                     File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT", configuration.BtrieveCacheSize));
+                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(Directory.GetCurrentDirectory(), "BBSGEN.DAT", configuration.BtrieveCacheSize));
 
                 //Setup User Database
                 if (!File.Exists($"BBSUSR.DB"))
@@ -296,7 +296,7 @@ namespace MBBSEmu
                     _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
                     File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT", configuration.BtrieveCacheSize));
+                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(Directory.GetCurrentDirectory(), "BBSUSR.DAT", configuration.BtrieveCacheSize));
 
                 //Database Reset
                 if (_doResetDatabase)
@@ -525,8 +525,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, Microsoft.Extensions.Logging.LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, Microsoft.Extensions.Logging.LogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
