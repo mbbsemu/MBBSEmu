@@ -1,0 +1,3 @@
+[submodule "MBBSEmu.Btrieve"]
+	path = MBBSEmu.Btrieve
+	url = https://github.com/mbbsemu/MBBSEmu.Btrieve
