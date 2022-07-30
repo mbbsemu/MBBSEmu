@@ -74,7 +74,6 @@
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.123" />
     <PackageReference Include="Iced" Version="1.10.0" />
-    <PackageReference Include="MBBSEmu.Btrieve" Version="1.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.7" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="6.0.0" />
@@ -82,6 +81,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="NLog" Version="5.0.1" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MBBSEmu.Btrieve\src\MBBSEmu.Btrieve\MBBSEmu.Btrieve.csproj" />
   </ItemGroup>
 
   <ItemGroup>
