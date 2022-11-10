@@ -57,17 +57,17 @@ jobs:
         path: output-win-x64/*
         # The desired behavior if no files are found using the provided path.
         
-    - name: Publish win-x32
+    - name: Publish win-x86
       run: |
-        mkdir output-win-x32
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x32/ --configuration Release --runtime win-x32 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
-    - name: Create win-x32 Artifact
+        mkdir output-win-x86
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Create win-x86 Artifact
       uses: actions/upload-artifact@v3.1.1
       with:
         # Artifact name
-        name: mbbsemu-win-x32-$BUILD_VERSION # optional, default is artifact
+        name: mbbsemu-win-x86-$BUILD_VERSION # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
-        path: output-win-x32/*
+        path: output-win-x86/*
         # The desired behavior if no files are found using the provided path.
         
     - name: Publish linux-x64
