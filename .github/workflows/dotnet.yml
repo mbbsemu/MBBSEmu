@@ -46,7 +46,7 @@ jobs:
       run: dotnet test --no-build --verbosity normal
     - name: Publish x86-64
       run: |
-        mkdir output/win-x64
+        mkdir output-win-x64
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output/win-x64 --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
     - name: Create x86-64 Artifact
       uses: actions/upload-artifact@v3.1.1
@@ -54,5 +54,5 @@ jobs:
         # Artifact name
         name: 'mbbsemu-win-x64-$BUILD_VERSION' # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
-        path: output/win-x64/*
+        path: output-win-x64/*
         # The desired behavior if no files are found using the provided path.
