@@ -22,7 +22,7 @@ jobs:
         format: MMDDYY
     - name: Use current time
       env:
-        BUILD_VERSION: "${{ steps.current-time.outputs }}-${{ github.run_number }}"
+        BUILD_VERSION: "${{ steps.current-time.outputs.formattedTime }}-${{ github.run_number }}"
       run: echo $BUILD_VERSION
     - uses: actions/checkout@v3
     - name: Setup .NET
