@@ -35,7 +35,7 @@ jobs:
       uses: DamianReeves/write-file-action@v1.0
       with:
         # The path to the file to write
-        path: ${{ env.home}}/MBBSEmu/Assets/version.txt
+        path: MBBSEmu/Assets/version.txt
         # The contents of the file
         contents: $BUILD_VERSION
         # The mode of writing to use: `overwrite`, `append`, or `preserve`.
