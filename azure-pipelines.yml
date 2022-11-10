@@ -9,7 +9,7 @@ trigger:
       - master
 
 pool:
-  vmImage: 'windows-2022'
+  vmImage: 'windows-latest'
 
 variables:
   buildConfiguration: 'Release'
@@ -20,9 +20,11 @@ variables:
 
 steps:
 - script: echo $(buildNumber) > $(System.DefaultWorkingDirectory)\MBBSEmu\Assets\version.txt
-- uses: actions/setup-dotnet@v3
-    with:
-        dotnet-version: '7.0.100'
+
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '7.0.100'
 
 - task: NuGetToolInstaller@1
   inputs:
