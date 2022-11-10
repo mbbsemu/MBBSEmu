@@ -23,7 +23,9 @@ jobs:
     - name: Use current time
       env:
         BUILD_VERSION: "${{ steps.current-time.outputs.formattedTime }}-${{ github.run_number }}"
-      run: echo $BUILD_VERSION
+      run: |
+        echo $BUILD_VERSION
+        echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
     - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -34,12 +36,9 @@ jobs:
     - name: Write File
       uses: DamianReeves/write-file-action@v1.0
       with:
-        # The path to the file to write
         path: MBBSEmu/Assets/version.txt
-        # The contents of the file
         contents: $BUILD_VERSION
-        # The mode of writing to use: `overwrite`, `append`, or `preserve`.
-        write-mode: overwrite # optional, default is preserve
+        write-mode: overwrite
         
     - name: Build
       run: dotnet build --no-restore
