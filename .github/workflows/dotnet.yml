@@ -44,15 +44,67 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
-    - name: Publish x86-64
+    - name: Publish win-x64
       run: |
         mkdir output-win-x64
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x64/ --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
-    - name: Create x86-64 Artifact
+    - name: Create win-x64 Artifact
       uses: actions/upload-artifact@v3.1.1
       with:
         # Artifact name
-        name: 'mbbsemu-win-x64-$BUILD_VERSION' # optional, default is artifact
+        name: mbbsemu-win-x64-$BUILD_VERSION # optional, default is artifact
         # A file, directory or wildcard pattern that describes what to upload
         path: output-win-x64/*
+        # The desired behavior if no files are found using the provided path.
+        
+    - name: Publish win-x32
+      run: |
+        mkdir output-win-x32
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x32/ --configuration Release --runtime win-x32 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Create win-x32 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        # Artifact name
+        name: mbbsemu-win-x32-$BUILD_VERSION # optional, default is artifact
+        # A file, directory or wildcard pattern that describes what to upload
+        path: output-win-x32/*
+        # The desired behavior if no files are found using the provided path.
+        
+    - name: Publish linux-x64
+      run: |
+        mkdir output-linux-x64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-x64/ --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Create linux-x64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        # Artifact name
+        name: mbbsemu-linux-x64-$BUILD_VERSION # optional, default is artifact
+        # A file, directory or wildcard pattern that describes what to upload
+        path: output-linux-x64/*
+        # The desired behavior if no files are found using the provided path.
+        
+    - name: Publish linux-arm
+      run: |
+        mkdir output-linux-arm
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-arm/ --configuration Release --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Create linux-arm Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        # Artifact name
+        name: mbbsemu-linux-arm-$BUILD_VERSION # optional, default is artifact
+        # A file, directory or wildcard pattern that describes what to upload
+        path: output-linux-arm/*
+        # The desired behavior if no files are found using the provided path.
+        
+    - name: Publish osx-x64
+      run: |
+        mkdir output-osx-x64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-x64/ --configuration Release --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Create osx-x64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        # Artifact name
+        name: mbbsemu-osx-x64-$BUILD_VERSION # optional, default is artifact
+        # A file, directory or wildcard pattern that describes what to upload
+        path: output-osx-x64/*
         # The desired behavior if no files are found using the provided path.
