@@ -15,6 +15,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Get Current Time
+      uses: josStorer/get-current-time@v2.0.2
+      id: current-time
+      with:
+        format: MMDDYY
+    - name: Use current time
+      env:
+        BUILD_VERSION: "${{ steps.current-time.outputs }}-${{ github.run_number }}"
+      run: echo $BUILD_VERSION
     - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
@@ -22,6 +31,15 @@ jobs:
         dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore
+    - name: Write File
+      uses: DamianReeves/write-file-action@v1.0
+      with:
+        # The path to the file to write
+        path: ${{ env.home}}\MBBSEmu\Assets\version.txt
+        # The contents of the file
+        contents: $BUILD_VERSION
+        # The mode of writing to use: `overwrite`, `append`, or `preserve`.
+        write-mode: overwrite # optional, default is preserve
     - name: Build
       run: dotnet build --no-restore
     - name: Test
