@@ -49,17 +49,17 @@ jobs:
     - name: Publish Executables
       run: |
         mkdir output-win-x64
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x64/ --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x64/ --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-win-x86
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-linux-x64
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-x64/ --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-x64/ --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-linux-arm
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-arm/ --configuration Release --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-arm/ --configuration Release --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-osx-x64
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-x64/ --configuration Release --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-x64/ --configuration Release --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-osx-arm64
-        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=true -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
     - name: Upload win-x64 Artifact
       uses: actions/upload-artifact@v3.1.1
       with:
