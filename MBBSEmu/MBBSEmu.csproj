@@ -1,96 +1,100 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;linux-arm64;osx-x64;</RuntimeIdentifiers>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net7.0</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;linux-arm64;osx-x64;</RuntimeIdentifiers>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Assets\BBSGEN.DB" />
-    <None Remove="Assets\BBSUSR.DB" />
-    <None Remove="Assets\commandLineHelp.txt" />
-    <None Remove="Assets\crashDetailsAPI.txt" />
-    <None Remove="Assets\fseDefaultFormats.txt" />
-    <None Remove="Assets\fseFieldSpec.txt" />
-    <None Remove="Assets\fseTemplate.ans" />
-    <None Remove="Assets\login.ans" />
-    <None Remove="Assets\signup.ans" />
-    <None Remove="Assets\version.txt" />
-    <None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\DeleteAccountKeyByUsernameAndAccountKey.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\GetAccountKeysByUsername.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
-    <None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKeyByUsername.sql" />
-    <None Remove="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
-    <None Remove="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
-    <None Remove="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
-    <None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
-    <None Remove="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
-    <None Remove="Database\Repositories\Account\Queries\GetAccountById.sql" />
-    <None Remove="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
-    <None Remove="Database\Repositories\Account\Queries\GetAccounts.sql" />
-    <None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
-    <None Remove="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
-    <None Remove="MBBSEmu.pdb" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove="Assets\BBSGEN.DB" />
+		<None Remove="Assets\BBSUSR.DB" />
+		<None Remove="Assets\commandLineHelp.txt" />
+		<None Remove="Assets\crashDetailsAPI.txt" />
+		<None Remove="Assets\fseDefaultFormats.txt" />
+		<None Remove="Assets\fseFieldSpec.txt" />
+		<None Remove="Assets\fseTemplate.ans" />
+		<None Remove="Assets\login.ans" />
+		<None Remove="Assets\signup.ans" />
+		<None Remove="Assets\version.txt" />
+		<None Remove="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\DeleteAccountKeyByUsernameAndAccountKey.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\GetAccountKeysByUsername.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
+		<None Remove="Database\Repositories\AccountKey\Queries\InsertAccountKeyByUsername.sql" />
+		<None Remove="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
+		<None Remove="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
+		<None Remove="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
+		<None Remove="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
+		<None Remove="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
+		<None Remove="Database\Repositories\Account\Queries\GetAccountById.sql" />
+		<None Remove="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
+		<None Remove="Database\Repositories\Account\Queries\GetAccounts.sql" />
+		<None Remove="Database\Repositories\Account\Queries\InsertAccount.sql" />
+		<None Remove="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
+		<None Remove="MBBSEmu.pdb" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\BBSGEN.DB" />
-    <EmbeddedResource Include="Assets\BBSUSR.DB" />
-    <EmbeddedResource Include="Assets\commandLineHelp.txt" />
-    <EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
-    <EmbeddedResource Include="Assets\fseDefaultFormats.txt" />
-    <EmbeddedResource Include="Assets\fseFieldSpec.txt" />
-    <EmbeddedResource Include="Assets\fseTemplate.ans" />
-    <EmbeddedResource Include="Assets\login.ans" />
-    <EmbeddedResource Include="Assets\signup.ans" />
-    <EmbeddedResource Include="Assets\version.txt" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DeleteAccountKeyByUsernameAndAccountKey.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\GetAccountKeysByUsername.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
-    <EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKeyByUsername.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountById.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccounts.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\InsertAccount.sql" />
-    <EmbeddedResource Include="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
-  </ItemGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="Assets\BBSGEN.DB" />
+		<EmbeddedResource Include="Assets\BBSUSR.DB" />
+		<EmbeddedResource Include="Assets\commandLineHelp.txt" />
+		<EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
+		<EmbeddedResource Include="Assets\fseDefaultFormats.txt" />
+		<EmbeddedResource Include="Assets\fseFieldSpec.txt" />
+		<EmbeddedResource Include="Assets\fseTemplate.ans" />
+		<EmbeddedResource Include="Assets\login.ans" />
+		<EmbeddedResource Include="Assets\signup.ans" />
+		<EmbeddedResource Include="Assets\version.txt" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\AccountKeysTableExists.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\CreateAccountKeysTable.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DeleteAccountKeyByUsernameAndAccountKey.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\DropAccountKeysTable.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\GetAccountKeysByAccountId.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\GetAccountKeysByUsername.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKey.sql" />
+		<EmbeddedResource Include="Database\Repositories\AccountKey\Queries\InsertAccountKeyByUsername.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\AccountsTableExists.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\CreateAccountsTable.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\DeleteAccountById.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\DropAccountsTable.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByEmail.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountById.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccountByUsername.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\GetAccounts.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\InsertAccount.sql" />
+		<EmbeddedResource Include="Database\Repositories\Account\Queries\UpdateAccountById.sql" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.123" />
-    <PackageReference Include="Iced" Version="1.10.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="NLog" Version="5.0.5" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Dapper" Version="2.0.123" />
+		<PackageReference Include="Iced" Version="1.10.0" />
+		<PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+		<PackageReference Include="NLog" Version="5.0.5" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </None>
-    <None Update="modules.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<TrimmerRootDescriptor Include="Trimming.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</None>
+		<None Update="modules.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>
