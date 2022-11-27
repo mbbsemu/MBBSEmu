@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!-- Tells dotnet Publish to not trim anything out of the MBBSEmu Assembly when linking into a single EXE -->
+<linker>
+	<assembly fullname="MBBSEmu" preserve="all" />
+</linker>
