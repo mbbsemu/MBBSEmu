@@ -2,14 +2,14 @@
 
 ## Quick start
 
-These environment and build steps were tested on a Windows 11 PC and macOS Catalina laptop. Updated 2021-12-28.
+These environment and build steps were tested on a Windows 11 PC and macOS Ventura laptop. Updated 2023-01-28.
 
 We expect the overall process to remain the same; however some steps may shift slightly over time. We'll keep this updated to the best of our ability.
 
 ### Prerequisites
 
-* .NET Core SDK 6
-  * 6.0.101 at the time of this writing
+* .NET Core SDK
+  * 7.0.102 at the time of this writing
   * x64 was used; not sure about other versions
   * Ubuntu Linux 21.10
     * Following [Microsoft's installation instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu#2110-)
@@ -34,7 +34,7 @@ sudo apt-get update; \
     * `choco install dotnetcore-sdk`
   * macOS
     * Installed via [Homebrew](https://brew.sh) - [Homebrew .NET Core SDK](https://formulae.brew.sh/cask/dotnet-sdk)
-    * `brew cask install dotnet-sdk`
+    * `brew install --cask dotnet-sdk`
       * (not sure how to install a specific version with this command -- cross your fingers that future versions are backward compatible)
 
 ## Build
@@ -42,10 +42,12 @@ sudo apt-get update; \
 * Debug
   * `dotnet build`
     * Yep, that's it!
-  * Artifacts are dumped to `MBBSEmu\bin\Debug\netcoreapp5.0`
+  * Artifacts are dumped to `MBBSEmu\bin\Debug\net7.0`
+    * The last directory name may change based on major .net version changes
 * Release
   * `dotnet build --configuration Release`
-  * Artifacts are dumped to `MBBSEmu\bin\Release\netcoreapp5.0`
+  * Artifacts are dumped to `MBBSEmu\bin\Release\net7.0`
+    * The last directory name may change based on major .net version changes
 
 ## Run the tests
 
