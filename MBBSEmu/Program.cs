@@ -160,6 +160,8 @@ namespace MBBSEmu
                         case "-?":
                             Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
                             Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                            Console.WriteLine("(Press Any Key to Exit)");
+                            Console.ReadKey();
                             return;
                         case "-CONFIG":
                         case "-C":
