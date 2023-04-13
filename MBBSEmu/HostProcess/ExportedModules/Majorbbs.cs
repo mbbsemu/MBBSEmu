@@ -228,6 +228,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("NTVARS", 1); //We're setting the 1 defaulted below for SYSTEM
             Module.Memory.AllocateVariable("TXTVARS", TextvarStruct.Size * MaxTextVariables, true); //Up to 64 Text Variables per Module
             Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
+            Module.Memory.AllocateVariable("HDLCON", FarPtr.Size); //Handles the connection for the current User
+
 
             _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
             _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
@@ -320,7 +322,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
 
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort) ChannelDictionary[channelNumber].GetStatus());
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)ChannelDictionary[channelNumber].GetStatus());
 
             var userBasePointer = Module.Memory.GetVariablePointer("USER");
             var currentUserPointer = new FarPtr(userBasePointer.Data);
@@ -396,7 +398,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
 
             //Set the Channel Status
-            var resultStatus = (EnumUserStatus) Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
 
             //If STATUS was changed programatically, queue it up
             if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
@@ -570,6 +572,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return ntvars;
                 case 753:
                     return txtvars;
+                case 735:
+                    return hdlcon;
             }
 
             if (offsetsOnly)
@@ -3606,7 +3610,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringValue = GetParameterString(0, true);
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)}");
+            _logger.Debug($"({Module.ModuleIdentifier}) Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)} ({stringValue})");
 #endif
             Registers.AX = (ushort)stringValue.Length;
         }
@@ -5888,6 +5892,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var sourcePointer = GetParameterPointer(2);
             var bytesToMove = GetParameter(4);
 
+            //Check to see if it's an unmapped ordinal or function pointer to an exported function
+            if (sourcePointer.Segment >= 0xFF00)
+            {
+                _logger.Warn($"Attempting to copy from Unmapped Exported Module. Source Pointer: {sourcePointer}");
+                _logger.Warn("Because this action is unsupported, it might cause issues with further Module execution.");
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+            else if (destinationPointer.Segment >= 0xFF00)
+            {
+                _logger.Warn($"Attempting to copy to Unmapped Exported Module. Destination Pointer: {sourcePointer}");
+                _logger.Warn("Because this action is unsupported, it might cause issues with further Module execution.");
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+
             // Cast to array as the write can overlap and overwrite, mucking up the span read
             var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
 
@@ -6016,7 +6036,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (messagePointer.Equals(FarPtr.Empty))
                     break;
 
-                tokenList.Add(Module.Memory.GetString(messagePointer).ToArray());
+                try
+                {
+                    tokenList.Add(Module.Memory.GetString(messagePointer).ToArray());
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn($"Error Reading string at {messagePointer}, terminating list at {tokenList.Count} elements");
+                    break;
+                }
             }
 
             var message = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgNum);
@@ -8231,7 +8259,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             for (ushort i = 0; i < UserAccount.UIDSIZ; i++)
             {
                 //Evaluate Value at pointer, and continue if a valid printable character
-                if(Module.Memory.GetByte(nxtcmdPointer + i) is >= 32 and <= 126)
+                if (Module.Memory.GetByte(nxtcmdPointer + i) is >= 32 and <= 126)
                     continue;
 
                 //Set our Return Values
@@ -8257,11 +8285,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns>The value written to INPLEN</returns>
         private ushort setINPLEN(FarPtr input)
         {
-            var sz = (ushort) Module.Memory.GetString(input, true).Length;
+            var sz = (ushort)Module.Memory.GetString(input, true).Length;
 
             Module.Memory.SetWord("INPLEN", sz);
 
             return sz;
         }
+
+        /// <summary>
+        ///     Returns Pointer to the HDLCON Routine
+        /// </summary>
+        private ReadOnlySpan<byte> hdlcon => Module.Memory.GetVariablePointer("HDLCON").Data;
     }
 }
