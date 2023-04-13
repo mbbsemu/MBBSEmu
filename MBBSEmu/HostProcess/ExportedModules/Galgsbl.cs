@@ -46,6 +46,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _startDate = clock.Now;
             Module.Memory.AllocateVariable("BTURNO", 9);
+            Module.Memory.AllocateVariable("BTURS", sizeof(ushort));
 
             //Check for Module Specific BTURNO #
             var bturno = configuration.GSBLBTURNO;
@@ -60,6 +61,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 bturno = bturno.Substring(0, 8);
 
             Module.Memory.SetArray("BTURNO", Encoding.ASCII.GetBytes($"{bturno}\0"));
+            Module.Memory.SetWord("BTURS", (ushort)255);
             Module.Memory.AllocateVariable("TICKER", 0x02); //ushort increments once per second
 
             MonitoredChannel2 = 0xFFFF;
@@ -107,6 +109,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return bturno();
                 case 65:
                     return ticker;
+                case 68:
+                    return bturs();
             }
 
             if (offsetsOnly)
@@ -1018,5 +1022,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if(character != 0xD)
                 channel.InputBuffer.WriteByte(character);
         }
+
+        /// <summary>
+        ///     The Number of Users Licensed for this copy of MBBS/WG
+        ///
+        ///     Signature: "int btusrs;
+        /// </summary>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> bturs() => Module.Memory.GetVariablePointer("BTURS").Data;
     }
 }
