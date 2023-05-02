@@ -116,6 +116,77 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
         }
 
+        [Theory]
+        [InlineData("%2c/%2c/%4c", "12/31/1999", "12", "31", "1999", 3)]
+        [InlineData("%2c%2c%4c", "12/31/1999", "12", "/3", "1/19", 3)]
+        [InlineData("%2c%2c%4c", "12311999", "12", "31", "1999", 3)]
+        public void sscanf_dateparse_character_Test(
+            string formatString,
+            string inputString,
+            string expectedMonth,
+            string expectedDay,
+            string expectedYear,
+            int expectedResult)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", (ushort)(formatString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes(formatString));
+
+            var monthPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
+            var dayPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
+            var yearPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, monthPointer, dayPointer, yearPointer });
+
+            //Verify Results
+            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedMonth, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(monthPointer, true)));
+            Assert.Equal(expectedDay, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(dayPointer, true)));
+            Assert.Equal(expectedYear, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(yearPointer, true)));
+        }
+
+        [Theory]
+        [InlineData("%2d/%2d/%4d", "12/31/1999", 12, 31, 1999, 3)]
+        [InlineData("%2d%2d%4d", "12/31/1999", 12, 0, 0, 1)]
+        public void sscanf_dateparse_integer_Test(
+            string formatString,
+            string inputString,
+            int expectedMonth,
+            int expectedDay,
+            int expectedYear,
+            int expectedResult)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", (ushort)(formatString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes(formatString));
+
+            var monthPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var dayPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var yearPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, monthPointer, dayPointer, yearPointer });
+
+            //Verify Results
+            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+            Assert.Equal((ushort)expectedMonth, mbbsEmuMemoryCore.GetWord(monthPointer));
+            Assert.Equal((ushort)expectedDay, mbbsEmuMemoryCore.GetWord(dayPointer));
+            Assert.Equal((ushort)expectedYear, mbbsEmuMemoryCore.GetWord(yearPointer));
+        }
+
         [Fact]
         public void invalid_formatString_throws()
         {
