@@ -725,11 +725,15 @@ namespace MBBSEmu.CPU
             }
             catch (Exception e)
             {
+                //Handle Unit Tests
+                if (_logger == null) throw;
+
                 _logger.Info("Current CPU State:");
                 _logger.Info("--------------------");
                 _logger.Info($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
                 _logger.InfoRegisters(this);
                 _logger.Info("--------------------");
+
                 throw;
             }
         }
