@@ -3294,27 +3294,37 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
-            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
+            //Get Rounded Value from FPU and Pop Stack
+            var valueFromFpu = FpuStack[Registers.Fpu.GetStackTop()];
             Registers.Fpu.PopStackTop();
-
-            if (double.IsNaN(valueToSave))
+            if (double.IsNaN(valueFromFpu))
             {
                 Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                 return;
             }
 
-            var destinationSegment = _currentInstruction.MemorySegment switch
+            //Safely Cast it to 32-bit Signed Integer
+            int valueToSave;
+            try
             {
-                Register.SS => Registers.SS,
-                Register.DS => Registers.DS,
-                _ => throw new Exception($"Unsupported Destination Segment: {_currentInstruction.MemorySegment}")
-            };
+                valueToSave = Convert.ToInt32(valueFromFpu);
+            }
+            catch
+            {
+                _logger.Error($"Unable to cast value from FPU to 32-Bit Signed Integer: {valueFromFpu}");
+
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                return;
+            }
+
+            //Determine Destination Segment
+            var destinationSegment = Registers.GetValue(_currentInstruction.MemorySegment);
 
             switch (_currentInstruction.MemorySize)
             {
                 case MemorySize.Int16:
                     {
-                        if (valueToSave > short.MaxValue || valueToSave < short.MinValue)
+                        if (valueFromFpu is > short.MaxValue or < short.MinValue)
                         {
                             Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                             break;
@@ -3324,32 +3334,20 @@ namespace MBBSEmu.CPU
                         break;
                     }
                 case MemorySize.Int32:
+                case MemorySize.Int64: //i386/i486 only support 32-Bit Integers, decompiler still might an operation as 64-bit for some reason
                     {
-                        if (valueToSave > uint.MaxValue || valueToSave < int.MinValue)
+                        if (valueFromFpu is > int.MaxValue or < int.MinValue)
                         {
                             Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                             break;
                         }
 
-                        Memory.SetArray(destinationSegment, offset, BitConverter.GetBytes(Convert.ToInt32(valueToSave)));
-                        break;
-                    }
-                case MemorySize.Int64:
-                    {
-                        if (valueToSave > long.MaxValue || valueToSave < long.MinValue)
-                        {
-                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                            break;
-                        }
-
-                        Memory.SetArray(destinationSegment, offset, BitConverter.GetBytes(Convert.ToInt64(valueToSave)));
+                        Memory.SetArray(destinationSegment, offset, BitConverter.GetBytes(valueToSave));
                         break;
                     }
                 default:
                     throw new Exception($"Unsupported Memory Size: {_currentInstruction.MemorySize}");
             }
-
-
         }
 
         /// <summary>
