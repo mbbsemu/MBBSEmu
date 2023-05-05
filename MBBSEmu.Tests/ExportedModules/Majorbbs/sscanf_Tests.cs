@@ -85,6 +85,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%s %d %% ignored %s", "yohoha +3456 % Ignored another", "yohoha", 3456, "", 2)]
         // unfinished percent at end of string
         [InlineData("%s %d%", "yohoha +3456another", "yohoha", 3456, "", 2)]
+        [InlineData("%4s%d%s","yoho-3456this is fun", "yoho", -3456, "this", 3)]
         public void sscanf_fancy_Test(
             string formatString,
             string inputString,
@@ -104,16 +105,21 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes(formatString));
 
             var firstStringPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
+            mbbsEmuMemoryCore.FillArray(firstStringPointer, 129, (byte)'a');
             var secondStringPointer = mbbsEmuMemoryCore.AllocateVariable(null, 129);
+            mbbsEmuMemoryCore.FillArray(secondStringPointer, 129, (byte)'a');
             var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 2);
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, firstStringPointer, intPointer, secondStringPointer });
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
-            Assert.Equal(expectedFirstString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(firstStringPointer, true)));
-            Assert.Equal(expectedSecondString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(secondStringPointer, true)));
-            Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+            if (expectedResult > 0)
+                Assert.Equal(expectedFirstString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(firstStringPointer, true)));
+            if (expectedResult > 1)
+                Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+            if (expectedResult > 2)
+                Assert.Equal(expectedSecondString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(secondStringPointer, true)));
         }
 
         [Theory]

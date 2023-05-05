@@ -3931,26 +3931,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                         parseState.State = ScanfParseState.NORMAL;
                         break;
-                    case ScanfParseState.PERCENT when formatChar == 's':
-                        (var stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
-                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
-                        if (stringValue.Length > 0)
-                            ++matches;
-
-                        startingParameterOrdinal += 2;
-                        parseState.State = ScanfParseState.NORMAL;
-                        break;
-                    case ScanfParseState.PERCENT when formatChar == 'c':
-                        var length = parseState.Length > 0 ? parseState.Length : 1;
+                    case ScanfParseState.PERCENT when formatChar == 's' || formatChar == 'c':
+                        var defaultLength = (formatChar == 's') ? int.MaxValue : 1;
+                        var length = parseState.Length > 0 ? parseState.Length : defaultLength;
                         var count = 0;
-                        (stringValue, moreInput) = ReadString(input, c => {
+                        (var stringValue, moreInput) = ReadString(input, c => {
                             return (count++ < length) ?
                                 ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
                                 ExportedModuleBase.CharacterAccepterResponse.ABORT;
                         });
-                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+
+                        var destinationPtr = GetParameterPointer(startingParameterOrdinal);
+                        Module.Memory.SetArray(destinationPtr, Encoding.ASCII.GetBytes(stringValue));
+
                         if (stringValue.Length > 0)
                             ++matches;
+                        if (formatChar == 's') // null terminate
+                              Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
 
                         startingParameterOrdinal += 2;
                         parseState.State = ScanfParseState.NORMAL;
