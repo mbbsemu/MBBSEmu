@@ -1022,6 +1022,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input, int maxCharactersToRead)
         {
             var result = new LeadingNumberFromStringResult();
@@ -1062,6 +1063,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
         /// <returns></returns>
         private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString, int maxCharactersToRead)
         {
