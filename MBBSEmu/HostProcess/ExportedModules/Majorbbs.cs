@@ -1915,7 +1915,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringToLong = GetParameterString(0, true).Trim();
 
-            var result = GetLeadingNumberFromString(stringToLong);
+            var result = GetLeadingNumberFromString(stringToLong, -1);
 
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
@@ -3848,34 +3848,50 @@ namespace MBBSEmu.HostProcess.ExportedModules
             PERCENT
         };
 
+        private struct ParseState {
+            private FormatParseState _formatParseState = FormatParseState.NORMAL;
+
+            public ParseState() {
+                Length = 0;
+                IsLongInteger = false;
+            }
+
+            public FormatParseState State {
+                get => _formatParseState;
+                set {
+                    _formatParseState = value;
+                    Length = 0;
+                    IsLongInteger = false;
+                }
+            }
+            public int Length { get; set; }
+            public bool IsLongInteger { get; set; }
+        }
+
         private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
         {
-            var matches = 0;
-            var formatParseState = FormatParseState.NORMAL;
-
             if (!input.MoveNext())
             {
                 Registers.AX = 0;
                 return;
             }
 
+            var matches = 0;
+            var parseState = new ParseState();
             var moreInput = true;
-            string stringValue;
-            bool longInteger = false;
 
             foreach (var formatChar in formatString)
             {
                 if (!moreInput)
                     break;
 
-                switch (formatParseState)
+                switch (parseState.State)
                 {
                     case FormatParseState.NORMAL when char.IsWhiteSpace(formatChar):
                         ConsumeWhitespace(input);
                         break;
                     case FormatParseState.NORMAL when formatChar == '%':
-                        longInteger = false;
-                        formatParseState = FormatParseState.PERCENT;
+                        parseState.State = FormatParseState.PERCENT;
                         break;
                     case FormatParseState.NORMAL:
                         // match a single character
@@ -3886,10 +3902,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             moreInput &= input.MoveNext();
                         }
                         break;
+                    case FormatParseState.PERCENT when Char.IsAsciiDigit(formatChar):
+                        parseState.Length = parseState.Length * 10 + formatChar - '0';
+                        break;
                     case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
-                        var result = GetLeadingNumberFromString(input);
+                        var result = GetLeadingNumberFromString(input, parseState.Length > 0 ? parseState.Length : -1);
                         moreInput = result.MoreInput;
-                        if (longInteger)
+                        if (parseState.IsLongInteger)
                         {
                             // low word first followed by high word
                             Module.Memory.SetWord(
@@ -3910,22 +3929,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             ++matches;
 
                         startingParameterOrdinal += 2;
-                        formatParseState = FormatParseState.NORMAL;
+                        parseState.State = FormatParseState.NORMAL;
                         break;
                     case FormatParseState.PERCENT when formatChar == 's':
-                        (stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
+                        (var stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
                         Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
                         if (stringValue.Length > 0)
                             ++matches;
 
                         startingParameterOrdinal += 2;
-                        formatParseState = FormatParseState.NORMAL;
+                        parseState.State = FormatParseState.NORMAL;
+                        break;
+                    case FormatParseState.PERCENT when formatChar == 'c':
+                        var length = parseState.Length > 0 ? parseState.Length : 1;
+                        var count = 0;
+                        (stringValue, moreInput) = ReadString(input, c => {
+                            return (count++ < length) ?
+                                ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
+                                ExportedModuleBase.CharacterAccepterResponse.ABORT;
+                        });
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+                        if (stringValue.Length > 0)
+                            ++matches;
+
+                        startingParameterOrdinal += 2;
+                        parseState.State = FormatParseState.NORMAL;
                         break;
                     case FormatParseState.PERCENT when formatChar == 'l':
-                        longInteger = true;
+                        parseState.IsLongInteger = true;
                         break;
                     case FormatParseState.PERCENT when formatChar == '%':
-                        formatParseState = FormatParseState.NORMAL;
+                        parseState.State = FormatParseState.NORMAL;
                         goto case FormatParseState.NORMAL; // yolo
                     case FormatParseState.PERCENT:
                         throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {formatChar}");
@@ -5753,7 +5787,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var result = GetLeadingNumberFromString(charEnumerator);
+            var result = GetLeadingNumberFromString(charEnumerator, -1);
 
             if (result.StringValue.Length > 0)
                 Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);

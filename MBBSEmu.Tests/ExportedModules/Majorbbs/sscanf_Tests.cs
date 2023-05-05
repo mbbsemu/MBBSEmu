@@ -120,6 +120,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%2c/%2c/%4c", "12/31/1999", "12", "31", "1999", 3)]
         [InlineData("%2c%2c%4c", "12/31/1999", "12", "/3", "1/19", 3)]
         [InlineData("%2c%2c%4c", "12311999", "12", "31", "1999", 3)]
+        [InlineData("%c%2c%4c", "2311999", "2", "31", "1999", 3)]
         public void sscanf_dateparse_character_Test(
             string formatString,
             string inputString,
@@ -150,6 +151,44 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(expectedMonth, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(monthPointer, true)));
             Assert.Equal(expectedDay, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(dayPointer, true)));
             Assert.Equal(expectedYear, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(yearPointer, true)));
+        }
+
+        [Theory]
+        [InlineData("%2c%2c%4c", "12/31/1999", "12aa", "/3aa", "1/19")]
+        [InlineData("%c%1c%2c", "12311999", "1aaa", "2aaa", "31aa")]
+        public void sscanf_character_doesntNullTerminate_Test(
+            string formatString,
+            string inputString,
+            string expected1,
+            string expected2,
+            string expected3)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", (ushort)(formatString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes(formatString));
+
+            // allocates 3 contiguous blocks of memory of size 5. Fills them each with the string "aaaa\0"
+            var ptr1 = mbbsEmuMemoryCore.Malloc(5);
+            mbbsEmuMemoryCore.FillArray(ptr1, 4, (byte) 'a');
+            var ptr2 = mbbsEmuMemoryCore.Malloc(5);
+            mbbsEmuMemoryCore.FillArray(ptr2, 4, (byte) 'a');
+            var ptr3 = mbbsEmuMemoryCore.Malloc(5);
+            mbbsEmuMemoryCore.FillArray(ptr3, 4, (byte) 'a');
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, ptr1, ptr2, ptr3 });
+
+            //Verify Results
+            Assert.Equal(3, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expected1, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(ptr1, true)));
+            Assert.Equal(expected2, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(ptr2, true)));
+            Assert.Equal(expected3, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(ptr3, true)));
         }
 
         [Theory]
