@@ -57,6 +57,11 @@ namespace MBBSEmu.Session
             {
                 _logger.Warn($"Channel {Channel}: Attempted to write on a disposed socket");
             }
+            catch (Exception ex)
+            {
+                _logger.Error($"Channel {Channel}: Error Sending Data");
+                _logger.Error(ex);
+            }
         }
 
         /// <summary>
@@ -129,15 +134,25 @@ namespace MBBSEmu.Session
             int bytesReceived;
             SocketError socketError;
 
-            try {
+            try
+            {
                 bytesReceived = _socket.EndReceive(asyncResult, out socketError);
-                if (bytesReceived == 0) {
+                if (bytesReceived == 0)
+                {
                     CloseSocket("Client disconnected");
                     _mbbsHost.TriggerProcessing();
                     return;
                 }
-            } catch (ObjectDisposedException) {
+            }
+            catch (ObjectDisposedException)
+            {
                 SessionState = EnumSessionState.LoggedOff;
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Channel {Channel}: Error Sending Data");
+                _logger.Error(ex);
                 return;
             }
 

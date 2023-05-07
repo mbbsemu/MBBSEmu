@@ -1,0 +1,97 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Get Current Time
+      uses: josStorer/get-current-time@v2.0.2
+      id: current-time
+      with:
+        format: MMDDYY
+    - name: Use current time
+      env:
+        BUILD_VERSION: "${{ steps.current-time.outputs.formattedTime }}-${{ github.run_number }}"
+      run: |
+        echo $BUILD_VERSION
+        echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Write File
+      uses: DamianReeves/write-file-action@v1.0
+      with:
+        path: MBBSEmu/Assets/version.txt
+        contents: $BUILD_VERSION
+        write-mode: overwrite
+        
+    - name: Build
+      run: dotnet build --no-restore
+      
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+      
+    - name: Publish Executables
+      run: |
+        mkdir output-win-x64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x64/ --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-win-x86
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-linux-x64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-x64/ --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-linux-arm
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-arm/ --configuration Release --runtime linux-arm --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-osx-x64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-x64/ --configuration Release --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-osx-arm64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+    - name: Upload win-x64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-win-x64-${{ env.BUILD_VERSION }}
+        path: output-win-x64/*
+        
+    - name: Create win-x86 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-win-x86-${{ env.BUILD_VERSION }}
+        path: output-win-x86/*
+        
+    - name: Create linux-x64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-linux-x64-${{ env.BUILD_VERSION }}
+        path: output-linux-x64/*
+        
+    - name: Create linux-arm Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-linux-arm-${{ env.BUILD_VERSION }}
+        path: output-linux-arm/*
+
+    - name: Create osx-x64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-osx-x64-${{ env.BUILD_VERSION }}
+        path: output-osx-x64/*
+        
+    - name: Create osx-arm64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-osx-arm64-${{ env.BUILD_VERSION }}
+        path: output-osx-arm64/*

@@ -51,7 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     DosRealIntr();
                     break;
                 case 16:
-                    DosAllocRealSeg();
+                    //DosAllocRealSeg();
+                    DosCreatedAlias();
                     break;
 
                 default:
@@ -86,7 +87,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var segmentIdentifier = GetParameter(2);
 
-            Module.Memory.SetWord(destinationPointer, segmentIdentifier);
+            var newSegment = Module.Memory.AllocateRealModeSegment();
+
+            Module.Memory.SetWord(destinationPointer, newSegment.Segment);
 
             RealignStack(6);
 

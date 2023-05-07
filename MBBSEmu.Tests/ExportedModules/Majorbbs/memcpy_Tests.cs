@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -85,6 +86,60 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.GetArray(dst, 128).ToArray().Should().BeEquivalentTo(expectedArray);
 
             mbbsEmuMemoryCore.Free(dst);
+        }
+
+        [Fact]
+        public void memcpy_writeToExportedModuleAddress()
+        {
+            var dst = new FarPtr(0xFFFF, 0x1);
+
+            var src = mbbsEmuMemoryCore.AllocateVariable("SRC", 1);
+
+            //Reset State
+            Reset();
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, MEMCPY_ORDINAL,
+                new List<ushort>
+                {
+                    dst.Offset,
+                    dst.Segment,
+                    src.Offset,
+                    src.Segment,
+                    1
+                });
+
+            //No Exception, just returns the pointer
+            dst.Segment.Should().Be(0xFFFF);
+            dst.Offset.Should().Be(0x1);
+        }
+
+        [Fact]
+        public void memcpy_writeFromExportedModuleAddress()
+        {
+            var src = new FarPtr(0xFFFF, 0x1);
+
+            var dst = mbbsEmuMemoryCore.AllocateVariable("DST", 1);
+
+            //Reset State
+            Reset();
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, MEMCPY_ORDINAL,
+                new List<ushort>
+                {
+                    dst.Offset,
+                    dst.Segment,
+                    src.Offset,
+                    src.Segment,
+                    1
+                });
+
+            //Verify it just returns the original source as pointer
+            mbbsEmuCpuRegisters.GetPointer().Should().Be(dst);
+
+            //Verify Nothing Was Written
+            mbbsEmuMemoryCore.GetByte(dst).Should().Be(0);
         }
     }
 }
