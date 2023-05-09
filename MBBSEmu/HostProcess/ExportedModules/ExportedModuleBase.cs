@@ -1022,21 +1022,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input)
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input, int maxCharactersToRead)
         {
             var result = new LeadingNumberFromStringResult();
             var count = 0;
 
             (result.StringValue, result.MoreInput) = ReadString(input, c =>
             {
+                if (maxCharactersToRead >= 0 && count >= maxCharactersToRead)
+                    return CharacterAccepterResponse.ABORT;
+
                 if (count >= 11)
                     return CharacterAccepterResponse.ABORT;
 
-                var first = (count++ == 0);
+                var first = (count == 0);
                 if (first && c == '+')
                     return CharacterAccepterResponse.SKIP;
-                if ((first && c == '-') || char.IsDigit(c))
+                if (first && c == '-')
                     return CharacterAccepterResponse.ACCEPT;
+                if (char.IsDigit(c)) {
+                    ++count;
+                    return CharacterAccepterResponse.ACCEPT;
+                }
 
                 return CharacterAccepterResponse.ABORT;
             });
@@ -1055,11 +1063,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
         /// <returns></returns>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString, int maxCharactersToRead)
         {
             var enumerator = inputString.GetEnumerator();
-            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator) : new LeadingNumberFromStringResult();
+            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator, maxCharactersToRead) : new LeadingNumberFromStringResult();
         }
 
         /// <summary>
