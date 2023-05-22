@@ -73,7 +73,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
-        [InlineData("94675841", 2489800769, 1)]
+        [InlineData("24675841", 610752577, 1)]
         [InlineData("12345678", 305419896, 1)]
         [InlineData("1FFFF", 131071, 1)]
         public void sscanf_longInteger_hexConversion_Test(string inputString, int expectedInteger, int expectedResult)
