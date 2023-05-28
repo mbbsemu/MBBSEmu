@@ -1915,7 +1915,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringToLong = GetParameterString(0, true).Trim();
 
-            var result = GetLeadingNumberFromString(stringToLong, -1);
+            var result = GetLeadingNumberFromString(stringToLong, 10, -1);
 
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
@@ -3868,6 +3868,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             public bool IsLongInteger { get; set; }
         }
 
+        private int GetNumberBaseFromCharacter(char formatChar) => formatChar switch
+        {
+            'x' => 16,
+            'o' => 8,
+            _ => 10
+        };
+
         private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
         {
             if (!input.MoveNext())
@@ -3905,8 +3912,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     case ScanfParseState.PERCENT when Char.IsAsciiDigit(formatChar):
                         parseState.Length = parseState.Length * 10 + formatChar - '0';
                         break;
-                    case ScanfParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
-                        var result = GetLeadingNumberFromString(input, parseState.Length > 0 ? parseState.Length : -1);
+                    case ScanfParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u' || formatChar == 'x':
+                        var result = GetLeadingNumberFromString(input, GetNumberBaseFromCharacter(formatChar), parseState.Length > 0 ? parseState.Length : -1);
                         moreInput = result.MoreInput;
                         if (parseState.IsLongInteger)
                         {
@@ -5784,7 +5791,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var result = GetLeadingNumberFromString(charEnumerator, -1);
+            var result = GetLeadingNumberFromString(charEnumerator, 10, -1);
 
             if (result.StringValue.Length > 0)
                 Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);

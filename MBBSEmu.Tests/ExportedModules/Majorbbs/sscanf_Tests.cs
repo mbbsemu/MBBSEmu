@@ -73,6 +73,33 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
+        [InlineData("24675841", 610752577, 1)]
+        [InlineData("12345678", 305419896, 1)]
+        [InlineData("1FFFF", 131071, 1)]
+        public void sscanf_longInteger_hexConversion_Test(string inputString, int expectedInteger, int expectedResult)
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", 16);
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("%lx"));
+
+            var intPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 4);
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, intPointer });
+
+            //Verify Results
+            Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
+
+            int value = mbbsEmuMemoryCore.GetWord(intPointer) | (mbbsEmuMemoryCore.GetWord(intPointer + 2) << 16);
+            Assert.Equal(expectedInteger, value);
+        }
+
+        [Theory]
         [InlineData("%s %d %s", "test +45 another", "test", 45, "another", 3)]
         [InlineData("%s %d %s", "yohoho -1.2 another", "yohoho", -1, ".2", 3)]
         [InlineData("%s %d%s", "yohoha +3456another", "yohoha", 3456, "another", 3)]
