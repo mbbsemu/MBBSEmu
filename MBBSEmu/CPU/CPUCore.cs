@@ -6,6 +6,8 @@ using MBBSEmu.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -312,21 +314,50 @@ namespace MBBSEmu.CPU
             _currentOperationSize = GetCurrentOperationSize();
 
 #if DEBUG
+            /* ---------------------------
+             * ##    CPU Breakpoints    ##
+             * ---------------------------
+             * The below list specifies addresses where the CPU will be halted, allowing you to break operation and inspect.
+             * You can specify any number of offsets in any order. Because this will only work in DEBUG, and is evaluated
+             * during operation with each instruction, having a large number of breakpoints will slow down the CPU
+             */
+            var CPUBreakpoints = new List<FarPtr>
+            {
+                new(0x1, 0xEE4)
+            };
 
-            //Breakpoint
-            //if (Registers.CS == 0x12 && Registers.IP == 0x53C)
-            //  Debugger.Break();
+            /* ---------------------------
+             * ##    CPU Debug Ranges   ##
+             * ---------------------------
+             * The below list specifies a list of address ranges where CPU debug information will be logged to the console
+             * for each executed instruction (including register debug information as well). Values must be in START->END
+             * order within their own pair, but pairs can be added to the list in any order.
+             */
+            var CPUDebugRanges = new List<List<FarPtr>>
+            {
+               new()
+               {
+                   new FarPtr(0x1, 0xEE4),
+                   new FarPtr(0x1, 0xF07)
+               }
+            };
 
-            //Show Debugging
-            //_showDebug = true;
-            //_showDebug = Registers.CS == 47 && Registers.IP >= 0 && Registers.IP <= 0x41;
-            //_showDebug = (Registers.CS == 0x6 && Registers.IP >= 0x352A && Registers.IP <= 0x3562);
+            //Set this value to TRUE if you want the CPU to break after each instruction
+            var CPUDebugBreak = true;
 
-            if (_showDebug)
+            //Evaluate Breakpoints
+            if (CPUBreakpoints.Contains(_currentInstructionPointer))
+                Debugger.Break();
+            
+            //Evaluate Debug Ranges
+            if (CPUDebugRanges.Any(x => x[0] <= _currentInstructionPointer && x[1] >= _currentInstructionPointer))
+            {
+                _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
+            }
 #endif
             InstructionCounter++;
-
+            
         //Jump Table
         Switch:
             switch (_currentInstruction.Mnemonic)
@@ -717,7 +748,12 @@ namespace MBBSEmu.CPU
 
 #if DEBUG
             if (_showDebug)
+            {
                 _logger.InfoRegisters(this);
+
+                if(CPUDebugBreak)
+                    Debugger.Break();
+            }
 #endif
 
         }
@@ -1485,6 +1521,16 @@ namespace MBBSEmu.CPU
             return destination;
         }
 
+        /// <summary>
+        /// Performs a right circular rotate (RCR) operation on the current operation size.
+        /// </summary>
+        /// <remarks>
+        /// This method determines the appropriate RCR operation based on the current operation size.
+        /// The RCR operation rotates the bits of the value to the right, carrying the least significant
+        /// bit (LSB) into the most significant bit (MSB) and the carry flag into the least significant
+        /// bit. The result is then written to the destination.
+        /// </remarks>
+        /// <exception cref="Exception">Thrown when the operation size is not supported.</exception>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Rcr()
         {
@@ -1498,6 +1544,19 @@ namespace MBBSEmu.CPU
             WriteToDestination(result);
         }
 
+        /// <summary>
+        /// Performs an 8-bit right circular rotate (RCR) operation.
+        /// </summary>
+        /// <returns>The result of the RCR operation.</returns>
+        /// <remarks>
+        /// The RCR operation rotates the bits of the destination operand to the right by the number of times specified in the source operand.
+        /// The carry flag (CF) is included in the rotation.
+        /// Each rotation iteration performs the following steps:
+        /// 1. Determines the carry flag value after the rotation plus carry.
+        /// 2. Performs the rotation by shifting the bits of the destination operand to the right.
+        /// 3. If the carry flag is set, the most significant bit of the destination operand is rotated into the least significant bit.
+        /// 4. Sets the new carry flag value.
+        /// </remarks>
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private byte Op_Rcr_8()
         {
@@ -1505,18 +1564,18 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             unchecked
             {
-                var result = (byte)destination;
+                var result = destination;
                 for (var i = 0; i < source; i++)
                 {
                     //Determine the CF Value after rotation+carry
                     var newCFValue = result.IsBitSet(0);
 
                     //Perform Rotation
-                    result = (byte)(result >> 1);
+                    result >>= 1;
 
                     //If CF was set, rotate that value in
                     if (Registers.CarryFlag)
-                        result.SetFlag(1 << 7);
+                        result |= 1 << 7;
 
                     //Set new CF Value
                     Registers.CarryFlag = newCFValue;
@@ -1526,6 +1585,19 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        /// Performs an 16-bit right circular rotate (RCR) operation.
+        /// </summary>
+        /// <returns>The result of the RCR operation.</returns>
+        /// <remarks>
+        /// The RCR operation rotates the bits of the destination operand to the right by the number of times specified in the source operand.
+        /// The carry flag (CF) is included in the rotation.
+        /// Each rotation iteration performs the following steps:
+        /// 1. Determines the carry flag value after the rotation plus carry.
+        /// 2. Performs the rotation by shifting the bits of the destination operand to the right.
+        /// 3. If the carry flag is set, the most significant bit of the destination operand is rotated into the least significant bit.
+        /// 4. Sets the new carry flag value.
+        /// </remarks>
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private ushort Op_Rcr_16()
         {
@@ -1540,11 +1612,11 @@ namespace MBBSEmu.CPU
                     var newCFValue = result.IsBitSet(0);
 
                     //Perform Rotation
-                    result = (ushort)(result >> 1);
+                    result >>= 1;
 
                     //If CF was set, rotate that value in
                     if (Registers.CarryFlag)
-                        result.SetFlag(1 << 15);
+                        result |= 1 << 15;
 
                     //Set new CF Value
                     Registers.CarryFlag = newCFValue;
