@@ -355,6 +355,10 @@ namespace MBBSEmu.CPU
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
             }
+            else
+            {
+                _showDebug = false;
+            }
 #endif
             InstructionCounter++;
             
