@@ -65,9 +65,11 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedControlWord, mbbsEmuCpuRegisters.Fpu.ControlWord & FPU_CONTROLWORD_EXCEPTION_MASK);
         }
 
+        /// <summary>
+        ///     i386/i486 Systems did not support 64-bit integer values, so we test for overflow here
+        /// </summary>
         [Theory]
-        //[InlineData((double)(long.MaxValue), long.MaxValue, 0)] //Overflows -- need to figure out why
-        [InlineData((double)(long.MinValue), long.MinValue, 0)]
+        [InlineData((double)(long.MinValue), 0, 1)]
         [InlineData(-0.0d, 0, 0)]
         [InlineData(double.NaN, 0, 1)]
         public void FISTP_Test_M64_DS(double ST0Value, long expectedvalue, ushort expectedControlWord)
@@ -148,8 +150,7 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        //[InlineData((double)(long.MaxValue), long.MaxValue, 0)] //Overflows -- need to figure out why
-        [InlineData((double)(long.MinValue), long.MinValue, 0)]
+        [InlineData((double)(long.MinValue), 0, 1)]
         [InlineData(-0.0d, 0, 0)]
         [InlineData(double.NaN, 0, 1)]
         public void FISTP_Test_M64_SS(double ST0Value, long expectedvalue, ushort expectedControlWord)

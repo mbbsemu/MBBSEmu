@@ -3303,6 +3303,9 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            //Round Value from FPU
+            valueFromFpu = Math.Round(valueFromFpu, MidpointRounding.AwayFromZero);
+
             //Safely Cast it to 32-bit Signed Integer
             int valueToSave;
             try
@@ -3311,7 +3314,7 @@ namespace MBBSEmu.CPU
             }
             catch
             {
-                _logger.Error($"Unable to cast value from FPU to 32-Bit Signed Integer: {valueFromFpu}");
+                _logger?.Error($"Unable to cast value from FPU to 32-Bit Signed Integer: {valueFromFpu}");
 
                 Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                 return;
@@ -3334,7 +3337,7 @@ namespace MBBSEmu.CPU
                         break;
                     }
                 case MemorySize.Int32:
-                case MemorySize.Int64: //i386/i486 only support 32-Bit Integers, decompiler still might an operation as 64-bit for some reason
+                case MemorySize.Int64: //i386/i486 only support 32-Bit Integers, disassembler might still emit an operation as 64-bit for some reason
                     {
                         if (valueFromFpu is > int.MaxValue or < int.MinValue)
                         {
