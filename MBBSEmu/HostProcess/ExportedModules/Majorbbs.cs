@@ -229,7 +229,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("TXTVARS", TextvarStruct.Size * MaxTextVariables, true); //Up to 64 Text Variables per Module
             Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
             Module.Memory.AllocateVariable("HDLCON", FarPtr.Size); //Handles the connection for the current User
-
+            Module.Memory.AllocateVariable("RANDSEED", sizeof(uint)); //Seed value for Borland C++ Pseudo-Random Number Generator
 
             _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
             _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
@@ -585,7 +585,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (ordinal)
             {
                 //Ignored Ordinals
-                case 561: //srand() handled internally
                 case 614: //unfrez -- unlocks video memory, ignored
                 case 174: //DSAIRP
                 case 189: //ENAIRP
@@ -1362,6 +1361,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 129:
                     cncuid();
+                    break;
+                case 561:
+                    srand();
                     break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -2344,12 +2346,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void rand()
         {
-            var randomValue = _random.Next(1, short.MaxValue);
+            uint multiplier = 0x15A4E35;
+            var seed = Module.Memory.GetDWord("RANDSEED");
+            
+            var newSeed = (seed * multiplier) + 1;
 
-#if DEBUG
-            //_logger.Debug($"Generated random number {randomValue} and saved it to AX");
-#endif
-            Registers.AX = (ushort)randomValue;
+            Module.Memory.SetDWord("RANDSEED", newSeed);
+
+            Registers.AX = (ushort)((newSeed >> 16) & 0x7FFF);
         }
 
         /// <summary>
@@ -8334,5 +8338,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns Pointer to the HDLCON Routine
         /// </summary>
         private ReadOnlySpan<byte> hdlcon => Module.Memory.GetVariablePointer("HDLCON").Data;
+
+        /// <summary>
+        ///     Sets the Seed for the Pseudo-Random Number Generator
+        ///
+        ///     While the seed stored in memory is a 32-bit long, only the lower 16-bits are set
+        ///     via the srand() method. The high 16-bits are always set to zero.
+        ///
+        ///     Signature: void srabd(int seed)
+        /// </summary>
+        private void srand()
+        {
+            var randomSeed = GetParameter(0);
+
+            Module.Memory.SetDWord("RANDSEED", randomSeed);
+        }
     }
 }
