@@ -323,7 +323,8 @@ namespace MBBSEmu.CPU
              */
             var CPUBreakpoints = new List<FarPtr>
             {
-                new(0x1, 0xEE4)
+                //Below would break the CPU at the CS:IP of 0x1:0x100
+                //new(0x1, 0x100)
             };
 
             /* ---------------------------
@@ -335,11 +336,12 @@ namespace MBBSEmu.CPU
              */
             var CPUDebugRanges = new List<List<FarPtr>>
             {
-               new()
-               {
-                   new FarPtr(0x1, 0xEE4),
-                   new FarPtr(0x1, 0xF07)
-               }
+                //Below would log debug information for the range of CS:IP 0x1:0x100 to 0x1:0x200
+                //new()
+                //{
+                //    new FarPtr(0x1, 0x100),
+                //    new FarPtr(0x1, 0x200)
+                //}
             };
 
             //Set this value to TRUE if you want the CPU to break after each instruction
@@ -348,7 +350,7 @@ namespace MBBSEmu.CPU
             //Evaluate Breakpoints
             if (CPUBreakpoints.Contains(_currentInstructionPointer))
                 Debugger.Break();
-            
+
             //Evaluate Debug Ranges
             if (CPUDebugRanges.Any(x => x[0] <= _currentInstructionPointer && x[1] >= _currentInstructionPointer))
             {
@@ -359,435 +361,395 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = false;
             }
+
+            _currentInstructionPointer.Offset = Registers.IP;
+            _currentInstructionPointer.Segment = Registers.CS;
 #endif
+            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
+            _currentOperationSize = GetCurrentOperationSize();
+
             InstructionCounter++;
-            
+
         //Jump Table
         Switch:
             switch (_currentInstruction.Mnemonic)
             {
+                case Mnemonic.INVALID:
+                    _currentInstruction = Memory.Recompile(Registers.CS, Registers.IP);
+                    _currentOperationSize = GetCurrentOperationSize();
+                    goto Switch;
+                //Instructions that will set the IP -- we just return
+                case Mnemonic.Retf:
+                    Op_Retf();
+                    return;
+                case Mnemonic.Ret:
+                    Op_Ret();
+                    return;
+                case Mnemonic.Je:
+                    Op_Je();
+                    return;
+                case Mnemonic.Jne:
+                    Op_Jne();
+                    return;
+                case Mnemonic.Jmp:
+                    Op_Jmp();
+                    return;
+                case Mnemonic.Jb:
+                    Op_Jb();
+                    return;
+                case Mnemonic.Jl:
+                    Op_Jl();
+                    return;
+                case Mnemonic.Jg:
+                    Op_Jg();
+                    return;
+                case Mnemonic.Js:
+                    Op_Js();
+                    return;
+                case Mnemonic.Jns:
+                    Op_Jns();
+                    return;
+                case Mnemonic.Jge:
+                    Op_Jge();
+                    return;
+                case Mnemonic.Jle:
+                    Op_Jle();
+                    return;
+                case Mnemonic.Jbe:
+                    Op_Jbe();
+                    return;
+                case Mnemonic.Ja:
+                    Op_Ja();
+                    return;
+                case Mnemonic.Jae:
+                    Op_Jae();
+                    return;
+                case Mnemonic.Call:
+                    Op_Call();
+                    return;
+                case Mnemonic.Loop:
+                    Op_Loop();
+                    return;
+                case Mnemonic.Jcxz:
+                    Op_Jcxz();
+                    return;
+                case Mnemonic.Loope:
+                    Op_Loope();
+                    return;
+                case Mnemonic.Loopne:
+                    Op_Loopne();
+                    return;
+                case Mnemonic.Iret:
+                    Op_Iret();
+                    return;
 
-
-#if DEBUG
-                _currentInstructionPointer.Offset = Registers.IP;
-                _currentInstructionPointer.Segment = Registers.CS;
-#endif
-                _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
-                _currentOperationSize = GetCurrentOperationSize();
-#if DEBUG
-
-                //Breakpoint
-                    //if (Registers is { CS: 5, IP: 0x4CBD })
-                    //Debugger.Break();
-
-                //Show Debugging
-                //_showDebug = true;
-               // _showDebug = (Registers.CS == 2 && Registers.IP >= 0x2E2 && Registers.IP <= 0x2F8) ||
-                            // (Registers.CS == 5 && Registers.IP >= 0x418F && Registers.IP <= 0x41A5);
-                //_showDebug = (Registers.CS == 1 && Registers.IP >= 0x10E9 && Registers.IP <= 0x11EA);
-
-                if (_showDebug)
-                    _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-#endif
-                    InstructionCounter++;
-
-            //Jump Table
-            Switch:
-                switch (_currentInstruction.Mnemonic)
-                {
-                    case Mnemonic.INVALID:
-                        _currentInstruction = Memory.Recompile(Registers.CS, Registers.IP);
-                        _currentOperationSize = GetCurrentOperationSize();
-                        goto Switch;
-                    //Instructions that will set the IP -- we just return
-                    case Mnemonic.Retf:
-                        Op_Retf();
-                        return;
-                    case Mnemonic.Ret:
-                        Op_Ret();
-                        return;
-                    case Mnemonic.Je:
-                        Op_Je();
-                        return;
-                    case Mnemonic.Jne:
-                        Op_Jne();
-                        return;
-                    case Mnemonic.Jmp:
-                        Op_Jmp();
-                        return;
-                    case Mnemonic.Jb:
-                        Op_Jb();
-                        return;
-                    case Mnemonic.Jl:
-                        Op_Jl();
-                        return;
-                    case Mnemonic.Jg:
-                        Op_Jg();
-                        return;
-                    case Mnemonic.Js:
-                        Op_Js();
-                        return;
-                    case Mnemonic.Jns:
-                        Op_Jns();
-                        return;
-                    case Mnemonic.Jge:
-                        Op_Jge();
-                        return;
-                    case Mnemonic.Jle:
-                        Op_Jle();
-                        return;
-                    case Mnemonic.Jbe:
-                        Op_Jbe();
-                        return;
-                    case Mnemonic.Ja:
-                        Op_Ja();
-                        return;
-                    case Mnemonic.Jae:
-                        Op_Jae();
-                        return;
-                    case Mnemonic.Call:
-                        Op_Call();
-                        return;
-                    case Mnemonic.Loop:
-                        Op_Loop();
-                        return;
-                    case Mnemonic.Jcxz:
-                        Op_Jcxz();
-                        return;
-                    case Mnemonic.Loope:
-                        Op_Loope();
-                        return;
-                    case Mnemonic.Loopne:
-                        Op_Loopne();
-                        return;
-                    case Mnemonic.Iret:
-                        Op_Iret();
-                        return;
-
-                    //Instructions that do not set IP -- we'll just increment
-                    case Mnemonic.Wait:
-                    case Mnemonic.Nop:
-                        break;
-                    case Mnemonic.In:
-                        Op_In();
-                        break;
-                    case Mnemonic.Out:
-                        Op_Out();
-                        break;
-                    case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
-                        Registers.Halt = true;
-                        break;
-                    case Mnemonic.Aam:
-                        Op_Aam();
-                        break;
-                    case Mnemonic.Daa:
-                        Op_Daa();
-                        break;
-                    case Mnemonic.Clc:
-                        Op_Clc();
-                        break;
-                    case Mnemonic.Stc:
-                        Op_Stc();
-                        break;
-                    case Mnemonic.Cwd:
-                        Op_Cwd();
-                        break;
-                    case Mnemonic.Neg:
-                        Op_Neg();
-                        break;
-                    case Mnemonic.Sbb:
-                        Op_Sbb();
-                        break;
-                    case Mnemonic.Add:
-                        Op_Add();
-                        break;
-                    case Mnemonic.Adc:
-                        Op_Add(addCarry: true);
-                        break;
-                    case Mnemonic.And:
-                        Op_And();
-                        break;
-                    case Mnemonic.Imul:
-                        Op_Imul();
-                        break;
-                    case Mnemonic.Idiv:
-                        Op_Idiv();
-                        break;
-                    case Mnemonic.Push:
-                        Op_Push();
-                        break;
-                    case Mnemonic.Pop:
-                        Op_Pop();
-                        break;
-                    case Mnemonic.Mov:
-                        Op_Mov();
-                        break;
-                    case Mnemonic.Cmp:
-                        Op_Cmp();
-                        break;
-                    case Mnemonic.Cmpsb:
-                        Op_Cmpsb();
-                        break;
-                    case Mnemonic.Sub:
-                        Op_Sub();
-                        break;
-                    case Mnemonic.Xor:
-                        Op_Xor();
-                        break;
-                    case Mnemonic.Inc:
-                        Op_Inc();
-                        break;
-                    case Mnemonic.Dec:
-                        Op_Dec();
-                        break;
-                    case Mnemonic.Stosw:
-                        Op_Stosw();
-                        break;
-                    case Mnemonic.Enter:
-                        Op_Enter();
-                        break;
-                    case Mnemonic.Leave:
-                        Op_Leave();
-                        break;
-                    case Mnemonic.Lea:
-                        Op_Lea();
-                        break;
-                    case Mnemonic.Shl:
-                        Op_Shl();
-                        break;
-                    case Mnemonic.Sar:
-                        Op_Sar();
-                        break;
-                    case Mnemonic.Shr:
-                        Op_Shr();
-                        break;
-                    case Mnemonic.Rcr:
-                        Op_Rcr();
-                        break;
-                    case Mnemonic.Or:
-                        Op_Or();
-                        break;
-                    case Mnemonic.Les:
-                        Op_Les();
-                        break;
-                    case Mnemonic.Lds:
-                        Op_Lds();
-                        break;
-                    case Mnemonic.Int:
-                        Op_Int();
-                        break;
-                    case Mnemonic.Test:
-                        Op_Test();
-                        break;
-                    case Mnemonic.Fld:
-                        Op_Fld();
-                        break;
-                    case Mnemonic.Fmul:
-                        Op_Fmul();
-                        break;
-                    case Mnemonic.Fstp:
-                        Op_Fstp();
-                        break;
-                    case Mnemonic.Fcompp:
-                        Op_Fcompp();
-                        break;
-                    case Mnemonic.Fild:
-                        Op_Fild();
-                        break;
-                    case Mnemonic.Fnstsw:
-                    case Mnemonic.Fstsw:
-                        Op_Fstsw();
-                        break;
-                    case Mnemonic.Sahf:
-                        Op_Sahf();
-                        break;
-                    case Mnemonic.Rcl:
-                        Op_Rcl();
-                        break;
-                    case Mnemonic.Not:
-                        Op_Not();
-                        break;
-                    case Mnemonic.Xchg:
-                        Op_Xchg();
-                        break;
-                    case Mnemonic.Div:
-                        Op_Div();
-                        break;
-                    case Mnemonic.Fsub:
-                        Op_Fsub();
-                        break;
-                    case Mnemonic.Fldpi:
-                        Op_Fldpi();
-                        break;
-                    case Mnemonic.Fldz:
-                        Op_Fldz();
-                        break;
-                    case Mnemonic.Fnstcw:
-                    case Mnemonic.Fstcw:
-                        Op_Fstcw();
-                        break;
-                    case Mnemonic.Fldcw:
-                        Op_Fldcw();
-                        break;
-                    case Mnemonic.Fistp:
-                        Op_Fistp();
-                        break;
-                    case Mnemonic.Faddp:
-                        Op_Faddp();
-                        break;
-                    case Mnemonic.Cli:
-                        Op_Cli();
-                        break;
-                    case Mnemonic.Sti:
-                        Op_Sti();
-                        break;
-                    case Mnemonic.Fst:
-                        Op_Fst();
-                        break;
-                    case Mnemonic.Cbw:
-                        Op_Cbw();
-                        break;
-                    case Mnemonic.Cld:
-                        Op_Cld();
-                        break;
-                    case Mnemonic.Std:
-                        Op_Std();
-                        break;
-                    case Mnemonic.Lodsb:
-                        Op_Lodsb();
-                        break;
-                    case Mnemonic.Stosb:
-                        Op_Stosb();
-                        break;
-                    case Mnemonic.Scasb:
-                        Op_Scasb();
-                        break;
-                    case Mnemonic.Fld1:
-                        Op_Fld1();
-                        break;
-                    case Mnemonic.Fxch:
-                        Op_Fxch();
-                        break;
-                    case Mnemonic.Fpatan:
-                        Op_Fpatan();
-                        break;
-                    case Mnemonic.Fsqrt:
-                        Op_Fsqrt();
-                        break;
-                    case Mnemonic.Fscale:
-                        Op_Fscale();
-                        break;
-                    case Mnemonic.Fdiv:
-                        Op_Fdiv();
-                        break;
-                    case Mnemonic.Fmulp:
-                        Op_Fmulp();
-                        break;
-                    case Mnemonic.Fcomp:
-                        Op_Fcomp();
-                        break;
-                    case Mnemonic.Pushf:
-                        Op_Pushf();
-                        break;
-                    case Mnemonic.Pushfd:
-                        Op_Pushfd();
-                        break;
-                    case Mnemonic.Fadd:
-                        Op_Fadd();
-                        break;
-                    case Mnemonic.Fdivp:
-                        Op_Fdivp();
-                        break;
-                    case Mnemonic.Fsubr:
-                        Op_Fsubr();
-                        break;
-                    case Mnemonic.Fsubrp:
-                        Op_Fsubrp();
-                        break;
-                    case Mnemonic.Fclex:
-                    case Mnemonic.Fnclex:
-                        Op_Fclex();
-                        break;
-                    case Mnemonic.Frndint:
-                        Op_Frndint();
-                        break;
-                    case Mnemonic.Ror:
-                        Op_Ror();
-                        break;
-                    case Mnemonic.Ftst:
-                        Op_Ftst();
-                        break;
-                    case Mnemonic.Fcom:
-                        Op_Fcom();
-                        break;
-                    case Mnemonic.Fdivr:
-                        Op_Fdivr();
-                        break;
-                    case Mnemonic.Fdivrp:
-                        Op_Fdivrp();
-                        break;
-                    case Mnemonic.Fsin:
-                        Op_Fsin();
-                        break;
-                    case Mnemonic.Fcos:
-                        Op_Fcos();
-                        break;
-                    case Mnemonic.Lodsw:
-                        Op_Lodsw();
-                        break;
-                    case Mnemonic.Popf:
-                        Op_Popf();
-                        break;
-                    case Mnemonic.Popfd:
-                        Op_Popfd();
-                        break;
-                    case Mnemonic.Fsubp:
-                        Op_Fsubp();
-                        break;
-                    case Mnemonic.Fchs:
-                        Op_Fchs();
-                        break;
-                    case Mnemonic.Movsb:
-                        Op_Movsb();
-                        break;
-                    case Mnemonic.Movsw:
-                        Op_Movsw();
-                        break;
-                    case Mnemonic.Movsx:
-                        Op_Movsx();
-                        break;
-                    case Mnemonic.Movzx:
-                        Op_Movzx();
-                        break;
-                    case Mnemonic.Shld:
-                        Op_Shld();
-                        break;
-                    case Mnemonic.Mul:
-                        Op_Mul();
-                        break;
-                    case Mnemonic.Cdq:
-                        Op_Cdq();
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
-                }
-
-#if DEBUG
-                _previousInstructionPointer.Offset = Registers.IP;
-                _previousInstructionPointer.Segment = Registers.CS;
-#endif
-
-                Registers.IP += (ushort)_currentInstruction.Length;
-
-#if DEBUG
-                if (_showDebug)
-                    _logger.InfoRegisters(this);
-#endif
+                //Instructions that do not set IP -- we'll just increment
+                case Mnemonic.Wait:
+                case Mnemonic.Nop:
+                    break;
+                case Mnemonic.In:
+                    Op_In();
+                    break;
+                case Mnemonic.Out:
+                    Op_Out();
+                    break;
+                case Mnemonic.Hlt: //Halt CPU until interrupt, there are none so keep going
+                    Registers.Halt = true;
+                    break;
+                case Mnemonic.Aam:
+                    Op_Aam();
+                    break;
+                case Mnemonic.Daa:
+                    Op_Daa();
+                    break;
+                case Mnemonic.Clc:
+                    Op_Clc();
+                    break;
+                case Mnemonic.Stc:
+                    Op_Stc();
+                    break;
+                case Mnemonic.Cwd:
+                    Op_Cwd();
+                    break;
+                case Mnemonic.Neg:
+                    Op_Neg();
+                    break;
+                case Mnemonic.Sbb:
+                    Op_Sbb();
+                    break;
+                case Mnemonic.Add:
+                    Op_Add();
+                    break;
+                case Mnemonic.Adc:
+                    Op_Add(addCarry: true);
+                    break;
+                case Mnemonic.And:
+                    Op_And();
+                    break;
+                case Mnemonic.Imul:
+                    Op_Imul();
+                    break;
+                case Mnemonic.Idiv:
+                    Op_Idiv();
+                    break;
+                case Mnemonic.Push:
+                    Op_Push();
+                    break;
+                case Mnemonic.Pop:
+                    Op_Pop();
+                    break;
+                case Mnemonic.Mov:
+                    Op_Mov();
+                    break;
+                case Mnemonic.Cmp:
+                    Op_Cmp();
+                    break;
+                case Mnemonic.Cmpsb:
+                    Op_Cmpsb();
+                    break;
+                case Mnemonic.Sub:
+                    Op_Sub();
+                    break;
+                case Mnemonic.Xor:
+                    Op_Xor();
+                    break;
+                case Mnemonic.Inc:
+                    Op_Inc();
+                    break;
+                case Mnemonic.Dec:
+                    Op_Dec();
+                    break;
+                case Mnemonic.Stosw:
+                    Op_Stosw();
+                    break;
+                case Mnemonic.Enter:
+                    Op_Enter();
+                    break;
+                case Mnemonic.Leave:
+                    Op_Leave();
+                    break;
+                case Mnemonic.Lea:
+                    Op_Lea();
+                    break;
+                case Mnemonic.Shl:
+                    Op_Shl();
+                    break;
+                case Mnemonic.Sar:
+                    Op_Sar();
+                    break;
+                case Mnemonic.Shr:
+                    Op_Shr();
+                    break;
+                case Mnemonic.Rcr:
+                    Op_Rcr();
+                    break;
+                case Mnemonic.Or:
+                    Op_Or();
+                    break;
+                case Mnemonic.Les:
+                    Op_Les();
+                    break;
+                case Mnemonic.Lds:
+                    Op_Lds();
+                    break;
+                case Mnemonic.Int:
+                    Op_Int();
+                    break;
+                case Mnemonic.Test:
+                    Op_Test();
+                    break;
+                case Mnemonic.Fld:
+                    Op_Fld();
+                    break;
+                case Mnemonic.Fmul:
+                    Op_Fmul();
+                    break;
+                case Mnemonic.Fstp:
+                    Op_Fstp();
+                    break;
+                case Mnemonic.Fcompp:
+                    Op_Fcompp();
+                    break;
+                case Mnemonic.Fild:
+                    Op_Fild();
+                    break;
+                case Mnemonic.Fnstsw:
+                case Mnemonic.Fstsw:
+                    Op_Fstsw();
+                    break;
+                case Mnemonic.Sahf:
+                    Op_Sahf();
+                    break;
+                case Mnemonic.Rcl:
+                    Op_Rcl();
+                    break;
+                case Mnemonic.Not:
+                    Op_Not();
+                    break;
+                case Mnemonic.Xchg:
+                    Op_Xchg();
+                    break;
+                case Mnemonic.Div:
+                    Op_Div();
+                    break;
+                case Mnemonic.Fsub:
+                    Op_Fsub();
+                    break;
+                case Mnemonic.Fldpi:
+                    Op_Fldpi();
+                    break;
+                case Mnemonic.Fldz:
+                    Op_Fldz();
+                    break;
+                case Mnemonic.Fnstcw:
+                case Mnemonic.Fstcw:
+                    Op_Fstcw();
+                    break;
+                case Mnemonic.Fldcw:
+                    Op_Fldcw();
+                    break;
+                case Mnemonic.Fistp:
+                    Op_Fistp();
+                    break;
+                case Mnemonic.Faddp:
+                    Op_Faddp();
+                    break;
+                case Mnemonic.Cli:
+                    Op_Cli();
+                    break;
+                case Mnemonic.Sti:
+                    Op_Sti();
+                    break;
+                case Mnemonic.Fst:
+                    Op_Fst();
+                    break;
+                case Mnemonic.Cbw:
+                    Op_Cbw();
+                    break;
+                case Mnemonic.Cld:
+                    Op_Cld();
+                    break;
+                case Mnemonic.Std:
+                    Op_Std();
+                    break;
+                case Mnemonic.Lodsb:
+                    Op_Lodsb();
+                    break;
+                case Mnemonic.Stosb:
+                    Op_Stosb();
+                    break;
+                case Mnemonic.Scasb:
+                    Op_Scasb();
+                    break;
+                case Mnemonic.Fld1:
+                    Op_Fld1();
+                    break;
+                case Mnemonic.Fxch:
+                    Op_Fxch();
+                    break;
+                case Mnemonic.Fpatan:
+                    Op_Fpatan();
+                    break;
+                case Mnemonic.Fsqrt:
+                    Op_Fsqrt();
+                    break;
+                case Mnemonic.Fscale:
+                    Op_Fscale();
+                    break;
+                case Mnemonic.Fdiv:
+                    Op_Fdiv();
+                    break;
+                case Mnemonic.Fmulp:
+                    Op_Fmulp();
+                    break;
+                case Mnemonic.Fcomp:
+                    Op_Fcomp();
+                    break;
+                case Mnemonic.Pushf:
+                    Op_Pushf();
+                    break;
+                case Mnemonic.Pushfd:
+                    Op_Pushfd();
+                    break;
+                case Mnemonic.Fadd:
+                    Op_Fadd();
+                    break;
+                case Mnemonic.Fdivp:
+                    Op_Fdivp();
+                    break;
+                case Mnemonic.Fsubr:
+                    Op_Fsubr();
+                    break;
+                case Mnemonic.Fsubrp:
+                    Op_Fsubrp();
+                    break;
+                case Mnemonic.Fclex:
+                case Mnemonic.Fnclex:
+                    Op_Fclex();
+                    break;
+                case Mnemonic.Frndint:
+                    Op_Frndint();
+                    break;
+                case Mnemonic.Ror:
+                    Op_Ror();
+                    break;
+                case Mnemonic.Ftst:
+                    Op_Ftst();
+                    break;
+                case Mnemonic.Fcom:
+                    Op_Fcom();
+                    break;
+                case Mnemonic.Fdivr:
+                    Op_Fdivr();
+                    break;
+                case Mnemonic.Fdivrp:
+                    Op_Fdivrp();
+                    break;
+                case Mnemonic.Fsin:
+                    Op_Fsin();
+                    break;
+                case Mnemonic.Fcos:
+                    Op_Fcos();
+                    break;
+                case Mnemonic.Lodsw:
+                    Op_Lodsw();
+                    break;
+                case Mnemonic.Popf:
+                    Op_Popf();
+                    break;
+                case Mnemonic.Popfd:
+                    Op_Popfd();
+                    break;
+                case Mnemonic.Fsubp:
+                    Op_Fsubp();
+                    break;
+                case Mnemonic.Fchs:
+                    Op_Fchs();
+                    break;
+                case Mnemonic.Movsb:
+                    Op_Movsb();
+                    break;
+                case Mnemonic.Movsw:
+                    Op_Movsw();
+                    break;
+                case Mnemonic.Movsx:
+                    Op_Movsx();
+                    break;
+                case Mnemonic.Movzx:
+                    Op_Movzx();
+                    break;
+                case Mnemonic.Shld:
+                    Op_Shld();
+                    break;
+                case Mnemonic.Mul:
+                    Op_Mul();
+                    break;
+                case Mnemonic.Cdq:
+                    Op_Cdq();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
-            catch (Exception e)
-            {
-                //Handle Unit Tests
-                if (_logger == null) throw;
 
 #if DEBUG
             _previousInstructionPointer.Offset = Registers.IP;
@@ -801,13 +763,10 @@ namespace MBBSEmu.CPU
             {
                 _logger.InfoRegisters(this);
 
-                if(CPUDebugBreak)
+                if (CPUDebugBreak)
                     Debugger.Break();
             }
 #endif
-
-                throw;
-            }
         }
 
         /// <summary>
