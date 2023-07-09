@@ -230,6 +230,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
             Module.Memory.AllocateVariable("HDLCON", FarPtr.Size); //Handles the connection for the current User
             Module.Memory.AllocateVariable("RANDSEED", sizeof(uint)); //Seed value for Borland C++ Pseudo-Random Number Generator
+            Module.Memory.SetDWord("RANDSEED", (uint)_random.Next(1, ushort.MaxValue)); //Seed RNG with a random value
 
             _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
             _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
