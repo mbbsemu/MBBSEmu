@@ -8346,7 +8346,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     While the seed stored in memory is a 32-bit long, only the lower 16-bits are set
         ///     via the srand() method. The high 16-bits are always set to zero.
         ///
-        ///     Signature: void srabd(int seed)
+        ///     Signature: void srand(int seed)
         /// </summary>
         private void srand()
         {
