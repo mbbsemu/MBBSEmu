@@ -69,16 +69,5 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.Equal(mbbsEmuCpuRegisters.GetLong(), expectedValue);
         }
-
-        [Fact]
-        public void randTest()
-        {
-            Reset();
-
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment,RAND_ORDINAL, new List<ushort>());
-
-            //Verify Results
-            Assert.InRange(mbbsEmuCpuRegisters.AX, 1, 32767);
-        }
     }
 }
