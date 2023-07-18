@@ -323,7 +323,8 @@ namespace MBBSEmu.CPU
              */
             var CPUBreakpoints = new List<FarPtr>
             {
-                new(0x1, 0xEE4)
+                //Below would break the CPU at the CS:IP of 0x1:0x100
+                //new(0x1, 0x100)
             };
 
             /* ---------------------------
@@ -335,11 +336,12 @@ namespace MBBSEmu.CPU
              */
             var CPUDebugRanges = new List<List<FarPtr>>
             {
-               new()
-               {
-                   new FarPtr(0x1, 0xEE4),
-                   new FarPtr(0x1, 0xF07)
-               }
+                //Below would log debug information for the range of CS:IP 0x1:0x100 to 0x1:0x200
+                //new()
+                //{
+                //    new FarPtr(0x1, 0x100),
+                //    new FarPtr(0x1, 0x200)
+                //}
             };
 
             //Set this value to TRUE if you want the CPU to break after each instruction
@@ -348,7 +350,7 @@ namespace MBBSEmu.CPU
             //Evaluate Breakpoints
             if (CPUBreakpoints.Contains(_currentInstructionPointer))
                 Debugger.Break();
-            
+
             //Evaluate Debug Ranges
             if (CPUDebugRanges.Any(x => x[0] <= _currentInstructionPointer && x[1] >= _currentInstructionPointer))
             {
@@ -359,9 +361,15 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = false;
             }
+
+            _currentInstructionPointer.Offset = Registers.IP;
+            _currentInstructionPointer.Segment = Registers.CS;
 #endif
+            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
+            _currentOperationSize = GetCurrentOperationSize();
+
             InstructionCounter++;
-            
+
         //Jump Table
         Switch:
             switch (_currentInstruction.Mnemonic)
@@ -755,11 +763,10 @@ namespace MBBSEmu.CPU
             {
                 _logger.InfoRegisters(this);
 
-                if(CPUDebugBreak)
+                if (CPUDebugBreak)
                     Debugger.Break();
             }
 #endif
-
         }
 
         /// <summary>
@@ -1096,24 +1103,24 @@ namespace MBBSEmu.CPU
                                 }
 
                             case Register.SI:
-                            {
+                                {
 #if DEBUG
-                                if (_currentInstruction.MemoryIndex != Register.None)
-                                    throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
+                                    if (_currentInstruction.MemoryIndex != Register.None)
+                                        throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
 #endif
-                                result += Registers.SI;
-                                break;
+                                    result += Registers.SI;
+                                    break;
                                 }
 
                             case Register.DI:
-                            {
+                                {
 #if DEBUG
-                                if (_currentInstruction.MemoryIndex != Register.None)
-                                    throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
+                                    if (_currentInstruction.MemoryIndex != Register.None)
+                                        throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
 #endif
-                                result += Registers.DI;
-                                break;
-                            }
+                                    result += Registers.DI;
+                                    break;
+                                }
 
                             default:
                                 throw new Exception($"Unknown GetOperandOffset MemoryBase: {_currentInstruction}");
@@ -3354,55 +3361,63 @@ namespace MBBSEmu.CPU
         {
             var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
-            var valueToSave = FpuStack[Registers.Fpu.GetStackTop()];
+            //Get Rounded Value from FPU and Pop Stack
+            var valueFromFpu = FpuStack[Registers.Fpu.GetStackTop()];
             Registers.Fpu.PopStackTop();
-
-            if (double.IsNaN(valueToSave))
+            if (double.IsNaN(valueFromFpu))
             {
                 Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                 return;
             }
 
+            //Round Value from FPU
+            valueFromFpu = Math.Round(valueFromFpu, MidpointRounding.AwayFromZero);
+
+            //Safely Cast it to 32-bit Signed Integer
+            int valueToSave;
+            try
+            {
+                valueToSave = Convert.ToInt32(valueFromFpu);
+            }
+            catch
+            {
+                _logger?.Error($"Unable to cast value from FPU to 32-Bit Signed Integer: {valueFromFpu}");
+
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                return;
+            }
+
+            //Determine Destination Segment
+            var destinationSegment = Registers.GetValue(_currentInstruction.MemorySegment);
+
             switch (_currentInstruction.MemorySize)
             {
                 case MemorySize.Int16:
                     {
-                        if (valueToSave > short.MaxValue || valueToSave < short.MinValue)
+                        if (valueFromFpu is > short.MaxValue or < short.MinValue)
                         {
                             Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                             break;
                         }
 
-                        Memory.SetWord(Registers.DS, offset, (ushort)Convert.ToInt16(valueToSave));
+                        Memory.SetWord(destinationSegment, offset, (ushort)Convert.ToInt16(valueToSave));
                         break;
                     }
                 case MemorySize.Int32:
+                case MemorySize.Int64: //i386/i486 only support 32-Bit Integers, disassembler might still emit an operation as 64-bit for some reason
                     {
-                        if (valueToSave > uint.MaxValue || valueToSave < int.MinValue)
+                        if (valueFromFpu is > int.MaxValue or < int.MinValue)
                         {
                             Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
                             break;
                         }
 
-                        Memory.SetArray(Registers.DS, offset, BitConverter.GetBytes(Convert.ToInt32(valueToSave)));
-                        break;
-                    }
-                case MemorySize.Int64:
-                    {
-                        if (valueToSave > long.MaxValue || valueToSave < long.MinValue)
-                        {
-                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                            break;
-                        }
-
-                        Memory.SetArray(Registers.DS, offset, BitConverter.GetBytes(Convert.ToInt64(valueToSave)));
+                        Memory.SetArray(destinationSegment, offset, BitConverter.GetBytes(valueToSave));
                         break;
                     }
                 default:
-                    throw new Exception($"Unknown Memory Size: {_currentInstruction.MemorySize}");
+                    throw new Exception($"Unsupported Memory Size: {_currentInstruction.MemorySize}");
             }
-
-
         }
 
         /// <summary>
