@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MBBSEmu.UI.Setup;
 
 namespace MBBSEmu
 {
@@ -112,7 +113,23 @@ namespace MBBSEmu
             try
             {
                 if (args.Length == 0)
-                    args = new[] { "-?" };
+                {
+                    Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
+                    var response = Console.ReadKey();
+                    if (response.Key == ConsoleKey.Y)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Running Setup Wizard...");
+                        var setupWizard = new SetupView();
+                        setupWizard.Setup();
+                        setupWizard.Run();
+                        Console.WriteLine("Setup Wizard Complete!");
+                    }
+                    else
+                    {
+                        args = new[] { "-?" };
+                    }
+                }
 
                 string[] programArgs = args;
 
