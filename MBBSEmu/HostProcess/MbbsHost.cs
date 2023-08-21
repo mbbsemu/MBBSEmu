@@ -228,7 +228,7 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
-            _cleanupTimer.Dispose();
+            _cleanupTimer?.Dispose();
             _cleanupWarningTimer?.Dispose();
             _tickTimer?.Dispose();
             // this set must come after _isRunning is set to false, to trigger the exit of the
