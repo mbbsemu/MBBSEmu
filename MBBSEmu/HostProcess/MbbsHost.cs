@@ -155,8 +155,12 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
+
+            //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
-            _cleanupTimer = new Timer(_ => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            Logger.Info($"Waiting {NowUntil(_cleanupTime)} until {_cleanupTime} to perform Nightly Cleanup");
+
             _cleanupWarningTimer = SetupCleanupWarningTimer();
 
             if (_configuration.TimerHertz > 0)
@@ -1398,15 +1402,19 @@ namespace MBBSEmu.HostProcess
             Start(moduleConfigurations);
         }
 
+        /// <summary>
+        ///     Returns a TimeSpan representing the time between now and the specified time.
+        /// </summary>
+        /// <param name="timeOfDay">24-hour timespan representing a time of day, and determining the time between now and the time specified</param>
+        /// <returns></returns>
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            var waitTime = _cleanupTime - Clock.Now.TimeOfDay;
+            var waitTime = timeOfDay - Clock.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
             }
 
-            Logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
             return waitTime;
         }
 
