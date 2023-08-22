@@ -1311,14 +1311,12 @@ namespace MBBSEmu.HostProcess
         private Timer SetupCleanupWarningTimer()
         {
             _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
-            var initialWarningTime = _cleanupTime - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
 
-            return new Timer(
-                SendCleanupWarning,
-                null,
-                (int) NowUntil(initialWarningTime).TotalMilliseconds,
-                (int) TimeSpan.FromMinutes(1).TotalMilliseconds
-            );
+            var initialWarningTime = _cleanupTime - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
+            var dueTime = (int) NowUntil(initialWarningTime).TotalMilliseconds;
+            var period = (int) TimeSpan.FromMinutes(1).TotalMilliseconds;
+
+            return new Timer(SendCleanupWarning, null, dueTime, period);
         }
 
         private void SendCleanupWarning(object _)
