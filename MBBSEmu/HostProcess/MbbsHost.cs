@@ -159,7 +159,7 @@ namespace MBBSEmu.HostProcess
             //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
             _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
-            Logger.Info($"Waiting {NowUntil(_cleanupTime)} until {_cleanupTime} to perform Nightly Cleanup");
+            Logger.Error($"Waiting {NowUntil(_cleanupTime)} until {_cleanupTime} to perform Nightly Cleanup");
 
             _cleanupWarningTimer = SetupCleanupWarningTimer();
 
@@ -1315,6 +1315,10 @@ namespace MBBSEmu.HostProcess
             var initialWarningTime = _cleanupTime - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
             var dueTime = (int) NowUntil(initialWarningTime).TotalMilliseconds;
             var period = (int) TimeSpan.FromMinutes(1).TotalMilliseconds;
+
+            Logger.Error($"initialWarningTime: {initialWarningTime.Minutes}");
+            Logger.Error($"dueTime: {NowUntil(initialWarningTime).Minutes}");
+            Logger.Error($"period: {TimeSpan.FromMinutes(1).Minutes}");
 
             return new Timer(SendCleanupWarning, null, dueTime, period);
         }
