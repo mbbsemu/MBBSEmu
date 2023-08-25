@@ -193,8 +193,7 @@ namespace MBBSEmu.UI.Setup
             fourthStep.Add(lbl, rloginPortField);
 
             lbl = new Label { Text = "Rlogin Remote IP: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var rloginRemoteIPMask = new NetMaskedTextProvider("299.299.299.299");
-            var rloginRemoteIPField = new TextValidateField(rloginRemoteIPMask) { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var rloginRemoteIPField = new TextField() { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             rloginRemoteIPField.Enter += _ =>
             {
                 fourthStep.HelpText =
