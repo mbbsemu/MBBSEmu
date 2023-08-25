@@ -118,7 +118,7 @@ namespace MBBSEmu.UI.Setup
 
             //Next Step - Telnet Settings
             var thirdStep = new Wizard.WizardStep("Telnet Settings");
-            thirdStep.HelpText = "Telnet Settings Settings for MBBSEmu";
+            thirdStep.HelpText = "Telnet Settings for MBBSEmu";
 
             lbl = new Label() { Text = "Telnet Server: ", X = 1, Y = 1 };
             var telnetEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
@@ -161,6 +161,62 @@ namespace MBBSEmu.UI.Setup
             thirdStep.Add(lbl, telnetEnableHeartbeat);
 
             wizard.AddStep(thirdStep);
+
+
+            //Next Step - Rlogin Settings
+            var fourthStep = new Wizard.WizardStep("Rlogin Settings");
+            fourthStep.HelpText = "Rlogin Settings for MBBSEmu";
+
+            lbl = new Label { Text = "Rlogin Server: ", X = 1, Y = 1 };
+            var rloginEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
+            {
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl),
+                SelectedItem = 1
+            };
+            rloginEnabledRadio.Enter += _ =>
+            {
+                fourthStep.HelpText =
+                    "Rlogin Enabled\n\nEnabling this option enables the MBBSEmu Rlogin Daemon, allowing users to connect using Rlogin from another BBS Software such as Mystic or Synchronet.";
+            };
+            fourthStep.Add(lbl, rloginEnabledRadio);
+
+            lbl = new Label { Text = "Rlogin Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
+            var rloginPortMask = new NetMaskedTextProvider("99999");
+            var rloginPortField = new TextValidateField(rloginPortMask) { Text = "513", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            rloginPortField.Enter += _ =>
+            {
+                fourthStep.HelpText =
+                    "Rlogin Port\n\nPort Number that MBBSEmu will listen on for Rlogin Connections.\n\n" +
+                    "On Linux, Port Numbers below 1024 will require you run MBBSEmu with elevated privileges.";
+            };
+            fourthStep.Add(lbl, rloginPortField);
+
+            lbl = new Label { Text = "Rlogin Remote IP: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var rloginRemoteIPMask = new NetMaskedTextProvider("299.299.299.299");
+            var rloginRemoteIPField = new TextValidateField(rloginRemoteIPMask) { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            rloginRemoteIPField.Enter += _ =>
+            {
+                fourthStep.HelpText =
+                    "Rlogin Remote IP\n\nIP Address of Remote System that is allowed to connect via Rlogin.\n\nRlogin is an old, insecure protocol and this is your only line of security. If you're using Rlogin, please ensure this field is set properly.";
+            };
+            fourthStep.Add(lbl, rloginRemoteIPField);
+
+            lbl = new Label() { Text = "Port Per Module: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var rloginPortPerModuleField = new RadioGroup(new ustring[] { "Yes", "No" })
+            {
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl),
+                SelectedItem = 0
+            };
+            rloginPortPerModuleField.Enter += _ =>
+            {
+                fourthStep.HelpText =
+                    "Port Per Field\n\nThis setting gives each Module it's own Rlogin port, starting with the specified Rlogin Port. This allows you to setup Rlogin from your remote system to have users land directly into the MBBS/WG Module without having to login or use the MBBSEmu Menu." + 
+                    "For example, if you have three Modules and your specified Rlogin Port is 513 this means the following ports will be configured:\nModule 1: Port 513\nModule 2: Port 514\nModule 3: Port 515";
+            };
+            fourthStep.Add(lbl, rloginPortPerModuleField);
+            wizard.AddStep(fourthStep);
 
             MainWindow.Add(wizard);
         }
