@@ -1,4 +1,5 @@
 ﻿using System;
+using NStack;
 using Terminal.Gui;
 using Terminal.Gui.TextValidateProviders;
 
@@ -97,18 +98,71 @@ namespace MBBSEmu.UI.Setup
             };
             secondStep.Add(lbl, cleanupTimeField);
 
-            var unicodeCheckBox = new CheckBox("Run Login Routines (Global)")
+            lbl = new Label() { Text = "Run Login Routines (Global): ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var doLoginRoutineRadioGroup = new RadioGroup(new ustring[] { "Yes", "No" })
             {
-                X = 1,
-                Y = Pos.Bottom(lbl) + 1,
-                Checked = true
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl),
+                SelectedItem = 0
             };
-            secondStep.Add(unicodeCheckBox);
+            doLoginRoutineRadioGroup.Enter += _ =>
+            {
+                secondStep.HelpText =
+                    "Run Login Routines (Global):\n\nWhether or not to run the Login Routines in all modules when a user logs in.\n\n" +
+                    "While disabling this can result in better performance, some modules run logic on a Users Channel during login that should not be disabled.\n\n" + 
+                    "We recommend you leave this option enabled with YES";
+            };
+            secondStep.Add(lbl, doLoginRoutineRadioGroup);
 
             wizard.AddStep(secondStep);
 
-            base.MainWindow.Add(wizard);
-        }
+            //Next Step - Telnet Settings
+            var thirdStep = new Wizard.WizardStep("Telnet Settings");
+            thirdStep.HelpText = "Telnet Settings Settings for MBBSEmu";
 
+            lbl = new Label() { Text = "Telnet Server: ", X = 1, Y = 1 };
+            var telnetEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
+            {
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl),
+                SelectedItem = 0
+            };
+            telnetEnabledRadio.Enter += _ =>
+            {
+                thirdStep.HelpText =
+                    "Telnet Enabled\n\nEnabling this option enables the MBBSEmu Telnet Daemon, allowing users to connect using their preferred Telnet client.";
+            };
+            thirdStep.Add(lbl, telnetEnabledRadio);
+
+            lbl = new Label { Text = "Telnet Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
+            var telnetPortMask = new NetMaskedTextProvider("99999");
+            var telnetPortField = new TextValidateField(telnetPortMask) { Text = "21", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            telnetPortField.Enter += _ =>
+            {
+                thirdStep.HelpText =
+                    "Telnet Port\n\nPort Number that MBBSEmu will listen on for Telnet Connections.\n\n" + 
+                    "On Linux, port numbers below 1024 will require you run MBBSEmu with elevated privileges.";
+            };
+            thirdStep.Add(lbl, telnetPortField);
+
+            lbl = new Label() { Text = "Telnet Heartbeat: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var telnetEnableHeartbeat = new RadioGroup(new ustring[] { "On", "Off" })
+            {
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl),
+                SelectedItem = 1
+            };
+            telnetEnableHeartbeat.Enter += _ =>
+            {
+                thirdStep.HelpText =
+                    "Telnet Heartbeat\n\nThis option is to help users whose connection between their Telnet Client and MBBSEmu will be terminated by intermediary network gear (firewalls, etc.) which will terminate a connection due to \"Inactivity\".\n\n" +
+                    "Unless you're experiencing disconnects while idle on MBBSEmu, we recommend you leave this option OFF";
+            };
+            thirdStep.Add(lbl, telnetEnableHeartbeat);
+
+            wizard.AddStep(thirdStep);
+
+            MainWindow.Add(wizard);
+        }
     }
 }
