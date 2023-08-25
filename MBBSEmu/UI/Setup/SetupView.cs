@@ -1,7 +1,7 @@
-﻿using System;
-using NStack;
+﻿using NStack;
+using System;
+using System.Net;
 using Terminal.Gui;
-using Terminal.Gui.TextValidateProviders;
 
 namespace MBBSEmu.UI.Setup
 {
@@ -50,8 +50,8 @@ namespace MBBSEmu.UI.Setup
             var secondStep = new Wizard.WizardStep("General Settings");
             secondStep.HelpText = "General Settings for MBBSEmu";
 
-            var lbl = new Label() { Text = "BBS Name: ", X = 1, Y = 1 };
-            var bbsNameField = new TextField() { Text = "Emulated MajorBBS System", Width = 30, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var lbl = new Label { Text = "BBS Name: ", X = 1, Y = 1 };
+            var bbsNameField = new TextField { Text = "Emulated MajorBBS System", Width = 30, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             bbsNameField.Enter += _ =>
             {
                 secondStep.HelpText =
@@ -59,30 +59,32 @@ namespace MBBSEmu.UI.Setup
             };
             secondStep.Add(lbl, bbsNameField);
 
-            lbl = new Label() { Text = "Channels: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var channelsMask = new NetMaskedTextProvider("999");
-            var bbsChannelsField = new TextValidateField(channelsMask) { Text = "8", Width = 3, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            lbl = new Label { Text = "Channels: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var bbsChannelsField = new TextField { Text = "8", Width = 4, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             bbsChannelsField.Enter += _ =>
             {
                 secondStep.HelpText =
                     "Channels:\n\nThe Number of Lines/Simultaneous Users your MBBSEmu instance will support. Depending on the modules you decide to run, a higher number of channels could result in slow performance.\n\n" +
                     "We recommend you set this number to a reasonable, realistic number based on the number of users you expect to be using MBBSEmu at the same time.";
             };
+
+
             secondStep.Add(lbl, bbsChannelsField);
 
-            lbl = new Label() { Text = "Registration Number: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var bturnoMaskk = new NetMaskedTextProvider("99999999");
-            var bbsRegistrationNumberField = new TextValidateField(bturnoMaskk) { Text = "12345678", Width = 8, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            lbl = new Label { Text = "Registration Number: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            var bbsRegistrationNumberField = new TextField { Text = "12345678", Width = 8, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             bbsRegistrationNumberField.Enter += _ =>
             {
                 secondStep.HelpText =
-                    "Registration Number:\n\nA unique, eight digit numeric value that was assigned to every MajorBBS / Worldgroup Sysop, derived from their original activation number.\n\n" +
+                    "Registration Number:\n\nA unique, eight digit numeric value (including leading zeros) that was assigned to every MajorBBS / Worldgroup Sysop, derived from their original activation number.\n\n" +
                     "You can set this to your own Registration Number or just a random eight digit value.\n\n" + 
                     "If you have purchased or activated MBBS/WG modules in the past, set this value to the Registration Number you used to Activate those modules so you can Activate them in MBBSEmu as well.";
             };
+            
+
             secondStep.Add(lbl, bbsRegistrationNumberField);
 
-            lbl = new Label() { Text = "Cleanup Time: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            lbl = new Label { Text = "Cleanup Time: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
             var cleanupTimeField = new TimeField(new TimeSpan(0,3,0,0))
             {
                 X = Pos.Right(lbl),
@@ -120,7 +122,7 @@ namespace MBBSEmu.UI.Setup
             var thirdStep = new Wizard.WizardStep("Telnet Settings");
             thirdStep.HelpText = "Telnet Settings for MBBSEmu";
 
-            lbl = new Label() { Text = "Telnet Server: ", X = 1, Y = 1 };
+            lbl = new Label { Text = "Telnet Server: ", X = 1, Y = 1 };
             var telnetEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
             {
                 X = Pos.Right(lbl),
@@ -135,17 +137,17 @@ namespace MBBSEmu.UI.Setup
             thirdStep.Add(lbl, telnetEnabledRadio);
 
             lbl = new Label { Text = "Telnet Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
-            var telnetPortMask = new NetMaskedTextProvider("99999");
-            var telnetPortField = new TextValidateField(telnetPortMask) { Text = "21", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var telnetPortField = new TextField { Text = "21", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             telnetPortField.Enter += _ =>
             {
                 thirdStep.HelpText =
                     "Telnet Port\n\nPort Number that MBBSEmu will listen on for Telnet Connections.\n\n" + 
                     "On Linux, port numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
+
             thirdStep.Add(lbl, telnetPortField);
 
-            lbl = new Label() { Text = "Telnet Heartbeat: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            lbl = new Label { Text = "Telnet Heartbeat: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
             var telnetEnableHeartbeat = new RadioGroup(new ustring[] { "On", "Off" })
             {
                 X = Pos.Right(lbl),
@@ -182,26 +184,27 @@ namespace MBBSEmu.UI.Setup
             fourthStep.Add(lbl, rloginEnabledRadio);
 
             lbl = new Label { Text = "Rlogin Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
-            var rloginPortMask = new NetMaskedTextProvider("99999");
-            var rloginPortField = new TextValidateField(rloginPortMask) { Text = "513", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var rloginPortField = new TextField { Text = "513", Width = 6, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             rloginPortField.Enter += _ =>
             {
                 fourthStep.HelpText =
                     "Rlogin Port\n\nPort Number that MBBSEmu will listen on for Rlogin Connections.\n\n" +
                     "On Linux, Port Numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
+
             fourthStep.Add(lbl, rloginPortField);
 
             lbl = new Label { Text = "Rlogin Remote IP: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var rloginRemoteIPField = new TextField() { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var rloginRemoteIPField = new TextField { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             rloginRemoteIPField.Enter += _ =>
             {
                 fourthStep.HelpText =
                     "Rlogin Remote IP\n\nIP Address of Remote System that is allowed to connect via Rlogin.\n\nRlogin is an old, insecure protocol and this is your only line of security. If you're using Rlogin, please ensure this field is set properly.";
             };
+
             fourthStep.Add(lbl, rloginRemoteIPField);
 
-            lbl = new Label() { Text = "Port Per Module: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            lbl = new Label { Text = "Port Per Module: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
             var rloginPortPerModuleField = new RadioGroup(new ustring[] { "Yes", "No" })
             {
                 X = Pos.Right(lbl),
@@ -216,6 +219,81 @@ namespace MBBSEmu.UI.Setup
             };
             fourthStep.Add(lbl, rloginPortPerModuleField);
             wizard.AddStep(fourthStep);
+
+            //Final Step -- Review JSON Data
+            var finalStep = new Wizard.WizardStep("Review Settings");
+            finalStep.HelpText = "The following settings will be written to appsettings.json: ";
+            wizard.AddStep(finalStep);
+
+            wizard.StepChanging += (args) => {
+                if (args.OldStep == secondStep)
+                {
+                    if (string.IsNullOrEmpty(bbsNameField.Text.ToString()))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("BBS Settings", "You must enter a BBS Name to continue", "Ok");
+                    }
+
+                    if (!int.TryParse(bbsChannelsField.Text.ToString(), out var channelCount) || channelCount < 1 || channelCount > 255)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("BBS Settings", "You must enter a valid Channel Count between 1 and 255 to continue", "Ok");
+                    }
+
+                    if (!int.TryParse(bbsRegistrationNumberField.Text.ToString(), out var regNo))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("BBS Settings", "You must enter a valid BBS Registration Number to continue", "Ok");
+                    }
+
+                    if (bbsRegistrationNumberField.Text.ToString()!.Length != 8)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("BBS Settings", "You must enter a valid BBS Registration Number to continue", "Ok");
+                    }
+                    
+                }
+
+                if (args.OldStep == thirdStep)
+                {
+                    if (telnetEnabledRadio.SelectedItem == 0 && string.IsNullOrEmpty(telnetPortField.Text.ToString()))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Telnet Settings", "You must enter a Telnet Port to continue", "Ok");
+                    }
+
+                    if (int.TryParse(telnetPortField.Text.ToString(), out var telnetPort) &&
+                        telnetPort is < 1 or > 65535)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Telnet Settings", "You must enter a valid Telnet Port to continue", "Ok");
+                    }
+                }
+
+                if (args.OldStep == fourthStep)
+                {
+                    if (rloginEnabledRadio.SelectedItem == 0 && string.IsNullOrEmpty(rloginPortField.Text.ToString()))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Rlogin Settings", "You must enter a Rlogin Port to continue", "Ok");
+                    }
+
+                    if (int.TryParse(rloginPortField.Text.ToString(), out var rloginPort) &&
+                        rloginPort is < 1 or > 65535)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Rlogin Settings", "You must enter a valid Rlogin Port to continue", "Ok");
+                    }
+
+                    if (!IPAddress.TryParse(rloginRemoteIPField.Text.ToString(), out var rloginRemoteIP))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Rlogin Settings", "You must enter a valid Rlogin Remote IP to continue", "Ok");
+                    }
+
+                }
+                
+            };
 
             MainWindow.Add(wizard);
         }
