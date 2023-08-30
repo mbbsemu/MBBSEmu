@@ -279,13 +279,13 @@ namespace MBBSEmu
                     return;
                 }
 
-                var configuration = _serviceResolver.GetService<AppSettings>();
+                var configuration = _serviceResolver.GetService<AppSettingsManager>();
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
 
-                //Setup Logger from AppSettings
+                //Setup Logger from AppSettingsManager
                 LogManager.Configuration.LoggingRules.Clear();
                 CustomLogger.AddLogLevel("consoleLogger", configuration.ConsoleLogLevel);
                 if (!string.IsNullOrEmpty(configuration.FileLogName))

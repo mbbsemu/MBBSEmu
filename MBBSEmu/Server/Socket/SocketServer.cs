@@ -22,14 +22,14 @@ namespace MBBSEmu.Server.Socket
         private readonly ILogger _logger;
         private readonly IMbbsHost _host;
         private readonly ITextVariableService _textVariableService;
-        private readonly AppSettings _configuration;
+        private readonly AppSettingsManager _configuration;
 
         private System.Net.Sockets.Socket _listenerSocket;
         private EnumSessionType _sessionType;
         private string _moduleIdentifier;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public SocketServer(ILogger logger, IMbbsHost host, AppSettings configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
+        public SocketServer(ILogger logger, IMbbsHost host, AppSettingsManager configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
         {
             _logger = logger;
             _host = host;

@@ -66,7 +66,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected readonly ILogger _logger;
         private protected readonly IClock _clock;
-        private protected readonly AppSettings _configuration;
+        private protected readonly AppSettingsManager _configuration;
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
         private protected readonly ITextVariableService _textVariableService;
@@ -106,7 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
             _clock = clock;
             _logger = logger;
