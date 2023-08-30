@@ -1338,7 +1338,7 @@ namespace MBBSEmu.HostProcess
                     var channel = c.Value.Channel;
 
                     Logger.Error($"Sending cleanup warning to channel {channel}: {_cleanupWarningMinutesRemaining} {minuteText} until shutdown.");
-                    _channelDictionary[channel].SendToClient($"|RESET|\r\n|B||RED|Sorry to interrupt here, but the server will be shutting down in {_cleanupWarningMinutesRemaining} {minuteText}. Please finish up and log off.|RESET|\r\n".EncodeToANSIArray());
+                    _channelDictionary[channel].SendToClient($"|RESET|\r\n|B||MAGENTA|Sorry to interrupt here, but the server will be shutting down in {_cleanupWarningMinutesRemaining} {minuteText}. Please finish up and log off.|RESET|\r\n".EncodeToANSIArray());
                 }
                 _cleanupWarningMinutesRemaining--;
                 Logger.Error($"finished SendCleanupWarning");
