@@ -115,8 +115,8 @@ namespace MBBSEmu
                 if (args.Length == 0)
                 {
                     Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
-                    var response = Console.ReadKey();
-                    if (response.Key == ConsoleKey.Y)
+                    var response = Console.ReadLine()?.TrimEnd().ToUpper();
+                    if (string.IsNullOrEmpty(response) || response == "Y")
                     {
                         Console.WriteLine();
                         Console.WriteLine("Running Setup Wizard...");

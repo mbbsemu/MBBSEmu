@@ -201,7 +201,6 @@ namespace MBBSEmu.UI.Setup
                 fourthStep.HelpText =
                     "Rlogin Remote IP\n\nIP Address of Remote System that is allowed to connect via Rlogin.\n\nRlogin is an old, insecure protocol and this is your only line of security. If you're using Rlogin, please ensure this field is set properly.";
             };
-
             fourthStep.Add(lbl, rloginRemoteIPField);
 
             lbl = new Label { Text = "Port Per Module: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
@@ -219,11 +218,38 @@ namespace MBBSEmu.UI.Setup
             };
             fourthStep.Add(lbl, rloginPortPerModuleField);
             wizard.AddStep(fourthStep);
-
+            
+            //Next Step - Advanced Settings
+            var fifthStep = new Wizard.WizardStep("Advanced Settings");
+            fifthStep.HelpText = "Advanced Settings for MBBSEmu";
+            
+            lbl = new Label { Text = "Database Filename: ", X = 1, Y = 1 };
+            var databaseFilenameField = new TextField { Text = "mbbsemu.db", Width = 16, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            databaseFilenameField.Enter += _ =>
+            {
+                fifthStep.HelpText =
+                    "Database Filename\n\nSpecifies the filename to be used for the MBBSEmu internal database.\n\n" +
+                    "This is a SQLite Database that contains user information (username, hashed passwords, etc.) used by the various services within MBBSEmu.";
+            };
+            fifthStep.Add(lbl, databaseFilenameField);
+            
+            lbl = new Label { Text = "Btrieve Cache Size: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
+            var btrieveCacheSizeField = new TextField { Text = "4", Width = 3, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            btrieveCacheSizeField.Enter += _ =>
+            {
+                fifthStep.HelpText =
+                    "Btrieve Cache Size\n\nSpecifies the number of records within an open Btrieve file to keep cached in memory.\n\n" +
+                    "Btrieve DAT files are converted to SQLite at startup and each record is a binary struct. This value speeds up reads of records queried by the Btrieve API by Modules by keeping records in memory and not querying SQLite for each read.";
+            };
+            fifthStep.Add(lbl, btrieveCacheSizeField);
+            wizard.AddStep(fifthStep);
+            
             //Final Step -- Review JSON Data
             var finalStep = new Wizard.WizardStep("Review Settings");
             finalStep.HelpText = "The following settings will be written to appsettings.json: ";
             wizard.AddStep(finalStep);
+            
+            //Generate JSON Object from Specified Fields
 
             wizard.StepChanging += (args) => {
                 if (args.OldStep == secondStep)
@@ -297,5 +323,7 @@ namespace MBBSEmu.UI.Setup
 
             MainWindow.Add(wizard);
         }
+        
+        
     }
 }
