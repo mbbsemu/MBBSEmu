@@ -80,7 +80,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
 		<PackageReference Include="NLog" Version="5.2.3" />
-		<PackageReference Include="Terminal.Gui" Version="1.13.5" />
+		<PackageReference Include="Terminal.Gui" Version="1.14.0" />
 	</ItemGroup>
 
 	<ItemGroup>

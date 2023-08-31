@@ -1,7 +1,9 @@
 ﻿using NStack;
 using System;
 using System.Net;
+using System.Text.Json;
 using Terminal.Gui;
+using Attribute = Terminal.Gui.Attribute;
 
 namespace MBBSEmu.UI.Setup
 {
@@ -10,7 +12,7 @@ namespace MBBSEmu.UI.Setup
     {
         public SetupView() : base()
         {
-            
+
         }
 
         public override void Setup()
@@ -22,27 +24,31 @@ namespace MBBSEmu.UI.Setup
                 Height = Dim.Percent(75)
             };
 
-            wizard.MovingBack += (args) => {
+            wizard.MovingBack += (args) =>
+            {
                 //args.Cancel = true;
             };
 
-            wizard.MovingNext += (args) => {
+            wizard.MovingNext += (args) =>
+            {
                 //args.Cancel = true;
             };
 
-            wizard.Finished += (args) => {
+            wizard.Finished += (args) =>
+            {
                 //args.Cancel = true;
             };
 
-            wizard.Cancelled += (args) => {
+            wizard.Cancelled += (args) =>
+            {
                 //args.Cancel = true;
             };
 
             //Initial Setep (Welcome Message)
             var firstStep = new Wizard.WizardStep("Welcome to MBBSEmu!");
-            firstStep.HelpText = "Welcome to The MajorBBS Emulation Project!\n\n" + 
+            firstStep.HelpText = "Welcome to The MajorBBS Emulation Project!\n\n" +
                                  "MBBSEmu was created to allow quick, easy access to the Games we all love and remember that were written for The Major BBS 6.25 and Worldgroup for DOS!\n\n" +
-                                 "Our project is Open Source, Free, and Community Supported!\n\n" + 
+                                 "Our project is Open Source, Free, and Community Supported!\n\n" +
                                  "This Setup Wizard will guide you through the initial setup of MBBSEmu and the base settings. Click or Select Next below to start!";
             wizard.AddStep(firstStep);
 
@@ -77,15 +83,15 @@ namespace MBBSEmu.UI.Setup
             {
                 secondStep.HelpText =
                     "Registration Number:\n\nA unique, eight digit numeric value (including leading zeros) that was assigned to every MajorBBS / Worldgroup Sysop, derived from their original activation number.\n\n" +
-                    "You can set this to your own Registration Number or just a random eight digit value.\n\n" + 
+                    "You can set this to your own Registration Number or just a random eight digit value.\n\n" +
                     "If you have purchased or activated MBBS/WG modules in the past, set this value to the Registration Number you used to Activate those modules so you can Activate them in MBBSEmu as well.";
             };
-            
+
 
             secondStep.Add(lbl, bbsRegistrationNumberField);
 
             lbl = new Label { Text = "Cleanup Time: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var cleanupTimeField = new TimeField(new TimeSpan(0,3,0,0))
+            var cleanupTimeField = new TimeField(new TimeSpan(0, 3, 0, 0))
             {
                 X = Pos.Right(lbl),
                 Y = Pos.Top(lbl),
@@ -111,7 +117,7 @@ namespace MBBSEmu.UI.Setup
             {
                 secondStep.HelpText =
                     "Run Login Routines (Global):\n\nWhether or not to run the Login Routines in all modules when a user logs in.\n\n" +
-                    "While disabling this can result in better performance, some modules run logic on a Users Channel during login that should not be disabled.\n\n" + 
+                    "While disabling this can result in better performance, some modules run logic on a Users Channel during login that should not be disabled.\n\n" +
                     "We recommend you leave this option enabled with YES";
             };
             secondStep.Add(lbl, doLoginRoutineRadioGroup);
@@ -132,7 +138,7 @@ namespace MBBSEmu.UI.Setup
             telnetEnabledRadio.Enter += _ =>
             {
                 thirdStep.HelpText =
-                    "Telnet Enabled\n\nEnabling this option enables the MBBSEmu Telnet Daemon, allowing users to connect using their preferred Telnet client.";
+                    "Telnet Enabled:\n\nEnabling this option enables the MBBSEmu Telnet Daemon, allowing users to connect using their preferred Telnet client.";
             };
             thirdStep.Add(lbl, telnetEnabledRadio);
 
@@ -141,7 +147,7 @@ namespace MBBSEmu.UI.Setup
             telnetPortField.Enter += _ =>
             {
                 thirdStep.HelpText =
-                    "Telnet Port\n\nPort Number that MBBSEmu will listen on for Telnet Connections.\n\n" + 
+                    "Telnet Port:\n\nPort Number that MBBSEmu will listen on for Telnet Connections.\n\n" +
                     "On Linux, port numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
 
@@ -157,7 +163,7 @@ namespace MBBSEmu.UI.Setup
             telnetEnableHeartbeat.Enter += _ =>
             {
                 thirdStep.HelpText =
-                    "Telnet Heartbeat\n\nThis option is to help users whose connection between their Telnet Client and MBBSEmu will be terminated by intermediary network gear (firewalls, etc.) which will terminate a connection due to \"Inactivity\".\n\n" +
+                    "Telnet Heartbeat:\n\nThis option is to help users whose connection between their Telnet Client and MBBSEmu will be terminated by intermediary network gear (firewalls, etc.) which will terminate a connection due to \"Inactivity\".\n\n" +
                     "Unless you're experiencing disconnects while idle on MBBSEmu, we recommend you leave this option OFF";
             };
             thirdStep.Add(lbl, telnetEnableHeartbeat);
@@ -179,7 +185,7 @@ namespace MBBSEmu.UI.Setup
             rloginEnabledRadio.Enter += _ =>
             {
                 fourthStep.HelpText =
-                    "Rlogin Enabled\n\nEnabling this option enables the MBBSEmu Rlogin Daemon, allowing users to connect using Rlogin from another BBS Software such as Mystic or Synchronet.";
+                    "Rlogin Enabled:\n\nEnabling this option enables the MBBSEmu Rlogin Daemon, allowing users to connect using Rlogin from another BBS Software such as Mystic or Synchronet.";
             };
             fourthStep.Add(lbl, rloginEnabledRadio);
 
@@ -188,7 +194,7 @@ namespace MBBSEmu.UI.Setup
             rloginPortField.Enter += _ =>
             {
                 fourthStep.HelpText =
-                    "Rlogin Port\n\nPort Number that MBBSEmu will listen on for Rlogin Connections.\n\n" +
+                    "Rlogin Port:\n\nPort Number that MBBSEmu will listen on for Rlogin Connections.\n\n" +
                     "On Linux, Port Numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
 
@@ -199,7 +205,7 @@ namespace MBBSEmu.UI.Setup
             rloginRemoteIPField.Enter += _ =>
             {
                 fourthStep.HelpText =
-                    "Rlogin Remote IP\n\nIP Address of Remote System that is allowed to connect via Rlogin.\n\nRlogin is an old, insecure protocol and this is your only line of security. If you're using Rlogin, please ensure this field is set properly.";
+                    "Rlogin Remote IP:\n\nIP Address of Remote System that is allowed to connect via Rlogin.\n\nRlogin is an old, insecure protocol and this is your only line of security. If you're using Rlogin, please ensure this field is set properly.";
             };
             fourthStep.Add(lbl, rloginRemoteIPField);
 
@@ -213,45 +219,65 @@ namespace MBBSEmu.UI.Setup
             rloginPortPerModuleField.Enter += _ =>
             {
                 fourthStep.HelpText =
-                    "Port Per Field\n\nThis setting gives each Module it's own Rlogin port, starting with the specified Rlogin Port. This allows you to setup Rlogin from your remote system to have users land directly into the MBBS/WG Module without having to login or use the MBBSEmu Menu." + 
+                    "Port Per Module:\n\nThis setting gives each Module it's own Rlogin port, starting with the specified Rlogin Port. This allows you to setup Rlogin from your remote system to have users land directly into the MBBS/WG Module without having to login or use the MBBSEmu Menu." +
                     "For example, if you have three Modules and your specified Rlogin Port is 513 this means the following ports will be configured:\nModule 1: Port 513\nModule 2: Port 514\nModule 3: Port 515";
             };
             fourthStep.Add(lbl, rloginPortPerModuleField);
             wizard.AddStep(fourthStep);
-            
+
             //Next Step - Advanced Settings
             var fifthStep = new Wizard.WizardStep("Advanced Settings");
             fifthStep.HelpText = "Advanced Settings for MBBSEmu";
-            
+
             lbl = new Label { Text = "Database Filename: ", X = 1, Y = 1 };
             var databaseFilenameField = new TextField { Text = "mbbsemu.db", Width = 16, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             databaseFilenameField.Enter += _ =>
             {
                 fifthStep.HelpText =
-                    "Database Filename\n\nSpecifies the filename to be used for the MBBSEmu internal database.\n\n" +
+                    "Database Filename:\n\nSpecifies the filename to be used for the MBBSEmu internal database.\n\n" +
                     "This is a SQLite Database that contains user information (username, hashed passwords, etc.) used by the various services within MBBSEmu.";
             };
             fifthStep.Add(lbl, databaseFilenameField);
-            
+
             lbl = new Label { Text = "Btrieve Cache Size: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
             var btrieveCacheSizeField = new TextField { Text = "4", Width = 3, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
             btrieveCacheSizeField.Enter += _ =>
             {
                 fifthStep.HelpText =
-                    "Btrieve Cache Size\n\nSpecifies the number of records within an open Btrieve file to keep cached in memory.\n\n" +
+                    "Btrieve Cache Size:\n\nSpecifies the number of records within an open Btrieve file to keep cached in memory.\n\n" +
                     "Btrieve DAT files are converted to SQLite at startup and each record is a binary struct. This value speeds up reads of records queried by the Btrieve API by Modules by keeping records in memory and not querying SQLite for each read.";
             };
             fifthStep.Add(lbl, btrieveCacheSizeField);
             wizard.AddStep(fifthStep);
-            
+
             //Final Step -- Review JSON Data
             var finalStep = new Wizard.WizardStep("Review Settings");
-            finalStep.HelpText = "The following settings will be written to appsettings.json: ";
+
+            //Create a new AppSettings object to hold values collected in this Wizard
+            var appSettings = new AppSettings()
+            {
+                BBSTitle = bbsNameField.Text.ToString(),
+                BBSChannels = bbsChannelsField.Text.ToString(),
+                RegistrationNumber = bbsRegistrationNumberField.Text.ToString(),
+                TelnetEnabled = telnetEnabledRadio.SelectedItem == 0,
+                TelnetPort = telnetPortField.Text.ToString(),
+                TelnetHeartbeat = telnetEnableHeartbeat.SelectedItem == 0,
+                RloginEnabled = rloginEnabledRadio.SelectedItem == 0,
+                RloginPort = rloginPortField.Text.ToString(),
+                RloginRemoteIP = rloginRemoteIPField.Text.ToString(),
+                RloginPortPerModule = rloginPortPerModuleField.SelectedItem == 0,
+                DatabaseFilename = databaseFilenameField.Text.ToString(),
+                BtrieveCacheSize = int.Parse(btrieveCacheSizeField.Text.ToString())
+            };
+
+
+            finalStep.HelpText = $"The following settings will be written to appsettings.json:\n\n {JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true })}";
             wizard.AddStep(finalStep);
-            
+
             //Generate JSON Object from Specified Fields
 
-            wizard.StepChanging += (args) => {
+            wizard.StepChanging += (args) =>
+            {
                 if (args.OldStep == secondStep)
                 {
                     if (string.IsNullOrEmpty(bbsNameField.Text.ToString()))
@@ -277,7 +303,7 @@ namespace MBBSEmu.UI.Setup
                         args.Cancel = true;
                         MessageBox.ErrorQuery("BBS Settings", "You must enter a valid BBS Registration Number to continue", "Ok");
                     }
-                    
+
                 }
 
                 if (args.OldStep == thirdStep)
@@ -316,14 +342,28 @@ namespace MBBSEmu.UI.Setup
                         args.Cancel = true;
                         MessageBox.ErrorQuery("Rlogin Settings", "You must enter a valid Rlogin Remote IP to continue", "Ok");
                     }
-
                 }
-                
+
+                if (args.OldStep == fifthStep)
+                {
+                    if (string.IsNullOrEmpty(databaseFilenameField.Text.ToString()))
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Advanced Settings", "You must enter a Database Filename to continue", "Ok");
+                    }
+
+                    if (!int.TryParse(btrieveCacheSizeField.Text.ToString(), out var btrieveCacheSize) || btrieveCacheSize < 1)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Advanced Settings", "You must enter a valid Btrieve Cache Size to continue", "Ok");
+                    }
+                }
+
             };
 
             MainWindow.Add(wizard);
         }
-        
-        
+
+
     }
 }

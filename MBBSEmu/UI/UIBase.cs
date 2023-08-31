@@ -7,6 +7,15 @@ namespace MBBSEmu.UI
 
         public Window MainWindow { get; set; }
 
+        public readonly ColorScheme MbbsEmuColorScheme = new()
+        {
+            Normal = new Attribute(Color.White, Color.Blue),
+            Focus = new Attribute(Color.BrightYellow, Color.Blue),
+            HotNormal = new Attribute(Color.White, Color.Blue),
+            HotFocus = new Attribute(Color.White, Color.Blue),
+            Disabled = new Attribute(Color.White, Color.Blue)
+        };
+
         protected UIBase()
         {
             Application.Init();
@@ -15,7 +24,8 @@ namespace MBBSEmu.UI
                 X = 0,
                 Y = 1,
                 Width = Dim.Fill(),
-                Height = Dim.Fill()
+                Height = Dim.Fill(),
+                ColorScheme = MbbsEmuColorScheme
             };
             Application.Top.Add(MainWindow);
         }

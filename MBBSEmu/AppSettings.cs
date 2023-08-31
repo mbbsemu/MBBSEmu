@@ -20,6 +20,12 @@ namespace MBBSEmu
         public string BBSChannels { get; set; }
 
         /// <summary>
+        ///     Registration Number of your MBBS/Worldgroup BBS
+        /// </summary>
+        [JsonPropertyName("GSBL.BTURNO")]
+        public string RegistrationNumber { get; set; }
+
+        /// <summary>
         ///     Time of the Day (24-hour Clock) that the MajorBBS/Worldgroup Cleanup Routines will Run
         /// </summary>
         [JsonPropertyName("Cleanup.Time")]
@@ -41,7 +47,7 @@ namespace MBBSEmu
         ///     Port to be used by the MBBSEmu Telnet Daemon
         /// </summary>
         [JsonPropertyName("Telnet.Port")]
-        public int TelnetPort { get; set; }
+        public string TelnetPort { get; set; }
 
         /// <summary>
         ///     Heartbeat for the MBBSEmu Telnet Daemon
@@ -63,7 +69,7 @@ namespace MBBSEmu
         ///     When enabling Rlogin Port-Per-Module, this is the starting port number
         /// </summary>
         [JsonPropertyName("Rlogin.Port")]
-        public bool RloginPort { get; set; }
+        public string RloginPort { get; set; }
 
         /// <summary>
         ///     Remote IP allowed to connect to the MBBSEmu Rlogin Daemon
@@ -82,7 +88,7 @@ namespace MBBSEmu
         ///     Database File used by MBBSEmu for the User SQLite Database
         /// </summary>
         [JsonPropertyName("Database.File")]
-        public string DatabaseFile { get; set; }
+        public string DatabaseFilename { get; set; }
 
         /// <summary>
         ///     Cache Size (records) for the Btrieve Engine
