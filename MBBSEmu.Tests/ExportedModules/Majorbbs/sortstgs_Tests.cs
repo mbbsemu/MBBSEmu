@@ -53,7 +53,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             for (var i = 0; i < inputArray.Length; i++)
             {
                 resultPointer[i] = mbbsEmuMemoryCore.GetPointer(arrayPointer + (i * FarPtr.Size));
-                resultString[i] = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer[i]));
+                resultString[i] = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer[i], true));
             }
 
             var resultStringArray = resultString.ToArray();
