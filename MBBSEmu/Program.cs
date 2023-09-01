@@ -118,12 +118,13 @@ namespace MBBSEmu
                     var response = Console.ReadLine()?.TrimEnd().ToUpper();
                     if (string.IsNullOrEmpty(response) || response == "Y")
                     {
-                        Console.WriteLine();
-                        Console.WriteLine("Running Setup Wizard...");
+                        Console.WriteLine("Starting MBBSEmu Setup Wizard...");
                         var setupWizard = new SetupView();
                         setupWizard.Setup();
                         setupWizard.Run();
                         Console.WriteLine("Setup Wizard Complete!");
+                        Console.WriteLine("Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
+                        return;
                     }
                     else
                     {

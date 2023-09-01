@@ -1,6 +1,7 @@
 ﻿using NStack;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
@@ -11,6 +12,18 @@ namespace MBBSEmu.UI.Setup
     [UIMetadata(name: "Setup Wizard", description: "MBBSEmu Setup")]
     public class SetupView : UIBase
     {
+        private readonly ColorScheme _inputFieldColorScheme = new()
+        {
+            Focus = new Terminal.Gui.Attribute(Color.BrightYellow, Color.Blue)
+        };
+
+        private readonly ColorScheme _wizardStepColorScheme = new()
+        {
+            Focus = new Terminal.Gui.Attribute(Color.BrightYellow, Color.Blue),
+            HotFocus = new Terminal.Gui.Attribute(Color.BrightYellow, Color.Blue),
+            Normal = new Terminal.Gui.Attribute(Color.Black, Color.Gray)
+        };
+
         public SetupView() : base()
         {
 
@@ -46,19 +59,25 @@ namespace MBBSEmu.UI.Setup
             };
 
             //Initial Setep (Welcome Message)
-            var firstStep = new Wizard.WizardStep("Welcome to MBBSEmu!");
-            firstStep.HelpText = "Welcome to The MajorBBS Emulation Project!\n\n" +
+            var firstStep = new Wizard.WizardStep("Welcome to MBBSEmu!")
+            {
+                HelpText = "Welcome to The MajorBBS Emulation Project!\n\n" +
                                  "MBBSEmu was created to allow quick, easy access to the Games we all love and remember that were written for The Major BBS 6.25 and Worldgroup for DOS!\n\n" +
                                  "Our project is Open Source, Free, and Community Supported!\n\n" +
-                                 "This Setup Wizard will guide you through the initial setup of MBBSEmu and the base settings. Click or Select Next below to start!";
+                                 "This Setup Wizard will guide you through the initial setup of MBBSEmu and the base settings. Click or Select Next below to start!",
+                ColorScheme = _wizardStepColorScheme
+            };
             wizard.AddStep(firstStep);
 
             //Next Step - General Settings
-            var secondStep = new Wizard.WizardStep("General Settings");
-            secondStep.HelpText = "General Settings for MBBSEmu";
+            var secondStep = new Wizard.WizardStep("General Settings")
+            {
+                HelpText = "General Settings for MBBSEmu",
+                ColorScheme = _wizardStepColorScheme
+            };
 
             var lbl = new Label { Text = "BBS Name: ", X = 1, Y = 1 };
-            var bbsNameField = new TextField { Text = "Emulated MajorBBS System", Width = 30, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var bbsNameField = new TextField { Text = "Emulated MajorBBS System", Width = 30, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             bbsNameField.Enter += _ =>
             {
                 secondStep.HelpText =
@@ -67,28 +86,31 @@ namespace MBBSEmu.UI.Setup
             secondStep.Add(lbl, bbsNameField);
 
             lbl = new Label { Text = "Channels: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var bbsChannelsField = new TextField { Text = "8", Width = 4, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var bbsChannelsField = new TextField { Text = "8", Width = 4, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             bbsChannelsField.Enter += _ =>
             {
                 secondStep.HelpText =
                     "Channels:\n\nThe Number of Lines/Simultaneous Users your MBBSEmu instance will support. Depending on the modules you decide to run, a higher number of channels could result in slow performance.\n\n" +
                     "We recommend you set this number to a reasonable, realistic number based on the number of users you expect to be using MBBSEmu at the same time.";
             };
-
-
             secondStep.Add(lbl, bbsChannelsField);
 
             lbl = new Label { Text = "Registration Number: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var bbsRegistrationNumberField = new TextField { Text = "12345678", Width = 8, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var bbsRegistrationNumberField = new TextField
+            {
+                Text = new Random().Next(10000000, 99999999).ToString(), 
+                Width = 8, 
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl), 
+                ColorScheme = _inputFieldColorScheme
+            };
             bbsRegistrationNumberField.Enter += _ =>
             {
                 secondStep.HelpText =
                     "Registration Number:\n\nA unique, eight digit numeric value (including leading zeros) that was assigned to every MajorBBS / Worldgroup Sysop, derived from their original activation number.\n\n" +
-                    "You can set this to your own Registration Number or just a random eight digit value.\n\n" +
+                    "You can set this to your own Registration Number or the random default value.\n\n" +
                     "If you have purchased or activated MBBS/WG modules in the past, set this value to the Registration Number you used to Activate those modules so you can Activate them in MBBSEmu as well.";
             };
-
-
             secondStep.Add(lbl, bbsRegistrationNumberField);
 
             lbl = new Label { Text = "Cleanup Time: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
@@ -98,7 +120,8 @@ namespace MBBSEmu.UI.Setup
                 Y = Pos.Top(lbl),
                 IsShortFormat = true,
                 ReadOnly = false,
-                TextAlignment = TextAlignment.Left
+                TextAlignment = TextAlignment.Left,
+                ColorScheme = _inputFieldColorScheme
             };
             cleanupTimeField.Enter += _ =>
             {
@@ -107,7 +130,7 @@ namespace MBBSEmu.UI.Setup
             };
             secondStep.Add(lbl, cleanupTimeField);
 
-            lbl = new Label() { Text = "Run Login Routines (Global): ", X = 1, Y = Pos.Bottom(lbl) + 1 };
+            lbl = new Label { Text = "Run Login Routines (Global): ", X = 1, Y = Pos.Bottom(lbl) + 1 };
             var doLoginRoutineRadioGroup = new RadioGroup(new ustring[] { "Yes", "No" })
             {
                 X = Pos.Right(lbl),
@@ -126,8 +149,11 @@ namespace MBBSEmu.UI.Setup
             wizard.AddStep(secondStep);
 
             //Next Step - Telnet Settings
-            var thirdStep = new Wizard.WizardStep("Telnet Settings");
-            thirdStep.HelpText = "Telnet Settings for MBBSEmu";
+            var thirdStep = new Wizard.WizardStep("Telnet Settings")
+            {
+                HelpText = "Telnet Settings for MBBSEmu",
+                ColorScheme = _wizardStepColorScheme
+            };
 
             lbl = new Label { Text = "Telnet Server: ", X = 1, Y = 1 };
             var telnetEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
@@ -144,14 +170,13 @@ namespace MBBSEmu.UI.Setup
             thirdStep.Add(lbl, telnetEnabledRadio);
 
             lbl = new Label { Text = "Telnet Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
-            var telnetPortField = new TextField { Text = "21", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var telnetPortField = new TextField { Text = "21", Width = 5, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             telnetPortField.Enter += _ =>
             {
                 thirdStep.HelpText =
                     "Telnet Port:\n\nPort Number that MBBSEmu will listen on for Telnet Connections.\n\n" +
                     "On Linux, port numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
-
             thirdStep.Add(lbl, telnetPortField);
 
             lbl = new Label { Text = "Telnet Heartbeat: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
@@ -171,10 +196,12 @@ namespace MBBSEmu.UI.Setup
 
             wizard.AddStep(thirdStep);
 
-
             //Next Step - Rlogin Settings
-            var fourthStep = new Wizard.WizardStep("Rlogin Settings");
-            fourthStep.HelpText = "Rlogin Settings for MBBSEmu";
+            var fourthStep = new Wizard.WizardStep("Rlogin Settings")
+            {
+                HelpText = "Rlogin Settings for MBBSEmu",
+                ColorScheme = _wizardStepColorScheme
+            };
 
             lbl = new Label { Text = "Rlogin Server: ", X = 1, Y = 1 };
             var rloginEnabledRadio = new RadioGroup(new ustring[] { "Enabled", "Disabled" })
@@ -191,18 +218,17 @@ namespace MBBSEmu.UI.Setup
             fourthStep.Add(lbl, rloginEnabledRadio);
 
             lbl = new Label { Text = "Rlogin Port: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
-            var rloginPortField = new TextField { Text = "513", Width = 6, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var rloginPortField = new TextField { Text = "513", Width = 6, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             rloginPortField.Enter += _ =>
             {
                 fourthStep.HelpText =
                     "Rlogin Port:\n\nPort Number that MBBSEmu will listen on for Rlogin Connections.\n\n" +
                     "On Linux, Port Numbers below 1024 will require you run MBBSEmu with elevated privileges.";
             };
-
             fourthStep.Add(lbl, rloginPortField);
 
             lbl = new Label { Text = "Rlogin Remote IP: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
-            var rloginRemoteIPField = new TextField { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var rloginRemoteIPField = new TextField { Text = "127.0.0.1", Width = 15, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             rloginRemoteIPField.Enter += _ =>
             {
                 fourthStep.HelpText =
@@ -227,11 +253,14 @@ namespace MBBSEmu.UI.Setup
             wizard.AddStep(fourthStep);
 
             //Next Step - Advanced Settings
-            var fifthStep = new Wizard.WizardStep("Advanced Settings");
-            fifthStep.HelpText = "Advanced Settings for MBBSEmu";
+            var fifthStep = new Wizard.WizardStep("Advanced Settings")
+            {
+                HelpText = "Advanced Settings for MBBSEmu",
+                ColorScheme = _wizardStepColorScheme
+            };
 
             lbl = new Label { Text = "Database Filename: ", X = 1, Y = 1 };
-            var databaseFilenameField = new TextField { Text = "mbbsemu.db", Width = 16, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var databaseFilenameField = new TextField { Text = "mbbsemu.db", Width = 16, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             databaseFilenameField.Enter += _ =>
             {
                 fifthStep.HelpText =
@@ -241,7 +270,7 @@ namespace MBBSEmu.UI.Setup
             fifthStep.Add(lbl, databaseFilenameField);
 
             lbl = new Label { Text = "Btrieve Cache Size: ", X = 1, Y = Pos.Bottom(lbl) + 2 };
-            var btrieveCacheSizeField = new TextField { Text = "4", Width = 3, X = Pos.Right(lbl), Y = Pos.Top(lbl) };
+            var btrieveCacheSizeField = new TextField { Text = "4", Width = 3, X = Pos.Right(lbl), Y = Pos.Top(lbl), ColorScheme = _inputFieldColorScheme };
             btrieveCacheSizeField.Enter += _ =>
             {
                 fifthStep.HelpText =
@@ -252,22 +281,26 @@ namespace MBBSEmu.UI.Setup
             wizard.AddStep(fifthStep);
 
             //Next Step - Security Settings
-            var sixthStep = new Wizard.WizardStep("Security Settings");
-            sixthStep.HelpText = "Default User Keys\n\nUser Keys are used in MBBS/Worldgroup to give users specific permissions within modules.\n\nThese Keys will be the keys that every new user receives after creating an account within MBBSEmu. You can change a users keys within MBBSEmu as well using the /SYSOP command.";
+            var sixthStep = new Wizard.WizardStep("Security Settings")
+            {
+                HelpText = "Default User Keys\n\nUser Keys are used in MBBS/Worldgroup to give users specific permissions within modules.\n\nThese Keys will be the keys that every new user receives after creating an account within MBBSEmu. You can change a users keys within MBBSEmu as well using the /SYSOP command.",
+                ColorScheme = _wizardStepColorScheme
+            };
 
             lbl = new Label { Text = "Default User Keys: ", X = 1, Y = 1 };
             var keyToAddField = new TextField
             {
                 Width = 16,
                 X = Pos.Right(lbl),
-                Y = Pos.Top(lbl)
+                Y = Pos.Top(lbl),
+                ColorScheme = _inputFieldColorScheme
             };
             var addKeyButton = new Button("+", true)
             {
                 X = Pos.Right(keyToAddField) + 1,
                 Y = Pos.Top(lbl)
             };
-            var removeKeyButton = new Button("-", true)
+            var removeKeyButton = new Button("-")
             {
                 X = Pos.Right(addKeyButton) + 1,
                 Y = Pos.Top(lbl)
@@ -278,8 +311,21 @@ namespace MBBSEmu.UI.Setup
                 X = Pos.Left(keyToAddField),
                 Y = Pos.Bottom(lbl) + 1,
                 Width = 20,
-                Height = Dim.Fill() - 1,
+                Height = Dim.Fill() - 3,
                 ColorScheme = new ColorScheme() { Normal = Application.Driver.MakeAttribute(Color.BrightYellow, Color.Blue) }
+            };
+            var defaultButton = new Button("Defaults")
+            {
+                X = Pos.Left(keyListField),
+                Y = Pos.Bottom(keyListField)
+            };
+
+            defaultButton.Clicked += () =>
+            {
+                defaultKeys = new List<ustring> { "DEMO", "NORMAL", "USER" };
+                keyListField.SetSource(defaultKeys);
+                keyToAddField.Text = string.Empty;
+                Application.Refresh();
             };
 
             keyListField.SelectedItemChanged += (args) =>
@@ -320,17 +366,18 @@ namespace MBBSEmu.UI.Setup
                 keyToAddField.Text = "";
                 Application.Refresh();
             };
-            sixthStep.Add(lbl, keyToAddField, addKeyButton, removeKeyButton, keyListField);
+            sixthStep.Add(lbl, keyToAddField, addKeyButton, removeKeyButton, keyListField, defaultButton);
             wizard.AddStep(sixthStep);
 
             //Final Step -- Review JSON Data
-            var finalStep = new Wizard.WizardStep("Review Settings");
+            var finalStep = new Wizard.WizardStep("Review Settings") { ColorScheme = _wizardStepColorScheme };
 
             //Create a new AppSettings object to hold values collected in this Wizard
             var appSettings = new AppSettings()
             {
                 BBSTitle = bbsNameField.Text.ToString(),
                 BBSChannels = bbsChannelsField.Text.ToString(),
+                CleanupTime = cleanupTimeField.Text.ToString()?.Trim(),
                 RegistrationNumber = bbsRegistrationNumberField.Text.ToString(),
                 TelnetEnabled = telnetEnabledRadio.SelectedItem == 0,
                 TelnetPort = telnetPortField.Text.ToString(),
@@ -348,7 +395,6 @@ namespace MBBSEmu.UI.Setup
             wizard.AddStep(finalStep);
 
             //Generate JSON Object from Specified Fields
-
             wizard.StepChanging += (args) =>
             {
                 if (args.OldStep == secondStep)
@@ -431,7 +477,37 @@ namespace MBBSEmu.UI.Setup
                         MessageBox.ErrorQuery("Advanced Settings", "You must enter a valid Btrieve Cache Size to continue", "Ok");
                     }
                 }
+
+                if (args.OldStep == sixthStep)
+                {
+                    if (defaultKeys.Count == 0)
+                    {
+                        args.Cancel = true;
+                        MessageBox.ErrorQuery("Account Settings", "You must enter at least one Account Default Key to continue", "Ok");
+                    }
+                }
             };
+
+            wizard.Finished += (args) =>
+            {
+                //Confirm user wants to write settings to appsettings.json
+                if (MessageBox.Query("Confirm", "Are you sure you want to write these settings to appsettings.json?",
+                        "Yes", "No") == 0)
+                {
+                    //Write settings to appsettings.json
+                    var appSettingsJson = JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true });
+                    File.WriteAllText("appsettings.json", appSettingsJson);
+
+                    //Close the Wizard
+                    wizard.Running = false;
+                    wizard.Visible = false;
+                    this.RequestStop();
+
+                    //Show a message box to confirm settings were written
+                    MessageBox.Query("Success", "Settings were successfully written to appsettings.json", "Ok");
+                }
+            };
+
             MainWindow.Add(wizard);
         }
     }
