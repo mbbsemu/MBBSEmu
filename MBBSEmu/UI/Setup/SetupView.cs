@@ -1,9 +1,10 @@
 ﻿using NStack;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text.Json;
 using Terminal.Gui;
-using Attribute = Terminal.Gui.Attribute;
 
 namespace MBBSEmu.UI.Setup
 {
@@ -250,6 +251,78 @@ namespace MBBSEmu.UI.Setup
             fifthStep.Add(lbl, btrieveCacheSizeField);
             wizard.AddStep(fifthStep);
 
+            //Next Step - Security Settings
+            var sixthStep = new Wizard.WizardStep("Security Settings");
+            sixthStep.HelpText = "Default User Keys\n\nUser Keys are used in MBBS/Worldgroup to give users specific permissions within modules.\n\nThese Keys will be the keys that every new user receives after creating an account within MBBSEmu. You can change a users keys within MBBSEmu as well using the /SYSOP command.";
+
+            lbl = new Label { Text = "Default User Keys: ", X = 1, Y = 1 };
+            var keyToAddField = new TextField
+            {
+                Width = 16,
+                X = Pos.Right(lbl),
+                Y = Pos.Top(lbl)
+            };
+            var addKeyButton = new Button("+", true)
+            {
+                X = Pos.Right(keyToAddField) + 1,
+                Y = Pos.Top(lbl)
+            };
+            var removeKeyButton = new Button("-", true)
+            {
+                X = Pos.Right(addKeyButton) + 1,
+                Y = Pos.Top(lbl)
+            };
+            var defaultKeys = new List<ustring> { "DEMO", "NORMAL", "USER" };
+            var keyListField = new ListView(defaultKeys)
+            {
+                X = Pos.Left(keyToAddField),
+                Y = Pos.Bottom(lbl) + 1,
+                Width = 20,
+                Height = Dim.Fill() - 1,
+                ColorScheme = new ColorScheme() { Normal = Application.Driver.MakeAttribute(Color.BrightYellow, Color.Blue) }
+            };
+
+            keyListField.SelectedItemChanged += (args) =>
+            {
+                keyToAddField.Text = defaultKeys[keyListField.SelectedItem];
+                removeKeyButton.SetFocus();
+            };
+
+            removeKeyButton.Clicked += () =>
+            {
+                if (keyListField.SelectedItem == null)
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "No Key Selected", "Ok");
+                    return;
+                }
+                defaultKeys.RemoveAt(keyListField.SelectedItem);
+                keyListField.SetSource(defaultKeys);
+                keyToAddField.Text = string.Empty;
+                Application.Refresh();
+            };
+
+            addKeyButton.Clicked += () =>
+            {
+                if (string.IsNullOrEmpty(keyToAddField.Text.ToString()))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Key cannot be empty", "Ok");
+                    return;
+                }
+
+                if (defaultKeys.Contains(keyToAddField.Text.ToString()))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Key already exists", "Ok");
+                    return;
+                }
+
+                defaultKeys.Add(keyToAddField.Text.ToString());
+                keyListField.SetSource(defaultKeys);
+                keyToAddField.Text = "";
+                Application.Refresh();
+            };
+            sixthStep.Add(lbl, keyToAddField, addKeyButton, removeKeyButton, keyListField);
+            wizard.AddStep(sixthStep);
+
             //Final Step -- Review JSON Data
             var finalStep = new Wizard.WizardStep("Review Settings");
 
@@ -267,9 +340,9 @@ namespace MBBSEmu.UI.Setup
                 RloginRemoteIP = rloginRemoteIPField.Text.ToString(),
                 RloginPortPerModule = rloginPortPerModuleField.SelectedItem == 0,
                 DatabaseFilename = databaseFilenameField.Text.ToString(),
-                BtrieveCacheSize = int.Parse(btrieveCacheSizeField.Text.ToString())
+                BtrieveCacheSize = int.Parse(btrieveCacheSizeField.Text.ToString()),
+                AccountDefaultKeys = defaultKeys.Select(x => x.ToString()).ToArray()
             };
-
 
             finalStep.HelpText = $"The following settings will be written to appsettings.json:\n\n {JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true })}";
             wizard.AddStep(finalStep);
@@ -358,12 +431,8 @@ namespace MBBSEmu.UI.Setup
                         MessageBox.ErrorQuery("Advanced Settings", "You must enter a valid Btrieve Cache Size to continue", "Ok");
                     }
                 }
-
             };
-
             MainWindow.Add(wizard);
         }
-
-
     }
 }
