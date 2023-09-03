@@ -4,7 +4,11 @@ namespace MBBSEmu.UI
 {
     public abstract class UIBase
     {
-
+        /// <summary>
+        ///     Base Class for all UI Views
+        ///
+        ///     Has Helpers Methods and Window Definitions for all UI Views
+        /// </summary>
         public Window MainWindow { get; set; }
 
         protected UIBase()

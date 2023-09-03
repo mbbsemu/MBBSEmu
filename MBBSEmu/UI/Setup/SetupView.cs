@@ -9,6 +9,9 @@ using Terminal.Gui;
 
 namespace MBBSEmu.UI.Setup
 {
+    /// <summary>
+    ///     View for the Initial Setup Wizard
+    /// </summary>
     [UIMetadata(name: "Setup Wizard", description: "MBBSEmu Setup")]
     public class SetupView : UIBase
     {
