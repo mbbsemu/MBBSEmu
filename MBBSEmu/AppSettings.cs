@@ -88,7 +88,7 @@ namespace MBBSEmu
         ///     Database File used by MBBSEmu for the User SQLite Database
         /// </summary>
         [JsonPropertyName("Database.File")]
-        public string DatabaseFilename { get; set; }
+        public string UserDatabaseFilename { get; set; }
 
         /// <summary>
         ///     Cache Size (records) for the Btrieve Engine

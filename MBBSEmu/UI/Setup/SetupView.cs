@@ -41,26 +41,6 @@ namespace MBBSEmu.UI.Setup
                 Height = Dim.Percent(75)
             };
 
-            wizard.MovingBack += (args) =>
-            {
-                //args.Cancel = true;
-            };
-
-            wizard.MovingNext += (args) =>
-            {
-                //args.Cancel = true;
-            };
-
-            wizard.Finished += (args) =>
-            {
-                //args.Cancel = true;
-            };
-
-            wizard.Cancelled += (args) =>
-            {
-                //args.Cancel = true;
-            };
-
             //Initial Setep (Welcome Message)
             var firstStep = new Wizard.WizardStep("Welcome to MBBSEmu!")
             {
@@ -389,7 +369,7 @@ namespace MBBSEmu.UI.Setup
                 RloginPort = rloginPortField.Text.ToString(),
                 RloginRemoteIP = rloginRemoteIPField.Text.ToString(),
                 RloginPortPerModule = rloginPortPerModuleField.SelectedItem == 0,
-                DatabaseFilename = databaseFilenameField.Text.ToString(),
+                UserDatabaseFilename = databaseFilenameField.Text.ToString(),
                 BtrieveCacheSize = int.Parse(btrieveCacheSizeField.Text.ToString()),
                 AccountDefaultKeys = defaultKeys.Select(x => x.ToString()).ToArray()
             };
