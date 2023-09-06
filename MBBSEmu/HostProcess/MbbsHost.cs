@@ -104,7 +104,7 @@ namespace MBBSEmu.HostProcess
         private Timer _cleanupWarningTimer;
 
         /// <summary>
-        ///     Amount of time to start warning before cleanup.
+        ///     Amount of time to start warning before cleanup grace period ends.
         /// </summary>
         private const int CleanupWarningInitialMinutes = 5;
 
@@ -112,6 +112,13 @@ namespace MBBSEmu.HostProcess
         ///     Track minutes left until the nightly cleanup occurs.
         /// </summary>
         private int _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
+
+        /// <summary>
+        ///     Amount of time to give as a grace period to logoff after nightly cleanup.
+        /// </summary>
+        private const int _cleanupGracePeriodMinutes = 10;
+        private readonly TimeSpan _cleanupGracePeriod = TimeSpan.FromMinutes(_cleanupGracePeriodMinutes);
+
 
         /// <summary>
         ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
@@ -158,7 +165,8 @@ namespace MBBSEmu.HostProcess
 
             //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
-            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime + _cleanupGracePeriod), TimeSpan.FromDays(1));
+
             Logger.Error($"Waiting {NowUntil(_cleanupTime)} until {_cleanupTime} to perform Nightly Cleanup");
 
             _cleanupWarningTimer = SetupCleanupWarningTimer();
@@ -1312,11 +1320,14 @@ namespace MBBSEmu.HostProcess
         {
             _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
 
-            var initialWarningTime = _cleanupTime - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
+            var initialWarningTime = _cleanupTime + _cleanupGracePeriod - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
             var dueTime = (int) NowUntil(initialWarningTime).TotalMilliseconds;
             var period = (int) TimeSpan.FromMinutes(1).TotalMilliseconds;
 
-            Logger.Error($"initialWarningTime: {initialWarningTime.Minutes}");
+            Logger.Error($"_cleanupTime Hours: {_cleanupTime.Hours}");
+            Logger.Error($"_cleanupTime Minutes: {_cleanupTime.Minutes}");
+            Logger.Error($"initialWarningTime Hours: {initialWarningTime.Hours}");
+            Logger.Error($"initialWarningTime Minutes: {initialWarningTime.Minutes}");
             Logger.Error($"dueTime: {NowUntil(initialWarningTime).Minutes}");
             Logger.Error($"period: {TimeSpan.FromMinutes(1).Minutes}");
 
