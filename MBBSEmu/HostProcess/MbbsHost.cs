@@ -166,9 +166,6 @@ namespace MBBSEmu.HostProcess
             //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
             _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime + _cleanupGracePeriod), TimeSpan.FromDays(1));
-
-            Logger.Error($"Waiting {NowUntil(_cleanupTime)} until {_cleanupTime} to perform Nightly Cleanup");
-
             _cleanupWarningTimer = SetupCleanupWarningTimer();
 
             if (_configuration.TimerHertz > 0)
@@ -1321,26 +1318,24 @@ namespace MBBSEmu.HostProcess
             _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
 
             var initialWarningTime = _cleanupTime + _cleanupGracePeriod - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
-            var dueTime = (int) NowUntil(initialWarningTime).TotalMilliseconds;
-            var period = (int) TimeSpan.FromMinutes(1).TotalMilliseconds;
+            var dueTime = NowUntil(initialWarningTime);
+            var period = TimeSpan.FromMinutes(1);
 
-            Logger.Error($"_cleanupTime Hours: {_cleanupTime.Hours}");
-            Logger.Error($"_cleanupTime Minutes: {_cleanupTime.Minutes}");
-            Logger.Error($"initialWarningTime Hours: {initialWarningTime.Hours}");
-            Logger.Error($"initialWarningTime Minutes: {initialWarningTime.Minutes}");
-            Logger.Error($"dueTime: {NowUntil(initialWarningTime).Minutes}");
-            Logger.Error($"period: {TimeSpan.FromMinutes(1).Minutes}");
+            Logger.Debug($"_cleanupTime Hours: {_cleanupTime.Hours}");
+            Logger.Debug($"_cleanupTime Minutes: {_cleanupTime.Minutes}");
+            Logger.Debug($"initialWarningTime Hours: {initialWarningTime.Hours}");
+            Logger.Debug($"initialWarningTime Minutes: {initialWarningTime.Minutes}");
+            Logger.Debug($"dueTime: {NowUntil(initialWarningTime).Minutes}");
+            Logger.Debug($"period: {period.Minutes}");
 
-            return new Timer(SendCleanupWarning, null, dueTime, period);
+            return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
         }
 
         private void SendCleanupWarning(object _)
         {
-            Logger.Error($"in SendCleanupWarning");
-
             if (_cleanupWarningMinutesRemaining > 0)
             {
-                Logger.Error($"in SendCleanupWarning, _cleanupWarningMinutesRemaining = {_cleanupWarningMinutesRemaining}");
+                Logger.Debug($"in SendCleanupWarning, _cleanupWarningMinutesRemaining = {_cleanupWarningMinutesRemaining}");
 
                 var minuteText = (_cleanupWarningMinutesRemaining > 1) ? "minutes" : "minute";
 
@@ -1352,7 +1347,7 @@ namespace MBBSEmu.HostProcess
                     _channelDictionary[channel].SendToClient($"|RESET|\r\n|B||MAGENTA|Sorry to interrupt here, but the server will be shutting down in {_cleanupWarningMinutesRemaining} {minuteText} for the nightly \"auto-cleanup\" process. Please finish up and log off... thank you!|RESET|\r\n".EncodeToANSIArray());
                 }
                 _cleanupWarningMinutesRemaining--;
-                Logger.Error($"finished SendCleanupWarning");
+                Logger.Debug($"finished SendCleanupWarning");
             }
             else
             {
