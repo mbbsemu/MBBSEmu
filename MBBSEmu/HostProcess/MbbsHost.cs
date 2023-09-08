@@ -1357,6 +1357,7 @@ namespace MBBSEmu.HostProcess
             else
             {
                 _cleanupWarningTimer.Dispose();
+                _cleanupWarningTimer = null;
             }
         }
 
@@ -1364,6 +1365,7 @@ namespace MBBSEmu.HostProcess
         {
             if (_performCleanup)
             {
+                Logger.Info($"Beginning nightly cleanup process.");
                 _performCleanup = false;
                 DoNightlyCleanup();
 
@@ -1372,6 +1374,7 @@ namespace MBBSEmu.HostProcess
                 _cleanupRestartEvent = null;
 
                 _cleanupWarningTimer = SetupCleanupWarningTimer();
+                Logger.Info($"Nightly cleanup complete.");
             }
         }
 
