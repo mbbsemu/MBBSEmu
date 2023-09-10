@@ -96,13 +96,35 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Timer that triggers when nightly cleanup should occur
         /// </summary>
-        private readonly Timer _timer;
+        private readonly Timer _cleanupTimer;
+
+        /// <summary>
+        ///     Timer that triggers when nightly cleanup warning messages should start
+        /// </summary>
+        private Timer _cleanupWarningTimer;
+
+        /// <summary>
+        ///     Amount of time to start warning before cleanup grace period ends.
+        /// </summary>
+        private const int CleanupWarningInitialMinutes = 5;
+
+        /// <summary>
+        ///     Track minutes left until the nightly cleanup occurs.
+        /// </summary>
+        private int _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
+
+        /// <summary>
+        ///     Amount of time to give as a grace period to logoff after nightly cleanup.
+        /// </summary>
+        private const int CleanupGracePeriodMinutes = 10;
+        private readonly TimeSpan _cleanupGracePeriod = TimeSpan.FromMinutes(CleanupGracePeriodMinutes);
+
+
         /// <summary>
         ///     Timer that sets _timerEvent on a set interval, controlled by Timer.Hertz
         /// </summary>
         private readonly Timer _tickTimer;
         private readonly EventWaitHandle _timerEvent;
-
 
         /// <summary>
         ///     Flag that controls whether the main loop will perform a nightly cleanup
@@ -140,8 +162,11 @@ namespace MBBSEmu.HostProcess
             _exportedFunctions = new Dictionary<string, IExportedModule>();
             _realTimeStopwatch = Stopwatch.StartNew();
             _incomingSessions = new Queue<SessionBase>();
+
+            //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
-            _timer = new Timer(_ => _performCleanup = true, this, NowUntil(_cleanupTime), TimeSpan.FromDays(1));
+            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime + _cleanupGracePeriod), TimeSpan.FromDays(1));
+            _cleanupWarningTimer = SetupCleanupWarningTimer();
 
             if (_configuration.TimerHertz > 0)
             {
@@ -212,7 +237,8 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
-            _timer.Dispose();
+            _cleanupTimer?.Dispose();
+            _cleanupWarningTimer?.Dispose();
             _tickTimer?.Dispose();
             // this set must come after _isRunning is set to false, to trigger the exit of the
             // worker thread.
@@ -1287,16 +1313,53 @@ namespace MBBSEmu.HostProcess
             _modules[moduleId].ModuleConfig.ModuleEnabled = false;
         }
 
+        private Timer SetupCleanupWarningTimer()
+        {
+            _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
+
+            var initialWarningTime = _cleanupTime + _cleanupGracePeriod - TimeSpan.FromMinutes(CleanupWarningInitialMinutes);
+            var dueTime = NowUntil(initialWarningTime);
+            var period = TimeSpan.FromMinutes(1);
+
+            return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
+        }
+
+        private void SendCleanupWarning(object _)
+        {
+            if (_cleanupWarningMinutesRemaining > 0)
+            {
+                Logger.Debug($"in SendCleanupWarning, _cleanupWarningMinutesRemaining = {_cleanupWarningMinutesRemaining}");
+
+                var minuteText = (_cleanupWarningMinutesRemaining > 1) ? "minutes" : "minute";
+
+                foreach (var channel in _channelDictionary.Select(c => c.Value.Channel))
+                {
+                    Logger.Debug($"Sending cleanup warning to channel {channel}: {_cleanupWarningMinutesRemaining} {minuteText} until shutdown.");
+                    _channelDictionary[channel].SendToClient($"|RESET|\r\n|B||MAGENTA|Sorry to interrupt here, but the server will be shutting down in {_cleanupWarningMinutesRemaining} {minuteText} for the nightly \"auto-cleanup\" process. Please finish up and log off... thank you!|RESET|\r\n".EncodeToANSIArray());
+                }
+                _cleanupWarningMinutesRemaining--;
+            }
+            else
+            {
+                _cleanupWarningTimer.Dispose();
+                _cleanupWarningTimer = null;
+            }
+        }
+
         private void ProcessNightlyCleanup()
         {
             if (_performCleanup)
             {
+                Logger.Info($"Beginning nightly cleanup process.");
                 _performCleanup = false;
                 DoNightlyCleanup();
 
                 // signal that cleanup has completed
                 _cleanupRestartEvent?.Set();
                 _cleanupRestartEvent = null;
+
+                _cleanupWarningTimer = SetupCleanupWarningTimer();
+                Logger.Info($"Nightly cleanup complete.");
             }
         }
 
@@ -1340,15 +1403,19 @@ namespace MBBSEmu.HostProcess
             Start(moduleConfigurations);
         }
 
+        /// <summary>
+        ///     Returns a TimeSpan representing the time between now and the specified time.
+        /// </summary>
+        /// <param name="timeOfDay">24-hour timespan representing a time of day, and determining the time between now and the time specified</param>
+        /// <returns></returns>
         private TimeSpan NowUntil(TimeSpan timeOfDay)
         {
-            var waitTime = _cleanupTime - Clock.Now.TimeOfDay;
+            var waitTime = timeOfDay - Clock.Now.TimeOfDay;
             if (waitTime < TimeSpan.Zero)
             {
                 waitTime += TimeSpan.FromDays(1);
             }
 
-            Logger.Info($"Waiting {waitTime} until {timeOfDay} to perform nightly cleanup");
             return waitTime;
         }
 
