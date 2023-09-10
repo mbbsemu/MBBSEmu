@@ -32,13 +32,13 @@ namespace MBBSEmu.Session.Rlogin
     public class RloginSession : SocketSession
     {
         private readonly PointerDictionary<SessionBase> _channelDictionary;
-        private readonly AppSettings _configuration;
+        private readonly AppSettingsManager _configuration;
         private readonly List<string> rloginStrings = new();
         private readonly MemoryStream memoryStream = new(1024);
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettings configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
+        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettingsManager configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
         {
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;

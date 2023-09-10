@@ -23,7 +23,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        internal Galme(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
+        internal Galme(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             var txtlenPointer = Module.Memory.AllocateVariable("TXTLEN", 0x2);

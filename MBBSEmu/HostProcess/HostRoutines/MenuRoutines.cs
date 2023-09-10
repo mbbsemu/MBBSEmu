@@ -28,14 +28,14 @@ namespace MBBSEmu.HostProcess.HostRoutines
         private readonly IResourceManager _resourceManager;
         private readonly IAccountRepository _accountRepository;
         private readonly IAccountKeyRepository _accountKeyRepository;
-        private readonly AppSettings _configuration;
+        private readonly AppSettingsManager _configuration;
         private readonly IGlobalCache _globalCache;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
         private static readonly byte[] ANSI_ERASE_DISPLAY = { 0x1B, 0x5B, 0x32, 0x4A };
         private static readonly byte[] ANSI_RESET_CURSOR = { 0x1B, 0x5B, 0x48 };
 
-        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettings configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository, PointerDictionary<SessionBase> channelDictionary)
+        public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository, AppSettingsManager configuration, IGlobalCache globalCache, IAccountKeyRepository accountKeyRepository, PointerDictionary<SessionBase> channelDictionary)
         {
             _resourceManager = resourceManager;
             _accountRepository = accountRepository;

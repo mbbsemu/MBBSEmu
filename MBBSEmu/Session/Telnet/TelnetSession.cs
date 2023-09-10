@@ -20,7 +20,7 @@ namespace MBBSEmu.Session.Telnet
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
 
         private readonly bool _heartbeat;
-        private readonly AppSettings _configuration;
+        private readonly AppSettingsManager _configuration;
 
         //Tracks Responses We've already sent -- prevents looping
         private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
@@ -45,7 +45,7 @@ namespace MBBSEmu.Session.Telnet
 
         private readonly IacFilter _iacFilter;
 
-        public TelnetSession(IMbbsHost mbbsHost, ILogger logger, Socket telnetConnection, AppSettings configuration, ITextVariableService textVariableService) : base(mbbsHost, logger, telnetConnection, textVariableService)
+        public TelnetSession(IMbbsHost mbbsHost, ILogger logger, Socket telnetConnection, AppSettingsManager configuration, ITextVariableService textVariableService) : base(mbbsHost, logger, telnetConnection, textVariableService)
         {
             SessionType = EnumSessionType.Telnet;
             SessionState = EnumSessionState.Unauthenticated;

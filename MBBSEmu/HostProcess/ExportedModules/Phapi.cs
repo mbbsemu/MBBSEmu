@@ -28,7 +28,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        internal Phapi(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
+        internal Phapi(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
         }

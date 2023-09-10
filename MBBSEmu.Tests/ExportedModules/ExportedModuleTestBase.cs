@@ -69,7 +69,7 @@ namespace MBBSEmu.Tests.ExportedModules
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<AppSettings>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -81,7 +81,7 @@ namespace MBBSEmu.Tests.ExportedModules
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<AppSettings>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -137,7 +137,7 @@ namespace MBBSEmu.Tests.ExportedModules
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<AppSettings>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,
@@ -149,7 +149,7 @@ namespace MBBSEmu.Tests.ExportedModules
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<ILogger>(),
-                _serviceResolver.GetService<AppSettings>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule,

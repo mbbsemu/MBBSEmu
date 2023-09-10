@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MBBSEmu.UI.Setup;
 
 namespace MBBSEmu
 {
@@ -112,7 +113,24 @@ namespace MBBSEmu
             try
             {
                 if (args.Length == 0)
-                    args = new[] { "-?" };
+                {
+                    Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
+                    var response = Console.ReadLine()?.TrimEnd().ToUpper();
+                    if (string.IsNullOrEmpty(response) || response == "Y")
+                    {
+                        Console.WriteLine("Starting MBBSEmu Setup Wizard...");
+                        var setupWizard = new SetupView();
+                        setupWizard.Setup();
+                        setupWizard.Run();
+                        Console.WriteLine("Setup Wizard Complete!");
+                        Console.WriteLine("Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
+                        return;
+                    }
+                    else
+                    {
+                        args = new[] { "-?" };
+                    }
+                }
 
                 string[] programArgs = args;
 
@@ -262,13 +280,13 @@ namespace MBBSEmu
                     return;
                 }
 
-                var configuration = _serviceResolver.GetService<AppSettings>();
+                var configuration = _serviceResolver.GetService<AppSettingsManager>();
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
 
-                //Setup Logger from AppSettings
+                //Setup Logger from AppSettingsManager
                 LogManager.Configuration.LoggingRules.Clear();
                 CustomLogger.AddLogLevel("consoleLogger", configuration.ConsoleLogLevel);
                 if (!string.IsNullOrEmpty(configuration.FileLogName))

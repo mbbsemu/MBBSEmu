@@ -124,7 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
+        public Majorbbs(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _accountKeyRepository = accountKeyRepository;
