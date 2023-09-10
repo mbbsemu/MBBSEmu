@@ -116,8 +116,8 @@ namespace MBBSEmu.HostProcess
         /// <summary>
         ///     Amount of time to give as a grace period to logoff after nightly cleanup.
         /// </summary>
-        private const int _cleanupGracePeriodMinutes = 10;
-        private readonly TimeSpan _cleanupGracePeriod = TimeSpan.FromMinutes(_cleanupGracePeriodMinutes);
+        private const int CleanupGracePeriodMinutes = 10;
+        private readonly TimeSpan _cleanupGracePeriod = TimeSpan.FromMinutes(CleanupGracePeriodMinutes);
 
 
         /// <summary>
@@ -1321,13 +1321,6 @@ namespace MBBSEmu.HostProcess
             var dueTime = NowUntil(initialWarningTime);
             var period = TimeSpan.FromMinutes(1);
 
-            Logger.Debug($"_cleanupTime Hours: {_cleanupTime.Hours}");
-            Logger.Debug($"_cleanupTime Minutes: {_cleanupTime.Minutes}");
-            Logger.Debug($"initialWarningTime Hours: {initialWarningTime.Hours}");
-            Logger.Debug($"initialWarningTime Minutes: {initialWarningTime.Minutes}");
-            Logger.Debug($"dueTime: {NowUntil(initialWarningTime).Minutes}");
-            Logger.Debug($"period: {period.Minutes}");
-
             return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
         }
 
@@ -1339,15 +1332,12 @@ namespace MBBSEmu.HostProcess
 
                 var minuteText = (_cleanupWarningMinutesRemaining > 1) ? "minutes" : "minute";
 
-                foreach (var c in _channelDictionary)
+                foreach (var channel in _channelDictionary.Select(c => c.Value.Channel))
                 {
-                    var channel = c.Value.Channel;
-
-                    Logger.Error($"Sending cleanup warning to channel {channel}: {_cleanupWarningMinutesRemaining} {minuteText} until shutdown.");
+                    Logger.Debug($"Sending cleanup warning to channel {channel}: {_cleanupWarningMinutesRemaining} {minuteText} until shutdown.");
                     _channelDictionary[channel].SendToClient($"|RESET|\r\n|B||MAGENTA|Sorry to interrupt here, but the server will be shutting down in {_cleanupWarningMinutesRemaining} {minuteText} for the nightly \"auto-cleanup\" process. Please finish up and log off... thank you!|RESET|\r\n".EncodeToANSIArray());
                 }
                 _cleanupWarningMinutesRemaining--;
-                Logger.Debug($"finished SendCleanupWarning");
             }
             else
             {
