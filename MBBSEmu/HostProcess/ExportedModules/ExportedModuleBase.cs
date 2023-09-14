@@ -10,6 +10,8 @@ using MBBSEmu.TextVariables;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -64,7 +66,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private protected readonly ILogger _logger;
         private protected readonly IClock _clock;
-        private protected readonly AppSettings _configuration;
+        private protected readonly AppSettingsManager _configuration;
         private protected readonly IFileUtility _fileFinder;
         private protected readonly IGlobalCache _globalCache;
         private protected readonly ITextVariableService _textVariableService;
@@ -104,7 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
             _clock = clock;
             _logger = logger;
@@ -1022,26 +1024,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input)
+        /// <param name="numberBase">Number base, e.g. base-10, base-16 (hex), etc.
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input, int numberBase, int maxCharactersToRead)
         {
+            Contract.Requires(numberBase == 10 || numberBase == 16);
+
             var result = new LeadingNumberFromStringResult();
             var count = 0;
 
             (result.StringValue, result.MoreInput) = ReadString(input, c =>
             {
+                if (maxCharactersToRead >= 0 && count >= maxCharactersToRead)
+                    return CharacterAccepterResponse.ABORT;
+
                 if (count >= 11)
                     return CharacterAccepterResponse.ABORT;
 
-                var first = (count++ == 0);
+                var first = (count == 0);
                 if (first && c == '+')
                     return CharacterAccepterResponse.SKIP;
-                if ((first && c == '-') || char.IsDigit(c))
+                if (first && c == '-')
                     return CharacterAccepterResponse.ACCEPT;
+                if (char.IsDigit(c) || (numberBase == 16 && char.IsAsciiHexDigit(c))) {
+                    ++count;
+                    return CharacterAccepterResponse.ACCEPT;
+                }
 
                 return CharacterAccepterResponse.ABORT;
             });
 
-            result.Valid = int.TryParse(result.StringValue, out var value);
+            var numberStyle = numberBase == 16 ? NumberStyles.AllowHexSpecifier : NumberStyles.AllowLeadingSign;
+            result.Valid = int.TryParse(result.StringValue, numberStyle, null, out var value);
             if (result.Valid)
                 result.Value = value;
 
@@ -1055,16 +1069,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     This method extracts the valid number (if any) from the given string
         /// </summary>
         /// <param name="inputString">Input string containers integer values</param>
+        /// <param name="numberBase">Number base, e.g. base-10, base-16 (hex), etc.
+        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
         /// <returns></returns>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString)
+        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString, int numberBase, int maxCharactersToRead)
         {
             var enumerator = inputString.GetEnumerator();
-            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator) : new LeadingNumberFromStringResult();
+            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator, numberBase, maxCharactersToRead) : new LeadingNumberFromStringResult();
         }
 
         /// <summary>
         ///     Handles calling functions to format bytes to be sent to the client.
-        ///
+        ///x
         ///     They are (in order):
         ///     ProcessIfANSI() - Handles processing of IF-ANSI Sequences
         ///     FormatNewLineCarriageReturn() - Ensures any \r or \n are converted to \r\n

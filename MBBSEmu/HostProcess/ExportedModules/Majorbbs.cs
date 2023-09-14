@@ -124,7 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        public Majorbbs(IClock clock, ILogger logger, AppSettings configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
+        public Majorbbs(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _accountKeyRepository = accountKeyRepository;
@@ -229,7 +229,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("TXTVARS", TextvarStruct.Size * MaxTextVariables, true); //Up to 64 Text Variables per Module
             Module.Memory.SetArray("TXTVARS", new TextvarStruct("SYSTEM", new FarPtr(Segment, 9000)).Data); //Set 1st var as SYSTEM variable reference with special pointer
             Module.Memory.AllocateVariable("HDLCON", FarPtr.Size); //Handles the connection for the current User
-
+            Module.Memory.AllocateVariable("RANDSEED", sizeof(uint)); //Seed value for Borland C++ Pseudo-Random Number Generator
+            Module.Memory.SetDWord("RANDSEED", (uint)_random.Next(1, ushort.MaxValue)); //Seed RNG with a random value
 
             _tfsState = Module.Memory.AllocateVariable("TFSTATE", sizeof(ushort));
             _tfspst = Module.Memory.AllocateVariable("TFSPST", FarPtr.Size);
@@ -585,7 +586,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             switch (ordinal)
             {
                 //Ignored Ordinals
-                case 561: //srand() handled internally
                 case 614: //unfrez -- unlocks video memory, ignored
                 case 174: //DSAIRP
                 case 189: //ENAIRP
@@ -1363,6 +1363,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 129:
                     cncuid();
                     break;
+                case 561:
+                    srand();
+                    break;
                 default:
                     _logger.Error($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in MAJORBBS: {ordinal}:{Ordinals.MAJORBBS[ordinal]}");
@@ -1915,7 +1918,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringToLong = GetParameterString(0, true).Trim();
 
-            var result = GetLeadingNumberFromString(stringToLong);
+            var result = GetLeadingNumberFromString(stringToLong, 10, -1);
 
             Registers.DX = (ushort)(result.Value >> 16);
             Registers.AX = (ushort)(result.Value & 0xFFFF);
@@ -2344,12 +2347,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void rand()
         {
-            var randomValue = _random.Next(1, short.MaxValue);
+            uint multiplier = 0x15A4E35;
+            var seed = Module.Memory.GetDWord("RANDSEED");
+            
+            var newSeed = (seed * multiplier) + 1;
 
-#if DEBUG
-            //_logger.Debug($"Generated random number {randomValue} and saved it to AX");
-#endif
-            Registers.AX = (ushort)randomValue;
+            Module.Memory.SetDWord("RANDSEED", newSeed);
+
+            Registers.AX = (ushort)((newSeed >> 16) & 0x7FFF);
         }
 
         /// <summary>
@@ -3842,42 +3847,65 @@ namespace MBBSEmu.HostProcess.ExportedModules
             scanf(FromFileStream(fileStream), formatString, 4);
         }
 
-        private enum FormatParseState
+        private enum ScanfParseState
         {
             NORMAL,
             PERCENT
         };
 
+        private struct ScanfState {
+            private ScanfParseState _scanfParseState = ScanfParseState.NORMAL;
+
+            public ScanfState() {
+                Length = 0;
+                IsLongInteger = false;
+            }
+
+            public ScanfParseState State {
+                get => _scanfParseState;
+                set {
+                    _scanfParseState = value;
+                    Length = 0;
+                    IsLongInteger = false;
+                }
+            }
+            public int Length { get; set; }
+            public bool IsLongInteger { get; set; }
+        }
+
+        private int GetNumberBaseFromCharacter(char formatChar) => formatChar switch
+        {
+            'x' => 16,
+            'o' => 8,
+            _ => 10
+        };
+
         private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
         {
-            var matches = 0;
-            var formatParseState = FormatParseState.NORMAL;
-
             if (!input.MoveNext())
             {
                 Registers.AX = 0;
                 return;
             }
 
+            var matches = 0;
+            var parseState = new ScanfState();
             var moreInput = true;
-            string stringValue;
-            bool longInteger = false;
 
             foreach (var formatChar in formatString)
             {
                 if (!moreInput)
                     break;
 
-                switch (formatParseState)
+                switch (parseState.State)
                 {
-                    case FormatParseState.NORMAL when char.IsWhiteSpace(formatChar):
+                    case ScanfParseState.NORMAL when char.IsWhiteSpace(formatChar):
                         ConsumeWhitespace(input);
                         break;
-                    case FormatParseState.NORMAL when formatChar == '%':
-                        longInteger = false;
-                        formatParseState = FormatParseState.PERCENT;
+                    case ScanfParseState.NORMAL when formatChar == '%':
+                        parseState.State = ScanfParseState.PERCENT;
                         break;
-                    case FormatParseState.NORMAL:
+                    case ScanfParseState.NORMAL:
                         // match a single character
                         (moreInput, _) = ConsumeWhitespace(input);
                         if (moreInput)
@@ -3886,10 +3914,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             moreInput &= input.MoveNext();
                         }
                         break;
-                    case FormatParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u':
-                        var result = GetLeadingNumberFromString(input);
+                    case ScanfParseState.PERCENT when Char.IsAsciiDigit(formatChar):
+                        parseState.Length = parseState.Length * 10 + formatChar - '0';
+                        break;
+                    case ScanfParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u' || formatChar == 'x':
+                        var result = GetLeadingNumberFromString(input, GetNumberBaseFromCharacter(formatChar), parseState.Length > 0 ? parseState.Length : -1);
                         moreInput = result.MoreInput;
-                        if (longInteger)
+                        if (parseState.IsLongInteger)
                         {
                             // low word first followed by high word
                             Module.Memory.SetWord(
@@ -3910,24 +3941,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             ++matches;
 
                         startingParameterOrdinal += 2;
-                        formatParseState = FormatParseState.NORMAL;
+                        parseState.State = ScanfParseState.NORMAL;
                         break;
-                    case FormatParseState.PERCENT when formatChar == 's':
-                        (stringValue, moreInput) = ReadString(input, c => ExportedModuleBase.CharacterAccepterResponse.ACCEPT);
-                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), Encoding.ASCII.GetBytes(stringValue));
+                    case ScanfParseState.PERCENT when formatChar == 's' || formatChar == 'c':
+                        var defaultLength = (formatChar == 's') ? int.MaxValue : 1;
+                        var length = parseState.Length > 0 ? parseState.Length : defaultLength;
+                        var count = 0;
+                        (var stringValue, moreInput) = ReadString(input, c => {
+                            return (count++ < length) ?
+                                ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
+                                ExportedModuleBase.CharacterAccepterResponse.ABORT;
+                        });
+
+                        var destinationPtr = GetParameterPointer(startingParameterOrdinal);
+                        Module.Memory.SetArray(destinationPtr, Encoding.ASCII.GetBytes(stringValue));
+
                         if (stringValue.Length > 0)
                             ++matches;
+                        if (formatChar == 's') // null terminate
+                              Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
 
                         startingParameterOrdinal += 2;
-                        formatParseState = FormatParseState.NORMAL;
+                        parseState.State = ScanfParseState.NORMAL;
                         break;
-                    case FormatParseState.PERCENT when formatChar == 'l':
-                        longInteger = true;
+                    case ScanfParseState.PERCENT when formatChar == 'l':
+                        parseState.IsLongInteger = true;
                         break;
-                    case FormatParseState.PERCENT when formatChar == '%':
-                        formatParseState = FormatParseState.NORMAL;
-                        goto case FormatParseState.NORMAL; // yolo
-                    case FormatParseState.PERCENT:
+                    case ScanfParseState.PERCENT when formatChar == '%':
+                        parseState.State = ScanfParseState.NORMAL;
+                        goto case ScanfParseState.NORMAL; // yolo
+                    case ScanfParseState.PERCENT:
                         throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {formatChar}");
                 }
             }
@@ -5753,7 +5796,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var result = GetLeadingNumberFromString(charEnumerator);
+            var result = GetLeadingNumberFromString(charEnumerator, 10, -1);
 
             if (result.StringValue.Length > 0)
                 Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);
@@ -8296,5 +8339,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Returns Pointer to the HDLCON Routine
         /// </summary>
         private ReadOnlySpan<byte> hdlcon => Module.Memory.GetVariablePointer("HDLCON").Data;
+
+        /// <summary>
+        ///     Sets the Seed for the Pseudo-Random Number Generator
+        ///
+        ///     While the seed stored in memory is a 32-bit long, only the lower 16-bits are set
+        ///     via the srand() method. The high 16-bits are always set to zero.
+        ///
+        ///     Signature: void srand(int seed)
+        /// </summary>
+        private void srand()
+        {
+            var randomSeed = GetParameter(0);
+
+            Module.Memory.SetDWord("RANDSEED", randomSeed);
+        }
     }
 }

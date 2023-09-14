@@ -43,8 +43,8 @@ namespace MBBSEmu.DependencyInjection
         private void BuildServiceProvider(IEnumerable<object> overrides)
         {
             //Base Configuration Items
-            AddSingleton<AppSettings>(overrides);
-            AddSingleton<AppSettings>(overrides);
+            AddSingleton<AppSettingsManager>(overrides);
+            AddSingleton<AppSettingsManager>(overrides);
             AddSingleton<PointerDictionary<SessionBase>>(overrides);
             AddSingleton<IResourceManager, ResourceManager>(overrides);
             AddSingleton<IFileUtility, FileUtility>(overrides);

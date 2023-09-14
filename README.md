@@ -1,7 +1,4 @@
 # The MajorBBS Emulation Project 
-![](http://forthebadge.com/images/badges/made-with-c-sharp.svg)
-![](http://forthebadge.com/images/badges/60-percent-of-the-time-works-every-time.svg)
-
 [Home](https://www.mbbsemu.com) | [Wiki](https://wiki.mbbsemu.com) | [Issue Tracker](https://github.com/mbbsemu/MBBSEmu/issues) | [Releases](https://github.com/mbbsemu/MBBSEmu/releases) | [Automated Builds](https://www.mbbsemu.com/Downloads) | [Building MBBSEmu](./documents/development-tips.md) | [Modules](https://www.mbbsemu.com/Modules) | [Discord](https://discord.gg/BgjxMD5)
 
 ![The MajorBBS Emulation Project Screenshot](./images/mbbsemu.png)
@@ -48,4 +45,4 @@ MBBSEmu works by loading the Module DLL as the original host software would, and
 
 # License / Copyright
 
-MBBSEmu is Copyright (c) 2022 Nusbaum Consulting, LLC and is licensed under the terms of the [MIT License](https://github.com/mbbsemu/MBBSEmu/blob/master/LICENSE). 
+MBBSEmu is Copyright (c) 2023 Nusbaum Consulting, LLC and is licensed under the terms of the [MIT License](https://github.com/mbbsemu/MBBSEmu/blob/master/LICENSE). 
