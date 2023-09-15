@@ -1,6 +1,6 @@
 using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Logging;
 using MBBSEmu.Util;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -36,9 +36,9 @@ namespace MBBSEmu.Disassembler
         /// </summary>
         public string CRC32 { get; set; }
 
-        private ILogger _logger;
+        private IMessageLogger _logger;
 
-        public NEFile(ILogger logger, string fullFilePath, ReadOnlySpan<byte> data)
+        public NEFile(IMessageLogger logger, string fullFilePath, ReadOnlySpan<byte> data)
         {
             _logger = logger;
             FileContent = data.ToArray();

@@ -3,7 +3,6 @@ using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,7 +16,7 @@ namespace MBBSEmu.CPU
     /// </summary>
     public class CpuCore : CpuRegisters, ICpuCore, IDisposable
     {
-        protected readonly ILogger _logger;
+        protected readonly IMessageLogger _logger;
 
         /// <summary>
         ///     Definition for delegate that is invoked with a CALL FAR references an Imported Method
@@ -128,9 +127,14 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
-        public CpuCore(ILogger logger)
+        public CpuCore(IMessageLogger logger)
         {
             _logger = logger;
+        }
+
+        public CpuCore()
+        {
+            _logger = new LogFactory().GetLogger<MessageLogger>();
         }
 
         public void Dispose()
@@ -761,7 +765,7 @@ namespace MBBSEmu.CPU
 #if DEBUG
             if (_showDebug)
             {
-                _logger.InfoRegisters(this);
+                //_logger.InfoRegisters(this);
 
                 if (CPUDebugBreak)
                     Debugger.Break();

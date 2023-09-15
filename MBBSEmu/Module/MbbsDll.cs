@@ -1,8 +1,8 @@
 ﻿using MBBSEmu.Disassembler;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Util;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +12,7 @@ namespace MBBSEmu.Module
 {
     public class MbbsDll
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
         private readonly IFileUtility _fileUtility;
 
@@ -44,7 +44,7 @@ namespace MBBSEmu.Module
         /// </summary>
         public short StateCode { get; set; }
 
-        public MbbsDll(IFileUtility fileUtility, ILogger logger)
+        public MbbsDll(IFileUtility fileUtility, IMessageLogger logger)
         {
             _fileUtility = fileUtility;
             _logger = logger;
@@ -89,7 +89,7 @@ namespace MBBSEmu.Module
             //Address Patching
             if (modulePatches != null)
             {
-                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && x.Addresses.Count > 0))
+                foreach (var p in modulePatches.Where(x => (bool)x?.Enabled && x.Addresses?.Count > 0))
                 {
                     if (string.Compare(p.CRC32, fileCRC32, StringComparison.InvariantCultureIgnoreCase) != 0)
                     {

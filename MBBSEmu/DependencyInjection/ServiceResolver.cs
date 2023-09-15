@@ -15,7 +15,6 @@ using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
 using Microsoft.Extensions.DependencyInjection;
-using NLog;
 using System;
 using System.Collections.Generic;
 
@@ -40,6 +39,10 @@ namespace MBBSEmu.DependencyInjection
             BuildServiceProvider(overrides);
         }
 
+        /// <summary>
+        ///     
+        /// </summary>
+        /// <param name="overrides"></param>
         private void BuildServiceProvider(IEnumerable<object> overrides)
         {
             //Base Configuration Items
@@ -48,7 +51,6 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<PointerDictionary<SessionBase>>(overrides);
             AddSingleton<IResourceManager, ResourceManager>(overrides);
             AddSingleton<IFileUtility, FileUtility>(overrides);
-            _serviceCollection.AddSingleton<ILogger>(LogManager.GetCurrentClassLogger(typeof(CustomLogger)));
 
             //FSD Items
             AddSingleton<IGlobalCache, GlobalCache>(overrides);

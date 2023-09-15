@@ -1,9 +1,9 @@
-﻿using System;
+﻿using MBBSEmu.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using NLog;
 
 namespace MBBSEmu.TextVariables
 {
@@ -14,9 +14,9 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         private readonly List<TextVariableValue> _textVariables;
 
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
-        public TextVariableService(ILogger logger)
+        public TextVariableService(IMessageLogger logger)
         {
             _textVariables = new List<TextVariableValue>();
             _logger = logger;

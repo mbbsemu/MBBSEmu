@@ -1,15 +1,15 @@
-using NLog;
+using MBBSEmu.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 
 namespace MBBSEmu.Memory
 {
-  /// <summary>
-  ///   A Memory Allocator that implements malloc/free.
-  /// </summary>
-  public class MemoryAllocator
+    /// <summary>
+    ///   A Memory Allocator that implements malloc/free.
+    /// </summary>
+    public class MemoryAllocator
   {
     /// <summary>
     ///   Represents a block of memory.
@@ -59,7 +59,7 @@ namespace MBBSEmu.Memory
     /// </summary>
     public uint RemainingBytes { get; set; }
 
-    public ILogger Logger { get; init; }
+    public IMessageLogger Logger { get; init; }
 
     /// <summary>
     ///   The number of free blocks being tracked.
@@ -83,7 +83,7 @@ namespace MBBSEmu.Memory
     /// <param name="basePointer">lowest memory address returnable from malloc</param>
     /// <param name="capacity">size in bytes that this allocator can draw memory from</param>
     /// <param name="alignment">alignment in bytes for returned pointers, power of 2</param>
-    public MemoryAllocator(ILogger logger, FarPtr basePointer, uint capacity, ushort alignment)
+    public MemoryAllocator(IMessageLogger logger, FarPtr basePointer, uint capacity, ushort alignment)
     {
       if (alignment == 0)
         throw new ArgumentException("Alignment must be non-zero");

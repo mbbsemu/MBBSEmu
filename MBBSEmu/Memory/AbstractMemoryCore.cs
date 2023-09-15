@@ -1,11 +1,7 @@
-﻿using Iced.Intel;
-using MBBSEmu.Disassembler.Artifacts;
-using MBBSEmu.Logging;
-using NLog;
+﻿using MBBSEmu.Logging;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Decoder = Iced.Intel.Decoder;
 
 namespace MBBSEmu.Memory
 {
@@ -24,10 +20,10 @@ namespace MBBSEmu.Memory
         /// </summary>
         protected const MethodImplOptions CompilerOptimizations = MethodImplOptions.AggressiveOptimization;
 
-        protected ILogger _logger;
+        protected IMessageLogger _logger;
         private readonly Dictionary<string, FarPtr> _variablePointerDictionary = new();
 
-        public AbstractMemoryCore(ILogger logger)
+        public AbstractMemoryCore(IMessageLogger logger)
         {
             _logger = logger;
         }

@@ -1,6 +1,6 @@
 ﻿using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Extensions;
-using NLog;
+using MBBSEmu.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -196,7 +196,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Loads a Btrieve .DAT File
         /// </summary>
-        public void LoadFile(ILogger logger, string path, string fileName)
+        public void LoadFile(IMessageLogger logger, string path, string fileName)
         {
             //Sanity Check if we're missing .DAT files and there are available .VIR files that can be used
             var virginFileName = fileName.ToUpper().Replace(".DAT", ".VIR");
@@ -216,7 +216,7 @@ namespace MBBSEmu.Btrieve
             LoadFile(logger, Path.Combine(path, fileName));
         }
 
-        public void LoadFile(ILogger logger, string fullPath)
+        public void LoadFile(IMessageLogger logger, string fullPath)
         {
             var fileName = Path.GetFileName(fullPath);
             var fileData = File.ReadAllBytes(fullPath);
@@ -325,7 +325,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Loads Btrieve Key Definitions from the Btrieve DAT File Header
         /// </summary>
-        private void LoadBtrieveKeyDefinitions(ILogger logger)
+        private void LoadBtrieveKeyDefinitions(IMessageLogger logger)
         {
             var keyDefinitionBase = 0x110;
             const ushort keyDefinitionLength = 0x1E;
@@ -408,7 +408,7 @@ namespace MBBSEmu.Btrieve
 
         private readonly byte[] ACS_PAGE_HEADER = { 0, 0, 1, 0, 0, 0, 0xAC };
 
-        private bool LoadACS(ILogger logger)
+        private bool LoadACS(IMessageLogger logger)
         {
             // ACS page immediately follows FCR (the first)
             var offset = PageLength;
@@ -427,7 +427,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Loads Btrieve Records from Data Pages
         /// </summary>
-        private void LoadBtrieveRecords(ILogger logger)
+        private void LoadBtrieveRecords(IMessageLogger logger)
         {
             var recordsLoaded = 0;
 

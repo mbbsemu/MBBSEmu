@@ -18,9 +18,7 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
-using NLog;
-using NLog.Layouts;
-using NLog.Targets;
+using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,15 +26,16 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MBBSEmu.UI.Setup;
+using ConsoleTarget = MBBSEmu.Logging.Targets.ConsoleTarget;
+using LogFactory = MBBSEmu.Logging.LogFactory;
 
 namespace MBBSEmu
 {
     public class Program
     {
-        public const string DefaultEmuSettingsFilename = "appsettings.json";
+        private IMessageLogger _logger;
 
-        private ILogger _logger;
+        public const string DefaultEmuSettingsFilename = "appsettings.json";
 
         /// <summary>
         ///     Module Identifier specified by the -M Command Line Argument
@@ -105,6 +104,10 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
+            //Setup Logging
+            var factory = new LogFactory();
+            factory.AddLogger(new MessageLogger(new ConsoleTarget()));
+
             new Program().Run(args);
         }
 
@@ -246,7 +249,7 @@ namespace MBBSEmu
                 }
 
                 _serviceResolver = new ServiceResolver();
-                _logger = _serviceResolver.GetService<ILogger>();
+                _logger = new LogFactory().GetLogger<MessageLogger>();
 
                 //EXE File Execution
                 if (!string.IsNullOrEmpty(_exeFile))
@@ -285,22 +288,6 @@ namespace MBBSEmu
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
-
-                //Setup Logger from AppSettingsManager
-                LogManager.Configuration.LoggingRules.Clear();
-                CustomLogger.AddLogLevel("consoleLogger", configuration.ConsoleLogLevel);
-                if (!string.IsNullOrEmpty(configuration.FileLogName))
-                {
-                    var fileLogger = new FileTarget("fileLogger")
-                    {
-                        FileNameKind = 0,
-                        FileName = "${var:mbbsdir}" + configuration.FileLogName,
-                        Layout = Layout.FromString("${shortdate} ${time} ${level} ${callsite} ${message}"),
-                    };
-                    LogManager.Configuration.AddTarget(fileLogger);
-                    CustomLogger.AddLogLevel("fileLogger", configuration.FileLogLevel);
-                }
-                LogManager.ReconfigExistingLoggers();
 
                 //Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))
@@ -545,8 +532,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, EnumLogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, EnumLogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");

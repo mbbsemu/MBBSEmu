@@ -1,10 +1,9 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Structs;
-using MBBSEmu.Extensions;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,7 +27,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         const int DEFAULT_BLOCK_DEVICE = 2; //C:
 
-        private ILogger _logger { get; init; }
+        private IMessageLogger _logger { get; init; }
         public ICpuRegisters Registers { get; set; }
         private IMemoryCore _memory { get; init; }
         private IClock _clock { get; init; }
@@ -93,7 +92,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         private AllocationStrategy _allocationStrategy = AllocationStrategy.BEST_FIT;
 
-        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, ILogger logger, IFileUtility fileUtility, IStream stdin, IStream stdout, IStream stderr, string path = "")
+        public Int21h(ICpuRegisters registers, IMemoryCore memory, IClock clock, IMessageLogger logger, IFileUtility fileUtility, IStream stdin, IStream stdout, IStream stderr, string path = "")
         {
             Registers = registers;
             _memory = memory;

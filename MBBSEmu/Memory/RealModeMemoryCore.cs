@@ -1,7 +1,6 @@
 using Iced.Intel;
-using NLog;
+using MBBSEmu.Logging;
 using System;
-using System.Collections.Generic;
 
 namespace MBBSEmu.Memory
 {
@@ -54,7 +53,7 @@ namespace MBBSEmu.Memory
 
         private readonly Decoder _decoder;
 
-        public RealModeMemoryCore(ushort heapBaseSegment, ILogger logger) : base(logger)
+        public RealModeMemoryCore(ushort heapBaseSegment, IMessageLogger logger) : base(logger)
         {
             _heapBaseSegment = heapBaseSegment;
 
@@ -68,7 +67,7 @@ namespace MBBSEmu.Memory
             _memoryAllocator = new MemoryAllocator(logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
         }
 
-        public RealModeMemoryCore(ILogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) {}
+        public RealModeMemoryCore(IMessageLogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) {}
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
 

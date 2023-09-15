@@ -9,6 +9,7 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Reports;
@@ -18,7 +19,6 @@ using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -40,7 +40,7 @@ namespace MBBSEmu.HostProcess
     /// </summary>
     public class MbbsHost : IMbbsHost, IDisposable
     {
-        public ILogger Logger { get; init; }
+        public IMessageLogger Logger { get; init; }
         public IClock Clock { get; init; }
 
         /// <summary>
@@ -141,7 +141,7 @@ namespace MBBSEmu.HostProcess
         private readonly IAccountRepository _accountRepository;
         private readonly ITextVariableService _textVariableService;
 
-        public MbbsHost(IClock clock, ILogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettingsManager configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
+        public MbbsHost(IClock clock, IMessageLogger logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettingsManager configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
             Logger = logger;
             Clock = clock;
@@ -952,7 +952,7 @@ namespace MBBSEmu.HostProcess
             Logger.Info($"Running auxiliary program: {cmdline}");
 
             var runtime = new ExeRuntime(
-                            new MBBSEmu.Disassembler.MZFile(Path.Combine(modulePath, exe)),
+                            new Disassembler.MZFile(Path.Combine(modulePath, exe)),
                             Clock,
                             Logger,
                             _fileUtility,

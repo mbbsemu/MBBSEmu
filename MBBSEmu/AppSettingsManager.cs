@@ -1,5 +1,5 @@
+using MBBSEmu.Logging;
 using Microsoft.Extensions.Configuration;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,13 +19,13 @@ namespace MBBSEmu
     {
         public readonly IConfigurationRoot ConfigurationRoot;
 
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
         /// <summary>
         ///     Safe loading of appsettings.json for Configuration Builder
         /// </summary>
         /// <returns></returns>
-        public AppSettingsManager(ILogger logger)
+        public AppSettingsManager(IMessageLogger logger)
         {
             _logger = logger;
 

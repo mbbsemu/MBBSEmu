@@ -3,11 +3,11 @@ using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
@@ -64,7 +64,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public readonly PointerDictionary<FileStream> FilePointerDictionary;
         public readonly PointerDictionary<McvFile> McvPointerDictionary;
 
-        private protected readonly ILogger _logger;
+        private protected readonly IMessageLogger _logger;
         private protected readonly IClock _clock;
         private protected readonly AppSettingsManager _configuration;
         private protected readonly IFileUtility _fileFinder;
@@ -106,7 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary.Clear();
         }
 
-        private protected ExportedModuleBase(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
+        private protected ExportedModuleBase(IClock clock, IMessageLogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService)
         {
             _clock = clock;
             _logger = logger;

@@ -1,8 +1,7 @@
 ﻿using MBBSEmu.CPU;
 using MBBSEmu.IO;
-using NLog;
+using MBBSEmu.Logging;
 using System;
-using System.Text;
 
 namespace MBBSEmu.DOS.Interrupts
 {
@@ -15,14 +14,14 @@ namespace MBBSEmu.DOS.Interrupts
         private const string ANSI_CLEAR_SCREEN = "\x1B[2J";
         private const string ANSI_SET_CURSOR_POSITION = "\x1B[{0};{1}H";
 
-        private ILogger _logger { get; init; }
+        private IMessageLogger _logger { get; init; }
         private readonly IStream _stdout;
 
         private ICpuRegisters _registers { get; init; }
 
         public byte Vector => 0x10;
 
-        public Int10h(ICpuRegisters registers, ILogger logger, IStream stdout)
+        public Int10h(ICpuRegisters registers, IMessageLogger logger, IStream stdout)
         {
             _registers = registers;
             _logger = logger;

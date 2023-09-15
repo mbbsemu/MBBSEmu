@@ -1,5 +1,5 @@
-﻿using System;
-using NLog;
+﻿using MBBSEmu.Logging;
+using System;
 
 namespace MBBSEmu.Disassembler.Artifacts
 {
@@ -8,9 +8,9 @@ namespace MBBSEmu.Disassembler.Artifacts
     /// </summary>
     public class RelocationRecord
     {
-        protected readonly ILogger _logger;
+        protected readonly IMessageLogger _logger;
 
-        public RelocationRecord(ILogger logger)
+        public RelocationRecord(IMessageLogger logger)
         {
             _logger = logger;
         }

@@ -1,9 +1,8 @@
-using NLog;
+using MBBSEmu.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System;
 
 namespace MBBSEmu.IO
 {
@@ -26,9 +25,9 @@ namespace MBBSEmu.IO
             ReturnSpecialDirectories = false,
         };
 
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
-        public FileUtility(ILogger logger)
+        public FileUtility(IMessageLogger logger)
         {
             _logger = logger;
         }

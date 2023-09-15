@@ -1,6 +1,6 @@
 ﻿using MBBSEmu.Disassembler.Artifacts;
+using MBBSEmu.Logging;
 using MBBSEmu.Module;
-using NLog;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,7 +13,7 @@ namespace MBBSEmu.Reports
     /// </summary>
     public class ApiReport
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
         internal class ApiReportRecord
         {
@@ -25,7 +25,7 @@ namespace MBBSEmu.Reports
         private readonly MbbsModule _module;
         private ApiReportRecord _record;
 
-        public ApiReport(ILogger logger, MbbsModule module)
+        public ApiReport(IMessageLogger logger, MbbsModule module)
         {
             _module = module;
             _logger = logger;

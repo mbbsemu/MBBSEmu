@@ -1,7 +1,8 @@
 {
   "profiles": {
     "MBBSHost": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "-c modules.json -dbreset sysop"
     }
   }
 }
