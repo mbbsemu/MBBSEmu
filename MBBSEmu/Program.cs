@@ -89,6 +89,12 @@ namespace MBBSEmu
         /// </summary>
         private bool _isConsoleSession;
 
+
+        /// <summary>
+        ///     Specified if the -CLI Command Line Argument was passed
+        /// </summary>
+        private bool _cliMode;
+
         /// <summary>
         ///     EXE File to be Executed
         /// </summary>
@@ -175,6 +181,9 @@ namespace MBBSEmu
                         case "-K":
                             _menuOptionKey = args[i + 1];
                             i++;
+                            break;
+                        case "-CLI":
+                            _cliMode = true;
                             break;
                         case "-P":
                             _modulePath = args[i + 1];
@@ -285,18 +294,22 @@ namespace MBBSEmu
                     return;
                 }
 
-                var mainMBBSEmuWindow = new MainView(_serviceResolver);
-
-                //Start UI in a Task as to not block this thread
-                Task.Run(() =>
+                //If the user specified CLI mode, don't start the UI
+                if (!_cliMode)
                 {
-                    mainMBBSEmuWindow.Setup();
-                    mainMBBSEmuWindow.Run();
-                });
+                    var mainMBBSEmuWindow = new MainView(_serviceResolver);
 
-                //Wait for the UI to be running before continuing
-                while(!mainMBBSEmuWindow.isRunning)
-                    Thread.Sleep(100);
+                    //Start UI in a Task as to not block this thread
+                    Task.Run(() =>
+                    {
+                        mainMBBSEmuWindow.Setup();
+                        mainMBBSEmuWindow.Run();
+                    });
+
+                    //Wait for the UI to be running before continuing
+                    while (!mainMBBSEmuWindow.isRunning)
+                        Thread.Sleep(100);
+                }
 
                 var configuration = _serviceResolver.GetService<AppSettingsManager>();
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
