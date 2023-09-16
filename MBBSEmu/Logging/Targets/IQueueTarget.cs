@@ -4,8 +4,8 @@ namespace MBBSEmu.Logging.Targets
 {
     public interface IQueueTarget
     {
-        string Dequeue();
-        IList<string> DequeueAll();
+        object[] Dequeue();
+        IList<object[]> DequeueAll();
         void Clear();
     }
 }

@@ -12,11 +12,11 @@ namespace MBBSEmu.Logging.Targets
         /// </summary>
         private int _maxQueueSize;
 
-        private readonly ConcurrentQueue<string> _queue;
+        private readonly ConcurrentQueue<object[]> _queue;
 
         public QueueTarget(int maxQueueSize = 1000)
         {
-            _queue = new ConcurrentQueue<string>();
+            _queue = new ConcurrentQueue<object[]>();
             _maxQueueSize = maxQueueSize;
         }
 
@@ -27,42 +27,16 @@ namespace MBBSEmu.Logging.Targets
         /// <exception cref="NotImplementedException"></exception>
         public void Write(params object[] logEntry)
         {
-            if (logEntry.Length != 2)
-                return;
-
-            var logMessage = (string)logEntry[0];
-            var logLevel = ((EnumLogLevel)logEntry[1]).ToString();
-
-            //Use reflection to get the name of the class calling this method
-            var callingType = new System.Diagnostics.StackTrace().GetFrame(3)?.GetMethod()?.DeclaringType;
-
-            //Check Queue Length against the Max Queue Size, if so, remove the last item entered into the queue and enqueue the new item stating the queue is full
-            if (_queue.Count >= _maxQueueSize)
-            {
-                _queue.TryDequeue(out _);
-                _queue.Enqueue($"Queue is full, dropping log entry from {callingType} at {DateTime.Now} with message: {logMessage}");
-            }
-
-            //Enqueue the new item
-            _queue.Enqueue($"[{DateTime.Now:O}]\t{callingType}\t[{logLevel}]\t{logMessage}");
+            //Check Queue Length
+            if (_queue.Count <= _maxQueueSize)
+                _queue.Enqueue(logEntry);
         }
 
-        public string Dequeue()
-        {
-            if (_queue.Count > 0)
-            {
-                if(_queue.TryDequeue(out var queueItem))
-                    return queueItem;
-                else
-                    return null;
-            }
+        public object[] Dequeue() => _queue.TryDequeue(out var queueItem) ? queueItem : null;
 
-            return null;
-        }
-
-        public IList<string> DequeueAll()
+        public IList<object[]> DequeueAll()
         {
-            var queueItems = new List<string>();
+            var queueItems = new List<object[]>();
 
             while (_queue.TryDequeue(out var queueItem))
             {

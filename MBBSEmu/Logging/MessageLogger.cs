@@ -22,7 +22,10 @@ namespace MBBSEmu.Logging
         {
             foreach (var target in LOGGING_TARGETS)
             {
-                target.Write(message, logLevel);
+                //Use reflection to get the name of the class calling this method
+                var callingClass = new System.Diagnostics.StackTrace().GetFrame(2)?.GetMethod()?.DeclaringType.ToString();
+
+                target.Write(DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss.fff"), callingClass, logLevel, message);
             }
         }
 

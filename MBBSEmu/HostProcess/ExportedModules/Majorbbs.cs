@@ -2177,11 +2177,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringSummary = GetParameterStringSpan(0);
             var stringDetail = FormatPrintf(GetParameterStringSpan(2), 4);
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.BackgroundColor = ConsoleColor.Blue;
-            Console.WriteLine($"AUDIT SUMMARY: {Encoding.ASCII.GetString(stringSummary)}");
-            Console.WriteLine($"AUDIT DETAIL: {Encoding.ASCII.GetString(stringDetail)}");
-            Console.ResetColor();
+            //Get Logger from LogFactory
+            var logger = new LogFactory().GetLogger<AuditLogger>();
+            logger.Log(Encoding.ASCII.GetString(stringSummary), Encoding.ASCII.GetString(stringDetail));
         }
 
         /// <summary>

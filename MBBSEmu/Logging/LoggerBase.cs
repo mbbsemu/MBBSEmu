@@ -5,7 +5,7 @@ namespace MBBSEmu.Logging
 {
     public abstract class LoggerBase
     {
-        protected static readonly List<ILoggingTarget> LOGGING_TARGETS = new();
+        protected readonly List<ILoggingTarget> LOGGING_TARGETS = new();
 
         public void RemoveTarget<T>()
         {

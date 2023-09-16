@@ -13,9 +13,9 @@ namespace MBBSEmu.Logging
         {
             //If the logger already exists, overwrite the existing logger
             if (Loggers.ContainsKey(typeof(T)))
-                Loggers[typeof(T)] = logger;
-            else
-                Loggers.Add(typeof(T), logger);
+                Loggers.Remove(typeof(T));
+
+            Loggers.Add(typeof(T), logger);
         }
 
 

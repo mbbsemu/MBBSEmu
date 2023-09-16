@@ -10,6 +10,7 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Logging.Targets;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
@@ -29,8 +30,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using ConsoleTarget = MBBSEmu.Logging.Targets.ConsoleTarget;
-using LogFactory = MBBSEmu.Logging.LogFactory;
 
 namespace MBBSEmu
 {
@@ -286,7 +285,7 @@ namespace MBBSEmu
                     return;
                 }
 
-                var mainMBBSEmuWindow = new MainView();
+                var mainMBBSEmuWindow = new MainView(_serviceResolver);
 
                 //Start UI in a Task as to not block this thread
                 Task.Run(() =>
