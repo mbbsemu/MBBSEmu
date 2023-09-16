@@ -11,6 +11,8 @@ namespace MBBSEmu.UI
         /// </summary>
         public Window MainWindow { get; set; }
 
+        public bool isRunning { get; set; }
+
         protected UIBase()
         {
             Application.Init();
@@ -35,12 +37,14 @@ namespace MBBSEmu.UI
         public virtual void Run()
         {
             // Must explicit call Application.Shutdown method to shutdown.
+            isRunning = true;
             Application.Run(Application.Top);
         }
 
         public virtual void RequestStop()
         {
             Application.RequestStop();
+            isRunning = false;
         }
     }
 }

@@ -18,6 +18,7 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
+using MBBSEmu.UI.Main;
 using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using ConsoleTarget = MBBSEmu.Logging.Targets.ConsoleTarget;
 using LogFactory = MBBSEmu.Logging.LogFactory;
 
@@ -282,6 +285,19 @@ namespace MBBSEmu
 
                     return;
                 }
+
+                var mainMBBSEmuWindow = new MainView();
+
+                //Start UI in a Task as to not block this thread
+                Task.Run(() =>
+                {
+                    mainMBBSEmuWindow.Setup();
+                    mainMBBSEmuWindow.Run();
+                });
+
+                //Wait for the UI to be running before continuing
+                while(!mainMBBSEmuWindow.isRunning)
+                    Thread.Sleep(100);
 
                 var configuration = _serviceResolver.GetService<AppSettingsManager>();
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();

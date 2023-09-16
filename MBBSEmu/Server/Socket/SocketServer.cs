@@ -29,9 +29,9 @@ namespace MBBSEmu.Server.Socket
         private string _moduleIdentifier;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public SocketServer(IMessageLogger logger, IMbbsHost host, AppSettingsManager configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
+        public SocketServer(LogFactory logger, IMbbsHost host, AppSettingsManager configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
             _host = host;
             _configuration = configuration;
             _textVariableService = textVariableService;

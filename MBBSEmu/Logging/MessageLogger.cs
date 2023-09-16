@@ -9,25 +9,13 @@ namespace MBBSEmu.Logging
     ///
     ///     Messages are in turn written to the specified Logging Targets
     /// </summary>
-    public class MessageLogger : IMessageLogger
+    public class MessageLogger : LoggerBase, IMessageLogger
     {
-        private static readonly List<ILoggingTarget> LOGGING_TARGETS = new();
-
         public MessageLogger() { }
 
         public MessageLogger(ILoggingTarget target)
         {
             AddTarget(target);
-        }
-
-        public void RemoveTarget<T>()
-        {
-            LOGGING_TARGETS.RemoveAll(x => x.GetType() == typeof(T));
-        }
-
-        public void AddTarget(ILoggingTarget target)
-        {
-            LOGGING_TARGETS.Add(target);
         }
 
         public void Log(EnumLogLevel logLevel, string message, Exception exception = null)

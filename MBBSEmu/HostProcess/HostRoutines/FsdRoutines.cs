@@ -31,9 +31,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private ushort _userInput;
 
-        public FsdRoutines(IMessageLogger logger, IGlobalCache globalCache)
+        public FsdRoutines(LogFactory logger, IGlobalCache globalCache)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
             _globalCache = globalCache;
         }
 

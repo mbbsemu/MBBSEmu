@@ -27,9 +27,9 @@ namespace MBBSEmu.IO
 
         private readonly IMessageLogger _logger;
 
-        public FileUtility(IMessageLogger logger)
+        public FileUtility(LogFactory logger)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
         }
 
         public static FileUtility CreateForTest()

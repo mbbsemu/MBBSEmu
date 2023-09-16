@@ -11,8 +11,13 @@ namespace MBBSEmu.Logging
 
         public void AddLogger<T>(T logger)
         {
-            Loggers.Add(typeof(T), logger);
+            //If the logger already exists, overwrite the existing logger
+            if (Loggers.ContainsKey(typeof(T)))
+                Loggers[typeof(T)] = logger;
+            else
+                Loggers.Add(typeof(T), logger);
         }
+
 
         public T GetLogger<T>()
         {

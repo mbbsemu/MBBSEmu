@@ -74,7 +74,7 @@ namespace MBBSEmu.Session.LocalConsole
                 new Win32VT100(_logger).Enable();
 
             if(disableLogging)
-                (_logger as MessageLogger)?.RemoveTarget<ConsoleTarget>();
+                (_logger as LoggerBase)?.RemoveTarget<ConsoleTarget>();
 
             _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
@@ -130,7 +130,7 @@ namespace MBBSEmu.Session.LocalConsole
 
         public override void Stop()
         {
-            (_logger as MessageLogger)?.AddTarget(new ConsoleTarget());
+            (_logger as LoggerBase)?.AddTarget(new ConsoleTarget());
 
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();

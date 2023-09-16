@@ -16,10 +16,10 @@ namespace MBBSEmu.TextVariables
 
         private readonly IMessageLogger _logger;
 
-        public TextVariableService(IMessageLogger logger)
+        public TextVariableService(LogFactory logger)
         {
             _textVariables = new List<TextVariableValue>();
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
         }
 
         /// <summary>

@@ -25,9 +25,9 @@ namespace MBBSEmu
         ///     Safe loading of appsettings.json for Configuration Builder
         /// </summary>
         /// <returns></returns>
-        public AppSettingsManager(IMessageLogger logger)
+        public AppSettingsManager(LogFactory logger)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
 
             if (!File.Exists(ConfigurationFileName))
                 throw new FileNotFoundException($"Unable to locate [{ConfigurationFileName}] emulator settings file.");
