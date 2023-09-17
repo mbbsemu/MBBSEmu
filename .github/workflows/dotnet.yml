@@ -34,7 +34,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Write File
-      uses: DamianReeves/write-file-action@v1.0
+      uses: DamianReeves/write-file-action@master
       with:
         path: MBBSEmu/Assets/version.txt
         contents: $BUILD_VERSION
