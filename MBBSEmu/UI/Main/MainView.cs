@@ -166,6 +166,17 @@ namespace MBBSEmu.UI.Main
                 MessageBox.Query("Log Entry", $"Time: {logEntry[0]}\nClass: {logEntry[1]}\nLevel: {logEntry[2]}\nMessage: {logEntry[3]}", "OK");
             };
             MainWindow.Add(windowLogContainer);
+
+            //Status Bar
+            var telnetStatus = new StatusItem(Key.CharMask, $"~Telnet:~ {(_appSettingsManager.TelnetEnabled ? "ENABLED" : "DISABLED")}", null);
+            var rloginStatus = new StatusItem(Key.CharMask, $"~Rlogin:~ {(_appSettingsManager.RloginEnabled ? "ENABLED" : "DISABLED")}", null);
+            var statusBarName = new StatusItem(Key.CharMask, $"The MajorBBS Emulation Project ({new ResourceManager().GetString("MBBSEmu.Assets.version.txt")})", null);
+            var statusBar = new StatusBar(new[] { telnetStatus, rloginStatus, statusBarName })
+            {
+                Visible = true
+            };
+
+            MainWindow.Add(statusBar);
         }
 
         public override void Run()
