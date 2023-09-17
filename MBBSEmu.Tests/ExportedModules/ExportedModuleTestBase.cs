@@ -52,7 +52,9 @@ namespace MBBSEmu.Tests.ExportedModules
 
         protected ExportedModuleTestBase(string modulePath)
         {
-            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+            var _logFactoryForTest = new LogFactory();
+            _logFactoryForTest.AddLogger(new MessageLogger());
+            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"), _logFactoryForTest);
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
             mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());

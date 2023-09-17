@@ -14,21 +14,21 @@ namespace MBBSEmu.Logging
         {
             //If the logger already exists, overwrite the existing logger
             if (Loggers.ContainsKey(typeof(T)))
-                Loggers.Remove(typeof(T), out _);
-
-            Loggers.TryAdd(typeof(T), logger);
+            {
+                Loggers.TryUpdate(typeof(T), logger, Loggers[typeof(T)]);
+            }
+            else
+            {
+                Loggers.TryAdd(typeof(T), logger);
+            }
         }
-
 
         public T GetLogger<T>()
         {
-            if (Loggers.ContainsKey(typeof(T)))
-                return (T)Loggers[typeof(T)];
+            if (!Loggers.ContainsKey(typeof(T))) 
+                throw new KeyNotFoundException($"Logger of type {typeof(T)} not found");
 
-            var logger = (T)Activator.CreateInstance(typeof(T), null);
-            Loggers.TryAdd(typeof(T), logger);
-
-            return logger;
+            return (T)Loggers[typeof(T)];
         }
     }
 }
