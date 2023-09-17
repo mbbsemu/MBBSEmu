@@ -16,7 +16,8 @@
     <Keyword>NetCoreCProj</Keyword>
     <RootNamespace>wbtrv32</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
+    <WindowsTargetPlatformMinVersion>7.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -46,12 +47,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\bin\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\bin\$(Configuration)\$(TargetFramework)\</OutDir>
     <IntDir>$(SolutionDir)\tmpobj\$(ProjectName)\$(Configuration)\</IntDir>
+    <IgnoreImportLibrary>false</IgnoreImportLibrary>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\bin\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)\bin\$(Configuration)\$(TargetFramework)\</OutDir>
     <IntDir>$(SolutionDir)\tmpobj\$(ProjectName)\$(Configuration)\</IntDir>
+    <IgnoreImportLibrary>false</IgnoreImportLibrary>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -64,7 +71,24 @@
     <Link>
       <AdditionalDependencies />
       <ModuleDefinitionFile>wbtrv32.def</ModuleDefinitionFile>
+      <RegisterOutput>false</RegisterOutput>
     </Link>
+    <CustomBuildStep>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>
+      </Outputs>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y $(OutDir)\runtimes\win-x86\native\e_sqlite3.dll $(OutDir)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying e_sqlite3.dll</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -76,7 +100,24 @@
     <Link>
       <AdditionalDependencies />
       <ModuleDefinitionFile>wbtrv32.def</ModuleDefinitionFile>
+      <RegisterOutput>false</RegisterOutput>
     </Link>
+    <CustomBuildStep>
+      <Message>
+      </Message>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>
+      </Outputs>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>copy /Y $(OutDir)\runtimes\win-x86\native\e_sqlite3.dll $(OutDir)</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying e_sqlite3.dll</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -104,12 +145,9 @@
     <ProjectReference Include="..\..\MBBSEmu\MBBSEmu.csproj">
       <Project>{d2455c16-2937-45fc-ac5f-10a3734afed4}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="netsqlite">
-      <HintPath>..\netsqlite\bin\Debug\net6.0\netsqlite.dll</HintPath>
-    </Reference>
-    <Reference Include="SQLitePCLRaw.core, Version=2.0.6.1341, Culture=neutral, PublicKeyToken=1488e028ca7ab535" />
+    <ProjectReference Include="..\netsqlite\netsqlite.csproj">
+      <Project>{29dcb3b9-f6ab-48fe-ad85-8ef652a624aa}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
