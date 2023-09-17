@@ -1,9 +1,10 @@
 using MBBSEmu.Btrieve;
 using MBBSEmu.DependencyInjection;
-using NLog;
-using System.Linq;
-using System.IO;
+using MBBSEmu.Logging;
+using MBBSEmu.Logging.Targets;
 using System;
+using System.IO;
+using System.Linq;
 
 namespace MBBSDatabase
 {
@@ -24,7 +25,7 @@ namespace MBBSDatabase
         private void Run(string[] args)
         {
             var serviceResolver = new ServiceResolver();
-            var logger = serviceResolver.GetService<ILogger>();
+            var logger = new MessageLogger(new ConsoleTarget());
 
             if (args.Length == 0)
             {
