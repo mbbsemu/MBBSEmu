@@ -2,7 +2,6 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
-using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -12,7 +11,7 @@ using Terminal.Gui;
 
 namespace MBBSEmu.UI.Main
 {
-    [UIMetadata(name: "Host Window", description: "MBBEmu Main Host Window")]
+    [UIMetadata(name: "The MajorBBS Emulation Project", description: "MBBEmu Main Host Window")]
     public class MainView : UIBase
     {
         private readonly IQueueTarget _logQueueTarget = new QueueTarget();
@@ -50,12 +49,15 @@ namespace MBBSEmu.UI.Main
             _appSettingsManager = serviceResolver.GetService<AppSettingsManager>();
         }
 
+        /// <summary>
+        ///     Sets up the UI Elements to be used by this View
+        /// </summary>
         public override void Setup()
         {
             //Menu Bar
             var menu = new MenuBar(new MenuBarItem[] {
-                new MenuBarItem ("_File", new MenuItem [] {
-                    new MenuItem ("_Quit", "", null),
+                new MenuBarItem ("_Server", new MenuItem [] {
+                    new MenuItem ("_Shutdown", string.Empty, ShutdownServer ),
                 }),
             });
             MainWindow.Add(menu);
@@ -119,7 +121,19 @@ namespace MBBSEmu.UI.Main
                 Style = new TableView.TableStyle { AlwaysShowHeaders = true }
                 
             };
+            var _logMessageColumnStyle = new TableView.ColumnStyle()
+            {
+                MaxWidth = 58
+            };
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], _logMessageColumnStyle);
             windowLogContainer.Add(_tableView);
+
+            //When the user double clicks on a cell, show a message box with the full log entry
+            _tableView.CellActivated += (e) =>
+            {
+                var logEntry = _logTable.Rows[e.Row].ItemArray;
+                MessageBox.Query("Log Entry", $"Time: {logEntry[0]}\nClass: {logEntry[1]}\nLevel: {logEntry[2]}\nMessage: {logEntry[3]}", "OK");
+            };
             MainWindow.Add(windowLogContainer);
         }
 
@@ -187,7 +201,7 @@ namespace MBBSEmu.UI.Main
                     var logDate = ((string)entry[0]).Split(' ')[1];
                     var logClass = ((string)entry[1])[8..];
                     var logLevel = ((EnumLogLevel)entry[2]).ToString();
-                    var logMessage = TruncateString(((string)entry[3]), 58);
+                    var logMessage = (string)entry[3];
 
                     _logTable.Rows.Add(
                         logDate, logClass, logLevel, logMessage);
@@ -228,24 +242,16 @@ namespace MBBSEmu.UI.Main
             _channelListView.SetNeedsDisplay();
         }
 
-        static string TruncateString(string str, int maxLength)
+        /// <summary>
+        ///     Gracefully stops MBBSEmu and exits the application
+        /// </summary>
+        private void ShutdownServer()
         {
-            if (str == null)
-            {
-                return null;
-            }
+            var _mbbsHost = _serviceResolver.GetService<IMbbsHost>();
+            _mbbsHost.Stop();
+            _mbbsHost.WaitForShutdown();
 
-            if (maxLength < 3) // The minimum length for truncation with "..."
-            {
-                return str[..Math.Min(maxLength, str.Length)];
-            }
-
-            if (str.Length <= maxLength)
-            {
-                return str;
-            }
-
-            return str[..(maxLength - 3)] + "...";
+            Application.RequestStop();
         }
     }
 }
