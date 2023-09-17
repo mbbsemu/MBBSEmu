@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace MBBSEmu.Logging
 {
     public class LogFactory
     {
-        private static readonly Dictionary<Type, object> Loggers = new();
+        private static readonly ConcurrentDictionary<Type, object> Loggers = new();
 
         public LogFactory() { }
 
@@ -13,9 +14,9 @@ namespace MBBSEmu.Logging
         {
             //If the logger already exists, overwrite the existing logger
             if (Loggers.ContainsKey(typeof(T)))
-                Loggers.Remove(typeof(T));
+                Loggers.Remove(typeof(T), out _);
 
-            Loggers.Add(typeof(T), logger);
+            Loggers.TryAdd(typeof(T), logger);
         }
 
 
@@ -25,7 +26,7 @@ namespace MBBSEmu.Logging
                 return (T)Loggers[typeof(T)];
 
             var logger = (T)Activator.CreateInstance(typeof(T), null);
-            Loggers.Add(typeof(T), logger);
+            Loggers.TryAdd(typeof(T), logger);
 
             return logger;
         }
