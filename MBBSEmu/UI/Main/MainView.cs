@@ -2,6 +2,7 @@
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
+using MBBSEmu.Resources;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -63,7 +64,8 @@ namespace MBBSEmu.UI.Main
                 }),
                 new MenuBarItem( "_Help", new MenuItem[]
                 {
-                    new MenuItem("_About", string.Empty, () => MessageBox.Query("About MBBSEmu", "The MajorBBS Emulation Project\n\n" +
+                    new MenuItem("_About", string.Empty, () => MessageBox.Query("About MBBSEmu", $"The MajorBBS Emulation Project\n" +
+                        $"Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}\n\n" +
                         "Open Source & Community Driven!\n" +
                         "Distributed under MIT License\n\n" +
                         "https://github.com/mbbsemu/MBBSEmu\n" +
