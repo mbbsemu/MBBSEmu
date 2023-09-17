@@ -31,7 +31,7 @@ namespace MBBSEmu.UI.Main
         public MainView(ServiceResolver serviceResolver) : base()
         {
             //Overwrite the Logger to use the QueueTarget
-            var logFactory = new LogFactory();
+            var logFactory = serviceResolver.GetService<LogFactory>();
             logFactory.AddLogger(new MessageLogger((ILoggingTarget)_logQueueTarget));
             logFactory.AddLogger(new AuditLogger((ILoggingTarget)_auditQueueTarget));
 
@@ -55,20 +55,38 @@ namespace MBBSEmu.UI.Main
         public override void Setup()
         {
             //Menu Bar
-            var menu = new MenuBar(new MenuBarItem[] {
-                new MenuBarItem ("_Server", new MenuItem [] {
-                    new MenuItem ("_Shutdown", string.Empty, ShutdownServer ),
+            var menu = new MenuBar(new MenuBarItem[]
+            {
+                new MenuBarItem("_Server", new MenuItem[]
+                {
+                    new MenuItem("_Shutdown", string.Empty, ShutdownServer, null, null, Key.Q | Key.CtrlMask),
                 }),
+                new MenuBarItem( "_Help", new MenuItem[]
+                {
+                    new MenuItem("_About", string.Empty, () => MessageBox.Query("About MBBSEmu", "The MajorBBS Emulation Project\n\n" +
+                        "Open Source & Community Driven!\n" +
+                        "Distributed under MIT License\n\n" +
+                        "https://github.com/mbbsemu/MBBSEmu\n" +
+                        "https://www.mbbsemu.com", "OK")),
+                })
             });
+            menu.Text = "Test";
+            menu.TextAlignment = TextAlignment.Right;
             MainWindow.Add(menu);
 
             //Audit Log Window
-            var auditLogContainer = new Window("Audit Log")
+            var auditLogContainer = new Window
             {
                 X = 0,
                 Y = 1,
                 Width = Dim.Percent(75),
-                Height = Dim.Percent(50) - 1
+                Height = Dim.Percent(50) - 1,
+                Border = new Border
+                {
+                    BorderBrush = Color.BrightCyan,
+                    BorderStyle = BorderStyle.Double,
+                    Title = "Audit Log"
+                }
             };
             _auditLogTableView = new TableView
             {
@@ -84,12 +102,18 @@ namespace MBBSEmu.UI.Main
             MainWindow.Add(auditLogContainer);
 
             //Channel List Window
-            var channelListContainer = new Window("Channels")
+            var channelListContainer = new Window("")
             {
                 X = Pos.Right(auditLogContainer),
                 Y = 1,
                 Width = Dim.Fill(),
-                Height = Dim.Percent(50) - 1
+                Height = Dim.Percent(50) - 1,
+                Border = new Border
+                {
+                    BorderBrush = Color.BrightCyan,
+                    BorderStyle = BorderStyle.Double,
+                    Title = "Channels"
+                }
             };
             _channelListView = new ListView(_channelList)
             {
@@ -102,12 +126,18 @@ namespace MBBSEmu.UI.Main
             MainWindow.Add(channelListContainer);
 
             //Application Log Window
-            var windowLogContainer = new Window("MBBSEmu Log")
+            var windowLogContainer = new Window
             {
                 X = 0,
                 Y = Pos.Percent(50),
                 Width = Dim.Fill(),
-                Height = Dim.Fill()
+                Height = Dim.Fill(),
+                Border = new Border
+                {
+                    BorderBrush = Color.BrightCyan,
+                    BorderStyle = BorderStyle.Double,
+                    Title = "MBBSEmu Application Log"
+                }
             };
 
             _tableView = new TableView
@@ -118,14 +148,13 @@ namespace MBBSEmu.UI.Main
                 Height = Dim.Fill(),
                 Table = _logTable,
                 PreserveTrailingSpaces = false,
-                Style = new TableView.TableStyle { AlwaysShowHeaders = true }
-                
+                Style = new TableView.TableStyle { AlwaysShowHeaders = true },
             };
-            var _logMessageColumnStyle = new TableView.ColumnStyle()
+            var logMessageColumnStyle = new TableView.ColumnStyle()
             {
-                MaxWidth = 58
+                MaxWidth = 60
             };
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], _logMessageColumnStyle);
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], logMessageColumnStyle);
             windowLogContainer.Add(_tableView);
 
             //When the user double clicks on a cell, show a message box with the full log entry
@@ -155,7 +184,7 @@ namespace MBBSEmu.UI.Main
                     UpdateChannelList();
 
                     UpdateApplicationLog();
-                    
+
                     Application.DoEvents();
 
                     Thread.Sleep(250);
@@ -165,6 +194,9 @@ namespace MBBSEmu.UI.Main
             base.Run();
         }
 
+        /// <summary>
+        ///    Updates the UI Audit Log View with the latest Audit Log Entries
+        /// </summary>
         private void UpdateAuditLog()
         {
 

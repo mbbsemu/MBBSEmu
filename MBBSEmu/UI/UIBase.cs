@@ -16,12 +16,16 @@ namespace MBBSEmu.UI
         protected UIBase()
         {
             Application.Init();
-            MainWindow = new Window($"MBBSEmu :: {GetName()}")
+            MainWindow = new Window()
             {
                 X = 0,
-                Y = 1,
+                Y = 0,
                 Width = Dim.Fill(),
-                Height = Dim.Fill()
+                Height = Dim.Fill(),
+                Border = new Border
+                {
+                    BorderStyle = BorderStyle.None
+                }
             };
             Application.Top.Add(MainWindow);
         }
