@@ -29,7 +29,7 @@ namespace MBBSEmu.IO
 
         public FileUtility(LogFactory logger)
         {
-            _logger = logger.GetLogger<MessageLogger>();
+            _logger = logger?.GetLogger<MessageLogger>();
         }
 
         public static FileUtility CreateForTest()

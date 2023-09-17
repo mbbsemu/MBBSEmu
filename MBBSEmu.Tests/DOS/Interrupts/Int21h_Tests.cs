@@ -4,15 +4,15 @@ using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Tests;
-using NLog;
 using System.IO;
 using Xunit;
 
 namespace MBBSEmu.DOS.Interrupts
 {
-  public class Int21h_Tests : TestBase
+    public class Int21h_Tests : TestBase
   {
     private readonly ICpuRegisters _registers = new CpuRegisters();
     private readonly FakeClock _fakeClock = new FakeClock();
@@ -27,8 +27,8 @@ namespace MBBSEmu.DOS.Interrupts
         var streamWriter = new StreamWriter(_consoleOutput) { AutoFlush = true };
 
         _serviceResolver = new ServiceResolver(_fakeClock);
-        _memory = new RealModeMemoryCore(_serviceResolver.GetService<ILogger>());
-        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<ILogger>(), _serviceResolver.GetService<IFileUtility>(), new TextReaderStream(new StreamReader(_consoleInput)), new TextWriterStream(streamWriter), new TextWriterStream(streamWriter));
+        _memory = new RealModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+        _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _serviceResolver.GetService<IFileUtility>(), new TextReaderStream(new StreamReader(_consoleInput)), new TextWriterStream(streamWriter), new TextWriterStream(streamWriter));
     }
 
     [Fact]

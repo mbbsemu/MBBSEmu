@@ -39,7 +39,7 @@ namespace MBBSEmu.DOS
 
         public Win32VT100()
         {
-            _logger = new LogFactory().GetLogger<IMessageLogger>();
+            _logger = new LogFactory().GetLogger<MessageLogger>();
         }
 
         public Win32VT100(IMessageLogger logger)

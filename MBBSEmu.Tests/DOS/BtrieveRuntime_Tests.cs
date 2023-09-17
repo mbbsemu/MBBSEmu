@@ -7,10 +7,10 @@ using MBBSEmu.DOS;
 using MBBSEmu.IO;
 using MBBSEmu.Resources;
 using Microsoft.Data.Sqlite;
-using NLog;
 using System;
 using System.IO;
 using System.Text;
+using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
@@ -90,7 +90,7 @@ key3_data_type: 15
             ExeRuntime exeRuntime = new ExeRuntime(
               new MZFile(Path.Combine(_modulePath, _runtimeFiles[0])),
               _serviceResolver.GetService<IClock>(),
-              _serviceResolver.GetService<ILogger>(),
+              _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
               _serviceResolver.GetService<IFileUtility>(),
               _modulePath,
               null,

@@ -3,9 +3,9 @@ using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Resources;
-using NLog;
 using System;
 using System.IO;
+using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -45,7 +45,7 @@ namespace MBBSEmu.Tests.Btrieve
             var serviceResolver = new ServiceResolver();
 
             var btrieve = new BtrieveFile();
-            btrieve.LoadFile(serviceResolver.GetService<ILogger>(), _modulePath, "MBBSEMU.DAT");
+            btrieve.LoadFile(serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _modulePath, "MBBSEMU.DAT");
 
             Assert.Equal(4, btrieve.KeyCount);
             Assert.Equal(4, btrieve.Keys.Count);
