@@ -152,11 +152,11 @@ namespace MBBSEmu.UI.Main
                 PreserveTrailingSpaces = false,
                 Style = new TableView.TableStyle { AlwaysShowHeaders = true },
             };
-            var logMessageColumnStyle = new TableView.ColumnStyle()
-            {
-                MaxWidth = 60
-            };
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], logMessageColumnStyle);
+
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Time"], new TableView.ColumnStyle { MinWidth = 12, MaxWidth = 12 });
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Class"], new TableView.ColumnStyle { MinWidth = 36, MaxWidth = 36 });
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Level"], new TableView.ColumnStyle { MinWidth = 5, MaxWidth = 5 });
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], new TableView.ColumnStyle { MinWidth = 60, MaxWidth = 60});
             windowLogContainer.Add(_tableView);
 
             //When the user double clicks on a cell, show a message box with the full log entry
