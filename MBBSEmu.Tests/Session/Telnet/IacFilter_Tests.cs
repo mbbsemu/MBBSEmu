@@ -1,6 +1,6 @@
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Logging;
 using MBBSEmu.Session.Telnet;
-using NLog;
 using System;
 using System.IO;
 using System.Text;
@@ -10,7 +10,7 @@ namespace MBBSEmu.Tests.Session.Telnet
 {
     public class IacFilter_Tests
     {
-        private readonly IacFilter iacFilter = new IacFilter(new ServiceResolver().GetService<ILogger>());
+        private readonly IacFilter iacFilter = new(new ServiceResolver().GetService<LogFactory>().GetLogger<MessageLogger>());
 
         [Fact]
         public void PassThroughNoIAC()

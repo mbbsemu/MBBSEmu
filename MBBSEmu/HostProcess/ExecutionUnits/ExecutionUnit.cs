@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using MBBSEmu.CPU;
+﻿using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
+using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.HostProcess.ExecutionUnits
 {
@@ -38,7 +38,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
 
         public string Path { get; init; }
 
-        public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, ILogger logger, string path)
+        public ExecutionUnit(IMemoryCore moduleMemory, IClock clock, IFileUtility fileUtility, Dictionary<ushort, IExportedModule> exportedModuleDictionary, IMessageLogger logger, string path)
         {
             ModuleCpu = new CpuCore(logger);
             ModuleCpuRegisters = ModuleCpu;

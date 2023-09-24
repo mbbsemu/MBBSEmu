@@ -1,5 +1,4 @@
 using FluentAssertions;
-using NLog;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.DependencyInjection;
@@ -11,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -397,7 +397,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
-            var insertedId = btrieve.Insert(record.Data, LogLevel.Error);
+            var insertedId = btrieve.Insert(record.Data, EnumLogLevel.Error);
             insertedId.Should().Be(5);
 
             record = new MBBSEmuRecordStruct(btrieve.GetRecord(insertedId)?.Data);
@@ -425,7 +425,7 @@ namespace MBBSEmu.Tests.Btrieve
                 Key3 = 4444
             };
 
-            var insertedId = btrieve.Insert(record.Data, LogLevel.Error);
+            var insertedId = btrieve.Insert(record.Data, EnumLogLevel.Error);
             insertedId.Should().Be(5);
 
             record = new MBBSEmuRecordStruct(btrieve.GetRecord(insertedId)?.Data);
@@ -447,7 +447,7 @@ namespace MBBSEmu.Tests.Btrieve
 
             var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
 
-            var insertedId = btrieve.Insert(MakeSmaller(record.Data, 14), LogLevel.Error);
+            var insertedId = btrieve.Insert(MakeSmaller(record.Data, 14), EnumLogLevel.Error);
             insertedId.Should().Be(5);
 
             record = new MBBSEmuRecordStruct(btrieve.GetRecord(insertedId)?.Data);
@@ -475,7 +475,7 @@ namespace MBBSEmu.Tests.Btrieve
             };
 
 
-            var insertedId = btrieve.Insert(record.Data, LogLevel.Debug);
+            var insertedId = btrieve.Insert(record.Data, EnumLogLevel.Debug);
             insertedId.Should().Be(0);
         }
 
@@ -1182,7 +1182,7 @@ namespace MBBSEmu.Tests.Btrieve
             var record = new byte[ACS_RECORD_LENGTH];
             Array.Copy(Encoding.ASCII.GetBytes("paladine"), 0, record, 2, 8);
 
-            btrieve.Insert(record, LogLevel.Debug).Should().Be(0);
+            btrieve.Insert(record, EnumLogLevel.Debug).Should().Be(0);
         }
 
         private static BtrieveFile CreateKeylessBtrieveFile()
@@ -1212,7 +1212,7 @@ namespace MBBSEmu.Tests.Btrieve
             var record = new byte[ACS_RECORD_LENGTH];
             Array.Copy(Encoding.ASCII.GetBytes("paladine"), 0, record, 2, 8);
 
-            btrieve.Insert(record, LogLevel.Error).Should().Be(4);
+            btrieve.Insert(record, EnumLogLevel.Error).Should().Be(4);
 
             btrieve.PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepFirst).Should().BeTrue();
             Encoding.ASCII.GetString(btrieve.GetRecord().AsSpan().Slice(2, 30)).TrimEnd('?', (char)0).Should().Be("Sysop");

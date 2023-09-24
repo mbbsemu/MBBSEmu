@@ -3,11 +3,11 @@ using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +23,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
     /// </summary>
     public class FsdRoutines : IHostRoutine
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
         private readonly IGlobalCache _globalCache;
 
         private readonly Dictionary<int, FsdStatus> _fsdFields = new();
@@ -31,9 +31,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private ushort _userInput;
 
-        public FsdRoutines(ILogger logger, IGlobalCache globalCache)
+        public FsdRoutines(LogFactory logger, IGlobalCache globalCache)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
             _globalCache = globalCache;
         }
 

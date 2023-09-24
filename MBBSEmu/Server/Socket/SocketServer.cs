@@ -1,11 +1,11 @@
 using MBBSEmu.HostProcess;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.Session.Telnet;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -19,7 +19,7 @@ namespace MBBSEmu.Server.Socket
     /// </summary>
     public class SocketServer : ISocketServer
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
         private readonly IMbbsHost _host;
         private readonly ITextVariableService _textVariableService;
         private readonly AppSettingsManager _configuration;
@@ -29,9 +29,9 @@ namespace MBBSEmu.Server.Socket
         private string _moduleIdentifier;
         private readonly PointerDictionary<SessionBase> _channelDictionary;
 
-        public SocketServer(ILogger logger, IMbbsHost host, AppSettingsManager configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
+        public SocketServer(LogFactory logger, IMbbsHost host, AppSettingsManager configuration, ITextVariableService textVariableService, PointerDictionary<SessionBase> channelDictionary)
         {
-            _logger = logger;
+            _logger = logger.GetLogger<MessageLogger>();
             _host = host;
             _configuration = configuration;
             _textVariableService = textVariableService;

@@ -1,7 +1,6 @@
 using MBBSEmu.Extensions;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -17,7 +16,7 @@ namespace MBBSEmu.Module
     {
         private static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'};
 
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected static readonly IMessageLogger _logger = new LogFactory().GetLogger<MessageLogger>();
 
         public readonly string FileName;
         public readonly byte[] FileContent;

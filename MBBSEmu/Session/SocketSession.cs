@@ -1,7 +1,7 @@
 using MBBSEmu.HostProcess;
+using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Net.Sockets;
 using System.Threading;
@@ -10,13 +10,13 @@ namespace MBBSEmu.Session
 {
     public abstract class SocketSession : SessionBase
     {
-        protected readonly ILogger _logger;
+        protected readonly IMessageLogger _logger;
         protected readonly Socket _socket;
         protected readonly Thread _senderThread;
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
-        protected SocketSession(IMbbsHost mbbsHost, ILogger logger, Socket socket, ITextVariableService textVariableService) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating, textVariableService)
+        protected SocketSession(IMbbsHost mbbsHost, IMessageLogger logger, Socket socket, ITextVariableService textVariableService) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating, textVariableService)
         {
             _logger = logger;
 

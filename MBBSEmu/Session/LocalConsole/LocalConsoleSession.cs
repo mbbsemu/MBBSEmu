@@ -3,11 +3,11 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using MBBSEmu.Logging.Targets;
 
 namespace MBBSEmu.Session.LocalConsole
 {
@@ -16,7 +16,7 @@ namespace MBBSEmu.Session.LocalConsole
     /// </summary>
     public class LocalConsoleSession : SessionBase
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
         private readonly IMbbsHost _host;
         private readonly Timer _timer;
         private readonly Thread _consoleInputThread;
@@ -51,7 +51,7 @@ namespace MBBSEmu.Session.LocalConsole
                 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF  //F0
         };
 
-        public LocalConsoleSession(ILogger logger, string sessionId, IMbbsHost host, ITextVariableService textVariableService, bool processClientData = true, bool disableLogging = true) : base(host, sessionId, EnumSessionState.Unauthenticated, textVariableService)
+        public LocalConsoleSession(IMessageLogger logger, string sessionId, IMbbsHost host, ITextVariableService textVariableService, bool processClientData = true, bool disableLogging = true) : base(host, sessionId, EnumSessionState.Unauthenticated, textVariableService)
         {
             _logger = logger;
             _host = host;
@@ -74,7 +74,7 @@ namespace MBBSEmu.Session.LocalConsole
                 new Win32VT100(_logger).Enable();
 
             if(disableLogging)
-                (_logger as CustomLogger)?.DisableConsoleLogging();
+                (_logger as LoggerBase)?.RemoveTarget<ConsoleTarget>();
 
             _consoleInputThreadIsRunning = true;
             _consoleInputThread = new Thread(InputThread);
@@ -130,7 +130,7 @@ namespace MBBSEmu.Session.LocalConsole
 
         public override void Stop()
         {
-            (_logger as CustomLogger)?.EnableConsoleLogging();
+            (_logger as LoggerBase)?.AddTarget(new ConsoleTarget());
 
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();

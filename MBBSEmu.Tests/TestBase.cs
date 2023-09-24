@@ -11,7 +11,7 @@ namespace MBBSEmu.Tests
 
     public abstract class TestBase
     {
-        protected static readonly Random RANDOM = new Random();
+        protected static readonly Random RANDOM = new(Guid.NewGuid().GetHashCode());
 
         static TestBase()
         {

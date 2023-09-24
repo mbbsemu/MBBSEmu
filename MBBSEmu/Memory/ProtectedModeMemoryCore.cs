@@ -1,7 +1,6 @@
 ﻿using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Logging;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -27,7 +26,7 @@ namespace MBBSEmu.Memory
         private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks = new();
         private readonly Dictionary<ushort, MemoryAllocator> _heapAllocators = new();
 
-        public ProtectedModeMemoryCore(ILogger logger) : base(logger)
+        public ProtectedModeMemoryCore(IMessageLogger logger) : base(logger)
         {
             //Add Segment 0 by default, stack segment
             AddSegment(0);

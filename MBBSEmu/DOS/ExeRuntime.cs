@@ -5,10 +5,10 @@ using MBBSEmu.Disassembler;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS.Structs;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +35,7 @@ namespace MBBSEmu.DOS
         public IMemoryCore Memory;
         public ICpuCore Cpu;
         public ICpuRegisters Registers;
-        private ILogger _logger;
+        private IMessageLogger _logger;
         private SessionBase _sessionBase;
         private readonly FarPtr _programRealModeLoadAddress = new FarPtr(PROGRAM_START_ADDRESS + (PSP_LENGTH >> 4), 0);
         private readonly ushort _pspSegment = PROGRAM_START_ADDRESS;
@@ -47,19 +47,20 @@ namespace MBBSEmu.DOS
         private readonly ProgrammableIntervalTimer _pit;
         private string _path;
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, string path, SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
+        public ExeRuntime(MZFile file, IClock clock, IMessageLogger logger, IFileUtility fileUtility, string path,
+            SessionBase sessionBase, IStream stdin, IStream stdout, IStream stderr)
         {
             _logger = logger;
             _path = path;
             _sessionBase = sessionBase;
             File = file;
-            Memory = new RealModeMemoryCore(0x8000, logger);
-            Cpu = new CpuCore(_logger);
+            Memory = new RealModeMemoryCore( 0x8000, _logger);
+            Cpu = new CpuCore();
             Registers = new CpuRegisters();
 
-            Registers = (ICpuRegisters)Cpu;
+            Registers = Cpu;
 
-            _pit = new ProgrammableIntervalTimer(logger, clock, Cpu);
+            _pit = new ProgrammableIntervalTimer(_logger, clock, Cpu);
 
             Cpu.Reset(
                 Memory,
@@ -81,7 +82,7 @@ namespace MBBSEmu.DOS
                 });
         }
 
-        public ExeRuntime(MZFile file, IClock clock, ILogger logger, IFileUtility fileUtility, string path, SessionBase sessionBase) : this(
+        public ExeRuntime(MZFile file, IClock clock, IMessageLogger logger, IFileUtility fileUtility, string path, SessionBase sessionBase) : this(
             file,
             clock,
             logger,
@@ -122,7 +123,7 @@ namespace MBBSEmu.DOS
         {
             //Detect if we're on Windows and enable VT100 on the current Terminal Window
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                new Win32VT100(_logger).Enable();
+                new Win32VT100().Enable();
 
             while (!Registers.Halt)
                 Cpu.Tick();

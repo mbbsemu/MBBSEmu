@@ -1,13 +1,13 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
-using MBBSEmu.IO;
 using MBBSEmu.HostProcess.Enums;
+using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Server;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Text;
 using System.Threading;
@@ -41,7 +41,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        public Galgsbl(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
+        public Galgsbl(IClock clock, IMessageLogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService) : base(
             clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _startDate = clock.Now;

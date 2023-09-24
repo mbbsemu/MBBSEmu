@@ -1,20 +1,15 @@
 using FluentAssertions;
-using MBBSEmu.CPU;
 using MBBSEmu.Database.Session;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
-using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.DOS;
-using MBBSEmu.Extensions;
 using MBBSEmu.IO;
-using MBBSEmu.Memory;
 using MBBSEmu.Resources;
-using NLog;
-using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Text;
-using System;
+using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
@@ -104,7 +99,7 @@ Printing environment variables from 0CDE
             ExeRuntime exeRuntime = new ExeRuntime(
               new MZFile(Path.Combine(_modulePath, _exeFiles[0])),
               _serviceResolver.GetService<IClock>(),
-              _serviceResolver.GetService<ILogger>(),
+              _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
               _serviceResolver.GetService<IFileUtility>(),
               _modulePath,
               null,

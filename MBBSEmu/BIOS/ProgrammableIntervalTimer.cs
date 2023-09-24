@@ -1,7 +1,7 @@
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
+using MBBSEmu.Logging;
 using MBBSEmu.Server;
-using NLog;
 using System;
 using System.Threading;
 
@@ -40,12 +40,12 @@ namespace MBBSEmu.BIOS
 
         private readonly ChannelConfig[] _channelConfig = new ChannelConfig[3];
 
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
         private readonly IClock _clock;
         private readonly ICpuCore _cpu;
         private Timer _timer;
 
-        public ProgrammableIntervalTimer(ILogger logger, IClock clock, ICpuCore cpu)
+        public ProgrammableIntervalTimer(IMessageLogger logger, IClock clock, ICpuCore cpu)
         {
             _logger = logger;
             _clock = clock;

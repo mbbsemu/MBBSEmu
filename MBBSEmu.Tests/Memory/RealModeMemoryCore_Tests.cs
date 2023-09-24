@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
 using System.Text;
 using Xunit;
 
@@ -9,7 +9,7 @@ namespace MBBSEmu.Tests.Memory
 {
     public class RealModeMemoryCore_Tests : TestBase
     {
-        private readonly ILogger _logger = new ServiceResolver().GetService<ILogger>();
+        private readonly IMessageLogger _logger = new ServiceResolver().GetService<LogFactory>().GetLogger<MessageLogger>();
 
         /// <summary>
         ///     Allocates three pointers, verifies they all exist on segments (offsets 0), frees

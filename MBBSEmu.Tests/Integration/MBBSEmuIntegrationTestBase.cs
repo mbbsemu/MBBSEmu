@@ -11,6 +11,7 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using MBBSEmu.Logging;
 
 namespace MBBSEmu.Tests.Integration
 {
@@ -26,8 +27,10 @@ namespace MBBSEmu.Tests.Integration
         public MBBSEmuIntegrationTestBase()
         {
             _modulePath = GetModulePath();
-
-            _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+            var _logFactoryForTest = new LogFactory();
+            _logFactoryForTest.AddLogger(new MessageLogger());
+            _logFactoryForTest.AddLogger(new AuditLogger());
+            _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"), _logFactoryForTest);
 
             _serviceResolver.GetService<IAccountRepository>().Reset("sysop");
             _serviceResolver.GetService<IAccountKeyRepository>().Reset();

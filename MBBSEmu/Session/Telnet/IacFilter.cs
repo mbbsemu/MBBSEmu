@@ -1,6 +1,6 @@
-using NLog;
-using System.IO;
+using MBBSEmu.Logging;
 using System;
+using System.IO;
 
 namespace MBBSEmu.Session.Telnet
 {
@@ -10,7 +10,7 @@ namespace MBBSEmu.Session.Telnet
     /// </summary>
     public class IacFilter
     {
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
         private const byte IAC = 0xFF;
 
@@ -47,7 +47,7 @@ namespace MBBSEmu.Session.Telnet
         public event EventHandler<IacVerbReceivedEventArgs> IacVerbReceived;
         public event EventHandler<IacSubnegotiationEventArgs> IacSubnegotiationReceived;
 
-        public IacFilter(ILogger logger)
+        public IacFilter(IMessageLogger logger)
         {
             _logger = logger;
         }

@@ -3,7 +3,6 @@ using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
-using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -39,7 +38,7 @@ namespace MBBSEmu.Btrieve
 
         const int ACS_LENGTH = 256;
 
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected static readonly IMessageLogger _logger = new LogFactory().GetLogger<MessageLogger>();
 
         private readonly IFileUtility _fileFinder;
 
@@ -654,7 +653,7 @@ namespace MBBSEmu.Btrieve
         ///     Inserts a new Btrieve Record.
         /// </summary>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
-        public uint Insert(byte[] record, LogLevel logLevel)
+        public uint Insert(byte[] record, EnumLogLevel logLevel)
         {
             if (VariableLengthRecords && record.Length != RecordLength)
                 _logger.Debug($"Inserting variable length record of {record.Length} bytes into {FullPath}");

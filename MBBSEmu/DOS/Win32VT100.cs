@@ -1,4 +1,4 @@
-﻿using NLog;
+﻿using MBBSEmu.Logging;
 using System;
 using System.Runtime.InteropServices;
 
@@ -35,9 +35,14 @@ namespace MBBSEmu.DOS
         [DllImport("kernel32.dll")]
         public static extern uint GetLastError();
 
-        private readonly ILogger _logger;
+        private readonly IMessageLogger _logger;
 
-        public Win32VT100(ILogger logger)
+        public Win32VT100()
+        {
+            _logger = new LogFactory().GetLogger<MessageLogger>();
+        }
+
+        public Win32VT100(IMessageLogger logger)
         {
             _logger = logger;
         }

@@ -5,13 +5,13 @@ using MBBSEmu.DOS.Structs;
 using MBBSEmu.HostProcess.ExecutionUnits;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System;
 
 namespace MBBSEmu.Module
 {
@@ -28,7 +28,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MbbsModule : IDisposable
     {
-        protected readonly ILogger _logger;
+        protected readonly IMessageLogger _logger;
         protected readonly IFileUtility _fileUtility;
         private protected readonly IClock _clock;
 
@@ -134,7 +134,7 @@ namespace MBBSEmu.Module
         /// <param name="logger"></param>
         /// <param name="moduleConfig"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, ILogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
+        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
         {
             _fileUtility = fileUtility;
             _logger = logger;

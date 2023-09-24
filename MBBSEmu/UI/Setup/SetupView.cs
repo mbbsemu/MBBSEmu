@@ -319,11 +319,12 @@ namespace MBBSEmu.UI.Setup
 
             removeKeyButton.Clicked += () =>
             {
-                if (keyListField.SelectedItem == null)
+                if (keyListField.SelectedItem == -1)
                 {
                     MessageBox.ErrorQuery(40, 10, "Error", "No Key Selected", "Ok");
                     return;
                 }
+
                 defaultKeys.RemoveAt(keyListField.SelectedItem);
                 keyListField.SetSource(defaultKeys);
                 keyToAddField.Text = string.Empty;

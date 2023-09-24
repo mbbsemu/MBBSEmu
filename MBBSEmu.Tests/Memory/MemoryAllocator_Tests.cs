@@ -1,19 +1,19 @@
 using FluentAssertions;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using NLog;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
 {
-  public class MemoryAllocator_Tests : TestBase
+    public class MemoryAllocator_Tests : TestBase
   {
     private const int DEFAULT_ALIGNMENT = 2;
     private const int SEGMENT = 1;
 
-    private readonly ILogger _logger = new ServiceResolver().GetService<ILogger>();
+    private readonly IMessageLogger _logger = new ServiceResolver().GetService<LogFactory>().GetLogger<MessageLogger>();
 
     [Fact]
     public void Properties()

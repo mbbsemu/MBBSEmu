@@ -1,16 +1,16 @@
 using FluentAssertions;
-using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Btrieve;
+using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.CPU;
 using MBBSEmu.Database.Session;
 using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
-using MBBSEmu.Resources;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
+using MBBSEmu.Resources;
 using MBBSEmu.Testing;
 using MBBSEmu.Tests;
-using NLog;
 using System;
 using System.IO;
 using System.Linq;
@@ -20,18 +20,18 @@ using Xunit;
 
 namespace MBBSEmu.DOS.Interrupts
 {
-  /* Data layout as follows:
+    /* Data layout as follows:
 
-    sqlite> select * from data_t;
-        id          data        key_0       key_1       key_2       key_3
-        ----------  ----------  ----------  ----------  ----------  ----------
-        1                       Sysop       3444        3444        1
-        2                       Sysop       7776        7776        2
-        3                       Sysop       1052234073  StringValu  3
-        4                       Sysop       -615634567  stringValu  4
-    */
+      sqlite> select * from data_t;
+          id          data        key_0       key_1       key_2       key_3
+          ----------  ----------  ----------  ----------  ----------  ----------
+          1                       Sysop       3444        3444        1
+          2                       Sysop       7776        7776        2
+          3                       Sysop       1052234073  StringValu  3
+          4                       Sysop       -615634567  stringValu  4
+      */
 
-  public class Int7Bh_Tests : TestBase, IDisposable
+    public class Int7Bh_Tests : TestBase, IDisposable
   {
     private readonly string[] _runtimeFiles = { "MBBSEMU.DB" };
 
@@ -56,8 +56,8 @@ namespace MBBSEmu.DOS.Interrupts
 
         _serviceResolver = new ServiceResolver(_fakeClock);
 
-        _memory = new RealModeMemoryCore(_serviceResolver.GetService<ILogger>());
-        _int7B = new Int7Bh(_serviceResolver.GetService<ILogger>(), _modulePath, _serviceResolver.GetService<IFileUtility>(), _registers, _memory);
+        _memory = new RealModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+        _int7B = new Int7Bh(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _modulePath, _serviceResolver.GetService<IFileUtility>(), _registers, _memory);
 
         _dataBuffer = _memory.Malloc(Int7Bh.BTRIEVE_COMMAND_STRUCT_LENGTH);
         _statusCodePointer = _memory.Malloc(2);

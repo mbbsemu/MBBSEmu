@@ -7,12 +7,12 @@ using MBBSEmu.Date;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
 using Microsoft.Data.Sqlite;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -52,15 +52,17 @@ namespace MBBSEmu.Tests.ExportedModules
 
         protected ExportedModuleTestBase(string modulePath)
         {
-            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"));
+            var _logFactoryForTest = new LogFactory();
+            _logFactoryForTest.AddLogger(new MessageLogger());
+            _serviceResolver = new ServiceResolver(fakeClock, SessionBuilder.ForTest($"MBBSDb_{RANDOM.Next()}"), _logFactoryForTest);
             var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
-            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<ILogger>());
-            mbbsEmuCpuCore = new CpuCore(_serviceResolver.GetService<ILogger>());
+            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+            mbbsEmuCpuCore = new CpuCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
 
             var testModuleConfig = new ModuleConfiguration {ModulePath = modulePath, ModuleEnabled = true};
-            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<ILogger>(), testModuleConfig, mbbsEmuProtectedModeMemoryCore);
+            mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), testModuleConfig, mbbsEmuProtectedModeMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
             testSessions.Allocate(new TestSession(null, textVariableService));
@@ -68,7 +70,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
-                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
                 _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
@@ -80,7 +82,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<IClock>(),
-                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
                 _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
@@ -136,7 +138,7 @@ namespace MBBSEmu.Tests.ExportedModules
             //Redeclare to re-allocate memory values that have been cleared
             majorbbs = new HostProcess.ExportedModules.Majorbbs(
                 _serviceResolver.GetService<IClock>(),
-                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
                 _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),
@@ -148,7 +150,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
                 _serviceResolver.GetService<IClock>(),
-                _serviceResolver.GetService<ILogger>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
                 _serviceResolver.GetService<AppSettingsManager>(),
                 _serviceResolver.GetService<IFileUtility>(),
                 _serviceResolver.GetService<IGlobalCache>(),

@@ -1,1 +1,1 @@
-﻿Development (Overwritten in Azure Pipeline)
+﻿Development (Overwritten in Github Actions)

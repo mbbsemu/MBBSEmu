@@ -10,6 +10,7 @@ using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.Fsd;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
@@ -17,7 +18,6 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -124,7 +124,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             base.Dispose();
         }
 
-        public Majorbbs(IClock clock, ILogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
+        public Majorbbs(IClock clock, IMessageLogger logger, AppSettingsManager configuration, IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module, PointerDictionary<SessionBase> channelDictionary, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, ITextVariableService textVariableService) : base(
            clock, logger, configuration, fileUtility, globalCache, module, channelDictionary, textVariableService)
         {
             _accountKeyRepository = accountKeyRepository;
@@ -2177,11 +2177,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringSummary = GetParameterStringSpan(0);
             var stringDetail = FormatPrintf(GetParameterStringSpan(2), 4);
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.BackgroundColor = ConsoleColor.Blue;
-            Console.WriteLine($"AUDIT SUMMARY: {Encoding.ASCII.GetString(stringSummary)}");
-            Console.WriteLine($"AUDIT DETAIL: {Encoding.ASCII.GetString(stringDetail)}");
-            Console.ResetColor();
+            //Get Logger from LogFactory
+            var logger = new LogFactory().GetLogger<AuditLogger>();
+            logger.Log(Encoding.ASCII.GetString(stringSummary), Encoding.ASCII.GetString(stringDetail));
         }
 
         /// <summary>
@@ -2715,7 +2713,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            if (!insertBtv(LogLevel.Fatal))
+            if (!insertBtv(EnumLogLevel.Fatal))
                 throw new SystemException("Failed to insert database record");
         }
 
@@ -2727,10 +2725,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
-            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
+            Registers.AX = insertBtv(EnumLogLevel.Debug) ? (ushort)1 : (ushort)0;
         }
 
-        private bool insertBtv(LogLevel logLevel)
+        private bool insertBtv(EnumLogLevel logLevel)
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
@@ -2754,7 +2752,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
+            currentBtrieveFile.Insert(record.ToArray(), EnumLogLevel.Error);
         }
 
         /// <summary>
@@ -3798,9 +3796,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
-                McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length,
-                variablePointer);
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved {outputValue.Length} bytes to {variablePointer}");
 #endif
 
             Registers.SetPointer(variablePointer);
@@ -5247,9 +5243,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(variablePointer, outputValue);
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier})Retrieved option {0} from {1} (MCV Pointer: {2}), saved {3} bytes to {4}", msgnum,
-                McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue.Length,
-                variablePointer);
+            _logger.Debug($"({Module.ModuleIdentifier})Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved {outputValue.Length} bytes to {variablePointer}");
 #endif
 
             Registers.SetPointer(variablePointer);
@@ -5268,8 +5262,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)[0];
 
 #if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {0} from {1} (MCV Pointer: {2}): {3}", msgnum,
-                McvPointerDictionary[_currentMcvFile.Offset].FileName, _currentMcvFile, outputValue);
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}): {outputValue}");
 #endif
 
             Registers.AX = outputValue;

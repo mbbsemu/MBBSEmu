@@ -1,10 +1,9 @@
 ﻿using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.Logging;
-using NLog;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System;
 
 namespace MBBSEmu.Btrieve
 {
@@ -15,7 +14,7 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveKey
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected static readonly IMessageLogger _logger = new LogFactory().GetLogger<MessageLogger>();
 
         public List<BtrieveKeyDefinition> Segments { get; set; }
 

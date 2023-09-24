@@ -3,13 +3,13 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using MBBSEmu.Logging;
 
 namespace MBBSEmu.Session.Rlogin
 {
@@ -38,7 +38,7 @@ namespace MBBSEmu.Session.Rlogin
 
         public readonly string ModuleIdentifier;
 
-        public RloginSession(IMbbsHost host, ILogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettingsManager configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
+        public RloginSession(IMbbsHost host, IMessageLogger logger, Socket rloginConnection, PointerDictionary<SessionBase> channelDictionary, AppSettingsManager configuration, ITextVariableService textVariableService, string moduleIdentifier = null) : base(host, logger, rloginConnection, textVariableService)
         {
             ModuleIdentifier = moduleIdentifier;
             _channelDictionary = channelDictionary;

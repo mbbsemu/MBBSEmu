@@ -1,6 +1,5 @@
 ﻿using MBBSEmu.IO;
 using MBBSEmu.Logging;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,7 +15,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class MsgFile
     {
-        protected static readonly Logger _logger = LogManager.GetCurrentClassLogger(typeof(CustomLogger));
+        protected static readonly IMessageLogger _logger = new LogFactory().GetLogger<MessageLogger>();
         private readonly string _modulePath;
         private readonly string _moduleName;
         private readonly IFileUtility _fileUtility;
