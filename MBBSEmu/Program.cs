@@ -307,8 +307,13 @@ namespace MBBSEmu
                     });
 
                     //Wait for the UI to be running before continuing
+                    Console.Write("Waiting for MBBSEmu GUI to start...");
                     while (!mainMBBSEmuWindow.isRunning)
-                        Thread.Sleep(100);
+                    {
+                        Thread.Sleep(500);
+                        Console.Write(".");
+                    }
+                    Console.WriteLine();
                 }
 
                 var configuration = _serviceResolver.GetService<AppSettingsManager>();
