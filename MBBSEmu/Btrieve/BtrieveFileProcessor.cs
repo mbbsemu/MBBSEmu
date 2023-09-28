@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace MBBSEmu.Btrieve
 {
@@ -653,7 +654,7 @@ namespace MBBSEmu.Btrieve
         ///     Inserts a new Btrieve Record.
         /// </summary>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
-        public uint Insert(byte[] record, EnumLogLevel logLevel)
+        public uint Insert(byte[] record, LogLevel logLevel)
         {
             if (VariableLengthRecords && record.Length != RecordLength)
                 _logger.Debug($"Inserting variable length record of {record.Length} bytes into {FullPath}");

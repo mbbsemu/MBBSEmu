@@ -78,6 +78,11 @@ namespace MBBSEmu.Memory
             return memoryAllocator.GetAllocatedMemorySize(ptr);
         }
 
+        public string ToHexString(FarPtr ptr, int length)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         ///     Deletes all defined Segments from Memory
         /// </summary>
@@ -249,5 +254,7 @@ namespace MBBSEmu.Memory
             AddSegment(realModeSegment.Segment, segmentSize);
             return realModeSegment;
         }
+
+        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memorySegments[segment];
     }
 }

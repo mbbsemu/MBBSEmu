@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Extensions.Logging;
 
 namespace MBBSEmu.Logging.Targets
 {
@@ -15,7 +16,7 @@ namespace MBBSEmu.Logging.Targets
                 return;
 
             var logMessage = (string)logEntry[0];
-            var logLevel = ((EnumLogLevel)logEntry[1]).ToString();
+            var logLevel = ((LogLevel)logEntry[1]).ToString();
 
             //Use reflection to get the name of the class calling this method
             //TODO: We should move this reflection up the stack to the log factory in GetLogger<T>() and pass it into the logger so we don't have to do this every time

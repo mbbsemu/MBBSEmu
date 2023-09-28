@@ -382,5 +382,12 @@ namespace MBBSEmu.Memory
         ///     For a given allocated memory block, returns the size. Returns negative if invalid.
         /// </summary>
         int GetAllocatedMemorySize(FarPtr ptr);
+
+        /// <summary>
+        ///     Returns the full Memory Segment
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <returns></returns>
+        ReadOnlySpan<byte> GetMemorySegment(ushort segment);
     }
 }

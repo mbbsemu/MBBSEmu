@@ -123,5 +123,7 @@ namespace MBBSEmu.Memory
             _memoryAllocator = new MemoryAllocator(_logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
             Array.Fill(_memory, (byte)0);
         }
+
+        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memory.AsSpan();
     }
 }

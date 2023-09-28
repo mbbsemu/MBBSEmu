@@ -1,8 +1,7 @@
 using Iced.Intel;
-using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
-using System.Runtime.InteropServices;
+using System.Text;
 
 namespace MBBSEmu.CPU
 {
@@ -91,5 +90,34 @@ namespace MBBSEmu.CPU
         public void PopStackTop() => Registers.Fpu.PopStackTop();
         public void PushStackTop() => Registers.Fpu.PushStackTop();
         public void ClearExceptions() => Registers.Fpu.ClearExceptions();
+
+        /// <summary>
+        ///     Overridden ToString() to display the current state of the CPU Registers
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            var output = new StringBuilder();
+
+            output.Append($"AX={this.AX:X4}  ");
+            output.Append($"BX={this.BX:X4}  ");
+            output.Append($"CX={this.CX:X4}  ");
+            output.Append($"DX={this.DX:X4}  ");
+            output.Append($"DS={this.DS:X4}  ");
+            output.AppendLine($"ES={this.ES:X4}");
+            output.Append($"SI={this.SI:X4}  ");
+            output.Append($"DI={this.DI:X4}  ");
+            output.Append($"SS={this.SS:X4}  ");
+            output.Append($"IP={this.IP:X4}  ");
+            output.Append($"SP={this.SP:X4}  ");
+            output.AppendLine($"BP={this.BP:X4}");
+            output.Append("F=");
+            output.Append(this.CarryFlag ? "C" : "c");
+            output.Append(this.ZeroFlag ? "Z" : "z");
+            output.Append(this.SignFlag ? "S" : "s");
+            output.Append(this.OverflowFlag ? "O" : "o");
+
+            return output.ToString();
+        }
     }
 }

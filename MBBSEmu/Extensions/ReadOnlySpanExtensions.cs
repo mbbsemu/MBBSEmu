@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
+using System.Text;
 
 namespace MBBSEmu.Extensions
 {
@@ -21,10 +23,53 @@ namespace MBBSEmu.Extensions
         {
             for (var i = 0; i < readOnlySpan.Length; ++i)
             {
-                if (readOnlySpan[i] != value)
+                if (i != value)
                     return false;
             }
             return true;
+        }
+
+        public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan, ushort start, ushort length)
+        {
+                var output = new StringBuilder();
+
+                //Print Header
+                output.AppendLine(new string('-', 73));
+                output.AppendLine($"{start - length} bytes, 0x{start:X4} -> 0x{start + length:X4}");
+                output.AppendLine(new string('-', 73));
+                output.Append("      ");
+                for (var i = 0; i < 0x10; i++)
+                {
+                    output.Append($" {i:X2}");
+                }
+                output.AppendLine();
+                var hexString = new StringBuilder(47);
+                var literalString = new StringBuilder(15);
+
+                //Print Hex Values
+                for (var i = start; i < start + length; i++)
+                {
+                    hexString.Append($" {readOnlySpan[i]:X2}");
+                    literalString.Append(readOnlySpan[i] < 32 ? ' ' : (char)readOnlySpan[i]);
+
+                    //New Memory Page
+                    if ((i | 0x0F) == i)
+                    {
+                        output.AppendLine($"{(i & ~0xF):X4} [{hexString} ] {literalString}");
+                        hexString.Clear();
+                        literalString.Clear();
+                    }
+                }
+
+                //Flush any data remaining in the buffer
+                if (hexString.Length > 0)
+                {
+                    output.AppendLine($"{(start + length) & ~0xF:X4} [{hexString.ToString().PadRight(48)} ] {literalString}");
+                    hexString.Clear();
+                    literalString.Clear();
+                }
+
+                return output.ToString();
         }
     }
 }

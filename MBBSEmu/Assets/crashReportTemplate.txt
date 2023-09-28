@@ -1,0 +1,31 @@
+This is an MBBSEmu Module Crash Report. This report contains detailed information 
+to help the MBBSEmu team diagnose and debug the issue this module ran into while 
+running within the emulator. 
+
+You can submit this report to the MBBSEmu team by opening an issue on GitHub at:
+https://github.com/mbbsemu/MBBSEmu/issues
+
+Please include the following information (copy/paste):
+---------------------------------------------------------------
+
+MBBSEmu v{0} Module Crash Report
+Date: {1}
+Time: {2}
+Operating System: {3}
+Processor: {4}
+
+Module Identifier: {5}
+Module Path: {6}
+DLL Name: {7}
+DLL Size: {8}
+DLL Hash: {9}
+
+Exception: {10}
+Stack Trace: 
+{11}
+
+CPU Registers:
+{12}
+
+Module Memory Stack:
+{13}

@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {
@@ -2713,7 +2714,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            if (!insertBtv(EnumLogLevel.Fatal))
+            if (!insertBtv(LogLevel.Critical))
                 throw new SystemException("Failed to insert database record");
         }
 
@@ -2725,10 +2726,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
-            Registers.AX = insertBtv(EnumLogLevel.Debug) ? (ushort)1 : (ushort)0;
+            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
         }
 
-        private bool insertBtv(EnumLogLevel logLevel)
+        private bool insertBtv(LogLevel logLevel)
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
@@ -2752,7 +2753,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            currentBtrieveFile.Insert(record.ToArray(), EnumLogLevel.Error);
+            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
         }
 
         /// <summary>

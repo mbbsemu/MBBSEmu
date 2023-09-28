@@ -125,6 +125,13 @@ namespace MBBSEmu.Module
         public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
 
         /// <summary>
+        ///     Current Status of the Module
+        ///
+        ///     Default status is Disabled until the Constructor successfully runs
+        /// </summary>
+        public EnumModuleStatus Status { get; set; } = EnumModuleStatus.Disabled;
+
+        /// <summary>
         ///     Constructor for MbbsModule
         ///
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
@@ -136,6 +143,7 @@ namespace MBBSEmu.Module
         /// <param name="memoryCore"></param>
         public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
         {
+
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
@@ -240,7 +248,7 @@ namespace MBBSEmu.Module
 
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
 
-                    initEntryPointPointer = new FarPtr((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                    initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
 
                 }
                 else
@@ -253,6 +261,9 @@ namespace MBBSEmu.Module
                 _logger.Debug($"({ModuleIdentifier}) Located _INIT__: {initEntryPointPointer}");
                 dll.EntryPoints["_INIT_"] = initEntryPointPointer;
             }
+
+            //Lastly, mark the module as Enabled
+            Status = EnumModuleStatus.Enabled;
         }
 
         public void Dispose()
@@ -279,27 +290,49 @@ namespace MBBSEmu.Module
         public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
-            //Set the proper DLL making the call based on the Segment
-            for (ushort i = 0; i < ModuleDlls.Count; i++)
+            if (Status.HasFlag(EnumModuleStatus.Disabled))
             {
-                var dll = ModuleDlls[i];
-                if (entryPoint.Segment >= dll.SegmentOffset &&
-                    entryPoint.Segment <= (dll.SegmentOffset + dll.File.SegmentTable.Count))
-
-                    foreach (var (_, value) in ExportedModuleDictionary)
-                        ((ExportedModuleBase)value).ModuleDll = i;
+                _logger.Warn("Attempting to run Disabled Module. Aborting...");
+                return null;
             }
 
-            //Try to dequeue an execution unit, if one doesn't exist, create a new one
-            if (!ExecutionUnits.TryDequeue(out var executionUnit))
-            {
-                _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
-            }
+            ICpuRegisters resultRegisters = null;
 
-            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
-            ExecutionUnits.Enqueue(executionUnit);
-            return resultRegisters;
+            try
+            {
+                //Set the proper DLL making the call based on the Segment
+                for (ushort i = 0; i < ModuleDlls.Count; i++)
+                {
+                    var dll = ModuleDlls[i];
+                    if (entryPoint.Segment >= dll.SegmentOffset &&
+                        entryPoint.Segment <= (dll.SegmentOffset + dll.File.SegmentTable.Count))
+
+                        foreach (var (_, value) in ExportedModuleDictionary)
+                            ((ExportedModuleBase)value).ModuleDll = i;
+                }
+
+                //Try to dequeue an execution unit, if one doesn't exist, create a new one
+                if (!ExecutionUnits.TryDequeue(out var executionUnit))
+                {
+                    _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
+                    executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
+                }
+
+                resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
+                ExecutionUnits.Enqueue(executionUnit);
+                return resultRegisters;
+            }
+            catch (Exception e)
+            {
+                //Set Module Status to Crashed
+                Status = EnumModuleStatus.Disabled | EnumModuleStatus.Crashed;
+
+                //Call Crash Logger
+                var crashReport = new CrashReport(this, resultRegisters, e);
+                crashReport.Save();
+
+                return null;
+            }
         }
 
         /// <summary>
@@ -323,7 +356,7 @@ namespace MBBSEmu.Module
 
             //Pull records from ModuleReferenceTable that aren't of References handled internally by the emulator
             foreach (var import in ModuleDlls[0].File.ModuleReferenceTable
-                .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x=> x.Name))
+                .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x => x.Name))
             {
                 //Only load a dependency if it's not already loaded by a previous library
                 if (ModuleDlls.All(x => x.File.FileName.ToUpper().Split('.')[0] != import.ToUpper()))
