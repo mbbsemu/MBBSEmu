@@ -289,12 +289,6 @@ namespace MBBSEmu.Module
         public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
-            if (!ModuleConfig.ModuleEnabled ?? true)
-            {
-                _logger.Warn("Attempting to run Disabled Module. Aborting...");
-                return null;
-            }
-
             ICpuRegisters resultRegisters = null;
 
             try
