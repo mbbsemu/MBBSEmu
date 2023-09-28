@@ -7,6 +7,7 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
+using MBBSEmu.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -125,15 +126,13 @@ namespace MBBSEmu.Module
         public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
 
         /// <summary>
-        ///     Current Status of the Module
-        ///
-        ///     Default status is Disabled until the Constructor successfully runs
+        ///     Message Center used to send notifications and events to other parts of the system
         /// </summary>
-        public EnumModuleStatus Status { get; set; } = EnumModuleStatus.Disabled;
+        private readonly IMessagingCenter _messagingCenter;
 
         /// <summary>
         ///     Constructor for MbbsModule
-        ///
+        /// 
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
         /// <param name="fileUtility"></param>
@@ -141,7 +140,8 @@ namespace MBBSEmu.Module
         /// <param name="logger"></param>
         /// <param name="moduleConfig"></param>
         /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
+        /// <param name="messageCenter"></param>
+        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, IMessagingCenter messagingCenter, ProtectedModeMemoryCore memoryCore = null, IMessagingCenter messageCenter = null)
         {
 
             _fileUtility = fileUtility;
@@ -149,6 +149,8 @@ namespace MBBSEmu.Module
             _clock = clock;
 
             ModuleConfig = moduleConfig;
+            _messagingCenter = messagingCenter;
+
             ModuleIdentifier = moduleConfig.ModuleIdentifier;
 
             ModuleDlls = new List<MbbsDll>();
@@ -261,9 +263,6 @@ namespace MBBSEmu.Module
                 _logger.Debug($"({ModuleIdentifier}) Located _INIT__: {initEntryPointPointer}");
                 dll.EntryPoints["_INIT_"] = initEntryPointPointer;
             }
-
-            //Lastly, mark the module as Enabled
-            Status = EnumModuleStatus.Enabled;
         }
 
         public void Dispose()
@@ -290,7 +289,7 @@ namespace MBBSEmu.Module
         public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
-            if (Status.HasFlag(EnumModuleStatus.Disabled))
+            if (!ModuleConfig.ModuleEnabled ?? true)
             {
                 _logger.Warn("Attempting to run Disabled Module. Aborting...");
                 return null;
@@ -324,12 +323,16 @@ namespace MBBSEmu.Module
             }
             catch (Exception e)
             {
-                //Set Module Status to Crashed
-                Status = EnumModuleStatus.Disabled | EnumModuleStatus.Crashed;
+                //Set Module Status to Disabled
+                ModuleConfig.ModuleEnabled = false;
 
                 //Call Crash Logger
                 var crashReport = new CrashReport(this, resultRegisters, e);
                 crashReport.Save();
+
+                //Notify the Host Process that the Module is Disabled
+                //Host process knows that messages to disable module coming from here is a crash event
+                _messagingCenter?.Send(this, EnumMessageEvent.DisableModule, ModuleIdentifier);
 
                 return null;
             }

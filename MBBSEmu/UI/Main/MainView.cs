@@ -3,6 +3,7 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
 using MBBSEmu.Resources;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -245,7 +246,7 @@ namespace MBBSEmu.UI.Main
                 {
                     var logDate = ((string)entry[0]).Split(' ')[1];
                     var logClass = ((string)entry[1])[8..];
-                    var logLevel = ((EnumLogLevel)entry[2]).ToString();
+                    var logLevel = ((LogLevel)entry[2]).ToString();
                     var logMessage = (string)entry[3];
 
                     _logTable.Rows.Add(

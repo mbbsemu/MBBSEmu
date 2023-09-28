@@ -132,14 +132,40 @@ namespace MBBSEmu.HostProcess
         private bool _performCleanup = false;
         private EventWaitHandle _cleanupRestartEvent = null;
 
+        /// <summary>
+        ///     Global Cache of objects maintained and accessible everywhere within the process
+        /// </summary>
         private readonly IGlobalCache _globalCache;
+
+        /// <summary>
+        ///     File Utility used for safely handling cross-platform File operations
+        /// </summary>
         private readonly IFileUtility _fileUtility;
 
+        /// <summary>
+        ///     Main Worker Thread that processes the main loop within MBBSEmu
+        /// </summary>
         private Thread _workerThread;
 
+        /// <summary>
+        ///     Repository for Account Keys related to Accounts within MBBSEmu
+        /// </summary>
         private readonly IAccountKeyRepository _accountKeyRepository;
+
+        /// <summary>
+        ///     Repository for the MBBSEmu Accounts Database
+        /// </summary>
         private readonly IAccountRepository _accountRepository;
+
+        /// <summary>
+        ///     Text Variable Service used to process Global Text Variables
+        /// </summary>
         private readonly ITextVariableService _textVariableService;
+
+        /// <summary>
+        ///     Message Center used to handle notifications and events from other parts of the system
+        /// </summary>
+        private readonly IMessagingCenter _messagingCenter;
 
         public MbbsHost(IClock clock, LogFactory logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettingsManager configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
@@ -154,7 +180,7 @@ namespace MBBSEmu.HostProcess
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
-            var _messagingCenter = messagingCenter;
+            _messagingCenter = messagingCenter;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -190,6 +216,7 @@ namespace MBBSEmu.HostProcess
             //Setup Message Subscribers
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, moduleId) => { EnableModule(moduleId); });
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId); });
+            _messagingCenter.Subscribe<MbbsModule, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId, true); });
             _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
 
             Logger.Info("Constructed MBBSEmu Host!");
@@ -210,7 +237,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m));
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, _messagingCenter));
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
@@ -1302,15 +1329,25 @@ namespace MBBSEmu.HostProcess
             _modules[moduleId].ModuleConfig.ModuleEnabled = true;
         }
 
-        private void DisableModule(string moduleId)
+        private void DisableModule(string moduleId, bool isCrashed = false)
         {
-            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == moduleId))
-            {
-                Logger.Warn($"(Sysop Command) Tried to disable {moduleId} while in use -- Wait until all users have exited module");
-                return;
-            }
-
+            //Ensure Module is marked Disabled
             _modules[moduleId].ModuleConfig.ModuleEnabled = false;
+
+            //Notify Users and Exit Modules
+            foreach (var c in _channelDictionary.Values.Where(x => x.CurrentModule.ModuleIdentifier == moduleId))
+            {
+                if (isCrashed)
+                {
+                    c.SendToClient($"|RESET|\r\n|B||RED|The module you were in ({moduleId}) has crashed. Please contact the Sysop and try again later.|RESET|\r\n".EncodeToANSIArray());
+                }
+                else
+                {
+                    c.SendToClient($"|RESET|\r\n|B||RED|The module you were in ({moduleId}) has been disabled by the Sysop. Please try again later.|RESET|\r\n".EncodeToANSIArray());
+                }
+
+                ExitModule(c);
+            }
         }
 
         private Timer SetupCleanupWarningTimer()

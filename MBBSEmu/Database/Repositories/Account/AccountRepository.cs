@@ -9,6 +9,9 @@ using System.Text;
 
 namespace MBBSEmu.Database.Repositories.Account
 {
+    /// <summary>
+    ///     Repository Pattern for the MBBSEmu Account Database
+    /// </summary>
     public class AccountRepository : RepositoryBase, IAccountRepository
     {
         public AccountRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager) : base(sessionBuilder, resourceManager)
