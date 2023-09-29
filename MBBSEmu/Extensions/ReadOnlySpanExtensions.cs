@@ -35,8 +35,16 @@ namespace MBBSEmu.Extensions
 
                 //Print Header
                 output.AppendLine(new string('-', 73));
-                output.AppendLine($"{start - length} bytes, 0x{start:X4} -> 0x{start + length:X4}");
+                output.AppendLine($"{readOnlySpan.Length} bytes, 0x{start:X4} -> 0x{start + length:X4}");
                 output.AppendLine(new string('-', 73));
+
+                //Handle Zero Length
+                if (length == 0)
+                {
+                    output.AppendLine("No Data to Display");
+                    return output.ToString();
+                }
+
                 output.Append("      ");
                 for (var i = 0; i < 0x10; i++)
                 {

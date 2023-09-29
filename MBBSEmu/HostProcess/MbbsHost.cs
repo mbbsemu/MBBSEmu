@@ -1348,6 +1348,15 @@ namespace MBBSEmu.HostProcess
 
                 ExitModule(c);
             }
+
+            if (isCrashed)
+            {
+                Logger.Error($"Module {moduleId} has crashed. Disabling.");
+            }
+            else
+            {
+                Logger.Info($"Module {moduleId} has been disabled by /SYSOP command.");
+            }
         }
 
         private Timer SetupCleanupWarningTimer()

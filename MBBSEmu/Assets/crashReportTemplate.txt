@@ -24,8 +24,11 @@ Exception: {10}
 Stack Trace: 
 {11}
 
-CPU Registers:
+CPU Instruction: 
 {12}
 
-Module Memory Stack:
+CPU Registers:
 {13}
+
+Module Memory Stack:
+{14}

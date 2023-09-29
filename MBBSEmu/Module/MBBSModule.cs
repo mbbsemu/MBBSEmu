@@ -1,3 +1,4 @@
+using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
@@ -290,7 +291,7 @@ namespace MBBSEmu.Module
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
             ICpuRegisters resultRegisters = null;
-
+            ExecutionUnit executionUnit = null;
             try
             {
                 //Set the proper DLL making the call based on the Segment
@@ -305,7 +306,7 @@ namespace MBBSEmu.Module
                 }
 
                 //Try to dequeue an execution unit, if one doesn't exist, create a new one
-                if (!ExecutionUnits.TryDequeue(out var executionUnit))
+                if (!ExecutionUnits.TryDequeue(out executionUnit))
                 {
                     _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
                     executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
@@ -320,15 +321,19 @@ namespace MBBSEmu.Module
                 //Set Module Status to Disabled
                 ModuleConfig.ModuleEnabled = false;
 
+                //Grab the Registers from the Execution Unit
+                var registers = executionUnit?.ModuleCpuRegisters;
+
                 //Call Crash Logger
-                var crashReport = new CrashReport(this, resultRegisters, e);
+                var crashReport = new CrashReport(this, registers, e);
                 crashReport.Save();
 
                 //Notify the Host Process that the Module is Disabled
                 //Host process knows that messages to disable module coming from here is a crash event
                 _messagingCenter?.Send(this, EnumMessageEvent.DisableModule, ModuleIdentifier);
 
-                return null;
+                //Set AX == 1, we don't return an exit code so it can be gracefully handled by the host process
+                return new CpuRegisters { AX = 1, Halt = true};
             }
         }
 

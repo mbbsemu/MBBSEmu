@@ -40,7 +40,7 @@ namespace MBBSEmu.Module
         public void Save(string fileName = "")
         {
             var crashReportVariables = new List<string>();
-
+            crashReportVariables.Add(new ResourceManager().GetString("MBBSEmu.Assets.version.txt"));
             //Built Variable List to be used in Crash Report Template (crashReportTemplate.txt)
             crashReportVariables.Add(DateTime.Now.ToString("d"));
             crashReportVariables.Add(DateTime.Now.ToString("t"));
@@ -60,12 +60,15 @@ namespace MBBSEmu.Module
             crashReportVariables.Add(_exception.Message);
             crashReportVariables.Add(_exception.StackTrace);
 
+            //CPU Instruction
+            crashReportVariables.Add(_moduleToReport.Memory.GetInstruction(_registers.CS, _registers.IP).ToString());
+
             //Registers
             crashReportVariables.Add(_registers.ToString());
-            crashReportVariables.Add(_moduleToReport.Memory.GetMemorySegment(0)
+            crashReportVariables.Add(_moduleToReport.Memory.GetMemorySegment(0).Slice(_registers.BP, (_registers.BP - _registers.SP))
                 .ToHexString(_registers.BP, (ushort)(_registers.BP - _registers.SP)));
 
-            var crashTemplate = new ResourceManager().GetString("MBBSEmu.Assets.crashReportTEmplate.txt");
+            var crashTemplate = new ResourceManager().GetString("MBBSEmu.Assets.crashReportTemplate.txt");
 
             //Replace Variables in Template
             var crashReport = string.Format(crashTemplate, crashReportVariables.ToArray());
