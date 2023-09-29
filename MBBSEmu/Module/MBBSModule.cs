@@ -140,9 +140,9 @@ namespace MBBSEmu.Module
         /// <param name="clock"></param>
         /// <param name="logger"></param>
         /// <param name="moduleConfig"></param>
-        /// <param name="memoryCore"></param>
-        /// <param name="messageCenter"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, IMessagingCenter messagingCenter, ProtectedModeMemoryCore memoryCore = null, IMessagingCenter messageCenter = null)
+        /// <param name="memoryCore">(Optional) Memory Core to be loaded into the Module memory space</param>
+        /// <param name="messagingCenter">(Optional) Messaging Center used to notify other threads of events</param>
+        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null, IMessagingCenter messagingCenter = null)
         {
 
             _fileUtility = fileUtility;
