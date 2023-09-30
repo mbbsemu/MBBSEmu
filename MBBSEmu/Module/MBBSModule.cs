@@ -332,6 +332,9 @@ namespace MBBSEmu.Module
                 //Host process knows that messages to disable module coming from here is a crash event
                 _messagingCenter?.Send(this, EnumMessageEvent.DisableModule, ModuleIdentifier);
 
+                //Log the crash
+                _logger.Error($"({ModuleIdentifier}) CRASH: {e.Message}");
+
                 //Set AX == 1, we don't return an exit code so it can be gracefully handled by the host process
                 return new CpuRegisters { AX = 1, Halt = true};
             }
