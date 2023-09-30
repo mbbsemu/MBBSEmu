@@ -18,13 +18,13 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Microsoft.Extensions.Logging;
 
 namespace MBBSEmu.HostProcess.ExportedModules
 {

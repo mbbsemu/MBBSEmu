@@ -23,12 +23,22 @@ namespace MBBSEmu.Extensions
         {
             for (var i = 0; i < readOnlySpan.Length; ++i)
             {
-                if (i != value)
+                if (readOnlySpan[i] != value)
                     return false;
             }
             return true;
         }
 
+        /// <summary>
+        ///     Creates a human readable hex string from a ReadOnlySpan of bytes
+        ///
+        ///     The header contains the total number of bytes, the start and end address
+        ///     as well as columns for each byte within an 8-bit boundary.
+        /// </summary>
+        /// <param name="readOnlySpan"></param>
+        /// <param name="start"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
         public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan, ushort start, ushort length)
         {
                 var output = new StringBuilder();

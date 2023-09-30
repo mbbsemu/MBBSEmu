@@ -3,13 +3,13 @@ using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Microsoft.Extensions.Logging;
 
 namespace MBBSEmu.Btrieve
 {
