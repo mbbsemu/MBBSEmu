@@ -37,7 +37,7 @@ namespace MBBSEmu.Module
             Save();
         }
 
-        public void Save(string fileName = "")
+        public string Save(string fileName = "")
         {
             var crashReportVariables = new List<string>();
             crashReportVariables.Add(new ResourceManager().GetString("MBBSEmu.Assets.version.txt"));
@@ -78,6 +78,8 @@ namespace MBBSEmu.Module
 
             //Write Crash Report to File Named with the Module Identifier and the current time
             System.IO.File.WriteAllText(fileName, crashReport);
+
+            return fileName;
 
         }
     }
