@@ -968,6 +968,11 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Runs the specified EXE file during cleanup by modules that require one
+        /// </summary>
+        /// <param name="modulePath"></param>
+        /// <param name="cmdline"></param>
         private void RunProgram(string modulePath, string cmdline)
         {
             var exe = cmdline.Split(' ')[0];
@@ -1142,6 +1147,10 @@ namespace MBBSEmu.HostProcess
             return functions;
         }
 
+        /// <summary>
+        ///     Returns the current list of active User Sessions
+        /// </summary>
+        /// <returns></returns>
         public IList<SessionBase> GetUserSessions() => _channelDictionary.Values.ToList();
 
         /// <summary>
@@ -1228,8 +1237,6 @@ namespace MBBSEmu.HostProcess
                                         default:
                                             Logger.Error($"({module.ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                             continue;
-                                            //throw new Exception(
-                                            //    $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                     }
 
                                     //32-Bit Pointer
@@ -1324,11 +1331,20 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Marks the specified module as "Enabled" and executes the _INIT_ routine
+        /// </summary>
+        /// <param name="moduleId"></param>
         private void EnableModule(string moduleId)
         {
             _modules[moduleId].ModuleConfig.ModuleEnabled = true;
         }
 
+        /// <summary>
+        ///     Disables a Module while the service host is running
+        /// </summary>
+        /// <param name="moduleId"></param>
+        /// <param name="isCrashed"></param>
         private void DisableModule(string moduleId, bool isCrashed = false)
         {
             //Ensure Module is marked Disabled
@@ -1359,6 +1375,10 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Returns a new Timer that counts down to the Cleanup Warning prior to the cleanup routine running
+        /// </summary>
+        /// <returns></returns>
         private Timer SetupCleanupWarningTimer()
         {
             _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
@@ -1370,6 +1390,10 @@ namespace MBBSEmu.HostProcess
             return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
         }
 
+        /// <summary>
+        ///     Goes through all the currently active sessions and sends them a warning that the Nightly Cleanup is about to run
+        /// </summary>
+        /// <param name="_"></param>
         private void SendCleanupWarning(object _)
         {
             if (_cleanupWarningMinutesRemaining > 0)
@@ -1392,6 +1416,9 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Method Invoked by the Nightly Cleanup time to begin the Nightly Cleanup Process
+        /// </summary>
         private void ProcessNightlyCleanup()
         {
             if (_performCleanup)
@@ -1409,6 +1436,9 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Performs the Nightly Cleanup by invoking "MCUROU" (Nightly Cleanup) and "FINROU" (Finish-Up) routines in each module
+        /// </summary>
         private void DoNightlyCleanup()
         {
             Logger.Info("PERFORMING NIGHTLY CLEANUP");
@@ -1465,6 +1495,11 @@ namespace MBBSEmu.HostProcess
             return waitTime;
         }
 
+        /// <summary>
+        ///     Returns an API Report for all currently loaded modules
+        ///
+        ///     The API Report contains all SDK APIs that are used by the module
+        /// </summary>
         public void GenerateAPIReport()
         {
             foreach (var apiReport in _modules.Select(m => new ApiReport(Logger, m.Value)))
