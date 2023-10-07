@@ -116,7 +116,7 @@ namespace MBBSEmu
             //Setup Logging
             var factory = new LogFactory();
             factory.AddLogger(new MessageLogger(new ConsoleTarget()));
-
+            factory.AddLogger(new AuditLogger(new ConsoleTarget()));
             new Program().Run(args);
         }
 

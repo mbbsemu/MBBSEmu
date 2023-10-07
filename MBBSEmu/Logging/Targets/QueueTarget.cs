@@ -10,7 +10,7 @@ namespace MBBSEmu.Logging.Targets
         /// <summary>
         ///     Maximum number of items to queue before dropping
         /// </summary>
-        private int _maxQueueSize;
+        private readonly int _maxQueueSize;
 
         private readonly ConcurrentQueue<object[]> _queue;
 
@@ -23,13 +23,22 @@ namespace MBBSEmu.Logging.Targets
         /// <summary>
         ///     ILoggingTarget Implementation
         /// </summary>
-        /// <param name="logEntry"></param>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <param name="logEntry">params object[] consisting of (logLevel, logMessage)</param>
         public void Write(params object[] logEntry)
         {
+            //Use reflection to get the name of the class calling this method
+            //TODO: We should move this reflection up the stack to the log factory in GetLogger<T>() and pass it into the logger so we don't have to do this every time
+            var callingType = new System.Diagnostics.StackTrace().GetFrame(3)?.GetMethod()?.DeclaringType;
+
+            //Append new Values to the beginning of the array
+            var objectToWrite = new object[logEntry.Length + 2];
+            objectToWrite[0] = DateTime.Now;
+            objectToWrite[1] = callingType;
+            Array.Copy(logEntry, 0, objectToWrite, 2, logEntry.Length);
+
             //Check Queue Length
             if (_queue.Count <= _maxQueueSize)
-                _queue.Enqueue(logEntry);
+                _queue.Enqueue(objectToWrite);
         }
 
         public object[] Dequeue() => _queue.TryDequeue(out var queueItem) ? queueItem : null;

@@ -4,6 +4,7 @@ using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
 using MBBSEmu.Resources;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -237,7 +238,7 @@ namespace MBBSEmu.UI.Main
                 foreach (var entry in auditEntry)
                 {
                     //Split the log entry into its parts (Time, Class, Level, Message
-                    _auditLogTable.Rows.Add((string)entry[0], (string)entry[1]);
+                    _auditLogTable.Rows.Add((string)entry[2], (string)entry[3]);
                 }
 
                 //Only Force Updates when new log entries are added
@@ -261,8 +262,8 @@ namespace MBBSEmu.UI.Main
             {
                 foreach (var entry in logEntry)
                 {
-                    var logDate = ((string)entry[0]).Split(' ')[1];
-                    var logClass = ((string)entry[1])[8..];
+                    var logDate = ((DateTime)entry[0]).ToString("HH:mm:ss.fff");
+                    var logClass = (entry[1].ToString())?[8..];
                     var logLevel = ((LogLevel)entry[2]).ToString();
                     var logMessage = (string)entry[3];
 

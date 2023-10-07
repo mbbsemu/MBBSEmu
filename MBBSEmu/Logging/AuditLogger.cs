@@ -2,6 +2,9 @@
 
 namespace MBBSEmu.Logging
 {
+    /// <summary>
+    ///     Logger to handle messages to be sent to the Audit Log
+    /// </summary>
     public class AuditLogger : LoggerBase, IAuditLogger
     {
         public AuditLogger() { }
@@ -11,6 +14,11 @@ namespace MBBSEmu.Logging
             AddTarget(target);
         }
 
+        /// <summary>
+        ///     Send message to the Audit Log
+        /// </summary>
+        /// <param name="summary"></param>
+        /// <param name="detail"></param>
         public void Log(string summary, string detail)
         {
             foreach (var target in LOGGING_TARGETS)

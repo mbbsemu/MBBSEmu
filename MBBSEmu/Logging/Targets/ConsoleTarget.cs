@@ -10,13 +10,14 @@ namespace MBBSEmu.Logging.Targets
     {
         public ConsoleTarget() { }
 
+        /// <summary>
+        ///     Writes the log entry to the Console
+        /// </summary>
+        /// <param name="logEntry">params object[] consisting of (logLevel, logMessage)</param>
         public void Write(params object[] logEntry)
         {
-            if(logEntry.Length != 0)
-                return;
-
-            var logMessage = (string)logEntry[0];
-            var logLevel = ((LogLevel)logEntry[1]).ToString();
+            var logLevel =  logEntry[0] as string ?? ((LogLevel)logEntry[0]).ToString();
+            var logMessage = (string)logEntry[1];
 
             //Use reflection to get the name of the class calling this method
             //TODO: We should move this reflection up the stack to the log factory in GetLogger<T>() and pass it into the logger so we don't have to do this every time

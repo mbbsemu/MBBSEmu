@@ -1,7 +1,6 @@
-﻿using System;
-using MBBSEmu.Logging.Targets;
-using System.Collections.Generic;
+﻿using MBBSEmu.Logging.Targets;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace MBBSEmu.Logging
 {
@@ -19,14 +18,24 @@ namespace MBBSEmu.Logging
             AddTarget(target);
         }
 
+        /// <summary>
+        ///     Logs the specific message, exception, or both
+        /// </summary>
+        /// <param name="logLevel">LogLevel corresponding to Microsoft.Extensions.Logging</param>
+        /// <param name="message">Message to be Logged</param>
+        /// <param name="exception">Exception to be Logged</param>
         public void Log(LogLevel logLevel, string message, Exception exception = null)
         {
             foreach (var target in LOGGING_TARGETS)
             {
-                //Use reflection to get the name of the class calling this method
-                var callingClass = new System.Diagnostics.StackTrace().GetFrame(2)?.GetMethod()?.DeclaringType.ToString();
+                if(!string.IsNullOrEmpty(message))
+                    target.Write(logLevel, message);
 
-                target.Write(DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss.fff"), callingClass, logLevel, message);
+                if (exception != null)
+                {
+                    target.Write(logLevel, exception.Message);
+                    target.Write(logLevel, exception.StackTrace);
+                }
             }
         }
 
