@@ -1332,7 +1332,7 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Marks the specified module as "Enabled" and executes the _INIT_ routine
+        ///     Marks the specified module as "Enabled"
         /// </summary>
         /// <param name="moduleId"></param>
         private void EnableModule(string moduleId)
@@ -1350,6 +1350,16 @@ namespace MBBSEmu.HostProcess
             //Ensure Module is marked Disabled
             _modules[moduleId].ModuleConfig.ModuleEnabled = false;
 
+            //Log Crashed or Disabled
+            if (isCrashed)
+            {
+                Logger.Error($"Module {moduleId} has crashed. Disabling.");
+            }
+            else
+            {
+                Logger.Info($"Module {moduleId} has been disabled by /SYSOP command.");
+            }
+
             //Notify Users and Exit Modules
             foreach (var c in _channelDictionary.Values.Where(x => x.CurrentModule.ModuleIdentifier == moduleId))
             {
@@ -1363,15 +1373,6 @@ namespace MBBSEmu.HostProcess
                 }
 
                 ExitModule(c);
-            }
-
-            if (isCrashed)
-            {
-                Logger.Error($"Module {moduleId} has crashed. Disabling.");
-            }
-            else
-            {
-                Logger.Info($"Module {moduleId} has been disabled by /SYSOP command.");
             }
         }
 
