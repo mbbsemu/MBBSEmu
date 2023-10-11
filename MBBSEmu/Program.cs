@@ -21,6 +21,7 @@ using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
 using MBBSEmu.UI.Main;
 using MBBSEmu.UI.Setup;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -115,7 +116,7 @@ namespace MBBSEmu
             //Setup Logging
             var factory = new LogFactory();
             factory.AddLogger(new MessageLogger(new ConsoleTarget()));
-
+            factory.AddLogger(new AuditLogger(new ConsoleTarget()));
             new Program().Run(args);
         }
 
@@ -565,8 +566,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, EnumLogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, EnumLogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");

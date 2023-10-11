@@ -27,7 +27,7 @@ namespace MBBSEmu.Util
 	{
 		public static IMessagingCenter Instance { get; } = new MessagingCenter();
 
-		class Sender : Tuple<EnumMessageEvent, Type, Type>
+        private class Sender : Tuple<EnumMessageEvent, Type, Type>
 		{
 			public Sender(EnumMessageEvent message, Type senderType, Type argType) : base(message, senderType, argType)
 			{
@@ -36,12 +36,12 @@ namespace MBBSEmu.Util
 
 		delegate bool Filter(object sender);
 
-		class MaybeWeakReference
+        private class MaybeWeakReference
 		{
 			WeakReference DelegateWeakReference { get; }
-			object DelegateStrongReference { get; }
+            private object DelegateStrongReference { get; }
 
-			readonly bool _isStrongReference;
+            private readonly bool _isStrongReference;
 
 			public MaybeWeakReference(object subscriber, object delegateSource)
 			{
@@ -62,7 +62,7 @@ namespace MBBSEmu.Util
 			public bool IsAlive => _isStrongReference || DelegateWeakReference.IsAlive;
 		}
 
-		class Subscription : Tuple<WeakReference, MaybeWeakReference, MethodInfo, Filter>
+        private class Subscription : Tuple<WeakReference, MaybeWeakReference, MethodInfo, Filter>
 		{
 			public Subscription(object subscriber, object delegateSource, MethodInfo methodInfo, Filter filter)
 				: base(new WeakReference(subscriber), new MaybeWeakReference(subscriber, delegateSource), methodInfo, filter)
@@ -70,9 +70,9 @@ namespace MBBSEmu.Util
 			}
 
 			public WeakReference Subscriber => Item1;
-			MaybeWeakReference DelegateSource => Item2;
-			MethodInfo MethodInfo => Item3;
-			Filter Filter => Item4;
+            private MaybeWeakReference DelegateSource => Item2;
+            private MethodInfo MethodInfo => Item3;
+            private Filter Filter => Item4;
 
 			public void InvokeCallback(object sender, object args)
 			{
@@ -195,12 +195,12 @@ namespace MBBSEmu.Util
 			InnerUnsubscribe(message, typeof(TSender), null, subscriber);
 		}
 
-		void InnerSend(EnumMessageEvent message, Type senderType, Type argType, object sender, object args)
+        private void InnerSend(EnumMessageEvent message, Type senderType, Type argType, object sender, object args)
 		{
             var key = new Sender(message, senderType, argType);
 			if (!_subscriptions.ContainsKey(key))
 				return;
-			List<Subscription> subscriptions = _subscriptions[key];
+			var subscriptions = _subscriptions[key];
 			if (subscriptions == null || !subscriptions.Any())
 				return; // should not be reachable
 
@@ -209,8 +209,8 @@ namespace MBBSEmu.Util
 			// the callback. This would invalidate the enumerator. To work around this we make a copy. However if you unsubscribe 
 			// from a message you can fairly reasonably expect that you will therefor not receive a call. To fix this we then
 			// check that the item we are about to send the message to actually exists in the live list.
-			List<Subscription> subscriptionsCopy = subscriptions.ToList();
-			foreach (Subscription subscription in subscriptionsCopy)
+			var subscriptionsCopy = subscriptions.ToList();
+			foreach (var subscription in subscriptionsCopy)
 			{
 				if (subscription.Subscriber.Target != null && subscriptions.Contains(subscription))
 				{
@@ -219,13 +219,13 @@ namespace MBBSEmu.Util
 			}
 		}
 
-		void InnerSubscribe(object subscriber, EnumMessageEvent message, Type senderType, Type argType, object target, MethodInfo methodInfo, Filter filter)
+        private void InnerSubscribe(object subscriber, EnumMessageEvent message, Type senderType, Type argType, object target, MethodInfo methodInfo, Filter filter)
 		{
             var key = new Sender(message, senderType, argType);
 			var value = new Subscription(subscriber, target, methodInfo, filter);
-			if (_subscriptions.ContainsKey(key))
+			if (_subscriptions.TryGetValue(key, out var subscription))
 			{
-				_subscriptions[key].Add(value);
+				subscription.Add(value);
 			}
 			else
 			{
@@ -234,7 +234,7 @@ namespace MBBSEmu.Util
 			}
 		}
 
-		void InnerUnsubscribe(EnumMessageEvent message, Type senderType, Type argType, object subscriber)
+        private void InnerUnsubscribe(EnumMessageEvent message, Type senderType, Type argType, object subscriber)
 		{
 			if (subscriber == null)
 				throw new ArgumentNullException(nameof(subscriber));

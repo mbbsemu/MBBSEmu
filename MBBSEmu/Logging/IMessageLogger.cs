@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 
 namespace MBBSEmu.Logging
 {
     public interface IMessageLogger
     {
-        void Log(EnumLogLevel logLevel, string message, Exception exception = null);
+        void Log(LogLevel logLevel, string message, Exception exception = null);
         void Debug(string message);
         void Info(string message);
         void Warn(string message);

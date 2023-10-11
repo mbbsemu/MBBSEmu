@@ -1,3 +1,4 @@
+using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
@@ -7,6 +8,7 @@ using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
+using MBBSEmu.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -125,22 +127,31 @@ namespace MBBSEmu.Module
         public Dictionary<ushort, IExportedModule> ExportedModuleDictionary { get; set; }
 
         /// <summary>
+        ///     Message Center used to send notifications and events to other parts of the system
+        /// </summary>
+        private readonly IMessagingCenter _messagingCenter;
+
+        /// <summary>
         ///     Constructor for MbbsModule
-        ///
+        /// 
         ///     Pass in an empty/blank moduleIdentifier for a Unit Test/Fake Module
         /// </summary>
         /// <param name="fileUtility"></param>
         /// <param name="clock"></param>
         /// <param name="logger"></param>
         /// <param name="moduleConfig"></param>
-        /// <param name="memoryCore"></param>
-        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null)
+        /// <param name="memoryCore">(Optional) Memory Core to be loaded into the Module memory space</param>
+        /// <param name="messagingCenter">(Optional) Messaging Center used to notify other threads of events</param>
+        public MbbsModule(IFileUtility fileUtility, IClock clock, IMessageLogger logger, ModuleConfiguration moduleConfig, ProtectedModeMemoryCore memoryCore = null, IMessagingCenter messagingCenter = null)
         {
+
             _fileUtility = fileUtility;
             _logger = logger;
             _clock = clock;
 
             ModuleConfig = moduleConfig;
+            _messagingCenter = messagingCenter;
+
             ModuleIdentifier = moduleConfig.ModuleIdentifier;
 
             ModuleDlls = new List<MbbsDll>();
@@ -240,7 +251,7 @@ namespace MBBSEmu.Module
 
                     var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
 
-                    initEntryPointPointer = new FarPtr((ushort) (initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+                    initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
 
                 }
                 else
@@ -279,27 +290,55 @@ namespace MBBSEmu.Module
         public ICpuRegisters Execute(FarPtr entryPoint, ushort channelNumber, bool simulateCallFar = false, bool bypassSetState = false,
             Queue<ushort> initialStackValues = null, ushort initialStackPointer = CpuCore.STACK_BASE)
         {
-            //Set the proper DLL making the call based on the Segment
-            for (ushort i = 0; i < ModuleDlls.Count; i++)
+            ICpuRegisters resultRegisters = null;
+            ExecutionUnit executionUnit = null;
+            try
             {
-                var dll = ModuleDlls[i];
-                if (entryPoint.Segment >= dll.SegmentOffset &&
-                    entryPoint.Segment <= (dll.SegmentOffset + dll.File.SegmentTable.Count))
+                //Set the proper DLL making the call based on the Segment
+                for (ushort i = 0; i < ModuleDlls.Count; i++)
+                {
+                    var dll = ModuleDlls[i];
+                    if (entryPoint.Segment >= dll.SegmentOffset &&
+                        entryPoint.Segment <= (dll.SegmentOffset + dll.File.SegmentTable.Count))
 
-                    foreach (var (_, value) in ExportedModuleDictionary)
-                        ((ExportedModuleBase)value).ModuleDll = i;
+                        foreach (var (_, value) in ExportedModuleDictionary)
+                            ((ExportedModuleBase)value).ModuleDll = i;
+                }
+
+                //Try to dequeue an execution unit, if one doesn't exist, create a new one
+                if (!ExecutionUnits.TryDequeue(out executionUnit))
+                {
+                    _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
+                    executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
+                }
+
+                resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
+                ExecutionUnits.Enqueue(executionUnit);
+                return resultRegisters;
             }
-
-            //Try to dequeue an execution unit, if one doesn't exist, create a new one
-            if (!ExecutionUnits.TryDequeue(out var executionUnit))
+            catch (Exception e)
             {
-                _logger.Debug($"({ModuleIdentifier}) Exhausted execution Units, creating additional");
-                executionUnit = new ExecutionUnit(Memory, _clock, _fileUtility, ExportedModuleDictionary, _logger, ModulePath);
-            }
+                //Set Module Status to Disabled
+                ModuleConfig.ModuleEnabled = false;
 
-            var resultRegisters = executionUnit.Execute(entryPoint, channelNumber, simulateCallFar, bypassSetState, initialStackValues, initialStackPointer);
-            ExecutionUnits.Enqueue(executionUnit);
-            return resultRegisters;
+                //Grab the Registers from the Execution Unit
+                var registers = executionUnit?.ModuleCpuRegisters;
+
+                //Call Crash Logger
+                var crashReport = new CrashReport(this, registers, e);
+                var fileName = crashReport.Save();
+
+                //Notify the Host Process that the Module is Disabled
+                //Host process knows that messages to disable module coming from here is a crash event
+                _messagingCenter?.Send(this, EnumMessageEvent.DisableModule, ModuleIdentifier);
+
+                //Log the crash
+                _logger.Error($"({ModuleIdentifier}) CRASH: {e.Message}");
+                _logger.Error($"Crash log saved to: {fileName}");
+
+                //Set AX == 1, we don't return an exit code so it can be gracefully handled by the host process
+                return new CpuRegisters { AX = 1, Halt = true};
+            }
         }
 
         /// <summary>
@@ -323,7 +362,7 @@ namespace MBBSEmu.Module
 
             //Pull records from ModuleReferenceTable that aren't of References handled internally by the emulator
             foreach (var import in ModuleDlls[0].File.ModuleReferenceTable
-                .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x=> x.Name))
+                .Where(x => GetAllExportedModules().All(e => e != x.Name)).Select(x => x.Name))
             {
                 //Only load a dependency if it's not already loaded by a previous library
                 if (ModuleDlls.All(x => x.File.FileName.ToUpper().Split('.')[0] != import.ToUpper()))

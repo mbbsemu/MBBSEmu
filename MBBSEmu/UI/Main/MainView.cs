@@ -3,6 +3,8 @@ using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
 using MBBSEmu.Resources;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -153,10 +155,27 @@ namespace MBBSEmu.UI.Main
                 Style = new TableView.TableStyle { AlwaysShowHeaders = true },
             };
 
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Time"], new TableView.ColumnStyle { MinWidth = 12, MaxWidth = 12 });
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Class"], new TableView.ColumnStyle { MinWidth = 36, MaxWidth = 36 });
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Level"], new TableView.ColumnStyle { MinWidth = 5, MaxWidth = 5 });
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], new TableView.ColumnStyle { MinWidth = 60, MaxWidth = 60});
+            //Color Scheme used for ERROR level log entries
+            var errorColorScheme = new ColorScheme()
+            {
+                Disabled = windowLogContainer.ColorScheme.Disabled,
+                HotFocus = windowLogContainer.ColorScheme.HotFocus,
+                Focus = windowLogContainer.ColorScheme.Focus,
+                Normal = Application.Driver.MakeAttribute(Color.Red, windowLogContainer.ColorScheme.Normal.Background)
+            };
+
+            //Use local Function to return new ColumnStyle with specified MinWidth and MaxWidth
+            TableView.ColumnStyle GetApplicationLogStyle(int minWidth, int maxWidth) => new()
+            {
+                ColorGetter = (a) => a.Table.Rows[a.RowIndex].ItemArray[2]?.ToString() == LogLevel.Error.ToString() ? errorColorScheme : windowLogContainer.ColorScheme,
+                MinWidth = minWidth, 
+                MaxWidth = maxWidth
+            };
+
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Time"], GetApplicationLogStyle(12, 12)); 
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Class"], GetApplicationLogStyle(36, 36)); 
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Level"], GetApplicationLogStyle(5, 5));
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], GetApplicationLogStyle(60, 60));
             windowLogContainer.Add(_tableView);
 
             //When the user double clicks on a cell, show a message box with the full log entry
@@ -219,7 +238,7 @@ namespace MBBSEmu.UI.Main
                 foreach (var entry in auditEntry)
                 {
                     //Split the log entry into its parts (Time, Class, Level, Message
-                    _auditLogTable.Rows.Add((string)entry[0], (string)entry[1]);
+                    _auditLogTable.Rows.Add((string)entry[2], (string)entry[3]);
                 }
 
                 //Only Force Updates when new log entries are added
@@ -243,9 +262,9 @@ namespace MBBSEmu.UI.Main
             {
                 foreach (var entry in logEntry)
                 {
-                    var logDate = ((string)entry[0]).Split(' ')[1];
-                    var logClass = ((string)entry[1])[8..];
-                    var logLevel = ((EnumLogLevel)entry[2]).ToString();
+                    var logDate = ((DateTime)entry[0]).ToString("HH:mm:ss.fff");
+                    var logClass = (entry[1].ToString())?[8..];
+                    var logLevel = ((LogLevel)entry[2]).ToString();
                     var logMessage = (string)entry[3];
 
                     _logTable.Rows.Add(

@@ -13,6 +13,7 @@
 		<None Remove="Assets\BBSUSR.DB" />
 		<None Remove="Assets\commandLineHelp.txt" />
 		<None Remove="Assets\crashDetailsAPI.txt" />
+		<None Remove="Assets\crashReportTemplate.txt" />
 		<None Remove="Assets\fseDefaultFormats.txt" />
 		<None Remove="Assets\fseFieldSpec.txt" />
 		<None Remove="Assets\fseTemplate.ans" />
@@ -45,6 +46,7 @@
 		<EmbeddedResource Include="Assets\BBSUSR.DB" />
 		<EmbeddedResource Include="Assets\commandLineHelp.txt" />
 		<EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
+		<EmbeddedResource Include="Assets\crashReportTemplate.txt" />
 		<EmbeddedResource Include="Assets\fseDefaultFormats.txt" />
 		<EmbeddedResource Include="Assets\fseFieldSpec.txt" />
 		<EmbeddedResource Include="Assets\fseTemplate.ans" />
@@ -79,6 +81,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
 		<PackageReference Include="Terminal.Gui" Version="1.14.0" />
 	</ItemGroup>
 

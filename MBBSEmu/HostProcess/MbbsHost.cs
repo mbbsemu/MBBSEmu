@@ -132,14 +132,40 @@ namespace MBBSEmu.HostProcess
         private bool _performCleanup = false;
         private EventWaitHandle _cleanupRestartEvent = null;
 
+        /// <summary>
+        ///     Global Cache of objects maintained and accessible everywhere within the process
+        /// </summary>
         private readonly IGlobalCache _globalCache;
+
+        /// <summary>
+        ///     File Utility used for safely handling cross-platform File operations
+        /// </summary>
         private readonly IFileUtility _fileUtility;
 
+        /// <summary>
+        ///     Main Worker Thread that processes the main loop within MBBSEmu
+        /// </summary>
         private Thread _workerThread;
 
+        /// <summary>
+        ///     Repository for Account Keys related to Accounts within MBBSEmu
+        /// </summary>
         private readonly IAccountKeyRepository _accountKeyRepository;
+
+        /// <summary>
+        ///     Repository for the MBBSEmu Accounts Database
+        /// </summary>
         private readonly IAccountRepository _accountRepository;
+
+        /// <summary>
+        ///     Text Variable Service used to process Global Text Variables
+        /// </summary>
         private readonly ITextVariableService _textVariableService;
+
+        /// <summary>
+        ///     Message Center used to handle notifications and events from other parts of the system
+        /// </summary>
+        private readonly IMessagingCenter _messagingCenter;
 
         public MbbsHost(IClock clock, LogFactory logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettingsManager configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
@@ -154,7 +180,7 @@ namespace MBBSEmu.HostProcess
             _accountKeyRepository = accountKeyRepository;
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
-            var _messagingCenter = messagingCenter;
+            _messagingCenter = messagingCenter;
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -190,6 +216,7 @@ namespace MBBSEmu.HostProcess
             //Setup Message Subscribers
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.EnableModule, (sender, moduleId) => { EnableModule(moduleId); });
             _messagingCenter.Subscribe<SysopGlobal, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId); });
+            _messagingCenter.Subscribe<MbbsModule, string>(this, EnumMessageEvent.DisableModule, (sender, moduleId) => { DisableModule(moduleId, true); });
             _messagingCenter.Subscribe<SysopGlobal>(this, EnumMessageEvent.Cleanup, (sender) => { _performCleanup = true; });
 
             Logger.Info("Constructed MBBSEmu Host!");
@@ -210,7 +237,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m));
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
@@ -941,6 +968,11 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Runs the specified EXE file during cleanup by modules that require one
+        /// </summary>
+        /// <param name="modulePath"></param>
+        /// <param name="cmdline"></param>
         private void RunProgram(string modulePath, string cmdline)
         {
             var exe = cmdline.Split(' ')[0];
@@ -1115,6 +1147,10 @@ namespace MBBSEmu.HostProcess
             return functions;
         }
 
+        /// <summary>
+        ///     Returns the current list of active User Sessions
+        /// </summary>
+        /// <returns></returns>
         public IList<SessionBase> GetUserSessions() => _channelDictionary.Values.ToList();
 
         /// <summary>
@@ -1201,8 +1237,6 @@ namespace MBBSEmu.HostProcess
                                         default:
                                             Logger.Error($"({module.ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                             continue;
-                                            //throw new Exception(
-                                            //    $"Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
                                     }
 
                                     //32-Bit Pointer
@@ -1297,22 +1331,55 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Marks the specified module as "Enabled"
+        /// </summary>
+        /// <param name="moduleId"></param>
         private void EnableModule(string moduleId)
         {
             _modules[moduleId].ModuleConfig.ModuleEnabled = true;
         }
 
-        private void DisableModule(string moduleId)
+        /// <summary>
+        ///     Disables a Module while the service host is running
+        /// </summary>
+        /// <param name="moduleId"></param>
+        /// <param name="isCrashed"></param>
+        private void DisableModule(string moduleId, bool isCrashed = false)
         {
-            if (_channelDictionary.Values.Where(session => session.SessionState == EnumSessionState.InModule).Any(channel => channel.CurrentModule.ModuleIdentifier == moduleId))
+            //Ensure Module is marked Disabled
+            _modules[moduleId].ModuleConfig.ModuleEnabled = false;
+
+            //Log Crashed or Disabled
+            if (isCrashed)
             {
-                Logger.Warn($"(Sysop Command) Tried to disable {moduleId} while in use -- Wait until all users have exited module");
-                return;
+                Logger.Error($"Module {moduleId} has crashed. Disabling.");
+            }
+            else
+            {
+                Logger.Info($"Module {moduleId} has been disabled by /SYSOP command.");
             }
 
-            _modules[moduleId].ModuleConfig.ModuleEnabled = false;
+            //Notify Users and Exit Modules
+            foreach (var c in _channelDictionary.Values.Where(x => x.CurrentModule.ModuleIdentifier == moduleId))
+            {
+                if (isCrashed)
+                {
+                    c.SendToClient($"|RESET|\r\n|B||RED|The module you were in ({moduleId}) has crashed. Please contact the Sysop and try again later.|RESET|\r\n".EncodeToANSIArray());
+                }
+                else
+                {
+                    c.SendToClient($"|RESET|\r\n|B||RED|The module you were in ({moduleId}) has been disabled by the Sysop. Please try again later.|RESET|\r\n".EncodeToANSIArray());
+                }
+
+                ExitModule(c);
+            }
         }
 
+        /// <summary>
+        ///     Returns a new Timer that counts down to the Cleanup Warning prior to the cleanup routine running
+        /// </summary>
+        /// <returns></returns>
         private Timer SetupCleanupWarningTimer()
         {
             _cleanupWarningMinutesRemaining = CleanupWarningInitialMinutes;
@@ -1324,6 +1391,10 @@ namespace MBBSEmu.HostProcess
             return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
         }
 
+        /// <summary>
+        ///     Goes through all the currently active sessions and sends them a warning that the Nightly Cleanup is about to run
+        /// </summary>
+        /// <param name="_"></param>
         private void SendCleanupWarning(object _)
         {
             if (_cleanupWarningMinutesRemaining > 0)
@@ -1346,6 +1417,9 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Method Invoked by the Nightly Cleanup time to begin the Nightly Cleanup Process
+        /// </summary>
         private void ProcessNightlyCleanup()
         {
             if (_performCleanup)
@@ -1363,6 +1437,9 @@ namespace MBBSEmu.HostProcess
             }
         }
 
+        /// <summary>
+        ///     Performs the Nightly Cleanup by invoking "MCUROU" (Nightly Cleanup) and "FINROU" (Finish-Up) routines in each module
+        /// </summary>
         private void DoNightlyCleanup()
         {
             Logger.Info("PERFORMING NIGHTLY CLEANUP");
@@ -1419,6 +1496,11 @@ namespace MBBSEmu.HostProcess
             return waitTime;
         }
 
+        /// <summary>
+        ///     Returns an API Report for all currently loaded modules
+        ///
+        ///     The API Report contains all SDK APIs that are used by the module
+        /// </summary>
         public void GenerateAPIReport()
         {
             foreach (var apiReport in _modules.Select(m => new ApiReport(Logger, m.Value)))

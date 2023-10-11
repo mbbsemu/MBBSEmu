@@ -1,9 +1,5 @@
 ﻿using Iced.Intel;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MBBSEmu.Memory
 {
@@ -43,6 +39,11 @@ namespace MBBSEmu.Memory
         }
 
         public virtual int GetAllocatedMemorySize(FarPtr ptr)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ReadOnlySpan<byte> GetMemorySegment(ushort segment)
         {
             throw new NotImplementedException();
         }

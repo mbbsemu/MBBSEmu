@@ -3,6 +3,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Util;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -653,7 +654,7 @@ namespace MBBSEmu.Btrieve
         ///     Inserts a new Btrieve Record.
         /// </summary>
         /// <return>Position of the newly inserted item, or 0 on failure</return>
-        public uint Insert(byte[] record, EnumLogLevel logLevel)
+        public uint Insert(byte[] record, LogLevel logLevel)
         {
             if (VariableLengthRecords && record.Length != RecordLength)
                 _logger.Debug($"Inserting variable length record of {record.Length} bytes into {FullPath}");
