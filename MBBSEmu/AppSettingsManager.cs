@@ -1,5 +1,6 @@
 using MBBSEmu.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -38,6 +39,20 @@ namespace MBBSEmu
             ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile(ConfigurationFileName, false, true)
                 .Build();
+
+            //Set Logging Level from Config File if specified
+            if (ConfigurationRoot.GetSection("Console.LogLevel").Exists())
+            {
+                if (Enum.TryParse(typeof(LogLevel), ConfigurationRoot["Console.LogLevel"], out var result))
+                {
+                    logger.SetLevel((LogLevel)result);
+                }
+                else
+                {
+                    _logger.Warn($"Invalid Console.LogLevel specified in {ConfigurationFileName} -- setting default value: Information");
+                    logger.SetLevel(LogLevel.Information);
+                }
+            }
         }
 
         /// <summary>

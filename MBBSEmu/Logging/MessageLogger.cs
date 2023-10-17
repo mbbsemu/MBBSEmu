@@ -26,6 +26,11 @@ namespace MBBSEmu.Logging
         /// <param name="exception">Exception to be Logged</param>
         public void Log(LogLevel logLevel, string message, Exception exception = null)
         {
+            //Ignore Message if it's below the configured log level
+            if((int)logLevel < (int)ConfiguredLogLevel)
+                return;
+
+            //Write to all Logging Targets
             foreach (var target in LOGGING_TARGETS)
             {
                 if(!string.IsNullOrEmpty(message))
