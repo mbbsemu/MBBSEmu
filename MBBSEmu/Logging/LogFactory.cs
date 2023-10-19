@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -29,6 +30,21 @@ namespace MBBSEmu.Logging
                 throw new KeyNotFoundException($"Logger of type {typeof(T)} not found");
 
             return (T)Loggers[typeof(T)];
+        }
+
+        /// <summary>
+        ///     Sets the Default Log Level for all Loggers
+        /// </summary>
+        /// <param name="level"></param>
+        public void SetLevel(LogLevel level)
+        {
+            foreach (var logger in Loggers)
+            {
+                if (logger.Value is LoggerBase loggerBase)
+                {
+                    loggerBase.SetLogLevel(level);
+                }
+            }
         }
     }
 }
