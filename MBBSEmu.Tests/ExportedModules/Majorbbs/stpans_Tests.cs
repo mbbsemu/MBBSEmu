@@ -7,7 +7,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
     public class stpans_Tests : ExportedModuleTestBase
     {
-        private const int STRUPR_ORDINAL = 712;
+        private const int STPANS_ORDINAL = 712;
 
         [Theory]
         [InlineData("\u001b[31mRed Text\u001b[0m", "Red Text")]
@@ -38,7 +38,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("INPUT_STRING", Encoding.ASCII.GetBytes(inputString));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRUPR_ORDINAL, new List<FarPtr> { stringPointer });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STPANS_ORDINAL, new List<FarPtr> { stringPointer });
 
             //Verify Results
             Assert.Equal(expectedString,
