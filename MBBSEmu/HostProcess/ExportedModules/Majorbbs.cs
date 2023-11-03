@@ -2348,7 +2348,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             uint multiplier = 0x15A4E35;
             var seed = Module.Memory.GetDWord("RANDSEED");
-            
+
             var newSeed = (seed * multiplier) + 1;
 
             Module.Memory.SetDWord("RANDSEED", newSeed);
@@ -3850,17 +3850,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             PERCENT
         };
 
-        private struct ScanfState {
+        private struct ScanfState
+        {
             private ScanfParseState _scanfParseState = ScanfParseState.NORMAL;
 
-            public ScanfState() {
+            public ScanfState()
+            {
                 Length = 0;
                 IsLongInteger = false;
             }
 
-            public ScanfParseState State {
+            public ScanfParseState State
+            {
                 get => _scanfParseState;
-                set {
+                set
+                {
                     _scanfParseState = value;
                     Length = 0;
                     IsLongInteger = false;
@@ -3944,7 +3948,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         var defaultLength = (formatChar == 's') ? int.MaxValue : 1;
                         var length = parseState.Length > 0 ? parseState.Length : defaultLength;
                         var count = 0;
-                        (var stringValue, moreInput) = ReadString(input, c => {
+                        (var stringValue, moreInput) = ReadString(input, c =>
+                        {
                             return (count++ < length) ?
                                 ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
                                 ExportedModuleBase.CharacterAccepterResponse.ABORT;
@@ -3956,7 +3961,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         if (stringValue.Length > 0)
                             ++matches;
                         if (formatChar == 's') // null terminate
-                              Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
+                            Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
 
                         startingParameterOrdinal += 2;
                         parseState.State = ScanfParseState.NORMAL;
@@ -5039,23 +5044,71 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void stpans()
         {
             var stringToStripPointer = GetParameterPointer(0);
-            var stringToStrip = Module.Memory.GetString(stringToStripPointer);
+            var inputString = Module.Memory.GetString(stringToStripPointer);
 
-            var ansiFound = false;
-            foreach (var t in stringToStrip)
+            Module.Memory.GetOrAllocateVariablePointer("STPANS", 1920); //Max Screen Size of 80x24
+
+            if (inputString.Length > 1920)
             {
-                if (t == 0x1B)
-                    ansiFound = true;
+                _logger.Warn(
+                    $"String to Strip is larger than 1920 bytes, truncating to 1920 bytes as to not overflow buffer");
+                inputString = inputString.Slice(0, 1920);
             }
 
-            if (ansiFound)
-                _logger.Warn($"({Module.ModuleIdentifier}) ANSI found but was not stripped. Process not implemented.");
+            //Declare Return
+            var cleanedStringBuilder = new StringBuilder(1920);
+
+            for (int i = 0; i < inputString.Length;)
+            {
+                if (inputString[i] == '\x1b') // Start of an escape sequence
+                {
+                    i++; // Increment to skip the escape character
+
+                    // Check if it's a CSI sequence which starts with '['
+                    if (i < inputString.Length && inputString[i] == '[')
+                    {
+                        i++; // Skip the '['
+                        // Skip the parameters and intermediate bytes
+                        while (i < inputString.Length && inputString[i] > 0x1F && inputString[i] < 0x40)
+                        {
+                            i++;
+                        }
+                        // Now skip the final byte
+                        if (i < inputString.Length && inputString[i] >= 0x40 && inputString[i] <= 0x7E)
+                        {
+                            i++;
+                        }
+                    }
+                    // Check if it's an OSC sequence which starts with ']'
+                    else if (i < inputString.Length && inputString[i] == ']')
+                    {
+                        i++; // Skip the ']'
+                        // OSC sequence ends with BEL (0x07)
+                        while (i < inputString.Length && inputString[i] != 0x07)
+                        {
+                            i++;
+                        }
+                        if (i < inputString.Length) // Check to avoid IndexOutOfRangeException
+                        {
+                            i++; // Skip the BEL character
+                        }
+                    }
+                }
+                else if (i < inputString.Length) // Check to avoid IndexOutOfRangeException
+                {
+                    // Regular character, append it
+                    cleanedStringBuilder.Append((char)inputString[i]);
+                    i++;
+                }
+            }
+
+            Module.Memory.SetArray("STPANS", Encoding.ASCII.GetBytes(cleanedStringBuilder.ToString()));
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Ignoring, not stripping ANSI");
 #endif
 
-            Registers.SetPointer(stringToStripPointer);
+            Registers.SetPointer(Module.Memory.GetVariablePointer("STPANS"));
         }
 
         /// <summary>
