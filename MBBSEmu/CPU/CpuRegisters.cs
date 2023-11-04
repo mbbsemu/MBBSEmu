@@ -104,13 +104,13 @@ namespace MBBSEmu.CPU
             output.Append($"CX={this.CX:X4}  ");
             output.Append($"DX={this.DX:X4}  ");
             output.Append($"DS={this.DS:X4}  ");
-            output.AppendLine($"ES={this.ES:X4}");
+            output.AppendLine($"ES={this.ES:X4} ");
             output.Append($"SI={this.SI:X4}  ");
             output.Append($"DI={this.DI:X4}  ");
             output.Append($"SS={this.SS:X4}  ");
             output.Append($"IP={this.IP:X4}  ");
             output.Append($"SP={this.SP:X4}  ");
-            output.AppendLine($"BP={this.BP:X4}");
+            output.AppendLine($"BP={this.BP:X4} ");
             output.Append("F=");
             output.Append(this.CarryFlag ? "C" : "c");
             output.Append(this.ZeroFlag ? "Z" : "z");
