@@ -1,8 +1,6 @@
 ﻿using Iced.Intel;
-using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
-using System.Runtime.InteropServices;
 
 namespace MBBSEmu.CPU
 {
