@@ -926,8 +926,9 @@ namespace MBBSEmu.HostProcess
                             break;
                         }
 
-                        //Always Enqueue Input Ready
-                        session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
+                        //Always Enqueue Input Ready, if one already not queued (from BTUCHI)
+                        if(session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
+                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
 
                         break;
                     }
