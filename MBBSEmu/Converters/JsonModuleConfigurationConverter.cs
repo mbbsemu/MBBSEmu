@@ -41,7 +41,13 @@ namespace MBBSEmu.Converters
                 switch (propertyName)
                 {
                     case nameof(ModuleConfigurationFile.BasePath):
-                        config.BasePath = JsonSerializer.Deserialize<string>(ref reader, options);
+                        {
+                            config.BasePath = JsonSerializer.Deserialize<string>(ref reader, options);
+
+                            //Set to PWD if "." is specified
+                            if (config.BasePath == ".")
+                                config.BasePath = System.IO.Directory.GetCurrentDirectory();
+                        }
                         break;
                     case nameof(ModuleConfigurationFile.Modules):
                         var modules = JsonSerializer.Deserialize<List<JsonElement>>(ref reader, options);
