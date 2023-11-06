@@ -349,7 +349,7 @@ namespace MBBSEmu.CPU
             };
 
             //Set this value to TRUE if you want the CPU to break after each instruction
-            var CPUDebugBreak = true;
+            var CPUDebugBreak = false;
 
             //Evaluate Breakpoints
             if (CPUBreakpoints.Contains(_currentInstructionPointer))
@@ -1641,6 +1641,10 @@ namespace MBBSEmu.CPU
             }
         }
 
+        /// <summary>
+        ///     Performs a left circular rotate (RCL) operation on the current operation size.
+        /// </summary>
+        /// <exception cref="Exception"></exception>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Rcl()
         {
@@ -1665,17 +1669,17 @@ namespace MBBSEmu.CPU
                 var result = destination;
                 for (var i = 0; i < source; i++)
                 {
-                    //Determine the CF Value after rotation+carry
+                    // Determine the CF Value after rotation+carry
                     var newCFValue = result.IsBitSet(7);
 
-                    //Perform Rotation
+                    // Perform Rotation
                     result = (byte)(result << 1);
 
-                    //If CF was set, rotate that value in
+                    // If CF was set, rotate that value in to the LSB (0th bit)
                     if (Registers.CarryFlag)
-                        result.SetFlag(1);
+                        result |= 1;
 
-                    //Set new CF Value
+                    // Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
 
@@ -1694,17 +1698,17 @@ namespace MBBSEmu.CPU
                 var result = destination;
                 for (var i = 0; i < source; i++)
                 {
-                    //Determine the CF Value after rotation+carry
+                    // Determine the CF Value after rotation+carry
                     var newCFValue = result.IsBitSet(15);
 
-                    //Perform Rotation
+                    // Perform Rotation
                     result = (ushort)(result << 1);
 
-                    //If CF was set, rotate that value in
+                    // If CF was set, rotate that value in to the LSB (0th bit)
                     if (Registers.CarryFlag)
-                        result.SetFlag(1);
+                        result |= 1;
 
-                    //Set new CF Value
+                    // Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
 
