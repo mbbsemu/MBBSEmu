@@ -3,7 +3,7 @@
   "Modules": [
     {
       "Identifier": "MBBSEMU",
-      "Path": "modules/mbbsemu",
+      "Path": "modules/mbbsemu/",
       "Enabled": "true"
     }
   ]
