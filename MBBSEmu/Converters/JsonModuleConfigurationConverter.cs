@@ -10,7 +10,7 @@ namespace MBBSEmu.Converters
     ///     Custom JSON Converter used to load Module Configuration Files and propagate overriding values (Path, etc.) to
     ///     each Module defined in the configuration file.
     /// </summary>
-    public class ModuleConfigurationFileConverter : JsonConverter<ModuleConfigurationFile>
+    public class JsonModuleConfigurationFileConverter : JsonConverter<ModuleConfigurationFile>
     {
         public override ModuleConfigurationFile Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
