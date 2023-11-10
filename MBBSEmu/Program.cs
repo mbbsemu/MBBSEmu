@@ -367,9 +367,10 @@ namespace MBBSEmu
                     var options = new JsonSerializerOptions
                     {
                         Converters = {
-                            new JsonBooleanConverter(),
-                            new JsonStringEnumConverter(),
-                            new JsonFarPtrConverter()
+                            new JsonModuleConfigurationFileConverter(), //Handles BasePath processing for Module Configuration
+                            new JsonBooleanConverter(), //Allows TRUE/FALSE values to be parsed
+                            new JsonStringEnumConverter(), //Allows Enums to be parsed from Strings
+                            new JsonFarPtrConverter() //Allows FarPtr to be parsed from Strings
                         }
                     };
 

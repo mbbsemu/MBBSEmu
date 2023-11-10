@@ -1,0 +1,10 @@
+{
+  "BasePath" :  "/dos/",
+  "Modules": [
+    {
+      "Identifier": "MBBSEMU",
+      "Path": "modules/mbbsemu/",
+      "Enabled": "true"
+    }
+  ]
+}
