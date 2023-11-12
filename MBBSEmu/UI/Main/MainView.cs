@@ -189,7 +189,7 @@ namespace MBBSEmu.UI.Main
             //Status Bar
             var telnetStatus = new StatusItem(Key.CharMask, $"~Telnet:~ {(_appSettingsManager.TelnetEnabled ? "ENABLED" : "DISABLED")}", null);
             var rloginStatus = new StatusItem(Key.CharMask, $"~Rlogin:~ {(_appSettingsManager.RloginEnabled ? "ENABLED" : "DISABLED")}", null);
-            var statusBarName = new StatusItem(Key.CharMask, $"The MajorBBS Emulation Project ({new ResourceManager().GetString("MBBSEmu.Assets.version.txt")})", null);
+            var statusBarName = new StatusItem(Key.CharMask, $"The MajorBBS Emulation Project (Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")})", null);
             var statusBar = new StatusBar(new[] { telnetStatus, rloginStatus, statusBarName })
             {
                 Visible = true
