@@ -33,11 +33,12 @@ jobs:
         dotnet-version: 7.0.x
     - name: Restore dependencies
       run: dotnet restore
-    - name: Write File
+      
+    - name: Write Version File
       uses: DamianReeves/write-file-action@master
       with:
         path: MBBSEmu/Assets/version.txt
-        contents: ${{ env.BUILD_VERSION }}
+        contents: $env.BUILD_VERSION
         write-mode: overwrite
         
     - name: Build
