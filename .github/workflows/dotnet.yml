@@ -37,7 +37,7 @@ jobs:
       uses: DamianReeves/write-file-action@master
       with:
         path: MBBSEmu/Assets/version.txt
-        contents: $BUILD_VERSION
+        contents: ${{ env.BUILD_VERSION }}
         write-mode: overwrite
         
     - name: Build
