@@ -1,5 +1,6 @@
 # The MajorBBS Emulation Project 
 [![dotnet](https://github.com/mbbsemu/MBBSEmu/actions/workflows/dotnet.yml/badge.svg?branch=master)](https://github.com/mbbsemu/MBBSEmu/actions/workflows/dotnet.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [Home](https://www.mbbsemu.com) | [Wiki](https://wiki.mbbsemu.com) | [Issue Tracker](https://github.com/mbbsemu/MBBSEmu/issues) | [Releases](https://github.com/mbbsemu/MBBSEmu/releases) | [Automated Builds](https://www.mbbsemu.com/Downloads) | [Building MBBSEmu](./documents/development-tips.md) | [Modules](https://www.mbbsemu.com/Modules) | [Discord](https://discord.gg/BgjxMD5)
 
