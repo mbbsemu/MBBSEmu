@@ -74,8 +74,6 @@ namespace MBBSEmu.UI.Main
                         "https://www.mbbsemu.com", "OK")),
                 })
             });
-            menu.Text = "Test";
-            menu.TextAlignment = TextAlignment.Right;
             MainWindow.Add(menu);
 
             //Audit Log Window
