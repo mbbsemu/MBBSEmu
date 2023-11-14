@@ -102,6 +102,17 @@ namespace MBBSEmu.UI.Main
                 PreserveTrailingSpaces = false,
                 Style = new TableView.TableStyle { AlwaysShowHeaders = true }
             };
+
+            //Use local Function to return new ColumnStyle with specified MinWidth and MaxWidth
+            TableView.ColumnStyle GetAuditLogStyle(int minWidth, int maxWidth) => new()
+            {
+                MinWidth = minWidth,
+                MaxWidth = maxWidth
+            };
+
+            _auditLogTableView.Style.ColumnStyles.Add(_auditLogTableView.Table.Columns["Summary"], GetAuditLogStyle(20, 20));
+            _auditLogTableView.Style.ColumnStyles.Add(_auditLogTableView.Table.Columns["Detail"], GetAuditLogStyle(50, 50));
+
             auditLogContainer.Add(_auditLogTableView);
             MainWindow.Add(auditLogContainer);
 
@@ -264,8 +275,34 @@ namespace MBBSEmu.UI.Main
                 {
                     var logDate = ((DateTime)entry[0]).ToString("HH:mm:ss.fff");
                     var logClass = (entry[1].ToString())?[8..];
-                    var logLevel = ((LogLevel)entry[2]).ToString();
+                    var logLevel = string.Empty;
                     var logMessage = (string)entry[3];
+
+                    //Evaluate message LogLevel and set string to be the level name up to 5 characters
+                    switch (((LogLevel)entry[2]))
+                    {
+                        case LogLevel.Trace:
+                            logLevel = "TRACE";
+                            break;
+                        case LogLevel.Debug:
+                            logLevel = "DEBUG";
+                            break;
+                        case LogLevel.Information:
+                            logLevel = "INFO";
+                            break;
+                        case LogLevel.Warning:
+                            logLevel = "WARN";
+                            break;
+                        case LogLevel.Error:
+                            logLevel = "ERROR";
+                            break;
+                        case LogLevel.Critical:
+                            logLevel = "CRIT";
+                            break;
+                        case LogLevel.None:
+                            logLevel = "NONE";
+                            break;
+                    }
 
                     _logTable.Rows.Add(
                         logDate, logClass, logLevel, logMessage);
