@@ -279,30 +279,17 @@ namespace MBBSEmu.UI.Main
                     var logMessage = (string)entry[3];
 
                     //Evaluate message LogLevel and set string to be the level name up to 5 characters
-                    switch (((LogLevel)entry[2]))
+                    logLevel = (LogLevel)entry[2] switch
                     {
-                        case LogLevel.Trace:
-                            logLevel = "TRACE";
-                            break;
-                        case LogLevel.Debug:
-                            logLevel = "DEBUG";
-                            break;
-                        case LogLevel.Information:
-                            logLevel = "INFO";
-                            break;
-                        case LogLevel.Warning:
-                            logLevel = "WARN";
-                            break;
-                        case LogLevel.Error:
-                            logLevel = "ERROR";
-                            break;
-                        case LogLevel.Critical:
-                            logLevel = "CRIT";
-                            break;
-                        case LogLevel.None:
-                            logLevel = "NONE";
-                            break;
-                    }
+                        LogLevel.Trace => "TRACE",
+                        LogLevel.Debug => "DEBUG",
+                        LogLevel.Information => "INFO",
+                        LogLevel.Warning => "WARN",
+                        LogLevel.Error => "ERROR",
+                        LogLevel.Critical => "CRIT",
+                        LogLevel.None => "NONE",
+                        _ => logLevel
+                    };
 
                     _logTable.Rows.Add(
                         logDate, logClass, logLevel, logMessage);
