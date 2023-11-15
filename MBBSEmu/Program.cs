@@ -81,6 +81,11 @@ namespace MBBSEmu
         private bool _doResetDatabase;
 
         /// <summary>
+        ///     Specified if -PWRESET Command Line Argument was Passed
+        /// </summary>
+        private bool _doResetPassword;
+
+        /// <summary>
         ///     New Sysop Password specified by the -DBRESET Command Line Argument
         /// </summary>
         private string _newSysopPassword;
@@ -254,6 +259,17 @@ namespace MBBSEmu
                                 _isConsoleSession = true;
                                 break;
                             }
+                        case "-PWRESET":
+                        {
+                            _doResetPassword = true;
+                            if (i + 1 < args.Length && args[i + 1][0] != '-')
+                            {
+                                _newSysopPassword = args[i + 1];
+                                i++;
+                            }
+
+                            break;
+                        }
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
@@ -295,28 +311,6 @@ namespace MBBSEmu
                     return;
                 }
 
-                //If the user specified CLI mode, don't start the UI
-                if (!_cliMode)
-                {
-                    var mainMBBSEmuWindow = new MainView(_serviceResolver);
-
-                    //Start UI in a Task as to not block this thread
-                    Task.Run(() =>
-                    {
-                        mainMBBSEmuWindow.Setup();
-                        mainMBBSEmuWindow.Run();
-                    });
-
-                    //Wait for the UI to be running before continuing
-                    Console.Write("Waiting for MBBSEmu GUI to start...");
-                    while (!mainMBBSEmuWindow.isRunning)
-                    {
-                        Thread.Sleep(500);
-                        Console.Write(".");
-                    }
-                    Console.WriteLine();
-                }
-
                 var configuration = _serviceResolver.GetService<AppSettingsManager>();
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var resourceManager = _serviceResolver.GetService<IResourceManager>();
@@ -342,6 +336,10 @@ namespace MBBSEmu
                 //Database Reset
                 if (_doResetDatabase)
                     DatabaseReset();
+
+                //Password Reset
+                if (_doResetPassword)
+                    PasswordReset();
 
                 //Database Sanity Checks
                 var databaseFile = configuration.DatabaseFile;
@@ -433,6 +431,28 @@ namespace MBBSEmu
                     return;
                 }
 
+                //If the user specified CLI mode, don't start the UI
+                if (!_cliMode)
+                {
+                    var mainMBBSEmuWindow = new MainView(_serviceResolver);
+
+                    //Start UI in a Task as to not block this thread
+                    Task.Run(() =>
+                    {
+                        mainMBBSEmuWindow.Setup();
+                        mainMBBSEmuWindow.Run();
+                    });
+
+                    //Wait for the UI to be running before continuing
+                    Console.Write("Waiting for MBBSEmu GUI to start...");
+                    while (!mainMBBSEmuWindow.isRunning)
+                    {
+                        Thread.Sleep(500);
+                        Console.Write(".");
+                    }
+                    Console.WriteLine();
+                }
+
                 //Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
                 host.Start(_moduleConfigurations);
@@ -519,7 +539,7 @@ namespace MBBSEmu
 
             _cancellationRequests++;
 
-            _logger.Warn("BBS Shutting down");
+            _logger.Warn("MBBSEmu Shutting down...");
 
             foreach (var runningService in _runningServices)
             {
@@ -536,27 +556,8 @@ namespace MBBSEmu
         {
             _logger.Info("Resetting Database...");
 
-
             if (string.IsNullOrEmpty(_newSysopPassword))
-            {
-                var bPasswordMatch = false;
-                while (!bPasswordMatch)
-                {
-                    Console.Write("Enter New Sysop Password: ");
-                    var password1 = Console.ReadLine();
-                    Console.Write("Re-Enter New Sysop Password: ");
-                    var password2 = Console.ReadLine();
-                    if (password1 == password2)
-                    {
-                        bPasswordMatch = true;
-                        _newSysopPassword = password1;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Password mismatch, please try again.");
-                    }
-                }
-            }
+                _newSysopPassword = PasswordPrompt("sysop");
 
             var acct = _serviceResolver.GetService<IAccountRepository>();
             acct.Reset(_newSysopPassword);
@@ -575,6 +576,48 @@ namespace MBBSEmu
             _genbbBtrieve.DeleteAll();
 
             _logger.Info("Database Reset!");
+        }
+
+        /// <summary>
+        ///     Prompts the user via the CLI to enter a new password for the specified username
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private string PasswordPrompt(string username)
+        {
+            var bPasswordMatch = false;
+            while (!bPasswordMatch)
+            {
+                Console.Write($"Enter New Password for {username}: ");
+                var password1 = Console.ReadLine();
+                Console.Write($"Re-Enter New Password for {username}: ");
+                var password2 = Console.ReadLine();
+
+                //If they match, return the password
+                if (password1 == password2)
+                    return password1;
+
+                //Otherwise infinite loop until they match
+                Console.WriteLine("Password mismatch, please try again.");
+            }
+
+            throw new Exception("Password Prompt Failed");
+        }
+
+        /// <summary>
+        ///     Reset the Sysop Password to the specified value via the console
+        /// </summary>
+        private void PasswordReset()
+        {
+            //Interactive Password Reset via Console if one wasn't specified in the command line
+            if (string.IsNullOrEmpty(_newSysopPassword))
+                _newSysopPassword = PasswordPrompt("sysop");
+
+            var acct = _serviceResolver.GetService<IAccountRepository>();
+            var sysopAccount = acct.GetAccountByUsername("sysop");
+            acct.UpdateAccountById(sysopAccount.accountId, sysopAccount.userName, _newSysopPassword, sysopAccount.email);
+            _logger.Info("Sysop Password Reset!");
         }
     }
 }
