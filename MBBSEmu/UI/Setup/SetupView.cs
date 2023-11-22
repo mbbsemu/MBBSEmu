@@ -34,6 +34,21 @@ namespace MBBSEmu.UI.Setup
 
         public override void Setup()
         {
+            //Setup an outer view for the Initial Setup Wizard
+            var outerView = new Window()
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(),
+                Height = Dim.Fill(),
+                Border = new Border
+                {
+                    BorderStyle = BorderStyle.Double, 
+                    BorderBrush = Color.BrightCyan, 
+                    Title= "MBBSEmu Initial Setup" 
+                },
+            };
+            MainWindow.Add(outerView);
 
             var wizard = new Wizard("Initial Setup Wizard")
             {
