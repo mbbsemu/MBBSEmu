@@ -586,8 +586,7 @@ namespace MBBSEmu
         /// <exception cref="Exception"></exception>
         private string PasswordPrompt(string username)
         {
-            var bPasswordMatch = false;
-            while (!bPasswordMatch)
+            while (true)
             {
                 Console.Write($"Enter New Password for {username}: ");
                 var password1 = Console.ReadLine();
@@ -601,8 +600,6 @@ namespace MBBSEmu
                 //Otherwise infinite loop until they match
                 Console.WriteLine("Password mismatch, please try again.");
             }
-
-            throw new Exception("Password Prompt Failed");
         }
 
         /// <summary>
@@ -618,6 +615,7 @@ namespace MBBSEmu
             var sysopAccount = acct.GetAccountByUsername("sysop");
             acct.UpdateAccountById(sysopAccount.accountId, sysopAccount.userName, _newSysopPassword, sysopAccount.email);
             _logger.Info("Sysop Password Reset!");
+            _doResetPassword = false;
         }
     }
 }
