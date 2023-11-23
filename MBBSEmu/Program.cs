@@ -432,7 +432,7 @@ namespace MBBSEmu
                 }
 
                 //If the user specified CLI mode, don't start the UI
-                if (!_cliMode)
+                if (!_cliMode && !_isConsoleSession)
                 {
                     var mainMBBSEmuWindow = new MainView(_serviceResolver);
 
