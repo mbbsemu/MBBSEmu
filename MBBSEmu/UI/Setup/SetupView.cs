@@ -53,7 +53,7 @@ namespace MBBSEmu.UI.Setup
             var wizard = new Wizard("Initial Setup Wizard")
             {
                 Width = Dim.Percent(90),
-                Height = Dim.Percent(75)
+                Height = Dim.Percent(80)
             };
 
             //Initial Setep (Welcome Message)
@@ -494,15 +494,14 @@ namespace MBBSEmu.UI.Setup
                         "Yes", "No") == 0)
                 {
                     //Prompt a File Dialog to save appsettings.json to the desired location
-                    var saveFileDialog = new SaveDialog("Save appsettings.json", "Save", new List<string>() { ".json"})
+                    var saveFileDialog = new SaveDialog("Save Settings", "Select the path and file name to save your settings.\n\nWe recommend using the filename \"appsettings.json\"", new List<string>() { ".json"})
                     {
-                        Width = Dim.Percent(50),
-                        Height = Dim.Percent(50)
+                        Width = Dim.Percent(75),
+                        Height = Dim.Percent(75)
                     };
                     saveFileDialog.DirectoryPath = Directory.GetCurrentDirectory();
                     saveFileDialog.FilePath = "appsettings.json";
                     saveFileDialog.AllowsOtherFileTypes = false;
-                    saveFileDialog.CanCreateDirectories = true;
                     Application.Run(saveFileDialog);
 
                     var appSettingsFilePath = saveFileDialog.FilePath.ToString();
