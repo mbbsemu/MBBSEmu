@@ -493,17 +493,39 @@ namespace MBBSEmu.UI.Setup
                 if (MessageBox.Query("Confirm", "Are you sure you want to write these settings to appsettings.json?",
                         "Yes", "No") == 0)
                 {
-                    //Write settings to appsettings.json
-                    var appSettingsJson = JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true });
-                    File.WriteAllText("appsettings.json", appSettingsJson);
+                    //Prompt a File Dialog to save appsettings.json to the desired location
+                    var saveFileDialog = new SaveDialog("Save appsettings.json", "Save", new List<string>() { ".json"})
+                    {
+                        Width = Dim.Percent(50),
+                        Height = Dim.Percent(50)
+                    };
+                    saveFileDialog.DirectoryPath = Directory.GetCurrentDirectory();
+                    saveFileDialog.FilePath = "appsettings.json";
+                    saveFileDialog.AllowsOtherFileTypes = false;
+                    saveFileDialog.CanCreateDirectories = true;
+                    Application.Run(saveFileDialog);
 
+                    var appSettingsFilePath = saveFileDialog.FilePath.ToString();
+
+                    if(saveFileDialog.Canceled || string.IsNullOrEmpty(appSettingsFilePath))
+                    {
+                        //Exit Out
+                        MessageBox.ErrorQuery("Error", "Setup Cancelled", "Ok");
+                    }
+                    else
+                    {
+                        //Write settings to appsettings.json
+                        var appSettingsJson = JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true });
+                        File.WriteAllText(appSettingsFilePath, appSettingsJson);
+
+                        //Show a message box to confirm settings were written
+                        MessageBox.Query("Success", $"Settings were successfully written to:\n{appSettingsFilePath}", "Ok");
+                    }
+                    
                     //Close the Wizard
                     wizard.Running = false;
                     wizard.Visible = false;
                     this.RequestStop();
-
-                    //Show a message box to confirm settings were written
-                    MessageBox.Query("Success", "Settings were successfully written to appsettings.json", "Ok");
                 }
             };
 
