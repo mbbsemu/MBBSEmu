@@ -53,7 +53,7 @@ namespace MBBSEmu.UI.Setup
             var wizard = new Wizard("Initial Setup Wizard")
             {
                 Width = Dim.Percent(90),
-                Height = Dim.Percent(75)
+                Height = Dim.Percent(80)
             };
 
             //Initial Setep (Welcome Message)
@@ -493,17 +493,38 @@ namespace MBBSEmu.UI.Setup
                 if (MessageBox.Query("Confirm", "Are you sure you want to write these settings to appsettings.json?",
                         "Yes", "No") == 0)
                 {
-                    //Write settings to appsettings.json
-                    var appSettingsJson = JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true });
-                    File.WriteAllText("appsettings.json", appSettingsJson);
+                    //Prompt a File Dialog to save appsettings.json to the desired location
+                    var saveFileDialog = new SaveDialog("Save Settings", "Select the path and file name to save your settings.\n\nWe recommend using the filename \"appsettings.json\"", new List<string>() { ".json"})
+                    {
+                        Width = Dim.Percent(75),
+                        Height = Dim.Percent(75)
+                    };
+                    saveFileDialog.DirectoryPath = Directory.GetCurrentDirectory();
+                    saveFileDialog.FilePath = "appsettings.json";
+                    saveFileDialog.AllowsOtherFileTypes = false;
+                    Application.Run(saveFileDialog);
 
+                    var appSettingsFilePath = saveFileDialog.FilePath.ToString();
+
+                    if(saveFileDialog.Canceled || string.IsNullOrEmpty(appSettingsFilePath))
+                    {
+                        //Exit Out
+                        MessageBox.ErrorQuery("Error", "Setup Cancelled", "Ok");
+                    }
+                    else
+                    {
+                        //Write settings to appsettings.json
+                        var appSettingsJson = JsonSerializer.Serialize(appSettings, new JsonSerializerOptions() { WriteIndented = true });
+                        File.WriteAllText(appSettingsFilePath, appSettingsJson);
+
+                        //Show a message box to confirm settings were written
+                        MessageBox.Query("Success", $"Settings were successfully written to:\n{appSettingsFilePath}", "Ok");
+                    }
+                    
                     //Close the Wizard
                     wizard.Running = false;
                     wizard.Visible = false;
                     this.RequestStop();
-
-                    //Show a message box to confirm settings were written
-                    MessageBox.Query("Success", "Settings were successfully written to appsettings.json", "Ok");
                 }
             };
 
