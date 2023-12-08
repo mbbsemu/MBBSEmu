@@ -1,7 +1,6 @@
 using Iced.Intel;
 using MBBSEmu.Memory;
 using System;
-using System.Text;
 
 namespace MBBSEmu.CPU
 {
