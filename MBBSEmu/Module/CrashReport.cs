@@ -65,7 +65,7 @@ namespace MBBSEmu.Module
 
             //Registers
             crashReportVariables.Add(_registers.ToString());
-            crashReportVariables.Add(_moduleToReport.Memory.GetMemorySegment(0).Slice(_registers.BP, (_registers.BP - _registers.SP))
+            crashReportVariables.Add(_moduleToReport.Memory.GetMemorySegment(0)
                 .ToHexString(_registers.BP, (ushort)(_registers.BP - _registers.SP)));
 
             var crashTemplate = new ResourceManager().GetString("MBBSEmu.Assets.crashReportTemplate.txt");
