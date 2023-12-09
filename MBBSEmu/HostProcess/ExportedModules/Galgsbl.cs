@@ -756,6 +756,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
         }
 
+        /// <summary>
+        ///     Simulates a keystroke to the currently monitored channel
+        ///
+        ///     Signature: void btumks2(char character);
+        /// </summary>
         private void btumks2()
         {
             var character = GetParameter(0);
@@ -768,6 +773,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             ChannelDictionary[MonitoredChannel2].DataToProcess = true;
         }
 
+        /// <summary>
+        ///     Second Timer
+        ///
+        ///     Value is incremented every second from 0 to 65535, resetting back to 0
+        /// </summary>
         private ReadOnlySpan<byte> ticker => Module.Memory.GetVariablePointer("TICKER").Data;
 
         /// <summary>
