@@ -74,7 +74,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Dapper" Version="2.1.21" />
+		<PackageReference Include="Dapper" Version="2.1.24" />
 		<PackageReference Include="Iced" Version="1.10.0" />
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
@@ -82,7 +82,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-		<PackageReference Include="Terminal.Gui" Version="1.14.1" />
+		<PackageReference Include="Terminal.Gui" Version="2.0.0-pre.231" />
 	</ItemGroup>
 
 	<ItemGroup>
