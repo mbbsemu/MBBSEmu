@@ -3,7 +3,7 @@ using System;
 
 namespace MBBSEmu.Logging
 {
-    public interface IMessageLogger
+    public interface IMessageLogger : ILogger
     {
         void Log(LogLevel logLevel, string message, Exception exception = null);
         void Debug(string message);
