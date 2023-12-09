@@ -6130,7 +6130,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     tokenList.Add(Module.Memory.GetString(messagePointer).ToArray());
                 }
-                catch (Exception e)
+                catch
                 {
                     _logger.Warn($"Error Reading string at {messagePointer}, terminating list at {tokenList.Count} elements");
                     break;
