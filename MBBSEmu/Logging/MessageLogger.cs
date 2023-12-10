@@ -11,8 +11,18 @@ namespace MBBSEmu.Logging
     /// </summary>
     public class MessageLogger : LoggerBase, IMessageLogger
     {
-        public MessageLogger() { }
+        /// <summary>
+        ///    Default Constructor (Console Target)
+        /// </summary>
+        public MessageLogger()
+        {
+            AddTarget(new ConsoleTarget());
+        }
 
+        /// <summary>
+        ///   Constructor with specified Logging Target
+        /// </summary>
+        /// <param name="target"></param>
         public MessageLogger(ILoggingTarget target)
         {
             AddTarget(target);
@@ -27,7 +37,7 @@ namespace MBBSEmu.Logging
         public void Log(LogLevel logLevel, string message, Exception exception = null)
         {
             //Ignore Message if it's below the configured log level
-            if((int)logLevel < (int)ConfiguredLogLevel)
+            if(!IsEnabled(logLevel))
                 return;
 
             //Write to all Logging Targets
@@ -57,5 +67,45 @@ namespace MBBSEmu.Logging
         public void Error(Exception exception, string message) => Log(LogLevel.Error, $"{message} - {exception.Message}");
 
         public void Error(Exception exception) => Log(LogLevel.Error, exception.Message);
+
+        /// <summary>
+        ///    ILogger implementation for Microsoft.Extensions.Logging to log a message
+        /// </summary>
+        /// <typeparam name="TState"></typeparam>
+        /// <param name="logLevel"></param>
+        /// <param name="eventId"></param>
+        /// <param name="state"></param>
+        /// <param name="exception"></param>
+        /// <param name="formatter"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
+            ArgumentNullException.ThrowIfNull(formatter);
+
+            if (!IsEnabled(logLevel))
+                return;
+
+            var message = formatter(state, exception);
+
+            Log(logLevel, message, exception);
+        }
+
+        /// <summary>
+        ///     ILogger implementation for Microsoft.Extensions.Logging to determine if the message can be logged based on the log level
+        /// </summary>
+        /// <param name="logLevel"></param>
+        /// <returns></returns>
+        public bool IsEnabled(LogLevel logLevel) => (int)logLevel >= (int)ConfiguredLogLevel;
+
+        /// <summary>
+        ///     ILogger implementation for Microsoft.Extensions.Logging to begin a new scope
+        /// </summary>
+        /// <typeparam name="TState"></typeparam>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
     }
 }
