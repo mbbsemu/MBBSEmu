@@ -39,6 +39,9 @@ namespace MBBSEmu.Tests.Extensions
         {
             ReadOnlySpan<byte> input = new byte[] { 1, 2, 3, 4, 5 };
             var result = input.ToHexString(0, 5);
+
+            Assert.Contains("5 bytes, 0x0000 -> 0x0005", result);
+            Assert.Contains("0000 [ 01 02 03 04 05", result);
             Assert.DoesNotContain("No Data to Display", result);
             Assert.DoesNotContain("Invalid Address Range", result);
         }
