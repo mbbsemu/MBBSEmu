@@ -91,6 +91,16 @@ namespace MBBSEmu
         private string _newSysopPassword;
 
         /// <summary>
+        ///    Specified if the -DBREBUILD Command Line Argument was passed
+        /// </summary>
+        private bool _doDatabaseRebuild;
+
+        /// <summary>
+        ///     Database File to be Rebuilt (if able)
+        /// </summary>
+        private string _databaseRebuildFileName;
+
+        /// <summary>
         ///     Specified if the -CONSOLE Command Line Argument was passed
         /// </summary>
         private bool _isConsoleSession;
@@ -177,6 +187,18 @@ namespace MBBSEmu
 
                                 break;
                             }
+                        case "-DBREBUILD":
+                        {
+                            _doDatabaseRebuild = true;
+                            if (i + 1 < args.Length && args[i + 1][0] != '-')
+                            {
+                                _databaseRebuildFileName = args[i + 1];
+                                i++;
+                            }
+
+                            _databaseRebuildFileName = _databaseRebuildFileName.ToUpperInvariant();
+                            break;
+                        }
                         case "-APIREPORT":
                             _doApiReport = true;
                             break;
@@ -347,6 +369,20 @@ namespace MBBSEmu
                 {
                     _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
                     DatabaseReset();
+                }
+
+                //Database Rebuild
+                if (_doDatabaseRebuild)
+                {
+                    switch (_databaseRebuildFileName)
+                    {
+                        case "BBSUSR":
+                            RebuildAccDb();
+                            break;
+                        default:
+                            _logger.Error($"Unknown Database to rebuild: {_databaseRebuildFileName}");
+                            break;
+                    }
                 }
 
                 //Setup Modules
@@ -616,6 +652,49 @@ namespace MBBSEmu
             acct.UpdateAccountById(sysopAccount.accountId, sysopAccount.userName, _newSysopPassword, sysopAccount.email);
             _logger.Info("Sysop Password Reset!");
             _doResetPassword = false;
+        }
+
+        /// <summary>
+        ///     Rebuilds the internal MajorBBS/WG Account Database (BBSUSR.DAT) using the current SQLite Database
+        ///     and users that are already created. This is useful if you have a corrupted or missing BBSUSR.DB.
+        ///
+        ///     The BBSUSR.DAT file (ACCDB) is used by MajorBBS/WG to store user accounts. It is referenced by several
+        ///     internal API calls and is required for the system to function properly. Because of this, we only store the
+        ///     bare minimum amount of inofrmation required for this file to exist and be valid. Full user account information
+        ///     is stored within the internal MBBSEmu SQLite Database.
+        ///
+        ///     This might seem a little confusing, but internally in the MajorBBS code this database is referenced
+        ///     as "ACCDB" but the actual file name is BBSUSR.DAT.
+        /// </summary>
+        private void RebuildAccDb()
+        {
+            _logger.Info("Rebuilding BBSUSR.DAT...");
+            //Get Object for BBSUSR.DAT
+            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            _accountBtrieve.DeleteAll();
+
+            //Get Internal MBBSEmu User Account Database
+            var acct = _serviceResolver.GetService<IAccountRepository>();
+            var accounts = acct.GetAccounts();
+
+            //Verify there are valid accounts in the MBBSEmu Accounts Database
+            if (!accounts.Any())
+            {
+                _logger.Error("No Accounts Found in MBBSEmu Database, skipping rebuild of BBSUSR.DAT");
+                _logger.Error("Please consider using the -DBRESET command line argument to reset the internal databases to their default state");
+                return;
+            }
+
+            //Insert each record into BBSUSR.DAT
+            foreach (var a in accounts) 
+                _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(a.userName), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+
+            //Verify the Counts are Equal
+            if (accounts.Count() != _accountBtrieve.GetRecordCount())
+                _logger.Warn($"MBBSEmu Database Account Count ({accounts.Count()}) does not match BBSUSR.DAT Account Count ({_accountBtrieve.GetRecordCount()})");
+
+            _logger.Info("BBSUSR.DAT (BBSUSR.DB) Rebuilt!");
+            _logger.Info($"{accounts.Count()} Account Inserted");
         }
     }
 }
