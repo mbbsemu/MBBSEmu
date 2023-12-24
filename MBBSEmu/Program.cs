@@ -604,8 +604,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("sysop"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes("guest"), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount("sysop").Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount("guest").Data, LogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
@@ -669,9 +669,6 @@ namespace MBBSEmu
         private void RebuildAccDb()
         {
             _logger.Info("Rebuilding BBSUSR.DAT...");
-            //Get Object for BBSUSR.DAT
-            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.DeleteAll();
 
             //Get Internal MBBSEmu User Account Database
             var acct = _serviceResolver.GetService<IAccountRepository>();
@@ -685,16 +682,20 @@ namespace MBBSEmu
                 return;
             }
 
+            //Get BBSUSR.DAT and clear out existing records
+            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            _accountBtrieve.DeleteAll();
+
             //Insert each record into BBSUSR.DAT
             foreach (var a in accounts) 
-                _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(a.userName), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = (byte)'M' }.Data, LogLevel.Error);
+                _accountBtrieve.Insert(new UserAccount(a.userName).Data, LogLevel.Error);
 
             //Verify the Counts are Equal
             if (accounts.Count() != _accountBtrieve.GetRecordCount())
                 _logger.Warn($"MBBSEmu Database Account Count ({accounts.Count()}) does not match BBSUSR.DAT Account Count ({_accountBtrieve.GetRecordCount()})");
 
             _logger.Info("BBSUSR.DAT (BBSUSR.DB) Rebuilt!");
-            _logger.Info($"{accounts.Count()} Account Inserted");
+            _logger.Info($"{accounts.Count()} Accounts Inserted");
         }
     }
 }
