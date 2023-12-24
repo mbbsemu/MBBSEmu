@@ -270,6 +270,9 @@ namespace MBBSEmu
 
                             break;
                         }
+                        case "-V":
+                            Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                            return;
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
                             return;
