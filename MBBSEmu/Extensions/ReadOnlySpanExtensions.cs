@@ -30,7 +30,7 @@ namespace MBBSEmu.Extensions
         }
 
         /// <summary>
-        ///     Creates a human readable hex string from a ReadOnlySpan of bytes
+        ///     Creates a human-readable hex string from a ReadOnlySpan of bytes
         ///
         ///     The header contains the total number of bytes, the start and end address
         ///     as well as columns for each byte within an 8-bit boundary.
@@ -49,9 +49,19 @@ namespace MBBSEmu.Extensions
                 output.AppendLine(new string('-', 73));
 
                 //Handle Zero Length
-                if (length == 0)
+                if (length <= 0)
                 {
                     output.AppendLine("No Data to Display");
+                    return output.ToString();
+                }
+
+                //Handle Invalid Length
+                if (start + length > readOnlySpan.Length)
+                {
+                    output.AppendLine("Invalid Address Range");
+                    output.AppendLine($"Total Length: {readOnlySpan.Length} bytes");
+                    output.AppendLine($"Start: {start}");
+                    output.AppendLine($"Length: {length}");
                     return output.ToString();
                 }
 
