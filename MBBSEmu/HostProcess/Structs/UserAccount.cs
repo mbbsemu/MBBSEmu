@@ -376,6 +376,28 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 338;
 
+        /// <summary>
+        ///     Constructor for UserAccount where you can specify the User's UserName and Sex via constructor parameters
+        /// </summary>
+        /// <param name="userName">Username the user will use to log into the system</param>
+        /// <param name="userSex">Sex/Gender of the User (Only M/F supported)</param>
+        public UserAccount(string userName, char userSex = 'M') : this()
+        {
+            //Verify Input Parameters
+            if (userName.Length > UIDSIZ - 1)
+                throw new ArgumentOutOfRangeException(nameof(userName), $"Username must be {UIDSIZ - 1} characters or less");
+
+            if (userSex != 'M' && userSex != 'F')
+                throw new ArgumentOutOfRangeException(nameof(userSex), "Only M or F are supported for userSex in The MajorBBS/Worldgroup");
+
+            userid = Encoding.ASCII.GetBytes(userName + "\0");
+            psword = Encoding.ASCII.GetBytes("<<HASHED>>"); //Password is always hashed in the internal database, so we don't store it here as the hashed value would be too long
+            sex = (byte)userSex;
+        }
+
+        /// <summary>
+        ///     Default Constructor for UserAccount
+        /// </summary>
         public UserAccount()
         {
             flags = 1; //Set everyone to having "MASTER" key

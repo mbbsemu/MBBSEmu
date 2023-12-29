@@ -246,11 +246,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             //Remove the User from the BBSUSR Database
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             
-            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
-                {
-                    userid = Encoding.ASCII.GetBytes(userAccount.userName.ToUpper()),
-                    psword = Encoding.ASCII.GetBytes("<<HASHED>>")
-                }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount(userAccount.userName.ToUpper()).Data)[..55], EnumBtrieveOperationCodes.AcquireEqual);
 
             if (result)
                 accountBtrieve.Delete();
@@ -287,11 +283,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             //Remove the User from the BBSUSR.db Database
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
 
-            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
-            {
-                userid = Encoding.ASCII.GetBytes(userName.ToUpper()),
-                psword = Encoding.ASCII.GetBytes("<<HASHED>>")
-            }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount(userName.ToUpper()).Data)[..55], EnumBtrieveOperationCodes.AcquireEqual);
 
             if (!result)
             {

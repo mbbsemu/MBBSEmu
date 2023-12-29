@@ -251,11 +251,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             //Lookup User in BBSUSR.db
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
 
-            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount
-            {
-                userid = Encoding.ASCII.GetBytes(session.Username.ToUpper()),
-                psword = Encoding.ASCII.GetBytes("<<HASHED>>")
-            }.Data).Slice(0, 55), EnumBtrieveOperationCodes.AcquireEqual);
+            var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount(session.Username.ToUpper()).Data)[..55], EnumBtrieveOperationCodes.AcquireEqual);
 
             if (!result)
             {
@@ -605,7 +601,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             //Add The User to the BBS Btrieve User Database
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            _accountBtrieve.Insert(new UserAccount { userid = Encoding.ASCII.GetBytes(session.Username), psword = Encoding.ASCII.GetBytes("<<HASHED>>"), sex = session.UsrAcc.sex }.Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount(session.Username, (char)session.UsrAcc.sex).Data, LogLevel.Error);
 
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);
