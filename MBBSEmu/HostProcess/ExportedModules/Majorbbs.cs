@@ -7212,7 +7212,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var stringPointerBase = GetParameterPointer(0);
 
-            for (var i = stringPointerBase.Offset; i < ushort.MaxValue; i++)
+            for (var i = stringPointerBase.Offset; i <= ushort.MaxValue; i++)
             {
                 var currentCharacter = Module.Memory.GetByte(stringPointerBase.Segment, i);
                 if (currentCharacter != 0 && currentCharacter != ' ') continue;

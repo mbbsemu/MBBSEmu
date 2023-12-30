@@ -23,9 +23,11 @@ namespace MBBSEmu.Tests.ExportedModules
 {
     public abstract class ExportedModuleTestBase : TestBase, IDisposable
     {
-        // list of ordinals that use the __stdcall convention, which means the callee cleans up the
-        // stack.
-        // __cdecl convention has the caller cleaning up the stack.
+        /// <summary>
+        ///     List of ordinals that use the __stdcall convention, which means the callee cleans up the stack.
+        ///
+        ///     __cdecl convention has the caller cleaning up the stack.
+        /// </summary>
         private static readonly HashSet<ushort> STDCALL_ORDINALS = new HashSet<ushort> {
             654, // f_ldiv
             656, // f_ludiv
