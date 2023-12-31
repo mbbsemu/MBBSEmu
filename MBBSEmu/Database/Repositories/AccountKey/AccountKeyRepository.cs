@@ -1,18 +1,15 @@
 ﻿using MBBSEmu.Database.Repositories.AccountKey.Model;
 using MBBSEmu.Database.Repositories.AccountKey.Queries;
 using MBBSEmu.Database.Session;
+using MBBSEmu.Resources;
 using System.Collections.Generic;
 using System.Linq;
-using MBBSEmu.Resources;
 
 namespace MBBSEmu.Database.Repositories.AccountKey
 {
-    public class AccountKeyRepository : RepositoryBase, IAccountKeyRepository
+    public class AccountKeyRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager, AppSettingsManager appSettingsManager) 
+        : RepositoryBase(sessionBuilder, resourceManager), IAccountKeyRepository
     {
-        public AccountKeyRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager) : base(sessionBuilder, resourceManager)
-        {
-        }
-
         public bool CreateTable()
         {
             var result = Query(EnumQueries.CreateAccountKeysTable, null);
@@ -69,14 +66,21 @@ namespace MBBSEmu.Database.Repositories.AccountKey
             CreateTable();
 
             //Keys for SYSOP
-            InsertAccountKeyByUsername("sysop", "DEMO");
-            InsertAccountKeyByUsername("sysop", "NORMAL");
             InsertAccountKeyByUsername("sysop", "SUPER");
             InsertAccountKeyByUsername("sysop", "SYSOP");
+            ApplyDefaultAccountKeys("sysop");
+
 
             //Keys for GUEST
-            InsertAccountKeyByUsername("guest", "DEMO");
-            InsertAccountKeyByUsername("guest", "NORMAL");
+            ApplyDefaultAccountKeys("guest");
+            return;
+
+            //Local Function to apply default account keys defined in AppSettingsManager
+            void ApplyDefaultAccountKeys(string userName)
+            {
+                foreach (var accountKey in appSettingsManager.DefaultKeys)
+                    InsertAccountKeyByUsername(userName, accountKey);
+            }
         }
     }
 }
