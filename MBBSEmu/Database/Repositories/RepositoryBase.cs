@@ -14,11 +14,9 @@ namespace MBBSEmu.Database.Repositories
     ///
     ///     Holds common Dapper Functionality for executing Queries
     /// </summary>
-    public abstract class RepositoryBase : IRepositoryBase, IDisposable
+    public abstract class RepositoryBase(ISessionBuilder sessionBuilder, IResourceManager resourceManager) : IRepositoryBase, IDisposable
     {
-        private readonly IResourceManager _resourceManager;
-
-        private readonly DbConnection _connection;
+        private readonly DbConnection _connection = sessionBuilder.GetConnection();
 
         public void Dispose()
         {
@@ -26,20 +24,14 @@ namespace MBBSEmu.Database.Repositories
             _connection.Dispose();
         }
 
-        protected RepositoryBase(ISessionBuilder sessionBuilder, IResourceManager resourceManager)
-        {
-            _connection = sessionBuilder.GetConnection();
-            _resourceManager = resourceManager;
-        }
-
         public IEnumerable<T> Query<T>(object enumQuery, object parameters)
         {
-            return _connection.Query<T>(_resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
+            return _connection.Query<T>(resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}"), parameters);
         }
 
         public IEnumerable<dynamic> Query(object enumQuery, object parameters)
         {
-            var sql = _resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}");
+            var sql = resourceManager.GetString($"{SqlQueryAttribute.Get(enumQuery)}");
             return _connection.Query(sql, parameters);
         }
 
