@@ -196,7 +196,7 @@ namespace MBBSEmu
                                 i++;
                             }
 
-                            _databaseRebuildFileName = _databaseRebuildFileName.ToUpperInvariant();
+                            _databaseRebuildFileName = _databaseRebuildFileName?.ToUpperInvariant();
                             break;
                         }
                         case "-APIREPORT":
@@ -383,7 +383,7 @@ namespace MBBSEmu
                             RebuildAccDb();
                             break;
                         default:
-                            _logger.Error($"Unknown Database to rebuild: {_databaseRebuildFileName}");
+                            _logger.Error($"Unknown Database to rebuild: {_databaseRebuildFileName ?? "null"}");
                             break;
                     }
                 }
