@@ -12,7 +12,6 @@
 		<None Remove="Assets\BBSGEN.DB" />
 		<None Remove="Assets\BBSUSR.DB" />
 		<None Remove="Assets\commandLineHelp.txt" />
-		<None Remove="Assets\crashDetailsAPI.txt" />
 		<None Remove="Assets\crashReportTemplate.txt" />
 		<None Remove="Assets\fseDefaultFormats.txt" />
 		<None Remove="Assets\fseFieldSpec.txt" />
@@ -45,7 +44,6 @@
 		<EmbeddedResource Include="Assets\BBSGEN.DB" />
 		<EmbeddedResource Include="Assets\BBSUSR.DB" />
 		<EmbeddedResource Include="Assets\commandLineHelp.txt" />
-		<EmbeddedResource Include="Assets\crashDetailsAPI.txt" />
 		<EmbeddedResource Include="Assets\crashReportTemplate.txt" />
 		<EmbeddedResource Include="Assets\fseDefaultFormats.txt" />
 		<EmbeddedResource Include="Assets\fseFieldSpec.txt" />
