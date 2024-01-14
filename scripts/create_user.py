@@ -13,6 +13,7 @@ def _create_parser():
   parser.add_argument('--password', help='Password to use', required=True)
   parser.add_argument('--keys', help='Account keys to add to the new account', action='append', default=['NORMAL','PAYING'])
   parser.add_argument('--email', help='Email address to use', default='test@test.bbs')
+  parser.add_argument('--dbfile', help='Database specified by appsettings.json Database.File', default='mbbsemu.db')
 
   return parser.parse_args()
 
@@ -25,7 +26,7 @@ def _make_password_hash(password, salt_bytes):
 def _main():
   args = _create_parser()
 
-  conn = sqlite3.connect('mbbsemu.db')
+  conn = sqlite3.connect(args.dbfile)
 
   passwordSaltBytes=os.urandom(32)
   passwordHashBytes=_make_password_hash(args.password, passwordSaltBytes)
