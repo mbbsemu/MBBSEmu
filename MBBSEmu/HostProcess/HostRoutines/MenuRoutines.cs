@@ -582,9 +582,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
         {
             if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE) return;
 
-            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray());
+            var inputValue = Encoding.ASCII.GetString(session.InputBuffer.ToArray()).ToUpper();
 
-            if (inputValue.ToUpper() is not ("M" or "F"))
+            if (inputValue is not ("M" or "F"))
             {
                 session.SendToClient("\r\n|RED||B|Please enter a valid gender selection ('M' or 'F').\r\n|RESET|".EncodeToANSIArray());
                 session.SessionState = EnumSessionState.SignupGenderDisplay;
