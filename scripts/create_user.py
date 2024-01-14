@@ -25,7 +25,7 @@ def _make_password_hash(password, salt_bytes):
 def _main():
   args = _create_parser()
 
-  conn = sqlite3.connect('mbbs.db')
+  conn = sqlite3.connect('mbbsemu.db')
 
   passwordSaltBytes=os.urandom(32)
   passwordHashBytes=_make_password_hash(args.password, passwordSaltBytes)
@@ -41,6 +41,8 @@ def _main():
     t = (account_id, user_key)
     cur.execute('INSERT INTO AccountKeys (accountId, accountKey, createDate, updateDate) VALUES (?,?,datetime(\'now\'), datetime(\'now\'))', t)
     conn.commit()
+
+  print("Database updated; now you need to go run MBBSEmu -CLI -DBREBUILD BBSUSR to rebuild the runtime user database.")
 
 if __name__ == '__main__':
   _main()
