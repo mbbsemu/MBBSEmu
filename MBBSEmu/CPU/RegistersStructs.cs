@@ -520,6 +520,7 @@ namespace MBBSEmu.CPU
             output.Append($"BX={this.BX:X4}  ");
             output.Append($"CX={this.CX:X4}  ");
             output.Append($"DX={this.DX:X4}  ");
+            output.Append($"CS={this.CS:X4}  ");
             output.Append($"DS={this.DS:X4}  ");
             output.AppendLine($"ES={this.ES:X4} ");
             output.Append($"SI={this.SI:X4}  ");
