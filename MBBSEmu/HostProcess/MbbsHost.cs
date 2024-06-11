@@ -1362,7 +1362,7 @@ namespace MBBSEmu.HostProcess
             }
 
             //Notify Users and Exit Modules
-            foreach (var c in _channelDictionary.Values.Where(x => x.CurrentModule.ModuleIdentifier == moduleId))
+            foreach (var c in _channelDictionary.Values.Where(x => x.CurrentModule?.ModuleIdentifier == moduleId))
             {
                 if (isCrashed)
                 {

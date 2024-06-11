@@ -4059,10 +4059,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var formattedMessage = FormatPrintf(message, 2);
 
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.BackgroundColor = ConsoleColor.Red;
-            Console.WriteLine($"{Encoding.ASCII.GetString(formattedMessage)}");
-            Console.ResetColor();
+            _logger.Error($"({Module.ModuleIdentifier}) Catastro Failure: {Encoding.ASCII.GetString(formattedMessage)}");
 
             Registers.Halt = true;
         }
