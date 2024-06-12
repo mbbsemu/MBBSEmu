@@ -3860,7 +3860,7 @@ namespace MBBSEmu.CPU
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            if (double.IsNaN(ST0) || double.IsNaN(ST1))
+            if (double.IsNaN(ST0) || double.IsNaN(ST1) || double.IsInfinity(ST0) || double.IsInfinity(ST1))
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
