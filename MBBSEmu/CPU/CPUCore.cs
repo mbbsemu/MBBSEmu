@@ -3814,7 +3814,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            if (double.IsNaN(ST0) || double.IsNaN(source))
+            if (double.IsNaN(ST0) || double.IsNaN(source) || double.IsInfinity(ST0) || double.IsInfinity(source))
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 return;
