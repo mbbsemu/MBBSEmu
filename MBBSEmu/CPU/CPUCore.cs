@@ -361,6 +361,10 @@ namespace MBBSEmu.CPU
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
                 _logger.Debug($"{Registers}");
+                foreach(var l in Registers.ToString().Split("\n"))
+                    _logger.Debug(l);
+                for(var i = 0; i < 8; i++)
+                    _logger.Debug($"FPU[{i}]: {FpuStack[i]} {(i == Registers.Fpu.GetStackTop() ? " <--" : string.Empty)}");
             }
             else
             {
@@ -1597,6 +1601,10 @@ namespace MBBSEmu.CPU
                     Registers.CarryFlag = newCFValue;
                 }
 
+                //Only on 1 Bit Rotations to we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ result.IsBitSet(6);
+
                 return result;
             }
         }
@@ -1637,6 +1645,10 @@ namespace MBBSEmu.CPU
                     //Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
+
+                //Only on 1 Bit Rotations to we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) ^ result.IsBitSet(14);
 
                 return result;
             }
