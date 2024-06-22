@@ -360,7 +360,6 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-                _logger.Debug($"{Registers}");
                 foreach(var l in Registers.ToString().Split("\n"))
                     _logger.Debug(l);
                 for(var i = 0; i < 8; i++)
@@ -1696,6 +1695,10 @@ namespace MBBSEmu.CPU
                     Registers.CarryFlag = newCFValue;
                 }
 
+                //For 1 Bit Rotations, we evaluate Overflow
+                if(source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
+
                 return result;
             }
         }
@@ -1724,6 +1727,10 @@ namespace MBBSEmu.CPU
                     // Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
+
+                //For 1 Bit Rotations, we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
 
                 return result;
             }
@@ -3996,8 +4003,9 @@ namespace MBBSEmu.CPU
                 //CF Set if Most Significant Bit set to 1
                 Registers.CarryFlag = result.IsNegative();
 
-                //If Bits 7 & 6 are not the same, then we overflowed
-                Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
+                //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
+                if(source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;
             }
@@ -4020,8 +4028,9 @@ namespace MBBSEmu.CPU
                 //CF Set if Most Significant Bit set to 1
                 Registers.CarryFlag = result.IsNegative();
 
-                //If Bits 15 & 14 are not the same, then we overflowed
-                Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
+                //If Bits 15 & 14 are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
 
                 return result;
             }
