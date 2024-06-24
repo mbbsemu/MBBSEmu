@@ -9,9 +9,9 @@ namespace MBBSEmu.Tests.CPU
     {
         [Theory]
         [InlineData(0)]
-        [InlineData(ushort.MaxValue)]
-        [InlineData(ushort.MinValue)]
-        public void FILD_Test_M16(ushort valueToLoad)
+        [InlineData(short.MaxValue)]
+        [InlineData(short.MinValue)]
+        public void FILD_Test_M16(short valueToLoad)
         {
             Reset();
 
@@ -30,8 +30,8 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(1, 2)]
-        [InlineData(ushort.MaxValue, ushort.MinValue)]
-        public void FILD_Multiple_Test_M16(ushort st0, ushort st1)
+        [InlineData(short.MaxValue, short.MinValue)]
+        public void FILD_Multiple_Test_M16(short st0, short st1)
         {
             Reset();
 
@@ -54,9 +54,9 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(0)]
-        [InlineData(uint.MaxValue)]
-        [InlineData(uint.MinValue)]
-        public void FILD_Test_M32(uint valueToLoad)
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        public void FILD_Test_M32(int valueToLoad)
         {
             Reset();
 
@@ -75,8 +75,8 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(1, 2)]
-        [InlineData(uint.MaxValue, uint.MinValue)]
-        public void FILD_Multiple_Test_M32(uint st0, uint st1)
+        [InlineData(int.MaxValue, int.MinValue)]
+        public void FILD_Multiple_Test_M32(int st0, int st1)
         {
             Reset();
 
@@ -99,9 +99,9 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(0)]
-        [InlineData(ulong.MaxValue)]
-        [InlineData(ulong.MinValue)]
-        public void FILD_Test_M64(ulong valueToLoad)
+        [InlineData(long.MaxValue)]
+        [InlineData(long.MinValue)]
+        public void FILD_Test_M64(long valueToLoad)
         {
             Reset();
 
@@ -120,8 +120,8 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(1, 2)]
-        [InlineData(ulong.MaxValue, ulong.MinValue)]
-        public void FILD_Multiple_Test_M64(ulong st0, ulong st1)
+        [InlineData(long.MaxValue, long.MinValue)]
+        public void FILD_Multiple_Test_M64(long st0, long st1)
         {
             Reset();
 

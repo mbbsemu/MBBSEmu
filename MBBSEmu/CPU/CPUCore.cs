@@ -955,6 +955,43 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private long GetOperandValueInt64(OpKind opKind)
+        {
+            var value = GetOperandValueUInt64(opKind);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Immediate32 => (int)value,
+                OpKind.Immediate8to32 => (int)value,
+                OpKind.Immediate64 => (long)value,
+                OpKind.Immediate8to64 => (long)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    MemorySize.UInt16 => (ushort)value,
+                    MemorySize.Int32 => (int)value,
+                    MemorySize.UInt32 => (uint)value,
+                    MemorySize.Int64 => (long)value,
+                    MemorySize.UInt64 => (long)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+
+        }
+
+        /// <summary>
         ///     Returns the Operand Value as a 64-bit Integer
         ///
         ///     Operand Sizes Equal to or Less than 64-Bit are Supported and returned as a 64-bit Integer
@@ -3126,7 +3163,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fild()
         {
-            var valueToLoad = GetOperandValueUInt64(_currentInstruction.Op0Kind);
+            var valueToLoad = GetOperandValueInt64(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = valueToLoad;
