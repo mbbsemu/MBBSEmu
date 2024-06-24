@@ -35,11 +35,11 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(0xF, 1, 0x8007, true, false)]
-        [InlineData(0xF, 2, 0xC003, true, true)]
-        [InlineData(0xE, 1, 0x8007, false, false)]
-        [InlineData(0x1FF, 1, 0x80FF, true, false)]
-        [InlineData(0x1FE, 1, 0x80FF, false, false)]
+        [InlineData(0xF, 1, 0x8007, true, true)]
+        [InlineData(0xF, 2, 0xC003, true, false)]
+        [InlineData(0xE, 1, 0x8007, false, true)]
+        [InlineData(0x1FF, 1, 0x80FF, true, true)]
+        [InlineData(0x1FE, 1, 0x80FF, false, true)]
         [InlineData(0x3C, 2, 0x400F, false, false)]
         [InlineData(0x3E, 2, 0x400F, true, false)]
         [InlineData(0xFFFF, 2, 0xFFFF, true, false)]
@@ -58,6 +58,7 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(expectedValue, mbbsEmuCpuRegisters.AX);
             Assert.Equal(expectedCFValue, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(expectedOFValue, mbbsEmuCpuRegisters.OverflowFlag);
         }
 
         [Theory]
