@@ -360,7 +360,10 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-                _logger.Debug($"{Registers}");
+                foreach(var l in Registers.ToString().Split("\n"))
+                    _logger.Debug(l);
+                for(var i = 0; i < 8; i++)
+                    _logger.Debug($"FPU[{i}]: {FpuStack[i]} {(i == Registers.Fpu.GetStackTop() ? " <--" : string.Empty)}");
             }
             else
             {
@@ -949,6 +952,43 @@ namespace MBBSEmu.CPU
                 default:
                     throw new Exception($"Unsupported OpKind: {opKind}");
             }
+        }
+
+        /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private long GetOperandValueInt64(OpKind opKind)
+        {
+            var value = GetOperandValueUInt64(opKind);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Immediate32 => (int)value,
+                OpKind.Immediate8to32 => (int)value,
+                OpKind.Immediate64 => (long)value,
+                OpKind.Immediate8to64 => (long)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    MemorySize.UInt16 => (ushort)value,
+                    MemorySize.Int32 => (int)value,
+                    MemorySize.UInt32 => (uint)value,
+                    MemorySize.Int64 => (long)value,
+                    MemorySize.UInt64 => (long)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+
         }
 
         /// <summary>
@@ -1597,6 +1637,10 @@ namespace MBBSEmu.CPU
                     Registers.CarryFlag = newCFValue;
                 }
 
+                //Only on 1 Bit Rotations to we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ result.IsBitSet(6);
+
                 return result;
             }
         }
@@ -1637,6 +1681,10 @@ namespace MBBSEmu.CPU
                     //Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
+
+                //Only on 1 Bit Rotations to we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) ^ result.IsBitSet(14);
 
                 return result;
             }
@@ -1684,6 +1732,10 @@ namespace MBBSEmu.CPU
                     Registers.CarryFlag = newCFValue;
                 }
 
+                //For 1 Bit Rotations, we evaluate Overflow
+                if(source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
+
                 return result;
             }
         }
@@ -1712,6 +1764,10 @@ namespace MBBSEmu.CPU
                     // Set new CF Value
                     Registers.CarryFlag = newCFValue;
                 }
+
+                //For 1 Bit Rotations, we evaluate Overflow
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
 
                 return result;
             }
@@ -3107,7 +3163,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fild()
         {
-            var valueToLoad = GetOperandValueUInt64(_currentInstruction.Op0Kind);
+            var valueToLoad = GetOperandValueInt64(_currentInstruction.Op0Kind);
 
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = valueToLoad;
@@ -3814,7 +3870,7 @@ namespace MBBSEmu.CPU
             var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
 
-            if (double.IsNaN(ST0) || double.IsNaN(source))
+            if (double.IsNaN(ST0) || double.IsNaN(source) || double.IsInfinity(ST0) || double.IsInfinity(source))
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
                 return;
@@ -3860,7 +3916,7 @@ namespace MBBSEmu.CPU
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            if (double.IsNaN(ST0) || double.IsNaN(ST1))
+            if (double.IsNaN(ST0) || double.IsNaN(ST1) || double.IsInfinity(ST0) || double.IsInfinity(ST1))
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
             }
@@ -3984,8 +4040,9 @@ namespace MBBSEmu.CPU
                 //CF Set if Most Significant Bit set to 1
                 Registers.CarryFlag = result.IsNegative();
 
-                //If Bits 7 & 6 are not the same, then we overflowed
-                Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
+                //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
+                if(source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;
             }
@@ -4008,8 +4065,9 @@ namespace MBBSEmu.CPU
                 //CF Set if Most Significant Bit set to 1
                 Registers.CarryFlag = result.IsNegative();
 
-                //If Bits 15 & 14 are not the same, then we overflowed
-                Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
+                //If Bits 15 & 14 are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) != result.IsBitSet(14);
 
                 return result;
             }

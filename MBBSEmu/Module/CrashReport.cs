@@ -61,7 +61,15 @@ namespace MBBSEmu.Module
             crashReportVariables.Add(_exception.StackTrace);
 
             //CPU Instruction
-            crashReportVariables.Add(_moduleToReport.Memory.GetInstruction(_registers.CS, _registers.IP).ToString());
+            try
+            {
+                crashReportVariables.Add(_moduleToReport.Memory.GetInstruction(_registers.CS, _registers.IP).ToString());
+            }
+            catch (Exception e)
+            {
+                crashReportVariables.Add("Exception retrieving CPU Instruction");
+            }
+            
 
             //Registers
             crashReportVariables.Add(_registers.ToString());

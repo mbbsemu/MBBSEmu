@@ -15,6 +15,8 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(1d, 1d, (ushort)EnumFpuStatusFlags.Code3)]
         [InlineData(double.NaN, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         [InlineData(0d, double.NaN, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.PositiveInfinity, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(0d, double.NegativeInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         public void FCOMPP_Test(double ST0Value, double ST1Value, ushort expectedFlags)
         {
             Reset();

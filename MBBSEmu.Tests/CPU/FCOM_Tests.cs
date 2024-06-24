@@ -16,7 +16,10 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(double.MinValue, 0d, (ushort)EnumFpuStatusFlags.Code0)]
         [InlineData(1d, 1d, (ushort)EnumFpuStatusFlags.Code3)]
         [InlineData(double.NaN, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.NegativeInfinity, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         [InlineData(0d, double.NaN, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(0d, double.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.NegativeInfinity, double.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         public void FCOM_ST1_Test(double ST0Value, double ST1Value, ushort expectedFlags)
         {
             Reset();
@@ -42,7 +45,10 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(float.MinValue, 0d, (ushort)EnumFpuStatusFlags.Code0)]
         [InlineData(1d, 1d, (ushort)EnumFpuStatusFlags.Code3)]
         [InlineData(float.NaN, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(float.NegativeInfinity, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         [InlineData(0d, float.NaN, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(0d, float.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(float.NegativeInfinity, float.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         public void FCOM_M32_Test(double ST0Value, float m32Value, ushort expectedFlags)
         {
             Reset();
@@ -70,7 +76,10 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(double.MinValue, 0d, (ushort)EnumFpuStatusFlags.Code0)]
         [InlineData(1d, 1d, (ushort)EnumFpuStatusFlags.Code3)]
         [InlineData(double.NaN, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.NegativeInfinity, 0d, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         [InlineData(0d, double.NaN, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(0d, double.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
+        [InlineData(double.NegativeInfinity, double.PositiveInfinity, (ushort)(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3))]
         public void FCOM_M64_Test(double ST0Value, double m32Value, ushort expectedFlags)
         {
             Reset();
