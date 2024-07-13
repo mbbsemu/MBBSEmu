@@ -76,7 +76,7 @@ namespace MBBSEmu.Session.Rlogin
             }
 
             //Check to see if there is an available channel
-            if (_channelDictionary.Count > _configuration.BBSChannels)
+            if (_channelDictionary.Count >= _configuration.BBSChannels)
             {
                 Send($"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|".EncodeToANSIArray());
                 SessionState = EnumSessionState.LoggedOff;
