@@ -16,7 +16,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData(new[] { "TEST1", "TEST2", "TEST3" }, "TEST2", 2)]
         [InlineData(new[] { "TEST1", "TEST2", "TEST3" }, "Testing Multiple Words: TEST", 0)]
         [InlineData(new[] { "TEST1", "TEST2", "TEST3" }, "Testing Multiple Words: TEST3", 3)]
-        public void stgopt_Test(string[] tokens, string valueToTest, ushort expectedResult)
+        public void tokopt_Test(string[] tokens, string valueToTest, ushort expectedResult)
         {
             //Reset State
             Reset();
