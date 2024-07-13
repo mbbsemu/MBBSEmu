@@ -3177,7 +3177,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var string1Buffer = GetParameterString(0, true);
             var string2Buffer = GetParameterString(2, true);
 
-            Registers.AX = (ushort)(string2Buffer.Contains(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
+            Registers.AX = (ushort)(string2Buffer.StartsWith(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
         }
 
         /// <summary>
