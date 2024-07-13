@@ -5310,7 +5310,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)[0];
+            //Because the string is null terminated, we get the second to last character
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum)[^2];
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}): {outputValue}");
