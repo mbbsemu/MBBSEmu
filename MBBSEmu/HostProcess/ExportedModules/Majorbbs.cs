@@ -6114,7 +6114,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgNum = GetParameter(0);
 
-            var tokenList = new List<byte[]>();
+            var tokenList = new List<string>();
 
             for (var i = 1; i < ushort.MaxValue; i += 2)
             {
@@ -6126,7 +6126,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 try
                 {
-                    tokenList.Add(Module.Memory.GetString(messagePointer).ToArray());
+                    tokenList.Add(Encoding.ASCII.GetString(Module.Memory.GetString(messagePointer).ToArray()));
                 }
                 catch 
                 {
@@ -6137,9 +6137,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var message = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgNum);
 
+            //Get the last word from the message and cast it back to a byte array
+            var lastWord = Encoding.ASCII.GetString(message).Split(' ').Last();
+
             for (var i = 0; i < tokenList.Count; i++)
             {
-                if (message.SequenceEqual(tokenList[i]))
+                if (lastWord == tokenList[i])
                 {
                     Registers.AX = (ushort)(i + 1);
                     return;
