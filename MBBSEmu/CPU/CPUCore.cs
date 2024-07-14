@@ -955,7 +955,89 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt8 and signs it depending on the underlying
         ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private sbyte GetOperandValueInt8(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt8(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Register => (sbyte)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
+        /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt16 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private short GetOperandValueInt16(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt16(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Register => (short)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
+        /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private int GetOperandValueInt32(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt32(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Immediate32 => (int)value,
+                OpKind.Immediate8to32 => (int)value,
+                OpKind.Register => (int)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    MemorySize.UInt16 => (ushort)value,
+                    MemorySize.Int32 => (int)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
         /// <summary>
         ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
         ///     OpKind and MemorySize
@@ -2757,7 +2839,12 @@ namespace MBBSEmu.CPU
         {
             var operand2 = GetOperandValueInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var operand3 = GetOperandValueInt8(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            var result = operand2 * operand3;
+
             //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > sbyte.MaxValue or < sbyte.MinValue;
+
+            WriteToDestination((byte)result);
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
