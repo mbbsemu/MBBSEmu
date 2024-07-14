@@ -955,6 +955,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     OpKind and MemorySize
         /// <summary>
         ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
         ///     OpKind and MemorySize
@@ -2735,22 +2736,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Imul_3operand()
         {
-            var operand2 = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source),
-                4 => GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-
-            var operand3 = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                _ => throw new Exception("Unsupported Operation Size")
-            uint result;
-            unchecked
+            switch (_currentOperationSize)
             {
                 case 1:
                     Op_Imul_3operand_8();
@@ -2766,8 +2752,12 @@ namespace MBBSEmu.CPU
             }
         }
 
-            WriteToDestination(result);
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_8()
+        {
+            var operand2 = GetOperandValueInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var operand3 = GetOperandValueInt8(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
