@@ -360,9 +360,9 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-                foreach(var l in Registers.ToString().Split("\n"))
+                foreach (var l in Registers.ToString().Split("\n"))
                     _logger.Debug(l);
-                for(var i = 0; i < 8; i++)
+                for (var i = 0; i < 8; i++)
                     _logger.Debug($"FPU[{i}]: {FpuStack[i]} {(i == Registers.Fpu.GetStackTop() ? " <--" : string.Empty)}");
             }
             else
@@ -955,6 +955,7 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        /// <summary>
         ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
         ///     OpKind and MemorySize
         /// </summary>
@@ -983,7 +984,6 @@ namespace MBBSEmu.CPU
                     MemorySize.Int32 => (int)value,
                     MemorySize.UInt32 => (uint)value,
                     MemorySize.Int64 => (long)value,
-                    MemorySize.UInt64 => (long)value,
                     _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
                 },
                 _ => throw new Exception($"Unsupported OpKind: {opKind}")
@@ -1733,7 +1733,7 @@ namespace MBBSEmu.CPU
                 }
 
                 //For 1 Bit Rotations, we evaluate Overflow
-                if(source == 1)
+                if (source == 1)
                     Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
 
                 return result;
@@ -2749,15 +2749,53 @@ namespace MBBSEmu.CPU
                 2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
                 4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
                 _ => throw new Exception("Unsupported Operation Size")
-            };
             uint result;
             unchecked
             {
-                result = operand2 * operand3;
+                case 1:
+                    Op_Imul_3operand_8();
+                    return;
+                case 2:
+                    Op_Imul_3operand_16();
+                    return;
+                case 4:
+                    Op_Imul_3operand_32();
+                    return;
+                default:
+                    throw new Exception("Unsupported Operation Size");
             }
+        }
 
             WriteToDestination(result);
+            var operand3 = GetOperandValueInt8(_currentInstruction.Op2Kind, EnumOperandType.Source);
         }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_16()
+        {
+            var operand2 = GetOperandValueInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operand3 = GetOperandValueInt16(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            var result = operand2 * operand3;
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > short.MaxValue or < short.MinValue;
+
+            WriteToDestination((ushort)result);
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_32()
+        {
+            var operand2 = GetOperandValueInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operand3 = GetOperandValueInt32(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            long result = operand2 * operand3;
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > int.MaxValue or < int.MinValue;
+
+            WriteToDestination((uint)result);
+        }
+
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Mul()
@@ -4041,7 +4079,7 @@ namespace MBBSEmu.CPU
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
-                if(source == 1)
+                if (source == 1)
                     Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;

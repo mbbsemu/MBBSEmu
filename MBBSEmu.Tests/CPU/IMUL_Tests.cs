@@ -62,6 +62,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(-127, -1, 127, false, false)]
         [InlineData(127, -1, -127, false, false)]
         [InlineData(short.MaxValue, -1, short.MinValue + 1, false, false)]
+        [InlineData(short.MaxValue, -2, 2, true, true)]
         public void IMUL_16_R16_3OP_Test(short bxValue, short valueToMultiply, short expectedValue, bool carryFlag,
             bool overflowFlag)
         {
@@ -83,10 +84,12 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(1, -1, -1, false, false)]
+        [InlineData(5, 10, 50, false, false)]
         [InlineData(-1, -1, 1, false, false)]
         [InlineData(-127, -1, 127, false, false)]
         [InlineData(127, -1, -127, false, false)]
         [InlineData(short.MaxValue, -1, short.MinValue + 1, false, false)]
+        [InlineData(short.MaxValue, -2, 2, true, true)]
         public void IMUL_16_M16_3OP_Test(short memoryValue, short valueToMultiply, short expectedValue, bool carryFlag,
             bool overflowFlag)
         {
