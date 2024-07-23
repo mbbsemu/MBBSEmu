@@ -1008,6 +1008,7 @@ namespace MBBSEmu.CPU
 
         /// <summary>
         ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt32 and signs it depending on the underlying
         ///     OpKind and MemorySize
         /// </summary>
         /// <param name="opKind"></param>
@@ -2799,20 +2800,72 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Imul_1operand()
         {
-            var operand2 = Registers.AX;
-            var operand3 = _currentOperationSize switch
+            switch (_currentOperationSize)
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-            ushort result;
-            unchecked
-            {
-                result = (ushort)(operand2 * operand3);
+                case 1:
+                    Op_Imul_1operand_8();
+                    return;
+                case 2:
+                    Op_Imul_1operand_16();
+                    return;
+                case 4:
+                    Op_Imul_1operand_32();
+                    return;
+                default:
+                    throw new Exception("Unsupported Operation Size");
             }
+        }
 
-            Registers.AX = result;
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_8()
+        {
+            // Get the values and ensure they are sign-extended properly
+            var operand2 = (sbyte)Registers.AL;
+            var operand3 = GetOperandValueInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            // Perform the multiplication
+            var result = (short)operand2 * operand3;
+
+            // Set AH to the high 8 bits and AL to the low 8 bits of the result
+            Registers.AH = (byte)(result >> 8);
+            Registers.AL = (byte)(result & 0xFF);
+
+            // Calculate the flags
+            Registers.OverflowFlag = Registers.CarryFlag = (short)Registers.AL.ToUshortSignExtended() != result;
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_16()
+        {
+            // Get the value from AX and the operand, ensuring they are sign-extended properly
+            var operand2 = (short)Registers.AX;
+            var operand3 = GetOperandValueInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            // Perform the multiplication
+            var result = operand2 * operand3;
+
+            // Set DX to the high 16 bits and AX to the low 16 bits of the result
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            // Calculate the flags
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.AX.ToUintSignExtended() != (uint)result;
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_32()
+        {
+            var operand2 = Registers.EAX;
+            var operand3 = GetOperandValueInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            long result = operand2 * operand3;
+
+
+            //EDX is High 32-bits, EAX is low 32-bits
+            Registers.EDX = (uint)(result >> 32);
+            Registers.EAX = (uint)(result & 0xFFFFFFFF);
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = Register.EDX != 0;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]

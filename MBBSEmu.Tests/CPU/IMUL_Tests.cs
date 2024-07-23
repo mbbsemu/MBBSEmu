@@ -7,11 +7,14 @@ namespace MBBSEmu.Tests.CPU
     public class IMUL_Tests : CpuTestBase
     {
         [Theory]
-        [InlineData(1, -1, -1, false, false)]
-        [InlineData(-1, -1, 1, false, false)]
-        [InlineData(-127, -1, 127, false, false)]
-        [InlineData(127, -1, -127, false, false)]
-        public void IMUL_8_R8_Test(sbyte alValue, sbyte valueToMultiply, short expectedValue, bool carryFlag,
+        [InlineData(127, 127, 1, 63, true, true)]
+        [InlineData(-1, -1, 1, 0, false, false)]
+        [InlineData(-127, -1, 127, 0, false, false)]
+        [InlineData(-127, 2, 2, -1, true, true)]
+        [InlineData(-127, -127, 1, 63, true, true)]
+        [InlineData(127, -1, -127, -1, false, false)]
+        [InlineData(5, 5, 25, 0, false, false)]
+        public void IMUL_8_R8_Test(sbyte alValue, sbyte valueToMultiply, sbyte expectedALValue, sbyte expectedAHValue, bool carryFlag,
             bool overflowFlag)
         {
             Reset();
@@ -25,17 +28,23 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedValue, (sbyte)mbbsEmuCpuRegisters.AL);
+            Assert.Equal(expectedALValue, (sbyte)mbbsEmuCpuRegisters.AL);
+            Assert.Equal(expectedAHValue, (sbyte)mbbsEmuCpuRegisters.AH);
             Assert.Equal(carryFlag, mbbsEmuCpuRegisters.CarryFlag);
             Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
         }
 
         [Theory]
-        [InlineData(1, -1, -1, false, false)]
-        [InlineData(-1, -1, 1, false, false)]
-        [InlineData(-127, -1, 127, false, false)]
-        [InlineData(127, -1, -127, false, false)]
-        [InlineData(short.MaxValue, -1, short.MinValue + 1, false, false)]
+        [InlineData(32767, 1, 32767, false, false)]  // Max positive * 1
+        [InlineData(-32768, 1, -32768, false, false)] // Max negative * 1
+        [InlineData(100, 100, 10000, false, false)] // Positive * Positive
+        [InlineData(-100, -100, 10000, false, false)] // Negative * Negative
+        [InlineData(100, -100, -10000, false, false)] // Positive * Negative
+        [InlineData(32767, 2, -2, true, true)] // Positive overflow case
+        [InlineData(-32768, 2, 0, true, true)] // Negative overflow case
+        [InlineData(0, 32767, 0, false, false)] // Zero * Positive
+        [InlineData(0, -32768, 0, false, false)] // Zero * Negative
+        [InlineData(0, 0, 0, false, false)] // Zero * Zero
         public void IMUL_16_R16_Test(short axValue, short valueToMultiply, short expectedValue, bool carryFlag,
             bool overflowFlag)
         {
