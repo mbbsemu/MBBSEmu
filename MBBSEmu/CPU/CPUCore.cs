@@ -360,9 +360,9 @@ namespace MBBSEmu.CPU
             {
                 _showDebug = true; //Set to log Register values to console after execution
                 _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-                foreach(var l in Registers.ToString().Split("\n"))
+                foreach (var l in Registers.ToString().Split("\n"))
                     _logger.Debug(l);
-                for(var i = 0; i < 8; i++)
+                for (var i = 0; i < 8; i++)
                     _logger.Debug($"FPU[{i}]: {FpuStack[i]} {(i == Registers.Fpu.GetStackTop() ? " <--" : string.Empty)}");
             }
             else
@@ -955,6 +955,91 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt8 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private sbyte GetOperandValueInt8(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt8(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Register => (sbyte)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
+        /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt16 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private short GetOperandValueInt16(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt16(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Register => (short)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
+        /// <summary>
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
+        ///     This is a helper method which takes the resulting value from GetOperandValueUInt32 and signs it depending on the underlying
+        ///     OpKind and MemorySize
+        /// </summary>
+        /// <param name="opKind"></param>
+        /// <returns></returns>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private int GetOperandValueInt32(OpKind opKind, EnumOperandType operandType)
+        {
+            var value = GetOperandValueUInt32(opKind, operandType);
+
+            return opKind switch
+            {
+                OpKind.Immediate8 => (sbyte)value,
+                OpKind.Immediate16 => (short)value,
+                OpKind.Immediate8to16 => (short)value,
+                OpKind.Immediate32 => (int)value,
+                OpKind.Immediate8to32 => (int)value,
+                OpKind.Register => (int)value,
+                OpKind.Memory => _currentInstruction.MemorySize switch
+                {
+                    MemorySize.Int8 => (sbyte)value,
+                    MemorySize.UInt8 => (byte)value,
+                    MemorySize.Int16 => (short)value,
+                    MemorySize.UInt16 => (ushort)value,
+                    MemorySize.Int32 => (int)value,
+                    _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
+                },
+                _ => throw new Exception($"Unsupported OpKind: {opKind}")
+            };
+        }
+
+        /// <summary>
         ///     This is a helper method which takes the resulting value from GetOperandValueUInt64 and signs it depending on the underlying
         ///     OpKind and MemorySize
         /// </summary>
@@ -983,7 +1068,6 @@ namespace MBBSEmu.CPU
                     MemorySize.Int32 => (int)value,
                     MemorySize.UInt32 => (uint)value,
                     MemorySize.Int64 => (long)value,
-                    MemorySize.UInt64 => (long)value,
                     _ => throw new Exception($"Invalid Operand Size: {_currentInstruction.MemorySize}")
                 },
                 _ => throw new Exception($"Unsupported OpKind: {opKind}")
@@ -1733,7 +1817,7 @@ namespace MBBSEmu.CPU
                 }
 
                 //For 1 Bit Rotations, we evaluate Overflow
-                if(source == 1)
+                if (source == 1)
                     Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
 
                 return result;
@@ -2716,48 +2800,132 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Imul_1operand()
         {
-            var operand2 = Registers.AX;
-            var operand3 = _currentOperationSize switch
+            switch (_currentOperationSize)
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-            ushort result;
-            unchecked
-            {
-                result = (ushort)(operand2 * operand3);
+                case 1:
+                    Op_Imul_1operand_8();
+                    return;
+                case 2:
+                    Op_Imul_1operand_16();
+                    return;
+                case 4:
+                    Op_Imul_1operand_32();
+                    return;
+                default:
+                    throw new Exception("Unsupported Operation Size");
             }
+        }
 
-            Registers.AX = result;
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_8()
+        {
+            // Get the values and ensure they are sign-extended properly
+            var operand2 = (sbyte)Registers.AL;
+            var operand3 = GetOperandValueInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            // Perform the multiplication
+            var result = (short)operand2 * operand3;
+
+            // Set AH to the high 8 bits and AL to the low 8 bits of the result
+            Registers.AH = (byte)(result >> 8);
+            Registers.AL = (byte)(result & 0xFF);
+
+            // Calculate the flags
+            Registers.OverflowFlag = Registers.CarryFlag = (short)Registers.AL.ToUshortSignExtended() != result;
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_16()
+        {
+            // Get the value from AX and the operand, ensuring they are sign-extended properly
+            var operand2 = (short)Registers.AX;
+            var operand3 = GetOperandValueInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            // Perform the multiplication
+            var result = operand2 * operand3;
+
+            // Set DX to the high 16 bits and AX to the low 16 bits of the result
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            // Calculate the flags
+            Registers.OverflowFlag = Registers.CarryFlag = Registers.AX.ToUintSignExtended() != (uint)result;
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_1operand_32()
+        {
+            var operand2 = Registers.EAX;
+            var operand3 = GetOperandValueInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            long result = operand2 * operand3;
+
+
+            //EDX is High 32-bits, EAX is low 32-bits
+            Registers.EDX = (uint)(result >> 32);
+            Registers.EAX = (uint)(result & 0xFFFFFFFF);
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = Register.EDX != 0;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Imul_3operand()
         {
-            var operand2 = _currentOperationSize switch
+            switch (_currentOperationSize)
             {
-                1 => GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                2 => GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                4 => GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Destination),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-
-            var operand3 = _currentOperationSize switch
-            {
-                1 => GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                2 => GetOperandValueUInt16(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                4 => GetOperandValueUInt32(_currentInstruction.Op2Kind, EnumOperandType.Source),
-                _ => throw new Exception("Unsupported Operation Size")
-            };
-            uint result;
-            unchecked
-            {
-                result = operand2 * operand3;
+                case 1:
+                    Op_Imul_3operand_8();
+                    return;
+                case 2:
+                    Op_Imul_3operand_16();
+                    return;
+                case 4:
+                    Op_Imul_3operand_32();
+                    return;
+                default:
+                    throw new Exception("Unsupported Operation Size");
             }
-
-            WriteToDestination(result);
         }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_8()
+        {
+            var operand2 = GetOperandValueInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operand3 = GetOperandValueInt8(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            var result = operand2 * operand3;
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > sbyte.MaxValue or < sbyte.MinValue;
+
+            WriteToDestination((byte)result);
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_16()
+        {
+            var operand2 = GetOperandValueInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operand3 = GetOperandValueInt16(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            var result = operand2 * operand3;
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > short.MaxValue or < short.MinValue;
+
+            WriteToDestination((ushort)result);
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private void Op_Imul_3operand_32()
+        {
+            var operand2 = GetOperandValueInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var operand3 = GetOperandValueInt32(_currentInstruction.Op2Kind, EnumOperandType.Source);
+            long result = operand2 * operand3;
+
+            //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
+            Registers.OverflowFlag = Registers.CarryFlag = result is > int.MaxValue or < int.MinValue;
+
+            WriteToDestination((uint)result);
+        }
+
 
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Mul()
@@ -4041,7 +4209,7 @@ namespace MBBSEmu.CPU
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
-                if(source == 1)
+                if (source == 1)
                     Registers.OverflowFlag = result.IsBitSet(7) != result.IsBitSet(6);
 
                 return result;
