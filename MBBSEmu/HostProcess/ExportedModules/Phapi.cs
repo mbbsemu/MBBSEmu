@@ -51,8 +51,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     DosRealIntr();
                     break;
                 case 16:
-                    //DosAllocRealSeg();
-                    DosCreatedAlias();
+                    DosAllocRealSeg();
+                    //DosCreatedAlias();
                     break;
 
                 default:
