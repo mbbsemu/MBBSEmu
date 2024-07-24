@@ -31,13 +31,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, NCTIME_ORDINAL, new List<ushort> { (ushort) packedTime });
+            var resultPointer = mbbsEmuCpuRegisters.GetPointer();
 
             //Put Garbage After it to ensure the null terminator catches
             var garbagePointer = mbbsEmuMemoryCore.AllocateVariable("GARBAGE", 10);
             mbbsEmuMemoryCore.SetArray(garbagePointer, Encoding.ASCII.GetBytes(new string('C', 10)));
 
             //Verify Results
-            Assert.Equal(expectedTime, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("NCTIME")));
+            Assert.Equal(expectedTime, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(resultPointer)));
         }
     }
 }

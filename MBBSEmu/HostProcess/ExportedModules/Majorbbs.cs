@@ -5044,7 +5044,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToStripPointer = GetParameterPointer(0);
             var inputString = Module.Memory.GetString(stringToStripPointer);
 
-            Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("STPANS"), 1920); //Max Screen Size of 80x24
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("STPANS"), 1920); //Max Screen Size of 80x24
 
             if (inputString.Length > 1920)
             {
@@ -5100,13 +5100,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 }
             }
 
-            Module.Memory.SetArray("STPANS", Encoding.ASCII.GetBytes(cleanedStringBuilder.ToString()));
+            Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes(cleanedStringBuilder.ToString()));
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Ignoring, not stripping ANSI");
 #endif
 
-            Registers.SetPointer(Module.Memory.GetVariablePointer("STPANS"));
+            Registers.SetPointer(resultPointer);
         }
 
         /// <summary>

@@ -39,6 +39,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STPANS_ORDINAL, new List<FarPtr> { stringPointer });
+            var resultPointer = mbbsEmuCpuRegisters.GetPointer();
 
             //Verify Results
             Assert.Equal(expectedString,
