@@ -308,6 +308,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="numberOfModules"></param>
         public void SetState(ushort channelNumber)
         {
+            ResetLocalVariableOrdinals();
             ChannelNumber = channelNumber;
 
             _previousMcvFile.Clear();
@@ -1897,7 +1898,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var outputValue = $"{highByte << 16 | lowByte}\0";
 
             //Pre-allocate space for the maximum number of characters for a ulong
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("L2AS", 0xFF);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("L2AS"), 0x20); //32 Byte Buffer
 
             Module.Memory.SetArray(variablePointer, Encoding.Default.GetBytes(outputValue));
 
@@ -2379,7 +2380,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
             var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCDATE", (ushort)outputDate.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCDATE"), (ushort)outputDate.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
@@ -2885,7 +2886,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
 
             //Setup Host Memory Variables Pointer
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("SCNMDF", 0xFF);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("SCNMDF"), 0xFF);
 
             var recordFound = false;
             foreach (var line in File.ReadAllLines(Path.Combine(Module.ModulePath, mdfName)))
@@ -2894,7 +2895,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     var result = Encoding.ASCII.GetBytes(line.Split(':')[1] + "\0");
 
-                    if (result.Length > 256)
+                    if (result.Length > 0xFF)
                         throw new OverflowException("SCNMDF result is > 256 bytes");
 
                     Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, result);
@@ -3789,7 +3790,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("GETMSG", 0x1000);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("GETMSG"), 0x1000);
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
             if (outputValue.Length > 0x1000)
@@ -4238,7 +4239,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 unpackedMinutes, unpackedSeconds);
 
             var timeString = $"{unpackedTime.ToString("HH:mm:ss")}\0";
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCTIME", (ushort)timeString.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCTIME"), (ushort)timeString.Length);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(timeString));
@@ -5043,7 +5044,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var stringToStripPointer = GetParameterPointer(0);
             var inputString = Module.Memory.GetString(stringToStripPointer);
 
-            Module.Memory.GetOrAllocateVariablePointer("STPANS", 1920); //Max Screen Size of 80x24
+            Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("STPANS"), 1920); //Max Screen Size of 80x24
 
             if (inputString.Length > 1920)
             {
@@ -5286,7 +5287,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var msgnum = GetParameter(0);
 
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("RAWMSG", 0x1000);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("RAWMSG"), 0x1000);
             var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
 
             if (outputValue.Length > 0x1000)
@@ -6318,7 +6319,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var msgScanResultPointer = Module.Memory.GetOrAllocateVariablePointer("MSGSCAN", 0x1000);
+            var msgScanResultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("MSGSCAN"), 0x1000);
 
             Module.Memory.SetArray(msgScanResultPointer, new byte[0x1000]); //Zero it out
             Module.Memory.SetArray(msgScanResultPointer, msgVariableValue); //Write
@@ -6404,7 +6405,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var name = GetParameterFilename(0);
 
-            var resultPointer = Module.Memory.GetOrAllocateVariablePointer("GETENV", 0xFF);
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("GETENV"), 0xFF);
 
             switch (name)
             {
@@ -7506,7 +7507,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var outputValue = $"{(uint)(highByte << 16 | lowByte)}\0";
 
-            var resultPointer = Module.Memory.GetOrAllocateVariablePointer("UL2AS", 0xF);
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("UL2AS"), 0x20); //32 Byte Buffer
 
             Module.Memory.SetArray(resultPointer, Encoding.Default.GetBytes(outputValue));
 

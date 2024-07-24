@@ -56,8 +56,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     it lives in.
         /// </summary>
         private protected PointerDictionary<SessionBase> ChannelDictionary;
-
-
+        
         /// <summary>
         ///     Pointers to files opened using FOPEN
         /// </summary>
@@ -83,6 +82,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Current Channel Number being serviced
         /// </summary>
         private protected ushort ChannelNumber;
+
+        /// <summary>
+        ///     Dictionary that will hold the ordinals used for local variables. This allows methods that
+        ///     return pointers to result values in memory (Strings, etc.) to have unique addresses so that
+        ///     results aren't overwritten in the same execution cycle.
+        /// </summary>
+        private protected readonly Dictionary<string, int> LocalVariableOrdinalDictionary = new();
 
         //Constants
         private protected static readonly char[] SSCANF_SEPARATORS = { ' ', ',', '\r', '\n', '\0', ':' };
@@ -121,6 +127,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
             FilePointerDictionary = new PointerDictionary<FileStream>(1, int.MaxValue);
             McvPointerDictionary = new PointerDictionary<McvFile>();
         }
+
+        /// <summary>
+        ///     Resets Local Variable Ordinals all back to Zero
+        /// </summary>
+        private protected void ResetLocalVariableOrdinals()
+        {
+            foreach (var k in LocalVariableOrdinalDictionary.Keys)
+            {
+                LocalVariableOrdinalDictionary[k] = 0;
+            }
+        }
+
+        /// <summary>
+        ///     Retrieves a Local Variable Ordinal based on the ordinal name
+        ///
+        ///     This is tracked in a dictionary with each value incremented on each get
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns></returns>
+        private protected int GetLocalVariableOrdinal(string variableName) =>
+            LocalVariableOrdinalDictionary[variableName]++;
+
+        /// <summary>
+        ///     Creates a distinct variable name string to use internally when allocating variables
+        ///     to store return results for methods. This gives each method call a distinct memory
+        ///     pointer to be used to store the results based on the ordinal.
+        /// </summary>
+        /// <param name="variableName"></param>
+        /// <returns>String containing the variable name and ordinal (ie: "MyVar1")</returns>
+        private protected string GetLocalVariableName(string variableName) =>
+            $"{variableName}{GetLocalVariableOrdinal(variableName)}";
 
         /// <summary>
         ///     Sets the parameter by ordinal passed into the routine
