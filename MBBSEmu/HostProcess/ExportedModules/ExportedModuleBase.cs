@@ -146,8 +146,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="variableName"></param>
         /// <returns></returns>
-        private protected int GetLocalVariableOrdinal(string variableName) =>
-            LocalVariableOrdinalDictionary[variableName]++;
+        private protected int GetLocalVariableOrdinal(string variableName)
+        {
+            if (!LocalVariableOrdinalDictionary.ContainsKey(variableName))
+                LocalVariableOrdinalDictionary[variableName] = 0;
+
+            return LocalVariableOrdinalDictionary[variableName]++;
+        }
 
         /// <summary>
         ///     Creates a distinct variable name string to use internally when allocating variables
