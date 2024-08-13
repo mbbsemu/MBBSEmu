@@ -78,6 +78,11 @@ namespace MBBSEmu.Module
         private static bool IsAlnum(char c) =>
             char.IsLetterOrDigit(c);
 
+        /// <summary>
+        ///     Ensures that all line endings are CRLF
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
         private static MemoryStream FixLineEndings(MemoryStream input)
         {
             var rawMessage = input.ToArray();
