@@ -4304,7 +4304,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var margvPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGV"));
             var margnPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGN"));
 
-            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x));
+            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x) && x != "\0");
 
             Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
             margvPointer.Offset += FarPtr.Size;
