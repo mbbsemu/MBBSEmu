@@ -53,6 +53,8 @@ jobs:
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x64/ --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-win-x86
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-x86 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+        mkdir output-win-arm64
+        dotnet publish MBBSEmu/MBBSEmu.csproj --output output-win-x86/ --configuration Release --runtime win-xarm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-linux-x64
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-linux-x64/ --configuration Release --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-linux-arm
@@ -61,6 +63,7 @@ jobs:
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-x64/ --configuration Release --runtime osx-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
         mkdir output-osx-arm64
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
+
     - name: Upload win-x64 Artifact
       uses: actions/upload-artifact@v3.1.1
       with:
@@ -72,6 +75,12 @@ jobs:
       with:
         name: mbbsemu-win-x86-${{ env.BUILD_VERSION }}
         path: output-win-x86/*
+        
+    - name: Create win-arm64 Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: mbbsemu-win-arm64-${{ env.BUILD_VERSION }}
+        path: output-win-arm64/*
         
     - name: Create linux-x64 Artifact
       uses: actions/upload-artifact@v3.1.1
