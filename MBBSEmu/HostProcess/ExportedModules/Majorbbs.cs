@@ -4338,7 +4338,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
             Module.Memory.SetWord("MARGC", margCount);
-            //setINPLEN();
         }
 
         /// <summary>
@@ -8372,12 +8371,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Sets DX:AX registers to the return value
             Registers.SetPointer(returnPointer);
         }
-
-        /// <summary>
-        /// Sets the INPLEN variable based on the length of INPUT
-        /// </summary>
-        /// <returns>The value written to INPLEN</returns>
-        private ushort setINPLEN() => setINPLEN(Module.Memory.GetVariablePointer("INPUT"));
 
         /// <summary>
         /// Sets the INPLEN variable based on the length of the string from input
