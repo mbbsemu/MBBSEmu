@@ -89,6 +89,7 @@ namespace MBBSEmu.CPU
         public void PopStackTop() => Registers.Fpu.PopStackTop();
         public void PushStackTop() => Registers.Fpu.PushStackTop();
         public void ClearExceptions() => Registers.Fpu.ClearExceptions();
+        public MidpointRounding GetRoundingControl() => Registers.Fpu.GetRoundingControl();
 
         /// <summary>
         ///     Overridden ToString() to display the current state of the CPU Registers
