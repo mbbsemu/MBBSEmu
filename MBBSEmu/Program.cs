@@ -26,7 +26,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -389,7 +388,19 @@ namespace MBBSEmu
                 }
 
                 //Setup Modules
-                if (!string.IsNullOrEmpty(_moduleIdentifier))
+                if (!string.IsNullOrEmpty(_modulePath) && string.IsNullOrEmpty(_moduleIdentifier))
+                {
+                    var menuKeyOption = 'A';
+                    //Load Every Module within the specified Folder by scanning for .MDF files (with the file name of the MDF being the module identifier)
+                    foreach (var file in Directory.GetFiles(_modulePath, "*.MDF"))
+                    {
+                        var moduleIdentifier = Path.GetFileNameWithoutExtension(file);
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = moduleIdentifier, ModulePath = _modulePath, ModuleEnabled = true, MenuOptionKey = menuKeyOption.ToString()});
+                        menuKeyOption++;
+                    }
+
+                }
+                else if (!string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     _menuOptionKey ??= "A";
 
