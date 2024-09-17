@@ -1071,6 +1071,9 @@ namespace MBBSEmu.HostProcess
                 if (!dll.EntryPoints.TryGetValue("_INIT_", out var entryPointer))
                     continue;
 
+                //Add DLL Segment Offset
+                entryPointer.Segment += dll.SegmentOffset;
+
                 foreach (var bbsup in module.Mdf.BBSUp)
                     RunProgram(module.ModulePath, bbsup);
 

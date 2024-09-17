@@ -60,6 +60,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             get => Module.Memory.GetPointer("CURRENT-MCV");
             set => Module.Memory.SetPointer("CURRENT-MCV", value ?? FarPtr.Empty);
         }
+
         private readonly Stack<FarPtr> _previousMcvFile;
 
         private readonly Stack<FarPtr> _previousBtrieveFile;
@@ -313,6 +314,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             _previousMcvFile.Clear();
             _previousBtrieveFile.Clear();
+
+            //Set Session Memory
+            _currentMcvFile = FarPtr.Empty;
 
             //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
@@ -2498,7 +2502,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var mcvFilePointer = GetParameterPointer(0);
 
-            if (mcvFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
+            if (mcvFilePointer.Segment != ushort.MaxValue || !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
                 throw new ArgumentException($"Invalid MCV File Pointer: {mcvFilePointer}");
 
             //If there's an MVC currently set, push it to the queue
