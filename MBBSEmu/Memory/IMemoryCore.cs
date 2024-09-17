@@ -389,5 +389,11 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <returns></returns>
         ReadOnlySpan<byte> GetMemorySegment(ushort segment);
+
+        /// <summary>
+        ///     Counts the total number of segments allocated
+        /// </summary>
+        /// <returns></returns>
+        ushort CountSegments();
     }
 }

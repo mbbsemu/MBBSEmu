@@ -48,6 +48,11 @@ namespace MBBSEmu.Memory
             throw new NotImplementedException();
         }
 
+        public ushort CountSegments()
+        {
+            throw new NotImplementedException();
+        }
+
         public virtual ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             throw new NotImplementedException();

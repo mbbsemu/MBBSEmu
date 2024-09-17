@@ -215,14 +215,6 @@ namespace MBBSEmu.Module
             Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
             ProtectedMemory = (ProtectedModeMemoryCore)Memory;
 
-            //Declare PSP Segment
-            var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
-            ProtectedMemory.AddSegment(0x4000);
-            Memory.SetArray(0x4000, 0, psp.Data);
-
-            Memory.AllocateVariable("Int21h-PSP", sizeof(ushort));
-            Memory.SetWord("Int21h-PSP", 0x4000);
-
             //Find _INIT_ values if any
             foreach (var dll in ModuleDlls)
             {

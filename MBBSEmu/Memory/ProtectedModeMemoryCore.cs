@@ -3,6 +3,7 @@ using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Decoder = Iced.Intel.Decoder;
 
@@ -256,5 +257,11 @@ namespace MBBSEmu.Memory
         }
 
         public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memorySegments[segment];
+
+        /// <summary>
+        ///    Returns the number of segments currently defined
+        /// </summary>
+        /// <returns></returns>
+        public ushort CountSegments() => (ushort)_segments.Count(x => x != null);
     }
 }

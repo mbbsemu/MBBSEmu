@@ -3,6 +3,7 @@ using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS;
+using MBBSEmu.DOS.Structs;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -167,6 +168,11 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private readonly IMessagingCenter _messagingCenter;
 
+        /// <summary>
+        ///     16-Bit Memory Space for Emulated CPU and Loaded Modules
+        /// </summary>
+        private readonly IMemoryCore _systemMemory;
+
         public MbbsHost(IClock clock, LogFactory logger, IGlobalCache globalCache, IFileUtility fileUtility, IEnumerable<IHostRoutine> mbbsRoutines, AppSettingsManager configuration, IEnumerable<IGlobalRoutine> globalRoutines, IAccountKeyRepository accountKeyRepository, IAccountRepository accountRepository, PointerDictionary<SessionBase> channelDictionary, ITextVariableService textVariableService, IMessagingCenter messagingCenter)
         {
             Logger = logger.GetLogger<MessageLogger>();
@@ -181,6 +187,15 @@ namespace MBBSEmu.HostProcess
             _accountRepository = accountRepository;
             _textVariableService = textVariableService;
             _messagingCenter = messagingCenter;
+
+            //Setup System Memory
+            _systemMemory = new ProtectedModeMemoryCore(Logger);
+            //Declare PSP Segment
+            var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
+            ((ProtectedModeMemoryCore)_systemMemory).AddSegment(0x4000);
+            _systemMemory.SetArray(0x4000, 0, psp.Data);
+            _systemMemory.AllocateVariable("Int21h-PSP", sizeof(ushort));
+            _systemMemory.SetWord("Int21h-PSP", 0x4000);
 
             Logger.Info("Constructing MBBSEmu Host...");
 
@@ -237,7 +252,7 @@ namespace MBBSEmu.HostProcess
         {
             //Load Modules
             foreach (var m in moduleConfigurations)
-                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
+                AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, (ProtectedModeMemoryCore)_systemMemory, _messagingCenter));
 
             //Remove any modules that did not properly initialize
             foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
@@ -1022,6 +1037,8 @@ namespace MBBSEmu.HostProcess
             module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
             module.ExportedModuleDictionary.Add(Galmsg.Segment, GetFunctions(module, "GALMSG"));
 
+            //Get Segment Offset
+
             //Patch Relocation Information to Bytecode
             PatchRelocation(module);
 
@@ -1029,6 +1046,9 @@ namespace MBBSEmu.HostProcess
             for (var i = 0; i < module.ModuleDlls.Count; i++)
             {
                 var dll = module.ModuleDlls[i];
+
+                //Count the number of segments already defined by previously loaded DLL's, and place this one after them in memory
+                dll.SegmentOffset = _systemMemory.CountSegments();
 
                 //Only add the main module to the Modules List
                 if (i == 0)

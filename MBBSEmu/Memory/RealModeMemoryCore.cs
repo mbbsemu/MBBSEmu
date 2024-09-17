@@ -125,5 +125,9 @@ namespace MBBSEmu.Memory
         }
 
         public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memory.AsSpan();
+        public ushort CountSegments()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
