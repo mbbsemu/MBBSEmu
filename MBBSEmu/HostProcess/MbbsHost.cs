@@ -1037,18 +1037,26 @@ namespace MBBSEmu.HostProcess
             module.ExportedModuleDictionary.Add(Doscalls.Segment, GetFunctions(module, "DOSCALLS"));
             module.ExportedModuleDictionary.Add(Galmsg.Segment, GetFunctions(module, "GALMSG"));
 
-            //Get Segment Offset
+            //Set Module Base Segment by counting already declared segments
+            module.BaseSegmentOffset = _systemMemory.CountSegments();
+
+            //Next we iterate through the DLL's in the module itself, counting the number of segments in the DLL and setting
+            //the segment offset for the specific DLL
+            var currentBaseSegmentOffset = module.BaseSegmentOffset;
+            foreach (var dll in module.ModuleDlls)
+            {
+                dll.SegmentOffset = currentBaseSegmentOffset;
+                Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}) Segment Offset: {dll.SegmentOffset}");
+                currentBaseSegmentOffset += (ushort)dll.File.SegmentTable.Count;
+            }
 
             //Patch Relocation Information to Bytecode
-            PatchRelocation(module);
+            module.PatchRelocation();
 
             //Run Segments through AOT Decompiler & add them to Memory
             for (var i = 0; i < module.ModuleDlls.Count; i++)
             {
                 var dll = module.ModuleDlls[i];
-
-                //Count the number of segments already defined by previously loaded DLL's, and place this one after them in memory
-                dll.SegmentOffset = _systemMemory.CountSegments();
 
                 //Only add the main module to the Modules List
                 if (i == 0)
@@ -1176,184 +1184,6 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <returns></returns>
         public IList<SessionBase> GetUserSessions() => _channelDictionary.Values.ToList();
-
-        /// <summary>
-        ///     Patches Relocation information from each Code Segment Relocation Records into the Segment Byte Code
-        ///
-        ///     Because the compiler doesn't know the location in memory of the hosts Exported Modules (Imported when
-        ///     viewed from the standpoint of the DLL), it saves the information to the Relocation Records for the
-        ///     given Code Segment.
-        ///
-        ///     The x86 Emulator knows that any CALL FAR to a Segment >= 0xFF00 is an emulated Exported Module and properly
-        ///     handles calling the correct Module using the Segment of the target, and the Ordinal of the call using the Offset.
-        ///     A relocation record for a call to MAJORBBS->ATOL() would be patched as:
-        ///
-        ///     CALL FAR 0xFFFF:0x004D
-        ///
-        ///     Segment & Offset meaning:
-        ///     0xFFFF == MAJORBBS
-        ///     0x004D == 77, Ordinal for ATOL()
-        /// </summary>
-        /// <param name="module"></param>
-        private void PatchRelocation(MbbsModule module)
-        {
-
-            foreach (var dll in module.ModuleDlls)
-            {
-                //Patch Segment 0 (PHAPI) to just RETF (0xCB)
-                dll.File.SegmentTable[0].Data[0] = 0xCB;
-
-                foreach (var s in dll.File.SegmentTable)
-                {
-                    if (s.RelocationRecords == null || s.RelocationRecords.Count == 0)
-                        continue;
-
-                    foreach (var relocationRecord in s.RelocationRecords.Values)
-                    {
-                        //Ignored Relocation Record
-                        if (relocationRecord.TargetTypeValueTuple == null)
-                            continue;
-
-                        switch (relocationRecord.TargetTypeValueTuple.Item1)
-                        {
-                            case EnumRecordsFlag.ImportOrdinalAdditive:
-                            case EnumRecordsFlag.ImportOrdinal:
-                                {
-                                    var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                                    var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
-
-                                    var relocationPointer = FarPtr.Empty;
-                                    switch (dll.File.ImportedNameTable[nametableOrdinal].Name)
-                                    {
-                                        case "MAJORBBS":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Majorbbs.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case "GALGSBL":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galgsbl.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case "DOSCALLS":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Doscalls.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case "GALME":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galme.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case "PHAPI":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Phapi.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case "GALMSG":
-                                            relocationPointer = new FarPtr(module.ExportedModuleDictionary[Galmsg.Segment].Invoke(functionOrdinal, true));
-                                            break;
-                                        case var importedName
-                                            when module.ModuleDlls.Any(m =>
-                                                m.File.FileName.Split('.')[0].ToUpper() == importedName):
-                                            {
-                                                //Find the Imported DLL in the List of Required
-                                                var importedDll = module.ModuleDlls.First(m =>
-                                                    m.File.FileName.Split('.')[0].ToUpper() == importedName);
-
-                                                //Get The Entry Point based on the Ordinal
-                                                var initEntryPoint =
-                                                    importedDll.File.EntryTable.First(x => x.Ordinal == functionOrdinal);
-                                                relocationPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + importedDll.SegmentOffset),
-                                                    initEntryPoint.Offset);
-                                                break;
-                                            }
-                                        default:
-                                            Logger.Error($"({module.ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
-                                            continue;
-                                    }
-
-                                    //32-Bit Pointer
-                                    if (relocationRecord.SourceType == 3)
-                                    {
-                                        Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
-                                        continue;
-                                    }
-
-                                    //16-Bit Values
-                                    var result = relocationRecord.SourceType switch
-                                    {
-                                        //Offset
-                                        2 => relocationPointer.Segment,
-                                        5 => relocationPointer.Offset,
-                                        _ => throw new ArgumentOutOfRangeException(
-                                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                                    };
-
-                                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportOrdinalAdditive))
-                                        result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
-
-                                    Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                                    break;
-                                }
-                            case EnumRecordsFlag.InternalRef when relocationRecord.SourceType == 3:
-                                {
-                                    var relocationPointer = new FarPtr(
-                                        (ushort)(relocationRecord.TargetTypeValueTuple.Item2 + dll.SegmentOffset),
-                                        relocationRecord.TargetTypeValueTuple.Item4);
-
-                                    Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
-                                    break;
-                                }
-                            case EnumRecordsFlag.InternalRef:
-                                {
-                                    Array.Copy(
-                                        BitConverter.GetBytes(relocationRecord.TargetTypeValueTuple.Item2 +
-                                                              dll.SegmentOffset), 0,
-                                        s.Data, relocationRecord.Offset, 2);
-                                    break;
-                                }
-                            case EnumRecordsFlag.ImportNameAdditive:
-                            case EnumRecordsFlag.ImportName:
-                                {
-                                    var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
-                                    var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
-
-                                    var newSegment = dll.File.ImportedNameTable[nametableOrdinal].Name switch
-                                    {
-                                        "MAJORBBS" => Majorbbs.Segment,
-                                        "GALGSBL" => Galgsbl.Segment,
-                                        "PHAPI" => Phapi.Segment,
-                                        "GALME" => Galme.Segment,
-                                        "DOSCALLS" => Doscalls.Segment,
-                                        _ => throw new Exception(
-                                            $"Unknown or Unimplemented Imported Module: {dll.File.ImportedNameTable[nametableOrdinal].Name}")
-
-                                    };
-
-                                    var relocationPointer = new FarPtr(newSegment, functionOrdinal);
-
-                                    //32-Bit Pointer
-                                    if (relocationRecord.SourceType == 3)
-                                    {
-                                        Array.Copy(relocationPointer.Data, 0, s.Data, relocationRecord.Offset, 4);
-                                        continue;
-                                    }
-
-                                    //16-Bit Values
-                                    var result = relocationRecord.SourceType switch
-                                    {
-                                        //Offset
-                                        2 => relocationPointer.Segment,
-                                        5 => relocationPointer.Offset,
-                                        _ => throw new ArgumentOutOfRangeException(
-                                            $"Unhandled Relocation Source Type: {relocationRecord.SourceType}")
-                                    };
-
-                                    if (relocationRecord.Flag.HasFlag(EnumRecordsFlag.ImportNameAdditive))
-                                        result += BitConverter.ToUInt16(s.Data, relocationRecord.Offset);
-
-                                    Array.Copy(BitConverter.GetBytes(result), 0, s.Data, relocationRecord.Offset, 2);
-                                    break;
-
-                                }
-                            default:
-                                throw new Exception("Unsupported Records Flag for Relocation Value");
-                        }
-                    }
-                }
-            }
-        }
 
         /// <summary>
         ///     Marks the specified module as "Enabled"
