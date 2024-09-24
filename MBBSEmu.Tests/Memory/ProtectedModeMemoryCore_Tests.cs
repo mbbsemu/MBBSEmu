@@ -15,7 +15,7 @@ namespace MBBSEmu.Tests.Memory
         public void EndOfSegmentString()
         {
             ushort segment = 1;
-            var memoryCore = new ProtectedModeMemoryCore(_logger);
+            var memoryCore = ProtectedModeMemoryCore.GetInstance(_logger);
             memoryCore.AddSegment(segment);
 
             var testString = new string('X', 5) + "\0";
@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void MultiSegmentAllocation()
         {
-            var memoryCore = new ProtectedModeMemoryCore(_logger);
+            var memoryCore = ProtectedModeMemoryCore.GetInstance(_logger);
             var data1 = memoryCore.Malloc(0xFF00);
             data1.Should().NotBeNull();
 

@@ -21,7 +21,7 @@ namespace MBBSEmu.Tests.CPU
 
         protected CpuTestBase()
         {
-            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = new ProtectedModeMemoryCore(logger: null);
+            mbbsEmuMemoryCore = mbbsEmuProtectedModeMemoryCore = ProtectedModeMemoryCore.GetInstance(logger: null);
             mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
 

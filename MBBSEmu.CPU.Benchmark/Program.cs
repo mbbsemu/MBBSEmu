@@ -30,7 +30,7 @@ namespace MBBSEmu.CPU.Benchmark
             if (realMode)
                 memoryCore = realModeMemoryCore = new RealModeMemoryCore(logger: null);
             else
-                memoryCore = protectedModeMemoryCore = new ProtectedModeMemoryCore(null);
+                memoryCore = protectedModeMemoryCore = ProtectedModeMemoryCore.GetInstance(null);
 
             mbbsEmuCpuCore = new CpuCore(logger: null);
             mbbsEmuCpuRegisters = (ICpuRegisters)mbbsEmuCpuCore;

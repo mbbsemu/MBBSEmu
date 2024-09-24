@@ -16,6 +16,16 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class ProtectedModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
+        /// <summary>
+        ///     Singleton Instance of ProtectedModeMemoryCore
+        /// </summary>
+        private static ProtectedModeMemoryCore _instance;
+        
+        /// <summary>
+        ///     Thread Safety Lock for Singleton
+        /// </summary>
+        private static readonly object _lock = new object();
+
         private readonly byte[][] _memorySegments = new byte[0x10000][];
         private readonly Segment[] _segments = new Segment[0x10000];
         private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
@@ -27,10 +37,29 @@ namespace MBBSEmu.Memory
         private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks = new();
         private readonly Dictionary<ushort, MemoryAllocator> _heapAllocators = new();
 
-        public ProtectedModeMemoryCore(IMessageLogger logger) : base(logger)
+        // Private constructor to prevent instantiation
+        private ProtectedModeMemoryCore(IMessageLogger logger) : base(logger)
         {
-            //Add Segment 0 by default, stack segment
+            // Add Segment 0 by default, stack segment
             AddSegment(0);
+        }
+
+        // Public method to provide a global point of access to the instance
+        public static ProtectedModeMemoryCore GetInstance(IMessageLogger logger)
+        {
+            if (_instance == null)
+            {
+                lock (_lock)
+                {
+                    _instance ??= new ProtectedModeMemoryCore(logger);
+                }
+            }
+
+            //Parameter Sanity Check
+            if(logger.GetHashCode() != _instance.GetHashCode())
+                throw new InvalidOperationException($"Cannot create instance of {nameof(ProtectedModeMemoryCore)}: Parameter Mismatch");
+
+            return _instance;
         }
 
         public override FarPtr Malloc(uint size)
@@ -131,16 +160,16 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         public void AddSegment(Segment segment)
         {
-            //Get Address for this Segment
+            // Get Address for this Segment
             var segmentMemory = new byte[0x10000];
 
-            //Add the data to memory and record the segment offset in memory
+            // Add the data to memory and record the segment offset in memory
             Array.Copy(segment.Data, 0, segmentMemory, 0, segment.Data.Length);
             _memorySegments[segment.Ordinal] = segmentMemory;
 
             if (segment.Flags.Contains(EnumSegmentFlags.Code))
             {
-                //Decode the Segment
+                // Decode the Segment
                 var instructionList = new InstructionList();
                 var codeReader = new ByteArrayCodeReader(segment.Data);
                 var decoder = Decoder.Create(16, codeReader);
@@ -198,14 +227,15 @@ namespace MBBSEmu.Memory
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer) => _decompiledSegments[segment][instructionPointer];
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer) =>
+            _decompiledSegments[segment][instructionPointer];
 
         [MethodImpl(CompilerOptimizations)]
         public Instruction Recompile(ushort segment, ushort instructionPointer)
         {
-            //If it wasn't able to decompile linear through the data, there might have been
-            //data in the path of the code that messed up decoding, in this case, we grab up to
-            //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
+            // If it wasn't able to decompile linear through the data, there might have been
+            // data in the path of the code that messed up decoding, in this case, we grab up to
+            // 6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
             ReadOnlySpan<byte> segmentData = GetArray(segment, instructionPointer, 6);
             var reader = new ByteArrayCodeReader(segmentData.ToArray());
             var decoder = Decoder.Create(16, reader);
@@ -217,7 +247,8 @@ namespace MBBSEmu.Memory
         }
 
         [MethodImpl(CompilerOptimizations)]
-        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>_memorySegments[segment].AsSpan(offset);
+        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>
+            _memorySegments[segment].AsSpan(offset);
 
         /// <summary>
         ///     Allocates the specific number of Big Memory Blocks with the desired size
@@ -229,7 +260,7 @@ namespace MBBSEmu.Memory
         {
             var newBlockOffset = _bigMemoryBlocks.Allocate(new Dictionary<ushort, FarPtr>());
 
-            //Fill the Region
+            // Fill the Region
             for (ushort i = 0; i < quantity; i++)
                 _bigMemoryBlocks[newBlockOffset].Add(i, AllocateVariable($"ALCBLOK-{newBlockOffset}-{i}", size));
 

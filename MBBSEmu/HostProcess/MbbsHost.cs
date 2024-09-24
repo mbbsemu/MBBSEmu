@@ -189,7 +189,7 @@ namespace MBBSEmu.HostProcess
             _messagingCenter = messagingCenter;
 
             //Setup System Memory
-            _systemMemory = new ProtectedModeMemoryCore(Logger);
+            _systemMemory = ProtectedModeMemoryCore.GetInstance(Logger);
             //Declare PSP Segment
             var psp = new PSPStruct { NextSegOffset = 0x9FFF, EnvSeg = 0xFFFF };
             ((ProtectedModeMemoryCore)_systemMemory).AddSegment(0x4000);

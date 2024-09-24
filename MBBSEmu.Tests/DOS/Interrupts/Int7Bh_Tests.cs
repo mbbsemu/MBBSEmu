@@ -56,7 +56,7 @@ namespace MBBSEmu.DOS.Interrupts
 
         _serviceResolver = new ServiceResolver(_fakeClock);
 
-        _memory = new RealModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+        _memory = RealModeMemoryCore.GetInstance(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
         _int7B = new Int7Bh(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _modulePath, _serviceResolver.GetService<IFileUtility>(), _registers, _memory);
 
         _dataBuffer = _memory.Malloc(Int7Bh.BTRIEVE_COMMAND_STRUCT_LENGTH);

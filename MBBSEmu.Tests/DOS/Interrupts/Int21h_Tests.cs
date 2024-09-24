@@ -27,7 +27,7 @@ namespace MBBSEmu.DOS.Interrupts
         var streamWriter = new StreamWriter(_consoleOutput) { AutoFlush = true };
 
         _serviceResolver = new ServiceResolver(_fakeClock);
-        _memory = new RealModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+        _memory = RealModeMemoryCore.GetInstance(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
         _int21 = new Int21h(_registers, _memory, _fakeClock, _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _serviceResolver.GetService<IFileUtility>(), new TextReaderStream(new StreamReader(_consoleInput)), new TextWriterStream(streamWriter), new TextWriterStream(streamWriter));
     }
 

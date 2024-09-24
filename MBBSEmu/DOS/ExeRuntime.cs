@@ -54,7 +54,7 @@ namespace MBBSEmu.DOS
             _path = path;
             _sessionBase = sessionBase;
             File = file;
-            Memory = new RealModeMemoryCore( 0x8000, _logger);
+            Memory =  RealModeMemoryCore.GetInstance( 0x8000, _logger);
             Cpu = new CpuCore();
             Registers = new CpuRegisters();
 

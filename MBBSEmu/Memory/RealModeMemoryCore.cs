@@ -21,6 +21,16 @@ namespace MBBSEmu.Memory
     /// </summary>
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
+        /// <summary>
+        ///     Singleton Instance of ProtectedModeMemoryCore
+        /// </summary>
+        private static RealModeMemoryCore _instance;
+        
+        /// <summary>
+        ///     Thread Safety Lock for Singleton
+        /// </summary>
+        private static readonly object _lock = new object();
+        
         public const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
         public const int HEAP_MAX_SIZE = 64*1024;
         public const ushort DEFAULT_HEAP_BASE_SEGMENT = 0x8000;
@@ -53,6 +63,24 @@ namespace MBBSEmu.Memory
 
         private readonly Decoder _decoder;
 
+        // Public method to provide a global point of access to the instance
+        public static RealModeMemoryCore GetInstance(ushort heapBaseSegment, IMessageLogger logger)
+        {
+            if (_instance == null)
+            {
+                lock (_lock)
+                {
+                    _instance ??= new RealModeMemoryCore(heapBaseSegment, logger);
+                }
+            }
+            
+            //Parameter Sanity Check
+            if(heapBaseSegment != _instance._heapBaseSegment || logger.GetHashCode() != _instance.GetHashCode())
+                throw new InvalidOperationException($"Cannot create instance of {nameof(RealModeMemoryCore)}: Parameter Mismatch");
+            
+            return _instance;
+        }
+        
         public RealModeMemoryCore(ushort heapBaseSegment, IMessageLogger logger) : base(logger)
         {
             _heapBaseSegment = heapBaseSegment;
@@ -67,7 +95,8 @@ namespace MBBSEmu.Memory
             _memoryAllocator = new MemoryAllocator(logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
         }
 
-        public RealModeMemoryCore(IMessageLogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) {}
+        public static RealModeMemoryCore GetInstance(IMessageLogger logger) =>
+            GetInstance(DEFAULT_HEAP_BASE_SEGMENT, logger);
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
 

@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void AllocationAndFree()
         {
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
 
             var ptr1 = memoryCore.Malloc(256);
             ptr1.Offset.Should().Be(0);
@@ -43,7 +43,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void VariableAllocation()
         {
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
 
             memoryCore.TryGetVariablePointer("TEST", out var ptr).Should().BeFalse();
             ptr = memoryCore.AllocateVariable("TEST", 16);
@@ -64,7 +64,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void MemoryMap_Byte()
         {
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
@@ -77,7 +77,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void MemoryMap_Word()
         {
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
@@ -90,7 +90,7 @@ namespace MBBSEmu.Tests.Memory
         [Fact]
         public void MemoryMap_DWord()
         {
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
@@ -104,7 +104,7 @@ namespace MBBSEmu.Tests.Memory
         public void MemoryMap_Array()
         {
             var bytes = new byte[] { 0x10, 0x20, 0x30, 0x40, 0x50, 0x60 };
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
@@ -118,7 +118,7 @@ namespace MBBSEmu.Tests.Memory
         public void MemoryMap_StringNoStripNull()
         {
             var str = "This is a test\0";
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);
@@ -132,7 +132,7 @@ namespace MBBSEmu.Tests.Memory
         public void MemoryMap_StringStripNull()
         {
             var str = "This is a test";
-            var memoryCore = new RealModeMemoryCore(_logger);
+            var memoryCore = RealModeMemoryCore.GetInstance(_logger);
             // these two point to the same physical address
             var ptr1 = new FarPtr(0x6002, 0x12);
             var ptr2 = new FarPtr(0x6003, 2);

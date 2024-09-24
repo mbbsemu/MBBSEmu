@@ -217,7 +217,7 @@ namespace MBBSEmu.Module
             ExportedModuleDictionary = new Dictionary<ushort, IExportedModule>(6);
             ExecutionUnits = new Queue<ExecutionUnit>(2);
 
-            Memory = memoryCore ?? new ProtectedModeMemoryCore(logger);
+            Memory = memoryCore ?? ProtectedModeMemoryCore.GetInstance(logger);
             ProtectedMemory = (ProtectedModeMemoryCore)Memory;
 
             //Find _INIT_ values if any
