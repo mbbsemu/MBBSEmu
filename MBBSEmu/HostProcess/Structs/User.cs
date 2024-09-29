@@ -5,8 +5,6 @@ namespace MBBSEmu.HostProcess.Structs
 {
     /// <summary>
     ///     USER Struct as defined in MAJORBBS.H
-    ///
-    ///     41 Bytes in Total Length
     /// </summary>
     public class User : MemoryResidentStructBase
     {
@@ -171,6 +169,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public User() : base(nameof(User), Size)
         {
+            //Set Default Values for this channel
             UserClass = 6;
             Minut4 = 0xA00;
             Baud = 38400;
