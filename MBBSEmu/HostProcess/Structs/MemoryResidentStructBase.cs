@@ -16,7 +16,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     Gets a reference to the system memory
         /// </summary>
-        private readonly IMemoryCore MemoryCore = ProtectedModeMemoryCore.GetInstance(null);
+        private readonly IMemoryCore _memoryCore = ProtectedModeMemoryCore.GetInstance(null);
 
         /// <summary>
         ///     Name of the Struct to be used in the MemoryCore
@@ -38,24 +38,32 @@ namespace MBBSEmu.HostProcess.Structs
         private ushort Size { get; } = size;
 
         /// <summary>
+        ///     Cached Pointer to the Struct in Memory
+        /// </summary>
+        private FarPtr _structPointer = null;
+
+        /// <summary>
         ///     Essentially a pointer to the data in memory for the specified struct
         /// </summary>
         public Span<byte> Data
         {
             get
             {
-                if (ChannelNumber == -1)
-                    throw new InvalidDataException("Channel Number must be set before accessing Data");
+                //If this is our first time through, grab the pointer to the struct taking into account the channel number for offset
+                if (_structPointer == null)
+                {
+                    if (ChannelNumber == -1)
+                        throw new InvalidDataException("Channel Number must be set before accessing Data");
 
-                //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
-                var userPointer = MemoryCore.GetVariablePointer(StructName);
+                    //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
+                    _structPointer = _memoryCore.GetVariablePointer(StructName);
 
-                //Calculate any channel offset if this struct exists for each channel
-                userPointer.Offset += (ushort)(Size * ChannelNumber);
+                    //Calculate any channel offset if this struct exists for each channel
+                    _structPointer.Offset += (ushort)(Size * ChannelNumber);
+                }
 
-                return MemoryCore.GetArray(userPointer, Size);
+                return _memoryCore.GetArray(_structPointer, Size);
             }
-            set => value.CopyTo(Data);
         }
     }
 }
