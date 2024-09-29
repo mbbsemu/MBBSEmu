@@ -146,7 +146,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("OUTBSZ", sizeof(ushort));
             Module.Memory.SetWord("OUTBSZ", OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
-            Module.Memory.AllocateVariable("USER", (ushort)(User.Size * _numberOfChannels), true);
+            Module.Memory.AllocateVariable(nameof(User), (ushort)(User.Size * _numberOfChannels), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
@@ -331,12 +331,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)ChannelDictionary[channelNumber].GetStatus());
 
-            var userBasePointer = Module.Memory.GetVariablePointer("USER");
-            var currentUserPointer = new FarPtr(userBasePointer.Data);
+            //Set *USRPTR to point to the current USER record
+            var currentUserPointer = Module.Memory.GetVariablePointer("USER").Clone();
             currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
-
-            //Update User Array and Update Pointer to point to this user
-            Module.Memory.SetArray(currentUserPointer, ChannelDictionary[channelNumber].UsrPtr.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.Data);
 
             var userAccBasePointer = Module.Memory.GetVariablePointer("USRACC");
@@ -412,11 +409,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 ChannelDictionary[ChannelNumber].Status
                     .Enqueue(resultStatus);
 
-
-            //Save off the USRPTR area to the Channel
-            var userPointer = Module.Memory.GetVariablePointer("USER");
-            ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
-                (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
             //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
             if (Module.Memory.TryGetVariablePointer($"VDA-{ChannelNumber}", out var vdaPointer))

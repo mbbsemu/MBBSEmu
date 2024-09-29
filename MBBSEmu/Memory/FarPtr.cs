@@ -41,12 +41,6 @@ namespace MBBSEmu.Memory
             Offset = offset;
         }
 
-        public FarPtr(FarPtr pointer)
-        {
-            Segment = pointer.Segment;
-            Offset = pointer.Offset;
-        }
-
         public FarPtr(string pointer)
         {
             var splitPointer = pointer.Split(':');
@@ -80,6 +74,12 @@ namespace MBBSEmu.Memory
         /// </summary>
         /// <returns></returns>
         public override string ToString() => $"{Segment:X4}:{Offset:X4}";
+
+        /// <summary>
+        ///     Creates a new instance of the current FarPtr
+        /// </summary>
+        /// <returns></returns>
+        public FarPtr Clone() => new(this.Segment, this.Offset);
 
         public bool Equals(FarPtr other)
         {

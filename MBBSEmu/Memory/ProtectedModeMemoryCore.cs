@@ -282,7 +282,7 @@ namespace MBBSEmu.Memory
         public override FarPtr AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue)
         {
             _currentRealModePointer.Segment++;
-            var realModeSegment = new FarPtr(_currentRealModePointer);
+            var realModeSegment = _currentRealModePointer.Clone();
             AddSegment(realModeSegment.Segment, segmentSize);
             return realModeSegment;
         }
