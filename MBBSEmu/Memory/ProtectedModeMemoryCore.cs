@@ -55,8 +55,8 @@ namespace MBBSEmu.Memory
                 }
             }
 
-            //Parameter Sanity Check
-            if(logger.GetHashCode() != _instance.GetHashCode())
+            //Parameter Sanity Check (if logger is null, requesting class doesn't care)
+            if(logger != null && logger.GetHashCode() != _instance.GetHashCode())
                 throw new InvalidOperationException($"Cannot create instance of {nameof(ProtectedModeMemoryCore)}: Parameter Mismatch");
 
             return _instance;

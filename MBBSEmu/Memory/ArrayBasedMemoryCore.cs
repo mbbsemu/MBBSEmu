@@ -14,7 +14,7 @@ namespace MBBSEmu.Memory
         public abstract byte[] GetByteString(ushort segment, ushort offset, bool stripNull);
 
 
-        public override sealed ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
+        public override sealed Span<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             return GetByteArray(segment, offset, count).AsSpan();
         }

@@ -53,7 +53,7 @@ namespace MBBSEmu.Memory
             throw new NotImplementedException();
         }
 
-        public virtual ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count)
+        public virtual Span<byte> GetArray(ushort segment, ushort offset, ushort count)
         {
             throw new NotImplementedException();
         }

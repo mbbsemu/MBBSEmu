@@ -168,7 +168,7 @@ namespace MBBSEmu.Memory
         /// <param name="count"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count) =>
+        public Span<byte> GetArray(ushort segment, ushort offset, ushort count) =>
             VirtualToPhysical(segment, offset).Slice(0, count);
 
 

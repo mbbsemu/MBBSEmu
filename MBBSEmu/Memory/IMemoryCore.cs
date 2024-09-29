@@ -168,7 +168,7 @@ namespace MBBSEmu.Memory
         /// <param name="pointer"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetArray(FarPtr pointer, ushort count) => GetArray(pointer.Segment, pointer.Offset, count);
+        Span<byte> GetArray(FarPtr pointer, ushort count) => GetArray(pointer.Segment, pointer.Offset, count);
 
         /// <summary>
         ///     Returns an array with the desired count from the specified segment:offset
@@ -177,7 +177,7 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetArray(ushort segment, ushort offset, ushort count);
+        Span<byte> GetArray(ushort segment, ushort offset, ushort count);
 
         /// <summary>
         ///     Returns an array with the desired count from the defined variable
@@ -185,7 +185,7 @@ namespace MBBSEmu.Memory
         /// <param name="variableName"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        ReadOnlySpan<byte> GetArray(string variableName, ushort count) => GetArray(GetVariablePointer(variableName), count);
+        Span<byte> GetArray(string variableName, ushort count) => GetArray(GetVariablePointer(variableName), count);
 
         /// <summary>
         ///     Returns an array containing the cstring stored at the specified pointer
