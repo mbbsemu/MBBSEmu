@@ -469,7 +469,6 @@ namespace MBBSEmu.Module
                                             }
                                         default:
                                             throw new NotImplementedException($"({ModuleIdentifier}) Unknown or Unimplemented Imported Library: {dll.File.ImportedNameTable[nametableOrdinal].Name}");
-                                            continue;
                                     }
 
                                     //32-Bit Pointer
