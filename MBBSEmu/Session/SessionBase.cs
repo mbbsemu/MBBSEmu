@@ -67,11 +67,23 @@ namespace MBBSEmu.Session
         ///     This Users Extusr* which is passed in from MajorMBBS
         /// </summary>
         public ExtUser ExtUsrAcc { get; set; }
-
+        
         /// <summary>
-        ///     This Users Number/Channel Number (used to identify target for output)
+        ///     Users Number/Channel Number (used to identify target for output)
         /// </summary>
-        public ushort Channel { get; set; }
+        public ushort Channel
+        {
+            set
+            {
+                _channel = value;
+
+                //Set Channel Number on Memory Resident Structs to set memory addressing
+                UsrPtr.ChannelNumber = (short)value;
+            }
+            get => _channel;
+
+        }
+        private ushort _channel;
 
         /// <summary>
         ///     Current Module the user is in
