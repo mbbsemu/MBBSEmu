@@ -4297,8 +4297,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var parsedInput = string.Join('\0', inputComponents);
 
             //Setup MARGV & MARGN
-            var margvPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGV"));
-            var margnPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGN"));
+            var margvPointer = Module.Memory.GetVariablePointer("MARGV").Clone();
+            var margnPointer = Module.Memory.GetVariablePointer("MARGN").Clone();
 
             var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x));
 
