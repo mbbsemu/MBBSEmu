@@ -40,7 +40,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///     Cached Pointer to the Struct in Memory
         /// </summary>
-        private FarPtr _structPointer = null;
+        private FarPtr _structPointer;
 
         /// <summary>
         ///     Essentially a pointer to the data in memory for the specified struct

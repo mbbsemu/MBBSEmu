@@ -165,10 +165,12 @@ namespace MBBSEmu.HostProcess.Structs
         /// <summary>
         ///    Size of the User Struct in Bytes
         /// </summary>
-        public static ushort Size => 41;
+        public const ushort Size = 41;
 
-        public User() : base(nameof(User), Size)
+        public User(ushort channelNumber) : base(nameof(User), Size)
         {
+            ChannelNumber = (short)channelNumber;
+            
             //Set Default Values for this channel
             UserClass = 6;
             Minut4 = 0xA00;

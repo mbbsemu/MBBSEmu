@@ -332,7 +332,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)ChannelDictionary[channelNumber].GetStatus());
 
             //Set *USRPTR to point to the current USER record
-            var currentUserPointer = Module.Memory.GetVariablePointer("USER").Clone();
+            var currentUserPointer = Module.Memory.GetVariablePointer(nameof(User)).Clone();
             currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.Data);
 
@@ -3119,7 +3119,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: struct user;
         /// </summary>
         /// <returns></returns>
-        private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer("*USER").Data;
+        private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer($"*{nameof(User)}").Data;
 
 
         /// <summary>

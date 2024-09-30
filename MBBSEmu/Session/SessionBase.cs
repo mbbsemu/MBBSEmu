@@ -56,7 +56,9 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     This Users UsrPtr* which is passed in from MajorBBS
         /// </summary>
-        public User UsrPtr { get; set; }
+        public User UsrPtr => _usrPtr ??= new User(Channel);
+
+        private User _usrPtr;
 
         /// <summary>
         ///     This Users UsrAcc* which is pass in from MajorBBS
@@ -67,23 +69,11 @@ namespace MBBSEmu.Session
         ///     This Users Extusr* which is passed in from MajorMBBS
         /// </summary>
         public ExtUser ExtUsrAcc { get; set; }
-        
+
         /// <summary>
         ///     Users Number/Channel Number (used to identify target for output)
         /// </summary>
-        public ushort Channel
-        {
-            set
-            {
-                _channel = value;
-
-                //Set Channel Number on Memory Resident Structs to set memory addressing
-                UsrPtr.ChannelNumber = (short)value;
-            }
-            get => _channel;
-
-        }
-        private ushort _channel;
+        public ushort Channel { get; set; }
 
         /// <summary>
         ///     Current Module the user is in
@@ -330,7 +320,6 @@ namespace MBBSEmu.Session
             _textVariableService = textVariableService;
             SessionId = sessionId;
             TerminalColumns = DEFAULT_TERMINAL_COLUMNS;
-            UsrPtr = new User();
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
             Status = new Queue<EnumUserStatus>();
