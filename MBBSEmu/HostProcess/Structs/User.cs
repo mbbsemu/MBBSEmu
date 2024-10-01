@@ -22,7 +22,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public FarPtr Keys
         {
-            get => new FarPtr(Data.Slice(2, 4));
+            get => new(Data.Slice(2, 4));
             set => value.Data.CopyTo(Data.Slice(2, FarPtr.Size));
         }
 
