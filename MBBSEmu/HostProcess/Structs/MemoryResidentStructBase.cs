@@ -14,6 +14,20 @@ namespace MBBSEmu.HostProcess.Structs
     public abstract class MemoryResidentStructBase(string structName, ushort size)
     {
         /// <summary>
+        ///     Location of this Structs Underlying Data
+        /// </summary>
+        enum DataSource
+        {
+            /// <summary>
+            ///     Underlying Data 
+            /// </summary>
+            Local,
+            Memory
+        }
+
+        private DataSource _dataSource = DataSource.Local;
+
+        /// <summary>
         ///     Gets a reference to the system memory
         /// </summary>
         private readonly IMemoryCore _memoryCore = ProtectedModeMemoryCore.GetInstance(null);
@@ -30,7 +44,47 @@ namespace MBBSEmu.HostProcess.Structs
         ///
         ///     If there is only one copy of this struct in memory, ChannelNumber should be set to 0
         /// </summary>
-        public short ChannelNumber { get; set; } = -1;
+        public short ChannelNumber
+        {
+            get => _channelNumber;
+            set
+            {
+                //Going from Local to Memory
+                if (_channelNumber == -1 && value > -1)
+                {
+                    //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
+                    _structPointer = _memoryCore.GetVariablePointer(StructName);
+
+                    //Calculate any channel offset if this struct exists for each channel
+                    _structPointer.Offset += (ushort)(Size * value);
+
+                    //Copy Local Value to Memory
+                    _memoryCore.SetArray(_structPointer, Data);
+
+                }
+                //Going from Memory to Local
+                else if (_channelNumber > 0 && value == -1)
+                {
+                    //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
+                    _structPointer = _memoryCore.GetVariablePointer(StructName);
+
+                    //Calculate any channel offset if this struct exists for each channel
+                    _structPointer.Offset += (ushort)(Size * ChannelNumber);
+
+                    _localData = _memoryCore.GetArray(_structPointer, Size).ToArray();
+                }
+
+                //Set the new Data Source
+                _dataSource = value > 0 ? DataSource.Memory : DataSource.Local;
+
+                //Set the new Channel Number
+                _channelNumber = value;
+
+            }
+
+        }
+
+        private short _channelNumber = -1;
 
         /// <summary>
         ///     Size of the Struct in Bytes
@@ -42,28 +96,11 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         private FarPtr _structPointer;
 
+        private byte[] _localData = new byte[size];
+
         /// <summary>
         ///     Essentially a pointer to the data in memory for the specified struct
         /// </summary>
-        public Span<byte> Data
-        {
-            get
-            {
-                //If this is our first time through, grab the pointer to the struct taking into account the channel number for offset
-                if (_structPointer == null)
-                {
-                    if (ChannelNumber == -1)
-                        throw new InvalidDataException("Channel Number must be set before accessing Data");
-
-                    //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
-                    _structPointer = _memoryCore.GetVariablePointer(StructName);
-
-                    //Calculate any channel offset if this struct exists for each channel
-                    _structPointer.Offset += (ushort)(Size * ChannelNumber);
-                }
-
-                return _memoryCore.GetArray(_structPointer, Size);
-            }
-        }
+        public Span<byte> Data => _dataSource == DataSource.Memory ? _memoryCore.GetArray(_structPointer, Size) : _localData;
     }
 }
