@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess.Structs
@@ -19,12 +18,19 @@ namespace MBBSEmu.HostProcess.Structs
         enum DataSource
         {
             /// <summary>
-            ///     Underlying Data 
+            ///     Underlying Data stored locally within the class
             /// </summary>
             Local,
+
+            /// <summary>
+            ///     Underlying Data stored in the MemoryCore at the appropriate location based on the ChannelNumber
+            /// </summary>
             Memory
         }
 
+        /// <summary>
+        ///     Current Source of the underlying data
+        /// </summary>
         private DataSource _dataSource = DataSource.Local;
 
         /// <summary>
