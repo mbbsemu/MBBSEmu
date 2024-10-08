@@ -159,7 +159,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.Data);
 
-            var usrExtPointer = Module.Memory.AllocateVariable("EXTUSR", (ushort)(ExtUser.Size * _numberOfChannels), true);
+            var usrExtPointer = Module.Memory.AllocateVariable(nameof(ExtUser), (ushort)(ExtUser.Size * _numberOfChannels), true);
             var extPtrPointer = Module.Memory.AllocateVariable("EXTPTR", 0x4);
             Module.Memory.SetArray(extPtrPointer, usrExtPointer.Data);
 
@@ -337,15 +337,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.Data);
 
             //Set USAPTR to point to the current UserAccount record
-            var userAccBasePointer = Module.Memory.GetVariablePointer(nameof(UserAccount));
+            var userAccBasePointer = Module.Memory.GetVariablePointer(nameof(UserAccount)).Clone();
             userAccBasePointer.Offset += (ushort)(UserAccount.Size * channelNumber);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), userAccBasePointer.Data);
 
-            var userExtAccBasePointer = Module.Memory.GetVariablePointer("EXTUSR");
-            var currentExtUserAccPointer = new FarPtr(userExtAccBasePointer.Data);
-            currentExtUserAccPointer.Offset += (ushort)(ExtUser.Size * channelNumber);
-            Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.Data);
-            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), currentExtUserAccPointer.Data);
+            //Set EXTUSR to point to the current ExtUser record
+            var userExtAccBasePointer = Module.Memory.GetVariablePointer(nameof(ExtUser)).Clone();
+            userExtAccBasePointer.Offset += (ushort)(ExtUser.Size * channelNumber);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), userExtAccBasePointer.Data);
 
             //Reset NXTCMD
             Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
@@ -4407,7 +4406,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUAP"), userAccBase.Data);
 
-            var userExtAcc = new FarPtr(Module.Memory.GetVariablePointer("EXTUSR").Data);
+            var userExtAcc = Module.Memory.GetVariablePointer(nameof(ExtUser)).Clone();
             userExtAcc.Offset += (ushort)(ExtUser.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHEXP"), userExtAcc.Data);
 
@@ -5584,25 +5583,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"EXTUSR-{userNumber}", ExtUser.Size);
-
             //If user isn't online, return a null pointer
             if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
             {
-                Registers.AX = 0;
-                Registers.DX = 0;
+                Registers.SetPointer(FarPtr.Empty);
                 return;
             }
 
             //Set Pointer to new user array
-            var extoffPointer = Module.Memory.GetVariablePointer("EXTOFF");
-            Module.Memory.SetArray(extoffPointer, variablePointer.Data);
+            var extusr = Module.Memory.GetVariablePointer(nameof(ExtUser)).Clone();
+            extusr.Offset += (ushort)(userNumber * ExtUser.Size);
 
-            //Set User Array Value
-            Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.Data);
-
-
-            Registers.SetPointer(variablePointer);
+            Registers.SetPointer(extusr);
         }
 
         /// <summary>

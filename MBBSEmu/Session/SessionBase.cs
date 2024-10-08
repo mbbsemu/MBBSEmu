@@ -81,6 +81,7 @@ namespace MBBSEmu.Session
                 //Set Channel on the Memory Resident Structs
                 UsrPtr.ChannelNumber = (short)value;
                 UsrAcc.ChannelNumber = (short)value;
+                ExtUsrAcc.ChannelNumber = (short)value;
             }
         }
 

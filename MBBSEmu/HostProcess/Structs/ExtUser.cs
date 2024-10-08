@@ -2,14 +2,14 @@
 
 namespace MBBSEmu.HostProcess.Structs
 {
-    public class ExtUser
+    public class ExtUser() : MemoryResidentStructBase(nameof(ExtUser), Size)
     {
         /// <summary>
         ///     user language, 0 to nlingo-1 (LINGO.H)
         /// </summary>
         public short lingo
         {
-            get => BitConverter.ToInt16(Data, 0);
+            get => BitConverter.ToInt16(Data[..]);
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public int baud
         {
-            get => BitConverter.ToInt32(Data, 5);
+            get => BitConverter.ToInt32(Data[5..]);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public uint tckrst
         {
-            get => BitConverter.ToUInt32(Data, 10);
+            get => BitConverter.ToUInt32(Data[10..]);
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public uint tckonl
         {
-            get => BitConverter.ToUInt32(Data, 14);
+            get => BitConverter.ToUInt32(Data[14..]);
         }
 
         /// <summary>
@@ -83,10 +83,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public short entstt
         {
-            get => BitConverter.ToInt16(Data, 19);
+            get => BitConverter.ToInt16(Data[19..]);
         }
-
-        public readonly byte[] Data = new byte[Size];
 
         public const ushort Size = 21;
     }
