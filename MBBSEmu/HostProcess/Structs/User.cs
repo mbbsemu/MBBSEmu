@@ -149,7 +149,7 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public FarPtr Polrou
         {
-            get => new FarPtr(Data.Slice(36, 4));
+            get => new(Data.Slice(36, 4));
             set => value.Data.CopyTo(Data.Slice(36, FarPtr.Size));
         }
 
@@ -167,10 +167,8 @@ namespace MBBSEmu.HostProcess.Structs
         /// </summary>
         public const ushort Size = 41;
 
-        public User(ushort channelNumber) : base(nameof(User), Size)
+        public User() : base(nameof(User), Size)
         {
-            ChannelNumber = (short)channelNumber;
-            
             //Set Default Values for this channel
             UserClass = 6;
             Minut4 = 0xA00;

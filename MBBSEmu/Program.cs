@@ -618,8 +618,8 @@ namespace MBBSEmu
             //Insert Into BBS Account Btrieve File
             var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount("sysop").Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount("guest").Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount("sysop").Data.ToArray(), LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount("guest").Data.ToArray(), LogLevel.Error);
 
             //Reset BBSGEN
             var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
@@ -702,7 +702,7 @@ namespace MBBSEmu
 
             //Insert each record into BBSUSR.DAT
             foreach (var a in accounts) 
-                _accountBtrieve.Insert(new UserAccount(a.userName).Data, LogLevel.Error);
+                _accountBtrieve.Insert(new UserAccount(a.userName).Data.ToArray(), LogLevel.Error);
 
             //Verify the Counts are Equal
             if (accounts.Count() != _accountBtrieve.GetRecordCount())

@@ -13,7 +13,7 @@ namespace MBBSEmu.HostProcess.Structs
     public abstract class MemoryResidentStructBase(string structName, ushort size)
     {
         /// <summary>
-        ///     Location of this Structs Underlying Data
+        ///     Location of the Structs Underlying Data
         /// </summary>
         enum DataSource
         {
@@ -81,7 +81,7 @@ namespace MBBSEmu.HostProcess.Structs
                 }
 
                 //Set the new Data Source
-                _dataSource = value > 0 ? DataSource.Memory : DataSource.Local;
+                _dataSource = value > -1 ? DataSource.Memory : DataSource.Local;
 
                 //Set the new Channel Number
                 _channelNumber = value;

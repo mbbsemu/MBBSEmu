@@ -155,7 +155,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("MARGV", 0x200); //max 128 pointers * 4 bytes each
             Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
             Module.Memory.AllocateVariable("USRNUM", 0x2);
-            var usraccPointer = Module.Memory.AllocateVariable("USRACC", (ushort)(UserAccount.Size * _numberOfChannels), true);
+            var usraccPointer = Module.Memory.AllocateVariable(nameof(UserAccount), (ushort)(UserAccount.Size * _numberOfChannels), true);
             var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.Data);
 
@@ -336,11 +336,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             currentUserPointer.Offset += (ushort)(User.Size * channelNumber);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), currentUserPointer.Data);
 
-            var userAccBasePointer = Module.Memory.GetVariablePointer("USRACC");
-            var currentUserAccPointer = new FarPtr(userAccBasePointer.Data);
-            currentUserAccPointer.Offset += (ushort)(UserAccount.Size * channelNumber);
-            Module.Memory.SetArray(currentUserAccPointer, ChannelDictionary[channelNumber].UsrAcc.Data);
-            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), currentUserAccPointer.Data);
+            //Set USAPTR to point to the current UserAccount record
+            var userAccBasePointer = Module.Memory.GetVariablePointer(nameof(UserAccount));
+            userAccBasePointer.Offset += (ushort)(UserAccount.Size * channelNumber);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), userAccBasePointer.Data);
 
             var userExtAccBasePointer = Module.Memory.GetVariablePointer("EXTUSR");
             var currentExtUserAccPointer = new FarPtr(userExtAccBasePointer.Data);
@@ -2005,24 +2004,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var userNumber = GetParameter(0);
 
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"USRACC-{userNumber}", UserAccount.Size);
-
             //If user isn't online, return a null pointer
             if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
             {
-                Registers.AX = 0;
-                Registers.DX = 0;
+                Registers.SetPointer(FarPtr.Empty);
                 return;
             }
 
-            //Set Pointer to new user array
-            var uacoffPointer = Module.Memory.GetVariablePointer("UACOFF");
-            Module.Memory.SetArray(uacoffPointer, variablePointer.Data);
+            //Calculate Offset to User Struct Record
+            var uacoffPointer = Module.Memory.GetVariablePointer(nameof(User));
+            uacoffPointer.Offset += (ushort)(userNumber * User.Size);
 
-            //Set User Array Value
-            Module.Memory.SetArray(variablePointer, userChannel.UsrAcc.Data);
-
-            Registers.SetPointer(variablePointer);
+            //Set DX:AX to the pointer
+            Registers.SetPointer(uacoffPointer);
         }
 
         /// <summary>
@@ -4405,11 +4399,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var othusnPointer = Module.Memory.GetVariablePointer("OTHUSN");
             Module.Memory.SetWord(othusnPointer, ChannelDictionary[userSession.Channel].Channel);
 
-            var userBase = new FarPtr(Module.Memory.GetVariablePointer("USER").Data);
+            var userBase = Module.Memory.GetVariablePointer(nameof(User)).Clone();
             userBase.Offset += (ushort)(User.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUSP"), userBase.Data);
 
-            var userAccBase = new FarPtr(Module.Memory.GetVariablePointer("USRACC").Data);
+            var userAccBase = Module.Memory.GetVariablePointer(nameof(UserAccount)).Clone();
             userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUAP"), userAccBase.Data);
 
