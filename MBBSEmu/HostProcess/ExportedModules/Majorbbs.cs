@@ -4304,7 +4304,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var margvPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGV"));
             var margnPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGN"));
 
-            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x));
+            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x) && x != "\0");
 
             Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
             margvPointer.Offset += FarPtr.Size;
@@ -4338,7 +4338,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
             Module.Memory.SetWord("MARGC", margCount);
-            //setINPLEN();
         }
 
         /// <summary>
@@ -8372,12 +8371,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Sets DX:AX registers to the return value
             Registers.SetPointer(returnPointer);
         }
-
-        /// <summary>
-        /// Sets the INPLEN variable based on the length of INPUT
-        /// </summary>
-        /// <returns>The value written to INPLEN</returns>
-        private ushort setINPLEN() => setINPLEN(Module.Memory.GetVariablePointer("INPUT"));
 
         /// <summary>
         /// Sets the INPLEN variable based on the length of the string from input

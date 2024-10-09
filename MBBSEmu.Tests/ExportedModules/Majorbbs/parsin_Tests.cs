@@ -12,12 +12,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const ushort PARSIN_ORDINAL = 467;
 
         [Theory]
-        [InlineData("TEST1 TEST2 TEST3\0", 3, 18)]
+        [InlineData("TEST1 TEST2 TEST3\0", 3, 17)]
         [InlineData("\0", 0, 0)]
-        [InlineData("A B\0", 2, 4)]
-        [InlineData("A TEST B\0", 3, 9)]
-        [InlineData("A      TEST       B\0", 3, 20)]
-        [InlineData("A   TEST                        B\0", 3, 34)]
+        [InlineData("A B\0", 2, 3)]
+        [InlineData("A TEST B\0", 3, 8)]
+        [InlineData("A      TEST       B\0", 3, 19)]
+        [InlineData("A   TEST                        B\0", 3, 33)]
+        [InlineData("TEST \0", 1, 5)]
         public void parsin_Test(string inputCommand, int expectedMargc, int expectedInputLength)
         {
             //Reset State
@@ -25,17 +26,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Input Values
             mbbsEmuMemoryCore.SetArray("INPUT", Encoding.ASCII.GetBytes(inputCommand));
-            mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Length);
+            mbbsEmuMemoryCore.SetWord("INPLEN", (ushort)inputCommand.Replace("\0", string.Empty).Length);
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PARSIN_ORDINAL, new List<FarPtr>());
 
             //Verify Results
-            var expectedParsedInput = Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0'));
+            var expectedParsedInput = Encoding.ASCII.GetBytes(inputCommand.Replace(' ', '\0')[..expectedInputLength]);
             var actualInputLength = mbbsEmuMemoryCore.GetWord("INPLEN");
             var actualMargc = mbbsEmuMemoryCore.GetWord("MARGC");
 
-            //Just NULL returns a length of 0, but we'll grab & verify the null at that position if the length is zero
-            var actualInput = mbbsEmuMemoryCore.GetArray("INPUT", actualInputLength == 0 ? (ushort)1 : actualInputLength).ToArray();
+            var actualInput = mbbsEmuMemoryCore.GetArray("INPUT", actualInputLength).ToArray();
 
             Assert.Equal(expectedMargc, actualMargc); //Verify Correct Number of Commands Parsed
             Assert.Equal(expectedInputLength, actualInputLength); //Verify Length is Correct

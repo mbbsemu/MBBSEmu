@@ -10,20 +10,16 @@ namespace MBBSEmu.CPU
     public interface IFpuRegisters
     {
         ushort StatusWord { get; set; }
-
         ushort ControlWord { get; set; }
-
         void SetFlag(EnumFpuStatusFlags statusFlag);
         void ClearFlag(EnumFpuStatusFlags statusFlag);
-
         byte GetStackTop();
-
         void SetStackTop(byte value);
-
         int GetStackPointer(Register register);
         void PopStackTop();
         void PushStackTop();
         void ClearExceptions();
+        MidpointRounding GetRoundingControl();
     }
 
     /// <summary>

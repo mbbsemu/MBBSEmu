@@ -22,6 +22,22 @@ namespace MBBSEmu.CPU
 
         public byte GetStackTop() => (byte) ((StatusWord >> 11) & 0x7);
 
+        /// <summary>
+        ///     Gets the FPU Rounding Control by getting the Rounding Control bits from the Control Word and convert it to a C# MidpointRounding enum
+        /// </summary>
+        public MidpointRounding GetRoundingControl()
+        {
+            var roundingControl = (ControlWord >> 10) & 0x3;
+            return roundingControl switch
+            {
+                0 => MidpointRounding.ToEven,
+                1 => MidpointRounding.ToNegativeInfinity,
+                2 => MidpointRounding.ToPositiveInfinity,
+                3 => MidpointRounding.ToZero,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
         public void SetStackTop(byte value)
         {
             StatusWord &= unchecked((ushort)(~0x3800)); //Zero out the previous value
