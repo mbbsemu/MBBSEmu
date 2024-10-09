@@ -30,6 +30,13 @@ namespace MBBSEmu.Extensions
         }
 
         /// <summary>
+        ///     Calls Overloaded method with a default start of 0 and length of the entire ReadOnlySpan
+        /// </summary>
+        /// <param name="readOnlySpan"></param>
+        /// <returns></returns>
+        public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan) =>  readOnlySpan.ToHexString(0, (ushort)readOnlySpan.Length);
+
+        /// <summary>
         ///     Creates a human-readable hex string from a ReadOnlySpan of bytes
         ///
         ///     The header contains the total number of bytes, the start and end address

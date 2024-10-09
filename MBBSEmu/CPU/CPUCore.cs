@@ -127,6 +127,11 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
+        private List<List<FarPtr>> CPUDebugRanges = [];
+        private List<FarPtr> CPUBreakpoints = [];
+        private bool CPUDebugBreak = false;
+        private Dictionary<(FarPtr, ushort), byte[]> WatchedVariables = new ();
+
         public CpuCore(IMessageLogger logger)
         {
             _logger = logger;
@@ -160,7 +165,8 @@ namespace MBBSEmu.CPU
         /// <param name="interruptHandlers"></param>
         /// <param name="ioPortHandlers"></param>
         public void Reset(IMemoryCore memoryCore,
-            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate, IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers)
+            InvokeExternalFunctionDelegate invokeExternalFunctionDelegate,
+            IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers)
         {
             //Setup Debug Pointers
             _currentInstructionPointer = FarPtr.Empty;
@@ -199,6 +205,53 @@ namespace MBBSEmu.CPU
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
             Push(uint.MaxValue);
+
+            //Setup Debug
+
+            /* ---------------------------
+             * ##    CPU Breakpoints    ##
+             * ---------------------------
+             * The below list specifies addresses where the CPU will be halted, allowing you to break operation and inspect.
+             * You can specify any number of offsets in any order. Because this will only work in DEBUG, and is evaluated
+             * during operation with each instruction, having a large number of breakpoints will slow down the CPU
+             */
+            CPUBreakpoints =
+            [
+                //Below would break the CPU at the CS:IP of 0x1:0x100
+                //new(0x1, 0x100)
+            ];
+
+            /* ---------------------------
+             * ##    CPU Debug Ranges   ##
+             * ---------------------------
+             * The below list specifies a list of address ranges where CPU debug information will be logged to the console
+             * for each executed instruction (including register debug information as well). Values must be in START->END
+             * order within their own pair, but pairs can be added to the list in any order.
+             */
+            CPUDebugRanges =
+            [
+                //[
+                //    new FarPtr(0x1, 0xD23),
+                //    new FarPtr(0x1, 0xD59)
+                //],
+                //[
+                //    new FarPtr(0x1, 0x44B),
+                //    new FarPtr(0x1, 0x475)
+                //]
+            ];
+
+            /* ---------------------------
+             * ##    Watched Memory     ##
+             * ---------------------------
+             * The below Dictionary specified the addresses that will be watched for changes between CPU ticks. This will
+             * assist in isolating any issues that might be occurring with memory corruption or in other areas of the code
+             * not currently being debugged.
+             */
+            WatchedVariables =
+            [
+                //{ (new FarPtr(0x9, 0x469), 2), null }
+            ];
+
         }
 
         /// <summary>
@@ -318,38 +371,6 @@ namespace MBBSEmu.CPU
             _currentOperationSize = GetCurrentOperationSize();
 
 #if DEBUG
-            /* ---------------------------
-             * ##    CPU Breakpoints    ##
-             * ---------------------------
-             * The below list specifies addresses where the CPU will be halted, allowing you to break operation and inspect.
-             * You can specify any number of offsets in any order. Because this will only work in DEBUG, and is evaluated
-             * during operation with each instruction, having a large number of breakpoints will slow down the CPU
-             */
-            var CPUBreakpoints = new List<FarPtr>
-            {
-                //Below would break the CPU at the CS:IP of 0x1:0x100
-                //new(0x1, 0x100)
-            };
-
-            /* ---------------------------
-             * ##    CPU Debug Ranges   ##
-             * ---------------------------
-             * The below list specifies a list of address ranges where CPU debug information will be logged to the console
-             * for each executed instruction (including register debug information as well). Values must be in START->END
-             * order within their own pair, but pairs can be added to the list in any order.
-             */
-            var CPUDebugRanges = new List<List<FarPtr>>
-            {
-                //Below would log debug information for the range of CS:IP 0x1:0x100 to 0x1:0x200
-                //new()
-                //{
-                //    new FarPtr(0x1, 0x100),
-                //    new FarPtr(0x1, 0x200)
-                //}
-            };
-
-            //Set this value to TRUE if you want the CPU to break after each instruction
-            var CPUDebugBreak = false;
 
             //Evaluate Breakpoints
             if (CPUBreakpoints.Contains(_currentInstructionPointer))
@@ -368,6 +389,17 @@ namespace MBBSEmu.CPU
             else
             {
                 _showDebug = false;
+            }
+
+            //Evaluate Watched Variables
+            foreach (var (address, length) in WatchedVariables.Keys)
+            {
+                var value = Memory.GetArray(address.Segment, address.Offset, length);
+                if (WatchedVariables[(address, length)] == null || !value.SequenceEqual(WatchedVariables[(address, length)]))
+                {
+                    _logger.Debug($"Value Change @ {address} :: Old: {WatchedVariables[(address, length)]} :: New: {value.ToHexString()}");
+                    WatchedVariables[(address, length)] = value.ToArray();
+                }
             }
 
             _currentInstructionPointer.Offset = Registers.IP;
@@ -1883,7 +1915,7 @@ namespace MBBSEmu.CPU
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
                 // So result becomes 0xDDLL where DD is the value and LL are the lost bits
-                var uresult = (ushort)((((ushort)destination) << 8) >> source);
+                var uresult = (ushort)((destination << 8) >> source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(uresult & 0x80));
 
                 var result = (byte)(uresult >> 8);
@@ -1910,7 +1942,7 @@ namespace MBBSEmu.CPU
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
                 // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
-                var uresult = (uint)((((uint)destination) << 16) >> source);
+                var uresult = ((uint)destination << 16) >> source;
                 Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(uresult & 0x8000));
 
                 var result = (ushort)(uresult >> 16);
@@ -1950,7 +1982,7 @@ namespace MBBSEmu.CPU
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
                 // So result becomes 0xDDLL where DD is the value and LL are the lost bits
-                var uresult = (ushort)((((ushort)destination) << 8) >> source);
+                var uresult = (ushort)((destination << 8) >> source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.ShiftRight, (byte)(uresult & 0x80));
 
                 var result = (byte)(uresult >> 8);
@@ -1973,7 +2005,7 @@ namespace MBBSEmu.CPU
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
                 // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
-                var uresult = (uint)((((uint)destination) << 16) >> source);
+                var uresult = ((uint)destination << 16) >> source;
                 Flags_EvaluateCarry(EnumArithmeticOperation.ShiftRight, (ushort)(uresult & 0x8000));
 
                 var result = (ushort)(uresult >> 16);
@@ -3562,8 +3594,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldcw()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-            var newControlWord = Memory.GetWord(Registers.DS, offset);
+            var newControlWord = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.None);
 
             Registers.Fpu.ControlWord = newControlWord;
         }
@@ -3604,7 +3635,7 @@ namespace MBBSEmu.CPU
             }
 
             //Round Value from FPU
-            valueFromFpu = Math.Round(valueFromFpu, MidpointRounding.AwayFromZero);
+            valueFromFpu = Math.Round(valueFromFpu, Registers.Fpu.GetRoundingControl());
 
             //Safely Cast it to 32-bit Signed Integer
             int valueToSave;
@@ -4172,7 +4203,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Frndint()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Round(FpuStack[Registers.Fpu.GetStackTop()], MidpointRounding.AwayFromZero);
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Round(FpuStack[Registers.Fpu.GetStackTop()], Registers.Fpu.GetRoundingControl());
         }
 
         /// <summary>
