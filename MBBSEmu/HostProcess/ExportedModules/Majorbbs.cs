@@ -156,7 +156,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("INPLEN", sizeof(ushort));
             Module.Memory.AllocateVariable("USRNUM", 0x2);
             var usraccPointer = Module.Memory.AllocateVariable(nameof(UserAccount), (ushort)(UserAccount.Size * _numberOfChannels), true);
-            var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
+            var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", FarPtr.Size);
             Module.Memory.SetArray(usaptrPointer, usraccPointer.Data);
 
             var usrExtPointer = Module.Memory.AllocateVariable(nameof(ExtUser), (ushort)(ExtUser.Size * _numberOfChannels), true);
@@ -210,7 +210,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("EURMSK", 1);
             Module.Memory.SetByte("EURMSK", (byte)0x7F);
             Module.Memory.AllocateVariable("FSDSCB", 82, true);
-            Module.Memory.AllocateVariable("BB", 4); //pointer for current btrieve struct
+            Module.Memory.AllocateVariable("BB", FarPtr.Size); //pointer for current btrieve struct
             Module.Memory.AllocateVariable("FSDEMG", 80); //error message for FSD
             Module.Memory.AllocateVariable("SYSKEY", 6, true);
             Module.Memory.SetArray("SYSKEY", Encoding.ASCII.GetBytes("SYSOP\0"));
