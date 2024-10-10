@@ -397,7 +397,7 @@ namespace MBBSEmu.CPU
                 var value = Memory.GetArray(address.Segment, address.Offset, length);
                 if (WatchedVariables[(address, length)] == null || !value.SequenceEqual(WatchedVariables[(address, length)]))
                 {
-                    _logger.Debug($"Value Change @ {address} :: Old: {WatchedVariables[(address, length)]} :: New: {value.ToHexString()}");
+                    _logger.Debug($"Value Change @ {address} :: Old: {WatchedVariables[(address, length)]} :: New: {new ReadOnlySpan<byte>(value.ToArray()).ToHexString()}");
                     WatchedVariables[(address, length)] = value.ToArray();
                 }
             }
