@@ -69,7 +69,7 @@ namespace MBBSEmu.HostProcess.Structs
 
                 }
                 //Going from Memory to Local
-                else if (_channelNumber > 0 && value == -1)
+                else if (_channelNumber > -1 && value == -1)
                 {
                     //Get the pointer to the specified Struct by Variable Name of the same name as the Struct
                     _structPointer = _memoryCore.GetVariablePointer(StructName);
