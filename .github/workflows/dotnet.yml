@@ -65,43 +65,43 @@ jobs:
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
 
     - name: Upload win-x64 Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-win-x64-${{ env.BUILD_VERSION }}
         path: output-win-x64/*
         
     - name: Create win-x86 Artifact
-      uses: aactions/upload-artifact@4.6.2
+      uses: aactions/upload-artifact@4.6
       with:
         name: mbbsemu-win-x86-${{ env.BUILD_VERSION }}
         path: output-win-x86/*
         
     - name: Create win-arm64 Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-win-arm64-${{ env.BUILD_VERSION }}
         path: output-win-arm64/*
         
     - name: Create linux-x64 Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-linux-x64-${{ env.BUILD_VERSION }}
         path: output-linux-x64/*
         
     - name: Create linux-arm Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-linux-arm-${{ env.BUILD_VERSION }}
         path: output-linux-arm/*
 
     - name: Create osx-x64 Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-osx-x64-${{ env.BUILD_VERSION }}
         path: output-osx-x64/*
         
     - name: Create osx-arm64 Artifact
-      uses: actions/upload-artifact@4.6.2
+      uses: actions/upload-artifact@4.6
       with:
         name: mbbsemu-osx-arm64-${{ env.BUILD_VERSION }}
         path: output-osx-arm64/*
