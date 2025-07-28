@@ -71,7 +71,7 @@ jobs:
         path: output-win-x64/*
         
     - name: Create win-x86 Artifact
-      uses: aactions/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: mbbsemu-win-x86-${{ env.BUILD_VERSION }}
         path: output-win-x86/*
