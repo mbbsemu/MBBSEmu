@@ -134,7 +134,7 @@ namespace MBBSEmu.Session.Rlogin
                      return (null, 0);
 
                 // Fix an issue with RLogin clients that sends a 0 byte at the end of the packet
-                if (clientData[bytesReceived - 1] == 0)
+                if (bytesReceived > 1 && clientData[bytesReceived - 1] == 0)
                 {
                     bytesReceived--;
                 }
