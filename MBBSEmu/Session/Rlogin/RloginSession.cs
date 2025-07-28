@@ -133,7 +133,14 @@ namespace MBBSEmu.Session.Rlogin
                  if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
                      return (null, 0);
 
-                 return (clientData, bytesReceived);
+                // Fix an issue with RLogin clients that sends a 0 byte at the end of the packet
+                _logger.Debug("RLogin -- ClientData Received: " + BitConverter.ToString(clientData, 0, bytesReceived));
+                if (clientData[bytesReceived - 1] == 0)
+                {
+                    bytesReceived--;
+                }
+
+                return (clientData, bytesReceived);
              }
 
              for (var i = 0; i < bytesReceived; ++i)
