@@ -11,9 +11,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Get Current Time
       uses: josStorer/get-current-time@v2.0.2
@@ -28,9 +26,9 @@ jobs:
         echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
     - uses: actions/checkout@v3
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
     - name: Restore dependencies
       run: dotnet restore
       
