@@ -647,12 +647,15 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessLONROU(SessionBase session)
         {
-            session.OutputEnabled = _configuration.ModuleDoLoginRoutine;
-
-            CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+            // Only call lonrou if DoLoginRoutine is enabled
+            // Previously we called it but just disabled output, but this causes
+            // cross-module state corruption when modules call functions like DosGetSegDesc
+            if (_configuration.ModuleDoLoginRoutine)
+            {
+                CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+            }
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
-            session.OutputEnabled = true;
         }
 
         /// <summary>

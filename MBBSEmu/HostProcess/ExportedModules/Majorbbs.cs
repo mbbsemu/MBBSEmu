@@ -602,6 +602,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 513: //RSTWIN -- restore window parameters (local screen)
                 case 82: //BAUDAT -- Set color attribute based on baud, ignoring as ANSI is always on
                 case 549: //SHOCHL -- Show legend for channel with any attribute, ignoring
+                case 598: //TELL -- Send message to another user, stub for now
                     break;
                 case 73:
                     applyem();
