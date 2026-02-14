@@ -276,23 +276,25 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void UpgradeDatabaseFromVersion1To2()
         {
-            var transaction = Connection.BeginTransaction();
-            // creates the missing triggers
-            var keys = LoadSqliteKeys(transaction);
-            CreateSqliteTriggers(transaction, keys.Values);
-
-            // and bump the version
-            // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
-            cmd.ExecuteNonQuery();
+            using var transaction = Connection.BeginTransaction();
 
             try
             {
+                // creates the missing triggers
+                var keys = LoadSqliteKeys(transaction);
+                CreateSqliteTriggers(transaction, keys.Values);
+
+                // and bump the version
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
+                using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
+                cmd.ExecuteNonQuery();
+
                 transaction.Commit();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                transaction.Rollback();
+                SafeRollback(transaction, "UpgradeDatabaseFromVersion1To2");
+                throw new InvalidOperationException("Failed to upgrade sqlite DB from version 1 to 2", ex);
             }
         }
 
@@ -1052,50 +1054,51 @@ namespace MBBSEmu.Btrieve
         {
             using var transaction = Connection.BeginTransaction();
 
-            string insertSql;
-            if (Keys.Count > 0)
-            {
-                var sb = new StringBuilder("INSERT INTO data_t(data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
-                sb.Append(") VALUES(@data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
-                sb.Append(");");
-                insertSql = sb.ToString();
-            }
-            else
-            {
-                insertSql = "INSERT INTO data_t(data) VALUES (@data)";
-            }
-
-            // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            using var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
-            insertCmd.Prepare();
-
-            foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
-            {
-                insertCmd.Parameters.Clear();
-                insertCmd.Parameters.AddWithValue("@data", record.Data);
-                foreach (var key in btrieveFile.Keys.Values)
-                    insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
-                        key.ExtractKeyInRecordToSqliteObject(record.Data));
-
-                try
-                {
-                    insertCmd.ExecuteNonQuery();
-                }
-                catch (SqliteException ex)
-                {
-                    _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
-                }
-            }
-
             try
             {
+                string insertSql;
+                if (Keys.Count > 0)
+                {
+                    var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                    sb.Append(") VALUES(@data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                    sb.Append(");");
+                    insertSql = sb.ToString();
+                }
+                else
+                {
+                    insertSql = "INSERT INTO data_t(data) VALUES (@data)";
+                }
+
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
+                using var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
+                insertCmd.Prepare();
+
+                foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
+                {
+                    insertCmd.Parameters.Clear();
+                    insertCmd.Parameters.AddWithValue("@data", record.Data);
+                    foreach (var key in btrieveFile.Keys.Values)
+                        insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
+                            key.ExtractKeyInRecordToSqliteObject(record.Data));
+
+                    try
+                    {
+                        insertCmd.ExecuteNonQuery();
+                    }
+                    catch (SqliteException ex)
+                    {
+                        _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
+                    }
+                }
+
                 transaction.Commit();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                transaction.Rollback();
+                SafeRollback(transaction, "CreateSqliteDataTable");
+                throw new InvalidOperationException($"Failed to commit imported data for {FullPath}", ex);
             }
         }
 

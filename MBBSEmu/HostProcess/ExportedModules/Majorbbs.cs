@@ -1615,14 +1615,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var sourcePointer = GetParameterPointer(2);
 
-            var inputBuffer = Module.Memory.GetString(sourcePointer);
-
-            if (inputBuffer[0] == 0x0 || sourcePointer == FarPtr.Empty)
+            if (sourcePointer == FarPtr.Empty)
             {
                 Module.Memory.SetByte(destinationPointer, 0);
 #if DEBUG
                 _logger.Warn($"Source ({sourcePointer}) is NULL");
 #endif
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+
+            var inputBuffer = Module.Memory.GetString(sourcePointer);
+
+            if (inputBuffer[0] == 0x0)
+            {
+                Module.Memory.SetByte(destinationPointer, 0);
             }
             else
             {
