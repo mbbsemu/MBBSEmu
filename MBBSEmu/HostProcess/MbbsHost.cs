@@ -240,13 +240,16 @@ namespace MBBSEmu.HostProcess
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
+            var modulesToRemove = _modules.Values
+                .Where(m => m.MainModuleDll.EntryPoints.Count == 1 && (bool)m.ModuleConfig.ModuleEnabled)
+                .Select(m => m.ModuleIdentifier)
+                .ToList();
+
+            foreach (var moduleIdentifier in modulesToRemove)
             {
-                Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
-                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
-                _modules.Remove(value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
-                    _exportedFunctions.Remove(e);
+                Logger.Error($"{moduleIdentifier} not properly initialized, removing");
+                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == moduleIdentifier);
+                RemoveModuleArtifacts(moduleIdentifier);
             }
 
             _isRunning = true;
@@ -461,18 +464,9 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("finrou", module => Logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
 
             //clean up modules
-            foreach (var m in _modules)
+            foreach (var module in _modules.Values.ToList())
             {
-                m.Value.Dispose();
-                _modules.Remove(m.Key);
-
-                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Key)).ToList();
-
-                foreach (var e in exportedFunctionsToRemove)
-                {
-                    _exportedFunctions[e].Dispose();
-                    _exportedFunctions.Remove(e);
-                }
+                RemoveModuleArtifacts(module.ModuleIdentifier);
             }
         }
 
@@ -1106,6 +1100,29 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     Removes a module and all exported-function objects associated with it from the host process.
+        /// </summary>
+        /// <param name="moduleIdentifier"></param>
+        private void RemoveModuleArtifacts(string moduleIdentifier)
+        {
+            if (_modules.TryGetValue(moduleIdentifier, out var module))
+            {
+                module.Dispose();
+                _modules.Remove(moduleIdentifier);
+            }
+
+            var exportedFunctionsToRemove = _exportedFunctions.Keys
+                .Where(x => x.StartsWith($"{moduleIdentifier}-", StringComparison.Ordinal))
+                .ToList();
+
+            foreach (var exportedFunctionKey in exportedFunctionsToRemove)
+            {
+                _exportedFunctions[exportedFunctionKey].Dispose();
+                _exportedFunctions.Remove(exportedFunctionKey);
+            }
+        }
+
+        /// <summary>
         ///     Runs the specified routine in the specified module
         /// </summary>
         /// <param name="moduleName"></param>
@@ -1461,21 +1478,13 @@ namespace MBBSEmu.HostProcess
             //Save current module config
             var moduleConfigurations = (from m in _modules select m.Value.ModuleConfig).ToList();
 
-            foreach (var m in _modules)
+            foreach (var module in _modules.Values.ToList())
             {
-                var modulePath = m.Value.ModulePath;
+                var modulePath = module.ModulePath;
+                var cleanupCommands = module.Mdf.Cleanup.ToList();
+                RemoveModuleArtifacts(module.ModuleIdentifier);
 
-                m.Value.Dispose();
-                _modules.Remove(m.Value.ModuleIdentifier);
-                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)).ToList();
-
-                foreach (var e in exportedFunctionsToRemove)
-                {
-                    _exportedFunctions[e].Dispose();
-                    _exportedFunctions.Remove(e);
-                }
-
-                foreach (var cleanup in m.Value.Mdf.Cleanup)
+                foreach (var cleanup in cleanupCommands)
                     RunProgram(modulePath, cleanup);
             }
 
