@@ -1,0 +1,32 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -e
+
+user=abc
+group=abc
+mbbsemu="$EMULATOR_PATH"/MBBSEmu
+
+# Set ownership first so all operations create files with correct permissions
+lsiown -R "$user":"$group" "$EMULATOR_PATH" "$CONFIG_PATH"
+chmod a+x "$mbbsemu"
+
+# Copy default config files if they don't exist
+if [[ ! -f "$CONFIG_PATH/appsettings.json" ]]; then
+    echo "Copying default appsettings.json to $CONFIG_PATH"
+    s6-setuidgid "$user" cp "$EMULATOR_PATH/appsettings.json" "$CONFIG_PATH/appsettings.json"
+fi
+
+if [[ ! -f "$CONFIG_PATH/modules.json" ]]; then
+    echo "Creating empty modules.json in $CONFIG_PATH"
+    s6-setuidgid "$user" sh -c 'echo "{\"Modules\": []}" > "$CONFIG_PATH/modules.json"'
+fi
+
+# Initialize database if it doesn't exist (default password: sysop)
+# Run as abc user to avoid permission issues
+if [[ ! -f "$CONFIG_PATH/mbbsemu.db" ]]; then
+    echo "Initializing database with default sysop password..."
+    cd "$CONFIG_PATH"
+    s6-setuidgid "$user" "$mbbsemu" -S "$CONFIG_PATH/appsettings.json" -DBRESET sysop || true
+    echo "Database initialization complete"
+fi
