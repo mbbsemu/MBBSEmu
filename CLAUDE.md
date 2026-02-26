@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MBBSEmu is a cross-platform emulator for running legacy MajorBBS and Worldgroup modules (16-bit NE format DLLs) on modern systems. It emulates both the Galacticomm host environment and an x86-16 processor. Written in C# targeting .NET 9.0.
+MBBSEmu is a cross-platform emulator for running legacy MajorBBS and Worldgroup modules (16-bit NE format DLLs) on modern systems. It emulates both the Galacticomm host environment and an x86-16 processor. Written in C# targeting .NET 10.
 
 ## Build & Test Commands
 
@@ -24,6 +24,30 @@ dotnet test --filter "FullyQualifiedName~MBBSEmu.Tests.CPU.ADD_Tests.ADD_AL_IMM8
 # Publish for a specific platform (e.g., osx-arm64)
 dotnet publish MBBSEmu/MBBSEmu.csproj --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true
 ```
+
+## Docker
+
+Docker provides a consistent build/test/runtime environment without needing a local .NET SDK.
+
+```bash
+# Build and run the service
+cd docker && docker compose up --build       # foreground (see logs)
+cd docker && docker compose up --build -d    # detached
+telnet localhost 2323                        # connect
+
+# Stop the service
+cd docker && docker compose down
+
+# Fast iteration (no image rebuild needed)
+docker/build.sh                              # build only
+docker/test.sh                               # run all tests
+docker/test.sh --filter "FullyQualifiedName~ADD_Tests"  # filtered tests
+
+# Interactive shell in running container
+docker/shell.sh
+```
+
+Config and databases are stored in `docker/config/` (bind-mounted to `/config` in the container). The Dockerfile uses a multi-stage build: build → test → publish → runtime.
 
 ## Solution Structure
 
