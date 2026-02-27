@@ -788,10 +788,10 @@ namespace MBBSEmu.Btrieve
                 currentQuery = new BtrieveQuery(this)
                 {
                     Key = Keys[(ushort)keyNumber],
-                    KeyData = key == null ? null : new byte[key.Length],
+                    KeyData = key.IsEmpty ? null : new byte[key.Length],
                 };
 
-                if (key != null)
+                if (!key.IsEmpty)
                 {
                     Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
                 }
