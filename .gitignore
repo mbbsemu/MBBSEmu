@@ -354,3 +354,8 @@ MigrationBackup/
 
 # VSCode working folder
 .vscode/
+
+# Docker local config (generated at runtime)
+docker/config/
+docker/config-test-*/
+docker/docker-compose.test.yml

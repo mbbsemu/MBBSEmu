@@ -1,0 +1,22 @@
+services:
+  mbbsemu:
+    stop_signal: SIGTERM
+    stop_grace_period: 15s
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runtime
+      args:
+        BUILD_DATE: "${BUILD_DATE:-dev}"
+        BUILD_VERSION: "${BUILD_VERSION:-dev}"
+    image: mbbsemu:local
+    container_name: mbbsemu
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${TELNET_PORT:-2323}:23"
+    volumes:
+      - ./config:/config
+    restart: unless-stopped

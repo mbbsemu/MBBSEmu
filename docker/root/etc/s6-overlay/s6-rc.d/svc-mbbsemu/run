@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+set -x
+
+user=abc
+mbbsemu="$EMULATOR_PATH"/MBBSEmu
+
+cd "$CONFIG_PATH"
+exec s6-setuidgid "$user" "$mbbsemu" -CLI -S "$CONFIG_PATH"/appsettings.json -C "$CONFIG_PATH"/modules.json

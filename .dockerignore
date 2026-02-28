@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Build outputs
+**/bin/
+**/obj/
+**/Debug/
+**/Release/
+
+# Documentation
+*.md
+documents/
+images/
+
+# Test apps (native code, not needed for Docker build)
+TestApps/
+
+# Native Windows DLL project
+wbtrv32/
+
+# Docker local config (user-specific)
+docker/config/
