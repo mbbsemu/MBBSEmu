@@ -21,7 +21,7 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <returns></returns>
         public List<FsdFieldSpec> ParseFieldSpecs(ReadOnlySpan<byte> fieldSpec)
         {
-            if (fieldSpec == null || fieldSpec.Length == 0)
+            if (fieldSpec.Length == 0)
                 throw new Exception("Invalid Field Spec: Cannot be empty/null");
 
             var result = new List<FsdFieldSpec>();
