@@ -6960,7 +6960,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fsdbkg()
         {
             var templatePointer = GetParameterPointer(0);
-            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
             ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(Module.Memory.GetString(templatePointer)));
         }
 
@@ -8311,7 +8311,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", Encoding.ASCII.GetBytes(answersString.ToString()));
 
             //FSDBKG
-            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[0m"); //FSDBBS.C
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
             ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
 
             //FSDEGO
