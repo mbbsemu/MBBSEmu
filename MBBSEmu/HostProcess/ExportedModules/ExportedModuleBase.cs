@@ -870,14 +870,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     continue;
                 }
 
-                //Normal ANSI
+                //Standalone 0x1B (CP437 left arrow glyph, not followed by '[')
+                if (inputSpan[i] == 0x1B && (i + 1 >= inputSpan.Length || inputSpan[i + 1] != '['))
+                {
+                    resultStream.WriteByte(inputSpan[i]);
+                    continue;
+                }
+
+                //Normal ANSI (ESC + '[' + not '[')
                 if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] != '[')
                 {
                     resultStream.WriteByte(inputSpan[i]);
                     continue;
                 }
 
-                //Found IF-ANSI
+                //Found IF-ANSI (ESC + '[[')
                 if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] == '[')
                 {
                     i += 3;
