@@ -117,6 +117,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.SendToClient(new string(' ', field.FieldLength));
             SetCursorPosition(session, field.X, field.Y);
             session.SendToClient(field.Value ?? string.Empty);
+            SetCursorPosition(session, field.X, field.Y); // Reposition cursor to start of field for input
 
             //Set Original Value to be reset upon validation failure
             field.OriginalValue = field.Value;
@@ -487,8 +488,13 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             _fsdFields[session.Channel].SelectedOrdinal--;
 
                             //Keep going until we find a non-readonly field
-                            while (_fsdFields[session.Channel].SelectedField.IsReadOnly)
+                            while (_fsdFields[session.Channel].SelectedOrdinal >= 0 &&
+                                   _fsdFields[session.Channel].SelectedField?.IsReadOnly == true)
                                 _fsdFields[session.Channel].SelectedOrdinal--;
+
+                            //Safety: if we went negative, wrap to 0
+                            if (_fsdFields[session.Channel].SelectedOrdinal < 0)
+                                _fsdFields[session.Channel].SelectedOrdinal = 0;
                             break;
                         }
                     case EnumKeyCodes.CRSDN:
@@ -512,14 +518,23 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             _fsdFields[session.Channel].SelectedOrdinal++;
 
                             //Keep going until we find a non-readonly field
-                            while (_fsdFields[session.Channel].SelectedField.IsReadOnly)
+                            var fieldCount = _fsdFields[session.Channel].Fields.Count;
+                            while (_fsdFields[session.Channel].SelectedOrdinal < fieldCount &&
+                                   _fsdFields[session.Channel].SelectedField?.IsReadOnly == true)
                                 _fsdFields[session.Channel].SelectedOrdinal++;
+
+                            //Safety: if we went past the end, wrap to last valid field
+                            if (_fsdFields[session.Channel].SelectedOrdinal >= fieldCount)
+                                _fsdFields[session.Channel].SelectedOrdinal = fieldCount - 1;
 
                             break;
                         }
                     default:
                         return;
                 }
+
+                if (_fsdFields[session.Channel].SelectedField == null)
+                    return;
 
                 SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                 return;
@@ -538,15 +553,28 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     case EnumFsdFieldType.Text:
                     case EnumFsdFieldType.Numeric:
                         {
-                            //Don't let us input more than the field length
-                            if (_fsdFields[session.Channel].SelectedField.FieldLength == _fsdFields[session.Channel].SelectedField.Value?.Length)
-                                break;
-
                             //If it's numeric, ensure what was entered was in fact a number
                             if (_fsdFields[session.Channel].SelectedField.FsdFieldType == EnumFsdFieldType.Numeric && !char.IsNumber((char)_userInput))
                                 break;
 
+                            //First keystroke clears existing value (like real FSD behavior)
+                            if (_fsdFields[session.Channel].SelectedField.Value == _fsdFields[session.Channel].SelectedField.OriginalValue &&
+                                !string.IsNullOrEmpty(_fsdFields[session.Channel].SelectedField.Value))
+                            {
+                                _fsdFields[session.Channel].SelectedField.Value = string.Empty;
+                                SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
+                            }
+
+                            //Don't let us input more than the field length
+                            if (_fsdFields[session.Channel].SelectedField.FieldLength == _fsdFields[session.Channel].SelectedField.Value?.Length)
+                                break;
+
                             _fsdFields[session.Channel].SelectedField.Value += (char)_userInput;
+
+                            //Echo the character (FSD handles all echo, MbbsHost skips echo for FullScreen states)
+                            session.SendToClient(_fsdFields[session.Channel].SelectedField.FsdFieldType == EnumFsdFieldType.Secret
+                                ? new byte[] { (byte)'*' }
+                                : new[] { (byte)_userInput });
 
                             break;
                         }
@@ -665,10 +693,17 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             _fsdFields[session.Channel].SelectedOrdinal++;
 
                             //Keep going until we find a non-readonly field
-                            while (_fsdFields[session.Channel].SelectedField.IsReadOnly)
+                            var enterFieldCount = _fsdFields[session.Channel].Fields.Count;
+                            while (_fsdFields[session.Channel].SelectedOrdinal < enterFieldCount &&
+                                   _fsdFields[session.Channel].SelectedField?.IsReadOnly == true)
                                 _fsdFields[session.Channel].SelectedOrdinal++;
 
-                            SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
+                            //Safety: if we went past the end, stay on last field
+                            if (_fsdFields[session.Channel].SelectedOrdinal >= enterFieldCount)
+                                _fsdFields[session.Channel].SelectedOrdinal = enterFieldCount - 1;
+
+                            if (_fsdFields[session.Channel].SelectedField != null)
+                                SetFieldActive(session, _fsdFields[session.Channel].SelectedField);
                             return;
                         }
                 }
