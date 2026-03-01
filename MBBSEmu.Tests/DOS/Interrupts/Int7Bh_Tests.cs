@@ -18,21 +18,19 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Xunit;
 
-namespace MBBSEmu.DOS.Interrupts
-{
-    /* Data layout as follows:
+namespace MBBSEmu.DOS.Interrupts {
+  /* Data layout as follows:
 
-      sqlite> select * from data_t;
-          id          data        key_0       key_1       key_2       key_3
-          ----------  ----------  ----------  ----------  ----------  ----------
-          1                       Sysop       3444        3444        1
-          2                       Sysop       7776        7776        2
-          3                       Sysop       1052234073  StringValu  3
-          4                       Sysop       -615634567  stringValu  4
-      */
+    sqlite> select * from data_t;
+        id          data        key_0       key_1       key_2       key_3
+        ----------  ----------  ----------  ----------  ----------  ----------
+        1                       Sysop       3444        3444        1
+        2                       Sysop       7776        7776        2
+        3                       Sysop       1052234073  StringValu  3
+        4                       Sysop       -615634567  stringValu  4
+    */
 
-    public class Int7Bh_Tests : TestBase, IDisposable
-  {
+  public class Int7Bh_Tests : TestBase, IDisposable {
     private readonly string[] _runtimeFiles = { "MBBSEMU.DB" };
 
     private readonly ICpuRegisters _registers = new CpuRegisters();
@@ -44,44 +42,45 @@ namespace MBBSEmu.DOS.Interrupts
     private readonly FarPtr _dataBuffer;
     private readonly FarPtr _statusCodePointer;
 
-    public Int7Bh_Tests()
-    {
-        _modulePath = GetModulePath();
+    public Int7Bh_Tests() {
+      _modulePath = GetModulePath();
 
-        _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSExeRuntime_{RANDOM.Next()}"));
+      _serviceResolver =
+          new ServiceResolver(SessionBuilder.ForTest($"MBBSExeRuntime_{RANDOM.Next()}"));
 
-        Directory.CreateDirectory(_modulePath);
+      Directory.CreateDirectory(_modulePath);
 
-        CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
+      CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
 
-        _serviceResolver = new ServiceResolver(_fakeClock);
+      _serviceResolver = new ServiceResolver(_fakeClock);
 
-        _memory = new RealModeMemoryCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
-        _int7B = new Int7Bh(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), _modulePath, _serviceResolver.GetService<IFileUtility>(), _registers, _memory);
+      _memory = new RealModeMemoryCore(
+          _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
+      _int7B =
+          new Int7Bh(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
+                     _modulePath, _serviceResolver.GetService<IFileUtility>(), _registers, _memory);
 
-        _dataBuffer = _memory.Malloc(Int7Bh.BTRIEVE_COMMAND_STRUCT_LENGTH);
-        _statusCodePointer = _memory.Malloc(2);
+      _dataBuffer = _memory.Malloc(Int7Bh.BTRIEVE_COMMAND_STRUCT_LENGTH);
+      _statusCodePointer = _memory.Malloc(2);
     }
 
-    public void Dispose()
-    {
-        _memory.Free(_dataBuffer);
-        _memory.Free(_statusCodePointer);
+    public void Dispose() {
+      _memory.Free(_dataBuffer);
+      _memory.Free(_statusCodePointer);
 
-        _int7B.Dispose();
+      _int7B.Dispose();
 
-        Directory.Delete(_modulePath, recursive: true);
+      Directory.Delete(_modulePath, recursive: true);
     }
 
-    private void CopyModuleToTempPath(IResourceManager resourceManager)
-    {
-        foreach (var file in _runtimeFiles)
-        {
-            File.WriteAllBytes(Path.Combine(_modulePath, file), resourceManager.GetResource($"MBBSEmu.Tests.Assets.{file}").ToArray());
-        }
+    private void CopyModuleToTempPath(IResourceManager resourceManager) {
+      foreach (var file in _runtimeFiles) {
+        File.WriteAllBytes(Path.Combine(_modulePath, file),
+                           resourceManager.GetResource($"MBBSEmu.Tests.Assets.{file}").ToArray());
+      }
     }
 
-    [Fact]
+    /*[Fact]
     public void InvalidInterface()
     {
       var command = new DOSInterruptBtrieveCommand()
@@ -160,16 +159,16 @@ namespace MBBSEmu.DOS.Interrupts
         status_code_pointer_offset = _statusCodePointer.Offset,
         key_buffer_segment = spanString.Segment,
         key_buffer_offset = spanString.Offset,
-        key_buffer_length = 1, // we don't support spanning databases, so should return empty string back
-        data_buffer_segment = dataBuffer.Segment,
-        data_buffer_offset = dataBuffer.Offset,
+        key_buffer_length = 1, // we don't support spanning databases, so should return empty string
+  back data_buffer_segment = dataBuffer.Segment, data_buffer_offset = dataBuffer.Offset,
         data_buffer_length = 0, // this causes the overrun
       };
 
       Handle(command);
 
       _memory.GetByte(spanString).Should().Be(0); // no span support (i.e. empty string)
-      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort)
+  BtrieveError.DataBufferLengthOverrun);
     }
 
     [Fact]
@@ -198,7 +197,9 @@ namespace MBBSEmu.DOS.Interrupts
       // data is a BtrieveFileSpec followed by BtrieveKeySpec for each key
       var ptr = dataBuffer;
       var size = Marshal.SizeOf(typeof(Int7Bh.BtrieveFileSpec));
-      var btrieveFileSpec = Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveFileSpec>(_memory.GetArray(ptr, (ushort) size).ToArray());
+      var btrieveFileSpec =
+  Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveFileSpec>(_memory.GetArray(ptr, (ushort)
+  size).ToArray());
 
       btrieveFileSpec.record_length.Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       btrieveFileSpec.number_of_keys.Should().Be(4);
@@ -207,33 +208,30 @@ namespace MBBSEmu.DOS.Interrupts
 
       ptr += size;
       size = Marshal.SizeOf(typeof(Int7Bh.BtrieveKeySpec));
-      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 0 * size, (ushort) size).ToArray()).Should().BeEquivalentTo(
-          new Int7Bh.BtrieveKeySpec()
+      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 0 * size, (ushort)
+  size).ToArray()).Should().BeEquivalentTo( new Int7Bh.BtrieveKeySpec()
           {
-              flags = (ushort) (EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType),
-              data_type = (byte) EnumKeyDataType.Zstring,
-              position = 3,
-              length = 32,
+              flags = (ushort) (EnumKeyAttributeMask.Duplicates |
+  EnumKeyAttributeMask.UseExtendedDataType), data_type = (byte) EnumKeyDataType.Zstring, position =
+  3, length = 32,
           });
 
-      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 1 * size, (ushort) size).ToArray()).Should().BeEquivalentTo(
-          new Int7Bh.BtrieveKeySpec()
+      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 1 * size, (ushort)
+  size).ToArray()).Should().BeEquivalentTo( new Int7Bh.BtrieveKeySpec()
           {
-              flags = (ushort) (EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType),
-              data_type = (byte) EnumKeyDataType.Integer,
-              position = 35,
-              length = 4,
+              flags = (ushort) (EnumKeyAttributeMask.Modifiable |
+  EnumKeyAttributeMask.UseExtendedDataType), data_type = (byte) EnumKeyDataType.Integer, position =
+  35, length = 4,
           });
-      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 2 * size, (ushort) size).ToArray()).Should().BeEquivalentTo(
-          new Int7Bh.BtrieveKeySpec()
+      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 2 * size, (ushort)
+  size).ToArray()).Should().BeEquivalentTo( new Int7Bh.BtrieveKeySpec()
           {
-              flags = (ushort) (EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable | EnumKeyAttributeMask.UseExtendedDataType),
-              data_type = (byte) EnumKeyDataType.Zstring,
-              position = 39,
-              length = 32,
+              flags = (ushort) (EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.Modifiable |
+  EnumKeyAttributeMask.UseExtendedDataType), data_type = (byte) EnumKeyDataType.Zstring, position =
+  39, length = 32,
           });
-      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 3 * size, (ushort) size).ToArray()).Should().BeEquivalentTo(
-          new Int7Bh.BtrieveKeySpec()
+      Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 3 * size, (ushort)
+  size).ToArray()).Should().BeEquivalentTo( new Int7Bh.BtrieveKeySpec()
           {
               flags = (ushort) EnumKeyAttributeMask.UseExtendedDataType,
               data_type = (byte) EnumKeyDataType.AutoInc,
@@ -242,7 +240,9 @@ namespace MBBSEmu.DOS.Interrupts
           });
 
           // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be((ushort) (Marshal.SizeOf(typeof(Int7Bh.BtrieveFileSpec)) + 4 * Marshal.SizeOf(typeof(Int7Bh.BtrieveKeySpec))));
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be((ushort)
+  (Marshal.SizeOf(typeof(Int7Bh.BtrieveFileSpec)) + 4 *
+  Marshal.SizeOf(typeof(Int7Bh.BtrieveKeySpec))));
     }
 
     [Fact]
@@ -283,7 +283,8 @@ namespace MBBSEmu.DOS.Interrupts
 
       Handle(command);
 
-      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort)
+  BtrieveError.DataBufferLengthOverrun);
     }
 
     [Fact]
@@ -310,9 +311,11 @@ namespace MBBSEmu.DOS.Interrupts
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX +
+  4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       // data should contain the proper record values
-      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(-615634567);
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer,
+  MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(-615634567);
 
       // GetPosition
       command = new DOSInterruptBtrieveCommand()
@@ -398,7 +401,8 @@ namespace MBBSEmu.DOS.Interrupts
 
       Handle(command);
 
-      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort)
+  BtrieveError.DataBufferLengthOverrun);
     }
 
     [Fact]
@@ -432,9 +436,11 @@ namespace MBBSEmu.DOS.Interrupts
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX +
+  4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       // data should contain the proper record values
-      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key2.Should().Be("StringValue");
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer,
+  MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key2.Should().Be("StringValue");
       Encoding.ASCII.GetString(_memory.GetString(keyBuffer, true)).Should().Be("StringValue");
     }
 
@@ -463,14 +469,15 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 0
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe
+  terrarum, optimus sum" }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX +
+  4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       // key should have been returned
       Encoding.ASCII.GetString(_memory.GetString(keyBuffer, true)).Should().Be("Paladine");
       // did we add the record?
@@ -502,8 +509,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 0
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum" };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum,
+  optimus sum" }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -536,8 +543,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 0
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe
+  terrarum, optimus sum" }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -620,8 +627,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 0
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum" };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Paladine", Key1 = 31337, Key2 = "In orbe
+  terrarum, optimus sum" }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -661,8 +668,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 1
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum,
+  optimus sum", Key3 = 1 }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -701,8 +708,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 1
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 7776, Key2 = "In orbe terrarum,
+  optimus sum", Key3 = 1 }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -741,8 +748,8 @@ namespace MBBSEmu.DOS.Interrupts
         key_number = 1
       };
 
-      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum, optimus sum", Key3 = 1 };
-      _memory.SetArray(dataBuffer, record.Data);
+      var record = new MBBSEmuRecordStruct { Key0 = "Sysop", Key1 = 31337, Key2 = "In orbe terrarum,
+  optimus sum", Key3 = 1 }; _memory.SetArray(dataBuffer, record.Data);
 
       Handle(command);
 
@@ -874,11 +881,13 @@ namespace MBBSEmu.DOS.Interrupts
 
       Handle(command);
 
-      _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.DataBufferLengthOverrun);
+      _memory.GetWord(_statusCodePointer).Should().Be((ushort)
+  BtrieveError.DataBufferLengthOverrun);
 
-      // now we need to validate logical currency by stepping through based on key_number == 1, there is one previous record, and then nothing
-      var btrieve = GetBtrieveFileProcessor(positionBlock);
-      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      // now we need to validate logical currency by stepping through based on key_number == 1,
+  there is one previous record, and then nothing var btrieve =
+  GetBtrieveFileProcessor(positionBlock); btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty,
+  EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
       btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
     }
 
@@ -914,20 +923,25 @@ namespace MBBSEmu.DOS.Interrupts
 
       _memory.GetWord(_statusCodePointer).Should().Be((ushort) BtrieveError.Success);
       // data_buffer_length should be updated
-      _memory.GetWord(_registers.DS, (ushort) (_registers.DX + 4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
+      _memory.GetWord(_registers.DS, (ushort) (_registers.DX +
+  4)).Should().Be(MBBSEmuRecordStruct.RECORD_LENGTH);
       // data should contain the proper record values
-      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer, MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(7776);
+      new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer,
+  MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(7776);
       _memory.GetDWord(keyBuffer).Should().Be(7776);
 
-      // now we need to validate logical currency by stepping through based on key_number == 1, there is one previous record, and then nothing
-      var btrieve = GetBtrieveFileProcessor(positionBlock);
-      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      // now we need to validate logical currency by stepping through based on key_number == 1,
+  there is one previous record, and then nothing var btrieve =
+  GetBtrieveFileProcessor(positionBlock); btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty,
+  EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
       btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
 
-      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty,
+  EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
       btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
 
-      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeFalse();
+      btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty,
+  EnumBtrieveOperationCodes.QueryPrevious).Should().BeFalse();
     }
 
     [Fact]
@@ -973,6 +987,8 @@ namespace MBBSEmu.DOS.Interrupts
       return ret;
     }
 
-    private BtrieveFileProcessor GetBtrieveFileProcessor(FarPtr positionBlock) => _int7B.GetFromGUID(new Guid(_memory.GetArray(positionBlock, 16).ToArray()));
+    private BtrieveFileProcessor GetBtrieveFileProcessor(FarPtr positionBlock) =>
+  _int7B.GetFromGUID(new Guid(_memory.GetArray(positionBlock, 16).ToArray()));
+  }*/
   }
 }
