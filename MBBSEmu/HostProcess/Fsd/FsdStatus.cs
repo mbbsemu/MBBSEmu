@@ -14,9 +14,14 @@ namespace MBBSEmu.HostProcess.Fsd
         /// </summary>
         public FsdFieldSpec SelectedField
         {
-            get => Fields[SelectedOrdinal]; 
-            set => Fields[SelectedOrdinal] = value; 
-
+            get => SelectedOrdinal >= 0 && SelectedOrdinal < Fields.Count
+                ? Fields[SelectedOrdinal]
+                : null;
+            set
+            {
+                if (SelectedOrdinal >= 0 && SelectedOrdinal < Fields.Count)
+                    Fields[SelectedOrdinal] = value;
+            }
         }
 
         /// <summary>

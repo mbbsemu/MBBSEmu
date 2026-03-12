@@ -170,7 +170,14 @@ namespace MBBSEmu.HostProcess.Fsd
                 //We're past the field now, reset the character
                 foundFieldCharacter = '\xFF';
 
-                //If it's a new line, increment Y and set X back to -1
+                //Handle carriage return - skip it (it's typically part of \r\n and takes 0 columns)
+                if (c == '\r')
+                {
+                    currentX--; //Undo the X increment we just did
+                    continue;
+                }
+
+                //If it's a new line, increment Y and set X back to 0
                 if (c == '\n')
                 {
                     currentY++;
@@ -224,14 +231,35 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <param name="fields"></param>
         public void SetAnswers(List<string> answers, List<FsdFieldSpec> fields)
         {
-            for (var i = 0; i < fields.Count; i++)
+            if (answers == null || fields == null || answers.Count == 0 || fields.Count == 0)
+                return;
+
+            var fieldsByName = fields
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .GroupBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+            for (var i = 0; i < answers.Count; i++)
             {
-                if (answers[i].IndexOf("=", StringComparison.Ordinal) == -1)
+                if (string.IsNullOrWhiteSpace(answers[i]))
                     continue;
 
-                var answerComponents = answers[i].Split('=');
+                var delimiterIndex = answers[i].IndexOf('=', StringComparison.Ordinal);
+                if (delimiterIndex <= 0)
+                    continue;
 
-                fields.First(x => x.Name == answerComponents[0]).Value = answerComponents[1];
+                var answerName = answers[i].Substring(0, delimiterIndex).Trim();
+                if (string.IsNullOrWhiteSpace(answerName))
+                    continue;
+
+                if (!fieldsByName.TryGetValue(answerName, out var matchingField))
+                    continue;
+
+                var answerValue = delimiterIndex + 1 < answers[i].Length
+                    ? answers[i].Substring(delimiterIndex + 1)
+                    : string.Empty;
+
+                matchingField.Value = answerValue;
             }
         }
 
@@ -296,11 +324,20 @@ namespace MBBSEmu.HostProcess.Fsd
         /// <returns></returns>
         public byte[] ExtractFieldAnsi(ReadOnlySpan<byte> fieldBytes)
         {
-            //Loop backwards until we find the ANSI control character and grab everything after it
+            //Loop backwards until we find the ANSI control character
             for (var i = fieldBytes.Length - 1; i > 0; i--)
             {
                 if (fieldBytes[i] == 0x1B)
-                    return fieldBytes.Slice(i, fieldBytes.Length - i).ToArray();
+                {
+                    //Find the 'm' that ends the ANSI sequence (e.g., ESC[37m)
+                    for (var j = i + 1; j < fieldBytes.Length; j++)
+                    {
+                        if (fieldBytes[j] == 'm')
+                            return fieldBytes.Slice(i, j - i + 1).ToArray();
+                    }
+                    //No 'm' found - not a valid color/formatting sequence
+                    return null;
+                }
             }
 
             return null;
@@ -339,6 +376,8 @@ namespace MBBSEmu.HostProcess.Fsd
 
         /// <summary>
         ///     Strips ANSI Sequences as well as any character with an ASCII code > 127
+        ///     Extended ASCII (CP437) is replaced with spaces so they count as 1 column
+        ///     (they render as 1-column-wide UTF-8 characters when CP437 conversion is enabled)
         /// </summary>
         /// <param name="inputBuffer"></param>
         /// <returns></returns>
@@ -346,11 +385,13 @@ namespace MBBSEmu.HostProcess.Fsd
         {
             using var msResult = new MemoryStream(inputBuffer.Length);
 
-            //Replace Extended ASCII with spaces
+            //Replace Extended ASCII with spaces (each renders as 1 column with CP437→UTF-8 conversion)
             foreach (var c in inputBuffer)
-                msResult.WriteByte(c < 127 ? c : (byte)0x20);
+                msResult.WriteByte(c < 128 ? c : (byte)0x20);
 
-            var templateWithoutAnsi = new Regex(@"\x1b\[[0-9;]*m").Replace(Encoding.ASCII.GetString(msResult.ToArray()), string.Empty);
+            //Strip ALL ANSI escape sequences, not just color (m) sequences
+            //This includes cursor positioning (H/f), clear (J/K), cursor movement (A/B/C/D), etc.
+            var templateWithoutAnsi = new Regex(@"\x1b\[[0-9;]*[A-Za-z]").Replace(Encoding.ASCII.GetString(msResult.ToArray()), string.Empty);
 
             return Encoding.ASCII.GetBytes(templateWithoutAnsi);
         }

@@ -950,6 +950,11 @@ namespace MBBSEmu.HostProcess
                             if (session.TransparentMode)
                                 break;
 
+                            //FSD handles its own echo
+                            if (session.SessionState == EnumSessionState.InFullScreenDisplay ||
+                                session.SessionState == EnumSessionState.InFullScreenEditor)
+                                break;
+
                             if (session.Status.Count == 0 || session.GetStatus() == EnumUserStatus.UNUSED || session.GetStatus() == EnumUserStatus.RINGING ||
                                session.GetStatus() == EnumUserStatus.POLLING_STATUS)
                             {
