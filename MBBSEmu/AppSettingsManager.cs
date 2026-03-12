@@ -69,6 +69,7 @@ namespace MBBSEmu
         public bool TelnetEnabled => GetAppSettingsFromConfiguration<bool>("Telnet.Enabled");
         public int TelnetPort => GetAppSettingsFromConfiguration<int>("Telnet.Port");
         public bool TelnetHeartbeat => GetAppSettingsFromConfiguration<bool>("Telnet.Heartbeat");
+        public bool TelnetConvertCP437ToUTF8 => GetAppSettingsFromConfiguration<bool>("Telnet.ConvertCP437ToUTF8");
         public bool RloginEnabled => GetAppSettingsFromConfiguration<bool>("Rlogin.Enabled");
         public int RloginPort => GetAppSettingsFromConfiguration<int>("Rlogin.Port");
         public string RloginRemoteIP => GetIPAppSettings("Rlogin.RemoteIP");
@@ -153,6 +154,10 @@ namespace MBBSEmu
                         _logger.Warn($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
                         return (T)value;
                     case "Telnet.Heartbeat":
+                        value = false;
+                        _logger.Warn($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
+                        return (T)value;
+                    case "Telnet.ConvertCP437ToUTF8":
                         value = false;
                         _logger.Warn($"{valueName} not specified in {Program._settingsFileName ?? Program.DefaultEmuSettingsFilename} -- setting default value: {value}");
                         return (T)value;
