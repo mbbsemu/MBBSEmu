@@ -602,6 +602,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 513: //RSTWIN -- restore window parameters (local screen)
                 case 82: //BAUDAT -- Set color attribute based on baud, ignoring as ANSI is always on
                 case 549: //SHOCHL -- Show legend for channel with any attribute, ignoring
+                case 598: //TELL -- Send message to another user, stub for now
                     break;
                 case 73:
                     applyem();
@@ -1614,18 +1615,68 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var destinationPointer = GetParameterPointer(0);
             var sourcePointer = GetParameterPointer(2);
 
-            var inputBuffer = Module.Memory.GetString(sourcePointer);
-
-            if (inputBuffer[0] == 0x0 || sourcePointer == FarPtr.Empty)
+            if (sourcePointer == FarPtr.Empty)
             {
                 Module.Memory.SetByte(destinationPointer, 0);
 #if DEBUG
                 _logger.Warn($"Source ({sourcePointer}) is NULL");
 #endif
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+
+            var inputBuffer = Module.Memory.GetString(sourcePointer);
+
+            if (inputBuffer[0] == 0x0)
+            {
+                Module.Memory.SetByte(destinationPointer, 0);
             }
             else
             {
-                Module.Memory.SetArray(destinationPointer, inputBuffer);
+                try
+                {
+                    Module.Memory.SetArray(destinationPointer, inputBuffer);
+                }
+                catch (Exception ex) when (ex is ArgumentException or IndexOutOfRangeException)
+                {
+                    // Real DOS strcpy() would overflow into adjacent memory.
+                    // In emulation, copy as much as possible in-segment to avoid crashing.
+                    var copied = 0;
+                    for (; copied < inputBuffer.Length; copied++)
+                    {
+                        var targetOffset = destinationPointer.Offset + copied;
+                        if (targetOffset > ushort.MaxValue)
+                            break;
+
+                        try
+                        {
+                            Module.Memory.SetByte(destinationPointer.Segment, (ushort)targetOffset, inputBuffer[copied]);
+                        }
+                        catch (Exception innerEx) when (innerEx is ArgumentException or ArgumentOutOfRangeException or IndexOutOfRangeException)
+                        {
+                            break;
+                        }
+                    }
+
+                    // Ensure NUL-termination when truncation occurs and we wrote at least one byte.
+                    if (copied > 0 && (copied >= inputBuffer.Length || inputBuffer[copied - 1] != 0))
+                    {
+                        var terminateOffset = destinationPointer.Offset + copied - 1;
+                        if (terminateOffset <= ushort.MaxValue)
+                        {
+                            try
+                            {
+                                Module.Memory.SetByte(destinationPointer.Segment, (ushort)terminateOffset, 0);
+                            }
+                            catch (Exception)
+                            {
+                                // Segment not writable at all - nothing more we can do
+                            }
+                        }
+                    }
+
+                    _logger.Warn(ex, $"({Module.ModuleIdentifier}) strcpy overflow truncated at {destinationPointer}; copied {copied} of {inputBuffer.Length} bytes");
+                }
 #if DEBUG
                 //_logger.Debug($"({Module.ModuleIdentifier}) Copied {inputBuffer.Length} bytes from {sourcePointer} to {destinationPointer} -> {Encoding.ASCII.GetString(inputBuffer)}");
 #endif

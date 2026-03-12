@@ -37,5 +37,35 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Verify Results
             Assert.Equal(expectedDestination, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("DESTINATION_STRING")));
         }
+
+        [Fact]
+        public void strcpy_Truncates_WhenDestinationTooSmall()
+        {
+            // Reset State
+            Reset();
+
+            if (!mbbsEmuProtectedModeMemoryCore.HasSegment(STACK_SEGMENT))
+                mbbsEmuProtectedModeMemoryCore.AddSegment(STACK_SEGMENT);
+
+            var destinationStringPointer = new FarPtr(STACK_SEGMENT, 0xFFFC);
+            mbbsEmuMemoryCore.SetByte(destinationStringPointer + 0, (byte)'X');
+            mbbsEmuMemoryCore.SetByte(destinationStringPointer + 1, (byte)'X');
+            mbbsEmuMemoryCore.SetByte(destinationStringPointer + 2, (byte)'X');
+            mbbsEmuMemoryCore.SetByte(destinationStringPointer + 3, (byte)'X');
+
+            var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SOURCE_STRING", 9);
+            mbbsEmuMemoryCore.SetArray("SOURCE_STRING", Encoding.ASCII.GetBytes("ABCDEFG\0"));
+
+            ExecuteApiTest(
+                HostProcess.ExportedModules.Majorbbs.Segment,
+                STRCPY_ORDINAL,
+                new List<FarPtr> { destinationStringPointer, sourceStringPointer });
+
+            Assert.Equal(
+                Encoding.ASCII.GetBytes("ABC\0"),
+                mbbsEmuMemoryCore.GetArray(destinationStringPointer, 4).ToArray());
+            Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);
+            Assert.Equal(destinationStringPointer.Offset, mbbsEmuCpuRegisters.AX);
+        }
     }
 }
