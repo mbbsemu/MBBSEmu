@@ -8,7 +8,13 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-
+  # This enables the manual "Run workflow" button
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run'
+        required: false
+        default: 'Manual Build'
 jobs:
   build:
     runs-on: ubuntu-latest
