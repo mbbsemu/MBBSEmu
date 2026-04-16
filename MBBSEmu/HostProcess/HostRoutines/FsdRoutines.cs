@@ -469,10 +469,13 @@ namespace MBBSEmu.HostProcess.HostRoutines
                         {
                             if (_fsdFields[session.Channel].SelectedOrdinal == 0)
                             {
-                                //Cycle back to the bottom
-                                _fsdFields[session.Channel].SelectedOrdinal =
-                                    _fsdFields[session.Channel].Fields
-                                        .Count(f => f.FsdFieldType != EnumFsdFieldType.Error) - 1;
+                                // Cycle back to the bottom — find the last non-readonly, non-error field
+                                var lastValid = _fsdFields[session.Channel].Fields.Count - 1;
+                                while (lastValid > 0 && 
+                                        (_fsdFields[session.Channel].Fields[lastValid].FsdFieldType == EnumFsdFieldType.Error ||
+                                        _fsdFields[session.Channel].Fields[lastValid].IsReadOnly))
+                                    lastValid--;
+                                _fsdFields[session.Channel].SelectedOrdinal = lastValid;
                                 break;
                             }
 
