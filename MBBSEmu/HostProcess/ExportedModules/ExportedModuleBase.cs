@@ -106,7 +106,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             foreach (var f in FilePointerDictionary)
             {
-                f.Value.Close();
+                f.Value.Dispose();
                 _logger.Warn($"({Module.ModuleIdentifier}) WARNING -- File: {f.Value.Name} left open by module, closing");
             }
             FilePointerDictionary.Clear();

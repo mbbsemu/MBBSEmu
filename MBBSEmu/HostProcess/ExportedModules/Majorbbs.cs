@@ -122,6 +122,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             _tfsStreamReader?.Dispose();
 
+            foreach (var search in _activeSearches.Values)
+                search.Dispose();
+            _activeSearches.Clear();
+
             base.Dispose();
         }
 
