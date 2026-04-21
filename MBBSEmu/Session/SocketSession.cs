@@ -213,6 +213,7 @@ namespace MBBSEmu.Session
 
             // send signal to the send thread to abort
             _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
         }
     }
 }
