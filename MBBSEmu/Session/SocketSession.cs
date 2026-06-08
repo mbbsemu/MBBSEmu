@@ -15,6 +15,7 @@ namespace MBBSEmu.Session
         protected readonly Thread _senderThread;
         protected readonly byte[] _socketReceiveBuffer = new byte[9000];
         protected readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private int _socketClosed;
 
         protected SocketSession(IMbbsHost mbbsHost, IMessageLogger logger, Socket socket, ITextVariableService textVariableService) : base(mbbsHost, socket.RemoteEndPoint.ToString(), EnumSessionState.Negotiating, textVariableService)
         {
@@ -204,16 +205,21 @@ namespace MBBSEmu.Session
         }
 
         protected void CloseSocket(string reason) {
+            if (Interlocked.Exchange(ref _socketClosed, 1) != 0) {
+                return;
+            }
+
             if (SessionState != EnumSessionState.LoggedOff) {
                 _logger.Warn($"Session {SessionId} (Channel: {Channel}) {reason}");
             }
 
-            _socket.Close();
             SessionState = EnumSessionState.LoggedOff;
 
             // send signal to the send thread to abort
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
+
+            _socket.Close();
         }
     }
 }
