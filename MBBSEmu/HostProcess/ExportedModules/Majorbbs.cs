@@ -118,7 +118,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private StreamReader _tfsStreamReader;
         //  -------------------------------------
 
-        public new void Dispose()
+        public override void Dispose()
         {
             _tfsStreamReader?.Dispose();
 

@@ -16,6 +16,7 @@ using MBBSEmu.Reports;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
@@ -1454,7 +1455,10 @@ namespace MBBSEmu.HostProcess
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
 
-            // removes all sessions and stops worker thread
+            foreach (var localConsoleSession in _channelDictionary.Values.OfType<LocalConsoleSession>())
+                localConsoleSession.StopHostOnStop = false;
+
+            // removes all sessions before module cleanup
             RemoveSessions(session => true);
 
             CallModuleRoutine("mcurou", module => Logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
