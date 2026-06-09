@@ -19,18 +19,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Get Current Time
-      uses: josStorer/get-current-time@v2.0.2
-      id: current-time
-      with:
-        format: MMDDYY
-    - name: Use current time
-      env:
-        BUILD_VERSION: "${{ steps.current-time.outputs.formattedTime }}-${{ github.run_number }}"
+    - name: Compute Build Version
       run: |
-        echo $BUILD_VERSION
-        echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_ENV
-    - uses: actions/checkout@v3
+        BUILD_VERSION="$(date -u +%m%d%y)-${{ github.run_number }}"
+        echo "Build version: ${BUILD_VERSION}"
+        echo "BUILD_VERSION=${BUILD_VERSION}" >> "$GITHUB_ENV"
+    - uses: actions/checkout@v6
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
@@ -39,11 +33,7 @@ jobs:
       run: dotnet restore
       
     - name: Write Version File
-      uses: DamianReeves/write-file-action@master
-      with:
-        path: MBBSEmu/Assets/version.txt
-        contents: ${{ env.BUILD_VERSION }}
-        write-mode: overwrite
+      run: printf '%s' "${BUILD_VERSION}" > MBBSEmu/Assets/version.txt
         
     - name: Build
       run: dotnet build --no-restore
@@ -69,43 +59,43 @@ jobs:
         dotnet publish MBBSEmu/MBBSEmu.csproj --output output-osx-arm64/ --configuration Release --runtime osx-arm64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeNativeLibrariesInSingleFile=true -p:PublishTrimmed=false -p:CopyOutputSymbolsToPublishDirectory=false --verbosity n
 
     - name: Upload win-x64 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-win-x64-${{ env.BUILD_VERSION }}
         path: output-win-x64/*
         
     - name: Create win-x86 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-win-x86-${{ env.BUILD_VERSION }}
         path: output-win-x86/*
         
     - name: Create win-arm64 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-win-arm64-${{ env.BUILD_VERSION }}
         path: output-win-arm64/*
         
     - name: Create linux-x64 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-linux-x64-${{ env.BUILD_VERSION }}
         path: output-linux-x64/*
         
     - name: Create linux-arm Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-linux-arm-${{ env.BUILD_VERSION }}
         path: output-linux-arm/*
 
     - name: Create osx-x64 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-osx-x64-${{ env.BUILD_VERSION }}
         path: output-osx-x64/*
         
     - name: Create osx-arm64 Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: mbbsemu-osx-arm64-${{ env.BUILD_VERSION }}
         path: output-osx-arm64/*
