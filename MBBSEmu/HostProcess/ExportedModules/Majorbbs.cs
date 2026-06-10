@@ -2619,9 +2619,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, EnumBtrieveOperationCodes operationCode, short keyNumber = -1) =>
             UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.Position, operationCode.AcquiresData(), keyNumber);
 
-        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, uint position, bool acquiresData, short keyNumber = -1)
+        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, uint position, bool acquiresData, short keyNumber = -1, bool setLogicalPosition = false)
         {
-            var record = currentBtrieveFile.GetRecord(position);
+            var record = setLogicalPosition && keyNumber >= 0
+                ? currentBtrieveFile.GetRecord(position, keyNumber)
+                : currentBtrieveFile.GetRecord(position);
             if (record == null)
                 return false;
 
@@ -5171,7 +5173,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum);
+            UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum, setLogicalPosition: true);
         }
 
         /// <summary>
@@ -7413,7 +7415,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            Registers.AX = UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum) ? (ushort)1 : (ushort)0;
+            Registers.AX = UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum, setLogicalPosition: true) ? (ushort)1 : (ushort)0;
         }
 
         /// <summary>

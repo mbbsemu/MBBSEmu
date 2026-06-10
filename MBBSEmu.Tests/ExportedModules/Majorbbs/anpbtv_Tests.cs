@@ -13,6 +13,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const ushort RECORD_LENGTH = 80;
         private const int ABSBTV = 53;
         private const int QRYBTV = 485;
+        private const int QNPBTV = 484;
+        private const int GABBTV = 999;
         private const int ANPBTV = 70;
         private const int ANPBTVL = 913;
 
@@ -143,6 +145,34 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
           ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
           mbbsEmuCpuRegisters.GetLong().Should().Be(5);
         }
+
+        [Fact]
+        public void qnpbtv_after_gabbtv_continues_from_absolute_position()
+        {
+          Reset();
+
+          AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
+
+          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
+
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
+          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
+          mbbsEmuCpuRegisters.GetLong().Should().Be(1);
+
+          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GABBTV, new List<ushort> { record.Offset, record.Segment, /* abspos= */ 5, 0, /* key= */ 0 });
+          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(5);
+
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QNPBTV, new List<ushort> { (ushort)EnumBtrieveOperationCodes.QueryNext});
+          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+
+          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
+          mbbsEmuCpuRegisters.GetLong().Should().Be(6);
+        }
+
         private BtrieveFile CreateBtrieveFile()
         {
           var btrieveFile = new BtrieveFile()
