@@ -1,3 +1,4 @@
+using MBBSEmu.TextEncoding;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
 using MBBSEmu.Session.Enums;
@@ -20,6 +21,7 @@ namespace MBBSEmu.Session.Telnet
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
 
         private readonly bool _heartbeat;
+        private readonly bool _convertCP437ToUTF8;
         private readonly AppSettingsManager _configuration;
 
         //Tracks Responses We've already sent -- prevents looping
@@ -56,7 +58,7 @@ namespace MBBSEmu.Session.Telnet
             _configuration = configuration;
 
             _heartbeat = _configuration.TelnetHeartbeat;
-
+            _convertCP437ToUTF8 = _configuration.TelnetConvertCP437ToUTF8;
         }
 
         /// <summary>
@@ -85,6 +87,10 @@ namespace MBBSEmu.Session.Telnet
         /// <param name="dataToSend"></param>
         public override void Send(byte[] dataToSend)
         {
+            // Convert CP437 extended ASCII to UTF-8 if enabled
+            if (_convertCP437ToUTF8)
+                dataToSend = CP437Converter.ConvertToUtf8(dataToSend);
+
             // we have to escape 0xFF , so see if we have any, and if not, just send the current
             // buffer as is
             if (!Array.Exists(dataToSend, b => b == 0xFF)) {
