@@ -23,6 +23,7 @@ namespace MBBSEmu.Session.LocalConsole
         private readonly Thread _consoleOutputThread;
         private bool _consoleInputThreadIsRunning;
         private readonly bool _processClientData;
+        public bool StopHostOnStop { get; set; } = true;
 
         /// <summary>
         ///     This array allows for easy conversion between Extended ASCII codes used by MajorBBS/WG modules for ANSI graphics and their Unicode
@@ -134,7 +135,8 @@ namespace MBBSEmu.Session.LocalConsole
 
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();
-            _host?.Stop();
+            if (StopHostOnStop)
+                _host?.Stop();
 
             Console.Clear();
             // the thread is stuck in ReadKey, the user needs to free that thread to end the
