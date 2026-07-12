@@ -54,7 +54,7 @@ namespace MBBSEmu.Server.Socket
 
         public void Stop()
         {
-            _listenerSocket.Close();
+            _listenerSocket.Dispose();
         }
 
         private void OnNewConnection(IAsyncResult asyncResult) {

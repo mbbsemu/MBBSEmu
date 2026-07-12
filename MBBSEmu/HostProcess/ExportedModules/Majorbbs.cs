@@ -152,6 +152,7 @@ namespace MBBSEmu.HostProcess.ExportedModules {
     var usaptrPointer = Module.Memory.AllocateVariable("USAPTR", 0x4);
     Module.Memory.SetArray(usaptrPointer, usraccPointer.Data);
 
+<<<<<<< HEAD
     var usrExtPointer =
         Module.Memory.AllocateVariable("EXTUSR", (ushort)(ExtUser.Size * _numberOfChannels), true);
     var extPtrPointer = Module.Memory.AllocateVariable("EXTPTR", 0x4);
@@ -162,6 +163,18 @@ namespace MBBSEmu.HostProcess.ExportedModules {
     var ntermsPointer = Module.Memory.AllocateVariable("NTERMS", 0x2);  // ushort number of lines
     Module.Memory.SetWord(ntermsPointer,
                           (ushort)_numberOfChannels);  // Number of channels from Settings
+=======
+        public override void Dispose()
+        {
+            _tfsStreamReader?.Dispose();
+
+            foreach (var search in _activeSearches.Values)
+                search.Dispose();
+            _activeSearches.Clear();
+
+            base.Dispose();
+        }
+>>>>>>> origin/master
 
     Module.Memory.AllocateVariable("OTHUSN", 0x2);  // Set by onsys() or instat()
     Module.Memory.AllocateVariable("OTHUSP", 0x4, true);
@@ -2355,6 +2368,5315 @@ namespace MBBSEmu.HostProcess.ExportedModules {
     Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                            Encoding.Default.GetBytes(outputDate));
 
+<<<<<<< HEAD
+=======
+            var packedDate = GetParameter(0);
+
+            //Pack the Date
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+            var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCDATE"), (ushort)outputDate.Length);
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
+                Encoding.Default.GetBytes(outputDate));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+#endif
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Returns Packed Date as a char* in 'DD-MMM-YY' format
+        ///
+        ///     Signature: char *ascdat=ncdate(int date)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment
+        /// </summary>
+        /// <returns></returns>
+        private void ncedat()
+        {
+            var packedDate = GetParameter(0);
+
+            //Unpack the Date
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+            var outputDate = $"{day:D2}/{month:D2}/{year % 100:D2}\0";
+
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCEDAT", (ushort)outputDate.Length);
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
+                Encoding.Default.GetBytes(outputDate));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
+#endif
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Default Status Handler for status conditions this module is not specifically expecting
+        ///
+        ///     Ignored for now
+        ///
+        ///     Signature: void dfsthn()
+        /// </summary>
+        /// <returns></returns>
+        private void dfsthn()
+        {
+
+        }
+
+        /// <summary>
+        ///     Closes the Specified Message File
+        ///
+        ///     Signature: void clsmsg(FILE *mbkprt)
+        /// </summary>
+        /// <returns></returns>
+        private void clsmsg()
+        {
+            var filePointer = GetParameterPointer(0);
+
+#if DEBUG
+            _logger.Debug($"Closing MCV File: {filePointer}");
+#endif
+
+            McvPointerDictionary.Remove(filePointer.Offset);
+            _currentMcvFile = null;
+        }
+
+        /// <summary>
+        ///     Register a real-time routine that needs to execute more than 1 time per second
+        ///
+        ///     Routines registered this way are executed at 18hz
+        ///
+        ///     Signature: void rtihdlr(void (*rouptr)(void))
+        /// </summary>
+        private void rtihdlr()
+        {
+            var routinePointer = GetParameterPointer(0);
+
+            var routine = new RealTimeRoutine(routinePointer);
+            Module.RtihdlrRoutines.Allocate(routine);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     'Kicks Off' the specified routine after the specified delay
+        ///
+        ///     Signature: void rtkick(int time, void *rouptr())
+        /// </summary>
+        /// <returns></returns>
+        private void rtkick()
+        {
+            var delaySeconds = GetParameter(0);
+            var routinePointer = GetParameterPointer(1);
+
+            var routine = new RealTimeRoutine(routinePointer, delaySeconds);
+            Module.RtkickRoutines.Allocate(routine);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer} to execute every {delaySeconds} seconds");
+#endif
+        }
+
+        /// <summary>
+        ///     Sets 'current' MCV file to the specified pointer
+        ///
+        ///     Signature: FILE *setmbk(mbkptr)
+        /// </summary>
+        /// <returns></returns>
+        private void setmbk()
+        {
+            var mcvFilePointer = GetParameterPointer(0);
+
+            if (mcvFilePointer.Segment != ushort.MaxValue && !McvPointerDictionary.ContainsKey(mcvFilePointer.Offset))
+                throw new ArgumentException($"Invalid MCV File Pointer: {mcvFilePointer}");
+
+            //If there's an MVC currently set, push it to the queue
+            if (_currentMcvFile != null)
+            {
+                _previousMcvFile.Push(new FarPtr(_currentMcvFile.Data));
+#if DEBUG
+                _logger.Debug($"({Module.ModuleIdentifier}) Enqueue Previous MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {_currentMcvFile})");
+#endif
+            }
+
+            _currentMcvFile = mcvFilePointer;
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Set Current MCV File: {McvPointerDictionary[_currentMcvFile.Offset].FileName} (Pointer: {mcvFilePointer})");
+#endif
+        }
+
+        /// <summary>
+        ///     Restore previous MCV file block ptr from before last setmbk() call
+        ///
+        ///     Signature: void rstmbk()
+        /// </summary>
+        /// <returns></returns>
+        private void rstmbk()
+        {
+            if (_previousMcvFile.Count == 0)
+            {
+#if DEBUG
+                _logger.Debug($"Queue Empty, Ignoring");
+#endif
+                return;
+            }
+
+            _currentMcvFile = _previousMcvFile.Pop();
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Reset Current MCV to {McvPointerDictionary[_currentMcvFile.Offset].FileName} ({_currentMcvFile}) (Queue Depth: {_previousMcvFile.Count})");
+#endif
+        }
+
+        /// <summary>
+        ///     Opens a Btrieve file for I/O
+        ///
+        ///     Signature: BTVFILE *bbptr=opnbtv(char *filename, int reclen)
+        ///     Return: AX = Offset to File Pointer
+        ///             DX = Host Btrieve Segment
+        /// </summary>
+        /// <returns></returns>
+        private void opnbtv()
+        {
+            var btrievefileName = GetParameterString(0, true);
+            var maxRecordLength = GetParameter(2);
+
+            var btrieveFile = new BtrieveFileProcessor(_fileFinder, Module.ModulePath, btrievefileName, _configuration.BtrieveCacheSize);
+
+            var btvFileStructPointer = AllocateBB(btrieveFile, maxRecordLength, btrievefileName);
+
+            Registers.SetPointer(btvFileStructPointer);
+        }
+
+        /// <summary>
+        ///     Allocates a new BtvFileStruct and associated it with btrieveFile.
+        /// </summary>
+        /// <returns>A pointer to the allocated BtvFileStruct</returns>
+        [VisibleForTesting]
+        public FarPtr AllocateBB(BtrieveFileProcessor btrieveFile, ushort maxRecordLength, string fileName)
+        {
+            //Setup Pointers
+            var btvFileStructPointer = Module.Memory.AllocateVariable($"{fileName}-STRUCT", BtvFileStruct.Size);
+            var btvFileNamePointer =
+                Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
+            var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", maxRecordLength);
+            var btvKeyPointer = Module.Memory.AllocateVariable($"{fileName}-KEY", maxRecordLength);
+
+            var newBtvStruct = new BtvFileStruct
+            { filenam = btvFileNamePointer, reclen = maxRecordLength, data = btvDataPointer, key = btvKeyPointer };
+            foreach (var key in btrieveFile.Keys.Values)
+                newBtvStruct.SetKeyLength(key.Number, (ushort)key.Length);
+            BtrieveSaveProcessor(btvFileStructPointer, btrieveFile);
+            Module.Memory.SetArray(btvFileStructPointer, newBtvStruct.Data);
+            Module.Memory.SetArray(btvFileNamePointer, Encoding.ASCII.GetBytes(fileName));
+            Module.Memory.SetPointer("BB", btvFileStructPointer);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Opened file {fileName} and allocated it to {btvFileStructPointer}");
+#endif
+            return btvFileStructPointer;
+        }
+
+        /// <summary>
+        ///     Used to set the Btrieve file for all subsequent database functions
+        ///
+        ///     Signature: void setbtv(BTVFILE *bbprt)
+        /// </summary>
+        /// <returns></returns>
+        private void setbtv()
+        {
+            var btrieveFilePointer = GetParameterPointer(0);
+
+            var currentBtrieveFile = Module.Memory.GetPointer("BB");
+
+            if (currentBtrieveFile != FarPtr.Empty)
+                _previousBtrieveFile.Push(currentBtrieveFile);
+
+            Module.Memory.SetPointer("BB", btrieveFilePointer);
+
+#if DEBUG
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(btrieveFilePointer, BtvFileStruct.Size));
+            var btvFileName = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.filenam, stripNull: true));
+            _logger.Debug($"({Module.ModuleIdentifier}) Setting current Btrieve file to {btvFileName} ({btrieveFilePointer})");
+#endif
+        }
+
+        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, EnumBtrieveOperationCodes operationCode, short keyNumber = -1) =>
+            UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.Position, operationCode.AcquiresData(), keyNumber);
+
+        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, uint position, bool acquiresData, short keyNumber = -1, bool setLogicalPosition = false)
+        {
+            var record = setLogicalPosition && keyNumber >= 0
+                ? currentBtrieveFile.GetRecord(position, keyNumber)
+                : currentBtrieveFile.GetRecord(position);
+            if (record == null)
+                return false;
+
+            var bbPointer = Module.Memory.GetPointer("BB");
+            var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bbPointer, BtvFileStruct.Size));
+            if (keyNumber >= 0)
+            {
+                btvStruct.lastkn = (ushort)keyNumber;
+                Module.Memory.SetArray(bbPointer, btvStruct.Data);
+            }
+            else if (currentBtrieveFile.Keys.Count > 0)
+            {
+                keyNumber = (short)btvStruct.lastkn;
+            }
+
+            if (acquiresData)
+            {
+                if (destinationRecordBuffer.IsNull())
+                    destinationRecordBuffer = btvStruct.data;
+
+                Module.Memory.SetArray(destinationRecordBuffer, record.Data);
+            }
+
+            // TODO SET LOGICAL POSITION FOR NEXT/PREVIOUS
+
+            if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
+                Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
+
+            return true;
+        }
+
+        /// <summary>
+        ///     'Step' based Btrieve operation
+        ///
+        ///     Signature: int stpbtv (void *recptr, int stpopt)
+        ///     Returns: AX = 1 == Record Found, 0 == Database Empty
+        /// </summary>
+        /// <returns></returns>
+        private void stpbtv()
+        {
+            var btrieveRecordPointer = GetParameterPointer(0);
+            var stpopt = (EnumBtrieveOperationCodes)GetParameter(2);
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var result = currentBtrieveFile.PerformOperation(-1, ReadOnlySpan<byte>.Empty, stpopt);
+            if (result)
+                UpdateBB(currentBtrieveFile, btrieveRecordPointer, stpopt);
+
+            Registers.AX = result ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Restores the last Btrieve data block for use
+        ///
+        ///     Signature: void rstbtv()
+        /// </summary>
+        /// <returns></returns>
+        private void rstbtv()
+        {
+            if (_previousBtrieveFile.Count == 0)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) Previous Btrieve file == null, ignoring");
+                return;
+            }
+
+            Module.Memory.SetPointer("BB", _previousBtrieveFile.Pop());
+        }
+
+        /// <summary>
+        ///     Update the Btrieve current record
+        ///
+        ///     Signature: int dupdbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        private void dupdbtv()
+        {
+            Registers.AX = updateBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        private bool updateBtv()
+        {
+            var btrieveRecordPointerPointer = GetParameterPointer(0);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, (ushort)currentBtrieveFile.RecordLength);
+
+            return currentBtrieveFile.Update(dataToWrite.ToArray()) == BtrieveError.Success;
+        }
+
+        /// <summary>
+        ///     Insert new fixed-length Btrieve record - harshly
+        ///
+        ///     Signature: void insbtv(char *recptr)
+        /// </summary>
+        private void insbtv()
+        {
+            if (!insertBtv(LogLevel.Critical))
+                throw new SystemException("Failed to insert database record");
+        }
+
+        /// <summary>
+        ///     Insert new fixed-length Btrieve record
+        ///
+        ///     Signature: int dinsbtv(char *recptr)
+        /// </summary>
+        /// <returns></returns>
+        private void dinsbtv()
+        {
+            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
+        }
+
+        private bool insertBtv(LogLevel logLevel)
+        {
+            var btrieveRecordPointer = GetParameterPointer(0);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
+
+            return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;
+        }
+
+
+        /// <summary>
+        ///     Insert new variable-length Btrieve record
+        ///
+        ///     Signature: void invbtv(char *recptr, int length)
+        /// </summary>
+        private void invbtv()
+        {
+            var btrieveRecordPointer = GetParameterPointer(0);
+            var recordLength = GetParameter(2);
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+            var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
+
+            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
+        }
+
+        /// <summary>
+        ///     Raw status from btusts, where appropriate
+        ///
+        ///     Signature: int status
+        ///     Returns: Segment holding the Users Status
+        /// </summary>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> status => Module.Memory.GetVariablePointer("STATUS").Data;
+
+        /// <summary>
+        ///     Deduct real credits from online acct
+        ///
+        ///     Signature: int enuf=rdedcrd(long amount, int asmuch)
+        ///     Returns: Always 1, meaning enough credits
+        /// </summary>
+        /// <returns></returns>
+        private void rdedcrd()
+        {
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     sprintf-like string formatter utility
+        ///
+        ///     Main differentiation is that spr() supports long integer and floating point conversions
+        /// </summary>
+        /// <returns></returns>
+        private void spr()
+        {
+            var output = GetParameterStringSpan(0);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 2);
+
+            if (formattedMessage.Length > 1024)
+                throw new OutOfMemoryException(
+                    $"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
+
+            _sprIndex++;
+            _sprIndex &= 0x3;
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"SPR-{_sprIndex}", 1024);
+
+            Module.Memory.SetArray(variablePointer, formattedMessage);
+
+#if DEBUG
+            //_logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
+#endif
+
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Long Multiplication (Borland C++ Implicit Function)
+        ///
+        /// </summary>
+        /// <returns></returns>
+        private void f_lxmul()
+        {
+
+            var value1 = (Registers.DX << 16) | Registers.AX;
+            var value2 = (Registers.CX << 16) | Registers.BX;
+
+            var result = value1 * value2;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Long Division (Borland C++ Implicit Function)
+        ///
+        ///     Input: Two long values on stack (arg1/arg2)
+        ///     Output: DX:AX = quotient
+        ///             DI:SI = remainder -- no remainder in early C++
+        /// </summary>
+        /// <returns></returns>
+        private void f_ldiv()
+        {
+
+            int arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            int arg2 = (GetParameter(3) << 16) | GetParameter(2);
+
+            var quotient = Math.DivRem(arg1, arg2, out var remainder);
+
+            Registers.DX = (ushort)(quotient >> 16);
+            Registers.AX = (ushort)(quotient & 0xFFFF);
+            //Registers.DI = (ushort)(remainder >> 16);
+            //Registers.SI = (ushort)(remainder & 0xFFFF);
+
+            RealignStack(8);
+        }
+
+        /// <summary>
+        ///     Writes formatted data from variable argument list to string
+        ///
+        ///     similar to prf, but the destination is a char*, but the output buffer
+        /// </summary>
+        /// <returns></returns>
+        private void vsprintf()
+        {
+            var targetPointer = GetParameterPointer(0);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(GetParameterStringSpan(2), 4, true);
+
+            Module.Memory.SetArray(targetPointer, formattedMessage);
+
+            Registers.AX = (ushort)formattedMessage.Length;
+        }
+
+        /// <summary>
+        ///     Scans the specified MDF file for a line prefix that matches the specified string
+        ///
+        ///     Signature: char *scnmdf(char *mdfnam,char *linpfx);
+        ///     Returns: AX = Offset of String
+        ///              DX = Segment of String
+        /// </summary>
+        /// <returns></returns>
+        private void scnmdf()
+        {
+            var lineprefixOffset = GetParameter(2);
+            var lineprefixSegment = GetParameter(3);
+
+            var mdfName = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
+
+            var lineprefixBytes = Module.Memory.GetString(lineprefixSegment, lineprefixOffset);
+            var lineprefix = Encoding.ASCII.GetString(lineprefixBytes);
+
+            //Setup Host Memory Variables Pointer
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("SCNMDF"), 0xFF);
+
+            var recordFound = false;
+            foreach (var line in File.ReadAllLines(Path.Combine(Module.ModulePath, mdfName)))
+            {
+                if (line.StartsWith(lineprefix))
+                {
+                    var result = Encoding.ASCII.GetBytes(line.Split(':')[1] + "\0");
+
+                    if (result.Length > 0xFF)
+                        throw new OverflowException("SCNMDF result is > 256 bytes");
+
+                    Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset, result);
+                    recordFound = true;
+                    break;
+                }
+            }
+
+            //Write Null String to address if nothing was found
+            if (!recordFound)
+                Module.Memory.SetByte(variablePointer.Segment, variablePointer.Offset, 0x0);
+
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Returns the time of day it is bitwise HHHHHMMMMMMSSSSS coding
+        ///
+        ///     Signature: int time=now()
+        /// </summary>
+        /// <returns></returns>
+        private void now()
+        {
+            //From DOSFACE.H:
+            //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
+            var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
+
+#if DEBUG
+            _logger.Debug($"Returned packed time: {packedTime}");
+#endif
+
+            Registers.AX = (ushort)packedTime;
+        }
+
+        /// <summary>
+        ///     Modulo, non-significant (Borland C++ Implicit Function)
+        ///
+        ///     Signature: DX:AX = arg1 % arg2
+        /// </summary>
+        /// <returns></returns>
+        private void f_lumod()
+        {
+            uint arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
+            uint arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
+
+            var result = arg1 % arg2;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            RealignStack(8);
+        }
+
+        /// <summary>
+        ///     Set a block of memory to a value
+        ///
+        ///     Signature: void setmem(char *destination, unsigned nbytes, char value)
+        /// </summary>
+        /// <returns></returns>
+        private void setmem()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var numberOfBytesToWrite = GetParameter(2);
+            var byteToWrite = GetParameter(3);
+
+            Module.Memory.FillArray(destinationPointer, numberOfBytesToWrite, (byte)byteToWrite);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Set {numberOfBytesToWrite} bytes at {destinationPointer} with {(byte)byteToWrite:X2}");
+#endif
+        }
+
+        /// <summary>
+        ///     Output buffer of prf() and prfmsg()
+        ///
+        ///     Because it's a pointer, the segment only contains Int16:Int16 pointer to the actual prfbuf segment
+        ///
+        ///     Signature: char *prfbuf
+        /// </summary>
+        private ReadOnlySpan<byte> prfbuf => Module.Memory.GetVariablePointer("*PRFBUF").Data;
+
+        /// <summary>
+        ///     Copies characters from a string
+        ///
+        ///     Signature: char *strncpy(char *destination, const char *source, size_t num)
+        /// </summary>
+        /// <returns></returns>
+        private void strncpy()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var source = GetParameterString(2);
+            var numberOfBytesToCopy = GetParameter(4);
+
+            Registers.SetPointer(destinationPointer);
+
+            for (var i = 0; i < numberOfBytesToCopy; i++, destinationPointer++)
+            {
+                if (source[i] == 0x0)
+                {
+                    //Write remaining nulls
+                    for (var j = i; j < numberOfBytesToCopy; j++, destinationPointer++)
+                        Module.Memory.SetByte(destinationPointer, 0x0);
+
+                    break;
+                }
+
+                Module.Memory.SetByte(destinationPointer, (byte)source[i]);
+            }
+        }
+
+        /// <summary>
+        ///     Registers a new Text Variable that will be used by the module
+        /// </summary>
+        private void register_textvar()
+        {
+            var name = GetParameterString(0, true);
+            var functionPointer = GetParameterPointer(2);
+
+            var newTextVar = new TextvarStruct(name, functionPointer);
+            var newTextVarOffset = Module.Memory.GetWord("NTVARS") * TextvarStruct.Size;
+
+            //Save
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("TXTVARS") + newTextVarOffset, newTextVar.Data);
+
+            //Increment
+            Module.Memory.SetWord("NTVARS", (ushort)(Module.Memory.GetWord("NTVARS") + 1));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Textvar \"{name}\" to {functionPointer} ({Module.Memory.GetVariablePointer("TXTVARS") + newTextVarOffset})");
+#endif
+        }
+
+        /// <summary>
+        ///     Does a GetEqual based on the Key -- the record corresponding to the key is returned
+        ///
+        ///     Signature: int obtbtv (void *recptr, void *key, int keynum, int obtopt)
+        ///     Returns: AX == 0 record not found, 1 record found
+        /// </summary>
+        /// <returns>true if record found</returns>
+        private void obtbtv()
+        {
+            Registers.AX = obtainBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Does a GetEqual based on the Key -- the record corresponding to the key is returned
+        ///
+        ///     Signature: int obtbtvl (void *recptr, void *key, int keynum, int obtopt, int loktyp)
+        ///     Returns: AX == 0 record not found, 1 record found
+        /// </summary>
+        /// <returns>true if record found</returns>
+        private void obtbtvl()
+        {
+            Registers.AX = obtainBtv() ? (ushort)1 : (ushort)0;
+        }
+
+        private bool obtainBtv()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var keyPointer = GetParameterPointer(2);
+            var keyNumber = GetParameter(4);
+            var obtopt = (EnumBtrieveOperationCodes)GetParameter(5);
+
+            return obtainBtv(recordPointer, keyPointer, keyNumber, obtopt);
+        }
+
+        private bool obtainBtv(FarPtr recordPointer, FarPtr keyPointer, int keyNumber, EnumBtrieveOperationCodes obtopt)
+        {
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var keyValue = !keyPointer.IsNull() ? Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength((ushort)keyNumber)) : null;
+            var result = currentBtrieveFile.PerformOperation(keyNumber, keyValue, obtopt);
+            if (result)
+                UpdateBB(currentBtrieveFile, recordPointer, obtopt, (short)keyNumber);
+
+            return result;
+        }
+
+        /// <summary>
+        ///     Declare size of the Volatile Data Area (Maximum size the module will require)
+        ///     Because this is just another memory block, we use the host memory
+        ///
+        ///     Signature: void *dclvda(unsigned nbytes);
+        /// </summary>
+        private void dclvda()
+        {
+            var size = GetParameter(0);
+
+            if (size > VOLATILE_DATA_SIZE)
+                throw new OutOfMemoryException("Volatile Memory declaration > 16k");
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Volatile Memory Size requested of {size} bytes ({VOLATILE_DATA_SIZE} bytes currently allocated per channel)");
+#endif
+        }
+
+        private ReadOnlySpan<byte> nterms => Module.Memory.GetVariablePointer("NTERMS").Data;
+
+        /// <summary>
+        ///     Compute volatile data pointer for the specified User Number
+        ///
+        ///     Because UserNumber and Channels in MBBSEmu are the same, we can just use the usernum AS channel
+        ///
+        ///     Signature: char *vdaoff(int unum)
+        ///
+        ///     Returns: AX == Segment of Volatile Data
+        ///              DX == Offset of Volatile Data
+        /// </summary>
+        /// <returns></returns>
+        private void vdaoff()
+        {
+            var channel = GetParameter(0);
+
+            var volatileMemoryAddress = Module.Memory.GetOrAllocateVariablePointer($"VDA-{channel}", VOLATILE_DATA_SIZE);
+
+#if DEBUG
+            _logger.Debug($"Returned VDAOFF {volatileMemoryAddress} for Channel {channel}");
+#endif
+
+            Registers.SetPointer(volatileMemoryAddress);
+        }
+
+        /// <summary>
+        ///     Contains information about the current user account (class, state, baud, etc.)
+        ///
+        ///     Signature: struct user;
+        /// </summary>
+        /// <returns></returns>
+        private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer("*USER").Data;
+
+
+        /// <summary>
+        ///     Points to the Volatile Data Area for the current channel
+        ///
+        ///     Signature: char *vdaptr
+        /// </summary>
+        private ReadOnlySpan<byte> vdaptr
+        {
+            get
+            {
+                var variablePointer = Module.Memory.GetOrAllocateVariablePointer("VDAPTR", 0x4);
+
+                return variablePointer.Data;
+            }
+        }
+
+
+        /// <summary>
+        ///     After calling bgncnc(), the command is unparsed (has spaces again, not separate words),
+        ///     and prepared for interpretation using the command concatenation utilities
+        ///
+        ///     Signature: void bgncnc()
+        /// </summary>
+        private void bgncnc()
+        {
+            clrprf();
+            rstrin();
+        }
+
+        /// <summary>
+        ///     Number of Words in the users input line
+        ///
+        ///     Signature: int margc
+        /// </summary>
+        private ReadOnlySpan<byte> margc => Module.Memory.GetVariablePointer("MARGC").Data;
+
+        /// <summary>
+        ///     Returns the pointer to the next parsed input command from the user
+        ///     If this is the first time it's called, it returns the first command
+        /// </summary>
+        private ReadOnlySpan<byte> nxtcmd => Module.Memory.GetVariablePointer("NXTCMD").Data;
+
+        /// <summary>
+        ///     Case-ignoring substring match
+        ///
+        ///     Signature: int match=sameto(char *shorts, char *longs)
+        ///     Returns: AX == 1, match
+        /// </summary>
+        private void sameto()
+        {
+            var string1Buffer = GetParameterString(0, true);
+            var string2Buffer = GetParameterString(2, true);
+
+            Registers.AX = (ushort)(string2Buffer.StartsWith(string1Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Compares ending of strings, checking if the first string ends with the second string (ignoring case)
+        ///
+        ///     Signature: int samend(char *longs, char *ends)
+        ///     Returns: AX == 1, match
+        /// </summary>
+        private void samend()
+        {
+            var string1Buffer = GetParameterString(0, true);
+            var string2Buffer = GetParameterString(2, true);
+
+            Registers.AX = (ushort)(string1Buffer.EndsWith(string2Buffer, StringComparison.CurrentCultureIgnoreCase) ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Expect a Character from the user (character from the current command)
+        ///
+        ///     cncchr() is executed after begincnc(), which runs rstrin() replacing the null separators
+        ///     in the string with spaces once again.
+        /// </summary>
+        private void cncchr()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            //Skip any excessive spacing
+            while (Module.Memory.GetByte(nxtcmdPointer) == 0x20 && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            //Verify we're not at the end of the input
+            if (remainingCharactersInCommand == 0)
+            {
+#if DEBUG
+                _logger.Debug($"End of Input");
+#endif
+
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+
+            Registers.AX = char.ToUpper((char)inputString[0]);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned char: {(char)Registers.AX}");
+#endif
+            //End of String
+            if (Registers.AX == 0)
+                return;
+
+            //Modify the Counters
+            remainingCharactersInCommand--;
+            nxtcmdPointer.Offset++;
+
+            //Advance to the next, non-space character
+            while (Module.Memory.GetByte(nxtcmdPointer) == 0x20 && remainingCharactersInCommand > 0)
+            {
+                nxtcmdPointer.Offset++;
+                remainingCharactersInCommand--;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new FarPtr(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset)));
+        }
+
+        /// <summary>
+        ///     Pointer to the current position in prfbuf
+        ///
+        ///     Signature: char *prfptr;
+        /// </summary>
+        private ReadOnlySpan<byte> prfptr => Module.Memory.GetVariablePointer("PRFPTR").Data;
+
+        /// <summary>
+        ///     Opens a new file for reading/writing
+        ///
+        ///     Signature: file* fopen(const char* filename, USE)
+        /// </summary>
+        private void f_open()
+        {
+            var filenameInputValue = GetParameterFilename(0);
+            var modePointer = GetParameterPointer(2);
+
+            var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
+            var fullPath = Path.Combine(Module.ModulePath, fileName);
+
+            FarPtr fileStructPointer = null;
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
+#endif
+
+            var modeInputBuffer = Module.Memory.GetString(modePointer, true);
+            var fileAccessMode = FileStruct.CreateFlagsEnum(modeInputBuffer);
+            FileStream fileStream = null;
+
+            if (!File.Exists(fullPath))
+            {
+                if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Read))
+                {
+                    _logger.Warn($"({Module.ModuleIdentifier}) Unable to find file {fullPath}");
+                    Registers.AX = 0;
+                    Registers.DX = 0;
+                    return;
+                }
+
+                //Create a new file for W or A
+                _logger.Info($"({Module.ModuleIdentifier}) Creating new file {fileName}");
+
+                fileStream = File.Create(fullPath);
+            }
+            else
+            {
+                //Overwrite existing file for W
+                if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Write))
+                {
+#if DEBUG
+                    _logger.Debug($"Overwriting file {fileName}");
+#endif
+                    fileStream = File.Create(fullPath);
+                }
+            }
+
+            //Allocate Memory for FILE struct
+            fileStructPointer ??= Module.Memory.GetOrAllocateVariablePointer($"FILE_{fullPath}-{FilePointerDictionary.Count}", FileStruct.Size);
+
+            //Write New Blank Pointer
+            var fileStruct = new FileStruct();
+            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+
+            //Setup the File Stream
+            fileStream ??= File.Open(fullPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+            if (fileAccessMode.HasFlag(FileStruct.EnumFileAccessFlags.Append))
+                fileStream.Seek(fileStream.Length, SeekOrigin.Begin);
+
+            var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+
+            //Set Struct Values
+            fileStruct.SetFlags(fileAccessMode);
+            fileStruct.curp = new FarPtr(ushort.MaxValue, (ushort)fileStreamPointer);
+            fileStruct.fd = (byte)fileStreamPointer;
+            Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) {fullPath} FILE struct written to {fileStructPointer}");
+#endif
+            Registers.SetPointer(fileStructPointer);
+        }
+
+        /// <summary>
+        ///     Closes an Open File Pointer
+        ///
+        ///     Signature: int fclose(FILE* stream ). Returns 0 on success, EOF (-1) on failure
+        /// </summary>
+        private void f_close()
+        {
+            var filePointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
+
+            // clear the memory
+            Module.Memory.SetArray(filePointer, new FileStruct().Data);
+
+            if (fileStruct.curp.Segment == 0 && fileStruct.curp.Offset == 0)
+            {
+#if DEBUG
+                _logger.Warn($"({Module.ModuleIdentifier}) Called FCLOSE on null File Stream Pointer (0000:0000), usually means it tried to open a file that doesn't exist");
+                Registers.AX = 0xFFFF;
+                return;
+#endif
+            }
+
+            if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
+            {
+                _logger.Warn(
+                    $"({Module.ModuleIdentifier}) Attempted to call FCLOSE on pointer not in File Stream Segment {fileStruct.curp} (File Already Closed?)");
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            //Clean Up File Stream Pointer
+            var fileStream = FilePointerDictionary[fileStruct.curp.Offset];
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Closed File {filePointer} {fileStream.Name} (Stream: {fileStruct.curp})");
+#endif
+
+            FilePointerDictionary[fileStruct.curp.Offset].Close();
+            FilePointerDictionary.Remove(fileStruct.curp.Offset);
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Flushes an Open File Pointer
+        ///
+        ///     Signature: int fclose(FILE* stream ). Returns 0 on success, EOF (-1) on failure
+        /// </summary>
+        private void f_flush()
+        {
+            var filePointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(filePointer, FileStruct.Size));
+            if (!FilePointerDictionary.ContainsKey(fileStruct.curp.Offset))
+            {
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            FilePointerDictionary[fileStruct.curp.Offset].Flush();
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     sprintf() function in C++ to handle string formatting
+        ///
+        ///     Signature: int sprintf(char *str, const char *format, ... )
+        /// </summary>
+        private void sprintf()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var source = GetParameterStringSpan(2, true);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(source, 4);
+
+            Module.Memory.SetArray(destinationPointer, formattedMessage);
+            Module.Memory.SetByte(destinationPointer + formattedMessage.Length, 0);
+
+            Registers.AX = (ushort)formattedMessage.Length;
+        }
+
+        /// <summary>
+        ///     Looks for the specified filename (filespec) in the BBS directory, returns 1 if the file is there
+        ///
+        ///     Signature: int yes=fndlst(struct fndblk &fb, filespec, char attr)
+        /// </summary>
+        private void fnd1st()
+        {
+            var findBlockPointer = GetParameterPointer(0);
+            var fileName = GetParameterString(2, stripNull: true);
+            var attrChar = GetParameter(4);
+
+            var components = FileUtility.SplitIntoComponents(fileName);
+            var path = "";
+            var search = components[^1];
+            for (var i = 0; i < components.Length - 1; ++i)
+            {
+                path = Path.Combine(path, components[i]);
+            }
+
+            if (components.Length > 1)
+            {
+                path = _fileFinder.FindFile(Module.ModulePath, path);
+            }
+
+            path = Path.Combine(Module.ModulePath, path);
+
+            try
+            {
+                var fileEnumerator = Directory.EnumerateFileSystemEntries(path, search, FileUtility.CASE_INSENSITIVE_ENUMERATION_OPTIONS);
+                var guid = Guid.NewGuid();
+
+                _activeSearches.Add(guid, fileEnumerator.GetEnumerator());
+
+                var fndblk = new FndblkStruct() { Guid = guid };
+                Module.Memory.SetArray(findBlockPointer, fndblk.Data);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) Can't find directory {path}");
+                Registers.AX = 0;
+                return;
+            }
+
+            fndnxt();
+        }
+
+        /// <summary>
+        ///     Finds the next file from the original fnd1st call, returns 1 if the file is there
+        ///
+        ///     Signature: int yes=fndnxt(struct fndblk &fb);
+        /// </summary>
+        private void fndnxt()
+        {
+            Registers.AX = 0;
+
+            var fndblkPointer = GetParameterPointer(0);
+            var fndblk = new FndblkStruct(Module.Memory.GetArray(fndblkPointer, FndblkStruct.StructSize));
+            if (!_activeSearches.TryGetValue(fndblk.Guid, out var enumerator))
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) Called fndnxt but the GUID wasn't found {fndblk.Guid}");
+                return;
+            }
+
+            while (true)
+            {
+                if (!enumerator.MoveNext())
+                {
+                    _activeSearches.Remove(fndblk.Guid);
+                    return;
+                }
+
+                var fileInfo = new FileInfo(enumerator.Current);
+                fndblk.DateTime = fileInfo.LastWriteTime;
+                fndblk.Size = (int)fileInfo.Length;
+                fndblk.SetAttributes(fileInfo.Attributes);
+
+                // DOS doesn't support long file names, so filter those out from the result set
+                var name = FileUtility.SplitIntoComponents(enumerator.Current)[^1];
+                if (name.Length >= FndblkStruct.FilenameSize)
+                    continue;
+
+                fndblk.Name = name;
+                Module.Memory.SetArray(fndblkPointer, fndblk.Data);
+                Registers.AX = 1;
+                return;
+            }
+        }
+
+        /// <summary>
+        ///     Reads an array of count elements, each one with a size of size bytes, from the stream and stores
+        ///     them in the block of memory specified by ptr.
+        ///
+        ///     Signature: size_t fread(void* ptr, size_t elementSize, size_t numberOfElements, FILE* stream)
+        /// </summary>
+        private void f_read()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var elementSize = GetParameter(2);
+            var numberOfElements = GetParameter(3);
+            var fileStructPointer = GetParameterPointer(4);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"({Module.ModuleIdentifier}) File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            if (fileStream.Position >= fileStream.Length)
+            {
+                //Set EOF Flag
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+
+                Registers.AX = 0;
+                return;
+            }
+
+            var totalToRead = elementSize * numberOfElements;
+            var buffer = new byte[totalToRead];
+            var bytesRead = fileStream.Read(buffer);
+            if (bytesRead > 0)
+                Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+            Registers.AX = (ushort)(bytesRead / elementSize);
+        }
+
+        /// <summary>
+        ///     Writes an array of count elements, each one with a size of size bytes, from the block of memory
+        ///     pointed by ptr to the current position in the stream.
+        /// </summary>
+        private void f_write()
+        {
+            var sourcePointer = GetParameterPointer(0);
+            var size = GetParameter(2);
+            var count = GetParameter(3);
+            var fileStructPointer = GetParameterPointer(4);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"({Module.ModuleIdentifier}) File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            var oldPosition = fileStream.Position;
+            var bytesToWrite = size * count;
+            fileStream.Write(Module.Memory.GetArray(sourcePointer, (ushort)bytesToWrite));
+            var elementsWritten = (fileStream.Position - oldPosition) / size;
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Wrote {elementsWritten} group(s) of {size} bytes from {sourcePointer}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+            Registers.AX = (ushort)elementsWritten;
+        }
+
+        /// <summary>
+        ///     Deleted the specified file
+        /// </summary>
+        private void unlink()
+        {
+            var filename = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
+            var fullPath = Path.Combine(Module.ModulePath, filename);
+#if DEBUG
+            _logger.Debug($"Deleting File: {fullPath}");
+#endif
+
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Returns the length of the C string str
+        ///
+        ///     Signature: size_t strlen(const char* str)
+        /// </summary>
+        private void strlen()
+        {
+            var stringValue = GetParameterString(0, true);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Evaluated string length of {stringValue.Length} for string at {GetParameterPointer(0)} ({stringValue})");
+#endif
+            Registers.AX = (ushort)stringValue.Length;
+        }
+
+        /// <summary>
+        ///     User Input
+        ///
+        ///     Signature: char input[]
+        /// </summary>
+        private ReadOnlySpan<byte> input => Module.Memory.GetVariablePointer("INPUT").Data;
+
+        /// <summary>
+        ///     Converts a lowercase letter to uppercase
+        ///
+        ///     Signature: int toupper (int c)
+        /// </summary>
+        private void toupper()
+        {
+            var character = GetParameter(0);
+            if (character >= 97 && character <= 122)
+            {
+                Registers.AX = (ushort)(character - 32);
+            }
+            else
+            {
+                Registers.AX = character;
+            }
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Converted {(char)character} to {(char)Registers.AX}");
+#endif
+        }
+
+        /// <summary>
+        ///     Converts a uppercase letter to lowercase
+        ///
+        ///     Signature: int tolower (int c)
+        /// </summary>
+        private void tolower()
+        {
+            var character = GetParameter(0);
+            if (character >= 65 && character <= 90)
+            {
+                Registers.AX = (ushort)(character + 32);
+            }
+            else
+            {
+                Registers.AX = character;
+            }
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Converted {(char)character} to {(char)Registers.AX}");
+#endif
+        }
+
+        /// <summary>
+        ///     Changes the name of the file or directory specified by old name to new name
+        ///
+        ///     Signature: int rename(const char *oldname, const char *newname )
+        /// </summary>
+        private void rename()
+        {
+            var oldFilenameInputValue = GetParameterFilename(0);
+            var newFilenameInputValue = GetParameterFilename(2);
+
+            oldFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, oldFilenameInputValue);
+            newFilenameInputValue = _fileFinder.FindFile(Module.ModulePath, newFilenameInputValue);
+
+            try
+            {
+                File.Move(Path.Combine(Module.ModulePath, oldFilenameInputValue), Path.Combine(Module.ModulePath, newFilenameInputValue),
+                    true);
+
+#if DEBUG
+                _logger.Debug($"({Module.ModuleIdentifier}) Renamed file {oldFilenameInputValue} to {newFilenameInputValue}");
+#endif
+
+                Registers.AX = 0;
+            }
+            catch (Exception e)
+            {
+                _logger.Error($"{e.Message}");
+                Registers.AX = 0xFFFF;
+            }
+        }
+
+
+        /// <summary>
+        ///     The Length of the total Input Buffer received
+        ///
+        ///     Signature: int inplen
+        /// </summary>
+        private ReadOnlySpan<byte> inplen => Module.Memory.GetVariablePointer("INPLEN").Data;
+
+        private ReadOnlySpan<byte> margv => Module.Memory.GetVariablePointer("MARGV").Data;
+
+        private ReadOnlySpan<byte> margn => Module.Memory.GetVariablePointer("MARGN").Data;
+
+        /// <summary>
+        ///     Restore parsed input line (undoes effects of parsin())
+        ///
+        ///     Signature: void rstrin()
+        /// </summary>
+        private void rstrin()
+        {
+            var inputLength = Module.Memory.GetWord("INPLEN");
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+
+            if (inputLength == 0)
+                return;
+
+            for (var i = inputPointer.Offset; i < inputPointer.Offset + inputLength; i++)
+            {
+                if (Module.Memory.GetByte(inputPointer.Segment, i) == 0)
+                    Module.Memory.SetByte(inputPointer.Segment, i, (byte)' ');
+            }
+        }
+
+        private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+        private ReadOnlySpan<byte> _exitfopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+        private ReadOnlySpan<byte> _exitopen => new byte[] { 0x0, 0x0, 0x0, 0x0 };
+        private ReadOnlySpan<byte> extptr => Module.Memory.GetVariablePointer("EXTPTR").Data;
+        private ReadOnlySpan<byte> usaptr => Module.Memory.GetVariablePointer("USAPTR").Data;
+
+        /// <summary>
+        ///     Appends the first num characters of source to destination, plus a terminating null-character.
+        ///
+        ///     Signature: char *strncat(char *destination, const char *source, size_t num)
+        /// </summary>
+        private void strncat()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var destinationString = GetParameterStringSpan(0, true);
+            var sourceString = GetParameterStringSpan(2, true);
+            var bytesToCopy = GetParameter(4);
+
+            bytesToCopy = Math.Min(bytesToCopy, (ushort)sourceString.Length);
+
+            Module.Memory.SetArray(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length),
+                sourceString.Slice(0, bytesToCopy));
+            // null terminate always
+            Module.Memory.SetByte(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length + bytesToCopy), 0x0);
+
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Sets the first num bytes of the block of memory with the specified value
+        ///
+        ///     Signature: void _FAR * _RTLENTRYF _EXPFUNC memset(void _FAR *__s, int __c, size_t __n);
+        /// </summary>
+        private void memset()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var valueToFill = GetParameter(2);
+            var numberOfBytesToFill = GetParameter(3);
+
+            Module.Memory.FillArray(destinationPointer, numberOfBytesToFill, (byte)valueToFill);
+
+            Registers.SetPointer(destinationPointer);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Filled {numberOfBytesToFill} bytes at {destinationPointer} with {(byte)valueToFill:X2}");
+#endif
+        }
+
+        /// <summary>
+        ///     Read value of CNF option
+        ///
+        ///     Signature: char *bufard=getmsg(msgnum)
+        /// </summary>
+        private void getmsg()
+        {
+            var msgnum = GetParameter(0);
+
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("GETMSG"), 0x1000);
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+
+            if (outputValue.Length > 0x1000)
+                throw new Exception($"MSG {msgnum} is larger than pre-defined buffer: {outputValue.Length}");
+
+            Module.Memory.SetArray(variablePointer, outputValue);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved {outputValue.Length} bytes to {variablePointer}");
+#endif
+
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Reads data from s and stores them accounting to parameter format into the locations given by the additional arguments
+        ///
+        ///     Signature: int sscanf(const char *s, const char *format, ...)
+        /// </summary>
+        private void sscanf()
+        {
+            var inputString = GetParameterString(0, stripNull: true);
+            var formatString = GetParameterString(2, stripNull: true);
+            scanf(inputString.GetEnumerator(), formatString, 4);
+        }
+
+        private static IEnumerator<char> FromFileStream(FileStream input)
+        {
+            int b;
+            while ((b = input.ReadByte()) >= 0)
+                yield return Convert.ToChar(b);
+        }
+
+        /// <summary>
+        ///     Reads data from stream and stores them accounting to parameter format into the locations given by the additional arguments
+        ///
+        ///     Signature: int sscanf(FILE *stream, const char *format, ...)
+        /// </summary>
+        private void fscanf()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var formatString = GetParameterString(2, stripNull: true);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+                Registers.AX = 0;
+                return;
+            }
+
+            scanf(FromFileStream(fileStream), formatString, 4);
+        }
+
+        private enum ScanfParseState
+        {
+            NORMAL,
+            PERCENT
+        };
+
+        private struct ScanfState
+        {
+            private ScanfParseState _scanfParseState = ScanfParseState.NORMAL;
+
+            public ScanfState()
+            {
+                Length = 0;
+                IsLongInteger = false;
+            }
+
+            public ScanfParseState State
+            {
+                get => _scanfParseState;
+                set
+                {
+                    _scanfParseState = value;
+                    Length = 0;
+                    IsLongInteger = false;
+                }
+            }
+            public int Length { get; set; }
+            public bool IsLongInteger { get; set; }
+        }
+
+        private int GetNumberBaseFromCharacter(char formatChar) => formatChar switch
+        {
+            'x' => 16,
+            'o' => 8,
+            _ => 10
+        };
+
+        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
+        {
+            if (!input.MoveNext())
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var matches = 0;
+            var parseState = new ScanfState();
+            var moreInput = true;
+
+            foreach (var formatChar in formatString)
+            {
+                if (!moreInput)
+                    break;
+
+                switch (parseState.State)
+                {
+                    case ScanfParseState.NORMAL when char.IsWhiteSpace(formatChar):
+                        ConsumeWhitespace(input);
+                        break;
+                    case ScanfParseState.NORMAL when formatChar == '%':
+                        parseState.State = ScanfParseState.PERCENT;
+                        break;
+                    case ScanfParseState.NORMAL:
+                        // match a single character
+                        (moreInput, _) = ConsumeWhitespace(input);
+                        if (moreInput)
+                        {
+                            moreInput = (formatChar == input.Current);
+                            moreInput &= input.MoveNext();
+                        }
+                        break;
+                    case ScanfParseState.PERCENT when Char.IsAsciiDigit(formatChar):
+                        parseState.Length = parseState.Length * 10 + formatChar - '0';
+                        break;
+                    case ScanfParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u' || formatChar == 'x':
+                        var result = GetLeadingNumberFromString(input, GetNumberBaseFromCharacter(formatChar), parseState.Length > 0 ? parseState.Length : -1);
+                        moreInput = result.MoreInput;
+                        if (parseState.IsLongInteger)
+                        {
+                            // low word first followed by high word
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort)((uint)result.Value & 0xFFFF));
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal) + 2,
+                                (ushort)((uint)result.Value >> 16));
+                        }
+                        else
+                        {
+                            Module.Memory.SetWord(
+                                GetParameterPointer(startingParameterOrdinal),
+                                (ushort)result.Value);
+                        }
+
+                        if (result.Valid)
+                            ++matches;
+
+                        startingParameterOrdinal += 2;
+                        parseState.State = ScanfParseState.NORMAL;
+                        break;
+                    case ScanfParseState.PERCENT when formatChar == 's' || formatChar == 'c':
+                        var defaultLength = (formatChar == 's') ? int.MaxValue : 1;
+                        var length = parseState.Length > 0 ? parseState.Length : defaultLength;
+                        var count = 0;
+                        (var stringValue, moreInput) = ReadString(input, c =>
+                        {
+                            return (count++ < length) ?
+                                ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
+                                ExportedModuleBase.CharacterAccepterResponse.ABORT;
+                        });
+
+                        var destinationPtr = GetParameterPointer(startingParameterOrdinal);
+                        Module.Memory.SetArray(destinationPtr, Encoding.ASCII.GetBytes(stringValue));
+
+                        if (stringValue.Length > 0)
+                            ++matches;
+                        if (formatChar == 's') // null terminate
+                            Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
+
+                        startingParameterOrdinal += 2;
+                        parseState.State = ScanfParseState.NORMAL;
+                        break;
+                    case ScanfParseState.PERCENT when formatChar == 'l':
+                        parseState.IsLongInteger = true;
+                        break;
+                    case ScanfParseState.PERCENT when formatChar == '%':
+                        parseState.State = ScanfParseState.NORMAL;
+                        goto case ScanfParseState.NORMAL; // yolo
+                    case ScanfParseState.PERCENT:
+                        throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {formatChar}");
+                }
+            }
+
+            Registers.AX = (ushort)matches;
+        }
+
+        /// <summary>
+        ///     General MS-DOS interrupt interface
+        ///
+        ///     These calls are INT21 calls made from the module
+        ///
+        ///     Signature: int intdos(union REGS * inregs, union REGS * outregs)
+        /// </summary>
+        private void intdos()
+        {
+            var parameterOffset1 = GetParameterPointer(0);
+            var parameterOffset2 = GetParameterPointer(2);
+
+            //Load registers and pass to Int21h
+            var registers = new CpuRegisters();
+            registers.FromRegs(Module.Memory.GetArray(parameterOffset1, 16));
+
+            _int21h.Registers = registers;
+            _int21h.Handle();
+
+            Module.Memory.SetArray(parameterOffset2, registers.ToRegs());
+        }
+
+        /// <summary>
+        ///     Like pmlt(), but the control string comes from an .MCV file
+        ///
+        ///     Signature: void prfmlt(int msgno,...)
+        /// </summary>
+        private void prfmlt()
+        {
+            var messageNumber = GetParameter(0);
+
+            var output = McvPointerDictionary[_currentMcvFile.Offset].GetString(messageNumber);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 1);
+
+            var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
+            Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
+            currentPrfPositionPointer.Offset += (ushort)(formattedMessage.Length - 1); //dont count the null terminator
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
+#endif
+            //Update Pointer
+            Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
+        }
+
+        /// <summary>
+        ///     Clear the prf buffer indep of outprf
+        ///     Basically the same as clrprf()
+        ///
+        ///     Signature: void clrmlt()
+        /// </summary>
+        private void clrmlt() => clrprf();
+
+        /// <summary>
+        ///     Registers a Global Command Handler -- any input in the BBS
+        ///     (even outside the module) is run through this
+        /// </summary>
+        private void globalcmd()
+        {
+            var globalCommandHandlerPointer = GetParameterPointer(0);
+
+            Module.GlobalCommandHandlers.Add(globalCommandHandlerPointer);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered Global Command Handler at: {globalCommandHandlerPointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     Catastro Failure, basically a mega show stopping error
+        /// </summary>
+        private void catastro()
+        {
+            var message = GetParameterStringSpan(0);
+
+            var formattedMessage = FormatPrintf(message, 2);
+
+            _logger.Error($"({Module.ModuleIdentifier}) Catastro Failure: {Encoding.ASCII.GetString(formattedMessage)}");
+
+            Registers.Halt = true;
+        }
+
+        /// <summary>
+        ///     Reads the specified number of characters from the file until a new line or EOF
+        ///
+        ///     Signature: char* fgets(char* str, int num, FILE* stream )
+        /// </summary>
+        private void fgets()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var maxCharactersToRead = GetParameter(2);
+            var fileStructPointer = GetParameterPointer(3);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            if (fileStream.Position == fileStream.Length)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) Attempting to read EOF file, returning null pointer");
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            using var valueFromFile = new MemoryStream(maxCharactersToRead);
+            for (var i = 0; i < (maxCharactersToRead - 1); i++)
+            {
+                var inputValue = (byte)fileStream.ReadByte();
+
+                if (inputValue == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                    continue;
+
+                valueFromFile.WriteByte(inputValue);
+
+                if (inputValue == '\n' || fileStream.Position == fileStream.Length)
+                    break;
+            }
+
+            valueFromFile.WriteByte(0);
+
+            Module.Memory.SetArray(destinationPointer, valueFromFile.ToArray());
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+#endif
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Concatenates two strings and saves them to the destination.
+        ///
+        ///     Signature: char *strcat(char *destination, const char *source)
+        /// </summary>
+        public void strcat()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var destinationString = GetParameterStringSpan(0, true);
+            var sourceString = GetParameterStringSpan(2);
+
+            Module.Memory.SetArray(destinationPointer.Segment,
+                (ushort)(destinationPointer.Offset + destinationString.Length),
+                sourceString);
+
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Writes the C string pointed by format to the stream
+        ///
+        ///     Signature: int fprintf ( FILE * stream, const char * format, ... )
+        /// </summary>
+        private void f_printf()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            var output = Module.Memory.GetString(sourcePointer, true);
+
+            //If the supplied string has any control characters for formatting, process them
+            var formattedMessage = FormatPrintf(output, 4);
+
+            fileStream.Write(formattedMessage);
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Wrote {formattedMessage.Length} bytes to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+
+            Registers.AX = (ushort)formattedMessage.Length;
+        }
+
+        /// <summary>
+        ///     Sets the position indicator associated with the stream to a new position.
+        ///
+        ///     Signature: int fseek ( FILE * stream, long int offset, int origin )
+        /// </summary>
+        private void fseek()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+            var offset = GetParameterLong(2);
+            var origin = GetParameter(4);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException($"Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            switch (origin)
+            {
+                case 2: //EOF
+                    fileStream.Seek(offset, SeekOrigin.End);
+                    break;
+                case 1: //CUR
+                    fileStream.Seek(offset, SeekOrigin.Current);
+                    break;
+                case 0: //SET
+                    fileStream.Seek(offset, SeekOrigin.Begin);
+                    break;
+            }
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Seek to {fileStream.Position} in {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Takes a packed time from now() and returns it as 'HH:MM:SS'
+        ///
+        ///     Signature: char *asctim=nctime(int time)
+        /// </summary>
+        private void nctime()
+        {
+            //From DOSFACE.H:
+            //#define dttime(hour,min,sec) (((hour)<<11)+((min)<<5)+((sec)>>1))
+            //var packedTime = (_clock.Now.Hour << 11) + (_clock.Now.Minute << 5) + (_clock.Now.Second >> 1);
+
+            var packedTime = GetParameter(0);
+
+            var unpackedHour = (packedTime >> 11) & 0x1F;
+            var unpackedMinutes = (packedTime >> 5) & 0x3F;
+            var unpackedSeconds = (packedTime << 1) & 0x3E;
+
+            var unpackedTime = new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day, unpackedHour,
+                unpackedMinutes, unpackedSeconds);
+
+            var timeString = $"{unpackedTime.ToString("HH:mm:ss")}\0";
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCTIME"), (ushort)timeString.Length);
+
+            Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
+                Encoding.Default.GetBytes(timeString));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {packedTime}, decoded string {timeString} saved to {variablePointer}");
+#endif
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Returns a pointer to the first occurrence of character in the C string str
+        ///
+        ///     Signature: char * strchr ( const char * str, int character )
+        ///
+        ///     More Info: http://www.cplusplus.com/reference/cstring/strchr/
+        /// </summary>
+        private void strchr()
+        {
+            var stringPointer = GetParameterPointer(0);
+            var characterToFind = GetParameter(2);
+
+            var stringToSearch = Module.Memory.GetString(stringPointer, stripNull: true);
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[i] != (byte)characterToFind) continue;
+
+                Registers.SetPointer(stringPointer + i);
+                return;
+            }
+
+            //If character wasn't found, return a null pointer
+            Registers.AX = 0;
+            Registers.DX = 0;
+        }
+
+        /// <summary>
+        ///     Parses the input line (null terminating each word)
+        ///
+        ///     Signature: void parsin()
+        /// </summary>
+        private void parsin()
+        {
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            //If Length is 0, there's nothing to process
+            if (Module.Memory.GetByte(inputPointer) == 0)
+            {
+                Module.Memory.SetWord("INPLEN", 0);
+                Module.Memory.SetWord("MARGC", 0);
+                return;
+            }
+
+            //Parse out the Input, eliminating excess spaces and separating words by null
+            var inputComponents = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
+                .Split(' ');
+            var parsedInput = string.Join('\0', inputComponents);
+
+            //Setup MARGV & MARGN
+            var margvPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGV"));
+            var margnPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGN"));
+
+            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x) && x != "\0");
+
+            Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
+            margvPointer.Offset += FarPtr.Size;
+
+            for (var i = 0; i < parsedInput.Length; i++)
+            {
+                if (parsedInput[i] != 0)
+                    continue;
+
+                //Set Command End
+                var commandEndPointer = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
+                Module.Memory.SetPointer(margnPointer, commandEndPointer);
+                margnPointer.Offset += FarPtr.Size;
+
+                i++;
+
+                //Skip any white spaces after the current command
+                while (i < parsedInput.Length && parsedInput[i] == 0)
+                    i++;
+
+                //Are we at the end of the INPUT? If so, we're done here.
+                if (i == parsedInput.Length)
+                    break;
+
+                //If not, set the next command start
+                var commandStartPointer = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
+                Module.Memory.SetPointer(margvPointer, commandStartPointer);
+                margvPointer.Offset += FarPtr.Size;
+
+            }
+
+            Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
+            Module.Memory.SetWord("MARGC", margCount);
+        }
+
+        /// <summary>
+        ///     Move a block of memory
+        ///
+        ///     Signature: void movmem(char *source, char *destination, unsigned nbytes)
+        /// </summary>
+        private void movmem()
+        {
+            var sourcePointer = GetParameterPointer(0);
+            var destinationPointer = GetParameterPointer(2);
+            var bytesToMove = GetParameter(4);
+
+            //Cast to array as the write can overlap and overwrite, mucking up the span read
+            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
+
+            Module.Memory.SetArray(destinationPointer, sourceData);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Moved {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     Returns the current position in the specified FILE stream
+        ///
+        ///     Signature: long int ftell(FILE *stream );
+        /// </summary>
+        private void ftell()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            var currentPosition = FilePointerDictionary[fileStruct.curp.Offset].Position;
+
+#if DEBUG
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Returning Current Position of {currentPosition} for {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+
+            Registers.DX = (ushort)(currentPosition >> 16);
+            Registers.AX = (ushort)(currentPosition & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Determines if a user is using a specific module
+        ///
+        ///     Signature: int isin=instat(char *usrid, int qstate)
+        /// </summary>
+        private void instat()
+        {
+            var useridPointer = GetParameterPointer(0);
+            var moduleId = GetParameter(2);
+
+            var userId = Module.Memory.GetString(useridPointer).ToArray();
+
+            var userSession = ChannelDictionary.Values.FirstOrDefault(x =>
+                userId.SequenceEqual(StringFromArray(x.UsrAcc.userid).ToArray()));
+
+            //User not found?
+            if (userSession == null || ChannelDictionary[userSession.Channel].UsrPtr.State != moduleId)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var othusnPointer = Module.Memory.GetVariablePointer("OTHUSN");
+            Module.Memory.SetWord(othusnPointer, ChannelDictionary[userSession.Channel].Channel);
+
+            var userBase = new FarPtr(Module.Memory.GetVariablePointer("USER").Data);
+            userBase.Offset += (ushort)(User.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUSP"), userBase.Data);
+
+            var userAccBase = new FarPtr(Module.Memory.GetVariablePointer("USRACC").Data);
+            userAccBase.Offset += (ushort)(UserAccount.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHUAP"), userAccBase.Data);
+
+            var userExtAcc = new FarPtr(Module.Memory.GetVariablePointer("EXTUSR").Data);
+            userExtAcc.Offset += (ushort)(ExtUser.Size * userSession.Channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("OTHEXP"), userExtAcc.Data);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) User Found -- Channel {userSession.Channel}, user[] offset {userBase}");
+#endif
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Searches the string for any occurrence of the substring
+        ///
+        ///     Signature: int found=samein(char *subs, char *string)
+        /// </summary>
+        private void samein()
+        {
+            var stringToFind = GetParameterString(0, true);
+            var stringToSearch = GetParameterString(2, true);
+
+            if (string.IsNullOrEmpty(stringToFind) || string.IsNullOrEmpty(stringToSearch))
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            Registers.AX = (ushort)(stringToSearch.Contains(stringToFind, StringComparison.InvariantCultureIgnoreCase) ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Skip past whitespace, returns pointer to the first NULL or non-whitespace character in the string
+        ///
+        ///     Signature: char *skpwht(char *string)
+        /// </summary>
+        private void skpwht()
+        {
+            var stringToSearchPointer = GetParameterPointer(0);
+
+            var stringToSearch = Module.Memory.GetString(stringToSearchPointer, false);
+
+            for (var i = 0; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[i] == 0x0 || stringToSearch[i] == 0x20) continue;
+
+                Registers.SetPointer(stringToSearchPointer + i);
+                return;
+            }
+
+            Registers.SetPointer(stringToSearchPointer);
+        }
+
+        /// <summary>
+        ///     Just like the standard fgets(), except it uses '\r' as a line terminator (a hard carriage return on The Major BBS),
+        ///     and it won't have a line terminator on the last line if the file doesn't have it.
+        ///
+        ///     Signature: char *mdfgets(char *buf,int size,FILE *fp)
+        /// </summary>
+        private void mdfgets()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var maxCharactersToRead = GetParameter(2);
+            var fileStructPointer = GetParameterPointer(3);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new Exception($"({Module.ModuleIdentifier}) Unable to locate FileStream for {fileStructPointer} (Stream: {fileStruct.curp})");
+
+            if (fileStream.Position == fileStream.Length)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) Attempting to read EOF file, returning null pointer");
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            using var valueFromFile = new MemoryStream(maxCharactersToRead);
+            for (var i = 0; i < (maxCharactersToRead - 1); i++)
+            {
+                var inputValue = (byte)fileStream.ReadByte();
+
+                if (inputValue == '\r' || fileStream.Position == fileStream.Length)
+                    break;
+
+                valueFromFile.WriteByte(inputValue);
+            }
+
+            valueFromFile.WriteByte(0);
+
+            Module.Memory.SetArray(destinationPointer, valueFromFile.ToArray());
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Read string from {fileStructPointer}, {valueFromFile.Length} bytes (Stream: {fileStruct.curp}), saved at {destinationPointer} (EOF: {fileStream.Position == fileStream.Length})");
+#endif
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Pointer to the Generic BBS Database (BBSGEN.DAT)
+        /// </summary>
+        private ReadOnlySpan<byte> genbb => Module.Memory.GetVariablePointer("GENBB").Data;
+
+        /// <summary>
+        ///     Pointer to the BBS Accounts Database (BBSUSR.DAT)
+        /// </summary>
+        private ReadOnlySpan<byte> accbb => Module.Memory.GetVariablePointer("ACCBB").Data;
+
+        /// <summary>
+        ///     Turns echo on for this channel
+        ///
+        ///     Signature: void echon()
+        /// </summary>
+        private void echon()
+        {
+            ChannelDictionary[ChannelNumber].TransparentMode = false;
+        }
+
+        /// <summary>
+        ///     Converts all lowercase characters in a string to uppercase
+        ///
+        ///     Signature: char *upper=strupr(char *string)
+        /// </summary>
+        private void strupr()
+        {
+            strmod(Char.ToUpper);
+        }
+
+        private void strmod(Func<char, char> modifier)
+        {
+            var stringToConvertPointer = GetParameterPointer(0);
+
+            var stringData = Module.Memory.GetString(stringToConvertPointer, stripNull: true).ToArray();
+
+            for (var i = 0; i < stringData.Length; i++)
+            {
+                stringData[i] = (byte)modifier.Invoke((char)stringData[i]);
+            }
+
+            Module.Memory.SetArray(stringToConvertPointer, stringData);
+
+            Registers.SetPointer(stringToConvertPointer);
+        }
+
+        /// <summary>
+        ///     Returns a pointer to the first occurrence of str2 in str1, or a null pointer if str2 is not part of str1.
+        /// </summary>
+        private void strstr()
+        {
+            var stringToSearchPointer = GetParameterPointer(0);
+            var stringToSearch = GetParameterString(0, true);
+            var stringToFind = GetParameterString(2, true);
+
+            var offset = stringToSearch.IndexOf(stringToFind);
+            if (offset >= 0)
+            {
+                Registers.SetPointer(stringToSearchPointer + offset);
+            }
+            else
+            {
+                // not found, return NULL
+                Registers.SetPointer(FarPtr.Empty);
+            }
+        }
+
+        /// <summary>
+        ///     Removes trailing blank spaces from string
+        ///
+        ///     Signature: int nremoved=depad(char *string)
+        /// </summary>
+        private void depad(bool updateAX = true)
+        {
+            var stringPointer = GetParameterPointer(0);
+
+            var stringToSearch = Module.Memory.GetString(stringPointer).ToArray();
+
+            ushort numRemoved = 0;
+            for (var i = 1; i < stringToSearch.Length; i++)
+            {
+                if (stringToSearch[^i] == 0x0)
+                    continue;
+
+                if (stringToSearch[^i] != 0x20)
+                    break;
+
+                stringToSearch[^i] = 0x0;
+                numRemoved++;
+            }
+
+            Module.Memory.SetArray(stringPointer, stringToSearch);
+
+            if (updateAX)
+                Registers.AX = numRemoved;
+        }
+
+        private ReadOnlySpan<byte> othusn => Module.Memory.GetVariablePointer("OTHUSN").Data;
+
+        /// <summary>
+        ///     Returns number of bytes session will need, or -1=error in data
+        ///
+        ///     Signature: int fsdroom(int tmpmsg, char *fldspc, int amode)
+        /// </summary>
+        private void fsdroom()
+        {
+            var tmpmsg = GetParameter(0);
+            var fldspc = GetParameterPointer(1);
+            var amode = GetParameter(3);
+
+            Registers.AX = 0x2000;
+
+            //amode == 0 is just to calculate/report back the buffer space available
+            if (amode == 0)
+                return;
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", out var fsdBufferPointer))
+                fsdBufferPointer = Module.Memory.AllocateVariable($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-FieldSpec-{ChannelNumber}", out var fsdFieldSpecPointer))
+                fsdFieldSpecPointer = Module.Memory.AllocateVariable($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+
+            //Zero out FSD Memory Areas
+            Module.Memory.SetZero(fsdBufferPointer, 0x2000);
+            Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
+
+            //Hydrate FSD Memory Areas with Values
+            var template = McvPointerDictionary[_currentMcvFile.Offset].GetString(tmpmsg);
+            Module.Memory.SetArray(fsdBufferPointer, template);
+            var fieldSpec = Module.Memory.GetString(fldspc);
+            Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
+
+            //Establish a new FSD Status Struct for this Channel
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}", out var channelFsdscb))
+                channelFsdscb = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", out var newansPointer))
+                newansPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+
+            //Declare flddat -- allocating enough room for up to 100 fields
+            if (!Module.Memory.TryGetVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", out var fsdfldPointer))
+                fsdfldPointer = Module.Memory.AllocateVariable($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+
+            var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
+            {
+                fldspc = fsdFieldSpecPointer,
+                flddat = fsdfldPointer,
+                newans = newansPointer
+            };
+
+            Module.Memory.SetArray($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
+        }
+
+        /// <summary>
+        ///     Btrieve Step Operation Supporting Locks
+        ///
+        ///     Signature: int stpbtvl (void *recptr, int stpopt, int loktyp)
+        /// </summary>
+        private void stpbtvl()
+        {
+            // we don't support locks, so just call the normal version
+            stpbtv();
+        }
+
+        /// <summary>
+        ///     Compares the C string str1 to the C string str2
+        ///
+        ///     Signature: int strcmp ( const char * str1, const char * str2 )
+        /// </summary>
+        private void strcmp()
+        {
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
+
+            Registers.AX = (ushort)string.Compare(string1, string2);
+        }
+
+        /// <summary>
+        ///     Change the currently active Channel to the specified Channel Number
+        ///
+        ///     Signature: void curusr(int newunum)
+        /// </summary>
+        private void curusr()
+        {
+            var newUserNumber = GetParameter(0);
+
+            if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
+            {
+#if DEBUG
+                _logger.Debug($"({Module.ModuleIdentifier}) Invalid Channel: {newUserNumber}");
+#endif
+                return;
+            }
+
+            //Save the Current Channel
+            UpdateSession(ChannelNumber);
+
+            //Load the new Channel
+            SetState(newUserNumber);
+
+#if DEBUG
+            _logger.Debug($"Setting Current User to {newUserNumber}");
+#endif
+        }
+
+        /// <summary>
+        ///     Number of modules currently installed
+        /// </summary>
+        private ReadOnlySpan<byte> nmods => Module.Memory.GetVariablePointer("NMODS").Data;
+
+        /// <summary>
+        ///     This is the pointer, to the pointer, for the MODULE struct because module is declared
+        ///     **module in MAJORBBS.H
+        ///
+        ///     Pointer -> Pointer -> Struct
+        /// </summary>
+        private ReadOnlySpan<byte> module => Module.Memory.GetVariablePointer("**MODULE").Data;
+
+        /// <summary>
+        ///     Long Arithmatic Shift Left (Borland C++ Implicit Function)
+        ///
+        ///     DX:AX == Long Value
+        ///     CL == How many to move
+        /// </summary>
+        private void f_lxlsh()
+        {
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
+
+            var result = inputValue << Registers.CL;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Long Logical Shift Right (Borland C++ Implicit Function)
+        ///
+        ///     DX:AX == Unsigned Long Value
+        ///     CL == How many to move
+        /// </summary>
+        private void f_lxursh()
+        {
+            var inputValue = (uint)((Registers.DX << 16) | Registers.AX);
+
+            var result = inputValue >> Registers.CL;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Long Arithmatic Shift Right (Borland C++ Implicit Function)
+        ///
+        ///     DX:AX == Long Value
+        ///     CL == How many to move
+        /// </summary>
+        private void f_lxrsh()
+        {
+            var inputValue = (int)((Registers.DX << 16) | Registers.AX);
+
+            var result = inputValue >> Registers.CL;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Say good-bye to a user and disconnect (hang up)
+        ///
+        ///     Signature: void byenow(int msgnum, TYPE p1, TYPE p2,...,pn)
+        /// </summary>
+        private void byenow()
+        {
+            prfmsg();
+        }
+
+        /// <summary>
+        ///     Internal Borland C++ Localle Aware ctype Macros
+        ///
+        ///     See: CTYPE.H
+        /// </summary>
+        private ReadOnlySpan<byte> _ctype => Module.Memory.GetVariablePointer("CTYPE").Data;
+
+        /// <summary>
+        ///     Points to the ad-hoc Volatile Data Area
+        ///
+        ///     Signature: char *vdatmp
+        /// </summary>
+        private ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariablePointer("*VDATMP").Data;
+
+        /// <summary>
+        ///     Send prfbuf to a channel & clear
+        ///     Multilingual version of outprf(), for now we just call outprf()
+        /// </summary>
+        private void outmlt() => outprf();
+
+        /// <summary>
+        ///     Update the Btrieve current record with a variable length record
+        ///
+        ///     Signature: void upvbtv(char *recptr, int length)
+        /// </summary>
+        /// <returns></returns>
+        private void upvbtv()
+        {
+            var btrieveRecordPointerPointer = GetParameterPointer(0);
+            var length = GetParameter(2);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var dataToWrite = Module.Memory.GetArray(btrieveRecordPointerPointer, length);
+
+            currentBtrieveFile.Update(dataToWrite.ToArray());
+        }
+
+        /// <summary>
+        ///     Copies a string with a fixed length
+        ///
+        ///     Signature: stlcpy(char *dest, char *source, int nbytes);
+        ///     Return: AX = Offset in Segment
+        ///             DX = Data Segment
+        /// </summary>
+        private void stlcpy()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+            var limit = GetParameter(4);
+
+            using var inputBuffer = new MemoryStream(limit);
+            var potentialString = Module.Memory.GetArray(sourcePointer, limit);
+            for (var i = 0; i < limit; i++)
+            {
+                if (potentialString[i] == 0x0)
+                    break;
+
+                inputBuffer.WriteByte(potentialString[i]);
+            }
+
+            //If the value read is less than the limit, it'll be padded with null characters
+            //per the MajorBBS Development Guide
+            for (var i = inputBuffer.Length; i < limit; i++)
+                inputBuffer.WriteByte(0x0);
+
+            Module.Memory.SetArray(destinationPointer, inputBuffer.ToArray());
+
+#if DEBUG
+            _logger.Debug(
+                $"({Module.ModuleIdentifier}) Copied \"{Encoding.ASCII.GetString(inputBuffer.ToArray())}\" ({inputBuffer.Length} bytes) from {sourcePointer} to {destinationPointer}");
+#endif
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Turn on polling for the specified user number channel
+        ///
+        ///     This will be called as fast as possible, as often as possible until
+        ///     stop_polling() is called
+        ///
+        ///     Signature: void begin_polling(int unum,void (*rouptr)())
+        /// </summary>
+        private void begin_polling()
+        {
+            var channelNumber = GetParameter(0);
+            var routinePointer = GetParameterPointer(1);
+
+            //Unset on the specified channel
+            if (routinePointer == FarPtr.Empty)
+            {
+                ChannelDictionary[channelNumber].PollingRoutine = null;
+#if DEBUG
+                _logger.Debug($"Unassigned Polling Routine on Channel {channelNumber}");
+#endif
+                return;
+            }
+
+            ChannelDictionary[channelNumber].PollingRoutine = routinePointer;
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), 192);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Assigned Polling Routine {ChannelDictionary[channelNumber].PollingRoutine} to Channel {channelNumber}");
+#endif
+        }
+
+        /// <summary>
+        ///     Stop polling for the specified user number channel
+        ///
+        ///     Signature: void stop_polling(int unum)
+        /// </summary>
+        private void stop_polling()
+        {
+            var channelNumber = GetParameter(0);
+
+            ChannelDictionary[channelNumber].PollingRoutine = null;
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Unassigned Polling Routine on Channel {channelNumber}");
+#endif
+        }
+
+        /// <summary>
+        ///     Title of the MajorBBS System
+        ///
+        ///     Signature: char *bbsttl
+        /// </summary>
+        private ReadOnlySpan<byte> bbsttl
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("BBSTTL");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSTitle));
+                return Module.Memory.GetVariablePointer("*BBSTTL").Data;
+            }
+        }
+
+        /// <summary>
+        ///     The Company name of the MajorBBS system
+        ///
+        ///     Signature: char *company
+        /// </summary>
+        private ReadOnlySpan<byte> company
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("COMPANY");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSCompanyName));
+                return Module.Memory.GetVariablePointer("*COMPANY").Data;
+            }
+        }
+
+        /// <summary>
+        ///     Mailing Address Line 1 of the MajorBBS System
+        ///
+        ///     Signature: char *addres1 (not a typo)
+        /// </summary>
+        private ReadOnlySpan<byte> addres1
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("ADDRES1");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSAddress1));
+                return Module.Memory.GetVariablePointer("*ADDRES1").Data;
+            }
+        }
+
+        /// <summary>
+        ///     Mailing Address Line 2 of the MajorBBS System
+        ///
+        ///     Signature: char *addres2 (not a typo)
+        /// </summary>
+        private ReadOnlySpan<byte> addres2
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("ADDRES2");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSAddress2));
+                return Module.Memory.GetVariablePointer("*ADDRES2").Data;
+            }
+        }
+
+        /// <summary>
+        ///     The first phone line connected to the MajorBBS system
+        ///
+        ///     Signature: char *dataph
+        /// </summary>
+        private ReadOnlySpan<byte> dataph
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("DATAPH");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSDataPhone));
+                return Module.Memory.GetVariablePointer("*DATAPH").Data;
+            }
+        }
+
+        /// <summary>
+        ///     The first phone line reserved for live users
+        ///
+        ///     Signature: char *liveph
+        /// </summary>
+        private ReadOnlySpan<byte> liveph
+        {
+            get
+            {
+                var titlePointer = Module.Memory.GetVariablePointer("LIVEPH");
+
+                Module.Memory.SetArray(titlePointer, Encoding.ASCII.GetBytes(_configuration.BBSVoicePhone));
+                return Module.Memory.GetVariablePointer("*LIVEPH").Data;
+            }
+        }
+
+        /// <summary>
+        ///     Translate buffer (process any possible text_variables)
+        ///
+        ///     Signature: char *xlttxv(char *buffer,int size)
+        /// </summary>
+        private void xlttxv()
+        {
+            var stringToProcess = GetParameterStringSpan(0);
+            var size = GetParameter(2);
+
+            var processedString = ProcessTextVariables(stringToProcess);
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer("XLTTXV", 0x800);
+
+            Module.Memory.SetArray(resultPointer, processedString);
+
+            Registers.SetPointer(resultPointer);
+        }
+
+        /// <summary>
+        ///     Strips ANSI from a string
+        ///
+        ///     Signature: char *stpans(char *str)
+        /// </summary>
+        private void stpans()
+        {
+            var stringToStripPointer = GetParameterPointer(0);
+            var inputString = Module.Memory.GetString(stringToStripPointer);
+
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("STPANS"), 1920); //Max Screen Size of 80x24
+
+            if (inputString.Length > 1920)
+            {
+                _logger.Warn(
+                    $"String to Strip is larger than 1920 bytes, truncating to 1920 bytes as to not overflow buffer");
+                inputString = inputString.Slice(0, 1920);
+            }
+
+            //Declare Return
+            var cleanedStringBuilder = new StringBuilder(1920);
+
+            for (int i = 0; i < inputString.Length;)
+            {
+                if (inputString[i] == '\x1b') // Start of an escape sequence
+                {
+                    i++; // Increment to skip the escape character
+
+                    // Check if it's a CSI sequence which starts with '['
+                    if (i < inputString.Length && inputString[i] == '[')
+                    {
+                        i++; // Skip the '['
+                        // Skip the parameters and intermediate bytes
+                        while (i < inputString.Length && inputString[i] > 0x1F && inputString[i] < 0x40)
+                        {
+                            i++;
+                        }
+                        // Now skip the final byte
+                        if (i < inputString.Length && inputString[i] >= 0x40 && inputString[i] <= 0x7E)
+                        {
+                            i++;
+                        }
+                    }
+                    // Check if it's an OSC sequence which starts with ']'
+                    else if (i < inputString.Length && inputString[i] == ']')
+                    {
+                        i++; // Skip the ']'
+                        // OSC sequence ends with BEL (0x07)
+                        while (i < inputString.Length && inputString[i] != 0x07)
+                        {
+                            i++;
+                        }
+                        if (i < inputString.Length) // Check to avoid IndexOutOfRangeException
+                        {
+                            i++; // Skip the BEL character
+                        }
+                    }
+                }
+                else if (i < inputString.Length) // Check to avoid IndexOutOfRangeException
+                {
+                    // Regular character, append it
+                    cleanedStringBuilder.Append((char)inputString[i]);
+                    i++;
+                }
+            }
+
+            Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes(cleanedStringBuilder.ToString()));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Ignoring, not stripping ANSI");
+#endif
+
+            Registers.SetPointer(resultPointer);
+        }
+
+        /// <summary>
+        ///     Volatile Data Size after all INIT routines are complete
+        ///
+        ///     This is hard coded to VOLATILE_DATA_SIZE constant
+        ///
+        ///     Signature: int vdasiz;
+        /// </summary>
+        private ReadOnlySpan<byte> vdasiz => Module.Memory.GetVariablePointer("VDASIZ").Data;
+
+        /// <summary>
+        ///     Performs a Btrieve Query Operation based on KEYS
+        ///
+        ///     Signature: int is=qrybtv(char *key, int keynum, int qryopt)
+        /// </summary>
+        private void qrybtv()
+        {
+            var keyPointer = GetParameterPointer(0);
+            var keyNumber = GetParameter(2);
+            var queryOption = (EnumBtrieveOperationCodes)GetParameter(3);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            var key = Module.Memory.GetArray(keyPointer,
+                currentBtrieveFile.GetKeyLength(keyNumber));
+
+            var result = currentBtrieveFile.PerformOperation(keyNumber, key, queryOption);
+            if (result)
+                UpdateBB(currentBtrieveFile, FarPtr.Empty, queryOption, (short)keyNumber);
+
+            Registers.AX = result ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Returns the Absolute Position (offset) in the current Btrieve file
+        ///
+        ///     Signature: long absbtv()
+        /// </summary>
+        private void absbtv()
+        {
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+            var offset = currentBtrieveFile.Position;
+
+            Registers.DX = (ushort)(offset >> 16);
+            Registers.AX = (ushort)(offset & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Gets the Btrieve Record located at the specified absolution position (offset)
+        ///
+        ///     Signature: void gabbtv(char *recptr, long abspos, int keynum)
+        /// </summary>
+        private void gabbtv()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var absolutePosition = GetParameterLong(2);
+            var keynum = GetParameter(4);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum, setLogicalPosition: true);
+        }
+
+        /// <summary>
+        ///     Pointer to structure for that user in the user[] array (set by onsys() or instat())
+        ///
+        ///     Signature: struct user *othusp;
+        /// </summary>
+        private ReadOnlySpan<byte> othusp => Module.Memory.GetVariablePointer("*OTHUSP").Data;
+
+        /// <summary>
+        ///     Pointer to structure for that user in the extusr structure (set by onsys() or instat())
+        ///
+        ///     Signature: struct extusr *othexp;
+        /// </summary>
+        private ReadOnlySpan<byte> othexp => Module.Memory.GetVariablePointer("*OTHEXP").Data;
+
+        /// <summary>
+        ///     Pointer to structure for that user in the 'usracc' structure (set by onsys() or instat())
+        ///
+        ///     Signature: struct usracc *othuap;
+        /// </summary>
+        private ReadOnlySpan<byte> othuap => Module.Memory.GetVariablePointer("*OTHUAP").Data;
+
+        /// <summary>
+        ///     Splits the specified string into tokens based on the delimiters
+        /// </summary>
+        private void strtok()
+        {
+            var stringToSplitPointer = GetParameterPointer(0);
+            var stringDelimitersPointer = GetParameterPointer(2);
+
+            var workPointerPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-WRK", FarPtr.Size);
+            var lengthPointer = Module.Memory.GetOrAllocateVariablePointer("STRTOK-END", 2);
+
+            //If it's the first call, reset the values in memory
+            if (!stringToSplitPointer.Equals(FarPtr.Empty))
+            {
+                Module.Memory.SetPointer(workPointerPointer, stringToSplitPointer);
+                Module.Memory.SetWord(lengthPointer, (ushort)(stringToSplitPointer.Offset + Module.Memory.GetString(stringToSplitPointer, stripNull: true).Length));
+            }
+
+            var workPointer = Module.Memory.GetPointer(workPointerPointer);
+            var endOffset = Module.Memory.GetWord(lengthPointer);
+
+            var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, stripNull: true));
+
+            // skip starting delimiters
+            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
+            {
+                Module.Memory.SetByte(workPointer++, 0x0);
+            }
+
+            // are we at the end of the string with no more to tokenize?
+            if (workPointer.Offset >= endOffset)
+            {
+                Module.Memory.SetPointer(workPointerPointer, workPointer);
+                Registers.DX = 0;
+                Registers.AX = 0;
+                return;
+            }
+
+            Registers.SetPointer(workPointer);
+
+            // scan until we find the next delimiter and then null it out for the return
+            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
+            {
+                workPointer++;
+            }
+
+            Module.Memory.SetByte(workPointer++, 0x0);
+            Module.Memory.SetPointer(workPointerPointer, workPointer);
+        }
+
+        /// <summary>
+        ///     fputs - puts a string on a stream
+        ///
+        ///     Signature: int fputs(const char *string, FILE *stream);
+        /// </summary>
+        private void fputs()
+        {
+            var stringToWrite = GetParameterStringSpan(0);
+            var fileStructPointer = GetParameterPointer(2);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                fileStream.Write(FormatNewLineCarriageReturn(stringToWrite));
+            else
+                fileStream.Write(stringToWrite);
+
+            fileStream.Flush();
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Wrote {stringToWrite.Length} bytes from {GetParameterPointer(0)}, written to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Read raw value of CNF option
+        ///
+        ///     Signature: char *bufard=rawmsg(msgnum)
+        /// </summary>
+        private void rawmsg()
+        {
+            var msgnum = GetParameter(0);
+
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("RAWMSG"), 0x1000);
+            var outputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+
+            if (outputValue.Length > 0x1000)
+                throw new Exception($"MSG {msgnum} is larger than pre-defined buffer: {outputValue.Length}");
+
+            Module.Memory.SetArray(variablePointer, outputValue);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier})Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}), saved {outputValue.Length} bytes to {variablePointer}");
+#endif
+
+            Registers.SetPointer(variablePointer);
+        }
+
+
+        /// <summary>
+        ///     Read raw value of CNF option
+        ///
+        ///     Signature: char result=chropt(msgnum)
+        /// </summary>
+        private void chropt()
+        {
+            var msgnum = GetParameter(0);
+
+            //Because the string is null terminated, we get the second to last character
+            var inputValue = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgnum);
+
+            //If it's just a null string
+            if (inputValue.Length <= 1)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var outputValue = inputValue[^2];
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved option {msgnum} from {McvPointerDictionary[_currentMcvFile.Offset].FileName} (MCV Pointer: {_currentMcvFile}): {outputValue}");
+#endif
+
+            Registers.AX = outputValue;
+        }
+
+        /// <summary>
+        ///     Reads a single character from the current pointer of the specified file stream
+        ///
+        ///     Signature: int fgetc ( FILE * stream )
+        /// </summary>
+        private void fgetc()
+        {
+            var fileStructPointer = GetParameterPointer(0);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            var characterRead = fileStream.ReadByte();
+
+            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                characterRead = '\n';
+
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Read 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}): {characterRead:X2}");
+#endif
+
+            Registers.AX = (ushort)characterRead;
+        }
+
+        /// <summary>
+        ///     Case Insensitive Comparison of the C string str1 to the C string str2
+        ///
+        ///     Signature: int stricmp ( const char * str1, const char * str2 )
+        /// </summary>
+        private void stricmp()
+        {
+            var string1 = GetParameterPointer(0) == FarPtr.Empty ? string.Empty : GetParameterString(0, stripNull: true);
+            var string2 = GetParameterPointer(2) == FarPtr.Empty ? string.Empty : GetParameterString(2, stripNull: true);
+
+            Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
+        }
+
+        /// <summary>
+        ///     Frees memory allocated via farmalloc
+        ///
+        ///     <para/>Signature: void farfree(void *)
+        /// </summary>
+        private void farfree()
+        {
+            Module.Memory.Free(GetParameterPointer(0));
+        }
+
+        /// <summary>
+        ///     Allocates A LOT of memory!!!
+        ///
+        ///     <para/>Signature: void* farmalloc(ULONG size);
+        ///     <para/>Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        /// </summary>
+        private void farmalloc()
+        {
+            var requestedSize = GetParameterULong(0);
+            if (requestedSize > 0xFFFF)
+                throw new OutOfMemoryException("farmalloc trying to allocate more than a segment");
+
+            Registers.SetPointer(Module.Memory.Malloc((ushort)requestedSize));
+        }
+
+        /// <summary>
+        ///     Galacticomm's malloc() for debugging
+        ///
+        ///     Signature: void * galmalloc(unsigned int size);
+        ///     Return: AX = Offset in Segment (host)
+        ///             DX = Data Segment
+        /// </summary>
+        private void galmalloc()
+        {
+            var size = GetParameter(0);
+
+            var allocatedMemory = Module.Memory.Malloc(size);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Allocated {size} bytes starting at {allocatedMemory}");
+#endif
+
+            Registers.SetPointer(allocatedMemory);
+        }
+
+
+        /// <summary>
+        ///     Ungets character from stream and decreases the internal file position by 1
+        ///
+        ///     Signature: int ungetc(int character,FILE *stream )
+        /// </summary>
+        private void ungetc()
+        {
+            var character = GetParameter(0);
+            var fileStructPointer = GetParameterPointer(1);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"File Stream Pointer for {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            fileStream.Position -= 1;
+            fileStream.WriteByte((byte)character);
+            fileStream.Position -= 1;
+
+            //Update EOF Flag if required -- TODO DO WE NEED?
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"Unget 1 byte from {fileStructPointer} (Stream: {fileStruct.curp}). New Position: {fileStream.Position}, Character: {(char)character}");
+#endif
+
+            Registers.AX = character;
+        }
+
+        /// <summary>
+        ///     Galacticomm's free() for debugging
+        ///
+        ///     Signature: void galfree(void *block);
+        /// </summary>
+        private void galfree()
+        {
+            Module.Memory.Free(GetParameterPointer(0));
+        }
+
+
+        /// <summary>
+        ///     Write the input character to the specified stream
+        ///
+        ///     Signature: int fputc(int character, FILE *stream );
+        /// </summary>
+        private void f_putc()
+        {
+            var character = GetParameter(0);
+            var fileStructPointer = GetParameterPointer(1);
+
+            var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
+
+            if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
+                throw new FileNotFoundException(
+                    $"File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            fileStream.WriteByte((byte)character);
+            fileStream.Flush();
+            //Update EOF Flag if required
+            if (fileStream.Position == fileStream.Length)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+            }
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Character {(char)character} written to {fileStructPointer} (Stream: {fileStruct.curp})");
+#endif
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Allocate a very large memory region, qty by size bytes.
+        ///     Each tile gets its own segment at offset 0, though we
+        ///     internally allocate a buffer of the appropriate size to
+        ///     ensure we don't waste memory.
+        ///
+        ///     Signature: void *alctile(unsigned qty,unsigned size);
+        /// </summary>
+        public void alctile()
+        {
+            var qty = GetParameter(0);
+            var size = GetParameter(1);
+
+            if (qty == 0 || size == 0)
+            {
+                throw new ArgumentException("qty and size must be non-zero");
+            }
+
+            Registers.SetPointer(Module.Memory.AllocateRealModeSegment(size));
+            for (var i = 1; i < qty; ++i)
+            {
+                Module.Memory.AllocateRealModeSegment(size);
+            }
+        }
+
+        /// <summary>
+        ///     Allocate a very large memory region, qty by sizblock bytes
+        ///
+        ///     Signature: void *alcblok(unsigned qty,unsigned size);
+        /// </summary>
+        public void alcblok()
+        {
+            var qty = GetParameter(0);
+            var size = GetParameter(1);
+
+            if (qty == 0 || size == 0)
+            {
+                throw new ArgumentException("qty and size must be non-zero");
+            }
+
+            var bigRegion = Module.Memory.AllocateBigMemoryBlock(qty, size);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Created Big Memory Region that is {qty} records of {size} bytes in length at {bigRegion}");
+#endif
+
+            Registers.SetPointer(bigRegion);
+        }
+
+        /// <summary>
+        ///     Dereference an alctile()'d region
+        ///
+        ///     Signature: void *ptrtile(void *bigptr,unsigned index);
+        /// </summary>
+        public void ptrtile()
+        {
+            var firstSegment = GetParameterPointer(0);
+            var index = GetParameter(2);
+
+            Registers.DX = (ushort)(firstSegment.Segment + index);
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Dereference an alcblok()'d region
+        ///
+        ///     Signature: void *ptrblok(void *bigptr,unsigned index);
+        /// </summary>
+        public void ptrblok()
+        {
+            var bigRegionPointer = GetParameterPointer(0);
+            var index = GetParameter(2);
+
+            var indexPointer = Module.Memory.GetBigMemoryBlock(bigRegionPointer, index);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved Big Memory block {bigRegionPointer}, returned pointer to index {index}: {indexPointer}");
+#endif
+
+            Registers.SetPointer(indexPointer);
+        }
+
+        /// <summary>
+        ///     Gets the extended User Account Information
+        ///
+        ///     Signature: struct extusr *exptr=extoff(unum)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment
+        /// </summary>
+        /// <returns></returns>
+        private void extoff()
+        {
+            var userNumber = GetParameter(0);
+
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"EXTUSR-{userNumber}", ExtUser.Size);
+
+            //If user isn't online, return a null pointer
+            if (!ChannelDictionary.TryGetValue(userNumber, out var userChannel))
+            {
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            //Set Pointer to new user array
+            var extoffPointer = Module.Memory.GetVariablePointer("EXTOFF");
+            Module.Memory.SetArray(extoffPointer, variablePointer.Data);
+
+            //Set User Array Value
+            Module.Memory.SetArray(variablePointer, userChannel.ExtUsrAcc.Data);
+
+
+            Registers.SetPointer(variablePointer);
+        }
+
+        /// <summary>
+        ///     Gets Video RAM Base Address
+        ///
+        ///     We write this to a dummy address. This is usually used to show custom graphics
+        ///     on the Sysop console
+        ///
+        ///     Signature: char *frzseg(void)
+        /// </summary>
+        private void frzseg()
+        {
+            if (!Module.ProtectedMemory.HasSegment(0xF000))
+                Module.ProtectedMemory.AddSegment(0xF000);
+
+            Registers.AX = 0x0;
+            Registers.DX = 0xF000;
+        }
+
+        /// <summary>
+        ///     Borland C++ Macro
+        ///
+        ///     This macro with functional form fills env with information about the current state of the calling environment
+        ///     in that point of code execution, so that it can be restored by a later call to longjmp.
+        ///
+        ///     Signature: int setjmp(jmp_buf env)
+        /// </summary>
+        private void setjmp()
+        {
+            var jmpBufPointer = GetParameterPointer(0);
+
+            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpBufPointer, JmpBufStruct.Size))
+            {
+                //Base Pointer is pushed and set on the simulated ENTER
+                //remove the parameter to set stack prior to the call
+                bp = Module.Memory.GetWord(Registers.SS, Registers.BP),
+                cs = Registers.CS,
+                di = Registers.DI,
+                ds = Registers.DS,
+                es = Registers.ES,
+                ip = Registers.IP,
+                si = Registers.SI,
+                sp = (ushort)(Registers.SP + 6),
+                ss = Registers.SS
+            };
+            Module.Memory.SetArray(jmpBufPointer, jmpBuf.Data);
+            Registers.AX = 0;
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Jump Set -- {jmpBuf.cs:X4}:{jmpBuf.ip:X4} AX:{Registers.AX}");
+#endif
+        }
+
+
+        /// <summary>
+        ///     Returns if we're at the end, or "done", with the current command
+        ///
+        ///     Signature: int done=endcnc()
+        /// </summary>
+        private void endcnc()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset) + 1;
+
+            //Check to see if nxtcmd is on a space, if so, increment it by 1
+            if (Module.Memory.GetByte(nxtcmdPointer) == 0x20)
+            {
+                remainingCharactersInCommand--;
+                nxtcmdPointer.Offset++;
+            }
+
+            //End of String
+            if (Module.Memory.GetByte(nxtcmdPointer) == 0)
+            {
+                remainingCharactersInCommand = 0;
+            }
+
+            //Get Remaining Characters & Save to Input
+            var remainingInput = Module.Memory.GetArray(nxtcmdPointer, (ushort)(remainingCharactersInCommand));
+            Module.Memory.SetArray(inputPointer, remainingInput);
+            setINPLEN(inputPointer);
+            Module.Memory.SetPointer("NXTCMD", inputPointer);
+            parsin();
+
+            Registers.AX = remainingCharactersInCommand == 0 ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     longjmp - performs a non-local goto
+        ///
+        ///     Signature:
+        /// </summary>
+        private void longjmp()
+        {
+            var jmpPointer = GetParameterPointer(0);
+            var value = GetParameter(2);
+
+            var jmpBuf = new JmpBufStruct(Module.Memory.GetArray(jmpPointer, JmpBufStruct.Size));
+
+            Registers.BP = jmpBuf.bp;
+            Registers.CS = jmpBuf.cs;
+            Registers.DI = jmpBuf.di;
+            Registers.DS = jmpBuf.ds;
+            Registers.ES = jmpBuf.es;
+            Registers.IP = (ushort)(jmpBuf.ip + 5);
+            Registers.SI = jmpBuf.si;
+            Registers.SP = jmpBuf.sp;
+            Registers.SS = jmpBuf.ss;
+            Registers.AX = value;
+
+#if DEBUG
+            _logger.Debug($"{jmpBuf.cs:X4}:{jmpBuf.ip:X4} -- {Registers.AX}");
+#endif
+        }
+
+        /// <summary>
+        ///     Expect a variable-length word sequence (consume all remaining input)
+        ///
+        ///     Signature: char *cncall(void)
+        /// </summary>
+        private void cncall()
+        {
+            rstrin();
+
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+
+            //Return current NXTCMD
+            Registers.SetPointer(nxtcmdPointer);
+
+            //Set NXTCMD to the end of the INPUT
+            var newNxtcmd = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + inputLength));
+            Module.Memory.SetPointer("NXTCMD", newNxtcmd);
+        }
+
+        /// <summary>
+        ///     Checks to see if there's any more command to parse
+        ///     Similar to PEEK
+        ///
+        ///     Signature: char morcnc(void)
+        /// </summary>
+        private void morcnc()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            if (remainingCharactersInCommand == 0)
+            {
+#if DEBUG
+                _logger.Debug($"End of Command");
+#endif
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputCommand = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+
+            for (var i = 0; i < remainingCharactersInCommand; i++)
+            {
+                if (inputCommand[i] == 32)
+                    continue;
+
+                var resultChar = char.ToUpper((char)inputCommand[i]);
+
+#if DEBUG
+                _logger.Debug($"Returning char: {resultChar}");
+#endif
+
+                Registers.AX = resultChar;
+
+                //Increment nxtcmd if we hit any blank spaces
+                Module.Memory.SetPointer("NXTCMD", new FarPtr(nxtcmdPointer.Segment, (ushort)(nxtcmdPointer.Offset + i)));
+                return;
+            }
+
+            //Otherwise return zero
+            Registers.AX = 0;
+        }
+
+        private void cncint_ErrorResult(CncIntegerReturnType returnType)
+        {
+            switch (returnType)
+            {
+                case CncIntegerReturnType.INT:
+                    Registers.AX = 0;
+                    break;
+                case CncIntegerReturnType.LONG:
+                    Registers.AX = 0;
+                    Registers.DX = 0;
+                    break;
+                case CncIntegerReturnType.STRING:
+                    var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
+                    Module.Memory.SetByte(cncNumArray, 0);
+                    Registers.SetPointer(cncNumArray);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Expect an integer from the user
+        ///
+        ///     Signature: returnType n=cncint()
+        /// </summary>
+        private void cncint(CncIntegerReturnType returnType)
+        {
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            if (remainingCharactersInCommand == 0)
+            {
+                cncint_ErrorResult(returnType);
+                return;
+            }
+
+            var inputString = Encoding.ASCII.GetString(Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand));
+
+            IEnumerator<char> charEnumerator = inputString.GetEnumerator();
+            charEnumerator.MoveNext();
+
+            var (moreInput, skipped) = ConsumeWhitespace(charEnumerator);
+            if (!moreInput)
+            {
+                cncint_ErrorResult(returnType);
+                return;
+            }
+
+            var result = GetLeadingNumberFromString(charEnumerator, 10, -1);
+
+            if (result.StringValue.Length > 0)
+                Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);
+
+            switch (returnType)
+            {
+                case CncIntegerReturnType.INT:
+                    Registers.AX = result.Valid ? (ushort)result.Value : (ushort)0;
+                    break;
+                case CncIntegerReturnType.LONG:
+                    Registers.AX = result.Valid ? (ushort)((uint)result.Value & 0xFFFF) : (ushort)0;
+                    Registers.DX = result.Valid ? (ushort)((uint)result.Value >> 16) : (ushort)0;
+                    break;
+                case CncIntegerReturnType.STRING:
+                    var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
+                    Module.Memory.SetArray(cncNumArray, Encoding.ASCII.GetBytes(result.StringValue));
+                    Registers.SetPointer(cncNumArray);
+                    break;
+            }
+        }
+
+        /// <summary>
+        ///     Main menu credit consumption rate per minute
+        ///
+        ///     Signature: int mmucrr
+        /// </summary>
+        private ReadOnlySpan<byte> mmuccr => Module.Memory.GetVariablePointer("MMUCCR").Data;
+
+        /// <summary>
+        ///     'Profanity Level' of the Input (from configuration)
+        ///
+        ///     This is hard coded to 0, which means no profanity detected
+        /// </summary>
+        private ReadOnlySpan<byte> pfnlvl => Module.Memory.GetVariablePointer("PFNLVL").Data;
+
+        /// <summary>
+        ///     Long Unsigned Division (Borland C++ Implicit Function)
+        ///
+        ///     Input: Two long values on stack (arg1/arg2)
+        ///     Output: DX:AX = quotient
+        ///             DI:SI = remainder
+        /// </summary>
+        /// <returns></returns>
+        private void f_ludiv()
+        {
+            uint arg1 = (uint)(GetParameter(1) << 16) | GetParameter(0);
+            uint arg2 = (uint)(GetParameter(3) << 16) | GetParameter(2);
+
+            var quotient = arg1 / arg2;
+
+            Registers.DX = (ushort)(quotient >> 16);
+            Registers.AX = (ushort)(quotient & 0xFFFF);
+
+            RealignStack(8);
+        }
+
+        /// <summary>
+        ///     Get a Btrieve record (bomb if not there)
+        ///
+        ///     Signature: void getbtvl(char *recptr, char *key, int keynum, int getopt, int loktyp)
+        /// </summary>
+        /// <returns></returns>
+        private void getbtvl()
+        {
+            if (!obtainBtv())
+                throw new ArgumentException($"No record found in getbtvl, bombing");
+        }
+
+        /// <summary>
+        ///     Query Next/Previous Btrieve utility, should only take query next/previous argument
+        ///
+        ///     Signature: int qnpbtv (int getopt)
+        /// </summary>
+        private void qnpbtv()
+        {
+            var queryOption = (EnumBtrieveOperationCodes)GetParameter(0);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+            var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.PreviousQuery.Key.Number, currentBtrieveFile.PreviousQuery.KeyData, queryOption);
+            if (result)
+                UpdateBB(currentBtrieveFile, FarPtr.Empty, queryOption, keyNumber: -1);
+
+            Registers.AX = result ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Counts the number of days since 1/1/80
+        ///
+        ///     Signature: int count=cofdat(int date)
+        /// </summary>
+        private void cofdat()
+        {
+            var packedDate = GetParameter(0);
+
+            if (packedDate == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            //Unpack the Date
+            var year = ((packedDate >> 9) & 0x007F) + 1980;
+            var month = (packedDate >> 5) & 0x000F;
+            var day = packedDate & 0x001F;
+
+            var originDate = new DateTime(1980, 1, 1);
+            var specifiedDate = new DateTime(year, month, day);
+
+            Registers.AX = (ushort)(specifiedDate - originDate).TotalDays;
+        }
+
+        /// <summary>
+        ///     Read the free-running 65khz timer (not a typo)
+        ///
+        ///     Signature: unsigned long tix64k=hrtval()
+        /// </summary>
+        private void htrval()
+        {
+            var outputSeconds = (ushort)(_highResolutionTimer.Elapsed.TotalSeconds % ushort.MaxValue);
+            var outputMicroseconds = (ushort)_highResolutionTimer.Elapsed.Milliseconds;
+
+            Registers.DX = outputSeconds;
+            Registers.AX = outputMicroseconds;
+        }
+
+        /// <summary>
+        ///    Copies the values of num bytes from the location pointed to by source directly to the memory block pointed to by destination.
+        ///
+        ///     Signature: void* memcpy (void* destination, const void* source,size_t num );
+        ///
+        ///     More Info: http://www.cplusplus.com/reference/cstring/memcpy/
+        /// </summary>
+        private void memcpy()
+        {
+            var destinationPointer = GetParameterPointer(0);
+            var sourcePointer = GetParameterPointer(2);
+            var bytesToMove = GetParameter(4);
+
+            //Check to see if it's an unmapped ordinal or function pointer to an exported function
+            if (sourcePointer.Segment >= 0xFF00)
+            {
+                _logger.Warn($"Attempting to copy from Unmapped Exported Module. Source Pointer: {sourcePointer}");
+                _logger.Warn("Because this action is unsupported, it might cause issues with further Module execution.");
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+            else if (destinationPointer.Segment >= 0xFF00)
+            {
+                _logger.Warn($"Attempting to copy to Unmapped Exported Module. Destination Pointer: {sourcePointer}");
+                _logger.Warn("Because this action is unsupported, it might cause issues with further Module execution.");
+                Registers.SetPointer(destinationPointer);
+                return;
+            }
+
+            // Cast to array as the write can overlap and overwrite, mucking up the span read
+            var sourceData = Module.Memory.GetArray(sourcePointer, bytesToMove);
+
+            Module.Memory.SetArray(destinationPointer, sourceData);
+
+#if DEBUG
+            _logger.Debug($"Copied {bytesToMove} bytes {sourcePointer}->{destinationPointer}");
+#endif
+            Registers.SetPointer(destinationPointer);
+        }
+
+        /// <summary>
+        ///     Compares the first num bytes of the block of memory pointed by ptr1 to the first num bytes pointed by ptr2,
+        ///     returning zero if they all match or a value different from zero representing which is greater if they do not.
+        ///
+        ///     Signature: int memcmp ( const void * ptr1, const void * ptr2, size_t num )
+        ///
+        ///     More Info: http://www.cplusplus.com/reference/cstring/memcmp/
+        /// </summary>
+        private void memcmp()
+        {
+            var ptr1 = GetParameterPointer(0);
+            var ptr2 = GetParameterPointer(2);
+            var num = GetParameter(4);
+
+            var ptr1Data = Module.Memory.GetArray(ptr1, num);
+            var ptr2Data = Module.Memory.GetArray(ptr2, num);
+
+            Registers.AX = 0;
+            for (var i = 0; Registers.AX == 0 && i < num; i++)
+            {
+                Registers.AX = (ushort)(ptr1Data[i] - ptr2Data[i]);
+            }
+        }
+
+        /// <summary>
+        ///     Returns number of system lines 'in use'
+        ///
+        ///     int nliniu(void);
+        /// </summary>
+        private void nliniu()
+        {
+            Registers.AX = (ushort)ChannelDictionary.Count;
+        }
+
+        private ReadOnlySpan<byte> version => Module.Memory.GetVariablePointer("VERSION").Data;
+
+        /// <summary>
+        ///     access - determines accessibility of a file
+        ///
+        ///     Signature: int access(const char *filename, int amode);
+        /// </summary>
+        private void access()
+        {
+            var mode = GetParameter(2);
+
+            var fileName = _fileFinder.FindFile(Module.ModulePath, GetParameterFilename(0));
+
+            //Strip Relative Pathing, it'll always be relative to the module location
+            if (fileName.StartsWith(@".\"))
+                fileName = fileName.Replace(@".\", string.Empty);
+
+#if DEBUG
+            _logger.Debug($"Checking access for: {fileName}");
+#endif
+
+            ushort result = 0xFFFF;
+            switch (mode)
+            {
+                case 0:
+                    if (File.Exists(Path.Combine(Module.ModulePath, fileName)))
+                        result = 0;
+                    break;
+            }
+
+            Registers.AX = result;
+        }
+
+        /// <summary>
+        ///     Set opnbtv() file-open mode
+        ///
+        ///     Signature: void omdbtv (int mode);
+        /// </summary>
+        private void omdbtv()
+        {
+            var mode = GetParameter(0);
+
+            switch (mode)
+            {
+                case 0:
+                    _logger.Debug("Set opnbtv() mode to Normal");
+                    break;
+                case 0xFFFF:
+                    _logger.Debug("Set opnbtv() mode to Accelerated");
+                    break;
+                case 0xFFFE:
+                    _logger.Debug("Set opnbtv() mode to Read-Only");
+                    break;
+                case 0xFFFD:
+                    _logger.Debug("Set opnbtv() mode to Verify (Read-After-Write)");
+                    break;
+                case 0xFFFC:
+                    _logger.Debug("Set opnbtv() mode to Exclusive");
+                    break;
+                default:
+                    throw new Exception($"Unknown opnbtv() mode: {mode}");
+            }
+        }
+
+        /// <summary>
+        ///     Checks a type E CNF option for one of several possible values
+        ///
+        ///     Signature: int index=tokopt(int msgnum, char *token1, chat *token2,....,NULL);
+        /// </summary>
+        private void tokopt()
+        {
+            var msgNum = GetParameter(0);
+
+            var tokenList = new List<string>();
+
+            for (var i = 1; i < ushort.MaxValue; i += 2)
+            {
+                var messagePointer = GetParameterPointer(i);
+
+                //Break on NULL, as it's the last in the sequence
+                if (messagePointer.Equals(FarPtr.Empty))
+                    break;
+
+                try
+                {
+                    tokenList.Add(Encoding.ASCII.GetString(Module.Memory.GetString(messagePointer).ToArray()));
+                }
+                catch 
+                {
+                    _logger.Warn($"Error Reading string at {messagePointer}, terminating list at {tokenList.Count} elements");
+                    break;
+                }
+            }
+
+            var message = McvPointerDictionary[_currentMcvFile.Offset].GetString(msgNum);
+
+            //Get the last word from the message and cast it back to a byte array
+            var lastWord = Encoding.ASCII.GetString(message).Split(' ').Last();
+
+            for (var i = 0; i < tokenList.Count; i++)
+            {
+                if (lastWord == tokenList[i])
+                {
+                    Registers.AX = (ushort)(i + 1);
+                    return;
+                }
+            }
+
+            Registers.AX = 0;
+        }
+
+
+        /// <summary>
+        ///     Returns the amount of memory left
+        ///     TODO: This returns MAX always -- should it not?
+        ///
+        ///     Signature: long farcoreleft(void);
+        /// </summary>
+        private void farcoreleft()
+        {
+            Registers.DX = (ushort)(uint.MaxValue >> 16);
+            Registers.AX = (ushort)(uint.MaxValue & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Converts date and time to UNIX time format
+        ///
+        ///     Signature: long dostounix(struct date *d, struct time *t);
+        /// </summary>
+        private void dostounix()
+        {
+            var datePointer = GetParameterPointer(0);
+            var timePointer = GetParameterPointer(2);
+
+            var dateStruct = new DateStruct(Module.Memory.GetArray(datePointer, DateStruct.Size));
+            var timeStruct = new TimeStruct(Module.Memory.GetArray(timePointer, TimeStruct.Size));
+
+            var specifiedDate = new DateTime(dateStruct.year, dateStruct.month, dateStruct.day, timeStruct.hours,
+                timeStruct.minutes, timeStruct.seconds);
+
+            var epochTime = (uint)((DateTimeOffset)specifiedDate).ToUnixTimeSeconds();
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned DOSTOUNIX time: {epochTime}");
+#endif
+
+            Registers.DX = (ushort)(epochTime >> 16);
+            Registers.AX = (ushort)(epochTime & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     Gets MS-DOS date
+        ///
+        ///     void getdate(struct date *dateblk);
+        /// </summary>
+        private void getdate()
+        {
+            var datePointer = GetParameterPointer(0);
+
+            var dateStruct = new DateStruct(_clock.Now);
+
+            Module.Memory.SetArray(datePointer, dateStruct.Data);
+        }
+
+        /// <summary>
+        ///     Capitalizes the first letter after each space in the specified string
+        ///
+        ///     Signature: void zonkhl(char *stg);
+        /// </summary>
+        private void zonkhl()
+        {
+            var inputStringPointer = GetParameterPointer(0);
+            var inputString = Module.Memory.GetString(inputStringPointer).ToArray();
+            var isSpace = true;
+
+            for (var i = 0; i < inputString.Length; i++)
+            {
+                if (char.IsUpper((char)inputString[i]))
+                    inputString[i] = (byte)char.ToLower((char)inputString[i]);
+
+                if (inputString[i] == (byte)' ')
+                    isSpace = true;
+
+                if (char.IsLower((char)inputString[i]) && isSpace)
+                {
+                    inputString[i] = (byte)char.ToUpper((char)inputString[i]);
+                    isSpace = false;
+                }
+            }
+
+            Module.Memory.SetArray(inputStringPointer, inputString);
+        }
+
+        /// <summary>
+        ///     Generates a random number between min and max
+        ///
+        ///     Signature: int genrdn(int min,int max);
+        /// </summary>
+        private void genrnd()
+        {
+            var min = GetParameter(0);
+            var max = GetParameter(1);
+
+            if (max < min)
+                max = min;
+
+            Registers.AX = (ushort)_random.Next(min, max);
+        }
+
+        /// <summary>
+        ///     Remove all whitespace characters
+        ///
+        ///     Signature: void rmvwht(char *string);
+        /// </summary>
+        private void rmvwht()
+        {
+            var stringPointer = GetParameterPointer(0);
+
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer));
+            var parsedString = string.Concat(stringToParse.Where(c => !char.IsWhiteSpace(c)));
+
+            Module.Memory.SetArray(stringPointer, Encoding.ASCII.GetBytes(parsedString));
+        }
+
+        /// <summary>
+        ///     Signed Modulo, non-significant (Borland C++ Implicit Function)
+        ///
+        ///     Signature: DX:AX = arg1 % arg2
+        /// </summary>
+        /// <returns></returns>
+        private void f_lmod()
+        {
+            int arg1 = (GetParameter(1) << 16) | GetParameter(0);
+            int arg2 = (GetParameter(3) << 16) | GetParameter(2);
+
+            var result = arg1 % arg2;
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+
+            RealignStack(8);
+        }
+
+        /// <summary>
+        ///     Registers Module Agent information for Galacticomm Client/Server
+        ///
+        ///     While we set this -- we're going to ignore it
+        ///
+        ///     Signature: void register_agent(struct agent *agdptr);
+        /// </summary>
+        private void register_agent()
+        {
+            var agentPointer = GetParameterPointer(0);
+
+            _galacticommClientServerAgent = new AgentStruct(Module.Memory.GetArray(agentPointer, AgentStruct.Size));
+        }
+
+        private ReadOnlySpan<byte> syscyc => Module.Memory.GetVariablePointer("SYSCYC").Data;
+
+        /// <summary>
+        ///     Read a CNF option from a .MSG file
+        ///
+        ///     Signature: char *msgscan(char *msgfile,char *vblname);
+        /// </summary>
+        private void msgscan()
+        {
+            var msgFilePointer = GetParameterPointer(0);
+            var variableNamePointer = GetParameterPointer(2);
+
+            var msgFileName = Encoding.ASCII.GetString(Module.Memory.GetString(msgFilePointer, true));
+            var variableName = Encoding.ASCII.GetString(Module.Memory.GetString(variableNamePointer, true));
+            var msgFile = Module.Msgs.First(x => x.FileName == msgFileName.ToUpper());
+
+            //Return Null Pointer if Value isn't found
+            if (!msgFile.MsgValues.TryGetValue(variableName, out var msgVariableValue))
+            {
+                Registers.AX = 0;
+                Registers.DX = 0;
+                return;
+            }
+
+            var msgScanResultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("MSGSCAN"), 0x1000);
+
+            Module.Memory.SetArray(msgScanResultPointer, new byte[0x1000]); //Zero it out
+            Module.Memory.SetArray(msgScanResultPointer, msgVariableValue); //Write
+
+            Registers.SetPointer(msgScanResultPointer);
+        }
+
+        /// <summary>
+        ///     Returns a file date and time
+        ///
+        ///     Signature: long timendate=getdtd(int handle);
+        /// </summary>
+        private void getdtd()
+        {
+            var fileHandle = GetParameter(0);
+
+            var filePointer = FilePointerDictionary[fileHandle];
+
+            var fileTime = File.GetLastWriteTime(filePointer.Name);
+
+            var packedTime = (ushort)((fileTime.Hour << 11) + (fileTime.Minute << 5) + (fileTime.Second >> 1));
+            var packedDate = (ushort)((fileTime.Month << 5) + fileTime.Day + ((fileTime.Year - 1980) << 9));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Returned Packed Date for {filePointer.Name} ({fileTime}) AX: {packedTime} DX: {packedDate}");
+#endif
+            Registers.AX = packedTime;
+            Registers.DX = packedDate;
+        }
+
+        /// <summary>
+        ///     Count the number of bytes and files in a directory
+        ///
+        ///     Signature: void cntdir(char *path)
+        /// </summary>
+        private void cntdir()
+        {
+            var pathPointer = GetParameterPointer(0);
+
+            var pathString = _fileFinder.ResolvePathWithWildcards(Module.ModulePath, GetParameterFilename(0));
+
+            var files = Directory.GetFiles(Module.ModulePath, pathString);
+            uint totalBytes = 0;
+            foreach (var f in files)
+            {
+                totalBytes += (uint)new FileInfo(f).Length;
+            }
+
+            Module.Memory.SetArray("NUMFILS", BitConverter.GetBytes((uint)files.Length));
+            Module.Memory.SetArray("NUMBYTS", BitConverter.GetBytes(totalBytes));
+        }
+
+        private ReadOnlySpan<byte> numfils => Module.Memory.GetVariablePointer("NUMFILS").Data;
+        private ReadOnlySpan<byte> numbyts => Module.Memory.GetVariablePointer("NUMBYTS").Data;
+        private ReadOnlySpan<byte> numbytp => Module.Memory.GetVariablePointer("NUMBYTP").Data;
+        private ReadOnlySpan<byte> numdirs => Module.Memory.GetVariablePointer("NUMDIRS").Data;
+
+        /// <summary>
+        ///     Closes the Specified Btrieve File
+        ///
+        ///     Signature: void clsbtv(struct btvblk *bbp)
+        /// </summary>
+        private void clsbtv()
+        {
+            var filePointer = GetParameterPointer(0);
+
+#if DEBUG
+            _logger.Debug($"Closing BTV File: {filePointer}");
+#endif
+
+            BtrieveDeleteProcessor(filePointer);
+            _currentMcvFile = null;
+        }
+
+        private ReadOnlySpan<byte> nglobs => Module.Memory.GetVariablePointer("NGLOBS").Data;
+
+        /// <summary>
+        ///     Retrieves a C-string containing the value of the environment variable whose name is specified in the argument
+        ///
+        ///     Signature: char* getenv(const char* name);
+        /// </summary>
+        private void getenv()
+        {
+            var name = GetParameterFilename(0);
+
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("GETENV"), 0xFF);
+
+            switch (name)
+            {
+                case "PATH":
+                    Module.Memory.SetArray(resultPointer, Encoding.ASCII.GetBytes("C:\\BBSV6\\\0"));
+                    break;
+            }
+
+            Registers.SetPointer(resultPointer);
+        }
+
+        /// <summary>
+        ///     (File Transfer) Issue a new tagspec pointer
+        ///
+        ///     Always returns 0
+        ///
+        ///     Signature: int ftgnew(void);
+        /// </summary>
+        private void ftgnew()
+        {
+            Registers.AX = 1;
+        }
+
+        /// <summary>
+        ///     Compute DOS date
+        ///
+        ///     Signature: int date=datofc(int count);
+        /// </summary>
+        private void datofc()
+        {
+            var days = GetParameter(0);
+            var dtDateTime = new DateTime(1980, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddDays(days);
+
+            var packedDate = (dtDateTime.Month << 5) + dtDateTime.Day + ((dtDateTime.Year - 1980) << 9);
+
+            Registers.AX = (ushort)packedDate;
+        }
+
+        /// <summary>
+        ///     (File Transfer) Submit a tagspec for download
+        ///
+        ///     Always returns 0 to denote program now has control
+        ///
+        ///     Signature: int ftgsbm(char *prot);
+        /// </summary>
+        private void ftgsbm()
+        {
+            //Ignore Protocol Pointer passed into this method
+
+            //Get Pointer to Download Method from FileSpec
+            var fileSpec =
+                new FtgStruct(Module.Memory.GetArray(Module.Memory.GetVariablePointer("FTG"), FtgStruct.Size));
+
+            //Call TSHBEG to get file to send
+            //Decrement the initial Stack Pointer enough to ensure it wont overwrite anything in ththate current stack space
+            Module.Execute(fileSpec.tshndl, ChannelNumber, true, true,
+                new Queue<ushort>(new List<ushort> { (ushort)FtgStruct.TagSpecFunctionCodes.TSHBEG }),
+                (ushort)(Registers.SP - 0x800));
+
+            //TSHMSG now holds the file to be transfered
+            var fileToSend =
+                Encoding.ASCII.GetString(Module.Memory.GetString(Module.Memory.GetVariablePointer("TSHMSG"), true));
+
+            fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Channel {ChannelNumber} downloding: {fileToSend}");
+#endif
+
+            ChannelDictionary[ChannelNumber].SendToClient(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
+
+            //Call TSHFIN to get file to send
+            //Decrement the initial Stack Pointer enough to ensure it wont overwrite anything in the current stack space
+            Module.Execute(fileSpec.tshndl, ChannelNumber, true, true,
+                new Queue<ushort>(new List<ushort> { (ushort)FtgStruct.TagSpecFunctionCodes.TSHFIN }),
+                (ushort)(Registers.SP - 0x800));
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     (File Transfer) Global Tagspec Pointer
+        ///
+        ///     Signature: struct ftg *ftgptr;
+        /// </summary>
+        private ReadOnlySpan<byte> ftgptr => Module.Memory.GetVariablePointer("FTGPTR").Data;
+
+        /// <summary>
+        ///     Universal global Tagspec Handler messag
+        ///
+        ///     Signature: char tshmsg[TSHLEN+1];
+        /// </summary>
+        private ReadOnlySpan<byte> tshmsg => Module.Memory.GetVariablePointer("TSHMSG").Data;
+
+        /// <summary>
+        ///     (File Transfer) Contains fields for external use
+        ///
+        ///     Signature: struct ftfscb {...};
+        /// </summary>
+        private ReadOnlySpan<byte> ftfscb => Module.Memory.GetVariablePointer("FTFSCB").Data;
+
+        /// <summary>
+        ///     Output buffer size per channel
+        ///
+        ///     Signature: int outbsz;
+        /// </summary>
+        private ReadOnlySpan<byte> outbsz => Module.Memory.GetVariablePointer("OUTBSZ").Data;
+
+        /// <summary>
+        ///     System-Variable Btrieve Record Layout Struct (1 of 3)
+        ///
+        ///     Signature: struct sysvbl sv;
+        /// </summary>
+        private ReadOnlySpan<byte> sv => Module.Memory.GetVariablePointer("SV").Data;
+
+        /// <summary>
+        ///     List an ASCII file to the users screen
+        ///
+        ///     Signature: void listing(char *path, void (*whndun)())
+        /// </summary>
+        private void listing()
+        {
+            var fileToSend = GetParameterFilename(0);
+            var finishedFunctionPointer = GetParameterPointer(2);
+
+            fileToSend = _fileFinder.FindFile(Module.ModulePath, fileToSend);
+
+#if DEBUG
+            _logger.Debug($"Channel {ChannelNumber} listing: {fileToSend}");
+#endif
+
+            ChannelDictionary[ChannelNumber].SendToClientRaw(File.ReadAllBytes(Path.Combine(Module.ModulePath, fileToSend)));
+
+            Module.Execute(finishedFunctionPointer, ChannelNumber, true, true,
+                null, (ushort)(Registers.SP - 0x800));
+        }
+
+
+        /// <summary>
+        ///     Gets a btrieve record relative to the current offset, should be next/prev only
+        ///
+        ///     Signature: int anpbtv (void *recptr, int anpopt)
+        /// </summary>
+        private void anpbtv()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var btrieveOperation = (EnumBtrieveOperationCodes)GetParameter(2);
+
+            Registers.AX = (ushort)(anpbtv(recordPointer, caseSensitive: true, btrieveOperation) ? 1 : 0);
+        }
+
+        /// <summary>
+        ///     Test if the user has enough credits -- always returns yes
+        ///
+        ///     Signature: int enuf=tstcrd(long amount);
+        /// </summary>
+        private void tstcrd() => Registers.AX = 1;
+
+        /// <summary>
+        ///     0x7F if U.S.A. only, 0xFF if European
+        ///
+        ///     Signature: char eurmsk;
+        /// </summary>
+        private ReadOnlySpan<byte> eurmsk => Module.Memory.GetVariablePointer("EURMSK").Data;
+
+        /// <summary>
+        ///     strnicmp - compare one string to another without case sensitivity
+        ///
+        ///     Signature: int strnicmp(const char *str1, const char *str2, size_t maxlen);
+        /// </summary>
+        private void strnicmp()
+        {
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
+            var maxLength = GetParameter(4);
+
+            Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
+        }
+
+        /// <summary>
+        ///     Determines processor time.
+        ///
+        ///     The clock function returns the processor time elapsed since the beginning of the program invocation.
+        ///
+        ///     Signature: clock_t clock(void);
+        /// </summary>
+        private void clock()
+        {
+            Registers.DX = (ushort)((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF);
+            Registers.AX = (ushort)(((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF0000) >> 16);
+        }
+
+        /// <summary>
+        ///     Comparison of the C string str1 to the C string str2
+        ///
+        ///     Signature: int strncmp(const char *str1, const char *str2, size_t maxlen);
+        /// </summary>
+        private void strncmp()
+        {
+            var string1 = GetParameterString(0, stripNull: true);
+            var string2 = GetParameterString(2, stripNull: true);
+            var maxLength = GetParameter(4);
+
+            Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);
+        }
+
+        /// <summary>
+        ///     Less Tolerant Update to Current Record
+        ///
+        ///     Signature: void updbtv (void *recptr);
+        /// </summary>
+        private void updbtv()
+        {
+            if (!updateBtv())
+                throw new SystemException("Unable to update btrieve record");
+        }
+
+        /// <summary>
+        ///     Opens a new file for reading/writing
+        ///
+        ///     This method differs from f_open in that it doesn't create a FILE struct, it only returns the handle
+        ///
+        ///     Signature: int open(const char *path, int access [, unsigned mode]);
+        /// </summary>
+        private void open()
+        {
+            var filenameInputValue = GetParameterFilename(0);
+            var mode = GetParameter(2);
+
+            var fileName = _fileFinder.FindFile(Module.ModulePath, filenameInputValue);
+            var dosFileMode = (EnumOpenFlags)mode;
+
+            var fullPath = Path.Combine(Module.ModulePath, fileName);
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TEXT))
+                throw new ArgumentException($"open called with O_TEXT - not yet supported");
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Opening File: {fullPath}");
+#endif
+            FileMode fileMode;
+            FileAccess fileAccess;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_CREAT))
+                fileMode = FileMode.OpenOrCreate;
+            else
+                fileMode = FileMode.Open;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_TRUNC))
+                fileMode = FileMode.Truncate;
+
+            if (dosFileMode.HasFlag(EnumOpenFlags.O_RDRW))
+                fileAccess = FileAccess.ReadWrite;
+            else if (dosFileMode.HasFlag(EnumOpenFlags.O_WRONLY))
+                fileAccess = FileAccess.Write;
+            else
+                fileAccess = FileAccess.Read;
+            //Setup the File Stream
+            try
+            {
+                var fileStream = File.Open(fullPath, fileMode, fileAccess);
+
+                var fileStreamPointer = FilePointerDictionary.Allocate(fileStream);
+
+                Registers.AX = (ushort)fileStreamPointer;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"Unable to open {fileName} {dosFileMode}");
+                Registers.AX = 0xFFFF;
+            }
+        }
+
+        /// <summary>
+        ///     Reads from file.
+        ///
+        ///     Signature: int read(int handle, void *buf, unsigned len);
+        /// </summary>
+        private void read()
+        {
+            var fd = GetParameter(0);
+            var destinationPointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream))
+            {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            if (fileStream.Position >= fileStream.Length)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            try
+            {
+                var buffer = new byte[length];
+                var bytesRead = fileStream.Read(buffer);
+                if (bytesRead > 0)
+                    Module.Memory.SetArray(destinationPointer, new ReadOnlySpan<byte>(buffer, 0, bytesRead));
+
+                Registers.AX = (ushort)bytesRead;
+            }
+            catch (NotSupportedException)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
+        }
+
+        /// <summary>
+        ///     Writes to file.
+        ///
+        ///     Signature: int write(int handle, void *buf, unsigned len);
+        /// </summary>
+        private void write()
+        {
+            var fd = GetParameter(0);
+            var sourcePointer = GetParameterPointer(1);
+            var length = GetParameter(3);
+
+            if (!FilePointerDictionary.TryGetValue(fd, out var fileStream))
+            {
+                // TODO sets errno to EBADF;
+                Registers.AX = 0xFFFF; // -1
+                return;
+            }
+
+            try
+            {
+                var oldPosition = fileStream.Position;
+                fileStream.Write(Module.Memory.GetArray(sourcePointer, length));
+                Registers.AX = (ushort)(fileStream.Position - oldPosition);
+            }
+            catch (NotSupportedException)
+            {
+                // TODO set errno appropriately
+                Registers.AX = 0xFFFF;
+            }
+        }
+
+        /// <summary>
+        ///     Creates a Directory
+        ///
+        ///     Signature: int mkdir(const char *pathname);
+        /// </summary>
+        private void mkdir()
+        {
+            var directoryNamePointer = GetParameterPointer(0);
+
+            var directoryName = _fileFinder.FindFile(Module.ModulePath, Encoding.ASCII.GetString(Module.Memory.GetString(directoryNamePointer, true)));
+            var fullPath = Path.Combine(Module.ModulePath, directoryName);
+
+            if (!Directory.Exists(fullPath))
+            {
+                Directory.CreateDirectory(fullPath);
+                _logger.Info($"Created Directory: {fullPath}");
+            }
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     getftime - gets file date and time
+        ///
+        ///     Signature: int getftime(int handle, struct ftime *ftimep);
+        /// </summary>
+        private void getftime()
+        {
+            var fileHandle = GetParameter(0);
+            var ftimePointer = GetParameterPointer(1);
+
+            var info = new FileInfo(FilePointerDictionary[fileHandle].Name);
+
+            var packedTime = (ushort)((info.CreationTime.Hour << 11) + (info.CreationTime.Minute << 5) + (info.CreationTime.Second >> 1));
+            var packedTimeData = BitConverter.GetBytes(packedTime);
+
+            var packedDate = (ushort)(((_clock.Now.Year - 1980) << 9) + (_clock.Now.Month << 5) + _clock.Now.Day);
+            var packedDateData = BitConverter.GetBytes(packedDate);
+
+            var ftimeStruct = new byte[4];
+            Array.Copy(packedTimeData, 0, ftimeStruct, 0, sizeof(short));
+            Array.Copy(packedDateData, 0, ftimeStruct, 2, sizeof(short));
+
+            Module.Memory.SetArray(ftimePointer, ftimeStruct);
+        }
+
+        /// <summary>
+        ///     close - close a file handle
+        ///
+        ///     Signature: int close(int handle);
+        /// </summary>
+        private void close()
+        {
+            var fileHandle = GetParameter(0);
+
+            //Clean Up File Stream Pointer
+            if (!FilePointerDictionary.ContainsKey(fileHandle))
+            {
+                // TODO set errno
+                Registers.AX = 0xFFFF;
+                return;
+            }
+
+            FilePointerDictionary[fileHandle].Close();
+            FilePointerDictionary.Remove(fileHandle);
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Prepare answers (call after fsdroom()) (Full-Screen Data Entry)
+        ///
+        ///     Signature: void fsdapr(char *sesbuf, int sbleng, char *answers)
+        /// </summary>
+        private void fsdapr()
+        {
+            var sesbuf = GetParameterPointer(0);
+            var sbleng = GetParameter(2);
+            var answers = GetParameterPointer(3);
+
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
+
+            Module.Memory.SetZero(fsdAnswersPointer, 0x800);
+
+            ushort answerBytesToRead = 0x800;
+            if (answers.Offset + 0x800 > ushort.MaxValue)
+                answerBytesToRead = (ushort)(ushort.MaxValue - answers.Offset);
+
+            Module.Memory.SetArray(fsdAnswersPointer, Module.Memory.GetArray(answers, answerBytesToRead));
+        }
+
+        /// <summary>
+        ///     fsd information struct
+        ///
+        ///     Signature: struct fsdscb *fsdscb;
+        /// </summary>
+        private ReadOnlySpan<byte> fsdscb => Module.Memory.GetVariablePointer("*FSDSCB").Data;
+
+        /// <summary>
+        ///     Current btvu file pointer set
+        ///
+        ///     Signature: struct btvblk *bb;
+        /// </summary>
+        private ReadOnlySpan<byte> bb => Module.Memory.GetVariablePointer("BB").Data;
+
+        /// <summary>
+        ///     Convert a string to a long integer
+        ///
+        ///     Signature: long strtol(const char *strP, char **suffixPP, int radix);
+        /// </summary>
+        private void strtol()
+        {
+            var stringPointer = GetParameterPointer(0);
+            var suffixPointer = GetParameterPointer(2);
+            var radix = GetParameter(4);
+
+            var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull: true));
+
+            if (stringContainingLongs == "")
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+
+                if (suffixPointer != FarPtr.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new FarPtr(stringPointer.Segment, stringPointer.Offset));
+
+                return;
+            }
+
+            var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+            var longToParseLength = longToParse.Length + (stringContainingLongs.Length - stringContainingLongs.TrimStart(' ').Length); //We do this as length might change with logic below and add back in leading spaces
+
+            if (longToParseLength == 0 || (radix == 10 && !longToParse.Any(char.IsDigit)))
+            {
+                Registers.DX = 0;
+                Registers.AX = 0;
+
+                if (suffixPointer != FarPtr.Empty)
+                    Module.Memory.SetPointer(suffixPointer, new FarPtr(stringPointer.Segment, stringPointer.Offset));
+
+                return;
+            }
+
+            if (radix == 0)
+            {
+                if (longToParse.StartsWith("0x"))
+                {
+                    radix = 16;
+                }
+                else
+                {
+                    radix = 10;
+                }
+            }
+
+            var isNegative = false;
+
+            if (radix != 10 && longToParse.StartsWith('-'))
+            {
+                longToParse = longToParse.TrimStart('-');
+                isNegative = true;
+            }
+
+            if (radix != 10 && longToParse.StartsWith('+'))
+                longToParse = longToParse.TrimStart('+');
+
+            var resultLong = Convert.ToInt32(longToParse, radix);
+
+            if (isNegative)
+                resultLong *= -1;
+
+            Registers.DX = (ushort)(resultLong >> 16);
+            Registers.AX = (ushort)(resultLong & 0xFFFF);
+
+            if (suffixPointer != FarPtr.Empty)
+                Module.Memory.SetPointer(suffixPointer,
+                    new FarPtr(stringPointer.Segment, (ushort)(stringPointer.Offset + longToParseLength + 1)));
+        }
+
+        /// <summary>
+        ///     Returns an unmodified copy of the FSD template (set in fsdroom())
+        ///
+        ///     Signature: char *fsdrft(void);
+        /// </summary>
+        private void fsdrft()
+        {
+            var templatePointer = Module.Memory.GetVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}");
+
+            Registers.SetPointer(templatePointer);
+        }
+
+        /// <summary>
+        ///     Display background for Full-Screen entry mode (Full-Screen Data Entry)
+        ///
+        ///     Signature: void fsdbkg(char *templt);
+        /// </summary>
+        private void fsdbkg()
+        {
+            var templatePointer = GetParameterPointer(0);
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
+            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(Module.Memory.GetString(templatePointer)));
+        }
+
+        /// <summary>
+        ///     Sets the Header for FSD Session if using RIP
+        ///
+        ///     Signature: void fsdrhd (char *title);
+        /// </summary>
+        private void fsdrhd()
+        {
+            var ripHeaderStringPointer = GetParameterPointer(0);
+
+            var ripHeaderPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-RIPHeader-{ChannelNumber}", 0xFF);
+
+            Module.Memory.SetArray(ripHeaderPointer, Module.Memory.GetString(ripHeaderStringPointer));
+        }
+
+        /// <summary>
+        ///     Begin FSD entry session (call after fsdroom(), fsdapr())
+        ///
+        ///     Signature: void fsdego(int (*fldvfy)(int fldno, char *answer), void (*whndun)(int save));
+        /// </summary>
+        private void fsdego()
+        {
+            var fieldVerificationPointer = GetParameterPointer(0);
+            var whenDoneRoutinePointer = GetParameterPointer(2);
+
+            var fsdFieldVerificationRoutinePointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-FieldVerificationRoutine-{ChannelNumber}", FarPtr.Size);
+            var fsdWhenDoneRoutinePointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
+
+            Module.Memory.SetPointer(fsdFieldVerificationRoutinePointer, fieldVerificationPointer);
+            Module.Memory.SetPointer(fsdWhenDoneRoutinePointer, whenDoneRoutinePointer);
+
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenDisplay;
+
+            //Update fsdscb struct
+            var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
+            fsdscbStruct.fldvfy = fieldVerificationPointer;
+            Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+#if DEBUG
+            _logger.Debug($"Channel {ChannelNumber} entering Full Screen Display (v:{fieldVerificationPointer}, d:{whenDoneRoutinePointer}");
+#endif
+        }
+
+        /// <summary>
+        ///     Error message for fsdppc(), fsdprc(), etc. (Full-Screen Data Entry)
+        ///
+        ///     Signature: char fsdemg[];
+        /// </summary>
+        private ReadOnlySpan<byte> fsdemg => Module.Memory.GetVariablePointer("FSDEMG").Data;
+
+        /// <summary>
+        ///     Factory-issue field verify routine, for ask-done-at-end scheme
+        ///
+        ///     Signature: int vfyadn(int fldno, char *answer);
+        /// </summary>
+        private void vfyadn()
+        {
+            var fieldNo = GetParameter(0);
+            var answer = GetParameterStringSpan(1);
+
+            //Get fsdscb Struct for this channel
+            var fsdscbPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbPointer, FsdscbStruct.Size));
+
+            //If we're on the last field
+            if (fieldNo == fsdscbStruct.numtpl - 1)
+            {
+                switch (fsdscbStruct.xitkey)
+                {
+                    case (ushort)EnumKeyCodes.CRSDN: //Down
+                    case 9: //Tab
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        return;
+
+                    case 27: //Escape
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYDEF;
+                        return;
+                }
+
+                switch (answer[0])//First Character of Answer
+                {
+                    case (byte)'S': //SAVE
+                    case (byte)'Y': //YES=Done and Save
+                    case (byte)'D': //DONE
+                        {
+                            fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDSAV;
+                            Registers.AX = (ushort)EnumFsdStateCodes.FSDSAV;
+                            break;
+                        }
+
+                    case (byte)'Q': //QUIT
+                    case (byte)'X': //eXit
+                    case (byte)'A': //Abort or Abandon
+                        {
+                            fsdscbStruct.state = (byte)EnumFsdStateCodes.FSDQIT;
+                            Registers.AX = (ushort)EnumFsdStateCodes.FSDQIT;
+                            break;
+                        }
+
+                    case (byte)'N': //No == Edit Some More
+                    case (byte)'E': //Edit
+                        {
+                            Registers.AX = (ushort)EnumFsdStateCodes.VFYDEF;
+                            break;
+                        }
+                    default:
+                        //Default
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        break;
+                }
+            }
+            else
+            {
+                //Any field that's not the last
+                switch (fsdscbStruct.xitkey)
+                {
+                    case 27 when fsdscbStruct.chgcnt > 0: //Escape
+                        {
+                            Module.Memory.SetArray("FSDEMG", Encoding.ASCII.GetBytes("Are you sure? Enter QUIT to quit now\0"));
+                            Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                            break;
+                        }
+                    default:
+                        //Default
+                        Registers.AX = (ushort)EnumFsdStateCodes.VFYCHK;
+                        break;
+                }
+            }
+
+            //Save any changes to fsdscb struct
+            Module.Memory.SetArray(fsdscbPointer, fsdscbStruct.Data);
+        }
+
+        /// <summary>
+        ///     Get a field's answer (Full-Screen Data Entry)
+        ///
+        ///     Signature: char *stg=fsdnan(int fldno);
+        /// </summary>
+        private void fsdnan()
+        {
+            var fieldNo = GetParameter(0);
+
+            //Get FSD Status from the Global Cache
+            var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
+
+            if (!Module.Memory.TryGetVariablePointer($"fsdnan-buffer-{fieldNo}", out var fsdnanPointer))
+                fsdnanPointer = Module.Memory.AllocateVariable($"fsdnan-buffer-{fieldNo}", 0xFF);
+
+            Module.Memory.SetArray(fsdnanPointer, Encoding.ASCII.GetBytes(fsdStatus.Fields[fieldNo].Value + '\0'));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Retrieved Field {fieldNo}: {fsdStatus.Fields[fieldNo].Value} ({fsdnanPointer})");
+#endif
+
+            Registers.SetPointer(fsdnanPointer);
+        }
+
+        /// <summary>
+        ///     Gets a fields ordinal for a Multiple-Choice Field
+        ///
+        ///     Signature: int fsdord(int fldi);
+        /// </summary>
+        private void fsdord()
+        {
+            var fieldNo = GetParameter(0);
+
+            //Get FSD Status from the Global Cache
+            var fsdStatus = _globalCache.Get<FsdStatus>($"FSD-Status-{ChannelNumber}");
+
+            Registers.AX = (ushort)fsdStatus.Fields[fieldNo].SelectedValue;
+        }
+
+        /// <summary>
+        ///     no-preparation- extract answer from answer string (Full Screen Data Entry)
+        ///
+        ///     Signature: char *fsdxan(char *answer, char *name);
+        /// </summary>
+        private void fsdxan()
+        {
+            var answerPointer = GetParameterPointer(0);
+            var answerName = GetParameterString(2, true);
+
+            var answerString = Encoding.ASCII.GetString(Module.Memory.GetArray(answerPointer, 0x400));
+
+            //Trim the Answer String to just the component we need
+            var answerStart = answerString.IndexOf(answerName, StringComparison.InvariantCultureIgnoreCase);
+            var trimmedAnswerString = answerString.Substring(answerStart);
+            trimmedAnswerString = trimmedAnswerString.Substring(0, trimmedAnswerString.IndexOf('\0'));
+
+            var answerComponents = trimmedAnswerString.Split('=');
+            var fsdxanPointer = Module.Memory.GetOrAllocateVariablePointer("fsdxan-buffer", 0xFF);
+
+            Module.Memory.SetZero(fsdxanPointer, 0xFF);
+            Module.Memory.SetArray(fsdxanPointer, Encoding.ASCII.GetBytes($"{answerComponents[1]}"));
+
+            Registers.SetPointer(fsdxanPointer);
+        }
+
+        /// <summary>
+        ///     Sorts a bunch of strings by re-arranging an array of pointers
+        ///
+        ///     Signature: void sortstgs(char *stgs[],int num);
+        /// </summary>
+        private void sortstgs()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+            var numberOfStrings = GetParameter(2);
+
+            if (numberOfStrings == 0)
+                return;
+
+            var listOfStrings = new List<Tuple<FarPtr, string>>(numberOfStrings);
+
+            //Grab the pointers and the strings they point to, save in a Tuple
+            for (var i = 0; i < numberOfStrings; i++)
+            {
+                var pointerOffset = (ushort)(stringPointerBase.Offset + (i * FarPtr.Size));
+                var destinationPointer = Module.Memory.GetPointer(stringPointerBase.Segment, pointerOffset);
+                listOfStrings.Add(new Tuple<FarPtr, string>(destinationPointer, Encoding.ASCII.GetString(Module.Memory.GetString(destinationPointer, true))));
+            }
+
+            //Order them alphabetically by string
+            var sortedStrings = listOfStrings.OrderBy(x => x.Item2).ToList();
+
+            //Write the new string destination pointers
+            for (var i = 0; i < numberOfStrings; i++)
+            {
+                var pointerOffset = (ushort)(stringPointerBase.Offset + (i * FarPtr.Size));
+                Module.Memory.SetPointer(stringPointerBase.Segment, pointerOffset, sortedStrings[i].Item1);
+            }
+        }
+
+        /// <summary>
+        ///     Get the last word of a string
+        ///
+        ///     Signature: char *lastwd(char *string);
+        /// </summary>
+        private void lastwd()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+
+            var stringToParse = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointerBase, stripNull: true));
+
+            var lastWordIndex = stringToParse.LastIndexOf(' ');
+            lastWordIndex++; //Start on next character after space
+
+            Registers.SetPointer(stringPointerBase + lastWordIndex);
+        }
+
+        /// <summary>
+        ///     Skip past non-white spaces, returns first NULL or whitespace character in the string
+        ///
+        ///     Signature: char *skpwrd(char *cp);
+        /// </summary>
+        private void skpwrd()
+        {
+            var stringPointerBase = GetParameterPointer(0);
+
+            for (var i = stringPointerBase.Offset; i <= ushort.MaxValue; i++)
+            {
+                var currentCharacter = Module.Memory.GetByte(stringPointerBase.Segment, i);
+                if (currentCharacter != 0 && currentCharacter != ' ') continue;
+
+                Registers.SetPointer(new FarPtr(stringPointerBase.Segment, i));
+                return;
+            }
+
+            Registers.SetPointer(stringPointerBase);
+        }
+
+        /// <summary>
+        ///     Find text variable & return number
+        ///
+        ///     Signature: int findtvar(char *name);
+        /// </summary>
+        private void findtvar()
+        {
+            var name = GetParameterString(0, true);
+
+            //It's a system variable, set the pointer in the TXTVARS array to the 1st record,
+            //which will trigger an MBBSEmu only ordinal for variable lookup
+            if (_textVariableService.GetVariableIndex(name) > -1)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            //Check variables registered within the module
+            var txtvarMemoryBase = Module.Memory.GetVariablePointer("TXTVARS");
+            for (ushort i = 0; i < MaxTextVariables; i++)
+            {
+                var currentTextVar =
+                    new TextvarStruct(Module.Memory.GetArray(txtvarMemoryBase + (i * TextvarStruct.Size),
+                        TextvarStruct.Size));
+
+                if (currentTextVar.name != name)
+                    continue;
+
+                findtvarValue = i;
+                Registers.AX = i;
+                return;
+
+            }
+
+            Registers.AX = 0xFFFF;
+        }
+
+        /// <summary>
+        ///     Turns on echo utility for the specified user
+        ///
+        ///
+        ///     Signature: void echonu(int usrnum);
+        /// </summary>
+        private void echonu()
+        {
+            var channelNumber = GetParameter(0);
+
+#if DEBUG
+            _logger.Debug($"Disabling Character Interceptor & Enabling Echo on Channel {channelNumber}");
+#endif
+
+            ChannelDictionary[channelNumber].CharacterInterceptor = null;
+            ChannelDictionary[channelNumber].TransparentMode = false;
+        }
+
+        /// <summary>
+        ///     Inject a message to another user (implicit inputs othusn, prfbuf).
+        ///
+        ///     Signature: int gotIt=injoth();
+        /// </summary>
+        private void injoth()
+        {
+            var userChannel = Module.Memory.GetWord("OTHUSN");
+            var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
+            var currentPointer = Module.Memory.GetPointer("PRFPTR");
+
+            var outputLength = (ushort)(currentPointer.Offset - basePointer.Offset);
+
+            var outputBuffer = Module.Memory.GetArray(basePointer, outputLength);
+
+            var outputBufferProcessed = FormatOutput(outputBuffer);
+
+            ChannelDictionary[userChannel].SendToClient(outputBufferProcessed);
+
+            Module.Memory.SetZero(basePointer, outputLength);
+
+            //Set prfptr to the base address of prfbuf
+            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+        }
+
+        /// <summary>
+        ///     Defined "SYSOP KEY" in MajorBBS Config
+        ///
+        ///     This is "SYSOP" by default
+        /// </summary>
+        private ReadOnlySpan<byte> syskey => Module.Memory.GetVariablePointer("*SYSKEY").Data;
+
+        /// <summary>
+        ///     "strip" blank spaces after input
+        ///
+        ///     Signature: void stripb(char *stg);
+        /// </summary>
+        private void stripb() => depad(false);
+
+        /// <summary>
+        ///     Formats a String for use in btrieve (best I can tell)
+        ///
+        ///     Signature: void makhdl(char *stg);
+        /// </summary>
+        private void makhdl()
+        {
+            stripb();
+            zonkhl();
+        }
+
+        /// <summary>
+        ///     char is a valid signup uid char
+        ///
+        ///     Signature: int issupc(int c);
+        /// </summary>
+        private void issupc()
+        {
+            var character = (char)GetParameter(0);
+
+            if (!char.IsLetterOrDigit(character) && !char.IsSeparator(character) && !char.IsSymbol(character))
+            {
+                Registers.AX = 0;
+            }
+            else
+            {
+                Registers.AX = 1;
+            }
+        }
+
+        /// <summary>
+        ///     I believe, like RTIHDLR, that this routine is used to register a task that runs at a very
+        ///     quick interval. This might have been added to handle sub-second routines not running on DOS,
+        ///     and not having the DOS Interrupt ability that RTIHDLR used.
+        ///
+        ///     Signature: int initask(void (*tskaddr)(int taskid));
+        /// </summary>
+        private void initask()
+        {
+            var routinePointer = GetParameterPointer(0);
+
+            var routine = new RealTimeRoutine(routinePointer);
+            var routineNumber = Module.TaskRoutines.Allocate(routine);
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Registered routine {routinePointer}");
+#endif
+            Registers.AX = (ushort)routineNumber;
+        }
+
+        /// <summary>
+        ///     Generate a long random number
+        ///
+        ///     Signature: long lngrnd(long min,long max);
+        /// </summary>
+        private void lngrnd()
+        {
+            var min = GetParameterLong(0);
+            var max = GetParameterLong(2);
+
+            if (max < min)
+                max = min;
+
+            var randomValue = _random.Next(min, max);
+
+            Registers.DX = (ushort)(randomValue >> 16);
+            Registers.AX = (ushort)(randomValue & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     'Acquire' a Btrieve record from a file position
+        ///
+        ///     Signature: int aabbtv (void *recptr, long abspos, int keynum);
+        /// </summary>
+        private void aabbtv()
+        {
+            var recordPointer = GetParameterPointer(0);
+            var absolutePosition = GetParameterLong(2);
+            var keynum = GetParameter(4);
+
+            var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+
+            Registers.AX = UpdateBB(currentBtrieveFile, recordPointer, (uint)absolutePosition, acquiresData: true, (short)keynum, setLogicalPosition: true) ? (ushort)1 : (ushort)0;
+        }
+
+        /// <summary>
+        ///     Checks if an offline user has the specified key
+        ///
+        ///     Signature: int uidkey (char *uid, char *lock);
+        /// </summary>
+        private void uidkey()
+        {
+            var userName = GetParameterString(0, true);
+            var accountLock = GetParameterString(2, true);
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(userName) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(userName);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = (ushort)(keys.Any(k =>
+               string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? 1
+                : 0);
+#if DEBUG
+            var lockName = Encoding.ASCII.GetString(Module.Memory.GetString(GetParameterPointer(0), true));
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for uidkey({userName}, {lockName})");
+#endif
+        }
+
+        /// <summary>
+        ///     Create a new key record
+        ///
+        ///     Signature: void nkyrec (char *uid);
+        /// </summary>
+        private void nkyrec()
+        {
+
+            var uid = GetParameterString(0, stripNull: true);
+
+#if DEBUG
+            _logger.Debug($"New Key Record: {uid}");
+#endif
+        }
+
+        /// <summary>
+        ///     Checks if the other user has the specified key, the one specified by othusn
+        ///     and othusp.
+        ///
+        ///     Signature: int othkey (char *lock);
+        /// </summary>
+        private void othkey()
+        {
+            var accountLock = GetParameterString(0, true);
+            var userChannel = Module.Memory.GetWord("OTHUSN");
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[userChannel].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[userChannel].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Returning {Registers.AX} for othkey({accountLock})");
+#endif
+        }
+
+        /// <summary>
+        ///     Converts a ulong to an ASCII string
+        ///
+        ///     Signature: char *ul2as(ulong longin)
+        ///     Return: AX = Offset in Segment
+        ///             DX = Host Segment
+        /// </summary>
+        private void ul2as()
+        {
+            var lowByte = GetParameter(0);
+            var highByte = GetParameter(1);
+
+            var outputValue = $"{(uint)(highByte << 16 | lowByte)}\0";
+
+            var resultPointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("UL2AS"), 0x20); //32 Byte Buffer
+
+            Module.Memory.SetArray(resultPointer, Encoding.Default.GetBytes(outputValue));
+
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) Received value: {outputValue}, string saved to {resultPointer}");
+#endif
+
+            Registers.SetPointer(resultPointer);
+        }
+
+        /// <summary>
+        ///     Current Language
+        ///
+        ///     This will always be defaulted to 0 in MBBSEmu, which is ANSI
+        ///
+        ///     Signature: int clingo;
+        /// </summary>
+        private ReadOnlySpan<byte> clingo => Module.Memory.GetVariablePointer("CLINGO").Data;
+
+        /// <summary>
+        ///     Teleconference
+        ///
+        ///     Teleconference 'join from other' rouptr
+        ///
+        ///     Signature: void (*tjoinrou)();
+        /// </summary>
+        private ReadOnlySpan<byte> tjoinrou => Module.Memory.GetVariablePointer("TJOINROU").Data;
+
+        /// <summary>
+        ///     Array of pointers to the lingo Structures
+        ///
+        ///     Since clingo for MBBSEmu will always be 0, we only set one structure in the array
+        ///
+        ///     Signature: struct lingo **languages;
+        /// </summary>
+        private ReadOnlySpan<byte> languages => Module.Memory.GetVariablePointer("**LANGUAGES").Data;
+
+        /// <summary>
+        ///     MS-DOS exit code (for batch files)
+        ///
+        ///     Signature: int errcod;
+        /// </summary>
+        private ReadOnlySpan<byte> errcod => Module.Memory.GetVariablePointer("ERRCOD").Data;
+
+        /// <summary>
+        ///     Determines the profanity level of a string
+        ///
+        ///     MBBSEmu doesn't support multiple profanity levels, so the default value of 0 is returned.
+        ///
+        ///     Signature:  int profan(char *string);
+        /// </summary>
+        private void profan()
+        {
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Expect a YES or NO from the user
+        ///
+        ///     Signature: int yesno=cncyesno();
+        /// </summary>
+        private void cncyesno()
+        {
+            //Get Input
+            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var nxtcmdPointer = Module.Memory.GetPointer("NXTCMD");
+            var inputLength = Module.Memory.GetWord("INPLEN");
+
+            var remainingCharactersInCommand = inputLength - (nxtcmdPointer.Offset - inputPointer.Offset);
+
+            if (remainingCharactersInCommand == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
+            var inputString = Module.Memory.GetArray(nxtcmdPointer, (ushort)remainingCharactersInCommand);
+            var inputStringComponents = Encoding.ASCII.GetString(inputString).ToUpper().Split('\0');
+
+            switch (inputStringComponents[0])
+            {
+                case "YES":
+                case "Y":
+                    Registers.AX = 'Y';
+                    break;
+                case "NO":
+                case "N":
+                    Registers.AX = 'N';
+                    break;
+                default:
+                    Registers.AX = string.IsNullOrEmpty(inputStringComponents[0]) ? (ushort)0 : inputStringComponents[0][0];
+                    return;
+            }
+
+            Module.Memory.SetPointer("NXTCMD", new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + inputStringComponents[0].Length + 1)));
+        }
+
+
+        /// <summary>
+        ///     Converts all uppercase letters in the string to lowercase
+        ///
+        ///     Result buffer is 1k
+        ///
+        ///     Signature: char *lower=strlwr(char *string);
+        /// </summary>
+        private void strlwr()
+        {
+            strmod(Char.ToLower);
+        }
+
+        /// <summary>
+        ///     Sends formatted output to stdout
+        ///
+        ///     Some modules used this to print to the main console
+        /// </summary>
+        private void printf()
+        {
+            var formatStringPointer = GetParameterPointer(0);
+
+            _logger.Info(Encoding.ASCII.GetString(FormatPrintf(Module.Memory.GetString(formatStringPointer), 2)));
+        }
+
+        /// <summary>
+        ///     Generic "Has Key" routine which takes in the USER struct vs. the current channel
+        ///
+        ///     Signature: int ok=gen_haskey(char *lock, int unum, struct user *uptr);
+        ///     Returns: AX = 1 == True
+        /// </summary>
+        /// <returns></returns>
+        private void gen_haskey()
+        {
+            var accountLock = GetParameterString(0, true);
+            var userChannel = GetParameter(2);
+
+            if (string.IsNullOrEmpty(accountLock))
+            {
+                Registers.AX = 1;
+                return;
+            }
+
+            IEnumerable<string> keys;
+
+            //If the user isnt registered on the system, most likely RLOGIN -- so apply the default keys
+            if (_accountRepository.GetAccountByUsername(ChannelDictionary[userChannel].Username) == null)
+            {
+                keys = _configuration.DefaultKeys;
+            }
+            else
+            {
+                var accountKeys = _accountKeyRepository.GetAccountKeysByUsername(ChannelDictionary[userChannel].Username);
+                keys = accountKeys.Select(x => x.accountKey);
+            }
+
+            Registers.AX = keys.Any(k =>
+                string.Equals(accountLock, k, StringComparison.InvariantCultureIgnoreCase))
+                ? (ushort)1
+                : (ushort)0;
+>>>>>>> origin/master
 #if DEBUG
     _logger.Debug(
         $"({Module.ModuleIdentifier}) Received value: {packedDate}, decoded string {outputDate} saved to {variablePointer.Segment:X4}:{variablePointer.Offset:X4}");
@@ -2453,7 +7775,127 @@ namespace MBBSEmu.HostProcess.ExportedModules {
     _logger.Debug(
         $"({Module.ModuleIdentifier}) Registered routine {routinePointer} to execute every {delaySeconds} seconds");
 #endif
+<<<<<<< HEAD
   }
+=======
+        }
+
+        /// <summary>
+        ///     gettime - gets MS-DOS time
+        ///
+        ///     Signature: void gettime(struct time *timep);
+        /// </summary>
+        private void gettime()
+        {
+            var timePointer = GetParameterPointer(0);
+
+            var dosTimeStruct = new TimeStruct(_clock.Now);
+
+            Module.Memory.SetArray(timePointer, dosTimeStruct.Data);
+        }
+
+        /// <summary>
+        ///     Full Screen Editor
+        ///
+        ///     We re-use the FSD, using a pre-defined custom template, field spec, and formats (in Assets Folder)
+        /// </summary>
+        private void bgnedt()
+        {
+            var textLength = GetParameter(0);
+            var textPointer = GetParameterPointer(1);
+            var topicLength = GetParameter(3);
+            var topicPointer = GetParameterPointer(4);
+            var onDoneEditing = GetParameterPointer(6);
+            var flags = GetParameter(8);
+
+            //This is where we'll build the Answers String to pass into the FSD Template
+            var answersString = new StringBuilder($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}", topicLength + textLength);
+
+            //Take the input text and split it out on new lines so we can hydrate the individual lines on the template
+            var rawText = Encoding.ASCII.GetString(Module.Memory.GetString(textPointer, true));
+            var split = rawText.Split('\r');
+            var lineNumber = 0;
+            for (var i = 0; i < split.Length; i++)
+            {
+                if (split[i].Length < 79)
+                {
+                    answersString.Append($"LINE{i}={split[i]}\0");
+                    lineNumber++;
+                    continue;
+                }
+
+                //Too much data for one line, we need to "word wrap."
+                while (split[i].Length > 79)
+                {
+                    answersString.Append($" LINE{lineNumber}={split[i].Substring(0, 79)}\0");
+                    split[i] = split[i][79..];
+                    lineNumber++;
+                }
+            }
+
+            //Double Null Terminated
+            answersString.Append('\0');
+
+            //FSDROOM
+            var resourceManager = new ResourceManager();
+
+            var template = resourceManager.GetResource("MBBSEmu.Assets.fseTemplate.ans");
+            var fieldSpec = resourceManager.GetResource("MBBSEmu.Assets.fseFieldSpec.txt");
+
+            var fsdBufferPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-TemplateBuffer-{ChannelNumber}", 0x2000);
+            var fsdFieldSpecPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-FieldSpec-{ChannelNumber}", 0x2000);
+
+            //Zero out FSD Memory Areas
+            Module.Memory.SetZero(fsdBufferPointer, 0x2000);
+            Module.Memory.SetZero(fsdFieldSpecPointer, 0x2000);
+
+            //Hydrate FSD Memory Areas with Values
+            Module.Memory.SetArray(fsdBufferPointer, template);
+            Module.Memory.SetArray(fsdFieldSpecPointer, fieldSpec);
+
+            //Establish a new FSD Status Struct for this Channel
+            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+            var newansPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-newans", 0x400);
+
+            //Declare flddat -- allocating enough room for up to 100 fields
+            var fsdfldPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}-flddat", FsdfldStruct.Size * 100);
+
+            var fsdStatus = new FsdscbStruct(Module.Memory.GetArray(channelFsdscb, FsdscbStruct.Size))
+            {
+                fldspc = fsdFieldSpecPointer,
+                flddat = fsdfldPointer,
+                newans = newansPointer
+            };
+
+            Module.Memory.SetArray($"FSD-Fsdscb-{ChannelNumber}", fsdStatus.Data);
+
+            //FSDAPR
+            var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
+            Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", Encoding.ASCII.GetBytes(answersString.ToString()));
+
+            //FSDBKG
+            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
+            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
+
+            //FSDEGO
+            ChannelDictionary[ChannelNumber].SessionState = EnumSessionState.EnteringFullScreenEditor;
+
+            //Update fsdscb struct
+            var fsdscbStructPointer = Module.Memory.GetVariablePointer($"FSD-Fsdscb-{ChannelNumber}");
+            var fsdscbStruct = new FsdscbStruct(Module.Memory.GetArray(fsdscbStructPointer, FsdscbStruct.Size));
+
+            Module.Memory.SetArray(fsdscbStructPointer, fsdscbStruct.Data);
+
+            //Set Exit Routine
+            var fsdWhenDoneRoutine = Module.Memory.GetOrAllocateVariablePointer($"FSD-WhenDoneRoutine-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer(fsdWhenDoneRoutine, onDoneEditing);
+
+            //Set Pointers for Topic & Text
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TextPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TextPointer-{ChannelNumber}", textPointer);
+            Module.Memory.GetOrAllocateVariablePointer($"FSE-TopicPointer-{ChannelNumber}", FarPtr.Size);
+            Module.Memory.SetPointer($"FSE-TopicPointer-{ChannelNumber}", topicPointer);
+>>>>>>> origin/master
 
   /// <summary>
   ///     Sets 'current' MCV file to the specified pointer

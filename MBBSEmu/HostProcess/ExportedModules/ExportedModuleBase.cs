@@ -102,11 +102,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private protected const ushort ACCBB_BASE_SEGMENT = 0x3001;
         private protected const ushort MaxTextVariables = 64;
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             foreach (var f in FilePointerDictionary)
             {
-                f.Value.Close();
+                f.Value.Dispose();
                 _logger.Warn($"({Module.ModuleIdentifier}) WARNING -- File: {f.Value.Name} left open by module, closing");
             }
             FilePointerDictionary.Clear();

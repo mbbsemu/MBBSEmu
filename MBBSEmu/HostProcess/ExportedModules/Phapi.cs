@@ -21,8 +21,15 @@ namespace MBBSEmu.HostProcess.ExportedModules {
     /// <returns></returns>
     public const ushort Segment = 0xFFFD;
 
+<<<<<<< HEAD
     public new void Dispose() { base.Dispose();
   }
+=======
+        public override void Dispose()
+        {
+            base.Dispose();
+        }
+>>>>>>> origin/master
 
   internal Phapi(IClock clock, IMessageLogger logger, AppSettingsManager configuration,
                  IFileUtility fileUtility, IGlobalCache globalCache, MbbsModule module,

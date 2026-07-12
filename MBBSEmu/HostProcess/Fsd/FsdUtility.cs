@@ -76,9 +76,238 @@ namespace MBBSEmu.HostProcess.Fsd {
                 break;
             }
 
+<<<<<<< HEAD
             if (fieldSpec[o] == ')') {
               i = o;
               break;
+=======
+            return result;
+        }
+
+        /// <summary>
+        ///     Determines the X,Y coordinates of specified template fields by stripping ANSI from the field template
+        ///     and parsing each character, each new line increments Y and sets X back to 1.
+        ///
+        ///     Note: X,Y for ANSI starts at 1,1 being the top left of the terminal (not 0,0)
+        /// </summary>
+        /// <param name="template"></param>
+        /// <param name="status"></param>
+        public void GetFieldPositions(ReadOnlySpan<byte> template, FsdStatus status)
+        {
+            //Get Template and Strip out ANSI Characters
+            var templateString = Encoding.ASCII.GetString(StripAnsi(template));
+
+            var currentY = 1; //ANSI x/y positions are 1 based, so first loop these will be 1,1
+            var currentX = 0;
+            var currentField = 0;
+            var currentFieldLength = 0;
+
+            var foundFieldCharacter = '\xFF';
+
+            for (var i = 0; i < templateString.Length; i++)
+            {
+                var c = templateString[i];
+
+                //Increment the X Position
+                currentX++;
+
+                //If it's the character we previously found, keep going
+                if (c == foundFieldCharacter)
+                {
+                    currentFieldLength++;
+                    continue;
+                }
+
+                //If we're past it, and the previous field Character wasn't the default, mark the length
+                if (foundFieldCharacter != '\xFF')
+                {
+                    //Special Case for Error Field
+                    if (foundFieldCharacter == '!')
+                    {
+                        status.ErrorField.FieldLength = currentFieldLength + 1;
+
+                    }
+                    else
+                    {
+                        //Standard Fields
+                        status.Fields[currentField - 1].FieldLength = currentFieldLength + 1;
+                    }
+
+                    currentFieldLength = 0;
+                }
+
+                //We're past the field now, reset the character
+                foundFieldCharacter = '\xFF';
+
+                //Handle carriage return - skip it (it's typically part of \r\n and takes 0 columns)
+                if (c == '\r')
+                {
+                    currentX--; //Undo the X increment we just did
+                    continue;
+                }
+
+                //If it's a new line, increment Y and set X back to 0
+                if (c == '\n')
+                {
+                    currentY++;
+                    currentX = 0;
+                    continue;
+                }
+
+                if (c != '?' && c != '$' && c != '!')
+                    continue;
+
+                //If the next character is a known control character, then we're in a field definition
+                switch (templateString[i + 1])
+                {
+                    case '?':
+                    case '$':
+                    case '!':
+                        break;
+                    default:
+                        //Otherwise keep searching
+                        continue;
+                }
+
+                //Define the field based on the field specification character used
+                switch (c)
+                {
+                    case '!': //Error Message Field
+                        //Add a new field for the Error, as it's not included in the Field Spec
+                        status.ErrorField = new FsdFieldSpec { FsdFieldType = EnumFsdFieldType.Error, X = currentX, Y = currentY };
+                        foundFieldCharacter = c;
+                        continue;
+                    case '$': //Numeric Field
+                        status.Fields[currentField].FsdFieldType = EnumFsdFieldType.Numeric;
+                        status.Fields[currentField].X = currentX;
+                        status.Fields[currentField].Y = currentY;
+                        break;
+                    default: //Text or Multiple Choice
+                        status.Fields[currentField].X = currentX;
+                        status.Fields[currentField].Y = currentY;
+                        break;
+                }
+
+                currentField++;
+                foundFieldCharacter = c;
+            }
+        }
+
+        /// <summary>
+        ///     Takes a Specified List of Answers and applies them to the corresponding Field Specs
+        /// </summary>
+        /// <param name="answers"></param>
+        /// <param name="fields"></param>
+        public void SetAnswers(List<string> answers, List<FsdFieldSpec> fields)
+        {
+            if (answers == null || fields == null || answers.Count == 0 || fields.Count == 0)
+                return;
+
+            var fieldsByName = fields
+                .Where(field => !string.IsNullOrWhiteSpace(field.Name))
+                .GroupBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+            for (var i = 0; i < answers.Count; i++)
+            {
+                if (string.IsNullOrWhiteSpace(answers[i]))
+                    continue;
+
+                var delimiterIndex = answers[i].IndexOf('=', StringComparison.Ordinal);
+                if (delimiterIndex <= 0)
+                    continue;
+
+                var answerName = answers[i].Substring(0, delimiterIndex).Trim();
+                if (string.IsNullOrWhiteSpace(answerName))
+                    continue;
+
+                if (!fieldsByName.TryGetValue(answerName, out var matchingField))
+                    continue;
+
+                var answerValue = delimiterIndex + 1 < answers[i].Length
+                    ? answers[i].Substring(delimiterIndex + 1)
+                    : string.Empty;
+
+                matchingField.Value = answerValue;
+            }
+        }
+
+        /// <summary>
+        ///     Parses through the template looking for leading ANSI formatting on field specifications
+        /// </summary>
+        /// <param name="template"></param>
+        /// <param name="status"></param>
+        public void GetFieldAnsi(ReadOnlySpan<byte> template, FsdStatus status)
+        {
+            var currentField = 0;
+            var foundFieldCharacter = 0xFF;
+
+            for (var i = 0; i < template.Length; i++)
+            {
+                var c = template[i];
+
+                //If it's the character we previously found, keep going
+                if (c == foundFieldCharacter)
+                    continue;
+
+                //We're past the field now, reset the character
+                foundFieldCharacter = '\xFF';
+
+                //If it's a new line, increment Y and set X back to -1
+                if (c == '\r')
+                    continue;
+
+                //If we're not in a field definition, keep moving
+                if (c != '?' && c != '$' && c != '!')
+                    continue;
+
+                //Found a field definition character, check to see if the next character is the same
+                if (template[i + 1] != c)
+                    continue;
+
+                //Assume the ANSI format specification is within the first 10 characters
+                var extractedAnsi = ExtractFieldAnsi(template.Slice(i - 10, 10));
+
+                //Error Fields are their own special little snowflakes
+                if (c == '!')
+                {
+                    status.ErrorField.FieldAnsi = extractedAnsi;
+                }
+                else
+                {
+                    status.Fields[currentField].FieldAnsi = extractedAnsi;
+                    currentField++;
+                }
+
+                //Set our Position
+                foundFieldCharacter = c;
+            }
+        }
+
+        /// <summary>
+        ///     Extracts the ANSI formatting from the bytes preceding the field
+        ///
+        ///     Assumption is bytes immediately preceding field contains ANSI formatting
+        /// </summary>
+        /// <param name="fieldBytes"></param>
+        /// <returns></returns>
+        public byte[] ExtractFieldAnsi(ReadOnlySpan<byte> fieldBytes)
+        {
+            //Loop backwards until we find the ANSI control character
+            for (var i = fieldBytes.Length - 1; i > 0; i--)
+            {
+                if (fieldBytes[i] == 0x1B)
+                {
+                    //Find the 'm' that ends the ANSI sequence (e.g., ESC[37m)
+                    for (var j = i + 1; j < fieldBytes.Length; j++)
+                    {
+                        if (fieldBytes[j] == 'm')
+                            return fieldBytes.Slice(i, j - i + 1).ToArray();
+                    }
+                    //No 'm' found - not a valid color/formatting sequence
+                    return null;
+                }
+>>>>>>> origin/master
             }
 
             if (fieldSpec[o] == ' ') {
@@ -96,6 +325,7 @@ namespace MBBSEmu.HostProcess.Fsd {
           newSpec.IsReadOnly = true;
         }
 
+<<<<<<< HEAD
         // If no Max is specified, use the field length as max for text fields
         if (newSpec.FsdFieldType == EnumFsdFieldType.Text && newSpec.Maximum == 0 &&
             newSpec.FieldLength > 0)
@@ -105,6 +335,65 @@ namespace MBBSEmu.HostProcess.Fsd {
       }
 
       return result;
+=======
+        /// <summary>
+        ///     Strips ANSI Sequences as well as any character with an ASCII code > 127
+        ///     Extended ASCII (CP437) is replaced with spaces so they count as 1 column
+        ///     (they render as 1-column-wide UTF-8 characters when CP437 conversion is enabled)
+        /// </summary>
+        /// <param name="inputBuffer"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> StripAnsi(ReadOnlySpan<byte> inputBuffer)
+        {
+            using var msResult = new MemoryStream(inputBuffer.Length);
+
+            //Replace Extended ASCII with spaces (each renders as 1 column with CP437→UTF-8 conversion)
+            foreach (var c in inputBuffer)
+                msResult.WriteByte(c < 128 ? c : (byte)0x20);
+
+            //Strip ALL ANSI escape sequences, not just color (m) sequences
+            //This includes cursor positioning (H/f), clear (J/K), cursor movement (A/B/C/D), etc.
+            var templateWithoutAnsi = new Regex(@"\x1b\[[0-9;]*[A-Za-z]").Replace(Encoding.ASCII.GetString(msResult.ToArray()), string.Empty);
+
+            return Encoding.ASCII.GetBytes(templateWithoutAnsi);
+        }
+
+        /// <summary>
+        ///     Builds an Answer String from the Specified FsdStatus Object
+        /// </summary>
+        /// <param name="fsdStatus"></param>
+        /// <returns></returns>
+        public ReadOnlySpan<byte> BuildAnswerString(FsdStatus fsdStatus)
+        {
+            using var result = new MemoryStream(fsdStatus.Fields.Sum(field => field.Name.Length + field.Value.Length + 4));
+            foreach (var field in fsdStatus.Fields)
+            {
+                result.Write(Encoding.ASCII.GetBytes($"{field.Name}={field.Value}\0"));
+            }
+            result.WriteByte(0);
+            return result.ToArray();
+        }
+
+        /// <summary>
+        ///     Exchanges Field Information between the fsdfld definitions and the FsdFieldSpec List3
+        ///
+        ///     fsdfldSpan.flags & 0x80 -> fields.IsReadOnly
+        /// </summary>
+        /// <param name="fsdfldSpan"></param>
+        /// <param name="fields"></param>
+        public void SetFieldAttributes(ReadOnlySpan<byte> fsdfldSpan, List<FsdFieldSpec> fields)
+        {
+            for (var i = 0; i < fields.Count; i++)
+            {
+                var offset = i * FsdfldStruct.Size;
+                var currentFieldStruct = new FsdfldStruct(fsdfldSpan.Slice(offset, FsdfldStruct.Size));
+
+                //Field Evaluations
+                fields[i].IsReadOnly = currentFieldStruct.flags.IsFlagSet((byte) EnumFsdfldFlags.FFFAVD);
+                //TODO -- Other Fields Here
+            }
+        }
+>>>>>>> origin/master
     }
 
     /// <summary>
