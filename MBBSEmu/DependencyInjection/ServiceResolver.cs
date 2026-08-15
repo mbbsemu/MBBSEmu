@@ -76,6 +76,19 @@ namespace MBBSEmu.DependencyInjection
             AddSingleton<IClock, SystemClock>(overrides);
 
             _provider = _serviceCollection.BuildServiceProvider();
+
+            // LogFactory's logger registry is process-wide (static), so only seed
+            // defaults if nothing has already been registered by an earlier caller
+            // (e.g. Program.cs's own startup, or another ServiceResolver in this process).
+            var logFactory = _provider.GetService<LogFactory>();
+            if (logFactory != null)
+            {
+                if (!logFactory.HasLogger<MessageLogger>())
+                    logFactory.AddLogger(new MessageLogger());
+
+                if (!logFactory.HasLogger<AuditLogger>())
+                    logFactory.AddLogger(new AuditLogger());
+            }
         }
 
         private void AddSingleton<TService, TImplementation>(IEnumerable<object> overrides)

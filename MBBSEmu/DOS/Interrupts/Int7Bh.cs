@@ -4,7 +4,6 @@ using MBBSEmu.CPU;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -110,11 +109,11 @@ namespace MBBSEmu.DOS.Interrupts {
     }
 
     public void Handle() {
-      /*
       // DS:DX is argument
       var command = ByteArrayToStructure<DOSInterruptBtrieveCommand>(_memory.GetArray(_registers.DS,
-      _registers.DX, BTRIEVE_COMMAND_STRUCT_LENGTH).ToArray()); var status =
-      BtrieveError.InvalidInterface; var data_buffer_length = command.data_buffer_length;
+          _registers.DX, BTRIEVE_COMMAND_STRUCT_LENGTH).ToArray());
+      var status = BtrieveError.InvalidInterface;
+      var data_buffer_length = command.data_buffer_length;
 
       if (command.interface_id != EXPECTED_INTERFACE_ID)
           _logger.Warn($"Client specified invalid interface_id {command.interface_id:X4}");
@@ -123,15 +122,13 @@ namespace MBBSEmu.DOS.Interrupts {
 
       // return status code back to program
       _memory.SetWord(command.status_code_pointer_segment, command.status_code_pointer_offset,
-      (ushort)status);
+          (ushort)status);
       // and update data_buffer_length if it was updated in Handle
       _memory.SetWord(_registers.DS, (ushort)(_registers.DX + 4), data_buffer_length);
-      */
     }
 
     private (BtrieveError, ushort) Handle(DOSInterruptBtrieveCommand command) {
-      return (BtrieveError.InvalidOperation, command.data_buffer_length);
-      /*var actualCommand =
+      var actualCommand =
           new BtrieveCommand() { operation = command.operation,
                                  position_block_segment = command.position_block_segment,
                                  position_block_offset = command.position_block_offset,
@@ -159,32 +156,6 @@ namespace MBBSEmu.DOS.Interrupts {
           return (Close(command), command.data_buffer_length);
         case EnumBtrieveOperationCodes.Stat:
           return Stat(command);
-        case EnumBtrieveOperationCodes.Delete:
-          return (Delete(command), command.data_buffer_length);
-        case EnumBtrieveOperationCodes.StepFirst:
-        case EnumBtrieveOperationCodes.StepLast:
-        case EnumBtrieveOperationCodes.StepNext:
-        case EnumBtrieveOperationCodes.StepPrevious:
-          return Step(command);
-        case EnumBtrieveOperationCodes.AcquireFirst:
-        case EnumBtrieveOperationCodes.AcquireLast:
-        case EnumBtrieveOperationCodes.AcquireNext:
-        case EnumBtrieveOperationCodes.AcquirePrevious:
-        case EnumBtrieveOperationCodes.AcquireEqual:
-        case EnumBtrieveOperationCodes.AcquireGreater:
-        case EnumBtrieveOperationCodes.AcquireGreaterOrEqual:
-        case EnumBtrieveOperationCodes.AcquireLess:
-        case EnumBtrieveOperationCodes.AcquireLessOrEqual:
-        case EnumBtrieveOperationCodes.QueryFirst:
-        case EnumBtrieveOperationCodes.QueryLast:
-        case EnumBtrieveOperationCodes.QueryNext:
-        case EnumBtrieveOperationCodes.QueryPrevious:
-        case EnumBtrieveOperationCodes.QueryEqual:
-        case EnumBtrieveOperationCodes.QueryGreater:
-        case EnumBtrieveOperationCodes.QueryGreaterOrEqual:
-        case EnumBtrieveOperationCodes.QueryLess:
-        case EnumBtrieveOperationCodes.QueryLessOrEqual:
-          return Query(command);
         case EnumBtrieveOperationCodes.GetPosition:
           return GetPosition(command);
         case EnumBtrieveOperationCodes.GetDirectChunkOrRecord:
@@ -194,6 +165,13 @@ namespace MBBSEmu.DOS.Interrupts {
         case EnumBtrieveOperationCodes.Insert:
           return (Insert(command), command.data_buffer_length);
         default:
+          // Delete, Step*, Acquire*, and Query* all just position/act on the
+          // currently open database, so let PerformOperation drive them directly
+          // off the operation code's own attributes rather than special-casing
+          // each one here.
+          if (command.operation.IsPositioningOperation())
+            return PerformOperation(command);
+
           _logger.Error($"Unsupported Btrieve operation {command.operation}");
           return (BtrieveError.InvalidOperation, command.data_buffer_length);
       }
@@ -214,9 +192,7 @@ namespace MBBSEmu.DOS.Interrupts {
 
       BtrieveFileProcessor db;
       try {
-        db = new(_fileUtility, path, file, cacheSize: 8) {
-          BtrieveDriverMode = true,
-        };
+        db = new(_fileUtility, path, file, cacheSize: 8);
         // add to my list of open files
         var guid = Guid.NewGuid();
         _openFiles[guid] = db;
@@ -226,7 +202,7 @@ namespace MBBSEmu.DOS.Interrupts {
                          guid.ToByteArray());
 
         return BtrieveError.Success;
-      } catch (FileNotFoundException) {
+      } catch (Exception) {
         _logger.Error($"Can't open btrieve file {file} with openMode {openMode}");
         return BtrieveError.FileNotFound;
       }
@@ -338,17 +314,6 @@ namespace MBBSEmu.DOS.Interrupts {
       return (BtrieveError.Success, requiredSize);
     }
 
-    private BtrieveError Delete(BtrieveCommand command) {
-      var db = GetOpenDatabase(command);
-      if (db == null)
-        return BtrieveError.FileNotOpen;
-
-      if (!db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation))
-        return BtrieveError.InvalidPositioning;
-
-      return BtrieveError.Success;
-    }
-
     private BtrieveError Update(BtrieveCommand command) {
       var db = GetOpenDatabase(command);
       if (db == null)
@@ -387,7 +352,7 @@ namespace MBBSEmu.DOS.Interrupts {
                        .GetArray(command.data_buffer_segment, command.data_buffer_offset,
                                  command.data_buffer_length)
                        .ToArray();
-      if (db.Insert(record, LogLevel.Error) == 0)
+      if (db.Insert(record) == 0)
         return BtrieveError.DuplicateKeyValue;
 
       // copy back the key if specified
@@ -398,42 +363,43 @@ namespace MBBSEmu.DOS.Interrupts {
       return BtrieveError.Success;
     }
 
-    private (BtrieveError, ushort) Step(BtrieveCommand command) {
-      var db = GetOpenDatabase(command);
-      if (db == null)
-        return (BtrieveError.FileNotOpen, command.data_buffer_length);
-
-      if (!db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation))
-        return (BtrieveError.EOF, command.data_buffer_length);
-
-      var data = db.GetRecord();
-      if (data.Length > command.data_buffer_length)
-        return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
-
-      _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-
-      return (BtrieveError.Success, (ushort)data.Length);
-    }
-
-    private (BtrieveError, ushort) Query(BtrieveCommand command) {
+    /// <summary>
+    ///     Handles Delete, Step*, Acquire*, and Query* by calling the open database's
+    ///     PerformOperation directly and letting the operation code's own attributes
+    ///     (IgnoresKeyNumber, RequiresKey, AcquiresData) drive what gets read from and
+    ///     copied back to guest memory.
+    /// </summary>
+    private (BtrieveError, ushort) PerformOperation(BtrieveCommand command) {
       var length = command.data_buffer_length;
 
       var db = GetOpenDatabase(command);
       if (db == null)
         return (BtrieveError.FileNotOpen, length);
 
+      // Delete has no data/key to acquire and its own distinct failure code, so it's
+      // simplest to just handle it up front rather than threading it through the rest.
+      if (command.operation == EnumBtrieveOperationCodes.Delete)
+        return (db.PerformOperation(-1, ReadOnlySpan<byte>.Empty, command.operation)
+                    ? BtrieveError.Success
+                    : BtrieveError.InvalidPositioning,
+                length);
+
+      // Step* operates on physical record position, not a key, so the caller-supplied
+      // key number is meaningless and must be ignored.
+      var keyNumber = command.operation.IgnoresKeyNumber() ? -1 : command.key_number;
+
       var key = ReadOnlySpan<byte>.Empty;
       if (command.operation.RequiresKey())
         key = _memory.GetArray(command.key_buffer_segment, command.key_buffer_offset,
                                command.key_buffer_length);
 
-      if (!db.PerformOperation(command.key_number, key, command.operation))
+      if (!db.PerformOperation(keyNumber, key, command.operation))
         return (command.operation.RequiresKey() ? BtrieveError.KeyValueNotFound : BtrieveError.EOF,
                 length);
 
       var data = db.GetRecord();
 
-      if (db.Keys[(ushort)command.key_number].Length > command.key_buffer_length)
+      if (keyNumber >= 0 && db.Keys[(ushort)keyNumber].Length > command.key_buffer_length)
         return (BtrieveError.KeyBufferTooShort, length);
 
       if (command.operation.AcquiresData()) {
@@ -445,9 +411,10 @@ namespace MBBSEmu.DOS.Interrupts {
         length = (ushort)data.Length;
       }
 
-      // copy key
-      _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset,
-                       db.Keys[(ushort)command.key_number].ExtractKeyDataFromRecord(data));
+      // copy key, if this operation is keyed
+      if (keyNumber >= 0)
+        _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset,
+                         db.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(data));
 
       return (BtrieveError.Success, length);
     }
@@ -527,7 +494,5 @@ namespace MBBSEmu.DOS.Interrupts {
     /// Retrieves the BtrieveFileProcess from the specific guid - meant to be used only in tests.
     /// </summary>
     public BtrieveFileProcessor GetFromGUID(Guid guid) => _openFiles[guid];
-  }*/
-    }
   }
 }

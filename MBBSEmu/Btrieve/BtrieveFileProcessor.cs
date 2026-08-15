@@ -46,9 +46,11 @@ namespace MBBSEmu.Btrieve {
 
     public uint Position { get => GetPosition(); }
 
-    public uint RecordLength { get => 512; }
+    public uint RecordLength { get; private set; }
 
     public uint PageLength { get => 512; }
+
+    public bool VariableLengthRecords { get; private set; }
 
     private Dictionary<ushort, BtrieveKey> _keys;
 
@@ -75,17 +77,63 @@ namespace MBBSEmu.Btrieve {
     /// <param name="fileName"></param>
     public BtrieveFileProcessor(IFileUtility fileUtility, string path, string fileName,
                                 int cacheSize) {
+      // wbtrv32.dll resolves relative filenames against its own process's current
+      // directory, not the module path, so we must hand it a fully qualified path.
+      var fullPath = Path.Combine(path, fileUtility.FindFile(path, fileName));
+
+      // wbtrv32.dll's Open treats the key buffer as a null-terminated C string, not
+      // fixed-length key data like every other operation, so it must be null-terminated.
       int dwDataBufferLength = 0;
       int response = Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Open, unmanagedPosBlock,
                                             null, ref dwDataBufferLength,
-                                            System.Text.Encoding.ASCII.GetBytes(fileName), 0);
+                                            System.Text.Encoding.ASCII.GetBytes(fullPath + "\0"), 0);
       if (response != 0) {
-        throw new Exception("Can't open " + fileName);
+        throw new Exception("Can't open " + fullPath);
       }
 
       _keys = new Dictionary<ushort, BtrieveKey>();
       byte[] statData = Stat();
-      // TODO load data here
+      LoadFileSpec(statData);
+    }
+
+    /// <summary>
+    ///     Parses the FILESPEC + KEYSPEC data returned by wbtrv32.dll's Stat operation into
+    ///     this instance's RecordLength, VariableLengthRecords, and Keys.
+    /// </summary>
+    private void LoadFileSpec(byte[] statData) {
+      var span = statData.AsSpan();
+
+      RecordLength = BitConverter.ToUInt16(span.Slice(0, 2));
+
+      var fileFlags = BitConverter.ToUInt16(span.Slice(10, 2));
+      VariableLengthRecords = (fileFlags & 0x1) != 0;
+
+      var segmentCount = (statData.Length - 16) / 16;
+      BtrieveKey currentKey = null;
+
+      for (var i = 0; i < segmentCount; ++i) {
+        var segment = span.Slice(16 + (i * 16), 16);
+
+        var number = segment[14];
+        var keyDefinition = new BtrieveKeyDefinition {
+          Number = number,
+          Length = BitConverter.ToUInt16(segment.Slice(2, 2)),
+          Offset = (ushort)(BitConverter.ToUInt16(segment.Slice(0, 2)) - 1),
+          DataType = (EnumKeyDataType)segment[10],
+          Attributes = (EnumKeyAttributeMask)BitConverter.ToUInt16(segment.Slice(4, 2)),
+          NullValue = segment[11],
+          SegmentOf = number,
+        };
+
+        if (currentKey != null && currentKey.Number == number) {
+          keyDefinition.Segment = true;
+          keyDefinition.SegmentIndex = currentKey.Segments.Count;
+          currentKey.Segments.Add(keyDefinition);
+        } else {
+          currentKey = new BtrieveKey(keyDefinition);
+          _keys[number] = currentKey;
+        }
+      }
     }
 
     /*
@@ -201,20 +249,18 @@ keyOffset += 16;*/
     }
 
     private byte[] Stat() {
-      byte[] dataBuffer = new byte[0];
+      // wbtrv32.dll's Stat implementation returns DataBufferLengthOverrun without
+      // reporting the required size when the buffer is too small, so there's no way
+      // to size the buffer via a first probing call. Use a buffer generously large
+      // enough to hold the FILESPEC plus every KEYSPEC entry instead.
+      byte[] dataBuffer = new byte[readBufferSize];
       int dwDataBufferLength = dataBuffer.Length;
-      if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Stat, unmanagedPosBlock, dataBuffer,
-                                 ref dwDataBufferLength, null,
-                                 0) != (int)BtrieveError.DataBufferLengthOverrun) {
-        throw new Exception("Cannot stat db");
-      }
-
-      dataBuffer = new byte[dwDataBufferLength];
-
       if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Stat, unmanagedPosBlock, dataBuffer,
                                  ref dwDataBufferLength, null, 0) != 0) {
         throw new Exception("Cannot stat db");
       }
+
+      Array.Resize(ref dataBuffer, dwDataBufferLength);
 
       return dataBuffer;
     }
@@ -290,6 +336,9 @@ keyOffset += 16;*/
     ///     match. If keyNumber is >= 0, also establishes that key's logical currency at this
     ///     position, so that a subsequent AcquireNext/QueryNext continues on from here rather
     ///     than from wherever the last key-based query left off.
+    ///
+    ///     Returns null if there's no record at that offset (e.g. an invalid/deleted position),
+    ///     matching Btrieve's usual "not found" semantics rather than throwing.
     /// </summary>
     public BtrieveRecord GetRecord(uint offset, int keyNumber) {
       byte[] data = new byte[readBufferSize];
@@ -308,7 +357,7 @@ keyOffset += 16;*/
       if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
                                  unmanagedPosBlock, data, ref dwDataBufferLength, keyBuffer,
                                  (byte)keyNumber) != 0) {
-        throw new Exception("Can't direct read");
+        return null;
       }
 
       Array.Resize(ref data, dwDataBufferLength);
@@ -353,9 +402,11 @@ keyOffset += 16;*/
     ///     Deletes all records within the current Btrieve File.
     /// </summary>
     public bool DeleteAll() {
-      // TODO implement this better
-      StepFirst();
-      while (Delete()) {
+      // Deleting invalidates the current position, so we have to re-establish it via
+      // StepFirst before every delete rather than just stepping through once.
+      while (StepFirst()) {
+        if (!Delete())
+          return false;
       }
       return true;
     }
