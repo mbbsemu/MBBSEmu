@@ -1,12 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MBBSEmu.Btrieve {
   public partial class Wbtrv32 {
+    static Wbtrv32() {
+      NativeLibrary.SetDllImportResolver(typeof(Wbtrv32).Assembly, ResolveWbtrv32);
+    }
+
+    // wbtrv32.dll isn't installed system-wide -- it's built out-of-tree by the wbtrv32
+    // native project. Point WBTRV32_PATH at that build output directory (the folder
+    // containing wbtrv32.dll) to let MBBSEmu find it.
+    private static IntPtr ResolveWbtrv32(string libraryName, Assembly assembly, DllImportSearchPath? searchPath) {
+      if (!string.Equals(libraryName, "wbtrv32.dll", StringComparison.OrdinalIgnoreCase))
+        return IntPtr.Zero;
+
+      var wbtrv32Directory = Environment.GetEnvironmentVariable("WBTRV32_PATH");
+      if (string.IsNullOrEmpty(wbtrv32Directory))
+        return IntPtr.Zero;
+
+      var wbtrv32Path = Path.Combine(wbtrv32Directory, "wbtrv32.dll");
+      return NativeLibrary.TryLoad(wbtrv32Path, out var handle) ? handle : IntPtr.Zero;
+    }
+
     [LibraryImport("wbtrv32.dll", EntryPoint = "BTRCALL")]
     private static partial int BTRCALL(ushort wOperation, nint lpPositionBlock, nint lpDataBuffer,
                                        nint lpdwDataBufferLength, nint lpKeyBuffer, byte bKeyLength,

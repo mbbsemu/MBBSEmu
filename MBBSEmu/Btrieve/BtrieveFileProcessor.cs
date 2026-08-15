@@ -147,6 +147,11 @@ namespace MBBSEmu.Btrieve {
 
       fileSpec[10] = flags;
 
+      // physicalPageSize == 0xFF tells wbtrv32.dll to create the database in-memory
+      // rather than on disk; that path is also what avoids it dereferencing lpKeyBuffer
+      // as a filename, which we don't pass one for.
+      fileSpec[13] = 0xFF;
+
       var keyOffset = 16;
       foreach (var key in btrieveFile.Keys.OrderBy(x => x.Key)) {
         foreach (var segment in key.Value.Segments) {
@@ -261,7 +266,7 @@ keyOffset += 16;*/
       byte[] data = new byte[4];
       int dwDataBufferLength = data.Length;
       if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.GetPosition, unmanagedPosBlock,
-                                 data, ref dwDataBufferLength, null, 0) == 0) {
+                                 data, ref dwDataBufferLength, null, 0) != 0) {
         throw new Exception("Can't get position");
       }
 
@@ -278,7 +283,15 @@ keyOffset += 16;*/
     ///     Returns the Record at the specified physical offset, while also updating Position to
     ///     match.
     /// </summary>
-    public BtrieveRecord GetRecord(uint offset) {
+    public BtrieveRecord GetRecord(uint offset) => GetRecord(offset, -1);
+
+    /// <summary>
+    ///     Returns the Record at the specified physical offset, while also updating Position to
+    ///     match. If keyNumber is >= 0, also establishes that key's logical currency at this
+    ///     position, so that a subsequent AcquireNext/QueryNext continues on from here rather
+    ///     than from wherever the last key-based query left off.
+    /// </summary>
+    public BtrieveRecord GetRecord(uint offset, int keyNumber) {
       byte[] data = new byte[readBufferSize];
       int dwDataBufferLength = data.Length;
 
@@ -286,8 +299,15 @@ keyOffset += 16;*/
         throw new Exception("Can't write length");
       }
 
+      byte[] keyBuffer = null;
+      if (keyNumber >= 0 && Keys.TryGetValue((ushort)keyNumber, out var btrieveKey)) {
+        keyBuffer = new byte[btrieveKey.Length];
+        LastUsedKey = keyNumber;
+      }
+
       if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.GetDirectChunkOrRecord,
-                                 unmanagedPosBlock, data, ref dwDataBufferLength, null, 0) != 0) {
+                                 unmanagedPosBlock, data, ref dwDataBufferLength, keyBuffer,
+                                 (byte)keyNumber) != 0) {
         throw new Exception("Can't direct read");
       }
 
@@ -352,8 +372,27 @@ keyOffset += 16;*/
       byte[] data = new byte[readBufferSize];
       int dwDataBufferLength = data.Length;
 
-      LastUsedKey = keyNumber;
-      LastUsedKeyData = key.ToArray();
+      // Operations that continue a previous query (e.g. AcquireNext) don't get a
+      // meaningful key number from their caller -- wbtrv32.dll requires the key
+      // number to match the one used to establish that query, so reuse it here
+      // rather than whatever placeholder the caller passed in.
+      if (btrieveOperationCode.UsesPreviousQuery())
+        keyNumber = LastUsedKey;
+      else
+        LastUsedKey = keyNumber;
+
+      // wbtrv32.dll always writes the found record's key back into the key buffer
+      // for Acquire/Query operations, even ones (like AcquireNext) that don't need
+      // key criteria to perform the search, so the buffer must be large enough to
+      // hold a full key value rather than whatever (possibly empty) key data the
+      // caller supplied.
+      if (Keys.TryGetValue((ushort)keyNumber, out var btrieveKey) && key.Length < btrieveKey.Length) {
+        var keyBuffer = new byte[btrieveKey.Length];
+        key.CopyTo(keyBuffer);
+        LastUsedKeyData = keyBuffer;
+      } else {
+        LastUsedKeyData = key.ToArray();
+      }
 
       return Wbtrv32.managedBtrcall((ushort)btrieveOperationCode, unmanagedPosBlock, data,
                                     ref dwDataBufferLength, LastUsedKeyData, (byte)keyNumber) == 0;

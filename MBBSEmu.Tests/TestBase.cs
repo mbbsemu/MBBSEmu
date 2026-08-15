@@ -13,11 +13,6 @@ namespace MBBSEmu.Tests
     {
         protected static readonly Random RANDOM = new(Guid.NewGuid().GetHashCode());
 
-        static TestBase()
-        {
-
-        }
-
         protected string GetModulePath()
         {
             return Path.Join(Path.GetTempPath(), $"mbbsemu{RANDOM.Next()}");
