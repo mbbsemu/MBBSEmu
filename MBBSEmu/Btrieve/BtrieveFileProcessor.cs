@@ -187,7 +187,10 @@ namespace MBBSEmu.Btrieve {
 
       BitConverter.TryWriteBytes(fileSpecSpan, btrieveFile.RecordLength);
       BitConverter.TryWriteBytes(fileSpecSpan.Slice(2), btrieveFile.PageLength);
-      fileSpec[4] = (byte)totalSegments;
+      // numberOfKeys is the count of logical keys, not segments -- a composite key with
+      // multiple segments still only counts once (wbtrv32.dll walks segments itself via
+      // the SegmentedKey attribute).
+      fileSpec[4] = (byte)btrieveFile.Keys.Count;
 
       byte flags = 0;
       if (btrieveFile.VariableLengthRecords)
@@ -200,6 +203,11 @@ namespace MBBSEmu.Btrieve {
       // as a filename, which we don't pass one for.
       fileSpec[13] = 0xFF;
 
+      // wbtrv32.dll only supports a single, shared ACS table (matching BtrieveFile's own
+      // model -- one ACS applies to whichever keys require it), so any key needing ACS
+      // always references table 0.
+      const byte acsNumber = 0;
+
       var keyOffset = 16;
       foreach (var key in btrieveFile.Keys.OrderBy(x => x.Key)) {
         foreach (var segment in key.Value.Segments) {
@@ -207,25 +215,23 @@ namespace MBBSEmu.Btrieve {
           BitConverter.TryWriteBytes(fileSpecSpan.Slice(keyOffset + 2), segment.Length);
           BitConverter.TryWriteBytes(fileSpecSpan.Slice(keyOffset + 4), (ushort)segment.Attributes);
           fileSpecSpan[keyOffset + 10] = (byte)segment.DataType;
+          fileSpecSpan[keyOffset + 11] = segment.NullValue;
           fileSpecSpan[keyOffset + 14] = (byte)segment.Number;
-          // fileSpecSpan[keyOffset + 15] = segment.ACS != null ? (byte) 1 : (byte) 0;
+          fileSpecSpan[keyOffset + 15] = segment.RequiresACS ? acsNumber : (byte)0;
 
           keyOffset += 16;
-          // BitConverter.TryWriteBytes(fileSpecSpan.Slice(keyOffset + 6), segment.UniqueKeys);
-
-          // BitConverter.TryWriteBytes(fileSpecSpan.Slice(keyOffset + 10), (byte)
-          // segment.DataType);
-
-          /*BitConverter.GetBytes(segment.Position).CopyTo(fileSpec, keyOffset);
-BitConverter.GetBytes(segment.Length).CopyTo(fileSpec, keyOffset + 2);
-BitConverter.GetBytes((ushort)segment.Attributes).CopyTo(fileSpec, keyOffset + 4);
-fileSpec[keyOffset + 10] = (byte)segment.DataType;
-fileSpec[keyOffset + 11] = segment.NullValue;
-keyOffset += 16;*/
         }
       }
 
-      // TODO write the ACS
+      if (btrieveFile.ACS != null) {
+        // ACSCREATEDATA: header (0xAC), 8-byte name, 256-byte table
+        fileSpecSpan[keyOffset] = 0xAC;
+        var nameBytes = Encoding.ASCII.GetBytes((btrieveFile.ACSName ?? string.Empty).PadRight(8).Substring(0, 8));
+        nameBytes.CopyTo(fileSpecSpan.Slice(keyOffset + 1, 8));
+        btrieveFile.ACS.AsSpan(0, 256).CopyTo(fileSpecSpan.Slice(keyOffset + 9, 256));
+        keyOffset += 265;
+      }
+
       int dwDataBufferLength = fileSpec.Length;
 
       var rc = Wbtrv32.managedBtrcall((ushort)EnumBtrieveOperationCodes.Create, unmanagedPosBlock,
@@ -386,7 +392,7 @@ keyOffset += 16;*/
         return 0;
       }
 
-      return Position;  // TODO do we need to return this value, or do clients care?
+      return Position;
     }
 
     /// <summary>
