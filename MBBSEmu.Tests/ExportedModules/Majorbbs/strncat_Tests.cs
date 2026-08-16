@@ -1,4 +1,3 @@
-using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;

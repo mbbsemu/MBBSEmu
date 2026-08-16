@@ -87,9 +87,11 @@ namespace MBBSEmu.Session
 
         public event EventHandler<EnumSessionState> OnSessionStateChanged;
 
-        public EnumSessionState SessionState {
+        public EnumSessionState SessionState
+        {
             get => _enumSessionState;
-            set {
+            set
+            {
                 _enumSessionState = value;
                 OnSessionStateChanged?.Invoke(this, value);
             }
@@ -291,7 +293,7 @@ namespace MBBSEmu.Session
             if (OutputEmptyStatus && DataToClient.Count == 0)
             {
                 //Only queue up the event if there's not one already in the buffer
-                if(!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x=> x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
+                if (!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x => x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
                     Status.Enqueue(EnumUserStatus.OUTPUT_BUFFER_EMPTY);
             }
         }

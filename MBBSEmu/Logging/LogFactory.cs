@@ -26,7 +26,7 @@ namespace MBBSEmu.Logging
 
         public T GetLogger<T>()
         {
-            if (!Loggers.ContainsKey(typeof(T))) 
+            if (!Loggers.ContainsKey(typeof(T)))
                 throw new KeyNotFoundException($"Logger of type {typeof(T)} not found");
 
             return (T)Loggers[typeof(T)];

@@ -26,7 +26,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             mbbsEmuMemoryCore.SetDWord("RANDSEED", seed);
-            
+
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RAND_ORDINAL, new List<ushort>());
 
             //Verify Results

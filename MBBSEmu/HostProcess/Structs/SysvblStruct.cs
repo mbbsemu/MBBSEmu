@@ -48,7 +48,7 @@ namespace MBBSEmu.HostProcess.Structs
             }
             set
             {
-                
+
                 for (var i = 0; i < 8; i++)
                 {
                     Array.Copy(BitConverter.GetBytes(value[i]), 0, Data, 10 + (i * 4), sizeof(int));

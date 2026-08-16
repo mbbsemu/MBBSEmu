@@ -144,8 +144,9 @@ namespace MBBSEmu.Memory
         /// <param name="offset"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public unsafe ushort GetWord(ushort segment, ushort offset) {
-            fixed (byte *p = VirtualToPhysical(segment, offset))
+        public unsafe ushort GetWord(ushort segment, ushort offset)
+        {
+            fixed (byte* p = VirtualToPhysical(segment, offset))
             {
                 return *((ushort*)p);
             }
@@ -201,7 +202,7 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetWord(ushort segment, ushort offset, ushort value)
         {
-            fixed (byte *dst = VirtualToPhysical(segment, offset))
+            fixed (byte* dst = VirtualToPhysical(segment, offset))
             {
                 *((ushort*)dst) = value;
             }

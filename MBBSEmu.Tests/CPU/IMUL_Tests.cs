@@ -106,7 +106,7 @@ namespace MBBSEmu.Tests.CPU
 
             //Setup Memory
             CreateDataSegment(new byte[ushort.MaxValue]);
-            mbbsEmuMemoryCore.SetWord(2,0, (ushort)memoryValue);
+            mbbsEmuMemoryCore.SetWord(2, 0, (ushort)memoryValue);
             mbbsEmuCpuRegisters.DS = 2;
 
             var instructions = new Assembler(16);

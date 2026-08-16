@@ -12,7 +12,7 @@ namespace MBBSEmu.HostProcess.Structs
         public const int XRFSIZ = 15; // user-id search string size
         public const int UIDSIZ = 30; // user-id size (including trailing zero)
         public const int SPARESIZ = 6; // spare
-        
+
 
         public byte[] xrfstg
         {

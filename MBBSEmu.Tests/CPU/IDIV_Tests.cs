@@ -59,7 +59,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
 
-            mbbsEmuCpuRegisters.BL = (byte) divisor;
+            mbbsEmuCpuRegisters.BL = (byte)divisor;
             mbbsEmuCpuRegisters.AX = (ushort)dividend;
             var instructions = new Assembler(16);
             instructions.idiv(bl);

@@ -20,12 +20,12 @@ namespace MBBSEmu.Disassembler
             _decoder.IP = 0x0;
 
             Instructions = new InstructionList();
-            
+
         }
 
         public void Disassemble()
         {
-            while (_decoder.IP < (ulong) _moduleData.Length)
+            while (_decoder.IP < (ulong)_moduleData.Length)
             {
                 _decoder.Decode(out Instructions.AllocUninitializedElement());
             }

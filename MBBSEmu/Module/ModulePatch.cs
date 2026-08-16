@@ -39,13 +39,13 @@ namespace MBBSEmu.Module
                 case EnumModulePatchType.Text:
                     return Encoding.ASCII.GetBytes(Patch);
                 case EnumModulePatchType.Hex:
-                {
-                    if (Patch.Length % 2 != 0)
-                        throw new ArgumentException(
-                            $"Patch {Name} has an invalid number of bytes for a HEX patch. Must be an even number of characters.");
+                    {
+                        if (Patch.Length % 2 != 0)
+                            throw new ArgumentException(
+                                $"Patch {Name} has an invalid number of bytes for a HEX patch. Must be an even number of characters.");
 
-                    return Convert.FromHexString(Patch);
-                }
+                        return Convert.FromHexString(Patch);
+                    }
                 default:
                     throw new ArgumentOutOfRangeException();
             }

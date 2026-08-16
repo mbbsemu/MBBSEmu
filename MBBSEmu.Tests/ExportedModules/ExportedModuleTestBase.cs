@@ -50,7 +50,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected PointerDictionary<SessionBase> testSessions;
         protected readonly ServiceResolver _serviceResolver;
 
-        protected ExportedModuleTestBase() : this(Path.GetTempPath()) {}
+        protected ExportedModuleTestBase() : this(Path.GetTempPath()) { }
 
         protected ExportedModuleTestBase(string modulePath)
         {
@@ -63,7 +63,7 @@ namespace MBBSEmu.Tests.ExportedModules
             mbbsEmuCpuCore = new CpuCore(_serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>());
             mbbsEmuCpuRegisters = mbbsEmuCpuCore;
 
-            var testModuleConfig = new ModuleConfiguration {ModulePath = modulePath, ModuleEnabled = true};
+            var testModuleConfig = new ModuleConfiguration { ModulePath = modulePath, ModuleEnabled = true };
             mbbsModule = new MbbsModule(FileUtility.CreateForTest(), fakeClock, _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(), testModuleConfig, mbbsEmuProtectedModeMemoryCore);
 
             testSessions = new PointerDictionary<SessionBase>();
@@ -94,7 +94,7 @@ namespace MBBSEmu.Tests.ExportedModules
 
             mbbsEmuCpuCore.Reset(
                 mbbsEmuMemoryCore,
-                (ordinal, functionOrdinal) => ExportedFunctionDelegate(ordinal, functionOrdinal, offsetsOnly:false),
+                (ordinal, functionOrdinal) => ExportedFunctionDelegate(ordinal, functionOrdinal, offsetsOnly: false),
                 null,
                 null);
         }
@@ -255,27 +255,27 @@ namespace MBBSEmu.Tests.ExportedModules
                 switch (v)
                 {
                     case string @parameterString:
-                    {
-                        var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
-                        mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
-                        parameters.Add(stringParameterPointer.Offset);
-                        parameters.Add(stringParameterPointer.Segment);
-                        break;
-                    }
+                        {
+                            var stringParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(@parameterString.Length + 1));
+                            mbbsEmuMemoryCore.SetArray(stringParameterPointer, Encoding.ASCII.GetBytes(@parameterString));
+                            parameters.Add(stringParameterPointer.Offset);
+                            parameters.Add(stringParameterPointer.Segment);
+                            break;
+                        }
                     case uint @parameterULong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterULong);
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
+                        {
+                            var longBytes = BitConverter.GetBytes(@parameterULong);
+                            parameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                            parameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                            break;
+                        }
                     case int @parameterLong:
-                    {
-                        var longBytes = BitConverter.GetBytes(@parameterLong);
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 0));
-                        parameters.Add(BitConverter.ToUInt16(longBytes, 2));
-                        break;
-                    }
+                        {
+                            var longBytes = BitConverter.GetBytes(@parameterLong);
+                            parameters.Add(BitConverter.ToUInt16(longBytes, 0));
+                            parameters.Add(BitConverter.ToUInt16(longBytes, 2));
+                            break;
+                        }
                     case ushort @parameterUInt:
                         parameters.Add(@parameterUInt);
                         break;

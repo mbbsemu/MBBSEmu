@@ -1,7 +1,5 @@
 ﻿using FluentAssertions;
 using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System.Text;
 using Xunit;
@@ -21,7 +19,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 2;
             mbbsEmuCpuRegisters.DI = 0;
             mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.ES, mbbsEmuCpuRegisters.DI,
-                new byte[] {0xFF });
+                new byte[] { 0xFF });
 
             var instructions = new Assembler(16);
 
@@ -70,7 +68,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 2;
             mbbsEmuCpuRegisters.DI = 0;
             mbbsEmuMemoryCore.SetArray(mbbsEmuCpuRegisters.ES, mbbsEmuCpuRegisters.DI,
-                new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0xFF});
+                new byte[] { 0x0, 0x0, 0x0, 0x0, 0x0, 0xFF });
 
             var instructions = new Assembler(16);
 

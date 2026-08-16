@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Session
 {
@@ -27,7 +27,8 @@ namespace MBBSEmu.Session
         /// </summary>
         public int WordWrapWidth { get; set; }
 
-        private enum ParseState {
+        private enum ParseState
+        {
             NORMAL,
             ESCAPE,
             BRACKET,
@@ -85,7 +86,7 @@ namespace MBBSEmu.Session
         /// <param name="buffer">Raw output buffer going to a client</param>
         public void SendBreakingIntoLines(byte[] buffer)
         {
-            foreach(var b in buffer)
+            foreach (var b in buffer)
             {
                 _rawBuffer[_rawBufferLength++] = b;
 
@@ -99,8 +100,8 @@ namespace MBBSEmu.Session
                     case ParseState.ESCAPE when b != ESCAPE:
                         _parseState = ParseState.NORMAL;  // this happens if we receive an escape not followed by [, which shouldn't happen
                         break;
-                    case ParseState.BRACKET when char.IsDigit((char) b):
-                        _accumulator = ((char) b) - '0';
+                    case ParseState.BRACKET when char.IsDigit((char)b):
+                        _accumulator = ((char)b) - '0';
                         _parseState = ParseState.VALUE_ACCUM;
                         break;
                     case ParseState.BRACKET: // something else? how about waiting until an ending frame
@@ -109,24 +110,25 @@ namespace MBBSEmu.Session
                     case ParseState.WAIT_FOR_ANSI_END when b == ESCAPE:
                         _parseState = ParseState.ESCAPE;
                         break;
-                    case ParseState.WAIT_FOR_ANSI_END when isAnsiSequenceFinished((char) b):
-                        processAnsiCommand((char) b);
+                    case ParseState.WAIT_FOR_ANSI_END when isAnsiSequenceFinished((char)b):
+                        processAnsiCommand((char)b);
                         _parseState = ParseState.NORMAL;
                         break;
                     case ParseState.VALUE_ACCUM when b == ';':
                         _values.Add(_accumulator);
                         _accumulator = 0;
                         break;
-                    case ParseState.VALUE_ACCUM when char.IsDigit((char) b):
-                        _accumulator = 10 * _accumulator + (((char) b) - '0');
+                    case ParseState.VALUE_ACCUM when char.IsDigit((char)b):
+                        _accumulator = 10 * _accumulator + (((char)b) - '0');
                         break;
-                    case ParseState.VALUE_ACCUM when isAnsiSequenceFinished((char) b):
+                    case ParseState.VALUE_ACCUM when isAnsiSequenceFinished((char)b):
                         // push back last digit
-                        if (_accumulator > 0) {
+                        if (_accumulator > 0)
+                        {
                             _values.Add(_accumulator);
                         }
 
-                        processAnsiCommand((char) b);
+                        processAnsiCommand((char)b);
 
                         _accumulator = 0;
                         _values.Clear();
@@ -135,7 +137,7 @@ namespace MBBSEmu.Session
                     case ParseState.NORMAL:
                         switch (b)
                         {
-                            case (byte) '\r':
+                            case (byte)'\r':
                                 _lineBufferLength = 0; // line ended, erase accumulated data in lineBuffer
                                 if (_rawBufferLength >= OUTPUT_BUFFER_FLUSH_THRESHOLD)
                                 {
@@ -148,7 +150,7 @@ namespace MBBSEmu.Session
                                 _parseState = ParseState.ESCAPE;
                                 break;
                             case DELETE:       // ignore
-                            case (byte) '\n':  // ignore
+                            case (byte)'\n':  // ignore
                                 break;
                             case BACKSPACE:
                                 _lineBufferLength = Math.Max(0, _lineBufferLength - 1);
@@ -212,10 +214,11 @@ namespace MBBSEmu.Session
         /// <param name="b">The character following the full line</param>
         private void doLineBreak(byte b)
         {
-            if (char.IsWhiteSpace((char) b)) {
+            if (char.IsWhiteSpace((char)b))
+            {
                 // erase the space from the raw buffer and replace with \r\n
-                _rawBuffer[_rawBufferLength - 1] = (byte) '\r';
-                _rawBuffer[_rawBufferLength++] = (byte) '\n';
+                _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
+                _rawBuffer[_rawBufferLength++] = (byte)'\n';
                 // erase line build-up
                 _lineBufferLength = 0;
             }
@@ -223,7 +226,7 @@ namespace MBBSEmu.Session
             {
                 // scan for the last space to know where to break the line
                 var lastSpaceIndex = _lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && !char.IsWhiteSpace((char) _lineBuffer[lastSpaceIndex]))
+                while ((lastSpaceIndex >= 0) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
                 {
                     --lastSpaceIndex;
                 }
@@ -231,15 +234,15 @@ namespace MBBSEmu.Session
                 if (lastSpaceIndex < 0)
                 {
                     // no spaces = one huge line (shouldn't really happen), just break it up by inserting \r\n
-                    _rawBuffer[_rawBufferLength - 1] = (byte) '\r';
-                    _rawBuffer[_rawBufferLength] = (byte) '\n';
+                    _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
+                    _rawBuffer[_rawBufferLength] = (byte)'\n';
                     _rawBuffer[_rawBufferLength + 1] = b;
 
                     _lineBuffer[0] = b;
                     _lineBufferToRawBuffer[0] = _rawBufferLength + 1;
                     _lineBufferLength = 1;
 
-                    _rawBufferLength  += 2;
+                    _rawBufferLength += 2;
                 }
                 else
                 {
@@ -247,15 +250,16 @@ namespace MBBSEmu.Session
                     var insertIndex = _lineBufferToRawBuffer[lastSpaceIndex];
                     var moveLen = _rawBufferLength - insertIndex;
                     // shift stuff up to make room for \n
-                    if (moveLen <= 0) {
+                    if (moveLen <= 0)
+                    {
                         throw new InvalidOperationException("Whoops");
                     }
 
                     Array.Copy(_rawBuffer, insertIndex, _rawBuffer, insertIndex + 1, moveLen);
                     // now insert, this destroys the space previously there and
                     // replaces with \r\n
-                    _rawBuffer[insertIndex + 0] = (byte) '\r';
-                    _rawBuffer[insertIndex + 1] = (byte) '\n';
+                    _rawBuffer[insertIndex + 0] = (byte)'\r';
+                    _rawBuffer[insertIndex + 1] = (byte)'\n';
                     ++_rawBufferLength;
 
                     // setup the new line buffer

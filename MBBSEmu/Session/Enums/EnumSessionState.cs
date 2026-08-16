@@ -42,7 +42,7 @@ namespace MBBSEmu.Session.Enums
         [DoGlobals]
         MainMenuDisplay,
         MainMenuInputDisplay,
-        
+
         [DoGlobals]
         MainMenuInput,
 

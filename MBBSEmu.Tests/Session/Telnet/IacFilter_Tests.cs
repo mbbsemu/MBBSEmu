@@ -23,7 +23,8 @@ namespace MBBSEmu.Tests.Session.Telnet
         }
 
         [Fact]
-        public void PassThroughNoIACDoubleProcess() {
+        public void PassThroughNoIACDoubleProcess()
+        {
             var str = "testing 1234";
             var bytes = Encoding.ASCII.GetBytes(str);
 
@@ -79,10 +80,11 @@ namespace MBBSEmu.Tests.Session.Telnet
         }
 
         [Fact]
-        public void BasicTelnetStrippingOverPackets() {
+        public void BasicTelnetStrippingOverPackets()
+        {
             var stream = new MemoryStream();
-            byte[] start_iac = {0xFF};
-            byte[] end_iac = {0xFB, 0x01};
+            byte[] start_iac = { 0xFF };
+            byte[] end_iac = { 0xFB, 0x01 };
 
             var b = Concat(Encoding.ASCII.GetBytes("This is a test"), start_iac);
             var (bytes, length) = iacFilter.ProcessIncomingClientData(b, b.Length);
@@ -101,16 +103,17 @@ namespace MBBSEmu.Tests.Session.Telnet
                 stream.ToArray());
         }
 
-        private static byte[] Concat(params byte[][] arrays) {
+        private static byte[] Concat(params byte[][] arrays)
+        {
             var length = 0;
-            foreach(var a in arrays)
+            foreach (var a in arrays)
             {
                 length += a.Length;
             }
 
             var ret = new byte[length];
             length = 0;
-            foreach(var a in arrays)
+            foreach (var a in arrays)
             {
                 Array.Copy(a, 0, ret, length, a.Length);
                 length += a.Length;

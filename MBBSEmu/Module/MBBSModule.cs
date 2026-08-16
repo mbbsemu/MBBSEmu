@@ -1,4 +1,3 @@
-using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.Disassembler;
@@ -337,7 +336,7 @@ namespace MBBSEmu.Module
                 _logger.Error($"Crash log saved to: {fileName}");
 
                 //Set AX == 1, we don't return an exit code so it can be gracefully handled by the host process
-                return new CpuRegisters { AX = 1, Halt = true};
+                return new CpuRegisters { AX = 1, Halt = true };
             }
         }
 

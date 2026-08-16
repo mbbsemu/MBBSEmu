@@ -6143,7 +6143,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     tokenList.Add(Encoding.ASCII.GetString(Module.Memory.GetString(messagePointer).ToArray()));
                 }
-                catch 
+                catch
                 {
                     _logger.Warn($"Error Reading string at {messagePointer}, terminating list at {tokenList.Count} elements");
                     break;

@@ -1,7 +1,7 @@
+using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using System;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Verify Results
             Assert.Equal(expectedResult, mbbsEmuCpuRegisters.AX);
-            Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+            Assert.Equal((ushort)expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
         }
 
         [Theory]
@@ -112,7 +112,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%s %d %% ignored %s", "yohoha +3456 % Ignored another", "yohoha", 3456, "", 2)]
         // unfinished percent at end of string
         [InlineData("%s %d%", "yohoha +3456another", "yohoha", 3456, "", 2)]
-        [InlineData("%4s%d%s","yoho-3456this is fun", "yoho", -3456, "this", 3)]
+        [InlineData("%4s%d%s", "yoho-3456this is fun", "yoho", -3456, "this", 3)]
         public void sscanf_fancy_Test(
             string formatString,
             string inputString,
@@ -144,7 +144,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             if (expectedResult > 0)
                 Assert.Equal(expectedFirstString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(firstStringPointer, true)));
             if (expectedResult > 1)
-                Assert.Equal((ushort) expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
+                Assert.Equal((ushort)expectedInteger, mbbsEmuMemoryCore.GetWord(intPointer));
             if (expectedResult > 2)
                 Assert.Equal(expectedSecondString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(secondStringPointer, true)));
         }
@@ -208,11 +208,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             // allocates 3 contiguous blocks of memory of size 5. Fills them each with the string "aaaa\0"
             var ptr1 = mbbsEmuMemoryCore.Malloc(5);
-            mbbsEmuMemoryCore.FillArray(ptr1, 4, (byte) 'a');
+            mbbsEmuMemoryCore.FillArray(ptr1, 4, (byte)'a');
             var ptr2 = mbbsEmuMemoryCore.Malloc(5);
-            mbbsEmuMemoryCore.FillArray(ptr2, 4, (byte) 'a');
+            mbbsEmuMemoryCore.FillArray(ptr2, 4, (byte)'a');
             var ptr3 = mbbsEmuMemoryCore.Malloc(5);
-            mbbsEmuMemoryCore.FillArray(ptr3, 4, (byte) 'a');
+            mbbsEmuMemoryCore.FillArray(ptr3, 4, (byte)'a');
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, ptr1, ptr2, ptr3 });

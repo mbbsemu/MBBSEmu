@@ -1,11 +1,12 @@
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 
-namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
+namespace MBBSEmu.Tests.ExportedModules.Majorbbs
+{
     public class FileTestBase : ExportedModuleTestBase, IDisposable
     {
         protected const int FOPEN_ORDINAL = 225;
@@ -41,10 +42,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
 
             majorbbs.Dispose();
 
-            Directory.Delete(mbbsModule.ModulePath,  recursive: true);
+            Directory.Delete(mbbsModule.ModulePath, recursive: true);
         }
 
-        protected FarPtr fopen(string filename, string mode) {
+        protected FarPtr fopen(string filename, string mode)
+        {
             //Set Argument Values to be Passed In
             var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(filename.Length + 1));
             mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(filename));
@@ -61,7 +63,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
         {
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FCLOSE_ORDINAL, new List<FarPtr> { filep });
 
-            return (short) mbbsEmuCpuRegisters.AX;
+            return (short)mbbsEmuCpuRegisters.AX;
         }
 
         protected ushort fread(FarPtr destPtr, ushort size, ushort count, FarPtr filep)
@@ -96,7 +98,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
 
         protected ushort f_printf(FarPtr filep, string formatString, params object[] values)
         {
-            var fprintfParameters = new List<ushort> {filep.Offset, filep.Segment};
+            var fprintfParameters = new List<ushort> { filep.Offset, filep.Segment };
 
             //Add Formatted String
             var inputStingParameterPointer = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(formatString.Length + 1));
@@ -113,7 +115,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             return mbbsEmuCpuRegisters.AX;
         }
 
-        protected ushort open(string filename, EnumOpenFlags mode) {
+        protected ushort open(string filename, EnumOpenFlags mode)
+        {
             var filenamePointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(filename.Length + 1));
             mbbsEmuMemoryCore.SetArray(filenamePointer, Encoding.ASCII.GetBytes(filename));
 
@@ -272,7 +275,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs {
             var filePath = Path.Join(mbbsModule.ModulePath, filename);
 
             using FileStream sw = File.Open(filePath, FileMode.Open);
-            var data = new byte[32*1024];
+            var data = new byte[32 * 1024];
             var read = sw.Read(data);
 
             return Encoding.ASCII.GetString(data, 0, read);

@@ -270,7 +270,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(buffer, Encoding.ASCII.GetBytes(LOREM_IPSUM));
 
             var numElements = LOREM_IPSUM.Length / elementSize;
-            Assert.Equal(numElements, fwrite(buffer, elementSize, (ushort) numElements , filep));
+            Assert.Equal(numElements, fwrite(buffer, elementSize, (ushort)numElements, filep));
             Assert.Equal(0, fflush(filep));
 
             Assert.Equal(0, fclose(filep));
@@ -357,7 +357,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(1, fputc(inputChar, filep));
 
-            Assert.Equal(0,fseek(filep, fseekOffset, 0));
+            Assert.Equal(0, fseek(filep, fseekOffset, 0));
 
             Assert.Equal(inputChar, fgetc(filep));
 
@@ -620,7 +620,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var curFileStruct = new FileStruct(mbbsEmuMemoryCore.GetArray(filep, FileStruct.Size));
             var curFileStream = majorbbs.FilePointerDictionary[curFileStruct.curp.Offset];
-            Assert.Equal(LOREM_IPSUM_LENGTH, curFileStream.Position );
+            Assert.Equal(LOREM_IPSUM_LENGTH, curFileStream.Position);
             Assert.True(curFileStruct.flags.IsFlagSet((ushort)FileStruct.EnumFileFlags.EOF));
 
             Assert.Equal(0, fclose(filep));

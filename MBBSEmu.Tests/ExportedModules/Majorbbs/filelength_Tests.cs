@@ -6,7 +6,7 @@ using Xunit;
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
     [Collection("Non-Parallel")]
-    public class filelength_Tests: FileTestBase
+    public class filelength_Tests : FileTestBase
     {
         [Fact]
         public void filelength_test()

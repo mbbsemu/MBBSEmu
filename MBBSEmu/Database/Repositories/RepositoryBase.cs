@@ -2,10 +2,10 @@
 using MBBSEmu.Database.Attributes;
 using MBBSEmu.Database.Session;
 using MBBSEmu.Resources;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System;
 
 namespace MBBSEmu.Database.Repositories
 {

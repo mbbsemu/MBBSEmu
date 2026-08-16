@@ -15,7 +15,7 @@ namespace MBBSEmu.Tests.Extensions
         public void ToDosDate_Test(ushort srcYr, ushort srcMo, ushort srcDay, ushort expectedDosDate)
         {
             var sourceDate = new DateTime(srcYr, srcMo, srcDay);
-            
+
             //Verify Results
             Assert.Equal(expectedDosDate, sourceDate.ToDosDate());
         }

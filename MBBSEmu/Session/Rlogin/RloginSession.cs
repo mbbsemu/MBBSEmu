@@ -1,5 +1,6 @@
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess;
+using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
@@ -9,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using MBBSEmu.Logging;
 
 namespace MBBSEmu.Session.Rlogin
 {
@@ -47,7 +47,8 @@ namespace MBBSEmu.Session.Rlogin
             SessionState = EnumSessionState.Negotiating;
         }
 
-        public override void Stop() {
+        public override void Stop()
+        {
             base.Stop();
 
             TransparentMode = false;
@@ -70,7 +71,7 @@ namespace MBBSEmu.Session.Rlogin
             rloginStrings.Add(Encoding.ASCII.GetString(memoryStream.ToArray()));
             memoryStream.SetLength(0);
 
-            if (rloginStrings.Count < 3 || rloginStrings.Count(s => !string.IsNullOrEmpty(s)) < 2 )
+            if (rloginStrings.Count < 3 || rloginStrings.Count(s => !string.IsNullOrEmpty(s)) < 2)
             {
                 return false;
             }
@@ -120,18 +121,18 @@ namespace MBBSEmu.Session.Rlogin
             }
 
             //Send 0 byte to ACK
-            Send(new byte[] {0x0});
+            Send(new byte[] { 0x0 });
 
             return true;
         }
 
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
         {
-             if (SessionState != EnumSessionState.Negotiating)
-             {
-                 //Ugly WG3NT RLOGIN Extra Data Hack
-                 if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
-                     return (null, 0);
+            if (SessionState != EnumSessionState.Negotiating)
+            {
+                //Ugly WG3NT RLOGIN Extra Data Hack
+                if (_configuration.RloginCompatibility == EnumRloginCompatibility.WG3NT && bytesReceived == 12 && clientData[5] == 24)
+                    return (null, 0);
 
                 // Fix an issue with RLogin clients that sends a 0 byte at the end of the packet
                 if (bytesReceived > 1 && clientData[bytesReceived - 1] == 0)
@@ -140,19 +141,19 @@ namespace MBBSEmu.Session.Rlogin
                 }
 
                 return (clientData, bytesReceived);
-             }
+            }
 
-             for (var i = 0; i < bytesReceived; ++i)
-             {
-                 if (ProcessIncomingByte(clientData[i]))
-                 {
-                     // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
-                     var remaining = bytesReceived - i - 1;
-                     _logger.Debug($"Ignoring extra rlogin data: \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
-                 }
-             }
+            for (var i = 0; i < bytesReceived; ++i)
+            {
+                if (ProcessIncomingByte(clientData[i]))
+                {
+                    // data left in the packet seems to do more harm than good, so we are tossing it, but adding to debug log 
+                    var remaining = bytesReceived - i - 1;
+                    _logger.Debug($"Ignoring extra rlogin data: \"{System.Text.Encoding.ASCII.GetString(clientData.TakeLast(remaining).ToArray())}\"");
+                }
+            }
 
-             return (null, 0);
+            return (null, 0);
         }
     }
 }

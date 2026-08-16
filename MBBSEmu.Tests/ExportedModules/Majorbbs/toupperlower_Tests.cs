@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -9,7 +7,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     {
         private const int TOLOWER_ORDINAL = 603;
         private const int TOUPPER_ORDINAL = 604;
-        
+
         [Theory]
         [InlineData('A', 'a')]
         [InlineData('B', 'b')]

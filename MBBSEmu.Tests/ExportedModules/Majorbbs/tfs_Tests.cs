@@ -7,7 +7,7 @@ using Xunit;
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
     [Collection("Non-Parallel")]
-    public class tfs_Tests: FileTestBase
+    public class tfs_Tests : FileTestBase
     {
         private const int TFSTATE_ORDINAL = 768;
         private const int TFSBUF_ORDINAL = 769;
@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(ptr, Encoding.ASCII.GetBytes(filespec));
             mbbsEmuMemoryCore.SetByte(ptr + filespec.Length, 0);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSOPN_ORDINAL, new List<FarPtr>() {ptr});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSOPN_ORDINAL, new List<FarPtr>() { ptr });
 
             mbbsEmuMemoryCore.Free(ptr);
             return (short)mbbsEmuCpuRegisters.AX;
@@ -31,12 +31,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         private void tfsabt()
         {
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSABT_ORDINAL, new List<ushort> ());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSABT_ORDINAL, new List<ushort>());
         }
 
         private HostProcess.ExportedModules.Majorbbs.TFStateCodes tfsrdl()
         {
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSRDL_ORDINAL, new List<ushort> ());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSRDL_ORDINAL, new List<ushort>());
             return (HostProcess.ExportedModules.Majorbbs.TFStateCodes)mbbsEmuCpuCore.AX;
         }
 
@@ -46,7 +46,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(ptr, Encoding.ASCII.GetBytes(prefix));
             mbbsEmuMemoryCore.SetByte(ptr + prefix.Length, 0);
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSPFX_ORDINAL, new List<FarPtr>() {ptr});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSPFX_ORDINAL, new List<FarPtr>() { ptr });
 
             mbbsEmuMemoryCore.Free(ptr);
             return mbbsEmuCpuRegisters.AX != 0;

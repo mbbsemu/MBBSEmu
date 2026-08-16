@@ -1,7 +1,7 @@
 ﻿namespace MBBSEmu.Disassembler.Artifacts
 {
     public enum EnumSegmentFlags : ushort
-    {        
+    {
         Code = 0,
         Data = 1,
         Iterated = 8,

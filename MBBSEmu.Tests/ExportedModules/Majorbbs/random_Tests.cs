@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GENRDN_ORDINAL, new List<ushort> { valueMin, valueMax });
 
             //Verify Results
-            Assert.InRange(mbbsEmuCpuRegisters.AX,valueMin, valueMax);
+            Assert.InRange(mbbsEmuCpuRegisters.AX, valueMin, valueMax);
         }
 
         [Fact]

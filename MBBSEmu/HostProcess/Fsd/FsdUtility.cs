@@ -32,7 +32,7 @@ namespace MBBSEmu.HostProcess.Fsd
                 var newSpec = new FsdFieldSpec() { FsdFieldType = EnumFsdFieldType.Text };
 
                 //Ignore any leading spaces
-                if(fieldSpec[i] == ' ')
+                if (fieldSpec[i] == ' ')
                     continue;
 
                 //Extract Name
@@ -48,7 +48,7 @@ namespace MBBSEmu.HostProcess.Fsd
                 }
 
                 //Skip spaces between name and beginning of spec
-                while(fieldSpec[i] == ' ')
+                while (fieldSpec[i] == ' ')
                     i++;
 
                 //Extract Field Options (if any)
@@ -427,9 +427,9 @@ namespace MBBSEmu.HostProcess.Fsd
                 var currentFieldStruct = new FsdfldStruct(fsdfldSpan.Slice(offset, FsdfldStruct.Size));
 
                 //Field Evaluations
-                fields[i].IsReadOnly = currentFieldStruct.flags.IsFlagSet((byte) EnumFsdfldFlags.FFFAVD);
+                fields[i].IsReadOnly = currentFieldStruct.flags.IsFlagSet((byte)EnumFsdfldFlags.FFFAVD);
                 //TODO -- Other Fields Here
             }
         }
     }
-    }
+}

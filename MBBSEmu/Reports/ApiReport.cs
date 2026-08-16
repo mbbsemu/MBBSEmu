@@ -53,7 +53,7 @@ namespace MBBSEmu.Reports
                 {
                     var key = _module.MainModuleDll.File.ImportedNameTable[r.TargetTypeValueTuple.Item2].Name;
                     var ordinal = r.TargetTypeValueTuple.Item3;
-                    if(!_record.Imports[key].Contains(ordinal))
+                    if (!_record.Imports[key].Contains(ordinal))
                         _record.Imports[key].Add(ordinal);
                 }
             }

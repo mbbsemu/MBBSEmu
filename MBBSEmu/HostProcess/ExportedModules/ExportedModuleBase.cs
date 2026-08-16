@@ -56,7 +56,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     it lives in.
         /// </summary>
         private protected PointerDictionary<SessionBase> ChannelDictionary;
-        
+
         /// <summary>
         ///     Pointers to files opened using FOPEN
         /// </summary>
@@ -319,7 +319,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (stringToParse.Length == 1 && stringToParse[0] == 0x0)
             {
                 _logger.Debug($"({Module.ModuleIdentifier}) Empty Formatter (vsprintf:{isVsPrintf})");
-                return new byte[] {0};
+                return new byte[] { 0 };
             }
 
             using var msOutput = new MemoryStream(stringToParse.Length);
@@ -658,11 +658,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                 break;
                             }
                         default:
-                        {
-                            _logger.Warn($"({Module.ModuleIdentifier}) Unhandled Printf Control Character: {(char) stringToParse[i + 1]}");
-                            msOutput.Write(stringToParse.Slice(controlStart, (i - controlStart) + 1));
-                            continue;
-                        }
+                            {
+                                _logger.Warn($"({Module.ModuleIdentifier}) Unhandled Printf Control Character: {(char)stringToParse[i + 1]}");
+                                msOutput.Write(stringToParse.Slice(controlStart, (i - controlStart) + 1));
+                                continue;
+                            }
                     }
 
                     //Process Padding
@@ -1088,7 +1088,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return CharacterAccepterResponse.SKIP;
                 if (first && c == '-')
                     return CharacterAccepterResponse.ACCEPT;
-                if (char.IsDigit(c) || (numberBase == 16 && char.IsAsciiHexDigit(c))) {
+                if (char.IsDigit(c) || (numberBase == 16 && char.IsAsciiHexDigit(c)))
+                {
                     ++count;
                     return CharacterAccepterResponse.ACCEPT;
                 }

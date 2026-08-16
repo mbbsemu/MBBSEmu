@@ -93,12 +93,12 @@ namespace MBBSEmu.HostProcess.Structs
 
         public Regs16Struct()
         {
-            
+
         }
 
         public Regs16Struct(byte[] data)
         {
-            if(data.Length < Size)
+            if (data.Length < Size)
                 throw new Exception($"Invalid Data Length. Expected {Size}, Received {data.Length}");
 
             Data = data;

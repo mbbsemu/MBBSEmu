@@ -177,12 +177,12 @@ namespace MBBSEmu.UI.Main
             TableView.ColumnStyle GetApplicationLogStyle(int minWidth, int maxWidth) => new()
             {
                 ColorGetter = (a) => a.Table.Rows[a.RowIndex].ItemArray[2]?.ToString() == LogLevel.Error.ToString() ? errorColorScheme : windowLogContainer.ColorScheme,
-                MinWidth = minWidth, 
+                MinWidth = minWidth,
                 MaxWidth = maxWidth
             };
 
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Time"], GetApplicationLogStyle(12, 12)); 
-            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Class"], GetApplicationLogStyle(36, 36)); 
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Time"], GetApplicationLogStyle(12, 12));
+            _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Class"], GetApplicationLogStyle(36, 36));
             _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Level"], GetApplicationLogStyle(5, 5));
             _tableView.Style.ColumnStyles.Add(_tableView.Table.Columns["Message"], GetApplicationLogStyle(60, 60));
             windowLogContainer.Add(_tableView);

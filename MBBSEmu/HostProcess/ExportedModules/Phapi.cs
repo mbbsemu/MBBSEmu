@@ -183,12 +183,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     var btvFileStructPointer = new FarPtr(btvda.posblkseg, btvda.posblkoff);
                                     var btvFileNamePointer =
                                         Module.Memory.AllocateVariable($"{fileName}-NAME", (ushort)(fileName.Length + 1));
-                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", (ushort) btvFile.RecordLength);
+                                    var btvDataPointer = Module.Memory.AllocateVariable($"{fileName}-RECORD", (ushort)btvFile.RecordLength);
 
                                     var newBtvStruct = new BtvFileStruct
                                     {
                                         filenam = btvFileNamePointer,
-                                        reclen = (ushort) btvFile.RecordLength,
+                                        reclen = (ushort)btvFile.RecordLength,
                                         data = btvDataPointer
                                     };
                                     BtrieveSaveProcessor(btvFileStructPointer, btvFile);
@@ -212,10 +212,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     {
                                         fs = new BtvfilespecStruct()
                                         {
-                                            numofr = (uint) currentBtrieveFile.GetRecordCount(),
-                                            numofx = (ushort) currentBtrieveFile.Keys.Count,
-                                            pagsiz = (ushort) currentBtrieveFile.PageLength,
-                                            reclen = (ushort) currentBtrieveFile.RecordLength
+                                            numofr = (uint)currentBtrieveFile.GetRecordCount(),
+                                            numofx = (ushort)currentBtrieveFile.Keys.Count,
+                                            pagsiz = (ushort)currentBtrieveFile.PageLength,
+                                            reclen = (ushort)currentBtrieveFile.RecordLength
                                         }
                                     };
 

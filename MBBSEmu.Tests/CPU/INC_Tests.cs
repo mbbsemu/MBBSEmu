@@ -1,6 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -9,7 +7,7 @@ namespace MBBSEmu.Tests.CPU
     public class INC_Tests : CpuTestBase
     {
         [Theory]
-        [InlineData(0,1, false, false, false)]
+        [InlineData(0, 1, false, false, false)]
         [InlineData(0xFF, 0, true, false, false)]
         [InlineData(0x7F, 0x80, false, true, true)]
         [InlineData(0x80, 0x81, false, false, true)]
@@ -45,7 +43,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuMemoryCore.SetByte(2,0, memoryValue);
+            mbbsEmuMemoryCore.SetByte(2, 0, memoryValue);
 
             var instructions = new Assembler(16);
             instructions.inc(__byte_ptr[0]);
@@ -55,7 +53,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetByte(2,0));
+            Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetByte(2, 0));
 
             //Verify Flags
             Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);

@@ -31,7 +31,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.Fpu.ControlWord = 0;
             CreateDataSegment(new ReadOnlySpan<byte>(), 2);
             mbbsEmuMemoryCore.SetArray(2, 0, [0, 0, 0]); //Set some junk data ahead of the actual address
-            mbbsEmuMemoryCore.SetWord(2,3, controlWord);
+            mbbsEmuMemoryCore.SetWord(2, 3, controlWord);
             mbbsEmuCpuRegisters.DS = 2;
 
             var instructions = new Assembler(16);

@@ -63,13 +63,15 @@ namespace MBBSEmu.HostProcess.Structs
         }
 
         //Ungetc char if no buffer [5]
-        public byte hold {
+        public byte hold
+        {
             get => Data[5];
             set => Data[5] = value;
         }
 
         //Buffer size [6-7]
-        public ushort bsize {
+        public ushort bsize
+        {
             get => BitConverter.ToUInt16(Data, 6);
             set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 6, 2);
         }
@@ -80,13 +82,14 @@ namespace MBBSEmu.HostProcess.Structs
             get
             {
                 ReadOnlySpan<byte> fileSpan = Data;
-                return new FarPtr(fileSpan.Slice(8,4));
+                return new FarPtr(fileSpan.Slice(8, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 8, 4);
         }
 
         //Current active pointer [12-15]
-        public FarPtr curp {
+        public FarPtr curp
+        {
             get
             {
                 ReadOnlySpan<byte> fileSpan = Data;
@@ -96,7 +99,8 @@ namespace MBBSEmu.HostProcess.Structs
         }
 
         //Temporary file indicator [16]
-        public byte istemp {
+        public byte istemp
+        {
             get => Data[16];
             set => Data[16] = value;
         }
@@ -124,14 +128,14 @@ namespace MBBSEmu.HostProcess.Structs
         {
             if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Read) &&
                 filesAccessFlags.HasFlag(EnumFileAccessFlags.Write))
-                flags |= (ushort) EnumFileFlags.ReadWrite;
+                flags |= (ushort)EnumFileFlags.ReadWrite;
             else if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Read))
-                flags |= (ushort) EnumFileFlags.Read;
+                flags |= (ushort)EnumFileFlags.Read;
             else if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Write))
-                flags |= (ushort) EnumFileFlags.Write;
+                flags |= (ushort)EnumFileFlags.Write;
             if (filesAccessFlags.HasFlag(EnumFileAccessFlags.Binary))
-                flags |= (ushort) EnumFileFlags.Binary;
-            
+                flags |= (ushort)EnumFileFlags.Binary;
+
         }
 
         /// <summary>
@@ -160,17 +164,17 @@ namespace MBBSEmu.HostProcess.Structs
                         result |= EnumFileAccessFlags.Update;
                         break;
                     case 'b':
-                    {
-                        result &= ~EnumFileAccessFlags.Text;
-                        result |= EnumFileAccessFlags.Binary;
-                        break;
-                    }
+                        {
+                            result &= ~EnumFileAccessFlags.Text;
+                            result |= EnumFileAccessFlags.Binary;
+                            break;
+                        }
                     case 't':
-                    {
-                        result &= ~EnumFileAccessFlags.Binary;
-                        result |= EnumFileAccessFlags.Text;
-                        break;
-                    }
+                        {
+                            result &= ~EnumFileAccessFlags.Binary;
+                            result |= EnumFileAccessFlags.Text;
+                            break;
+                        }
                     case ' ':
                         break;
                     default:

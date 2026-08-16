@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.AX = 0;
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.SI = 2;
-            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort) EnumFlags.DF);
+            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.DF);
 
             var instructions = new Assembler(16);
 

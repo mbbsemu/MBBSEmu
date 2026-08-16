@@ -57,12 +57,15 @@ namespace MBBSEmu.Server.Socket
             _listenerSocket.Dispose();
         }
 
-        private void OnNewConnection(IAsyncResult asyncResult) {
+        private void OnNewConnection(IAsyncResult asyncResult)
+        {
             System.Net.Sockets.Socket client;
             try
             {
                 client = _listenerSocket.EndAccept(asyncResult);
-            } catch (ObjectDisposedException) {
+            }
+            catch (ObjectDisposedException)
+            {
                 // ignore, happens during shutdown
                 return;
             }

@@ -130,7 +130,7 @@ namespace MBBSEmu.CPU
         private List<List<FarPtr>> CPUDebugRanges = [];
         private List<FarPtr> CPUBreakpoints = [];
         private bool CPUDebugBreak = false;
-        private Dictionary<(FarPtr, ushort), byte[]> WatchedVariables = new ();
+        private Dictionary<(FarPtr, ushort), byte[]> WatchedVariables = new();
 
         public CpuCore(IMessageLogger logger)
         {
@@ -410,7 +410,7 @@ namespace MBBSEmu.CPU
 
             InstructionCounter++;
 
-        //Jump Table
+            //Jump Table
         Switch:
             switch (_currentInstruction.Mnemonic)
             {

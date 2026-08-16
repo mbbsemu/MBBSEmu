@@ -138,7 +138,8 @@ namespace MBBSEmu.DOS.Interrupts
 
         private (BtrieveError, ushort) Handle(DOSInterruptBtrieveCommand command)
         {
-            var actualCommand = new BtrieveCommand() {
+            var actualCommand = new BtrieveCommand()
+            {
                 operation = command.operation,
                 position_block_segment = command.position_block_segment,
                 position_block_offset = command.position_block_offset,
@@ -211,7 +212,7 @@ namespace MBBSEmu.DOS.Interrupts
         private BtrieveError Open(BtrieveCommand command)
         {
             var file = Encoding.ASCII.GetString(_memory.GetString(command.key_buffer_segment, command.key_buffer_offset, stripNull: true));
-            var openMode = (BtrieveOpenMode) command.key_number;
+            var openMode = (BtrieveOpenMode)command.key_number;
             // have to do a dance where we split up path + file since that's what
             // the processor wants
             string path = _path;
@@ -227,7 +228,7 @@ namespace MBBSEmu.DOS.Interrupts
             {
                 db = new(_fileUtility, path, file, cacheSize: 8)
                 {
-                     BtrieveDriverMode = true,
+                    BtrieveDriverMode = true,
                 };
                 // add to my list of open files
                 var guid = Guid.NewGuid();
@@ -238,7 +239,8 @@ namespace MBBSEmu.DOS.Interrupts
 
                 return BtrieveError.Success;
             }
-            catch (FileNotFoundException) {
+            catch (FileNotFoundException)
+            {
                 _logger.Error($"Can't open btrieve file {file} with openMode {openMode}");
                 return BtrieveError.FileNotFound;
             }
@@ -343,7 +345,7 @@ namespace MBBSEmu.DOS.Interrupts
             if (command.key_buffer_length > 0)
                 _memory.SetByte(command.key_buffer_segment, command.key_buffer_offset, 0);
 
-            var requiredSize = (ushort) (Marshal.SizeOf(typeof(BtrieveFileSpec)) + (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec))));
+            var requiredSize = (ushort)(Marshal.SizeOf(typeof(BtrieveFileSpec)) + (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec))));
             if (command.data_buffer_length < requiredSize)
                 return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
 
@@ -426,7 +428,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
 
-            return (BtrieveError.Success, (ushort) data.Length);
+            return (BtrieveError.Success, (ushort)data.Length);
         }
 
         private (BtrieveError, ushort) Query(BtrieveCommand command)
@@ -456,7 +458,7 @@ namespace MBBSEmu.DOS.Interrupts
 
                 // copy data
                 _memory.SetArray(command.data_buffer_segment, command.data_buffer_offset, data);
-                length = (ushort) data.Length;
+                length = (ushort)data.Length;
             }
 
             // copy key

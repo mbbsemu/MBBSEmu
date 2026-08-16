@@ -1,5 +1,3 @@
-using MBBSEmu.Session;
-
 namespace MBBSEmu.Server
 {
     public interface IStoppable

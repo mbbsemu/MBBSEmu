@@ -17,7 +17,7 @@ namespace MBBSEmu.Disassembler.Artifacts
 
         public byte[] Data;
         public byte SourceType => Data[0];
-        public EnumRecordsFlag Flag => (EnumRecordsFlag) Data[1];
+        public EnumRecordsFlag Flag => (EnumRecordsFlag)Data[1];
         public ushort Offset => BitConverter.ToUInt16(Data, 2);
 
         public Tuple<EnumRecordsFlag, ushort, ushort, ushort> TargetTypeValueTuple

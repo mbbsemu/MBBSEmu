@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var inputDate = ((year - 1980) << 9) | (month << 5) | day;
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, COFDAT_ORDINAL, new List<ushort> { (ushort) inputDate });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, COFDAT_ORDINAL, new List<ushort> { (ushort)inputDate });
 
             //Verify Results
             Assert.Equal(expectedNumDays, mbbsEmuCpuRegisters.AX);

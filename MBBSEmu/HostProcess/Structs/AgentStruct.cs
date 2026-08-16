@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Memory;
+﻿using MBBSEmu.Memory;
+using System;
 
 namespace MBBSEmu.HostProcess.Structs
 {
@@ -12,7 +10,7 @@ namespace MBBSEmu.HostProcess.Structs
     /// </summary>
     public class AgentStruct
     {
-        public ReadOnlySpan<byte> appid => ((ReadOnlySpan<byte>) Data).Slice(0, 9);
+        public ReadOnlySpan<byte> appid => ((ReadOnlySpan<byte>)Data).Slice(0, 9);
         public FarPtr read => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(9, 4));
         public FarPtr write => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(13, 4));
         public FarPtr xferdone => new FarPtr(((ReadOnlySpan<byte>)Data).Slice(17, 4));

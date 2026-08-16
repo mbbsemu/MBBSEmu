@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs

@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Input Values
-            var inputLength = (ushort) inputString.Length;
+            var inputLength = (ushort)inputString.Length;
 
             mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString));
             mbbsModule.Memory.SetWord("INPLEN", inputLength);

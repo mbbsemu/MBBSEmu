@@ -22,7 +22,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
-            
+
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, DATOFC_ORDINAL, new List<ushort> { numDays });
 

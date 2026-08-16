@@ -17,7 +17,7 @@ namespace MBBSEmu.Extensions
             string userOptionSelected;
             bool userSession;
             bool moduleSession;
-            
+
             switch (b)
             {
                 case EnumSessionState.EnteringFullScreenDisplay:

@@ -17,7 +17,7 @@ namespace MBBSEmu.Session.Telnet
     {
         private int _iacPhase;
 
-        private static readonly byte[] IAC_NOP = { 0xFF, 0xF1};
+        private static readonly byte[] IAC_NOP = { 0xFF, 0xF1 };
 
         private readonly bool _heartbeat;
         private readonly AppSettingsManager _configuration;
@@ -25,7 +25,8 @@ namespace MBBSEmu.Session.Telnet
         //Tracks Responses We've already sent -- prevents looping
         private readonly HashSet<IacResponse> _iacSentResponses = new HashSet<IacResponse>();
 
-        private class TelnetOptionsValue {
+        private class TelnetOptionsValue
+        {
             public bool Local { get; init; }
             public bool Remote { get; init; }
 
@@ -87,7 +88,8 @@ namespace MBBSEmu.Session.Telnet
         {
             // we have to escape 0xFF , so see if we have any, and if not, just send the current
             // buffer as is
-            if (!Array.Exists(dataToSend, b => b == 0xFF)) {
+            if (!Array.Exists(dataToSend, b => b == 0xFF))
+            {
                 base.Send(dataToSend);
                 return;
             }
@@ -124,14 +126,15 @@ namespace MBBSEmu.Session.Telnet
         /// <summary>
         ///     Initiates server side IAC negotiation
         /// </summary>
-        private void TriggerIACNegotiation() {
+        private void TriggerIACNegotiation()
+        {
             _iacPhase = 1;
             base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
         }
 
         private void AddInitialNegotiations(HashSet<IacResponse> responses)
         {
-            foreach(var (key, value) in _localOptions)
+            foreach (var (key, value) in _localOptions)
             {
                 responses.Add(new IacResponse(value.GetLocalStatusVerb(), key));
                 responses.Add(new IacResponse(value.GetRemoteCommandVerb(), key));
@@ -195,9 +198,9 @@ namespace MBBSEmu.Session.Telnet
 
                 TerminalColumns = columns;
 
-                UsrAcc.scnwid = (byte) columns;
-                UsrAcc.scnbrk = (byte) rows;
-                UsrAcc.scnfse = (byte) rows;
+                UsrAcc.scnwid = (byte)columns;
+                UsrAcc.scnbrk = (byte)rows;
+                UsrAcc.scnfse = (byte)rows;
             }
         }
     }

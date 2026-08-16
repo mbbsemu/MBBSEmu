@@ -22,10 +22,10 @@ namespace MBBSEmu.Session
             SessionType = EnumSessionType.Test;
 
             Username = "Sysop";
-            Email  = "sysop@grnet.com";
+            Email = "sysop@grnet.com";
         }
 
-        public override void Stop() {}
+        public override void Stop() { }
 
 
         /// <summary>
@@ -72,9 +72,9 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public virtual void Send(byte[] dataToSend)
         {
-            foreach(var b in dataToSend)
+            foreach (var b in dataToSend)
             {
-              _data.Add(b);
+                _data.Add(b);
             }
         }
 
@@ -84,7 +84,7 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToModule(byte[] dataToSend)
         {
-            foreach(var b in dataToSend)
+            foreach (var b in dataToSend)
             {
                 DataFromClient.Add(b);
             }

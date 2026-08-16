@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MBBSEmu.Disassembler.Artifacts
+﻿namespace MBBSEmu.Disassembler.Artifacts
 {
     public enum EnumRecordsFlag
     {
