@@ -35,7 +35,7 @@ namespace MBBSEmu.Btrieve
             var wbtrv32Directory = Environment.GetEnvironmentVariable("WBTRV32_PATH");
             if (!string.IsNullOrEmpty(wbtrv32Directory))
             {
-                var wbtrv32Path = Path.Combine(wbtrv32Directory, "wbtrv32.dll");
+                var wbtrv32Path = Path.Combine(wbtrv32Directory, nativeLibraryName);
                 if (NativeLibrary.TryLoad(wbtrv32Path, out handle))
                     return handle;
             }
