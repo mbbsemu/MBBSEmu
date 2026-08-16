@@ -24,7 +24,12 @@ namespace MBBSEmu.Btrieve {
       if (string.IsNullOrEmpty(wbtrv32Directory))
         return IntPtr.Zero;
 
-      var wbtrv32Path = Path.Combine(wbtrv32Directory, "wbtrv32.dll");
+      var nativeLibraryName =
+          RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "wbtrv32.dll" :
+          RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "wbtrv32.dylib" :
+          "wbtrv32.so";
+
+      var wbtrv32Path = Path.Combine(wbtrv32Directory, nativeLibraryName);
       return NativeLibrary.TryLoad(wbtrv32Path, out var handle) ? handle : IntPtr.Zero;
     }
 
