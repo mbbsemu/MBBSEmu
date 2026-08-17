@@ -181,7 +181,11 @@ namespace MBBSEmu.Btrieve
         char acs[256];   9 // the table itself
       } ACSCREATEDATA, *LPACSCREATEDATA;
     */
-        public BtrieveFileProcessor(BtrieveFile btrieveFile)
+        /// <summary>
+        ///     Creates a new Btrieve database (in-memory, or on disk at dbPath if specified) from
+        ///     a BtrieveFile already parsed from a legacy .DAT file, and loads all of its records.
+        /// </summary>
+        public BtrieveFileProcessor(BtrieveFile btrieveFile, string dbPath = null)
         {
             int totalSegments = (byte)btrieveFile.Keys.Sum(x => x.Value.Segments.Count);
             var fileSpec = new byte[16 + (totalSegments * 16) + (btrieveFile.ACS != null ? 265 : 0)];
@@ -200,10 +204,10 @@ namespace MBBSEmu.Btrieve
 
             fileSpec[10] = flags;
 
-            // physicalPageSize == 0xFF tells wbtrv32.dll to create the database in-memory
-            // rather than on disk; that path is also what avoids it dereferencing lpKeyBuffer
-            // as a filename, which we don't pass one for.
-            fileSpec[13] = 0xFF;
+            // physicalPageSize == 0xFF tells wbtrv32.dll to create the database in-memory rather
+            // than on disk at dbPath; in-memory also avoids it dereferencing lpKeyBuffer as a
+            // filename, which we don't pass one for in that case.
+            fileSpec[13] = dbPath == null ? (byte)0xFF : (byte)0;
 
             // wbtrv32.dll only supports a single, shared ACS table (matching BtrieveFile's own
             // model -- one ACS applies to whichever keys require it), so any key needing ACS
@@ -239,12 +243,16 @@ namespace MBBSEmu.Btrieve
 
             int dwDataBufferLength = fileSpec.Length;
 
+            // wbtrv32.dll's Create treats the key buffer as a null-terminated C string holding
+            // the target path when creating on disk (ignored when creating in-memory).
+            byte[] keyBuffer = dbPath == null ? null : Encoding.ASCII.GetBytes(dbPath + "\0");
+
             var rc = Wbtrv32.managedBtrcall((ushort)EnumBtrieveOperationCodes.Create, unmanagedPosBlock,
-                                            fileSpec, ref dwDataBufferLength, null, 0);
+                                            fileSpec, ref dwDataBufferLength, keyBuffer, 0);
 
             if (rc != 0)
             {
-                throw new Exception("Failed to create in memory database");
+                throw new Exception($"Failed to create {(dbPath == null ? "in memory" : dbPath)} database");
             }
 
             _keys = btrieveFile.Keys;

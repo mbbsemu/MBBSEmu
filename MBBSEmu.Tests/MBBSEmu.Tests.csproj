@@ -60,4 +60,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Btrieve\" />
+  </ItemGroup>
 </Project>
