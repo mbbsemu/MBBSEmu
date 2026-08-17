@@ -74,7 +74,7 @@ namespace MBBSEmu.Database.Repositories.Account
 
         public void DeleteAccountById(int accountId)
         {
-            Query(EnumQueries.DeleteAccountById, new {accountId});
+            Query(EnumQueries.DeleteAccountById, new { accountId });
         }
 
         public void UpdateAccountById(int accountId, string userName, string plaintextPassword, string email)

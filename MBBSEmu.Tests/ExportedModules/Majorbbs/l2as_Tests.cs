@@ -23,8 +23,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            var inputHigh = (ushort) (inputValue >> 16);
-            var inputLow = (ushort) inputValue;
+            var inputHigh = (ushort)(inputValue >> 16);
+            var inputLow = (ushort)inputValue;
 
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, L2AS_ORDINAL, new List<ushort> { inputLow, inputHigh });
 

@@ -30,9 +30,9 @@ namespace MBBSEmu.HostProcess.Structs
         public DateStruct(DateTime date)
         {
             Data = new byte[Size];
-            Array.Copy(BitConverter.GetBytes((short) date.Year), 0, Data, 0, 2);
-            Data[2] = (byte) date.Day;
-            Data[3] = (byte) date.Month;
-        } 
+            Array.Copy(BitConverter.GetBytes((short)date.Year), 0, Data, 0, 2);
+            Data[2] = (byte)date.Day;
+            Data[3] = (byte)date.Month;
+        }
     }
 }

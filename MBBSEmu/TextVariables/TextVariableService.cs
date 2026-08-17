@@ -32,7 +32,7 @@ namespace MBBSEmu.TextVariables
             if (_textVariables.Any(x => x.Name == name))
                 return;
 
-            _textVariables.Add(new TextVariableValue() { Name = name, Value = value});
+            _textVariables.Add(new TextVariableValue() { Name = name, Value = value });
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace MBBSEmu.TextVariables
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public bool HasVariable(ReadOnlySpan<byte> input) => input.IndexOf((byte) 1) > -1;
+        public bool HasVariable(ReadOnlySpan<byte> input) => input.IndexOf((byte)1) > -1;
 
         /// <summary>
         ///     Extracts Text Variable names found in the specified input
@@ -127,7 +127,7 @@ namespace MBBSEmu.TextVariables
 
             return output;
         }
-        
+
         /// <summary>
         ///     Parses incoming buffer to process text variables before sending to client
         /// </summary>
@@ -147,10 +147,10 @@ namespace MBBSEmu.TextVariables
                 newOutputBuffer.Write(input.Slice(previousOffset, v.Offset - previousOffset));
 
                 //Check Passed In Variables
-                var variableText = sessionValues.FirstOrDefault(x=> x.Key == v.Name).Value;
+                var variableText = sessionValues.FirstOrDefault(x => x.Key == v.Name).Value;
 
                 //If a Session Variable wasn't found, check global
-                if(string.IsNullOrEmpty(variableText))
+                if (string.IsNullOrEmpty(variableText))
                     variableText = GetVariableByName(v.Name) ?? "UNKNOWN VARIABLE";
 
                 //Format Variable Text
@@ -186,7 +186,7 @@ namespace MBBSEmu.TextVariables
                 newOutputBuffer.Write(Encoding.ASCII.GetBytes(variableText));
                 previousOffset = v.Offset + v.Length + 1;
             }
-            
+
             //Add Any Remaining
             newOutputBuffer.Write(input.Slice(previousOffset));
 

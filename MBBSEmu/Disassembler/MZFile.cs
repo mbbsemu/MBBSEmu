@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using MBBSEmu.Disassembler.Artifacts;
-using System.IO;
+﻿using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Memory;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace MBBSEmu.Disassembler
 {

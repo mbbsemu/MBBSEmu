@@ -471,7 +471,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                             {
                                 // Cycle back to the bottom — find the last non-readonly, non-error field
                                 var lastValid = _fsdFields[session.Channel].Fields.Count - 1;
-                                while (lastValid > 0 && 
+                                while (lastValid > 0 &&
                                         (_fsdFields[session.Channel].Fields[lastValid].FsdFieldType == EnumFsdFieldType.Error ||
                                         _fsdFields[session.Channel].Fields[lastValid].IsReadOnly))
                                     lastValid--;

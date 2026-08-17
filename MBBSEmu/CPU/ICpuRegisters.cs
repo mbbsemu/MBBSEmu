@@ -34,16 +34,16 @@ namespace MBBSEmu.CPU
 
         uint EAX { get; set; }
         ushort AX { get; set; }
-        byte AH  { get; set; }
-        byte AL  { get; set; }
-        uint EBX  { get; set; }
-        ushort BX  { get; set; }
-        byte BH  { get; set; }
-        byte BL  { get; set; }
-        uint ECX  { get; set; }
-        ushort CX  { get; set; }
-        byte CH  { get; set; }
-        byte CL  { get; set; }
+        byte AH { get; set; }
+        byte AL { get; set; }
+        uint EBX { get; set; }
+        ushort BX { get; set; }
+        byte BH { get; set; }
+        byte BL { get; set; }
+        uint ECX { get; set; }
+        ushort CX { get; set; }
+        byte CH { get; set; }
+        byte CL { get; set; }
         uint EDX { get; set; }
         ushort DX { get; set; }
         byte DH { get; set; }

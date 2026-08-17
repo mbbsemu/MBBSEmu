@@ -23,7 +23,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Reset State
             Reset();
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ISUIDC_ORDINAL, new List<ushort> {input});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ISUIDC_ORDINAL, new List<ushort> { input });
 
             //Verify Results
             Assert.Equal(expectedValue, mbbsEmuCpuRegisters.AX);

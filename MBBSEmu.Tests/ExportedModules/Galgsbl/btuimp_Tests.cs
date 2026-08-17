@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Galgsbl
             //Set Session Input Buffer
             testSessions[0].InputBuffer.Write(Encoding.ASCII.GetBytes("Test Input String"));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Galgsbl.Segment, BTUIMP_ORDINAL, new List<ushort> { 0, outputStringPointer.Offset, outputStringPointer.Segment});
+            ExecuteApiTest(HostProcess.ExportedModules.Galgsbl.Segment, BTUIMP_ORDINAL, new List<ushort> { 0, outputStringPointer.Offset, outputStringPointer.Segment });
 
             //Verify Results
             var resultString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(outputStringPointer, true));

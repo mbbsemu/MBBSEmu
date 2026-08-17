@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -55,7 +53,7 @@ namespace MBBSEmu.Tests.CPU
 
             //Process Instruction
             while (!mbbsEmuCpuRegisters.Halt)
-               mbbsEmuCpuCore.Tick();
+                mbbsEmuCpuCore.Tick();
 
             //Verify Flags
             mbbsEmuCpuRegisters.SI.Should().Be((ushort)(ptr1.Offset + 16));

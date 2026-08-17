@@ -216,7 +216,7 @@ namespace MBBSEmu.Memory
         }
 
         [MethodImpl(CompilerOptimizations)]
-        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>_memorySegments[segment].AsSpan(offset);
+        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memorySegments[segment].AsSpan(offset);
 
         /// <summary>
         ///     Allocates the specific number of Big Memory Blocks with the desired size

@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using MBBSEmu.Database.Repositories.AccountKey.Model;
+﻿using MBBSEmu.Database.Repositories.AccountKey.Model;
+using System.Collections.Generic;
 
 namespace MBBSEmu.Database.Repositories.AccountKey
 {

@@ -1,5 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.Disassembler.Artifacts;
 using System;
 
 namespace MBBSEmu.Memory

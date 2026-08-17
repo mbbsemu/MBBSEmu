@@ -39,7 +39,7 @@ namespace MBBSEmu.HostProcess.Structs
             get
             {
                 ReadOnlySpan<byte> dataSpan = Data;
-                return new FarPtr(dataSpan.Slice(18,4));
+                return new FarPtr(dataSpan.Slice(18, 4));
             }
             set => Array.Copy(value.Data, 0, Data, 18, FarPtr.Size);
         }

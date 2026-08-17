@@ -22,7 +22,7 @@ namespace MBBSEmu.Memory
     public class RealModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
         public const int MAX_REAL_MODE_MEMORY = 1024 * 1024; // (1 mb)
-        public const int HEAP_MAX_SIZE = 64*1024;
+        public const int HEAP_MAX_SIZE = 64 * 1024;
         public const ushort DEFAULT_HEAP_BASE_SEGMENT = 0x8000;
 
         public readonly ushort _heapBaseSegment;
@@ -67,7 +67,7 @@ namespace MBBSEmu.Memory
             _memoryAllocator = new MemoryAllocator(logger, new FarPtr(_heapBaseSegment, 0), HEAP_MAX_SIZE, alignment: 16);
         }
 
-        public RealModeMemoryCore(IMessageLogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) {}
+        public RealModeMemoryCore(IMessageLogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) { }
 
         public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
 

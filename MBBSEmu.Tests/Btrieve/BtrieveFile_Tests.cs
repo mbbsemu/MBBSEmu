@@ -2,10 +2,10 @@ using FluentAssertions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
 using MBBSEmu.DependencyInjection;
+using MBBSEmu.Logging;
 using MBBSEmu.Resources;
 using System;
 using System.IO;
-using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve

@@ -11,15 +11,15 @@ namespace MBBSEmu.Tests.Btrieve
     [Collection("Non-Parallel")]
     public class BtrieveKey_Tests : TestBase
     {
-        private static readonly byte[] DATA_NEGATIVE = { 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8};
-        private static readonly byte[] DATA_POSITIVE = { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8};
+        private static readonly byte[] DATA_NEGATIVE = { 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8 };
+        private static readonly byte[] DATA_POSITIVE = { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8 };
         private static readonly byte[] STRING_DATA = CreateNullPaddedString("Test", 32);
 
         private static byte[] CreateNullPaddedString(string s, int length)
         {
-             var data = new byte[length];
-             Array.Copy(Encoding.ASCII.GetBytes(s), data, s.Length);
-             return data;
+            var data = new byte[length];
+            Array.Copy(Encoding.ASCII.GetBytes(s), data, s.Length);
+            return data;
         }
 
         [Theory]
@@ -45,8 +45,9 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(8, EnumKeyDataType.OldBinary, 0xF8F7F6F5F4F3F2F1)]
         public void NegativeIntegerTypeConversion(ushort length, EnumKeyDataType type, object expected)
         {
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 0,
@@ -86,8 +87,9 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(8, EnumKeyDataType.OldBinary, 0x807060504030201)]
         public void PositiveIntegerTypeConversion(ushort length, EnumKeyDataType type, object expected)
         {
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 0,
@@ -131,8 +133,9 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(1, EnumKeyDataType.OldAscii, "T")]
         public void StringTypeConversion(ushort length, EnumKeyDataType type, object expected)
         {
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 0,
@@ -152,8 +155,9 @@ namespace MBBSEmu.Tests.Btrieve
         [Fact]
         public void CompositeKeyConcatentation()
         {
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 2,
@@ -184,7 +188,7 @@ namespace MBBSEmu.Tests.Btrieve
             Array.Fill(record, (byte)'T', 20, 4);
 
             var sqlLiteObject = key.ExtractKeyInRecordToSqliteObject(record);
-            sqlLiteObject.Should().BeEquivalentTo(new byte[] { 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, (byte)'T', (byte)'T', (byte)'T', (byte)'T'});
+            sqlLiteObject.Should().BeEquivalentTo(new byte[] { 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, 0x5, (byte)'T', (byte)'T', (byte)'T', (byte)'T' });
         }
 
         [Theory]
@@ -198,8 +202,9 @@ namespace MBBSEmu.Tests.Btrieve
         [InlineData(EnumKeyDataType.OldBinary)]
         public void NullValueString(EnumKeyDataType dataType)
         {
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 2,
@@ -238,8 +243,9 @@ namespace MBBSEmu.Tests.Btrieve
         {
             var acs = UpperACS();
 
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 2,
@@ -276,8 +282,9 @@ namespace MBBSEmu.Tests.Btrieve
         {
             var acs = UpperACS();
 
-            var key = new BtrieveKey {
-              Segments = new List<BtrieveKeyDefinition> {
+            var key = new BtrieveKey
+            {
+                Segments = new List<BtrieveKeyDefinition> {
                   new BtrieveKeyDefinition {
                       Number = 0,
                       Offset = 2,

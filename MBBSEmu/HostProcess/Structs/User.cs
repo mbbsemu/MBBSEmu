@@ -1,6 +1,5 @@
-﻿using System;
-using System.IO;
-using MBBSEmu.Memory;
+﻿using MBBSEmu.Memory;
+using System;
 
 namespace MBBSEmu.HostProcess.Structs
 {
@@ -17,7 +16,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public FarPtr Keys
         {
-            get => new FarPtr(new ReadOnlySpan<byte>(Data).Slice(2,4));
+            get => new FarPtr(new ReadOnlySpan<byte>(Data).Slice(2, 4));
             set => Array.Copy(value.Data, 0, Data, 2, FarPtr.Size);
         }
 

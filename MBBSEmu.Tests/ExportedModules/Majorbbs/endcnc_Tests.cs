@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var inputLength = (ushort)inputString.Length;
 
             mbbsModule.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(inputString));
-            mbbsModule.Memory.SetWord("INPLEN", (ushort) (inputLength - 1));
+            mbbsModule.Memory.SetWord("INPLEN", (ushort)(inputLength - 1));
 
             //Set nxtcmd
             var currentNxtcmd = mbbsEmuMemoryCore.GetPointer("NXTCMD");
@@ -37,7 +37,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Gather Results
             var actualResult = mbbsEmuCpuCore.Registers.AX;
-            var actualInputString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray("INPUT", (ushort) (mbbsEmuMemoryCore.GetWord("INPLEN") + 1)));
+            var actualInputString = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray("INPUT", (ushort)(mbbsEmuMemoryCore.GetWord("INPLEN") + 1)));
             var actualMargc = mbbsEmuMemoryCore.GetWord("MARGC");
             //Verify Results
             Assert.Equal(expectedInputString, actualInputString);

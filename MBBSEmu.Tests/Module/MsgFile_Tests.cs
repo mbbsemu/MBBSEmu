@@ -2,10 +2,10 @@ using FluentAssertions;
 using MBBSEmu.IO;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.Module

@@ -1,6 +1,5 @@
 ﻿using Iced.Intel;
 using System;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -119,7 +118,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(2 >> 1, mbbsEmuMemoryCore.GetByte(2,0));
+            Assert.Equal(2 >> 1, mbbsEmuMemoryCore.GetByte(2, 0));
         }
 
         [Fact]
@@ -147,7 +146,7 @@ namespace MBBSEmu.Tests.CPU
             CreateDataSegment(new byte[] { 2 }, 2);
 
             var instructions = new Assembler(16);
-            instructions.ror(__byte_ptr[0],cl);
+            instructions.ror(__byte_ptr[0], cl);
             CreateCodeSegment(instructions);
 
             mbbsEmuCpuCore.Tick();

@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             for (var i = 0; i < inputArray.Length; i++)
             {
-                stringPointer[i] = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING" + i, (ushort) (inputArray[i].Length + 1));
+                stringPointer[i] = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING" + i, (ushort)(inputArray[i].Length + 1));
                 mbbsEmuMemoryCore.SetArray("INPUT_STRING" + i, Encoding.ASCII.GetBytes(inputArray[i]));
             }
 

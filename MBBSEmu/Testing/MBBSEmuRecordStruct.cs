@@ -1,7 +1,8 @@
-using System.Text;
 using System;
+using System.Text;
 
-namespace MBBSEmu.Testing {
+namespace MBBSEmu.Testing
+{
     public class MBBSEmuRecordStruct
     {
         public const int RECORD_LENGTH = 74;

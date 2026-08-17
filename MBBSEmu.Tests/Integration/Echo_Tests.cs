@@ -9,7 +9,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void DoEchoTestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("E\r\n"));
@@ -33,7 +34,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void ParsinMaintainSpaces()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("E\r\n"));

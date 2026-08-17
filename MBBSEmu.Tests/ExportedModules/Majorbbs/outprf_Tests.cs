@@ -15,7 +15,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             SetInput("Test");
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> {0xFFFF});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0xFFFF });
 
             //Shouldn't error
         }

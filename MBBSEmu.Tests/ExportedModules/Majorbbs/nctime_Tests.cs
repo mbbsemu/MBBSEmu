@@ -30,7 +30,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 mbbsEmuMemoryCore.AllocateVariable("NCTIME", (ushort)expectedTime.Length);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, NCTIME_ORDINAL, new List<ushort> { (ushort) packedTime });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, NCTIME_ORDINAL, new List<ushort> { (ushort)packedTime });
             var resultPointer = mbbsEmuCpuRegisters.GetPointer();
 
             //Put Garbage After it to ensure the null terminator catches

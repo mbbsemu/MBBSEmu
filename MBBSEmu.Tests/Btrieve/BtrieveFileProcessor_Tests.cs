@@ -6,12 +6,11 @@ using MBBSEmu.IO;
 using MBBSEmu.Resources;
 using MBBSEmu.Testing;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using MBBSEmu.Logging;
-using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Btrieve
@@ -1113,15 +1112,15 @@ namespace MBBSEmu.Tests.Btrieve
 
             var key = new BtrieveKey();
             key.Segments.Add(new BtrieveKeyDefinition()
-                {
-                    Number = 0,
-                    Attributes = EnumKeyAttributeMask.NumberedACS | EnumKeyAttributeMask.UseExtendedDataType,
-                    DataType = EnumKeyDataType.Zstring,
-                    Offset = 2,
-                    Length = 30,
-                    Segment = false,
-                    ACS = acs
-                });
+            {
+                Number = 0,
+                Attributes = EnumKeyAttributeMask.NumberedACS | EnumKeyAttributeMask.UseExtendedDataType,
+                DataType = EnumKeyDataType.Zstring,
+                Offset = 2,
+                Length = 30,
+                Segment = false,
+                ACS = acs
+            });
 
             btrieveFile.Keys.Add(0, key);
 

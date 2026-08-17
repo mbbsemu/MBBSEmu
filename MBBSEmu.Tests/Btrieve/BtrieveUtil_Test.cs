@@ -1,7 +1,7 @@
 using FluentAssertions;
 using MBBSEmu.Btrieve;
-using System.IO;
 using System;
+using System.IO;
 using System.Text;
 using Xunit;
 

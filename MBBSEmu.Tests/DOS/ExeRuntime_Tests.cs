@@ -5,11 +5,11 @@ using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
 using MBBSEmu.DOS;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Resources;
 using System;
 using System.IO;
 using System.Text;
-using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
@@ -17,7 +17,7 @@ namespace MBBSEmu.Tests.Memory
     public class ExeRuntime_Tests : TestBase, IDisposable
     {
         private readonly string[] _exeFiles = { "CMDLINE.EXE" };
-        private readonly string[] _cmdLineArguments = {"one", "two", "three"};
+        private readonly string[] _cmdLineArguments = { "one", "two", "three" };
 
         private string _modulePath;
         private ServiceResolver _serviceResolver;

@@ -40,7 +40,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
             mbbsEmuCpuRegisters.BX = 0;
-            mbbsEmuMemoryCore.SetByte(2,0, (byte)valueToMultiply);
+            mbbsEmuMemoryCore.SetByte(2, 0, (byte)valueToMultiply);
 
             var instructions = new Assembler(16);
             instructions.mul(__byte_ptr[bx]);

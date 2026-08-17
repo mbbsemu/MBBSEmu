@@ -18,7 +18,7 @@ namespace MBBSEmu.IO
 
         public void Write(byte[] c) => throw new NotSupportedException("Can't write to TextReader");
 
-        public void Flush() {}
+        public void Flush() { }
 
         public void Dispose() => _reader.Close();
     }

@@ -75,7 +75,7 @@ namespace MBBSEmu.Extensions
         /// <param name="b"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint ToUintSignExtended(this ushort b) => (uint)(short) b;
+        public static uint ToUintSignExtended(this ushort b) => (uint)(short)b;
 
         /// <summary>
         ///     Pack DOS date
@@ -83,7 +83,7 @@ namespace MBBSEmu.Extensions
         /// <param name="b"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ushort ToDosDate(this DateTime b) => (ushort) ((b.Month << 5) + b.Day + ((b.Year - 1980) << 9));
+        public static ushort ToDosDate(this DateTime b) => (ushort)((b.Month << 5) + b.Day + ((b.Year - 1980) << 9));
 
         /// <summary>
         ///     Unpack DOS date

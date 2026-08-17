@@ -3,6 +3,7 @@ using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Database.Session;
 using MBBSEmu.DependencyInjection;
 using MBBSEmu.HostProcess;
+using MBBSEmu.Logging;
 using MBBSEmu.Module;
 using MBBSEmu.Resources;
 using MBBSEmu.Session;
@@ -11,7 +12,6 @@ using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using MBBSEmu.Logging;
 
 namespace MBBSEmu.Tests.Integration
 {

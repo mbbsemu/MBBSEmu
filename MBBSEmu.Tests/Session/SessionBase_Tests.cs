@@ -97,7 +97,8 @@ namespace MBBSEmu.Tests.Session
             StringBuilder builder = new StringBuilder();
 
             // build up a string of 128k characters, much larger than our buffer size
-            while (builder.Length < (128 * 1024)) {
+            while (builder.Length < (128 * 1024))
+            {
                 builder.Append("This is a long line of text that we repeat\r\n");
                 ++lines;
             }

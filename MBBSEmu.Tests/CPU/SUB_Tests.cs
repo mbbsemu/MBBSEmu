@@ -1,6 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -329,7 +327,7 @@ namespace MBBSEmu.Tests.CPU
             Reset();
             mbbsEmuProtectedModeMemoryCore.AddSegment(2);
             mbbsEmuCpuRegisters.DS = 2;
-            mbbsEmuMemoryCore.SetByte(2,0, memoryValue);
+            mbbsEmuMemoryCore.SetByte(2, 0, memoryValue);
             mbbsEmuCpuRegisters.AL = alValue;
 
             var instructions = new Assembler(16);
@@ -340,7 +338,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedValue, mbbsEmuMemoryCore.GetByte(2,0));
+            Assert.Equal(expectedValue, mbbsEmuMemoryCore.GetByte(2, 0));
 
             //Verify Flags
             Assert.Equal(zeroFlagValue, mbbsEmuCpuRegisters.ZeroFlag);

@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 

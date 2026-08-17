@@ -1198,7 +1198,8 @@ namespace MBBSEmu.Btrieve
 
         public SqliteCommand GetSqliteCommand(string sql, SqliteTransaction transaction = null)
         {
-            var cmd = _sqlCommands.GetOrAdd(sql, sql => {
+            var cmd = _sqlCommands.GetOrAdd(sql, sql =>
+            {
                 var cmd = new SqliteCommand(sql, Connection);
                 cmd.Prepare();
                 return cmd;
@@ -1209,10 +1210,10 @@ namespace MBBSEmu.Btrieve
         }
 
         public static SqliteConnectionStringBuilder GetDefaultConnectionStringBuilder(string filepath) => new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder()
-            {
-                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
-                DataSource = filepath,
-                Pooling = false,
-            };
+        {
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadWriteCreate,
+            DataSource = filepath,
+            Pooling = false,
+        };
     }
 }

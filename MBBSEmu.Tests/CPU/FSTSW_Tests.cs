@@ -1,5 +1,5 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
+using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -12,7 +12,7 @@ namespace MBBSEmu.Tests.CPU
         {
             Reset();
             mbbsEmuCpuRegisters.Fpu.StatusWord = 0xFFFF;
-            
+
             var instructions = new Assembler(16);
             instructions.fstsw(ax);
             CreateCodeSegment(instructions);
@@ -38,8 +38,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2,0));
+            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 0));
         }
-       
+
     }
 }

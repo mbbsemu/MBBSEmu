@@ -592,7 +592,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 return;
             }
 
-            session.UsrAcc.sex = (byte) char.Parse(inputValue);
+            session.UsrAcc.sex = (byte)char.Parse(inputValue);
 
             //Create the user in the database
             var accountId = _accountRepository.InsertAccount(session.Username, session.Password, session.Email);

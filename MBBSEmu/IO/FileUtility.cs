@@ -16,9 +16,10 @@ namespace MBBSEmu.IO
     /// </summary>
     public class FileUtility : IFileUtility
     {
-        private static readonly char[] PATH_SEPARATORS = {'\\', '/'};
+        private static readonly char[] PATH_SEPARATORS = { '\\', '/' };
 
-        public static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions() {
+        public static readonly EnumerationOptions CASE_INSENSITIVE_ENUMERATION_OPTIONS = new EnumerationOptions()
+        {
             IgnoreInaccessible = true,
             MatchCasing = MatchCasing.CaseInsensitive,
             RecurseSubdirectories = false,
@@ -37,7 +38,8 @@ namespace MBBSEmu.IO
             return new FileUtility(null);
         }
 
-        public static string[] SplitIntoComponents(string path) {
+        public static string[] SplitIntoComponents(string path)
+        {
             return path.Split(PATH_SEPARATORS);
         }
 

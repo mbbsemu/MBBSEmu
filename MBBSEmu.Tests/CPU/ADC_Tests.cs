@@ -1,6 +1,6 @@
 ﻿using MBBSEmu.CPU;
-using System;
 using MBBSEmu.Extensions;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU

@@ -17,7 +17,8 @@ namespace MBBSEmu.Session.Telnet
         private const byte SB = 0xFA;
         private const byte SE = 0xF0;
 
-        private enum ParseState {
+        private enum ParseState
+        {
             Normal,
             FoundIAC,
             IACCommand,
@@ -38,7 +39,7 @@ namespace MBBSEmu.Session.Telnet
             public EnumIacOptions Option { get; set; }
         }
 
-        public class IacSubnegotiationEventArgs : EventArgs 
+        public class IacSubnegotiationEventArgs : EventArgs
         {
             public EnumIacOptions Option { get; set; }
             public byte[] Data { get; set; }
@@ -83,7 +84,7 @@ namespace MBBSEmu.Session.Telnet
                 case ParseState.FoundIAC when b == (byte)EnumIacVerbs.WONT:
                 case ParseState.FoundIAC when b == (byte)EnumIacVerbs.DO:
                 case ParseState.FoundIAC when b == (byte)EnumIacVerbs.DONT:
-                    _currentVerb = (EnumIacVerbs) b;
+                    _currentVerb = (EnumIacVerbs)b;
                     _parseState = ParseState.IACCommand;
                     break;
                 case ParseState.FoundIAC when b == IAC:
@@ -103,7 +104,7 @@ namespace MBBSEmu.Session.Telnet
                     break;
                 case ParseState.SBStart:
                     _sbValue.SetLength(0);
-                    _currentSubnegotiationOption = (EnumIacOptions) b;
+                    _currentSubnegotiationOption = (EnumIacOptions)b;
                     _parseState = ParseState.SBValue;
                     break;
                 case ParseState.SBValue when b == IAC:
@@ -113,7 +114,7 @@ namespace MBBSEmu.Session.Telnet
                     _sbValue.WriteByte(b);
                     break;
                 case ParseState.SBIAC when b == SE:
-                    IacSubnegotiationReceived?.Invoke(this, new IacSubnegotiationEventArgs() 
+                    IacSubnegotiationReceived?.Invoke(this, new IacSubnegotiationEventArgs()
                     {
                         Option = _currentSubnegotiationOption,
                         Data = _sbValue.ToArray()

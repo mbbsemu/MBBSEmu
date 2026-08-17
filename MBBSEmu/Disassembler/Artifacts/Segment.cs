@@ -21,33 +21,33 @@ namespace MBBSEmu.Disassembler.Artifacts
             {
                 _flag = value;
                 Flags = new List<EnumSegmentFlags>();
-                Flags.Add((_flag | (short) EnumSegmentFlags.Data) == _flag
+                Flags.Add((_flag | (short)EnumSegmentFlags.Data) == _flag
                     ? EnumSegmentFlags.Data
                     : EnumSegmentFlags.Code);
 
-                if ((_flag | (short) EnumSegmentFlags.Iterated) == _flag)
+                if ((_flag | (short)EnumSegmentFlags.Iterated) == _flag)
                     Flags.Add(EnumSegmentFlags.Iterated);
 
-                Flags.Add((_flag | (short) EnumSegmentFlags.Movable) == _flag
+                Flags.Add((_flag | (short)EnumSegmentFlags.Movable) == _flag
                     ? EnumSegmentFlags.Movable
                     : EnumSegmentFlags.Fixed);
 
-                Flags.Add((_flag | (short) EnumSegmentFlags.Pure) == _flag
+                Flags.Add((_flag | (short)EnumSegmentFlags.Pure) == _flag
                     ? EnumSegmentFlags.Pure
                     : EnumSegmentFlags.Impure);
 
-                Flags.Add((_flag | (short) EnumSegmentFlags.Preload) == _flag
+                Flags.Add((_flag | (short)EnumSegmentFlags.Preload) == _flag
                     ? EnumSegmentFlags.Preload
                     : EnumSegmentFlags.LoadOnCall);
 
-                Flags.Add((_flag | (short) EnumSegmentFlags.ExecuteOnly) == _flag
+                Flags.Add((_flag | (short)EnumSegmentFlags.ExecuteOnly) == _flag
                     ? EnumSegmentFlags.ExecuteOnly
                     : EnumSegmentFlags.ReadOnly);
 
-                if ((_flag | (short) EnumSegmentFlags.HasRelocationInfo) == _flag)
+                if ((_flag | (short)EnumSegmentFlags.HasRelocationInfo) == _flag)
                     Flags.Add(EnumSegmentFlags.HasRelocationInfo);
 
-                if ((_flag | (short) EnumSegmentFlags.HasDebuggingInfo) == _flag)
+                if ((_flag | (short)EnumSegmentFlags.HasDebuggingInfo) == _flag)
                     Flags.Add(EnumSegmentFlags.HasDebuggingInfo);
             }
         }
@@ -55,11 +55,11 @@ namespace MBBSEmu.Disassembler.Artifacts
         public List<EnumSegmentFlags> Flags { get; private set; }
 
         public byte[] Data { get; set; }
-        
+
         public Dictionary<ushort, RelocationRecord> RelocationRecords { get; set; }
 
-        public Segment() {}
-        
+        public Segment() { }
+
         public Segment(byte[] segmentHeader)
         {
             Offset = BitConverter.ToUInt16(segmentHeader, 0);

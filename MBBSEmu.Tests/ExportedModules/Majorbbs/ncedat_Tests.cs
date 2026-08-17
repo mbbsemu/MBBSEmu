@@ -25,8 +25,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Set Argument Values to be Passed In
             var inputDate = ((year - 1980) << 9) | (month << 5) | day;
-           
-            if(allocateNCEDAT)
+
+            if (allocateNCEDAT)
                 mbbsEmuMemoryCore.AllocateVariable("NCEDAT", sizeof(int));
 
             //Execute Test

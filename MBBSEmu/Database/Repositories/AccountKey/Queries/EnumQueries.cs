@@ -1,5 +1,5 @@
-﻿using System.ComponentModel;
-using MBBSEmu.Database.Attributes;
+﻿using MBBSEmu.Database.Attributes;
+using System.ComponentModel;
 
 namespace MBBSEmu.Database.Repositories.AccountKey.Queries
 {

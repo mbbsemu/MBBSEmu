@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using MBBSEmu.DOS.Interrupts;
+﻿using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Memory;
 using System;
+using System.Collections.Generic;
 
 namespace MBBSEmu.CPU
 {

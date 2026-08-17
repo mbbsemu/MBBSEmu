@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Text;
 
 namespace MBBSEmu.Extensions
@@ -34,7 +33,7 @@ namespace MBBSEmu.Extensions
         /// </summary>
         /// <param name="readOnlySpan"></param>
         /// <returns></returns>
-        public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan) =>  readOnlySpan.ToHexString(0, (ushort)readOnlySpan.Length);
+        public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan) => readOnlySpan.ToHexString(0, (ushort)readOnlySpan.Length);
 
         /// <summary>
         ///     Creates a human-readable hex string from a ReadOnlySpan of bytes
@@ -48,63 +47,63 @@ namespace MBBSEmu.Extensions
         /// <returns></returns>
         public static string ToHexString(this ReadOnlySpan<byte> readOnlySpan, ushort start, ushort length)
         {
-                var output = new StringBuilder();
+            var output = new StringBuilder();
 
-                //Print Header
-                output.AppendLine(new string('-', 73));
-                output.AppendLine($"{readOnlySpan.Length} bytes, 0x{start:X4} -> 0x{start + length:X4}");
-                output.AppendLine(new string('-', 73));
+            //Print Header
+            output.AppendLine(new string('-', 73));
+            output.AppendLine($"{readOnlySpan.Length} bytes, 0x{start:X4} -> 0x{start + length:X4}");
+            output.AppendLine(new string('-', 73));
 
-                //Handle Zero Length
-                if (length <= 0)
+            //Handle Zero Length
+            if (length <= 0)
+            {
+                output.AppendLine("No Data to Display");
+                return output.ToString();
+            }
+
+            //Handle Invalid Length
+            if (start + length > readOnlySpan.Length)
+            {
+                output.AppendLine("Invalid Address Range");
+                output.AppendLine($"Total Length: {readOnlySpan.Length} bytes");
+                output.AppendLine($"Start: {start}");
+                output.AppendLine($"Length: {length}");
+                return output.ToString();
+            }
+
+            output.Append("      ");
+            for (var i = 0; i < 0x10; i++)
+            {
+                output.Append($" {i:X2}");
+            }
+            output.AppendLine();
+            var hexString = new StringBuilder(47);
+            var literalString = new StringBuilder(15);
+
+            //Print Hex Values
+            for (var i = start; i < start + length; i++)
+            {
+                hexString.Append($" {readOnlySpan[i]:X2}");
+                literalString.Append(readOnlySpan[i] < 32 ? ' ' : (char)readOnlySpan[i]);
+
+                //New Memory Page
+                if ((i | 0x0F) == i)
                 {
-                    output.AppendLine("No Data to Display");
-                    return output.ToString();
-                }
-
-                //Handle Invalid Length
-                if (start + length > readOnlySpan.Length)
-                {
-                    output.AppendLine("Invalid Address Range");
-                    output.AppendLine($"Total Length: {readOnlySpan.Length} bytes");
-                    output.AppendLine($"Start: {start}");
-                    output.AppendLine($"Length: {length}");
-                    return output.ToString();
-                }
-
-                output.Append("      ");
-                for (var i = 0; i < 0x10; i++)
-                {
-                    output.Append($" {i:X2}");
-                }
-                output.AppendLine();
-                var hexString = new StringBuilder(47);
-                var literalString = new StringBuilder(15);
-
-                //Print Hex Values
-                for (var i = start; i < start + length; i++)
-                {
-                    hexString.Append($" {readOnlySpan[i]:X2}");
-                    literalString.Append(readOnlySpan[i] < 32 ? ' ' : (char)readOnlySpan[i]);
-
-                    //New Memory Page
-                    if ((i | 0x0F) == i)
-                    {
-                        output.AppendLine($"{(i & ~0xF):X4} [{hexString} ] {literalString}");
-                        hexString.Clear();
-                        literalString.Clear();
-                    }
-                }
-
-                //Flush any data remaining in the buffer
-                if (hexString.Length > 0)
-                {
-                    output.AppendLine($"{(start + length) & ~0xF:X4} [{hexString.ToString().PadRight(48)} ] {literalString}");
+                    output.AppendLine($"{(i & ~0xF):X4} [{hexString} ] {literalString}");
                     hexString.Clear();
                     literalString.Clear();
                 }
+            }
 
-                return output.ToString();
+            //Flush any data remaining in the buffer
+            if (hexString.Length > 0)
+            {
+                output.AppendLine($"{(start + length) & ~0xF:X4} [{hexString.ToString().PadRight(48)} ] {literalString}");
+                hexString.Clear();
+                literalString.Clear();
+            }
+
+            return output.ToString();
         }
     }
 }

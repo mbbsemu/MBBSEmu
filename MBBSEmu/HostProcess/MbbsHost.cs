@@ -928,7 +928,7 @@ namespace MBBSEmu.HostProcess
                         }
 
                         //Always Enqueue Input Ready, if one already not queued (from BTUCHI)
-                        if(session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
+                        if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
                             session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
 
                         break;
@@ -1395,7 +1395,7 @@ namespace MBBSEmu.HostProcess
             var dueTime = NowUntil(initialWarningTime);
             var period = TimeSpan.FromMinutes(1);
 
-            return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
+            return new Timer(SendCleanupWarning, null, (int)dueTime.TotalMilliseconds, (int)period.TotalMilliseconds);
         }
 
         /// <summary>

@@ -54,37 +54,40 @@ namespace MBBSEmu.HostProcess.Structs
             if ((fileAttributes & FileAttributes.Archive) == FileAttributes.Archive)
                 fndBlkAttributes |= AttributeFlags.Archive;
 
-            Attributes = (byte) fndBlkAttributes;
+            Attributes = (byte)fndBlkAttributes;
         }
 
         public DateTime DateTime
         {
-          get {
-            var time = BitConverter.ToUInt16(Data, 22);
-            var date = BitConverter.ToUInt16(Data, 24);
+            get
+            {
+                var time = BitConverter.ToUInt16(Data, 22);
+                var date = BitConverter.ToUInt16(Data, 24);
 
-            var year = ((date >> 9) & 0x7F) + 1980;
-            var month = (date >> 5) & 0xF;
-            var day = date & 0x1F;
+                var year = ((date >> 9) & 0x7F) + 1980;
+                var month = (date >> 5) & 0xF;
+                var day = date & 0x1F;
 
-            var hours = (time >> 11) & 0x1F;
-            var minutes = (time >> 5) & 0x3F;
-            var seconds = (time << 1) & 0x3E;
+                var hours = (time >> 11) & 0x1F;
+                var minutes = (time >> 5) & 0x3F;
+                var seconds = (time << 1) & 0x3E;
 
-            return new DateTime(year, month, day, hours, minutes, seconds);
-          }
-          set {
-            var time = (ushort)((value.Hour << 11) | (value.Minute << 5 ) | (value.Second >> 1));
-            var date = (ushort)(((value.Year - 1980) << 9) | (value.Month << 5) | value.Day);
+                return new DateTime(year, month, day, hours, minutes, seconds);
+            }
+            set
+            {
+                var time = (ushort)((value.Hour << 11) | (value.Minute << 5) | (value.Second >> 1));
+                var date = (ushort)(((value.Year - 1980) << 9) | (value.Month << 5) | value.Day);
 
-            Array.Copy(BitConverter.GetBytes(time), 0, Data, 22, 2);
-            Array.Copy(BitConverter.GetBytes(date), 0, Data, 24, 2);
-          }
+                Array.Copy(BitConverter.GetBytes(time), 0, Data, 22, 2);
+                Array.Copy(BitConverter.GetBytes(date), 0, Data, 24, 2);
+            }
         }
 
-        public Int32 Size {
-          get => BitConverter.ToInt32(Data, 26);
-          set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 26, 4);
+        public Int32 Size
+        {
+            get => BitConverter.ToInt32(Data, 26);
+            set => Array.Copy(BitConverter.GetBytes(value), 0, Data, 26, 4);
         }
 
         public const int FilenameSize = 13;
@@ -111,7 +114,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public byte[] Data = new byte[StructSize];
 
-        public FndblkStruct() {}
+        public FndblkStruct() { }
 
         public FndblkStruct(ReadOnlySpan<byte> structData) => Data = structData.ToArray();
 

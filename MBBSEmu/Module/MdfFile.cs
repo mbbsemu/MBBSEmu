@@ -100,7 +100,7 @@ namespace MBBSEmu.Module
                         DLLFiles = keyValuePair[1].Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                     case "MSGS" when keyValuePair[1].Trim().Contains(' '): //MSG files separated by a space
-                        MSGFiles = keyValuePair[1].Trim().Split(' ').Where(x=> !string.IsNullOrWhiteSpace(x)).ToList();
+                        MSGFiles = keyValuePair[1].Trim().Split(' ').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                         break;
                     case "MSGS" when keyValuePair[1].Trim().Contains(','): //MSG files separated by a comma
                         MSGFiles = keyValuePair[1].Trim().Split(',').Where(x => !string.IsNullOrWhiteSpace(x)).ToList();

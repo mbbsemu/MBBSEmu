@@ -1,8 +1,8 @@
 ﻿using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -34,17 +34,17 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             Reset();
 
-            if(axValue == 0)
+            if (axValue == 0)
                 CreateFile(oldFileName);
 
             //Pointer to old and new filenames
-            var fromNamePointer = mbbsEmuMemoryCore.AllocateVariable("FROM_NAME", (ushort) (oldFileName.Length + 1));
+            var fromNamePointer = mbbsEmuMemoryCore.AllocateVariable("FROM_NAME", (ushort)(oldFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(fromNamePointer, Encoding.ASCII.GetBytes(oldFileName));
 
-            var toNamePointer = mbbsEmuMemoryCore.AllocateVariable("TO_NAME", (ushort) (newFileName.Length + 1));
+            var toNamePointer = mbbsEmuMemoryCore.AllocateVariable("TO_NAME", (ushort)(newFileName.Length + 1));
             mbbsEmuMemoryCore.SetArray(toNamePointer, Encoding.ASCII.GetBytes(newFileName));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RENAME_ORDINAL, new List<FarPtr> {fromNamePointer, toNamePointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, RENAME_ORDINAL, new List<FarPtr> { fromNamePointer, toNamePointer });
 
             Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
             Assert.Equal(axValue == 0, File.Exists(Path.Combine(mbbsModule.ModulePath, newFileName)));

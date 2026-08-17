@@ -20,7 +20,7 @@ namespace MBBSEmu.Memory
             foreach (var global in _cacheDictionary.Values)
             {
                 if (global is IDisposable)
-                    ((IDisposable) global).Dispose();
+                    ((IDisposable)global).Dispose();
             }
 
             _cacheDictionary.Clear();
@@ -31,7 +31,7 @@ namespace MBBSEmu.Memory
             if (!_cacheDictionary.TryGetValue(key, out var result))
                 throw new Exception($"Key not found in Cache: {key}");
 
-            return (T) result;
+            return (T)result;
         }
 
         public object Get(string key) => Get<object>(key);
@@ -56,7 +56,7 @@ namespace MBBSEmu.Memory
         public bool TryGet<T>(string key, out T result)
         {
             var output = _cacheDictionary.TryGetValue(key, out var outputResult);
-            result = (T) outputResult;
+            result = (T)outputResult;
             return output;
         }
     }

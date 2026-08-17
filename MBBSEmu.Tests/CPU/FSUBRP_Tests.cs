@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Iced.Intel;
+﻿using Iced.Intel;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 

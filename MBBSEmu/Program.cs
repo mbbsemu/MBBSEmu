@@ -187,17 +187,17 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-DBREBUILD":
-                        {
-                            _doDatabaseRebuild = true;
-                            if (i + 1 < args.Length && args[i + 1][0] != '-')
                             {
-                                _databaseRebuildFileName = args[i + 1];
-                                i++;
-                            }
+                                _doDatabaseRebuild = true;
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    _databaseRebuildFileName = args[i + 1];
+                                    i++;
+                                }
 
-                            _databaseRebuildFileName = _databaseRebuildFileName?.ToUpperInvariant();
-                            break;
-                        }
+                                _databaseRebuildFileName = _databaseRebuildFileName?.ToUpperInvariant();
+                                break;
+                            }
                         case "-APIREPORT":
                             _doApiReport = true;
                             break;
@@ -281,16 +281,16 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-PWRESET":
-                        {
-                            _doResetPassword = true;
-                            if (i + 1 < args.Length && args[i + 1][0] != '-')
                             {
-                                _newSysopPassword = args[i + 1];
-                                i++;
-                            }
+                                _doResetPassword = true;
+                                if (i + 1 < args.Length && args[i + 1][0] != '-')
+                                {
+                                    _newSysopPassword = args[i + 1];
+                                    i++;
+                                }
 
-                            break;
-                        }
+                                break;
+                            }
                         case "-V":
                             Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
                             return;
@@ -395,7 +395,7 @@ namespace MBBSEmu
                     foreach (var file in Directory.GetFiles(_modulePath, "*.MDF"))
                     {
                         var moduleIdentifier = Path.GetFileNameWithoutExtension(file);
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = moduleIdentifier, ModulePath = _modulePath, ModuleEnabled = true, MenuOptionKey = menuKeyOption.ToString()});
+                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = moduleIdentifier, ModulePath = _modulePath, ModuleEnabled = true, MenuOptionKey = menuKeyOption.ToString() });
                         menuKeyOption++;
                     }
 
@@ -701,7 +701,7 @@ namespace MBBSEmu
             _accountBtrieve.DeleteAll();
 
             //Insert each record into BBSUSR.DAT
-            foreach (var a in accounts) 
+            foreach (var a in accounts)
                 _accountBtrieve.Insert(new UserAccount(a.userName).Data, LogLevel.Error);
 
             //Verify the Counts are Equal

@@ -1,5 +1,5 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
+using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -8,7 +8,7 @@ namespace MBBSEmu.Tests.CPU
     public class FSUB_Tests : CpuTestBase
     {
         [Theory]
-        [InlineData(1f,.5f, .5f)]
+        [InlineData(1f, .5f, .5f)]
         [InlineData(10f, 5f, 5f)]
         [InlineData(10.1f, .1f, 10f)]
         public void FSUB_Test_M32(float value1, float value2, float expectedResult)

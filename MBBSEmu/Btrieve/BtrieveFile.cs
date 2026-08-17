@@ -22,7 +22,7 @@ namespace MBBSEmu.Btrieve
         /// <summary>
         ///     Number of Pages within the Btrieve File
         /// </summary>
-        public ushort PageCount => (ushort) (Data.Length / PageLength - 1);
+        public ushort PageCount => (ushort)(Data.Length / PageLength - 1);
 
         private uint _recordCount;
         /// <summary>
@@ -340,13 +340,14 @@ namespace MBBSEmu.Btrieve
                 var data = btrieveFileContentSpan.Slice(keyDefinitionBase, keyDefinitionLength).ToArray();
 
                 EnumKeyDataType dataType;
-                var attributes = (EnumKeyAttributeMask) BitConverter.ToUInt16(data, 0x8);
+                var attributes = (EnumKeyAttributeMask)BitConverter.ToUInt16(data, 0x8);
                 if (attributes.HasFlag(EnumKeyAttributeMask.UseExtendedDataType))
-                    dataType = (EnumKeyDataType) data[0x1C];
+                    dataType = (EnumKeyDataType)data[0x1C];
                 else
                     dataType = attributes.HasFlag(EnumKeyAttributeMask.OldStyleBinary) ? EnumKeyDataType.OldBinary : EnumKeyDataType.OldAscii;
 
-                var keyDefinition = new BtrieveKeyDefinition {
+                var keyDefinition = new BtrieveKeyDefinition
+                {
                     Number = currentKeyNumber,
                     Attributes = attributes,
                     DataType = dataType,
@@ -355,7 +356,7 @@ namespace MBBSEmu.Btrieve
                     Segment = attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey),
                     SegmentOf = attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey) ? currentKeyNumber : (ushort)0,
                     NullValue = data[0x1D],
-                  };
+                };
 
                 if (keyDefinition.RequiresACS)
                 {
@@ -508,12 +509,14 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="first">Fixed record pointer offset of the record from a data page</param>
         /// <param name="stream">MemoryStream containing the fixed record data already read.</param>
-        private byte[] GetVariableLengthData(uint recordOffset, MemoryStream stream) {
+        private byte[] GetVariableLengthData(uint recordOffset, MemoryStream stream)
+        {
             var variableData = Data.AsSpan().Slice((int)recordOffset + RecordLength, PhysicalRecordLength - RecordLength);
             var vrecPage = GetPageFromVariableLengthRecordPointer(variableData);
             var vrecFragment = variableData[3];
 
-            while (true) {
+            while (true)
+            {
                 // invalid page? abort and return what we have
                 if (vrecPage == 0xFFFFFF && vrecFragment == 0xFF)
                     return stream.ToArray();
@@ -603,7 +606,8 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         /// <param name="data">footer of the fixed record, at least 4 bytes in length</param>
         /// <returns>The page that this variable length record pointer points to</returns>
-        private static uint GetPageFromVariableLengthRecordPointer(ReadOnlySpan<byte> data) {
+        private static uint GetPageFromVariableLengthRecordPointer(ReadOnlySpan<byte> data)
+        {
             // high low mid, yep it's stupid
             return (uint)data[0] << 16 | (uint)data[1] | (uint)data[2] << 8;
         }

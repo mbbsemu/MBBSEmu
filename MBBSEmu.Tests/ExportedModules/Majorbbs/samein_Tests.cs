@@ -11,14 +11,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         [Theory]
         [InlineData("test", "test", 1)]
-        [InlineData("test", "XtestX",  1)]
-        [InlineData("TEST", "XtestX",  1)]
+        [InlineData("test", "XtestX", 1)]
+        [InlineData("TEST", "XtestX", 1)]
         [InlineData("test", "XTESTX", 1)]
-        [InlineData("test", "\0",  0)]
+        [InlineData("test", "\0", 0)]
         [InlineData("\0", "test", 0)]
         [InlineData("\0", "\0", 0)]
-        [InlineData("test", "t3st",  0)]
-        [InlineData("t", "test",  1)]
+        [InlineData("test", "t3st", 0)]
+        [InlineData("t", "test", 1)]
         [InlineData("testing", "test", 0)]
         public void samein_Test(string substring, string stringToSearch, ushort expected)
         {

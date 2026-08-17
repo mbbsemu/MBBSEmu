@@ -1,8 +1,8 @@
 ﻿using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs

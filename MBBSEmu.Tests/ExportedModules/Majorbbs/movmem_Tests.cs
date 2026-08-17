@@ -19,7 +19,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var srcPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort) expected.Length);
+            var srcPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort)expected.Length);
             mbbsEmuMemoryCore.SetArray("SRC", expected);
 
             var dstPointer = mbbsEmuMemoryCore.AllocateVariable("DST", (ushort)(expected.Length + 1));
@@ -36,7 +36,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 });
 
             //Verify Results
-            var dstArray = mbbsEmuMemoryCore.GetArray("DST", (ushort) expected.Length);
+            var dstArray = mbbsEmuMemoryCore.GetArray("DST", (ushort)expected.Length);
 
             Assert.Equal(expected, dstArray.ToArray());
         }
@@ -57,7 +57,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray("POINTER", source);
 
             var dstPointer = mbbsEmuMemoryCore.GetVariablePointer("POINTER");
-            
+
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, MOVMEM_ORDINAL,
                 new List<ushort>

@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -205,10 +205,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             Reset();
 
-            mbbsEmuCpuRegisters.DX = (ushort)((uint) value1 >> 16);
-            mbbsEmuCpuRegisters.AX = (ushort)((uint) value1 & 0xFFFF);
-            mbbsEmuCpuRegisters.CX = (ushort)((uint) value2 >> 16);
-            mbbsEmuCpuRegisters.BX = (ushort)((uint) value2 & 0xFFFF);
+            mbbsEmuCpuRegisters.DX = (ushort)((uint)value1 >> 16);
+            mbbsEmuCpuRegisters.AX = (ushort)((uint)value1 & 0xFFFF);
+            mbbsEmuCpuRegisters.CX = (ushort)((uint)value2 >> 16);
+            mbbsEmuCpuRegisters.BX = (ushort)((uint)value2 & 0xFFFF);
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, LXMUL_ORDINAL, new List<ushort>());
 
             //Verify Results

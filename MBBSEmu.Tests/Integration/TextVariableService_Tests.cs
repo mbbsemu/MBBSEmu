@@ -12,7 +12,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceGetVariables()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
 
                 //Check variables directly
@@ -23,7 +24,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceParseSystemNameLeft25()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
@@ -43,7 +45,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceParseTotalAccountsRight5()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
@@ -63,7 +66,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceParseUserIdCenter20()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
@@ -83,7 +87,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceParseChannelNoJus()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {
@@ -103,7 +108,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void TextVariableServiceUnknownNoJus()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();
                 var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
                 {

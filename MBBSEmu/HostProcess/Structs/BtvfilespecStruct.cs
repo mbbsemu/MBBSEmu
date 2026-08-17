@@ -55,7 +55,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public BtvfilespecStruct()
         {
-            
+
         }
 
         public BtvfilespecStruct(byte[] data)

@@ -1,6 +1,4 @@
 ﻿using MBBSEmu.CPU;
-using MBBSEmu.DOS;
-using MBBSEmu.Extensions;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
@@ -20,20 +18,20 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x19};
+            var testRegisters = new CpuRegisters { AH = 0x19 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
-            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
-                (ushort) testRegistersArrayData.Length));
+                (ushort)testRegistersArrayData.Length));
 
             //Verify Results
             Assert.Equal(2, testRegisters.AL);
@@ -73,20 +71,20 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x25, AL = 0x8};
+            var testRegisters = new CpuRegisters { AH = 0x25, AL = 0x8 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
-            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
-                (ushort) testRegistersArrayData.Length));
+                (ushort)testRegistersArrayData.Length));
 
             //Verify Results
             Assert.Equal(0, testRegisters.DS);
@@ -108,28 +106,28 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x2A};
+            var testRegisters = new CpuRegisters { AH = 0x2A };
 
             fakeClock.Now = new DateTime(year, month, day);
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
-            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
-                (ushort) testRegistersArrayData.Length));
+                (ushort)testRegistersArrayData.Length));
 
             //Verify Results
             Assert.Equal(fakeClock.Now.Day, testRegisters.DL);
             Assert.Equal(fakeClock.Now.Month, testRegisters.DH);
             Assert.Equal(fakeClock.Now.Year, testRegisters.CX);
-            Assert.Equal((byte) fakeClock.Now.DayOfWeek, testRegisters.AL);
+            Assert.Equal((byte)fakeClock.Now.DayOfWeek, testRegisters.AL);
         }
 
         [Theory]
@@ -147,22 +145,22 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x2C};
+            var testRegisters = new CpuRegisters { AH = 0x2C };
 
             fakeClock.Now = new DateTime(2020, 1, 6, hour, minute, seconds, milliseconds);
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
-            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
-                (ushort) testRegistersArrayData.Length));
+                (ushort)testRegistersArrayData.Length));
 
             //Verify Results
             Assert.Equal(fakeClock.Now.Hour, testRegisters.CH);
@@ -178,16 +176,16 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters() {AH = 0x1A, DS = 0x1000, DX = 0x3480};
+            var testRegisters = new CpuRegisters() { AH = 0x1A, DS = 0x1000, DX = 0x3480 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
-            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort) testRegistersArrayData.Length);
+            var testRegistersPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)testRegistersArrayData.Length);
             mbbsEmuMemoryCore.SetArray(testRegistersPointer, testRegistersArrayData);
 
             //Execute Test to set the DTA
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Now get the address we just set
             testRegisters.AH = 0x2F;
@@ -196,11 +194,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Execute Test to retrieve the DTA
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, INTDOS_ORDINAL,
-                new List<FarPtr> {testRegistersPointer, testRegistersPointer});
+                new List<FarPtr> { testRegistersPointer, testRegistersPointer });
 
             //Data returned in memory, so we need to reload testRegisters from memory
             testRegisters.FromRegs(mbbsEmuMemoryCore.GetArray(testRegistersPointer,
-                (ushort) testRegistersArrayData.Length));
+                (ushort)testRegistersArrayData.Length));
 
             //Verify Results
             //Assert.Equal(0x1000, testRegisters.ES); // regs doesn't return ES
@@ -214,7 +212,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x30};
+            var testRegisters = new CpuRegisters { AH = 0x30 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -276,7 +274,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x44, AL = 0};
+            var testRegisters = new CpuRegisters { AH = 0x44, AL = 0 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -302,7 +300,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x47};
+            var testRegisters = new CpuRegisters { AH = 0x47 };
 
             var dirPointer = mbbsEmuMemoryCore.AllocateVariable("DIR-POINTER", 10);
             mbbsEmuCpuRegisters.DS = dirPointer.Segment;
@@ -336,7 +334,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x4A};
+            var testRegisters = new CpuRegisters { AH = 0x4A };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
@@ -369,7 +367,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Set Argument Values to be Passed In
-            var testRegisters = new CpuRegisters {AH = 0x62};
+            var testRegisters = new CpuRegisters { AH = 0x62 };
 
             //Allocate some memory to hold the test data
             var testRegistersArrayData = testRegisters.ToRegs();
