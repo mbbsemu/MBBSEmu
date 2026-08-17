@@ -29,12 +29,12 @@ namespace MBBSEmu.Tests.ExportedModules
         ///     __cdecl convention has the caller cleaning up the stack.
         /// </summary>
         private static readonly HashSet<ushort> STDCALL_ORDINALS = new HashSet<ushort> {
-      654,  // f_ldiv
-      656,  // f_ludiv
-      665,  // f_scopy
-      655,  // f_lmod
-      657,  // f_lumod
-    };
+            654,  // f_ldiv
+            656,  // f_ludiv
+            665,  // f_scopy
+            655,  // f_lmod
+            657,  // f_lumod
+        };
 
         protected const ushort STACK_SEGMENT = 0;
         protected const ushort CODE_SEGMENT = 1;
