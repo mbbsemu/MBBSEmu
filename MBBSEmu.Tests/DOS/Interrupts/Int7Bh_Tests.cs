@@ -48,8 +48,7 @@ namespace MBBSEmu.DOS.Interrupts
         {
             _modulePath = GetModulePath();
 
-            _serviceResolver =
-                new ServiceResolver(SessionBuilder.ForTest($"MBBSExeRuntime_{RANDOM.Next()}"));
+            _serviceResolver = new ServiceResolver(SessionBuilder.ForTest($"MBBSExeRuntime_{RANDOM.Next()}"));
 
             Directory.CreateDirectory(_modulePath);
 
@@ -213,6 +212,7 @@ namespace MBBSEmu.DOS.Interrupts
 
             ptr += size;
             size = Marshal.SizeOf(typeof(Int7Bh.BtrieveKeySpec));
+
             Int7Bh.ByteArrayToStructure<Int7Bh.BtrieveKeySpec>(_memory.GetArray(ptr + 0 * size, (ushort)size).ToArray()).Should().BeEquivalentTo(new Int7Bh.BtrieveKeySpec()
             {
                 flags = (ushort)(EnumKeyAttributeMask.Duplicates | EnumKeyAttributeMask.UseExtendedDataType),
@@ -985,7 +985,6 @@ namespace MBBSEmu.DOS.Interrupts
             return ret;
         }
 
-        private BtrieveFileProcessor GetBtrieveFileProcessor(FarPtr positionBlock) =>
-            _int7B.GetFromGUID(new Guid(_memory.GetArray(positionBlock, 16).ToArray()));
+        private BtrieveFileProcessor GetBtrieveFileProcessor(FarPtr positionBlock) => _int7B.GetFromGUID(new Guid(_memory.GetArray(positionBlock, 16).ToArray()));
     }
 }
