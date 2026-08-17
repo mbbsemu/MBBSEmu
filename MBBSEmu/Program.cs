@@ -21,7 +21,6 @@ using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
 using MBBSEmu.UI.Main;
 using MBBSEmu.UI.Setup;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;

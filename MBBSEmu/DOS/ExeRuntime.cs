@@ -54,7 +54,7 @@ namespace MBBSEmu.DOS
             _path = path;
             _sessionBase = sessionBase;
             File = file;
-            Memory = new RealModeMemoryCore( 0x8000, _logger);
+            Memory = new RealModeMemoryCore(0x8000, _logger);
             Cpu = new CpuCore();
             Registers = new CpuRegisters();
 
@@ -91,7 +91,8 @@ namespace MBBSEmu.DOS
             sessionBase,
             new BlockingCollectionReaderStream(sessionBase.DataFromClient),
             new BlockingCollectionWriterStream(sessionBase.DataToClient),
-            new TextWriterStream(Console.Error)) {}
+            new TextWriterStream(Console.Error))
+        { }
 
         private static ushort GetNextSegment(ushort segment, uint size) => (ushort)(segment + (size >> 4) + 1);
         private static ushort GetPreviousSegment(ushort segment, uint size) => (ushort)(segment - (size >> 4) - 1);
@@ -198,7 +199,7 @@ namespace MBBSEmu.DOS
             if (cmdLine.Length > 126)
                 cmdLine = cmdLine.Substring(0, 126);
 
-            var psp = new PSPStruct { NextSegOffset = _nextSegmentOffset, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length};
+            var psp = new PSPStruct { NextSegOffset = _nextSegmentOffset, EnvSeg = _environmentSegment, CommandTailLength = (byte)cmdLine.Length };
             Array.Copy(Encoding.ASCII.GetBytes(cmdLine), 0, psp.CommandTail, 0, cmdLine.Length);
 
             Memory.SetArray(_pspSegment, 0, psp.Data);

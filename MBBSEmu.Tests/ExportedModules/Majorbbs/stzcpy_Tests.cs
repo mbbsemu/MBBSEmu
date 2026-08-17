@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var destinationStringPointer = mbbsEmuMemoryCore.AllocateVariable("DST", dstLength);
             mbbsEmuMemoryCore.FillArray(destinationStringPointer, dstLength, 0xFF);
 
-            var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort) (srcString.Length));
+            var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SRC", (ushort)(srcString.Length));
             mbbsEmuMemoryCore.SetArray("SRC", Encoding.ASCII.GetBytes(srcString));
 
             //Execute Test

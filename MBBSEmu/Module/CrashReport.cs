@@ -69,7 +69,7 @@ namespace MBBSEmu.Module
             {
                 crashReportVariables.Add("Exception retrieving CPU Instruction");
             }
-            
+
 
             //Registers
             crashReportVariables.Add(_registers.ToString());
@@ -81,7 +81,7 @@ namespace MBBSEmu.Module
             //Replace Variables in Template
             var crashReport = string.Format(crashTemplate, crashReportVariables.ToArray());
 
-            if(string.IsNullOrEmpty(fileName))
+            if (string.IsNullOrEmpty(fileName))
                 fileName = $"Crash_{_moduleToReport.ModuleIdentifier}_{DateTime.Now:yyyyMMddHHmmss}.txt";
 
             //Write Crash Report to File Named with the Module Identifier and the current time

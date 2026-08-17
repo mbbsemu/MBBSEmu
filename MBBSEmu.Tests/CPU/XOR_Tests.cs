@@ -1,6 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -190,7 +188,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify Results
-            Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetByte(2,0));
+            Assert.Equal(expectedResult, mbbsEmuMemoryCore.GetByte(2, 0));
 
             //Verify Flags
             Assert.Equal(zeroFlagSet, mbbsEmuCpuRegisters.ZeroFlag);

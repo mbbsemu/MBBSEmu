@@ -1,13 +1,13 @@
 using MBBSEmu.DOS;
 using MBBSEmu.HostProcess;
 using MBBSEmu.Logging;
+using MBBSEmu.Logging.Targets;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.TextVariables;
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using MBBSEmu.Logging.Targets;
 
 namespace MBBSEmu.Session.LocalConsole
 {
@@ -74,7 +74,7 @@ namespace MBBSEmu.Session.LocalConsole
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 new Win32VT100(_logger).Enable();
 
-            if(disableLogging)
+            if (disableLogging)
                 (_logger as LoggerBase)?.RemoveTarget<ConsoleTarget>();
 
             _consoleInputThreadIsRunning = true;
@@ -93,7 +93,7 @@ namespace MBBSEmu.Session.LocalConsole
             {
                 DataFromClient.TryAdd((byte)Console.ReadKey(true).KeyChar);
 
-                if(_processClientData)
+                if (_processClientData)
                     ProcessDataFromClient();
             }
         }

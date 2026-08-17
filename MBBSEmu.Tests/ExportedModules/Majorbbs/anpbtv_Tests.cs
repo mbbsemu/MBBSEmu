@@ -1,9 +1,9 @@
 using FluentAssertions;
 using MBBSEmu.Btrieve;
 using MBBSEmu.Btrieve.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -21,161 +21,161 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Fact]
         public void anpbtv_noBB()
         {
-          Reset();
+            Reset();
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { 0, 0, 0});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { 0, 0, 0 });
 
-          mbbsEmuCpuRegisters.AX.Should().Be(0);
+            mbbsEmuCpuRegisters.AX.Should().Be(0);
         }
 
         [Fact]
         public void anpbtv_no_duplicates()
         {
-          Reset();
+            Reset();
 
-          AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
+            AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
 
-          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
-          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("test"));
+            var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+            mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("test"));
 
-          // have to query first, seek to "test"
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            // have to query first, seek to "test"
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(5);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(5);
 
-          // do the actual test now, which seeks to "yyz", but fails since the key is different
-          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().Be(0);
+            // do the actual test now, which seeks to "yyz", but fails since the key is different
+            var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().Be(0);
 
-          // verify absolute position - side effect is that it does complete the move next
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(6);
+            // verify absolute position - side effect is that it does complete the move next
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(6);
         }
 
         [Fact]
         public void anpbtv_duplicates_case_sensitive()
         {
-          Reset();
+            Reset();
 
-          AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
+            AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
 
-          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
-          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
+            var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+            mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
 
-          // have to query first, seek to "ABC"
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            // have to query first, seek to "ABC"
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(1);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(1);
 
-          // do the actual test now, which seeks to the next "ABC"
-          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(2);
+            // do the actual test now, which seeks to the next "ABC"
+            var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(2);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(2);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(2);
 
-          // Try to seek again, should fail since case sensitive
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().Be(0);
+            // Try to seek again, should fail since case sensitive
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().Be(0);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(3);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(3);
         }
 
         [Fact]
         public void anpbtv_duplicates_case_insensitive()
         {
-          Reset();
+            Reset();
 
-          AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
+            AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
 
-          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
-          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
+            var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+            mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
 
-          // have to query first, seek to "ABC"
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            // have to query first, seek to "ABC"
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(1);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(1);
 
-          // do the actual test now, which seeks to the next "ABC"
-          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(2);
+            // do the actual test now, which seeks to the next "ABC"
+            var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTV, new List<ushort> { record.Offset, record.Segment, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(2);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(2);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(2);
 
-          // Try to seek again, should succeed to "abc" since case insensitive
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(3);
+            // Try to seek again, should succeed to "abc" since case insensitive
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(3);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(3);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(3);
 
-          // Last seek, should succeed to final "abc" since case insensitive
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(4);
+            // Last seek, should succeed to final "abc" since case insensitive
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(4);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(4);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(4);
 
-          // Last will fail
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext});
-          mbbsEmuCpuRegisters.AX.Should().Be(0);
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(5);
+            // Last will fail
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ANPBTVL, new List<ushort> { record.Offset, record.Segment, /* chkcas= */ 0, (ushort)EnumBtrieveOperationCodes.AcquireNext });
+            mbbsEmuCpuRegisters.AX.Should().Be(0);
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(5);
 
-          // verify absolute position
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(5);
+            // verify absolute position
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(5);
         }
 
         [Fact]
         public void qnpbtv_after_gabbtv_continues_from_absolute_position()
         {
-          Reset();
+            Reset();
 
-          AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
+            AllocateBB(CreateBtrieveFile(), RECORD_LENGTH);
 
-          var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
-          mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
+            var keyPtr = mbbsEmuMemoryCore.AllocateVariable(null, 128);
+            mbbsEmuMemoryCore.SetArray(keyPtr, Encoding.ASCII.GetBytes("ABC"));
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QRYBTV, new List<ushort> { keyPtr.Offset, keyPtr.Segment, /* key= */ 0, (ushort)EnumBtrieveOperationCodes.QueryGreaterOrEqual });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(1);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(1);
 
-          var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GABBTV, new List<ushort> { record.Offset, record.Segment, /* abspos= */ 5, 0, /* key= */ 0 });
-          mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(5);
+            var record = mbbsEmuMemoryCore.AllocateVariable(null, RECORD_LENGTH);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GABBTV, new List<ushort> { record.Offset, record.Segment, /* abspos= */ 5, 0, /* key= */ 0 });
+            mbbsEmuMemoryCore.GetByte(record + RECORD_LENGTH - 1).Should().Be(5);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QNPBTV, new List<ushort> { (ushort)EnumBtrieveOperationCodes.QueryNext});
-          mbbsEmuCpuRegisters.AX.Should().NotBe(0);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, QNPBTV, new List<ushort> { (ushort)EnumBtrieveOperationCodes.QueryNext });
+            mbbsEmuCpuRegisters.AX.Should().NotBe(0);
 
-          ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> {});
-          mbbsEmuCpuRegisters.GetLong().Should().Be(6);
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ABSBTV, new List<ushort> { });
+            mbbsEmuCpuRegisters.GetLong().Should().Be(6);
         }
 
         private BtrieveFile CreateBtrieveFile()
         {
-          var btrieveFile = new BtrieveFile()
+            var btrieveFile = new BtrieveFile()
             {
                 RecordLength = RECORD_LENGTH,
                 FileName = $"{RANDOM.Next() % 100_000_000}.DAT",
@@ -184,14 +184,14 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             var key = new BtrieveKey();
             key.Segments.Add(new BtrieveKeyDefinition()
-                {
-                    Number = 0,
-                    Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.Duplicates,
-                    DataType = EnumKeyDataType.Zstring,
-                    Offset = 0,
-                    Length = 32,
-                    Segment = false,
-                });
+            {
+                Number = 0,
+                Attributes = EnumKeyAttributeMask.UseExtendedDataType | EnumKeyAttributeMask.Duplicates,
+                DataType = EnumKeyDataType.Zstring,
+                Offset = 0,
+                Length = 32,
+                Segment = false,
+            });
 
             btrieveFile.Keys.Add(0, key);
 
@@ -207,10 +207,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
         private static byte[] CreateRecord(string value, byte lastByte)
         {
-          var ret = new byte[RECORD_LENGTH];
-          Array.Copy(Encoding.ASCII.GetBytes(value), ret, value.Length);
-          ret[RECORD_LENGTH - 1] = lastByte;
-          return ret;
+            var ret = new byte[RECORD_LENGTH];
+            Array.Copy(Encoding.ASCII.GetBytes(value), ret, value.Length);
+            ret[RECORD_LENGTH - 1] = lastByte;
+            return ret;
         }
     }
 }

@@ -4,32 +4,32 @@
     ///     Specifies whether the operation code requires a key value.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
-    public class RequiresKey : System.Attribute {}
+    public class RequiresKey : System.Attribute { }
 
     /// <summary>
     ///     Specifies whether the operation code operates on a previous query.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
-    public class UsesPreviousQuery : System.Attribute {}
+    public class UsesPreviousQuery : System.Attribute { }
 
     /// <summary>
     ///     Specifies whether the operation code results in data being acquired.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
-    public class AcquiresData : System.Attribute {}
+    public class AcquiresData : System.Attribute { }
 
     /// <summary>
     ///     Specifies whether the operation code results in key data being queried.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
-    public class QueryOnly : System.Attribute {}
+    public class QueryOnly : System.Attribute { }
 
     /// <summary>
     ///     Specifies that the operation code operates on physical record position rather than
     ///     a key, so any key number supplied by the caller is meaningless and must be ignored.
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Field)]
-    public class IgnoresKeyNumber : System.Attribute {}
+    public class IgnoresKeyNumber : System.Attribute { }
 
     /// <summary>
     ///     Btrieve Operation Codes that are passed into Btrieve

@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using System.Text;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -92,7 +90,7 @@ namespace MBBSEmu.Tests.CPU
                 mbbsEmuCpuRegisters.IP = 0;
 
                 while (!mbbsEmuCpuRegisters.Halt)
-                   mbbsEmuCpuCore.Tick();
+                    mbbsEmuCpuCore.Tick();
 
                 Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetArray(2, 0, 4)).Should().Be(i.ToString("X4"));
             }

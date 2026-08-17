@@ -124,7 +124,7 @@ namespace MBBSEmu.Disassembler
                     for (var j = 0; j < relocationRecordEntries; j++)
                     {
                         var relocationRecord = new RelocationRecord(_logger)
-                            {Data = data.Slice(relocationInfoCursor + j * 8, 8).ToArray()};
+                        { Data = data.Slice(relocationInfoCursor + j * 8, 8).ToArray() };
 
                         records.Add(relocationRecord.Offset, relocationRecord);
                     }

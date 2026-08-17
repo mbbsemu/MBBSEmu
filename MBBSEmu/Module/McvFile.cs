@@ -14,7 +14,7 @@ namespace MBBSEmu.Module
     /// </summary>
     public class McvFile
     {
-        private static readonly byte[] NEW_LINE = {(byte)'\r', (byte)'\n'};
+        private static readonly byte[] NEW_LINE = { (byte)'\r', (byte)'\n' };
 
         protected static readonly IMessageLogger _logger = new LogFactory().GetLogger<MessageLogger>();
 
@@ -75,7 +75,7 @@ namespace MBBSEmu.Module
             if (languagesOffset == 0)
                 _dynamicLength = true;
 
-            if(numberOfLanguages > 2)
+            if (numberOfLanguages > 2)
                 throw new Exception("MbbsEmu does not support modules that implement more than 2 languages");
 
             var messageLength = 0;
@@ -229,7 +229,7 @@ namespace MBBSEmu.Module
         {
             var message = Encoding.ASCII.GetString(Messages[ordinal]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            if(message.Length == 0)
+            if (message.Length == 0)
                 throw new Exception($"Unable to locate value in field {FileName}:{ordinal}");
 
             //Return the last word which will contain the number

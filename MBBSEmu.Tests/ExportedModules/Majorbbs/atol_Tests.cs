@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using MBBSEmu.Memory;
+using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -30,10 +30,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Reset();
 
             //Allocate Variables to be Passed In
-            var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort) (input.Length + 1));
+            var inputStringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", (ushort)(input.Length + 1));
             mbbsEmuMemoryCore.SetArray(inputStringPointer, Encoding.ASCII.GetBytes(input));
 
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ATOL_ORDINAL, new List<FarPtr> { inputStringPointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ATOL_ORDINAL, new List<FarPtr> { inputStringPointer });
 
             //Verify Results
             Assert.Equal((ushort)(expectedValue & 0xFFFF), mbbsEmuCpuRegisters.AX);

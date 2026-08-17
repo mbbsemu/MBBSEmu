@@ -16,11 +16,11 @@ namespace MBBSEmu.CPU
 
         public ushort ControlWord { get; set; }
 
-        public void SetFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort) (StatusWord | (ushort) statusFlag);
+        public void SetFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort)(StatusWord | (ushort)statusFlag);
 
-        public void ClearFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort) (StatusWord & ~(ushort) statusFlag);
+        public void ClearFlag(EnumFpuStatusFlags statusFlag) => StatusWord = (ushort)(StatusWord & ~(ushort)statusFlag);
 
-        public byte GetStackTop() => (byte) ((StatusWord >> 11) & 0x7);
+        public byte GetStackTop() => (byte)((StatusWord >> 11) & 0x7);
 
         /// <summary>
         ///     Gets the FPU Rounding Control by getting the Rounding Control bits from the Control Word and convert it to a C# MidpointRounding enum
@@ -491,7 +491,7 @@ namespace MBBSEmu.CPU
             Fpu.SetStackTop(7);
         }
 
-         /// <summary>
+        /// <summary>
         ///     Returns a DOS.H compatible struct for register values (WORDREGS, BYTEREGS)
         /// </summary>
         /// <returns></returns>

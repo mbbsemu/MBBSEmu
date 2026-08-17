@@ -49,7 +49,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public BtvkeyspecStruct()
         {
-            
+
         }
 
         public BtvkeyspecStruct(byte[] data)

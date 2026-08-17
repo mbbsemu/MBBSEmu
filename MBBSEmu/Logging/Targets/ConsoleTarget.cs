@@ -16,7 +16,7 @@ namespace MBBSEmu.Logging.Targets
         /// <param name="logEntry">params object[] consisting of (logLevel, logMessage)</param>
         public void Write(params object[] logEntry)
         {
-            var logLevel =  logEntry[0] as string ?? ((LogLevel)logEntry[0]).ToString();
+            var logLevel = logEntry[0] as string ?? ((LogLevel)logEntry[0]).ToString();
             var logMessage = (string)logEntry[1];
 
             //Use reflection to get the name of the class calling this method

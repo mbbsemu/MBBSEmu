@@ -1,9 +1,9 @@
 using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.Memory;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -11,12 +11,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
     [Collection("Non-Parallel")]
     public class fnd1st_Tests : ExportedModuleTestBase, IDisposable
     {
-      private const int FND1ST_ORDINAL = 694;
-      private const int FNDNXT_ORDINAL = 695;
+        private const int FND1ST_ORDINAL = 694;
+        private const int FNDNXT_ORDINAL = 695;
 
-      private const long FIVE_SECOND_TICKS = 5 * 1_000 * 10_000;
+        private const long FIVE_SECOND_TICKS = 5 * 1_000 * 10_000;
 
-      private readonly long ticksNow = DateTime.Now.Ticks;
+        private readonly long ticksNow = DateTime.Now.Ticks;
 
         public fnd1st_Tests() : base(Path.Join(Path.GetTempPath(), "fnd1st"))
         {
@@ -120,7 +120,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             var fbs = new FndblkStruct(mbbsEmuMemoryCore.GetArray(fndblkPointer, FndblkStruct.StructSize));
             Assert.Equal(9, fbs.Size);
-            Assert.Equal(0, (byte) fbs.Attributes & (byte) ~FndblkStruct.AttributeFlags.Archive);
+            Assert.Equal(0, (byte)fbs.Attributes & (byte)~FndblkStruct.AttributeFlags.Archive);
             Assert.True(Math.Abs(ticksNow - fbs.DateTime.Ticks) <= FIVE_SECOND_TICKS);
 
             return fbs.Name;

@@ -1,6 +1,6 @@
+using MBBSEmu.Memory;
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(str2Pointer, Encoding.ASCII.GetBytes(b));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCMP_ORDINAL, new List<FarPtr> {str1Pointer, str2Pointer});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCMP_ORDINAL, new List<FarPtr> { str1Pointer, str2Pointer });
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }

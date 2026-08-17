@@ -54,7 +54,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             //Verify the 10 Words were copies
-            for (ushort i = 0; i < 20; i+= 2)
+            for (ushort i = 0; i < 20; i += 2)
             {
                 Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(mbbsEmuCpuRegisters.ES, i));
             }
@@ -76,7 +76,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.ES = 3;
             mbbsEmuCpuRegisters.DI = 22;
             mbbsEmuCpuRegisters.CX = 10;
-            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort) EnumFlags.DF);
+            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.DF);
 
             mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.DS, 0, 0xFF, 0xFF);
             mbbsEmuMemoryCore.FillArray(mbbsEmuCpuRegisters.ES, 0, 0xFF, 0x0);

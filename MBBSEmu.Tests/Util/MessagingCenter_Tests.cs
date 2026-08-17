@@ -91,7 +91,7 @@ namespace MBBSEmu.Tests.Util
         public void NoArgFilter()
         {
             var sentMessage = false;
-            
+
             MessagingCenter.Subscribe(this, EnumMessageEvent.EnableModule, (sender) => sentMessage = true, this);
 
             MessagingCenter.Send(new MessagingCenter_Tests(), EnumMessageEvent.EnableModule);
@@ -110,9 +110,9 @@ namespace MBBSEmu.Tests.Util
         {
             var sub1 = new object();
             var sub2 = new object();
-            var  sentMessage1 = false;
+            var sentMessage1 = false;
             var sentMessage2 = false;
-            
+
             MessagingCenter.Subscribe<MessagingCenter_Tests>(sub1, EnumMessageEvent.EnableModule, (sender) => sentMessage1 = true);
             MessagingCenter.Subscribe<MessagingCenter_Tests>(sub2, EnumMessageEvent.EnableModule, (sender) => sentMessage2 = true);
 

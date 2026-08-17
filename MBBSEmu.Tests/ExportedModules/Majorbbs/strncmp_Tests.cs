@@ -35,10 +35,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCMP_ORDINAL,
                 new List<ushort>
                 {
-                    str1Pointer.Offset, 
-                    str1Pointer.Segment, 
-                    str2Pointer.Offset, 
-                    str2Pointer.Segment, 
+                    str1Pointer.Offset,
+                    str1Pointer.Segment,
+                    str2Pointer.Offset,
+                    str2Pointer.Segment,
                     length
                 });
 

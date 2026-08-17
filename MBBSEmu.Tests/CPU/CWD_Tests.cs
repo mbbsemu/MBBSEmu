@@ -3,7 +3,7 @@ using Xunit;
 
 namespace MBBSEmu.Tests.CPU
 {
-    public class CWD_Tests :CpuTestBase
+    public class CWD_Tests : CpuTestBase
     {
         [Theory]
         [InlineData(0x1, 0x0)]

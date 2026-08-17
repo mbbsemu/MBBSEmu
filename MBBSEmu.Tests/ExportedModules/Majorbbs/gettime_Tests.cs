@@ -27,13 +27,13 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             fakeClock.Now = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
 
             var dosTimeDateStructPointer = mbbsEmuMemoryCore.AllocateVariable("DOSDATETIME", TimeStruct.Size);
-            
+
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GETTIME_ORDINAL, new List<FarPtr> { dosTimeDateStructPointer });
 
             //Verify Results
             var dosTimeDateStruct = mbbsEmuMemoryCore.GetArray(dosTimeDateStructPointer, TimeStruct.Size);
-            
+
             Assert.Equal(minute, dosTimeDateStruct[0]);
             Assert.Equal(hour, dosTimeDateStruct[1]);
             Assert.Equal(0, dosTimeDateStruct[2]);

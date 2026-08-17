@@ -1,5 +1,5 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU

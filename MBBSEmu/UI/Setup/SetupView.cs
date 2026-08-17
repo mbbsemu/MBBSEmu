@@ -43,9 +43,9 @@ namespace MBBSEmu.UI.Setup
                 Height = Dim.Fill(),
                 Border = new Border
                 {
-                    BorderStyle = BorderStyle.Double, 
-                    BorderBrush = Color.BrightCyan, 
-                    Title= "MBBSEmu Initial Setup" 
+                    BorderStyle = BorderStyle.Double,
+                    BorderBrush = Color.BrightCyan,
+                    Title = "MBBSEmu Initial Setup"
                 },
             };
             MainWindow.Add(outerView);
@@ -96,10 +96,10 @@ namespace MBBSEmu.UI.Setup
             lbl = new Label { Text = "Registration Number: ", X = 1, Y = Pos.Bottom(lbl) + 1 };
             var bbsRegistrationNumberField = new TextField
             {
-                Text = new Random().Next(10000000, 99999999).ToString(), 
-                Width = 8, 
+                Text = new Random().Next(10000000, 99999999).ToString(),
+                Width = 8,
                 X = Pos.Right(lbl),
-                Y = Pos.Top(lbl), 
+                Y = Pos.Top(lbl),
                 ColorScheme = _inputFieldColorScheme
             };
             bbsRegistrationNumberField.Enter += _ =>
@@ -494,7 +494,7 @@ namespace MBBSEmu.UI.Setup
                         "Yes", "No") == 0)
                 {
                     //Prompt a File Dialog to save appsettings.json to the desired location
-                    var saveFileDialog = new SaveDialog("Save Settings", "Select the path and file name to save your settings.\n\nWe recommend using the filename \"appsettings.json\"", new List<string>() { ".json"})
+                    var saveFileDialog = new SaveDialog("Save Settings", "Select the path and file name to save your settings.\n\nWe recommend using the filename \"appsettings.json\"", new List<string>() { ".json" })
                     {
                         Width = Dim.Percent(75),
                         Height = Dim.Percent(75)
@@ -506,7 +506,7 @@ namespace MBBSEmu.UI.Setup
 
                     var appSettingsFilePath = saveFileDialog.FilePath.ToString();
 
-                    if(saveFileDialog.Canceled || string.IsNullOrEmpty(appSettingsFilePath))
+                    if (saveFileDialog.Canceled || string.IsNullOrEmpty(appSettingsFilePath))
                     {
                         //Exit Out
                         MessageBox.ErrorQuery("Error", "Setup Cancelled", "Ok");
@@ -520,7 +520,7 @@ namespace MBBSEmu.UI.Setup
                         //Show a message box to confirm settings were written
                         MessageBox.Query("Success", $"Settings were successfully written to:\n{appSettingsFilePath}", "Ok");
                     }
-                    
+
                     //Close the Wizard
                     wizard.Running = false;
                     wizard.Visible = false;

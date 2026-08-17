@@ -127,7 +127,7 @@ namespace MBBSEmu.Memory
         {
             throw new NotImplementedException();
         }
-        
+
         void IDisposable.Dispose()
         {
 

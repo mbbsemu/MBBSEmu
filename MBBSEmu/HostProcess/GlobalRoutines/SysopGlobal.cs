@@ -185,7 +185,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"DISABLE <MODULEID>",-30} Disables specified module".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"CLEANUP",-30} Runs Nightly Cleanup".EncodeToANSIString());
             _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|{"VERSION",-30} Displays MBBSEmu Version\r\n".EncodeToANSIString());
-            
+
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
         /// </summary>
         private void Version()
         {
-            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Version: |RESET||RED||B|{ new ResourceManager().GetString("MBBSEmu.Assets.version.txt") }".EncodeToANSIString());
+            _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Version: |RESET||RED||B|{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}".EncodeToANSIString());
         }
 
         /// <summary>
@@ -228,7 +228,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             }
 
             var userName = commandSequence[2];
-            
+
             //Verify the Account Exists
             if (!IsValidUser(userName))
                 return;
@@ -238,14 +238,14 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
                 _sessions[_channelNumber].SendToClient($"\r\n|RESET||WHITE||B|Cannot remove logged in user: {userName}|RESET|\r\n".EncodeToANSIString());
                 return;
             }
-            
+
             //Remove the User from MBBSEmu User Database
             var userAccount = _accountRepository.GetAccountByUsername(userName);
             _accountRepository.DeleteAccountById(userAccount.accountId);
 
             //Remove the User from the BBSUSR Database
             var accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
-            
+
             var result = accountBtrieve.PerformOperation(0, new Span<byte>(new UserAccount(userAccount.userName.ToUpper()).Data)[..55], EnumBtrieveOperationCodes.AcquireEqual);
 
             if (result)
@@ -293,7 +293,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
 
             //Lookup current gender
             var accountGender = accountBtrieve.GetRecord().ElementAt(213);
-            accountGender = accountGender == (byte) 'F' ? (byte) 'M' : (byte) 'F';
+            accountGender = accountGender == (byte)'F' ? (byte)'M' : (byte)'F';
 
             var btrieveAccount = accountBtrieve.GetRecord();
             btrieveAccount[213] = accountGender;
@@ -448,7 +448,7 @@ namespace MBBSEmu.HostProcess.GlobalRoutines
             }
 
             var message = string.Join(" ", commandSequence.Skip(2));
-            
+
             foreach (var c in _sessions.Where(c => c.Value.Channel != _channelNumber))
                 _sessions[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|SYSOP BROADCAST: {message}|RESET|\r\n".EncodeToANSIArray());
         }

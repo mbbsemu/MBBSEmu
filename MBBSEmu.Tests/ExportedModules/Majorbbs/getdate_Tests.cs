@@ -27,7 +27,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             //Set Argument Values to be Passed In
             fakeClock.Now = new DateTime(year, month, day);
             var dateStringPointer = mbbsEmuMemoryCore.AllocateVariable("DATE_STRING", (DateStruct.Size));
-            
+
             //Execute Test
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, GETDATE_ORDINAL, new List<FarPtr> { dateStringPointer });
 

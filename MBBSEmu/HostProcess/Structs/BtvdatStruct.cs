@@ -103,7 +103,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public const ushort Size = 28;
 
-        public BtvdatStruct() {}
+        public BtvdatStruct() { }
 
         public BtvdatStruct(byte[] data)
         {

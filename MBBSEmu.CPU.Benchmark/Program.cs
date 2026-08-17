@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Iced.Intel;
+using MBBSEmu.Memory;
+using System;
 using System.IO;
 using System.Threading;
-using Iced.Intel;
-using MBBSEmu.Memory;
 using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.CPU.Benchmark
@@ -21,7 +21,7 @@ namespace MBBSEmu.CPU.Benchmark
             new Program().Execute(args);
         }
 
-        public Program() {}
+        public Program() { }
 
         private void Execute(string[] args)
         {
@@ -69,7 +69,7 @@ namespace MBBSEmu.CPU.Benchmark
 
         private void RunThread()
         {
-            while(_isRunning)
+            while (_isRunning)
                 mbbsEmuCpuCore.Tick();
         }
 

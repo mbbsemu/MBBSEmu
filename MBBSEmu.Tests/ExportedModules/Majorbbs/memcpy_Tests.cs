@@ -48,7 +48,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             // validates last item to be 0x7F
             if (copiedLength > 0)
             {
-              mbbsEmuMemoryCore.GetByte(dstPointer + copiedLength - 1).Should().Be(0x7F);
+                mbbsEmuMemoryCore.GetByte(dstPointer + copiedLength - 1).Should().Be(0x7F);
             }
             // validates the item AFTER the last item is still 0 (doesn't get overwritten)
             mbbsEmuMemoryCore.GetByte(dstPointer + copiedLength).Should().Be(0);
@@ -80,8 +80,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 });
 
             var expectedArray = new byte[128];
-            Array.Fill(expectedArray, value: (byte) 0, startIndex: 0, count: 32);
-            Array.Fill(expectedArray, value: (byte) 0xAA, startIndex: 32, count: 96);
+            Array.Fill(expectedArray, value: (byte)0, startIndex: 0, count: 32);
+            Array.Fill(expectedArray, value: (byte)0xAA, startIndex: 32, count: 96);
 
             mbbsEmuMemoryCore.GetArray(dst, 128).ToArray().Should().BeEquivalentTo(expectedArray);
 

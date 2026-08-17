@@ -14,10 +14,10 @@ namespace MBBSEmu.Tests.CPU
             Reset();
             CreateCodeSegment(new byte[] { 0x76, 01 });
 
-            if(carryFlagValue)
+            if (carryFlagValue)
                 mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.CF);
 
-            if(zeroFlagValue)
+            if (zeroFlagValue)
                 mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.ZF);
 
             //Process Instruction

@@ -1,5 +1,5 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
+using System;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -35,7 +35,7 @@ namespace MBBSEmu.Tests.CPU
                 Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
                 Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.ControlWord);
             }
-            
+
         }
     }
 }

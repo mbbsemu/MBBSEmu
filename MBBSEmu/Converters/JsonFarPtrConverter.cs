@@ -12,14 +12,14 @@ namespace MBBSEmu.Converters
             switch (reader.TokenType)
             {
                 case JsonTokenType.String:
-                {
-                    var value = reader.GetString();
+                    {
+                        var value = reader.GetString();
 
-                    if (value == null)
-                        throw new JsonException();
+                        if (value == null)
+                            throw new JsonException();
 
-                    return new FarPtr(value);
-                }
+                        return new FarPtr(value);
+                    }
 
                 default:
                     throw new ArgumentException($"Invalid JsonToken Type: {reader.TokenType}");

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MBBSEmu.HostProcess.Structs
 {
@@ -80,7 +78,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public JmpBufStruct(ReadOnlySpan<byte> data)
         {
-            if(data.Length > Size)
+            if (data.Length > Size)
                 throw new OverflowException($"Data for JmpBuf is too long and will overflow: {data.Length} bytes");
 
             Data = data.ToArray();

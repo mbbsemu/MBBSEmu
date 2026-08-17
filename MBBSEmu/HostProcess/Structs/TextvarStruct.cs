@@ -1,6 +1,6 @@
-﻿using System;
+﻿using MBBSEmu.Memory;
+using System;
 using System.Text;
-using MBBSEmu.Memory;
 
 namespace MBBSEmu.HostProcess.Structs
 {

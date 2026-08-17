@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 
 namespace MBBSEmu.DOS.Structs
 {
@@ -46,7 +45,7 @@ namespace MBBSEmu.DOS.Structs
                 Array.Copy(FileName, 0, _data, 0x1E, FILENAME_SIZE);
                 return _data;
             }
-            
+
             set
             {
                 _data = value;

@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Text;
-using MBBSEmu.Database.Repositories.Account;
+﻿using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Memory;
+using System.Collections.Generic;
+using System.Text;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs

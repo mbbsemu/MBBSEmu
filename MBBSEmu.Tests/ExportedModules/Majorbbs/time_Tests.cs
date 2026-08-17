@@ -20,12 +20,12 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         {
             //Reset State
             Reset();
-            
+
             //Set Argument Values to be Passed In
             fakeClock.Now = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TIME_ORDINAL, new List<ushort> ());
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TIME_ORDINAL, new List<ushort>());
 
             //Verify Results
             Assert.Equal(expectedUnixDate, mbbsEmuCpuRegisters.GetLong());

@@ -14,7 +14,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Shutdown()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 ManualResetEvent restartHandle = new ManualResetEvent(false);
                 ManualResetEvent inModule = new ManualResetEvent(false);
                 var textVariableService = _serviceResolver.GetService<ITextVariableService>();

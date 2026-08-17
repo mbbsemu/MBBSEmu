@@ -1,7 +1,6 @@
 ﻿using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Xunit;
 
@@ -23,7 +22,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             //Allocate Memory for each Token which will be passed in as params to the function
             var tokenPointers = new List<FarPtr>();
-            foreach(var token in tokens)
+            foreach (var token in tokens)
             {
                 var tokenPointer =
                     mbbsEmuMemoryCore.AllocateVariable($"TOKEN{tokenPointers.Count + 1}", (ushort)(token.Length + 1));

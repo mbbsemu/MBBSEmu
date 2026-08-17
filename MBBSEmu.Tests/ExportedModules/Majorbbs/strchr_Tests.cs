@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Text;
-using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
@@ -27,20 +26,20 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             mbbsEmuMemoryCore.SetArray(strPointer, Encoding.ASCII.GetBytes(a));
 
             //Execute Test
-            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCHR_ORDINAL, new List<ushort> {strPointer.Offset, strPointer.Segment, toFind});
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRCHR_ORDINAL, new List<ushort> { strPointer.Offset, strPointer.Segment, toFind });
 
             if (expected == null)
             {
-              Assert.Equal(0, mbbsEmuCpuRegisters.AX);
-              Assert.Equal(0, mbbsEmuCpuRegisters.DX);
+                Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+                Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             }
             else
             {
-              Assert.Equal(strPointer.Segment, mbbsEmuCpuRegisters.DX);
-              Assert.Equal(strPointer.Offset + a.IndexOf(toFind), mbbsEmuCpuRegisters.AX);
+                Assert.Equal(strPointer.Segment, mbbsEmuCpuRegisters.DX);
+                Assert.Equal(strPointer.Offset + a.IndexOf(toFind), mbbsEmuCpuRegisters.AX);
 
-              var returnString = mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.GetPointer(), /* stripNull= */ true);
-              Assert.Equal(expected, Encoding.ASCII.GetString(returnString));
+                var returnString = mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.GetPointer(), /* stripNull= */ true);
+                Assert.Equal(expected, Encoding.ASCII.GetString(returnString));
             }
         }
     }

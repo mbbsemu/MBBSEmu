@@ -1,6 +1,4 @@
 ﻿using Iced.Intel;
-using MBBSEmu.CPU;
-using MBBSEmu.Extensions;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -24,7 +22,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2,0));
+            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 0));
         }
 
         [Fact]
@@ -45,7 +43,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2,0));
+            Assert.Equal(0xFFFF, mbbsEmuMemoryCore.GetWord(2, 0));
             Assert.Equal(0, mbbsEmuMemoryCore.GetWord(2, 2));
             Assert.Equal(0, mbbsEmuCpuRegisters.CX);
         }

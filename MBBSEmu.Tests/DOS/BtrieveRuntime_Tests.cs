@@ -5,12 +5,12 @@ using MBBSEmu.DependencyInjection;
 using MBBSEmu.Disassembler;
 using MBBSEmu.DOS;
 using MBBSEmu.IO;
+using MBBSEmu.Logging;
 using MBBSEmu.Resources;
 using Microsoft.Data.Sqlite;
 using System;
 using System.IO;
 using System.Text;
-using MBBSEmu.Logging;
 using Xunit;
 
 namespace MBBSEmu.Tests.Memory
@@ -98,7 +98,7 @@ key3_data_type: 15
               stdout,
               stdout);
 
-            exeRuntime.Load(new string[] {Path.Combine(_modulePath, _runtimeFiles[1])});
+            exeRuntime.Load(new string[] { Path.Combine(_modulePath, _runtimeFiles[1]) });
             exeRuntime.Run();
 
             stdout.Flush();

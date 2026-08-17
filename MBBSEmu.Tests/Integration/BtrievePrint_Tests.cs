@@ -11,7 +11,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void PhysicalOrder_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -43,7 +44,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_Equality_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -78,7 +80,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_Equality_NotFound_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -111,7 +114,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_GreaterThan_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -145,7 +149,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_GreaterThanOrEqual_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -180,7 +185,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_Less_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -216,7 +222,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_LessOrEqual_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -251,7 +258,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_Lowest_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -288,7 +296,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key1_Highest_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -322,7 +331,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_Equality_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -357,7 +367,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_Equality_NotFound_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -391,7 +402,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_GreaterThan_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -425,7 +437,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_GreaterThanOrEqual_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -460,7 +473,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_Less_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -496,7 +510,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_LessOrEqual_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -531,7 +546,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_Lowest_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -568,7 +584,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void Key2_Highest_TestAndLogOff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -612,7 +629,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void AddItems_PhysicalOrder_TestAndThenLogoff()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));
@@ -655,7 +673,8 @@ namespace MBBSEmu.Tests.Integration
         [Fact]
         public void AddItems_KeyConstraint_Failure()
         {
-            ExecuteTest((session, host) => {
+            ExecuteTest((session, host) =>
+            {
                 WaitUntil(':', "Make your selection");
 
                 session.SendToModule(Encoding.ASCII.GetBytes("B\r\n"));

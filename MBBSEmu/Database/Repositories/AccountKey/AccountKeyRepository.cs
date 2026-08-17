@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace MBBSEmu.Database.Repositories.AccountKey
 {
-    public class AccountKeyRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager, AppSettingsManager appSettingsManager) 
+    public class AccountKeyRepository(ISessionBuilder sessionBuilder, IResourceManager resourceManager, AppSettingsManager appSettingsManager)
         : RepositoryBase(sessionBuilder, resourceManager), IAccountKeyRepository
     {
         public bool CreateTable()
@@ -33,7 +33,7 @@ namespace MBBSEmu.Database.Repositories.AccountKey
 
         public bool InsertAccountKey(int accountId, string accountKey)
         {
-            var result = Query(EnumQueries.InsertAccountKey, new {accountId, accountKey});
+            var result = Query(EnumQueries.InsertAccountKey, new { accountId, accountKey });
             return result.Any();
         }
 
@@ -44,7 +44,7 @@ namespace MBBSEmu.Database.Repositories.AccountKey
 
         public IEnumerable<AccountKeyModel> GetAccountKeysByUsername(string userName)
         {
-            return Query<AccountKeyModel>(EnumQueries.GetAccountKeysByUsername, new {userName});
+            return Query<AccountKeyModel>(EnumQueries.GetAccountKeysByUsername, new { userName });
         }
 
         public bool InsertAccountKeyByUsername(string userName, string accountKey)
@@ -55,7 +55,7 @@ namespace MBBSEmu.Database.Repositories.AccountKey
 
         public void DeleteAccountKeyByUsernameAndAccountKey(string userName, string accountKey)
         {
-            Query(EnumQueries.DeleteAccountKeyByUsernameAndAccountKey, new {userName, accountKey});
+            Query(EnumQueries.DeleteAccountKeyByUsernameAndAccountKey, new { userName, accountKey });
         }
 
         public void Reset()

@@ -30,7 +30,7 @@ namespace MBBSEmu.Disassembler.Artifacts
         public ushort ResourceEntries { get; set; }
         public byte ExecutableType { get; set; }
         public byte[] Reserved { get; set; }
-        
+
         public NEHeader(byte[] headerContents)
         {
             if (headerContents[0] != 'N' || headerContents[1] != 'E')

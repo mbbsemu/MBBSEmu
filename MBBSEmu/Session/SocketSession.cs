@@ -86,7 +86,8 @@ namespace MBBSEmu.Session
                 try
                 {
                     tookData = DataToClient.TryTake(out dataToSend, 500, _cancellationTokenSource.Token);
-                } catch (Exception) // either ObjectDisposedException | OperationCanceledException
+                }
+                catch (Exception) // either ObjectDisposedException | OperationCanceledException
                 {
                     return;
                 }
@@ -105,7 +106,8 @@ namespace MBBSEmu.Session
 
                 if (!tookData)
                 {
-                    if (!Heartbeat()) {
+                    if (!Heartbeat())
+                    {
                         break;
                     }
                     continue;
@@ -176,7 +178,8 @@ namespace MBBSEmu.Session
 
         private void ProcessIncomingClientData(int bytesReceived)
         {
-            if (bytesReceived == 0 || SessionState == EnumSessionState.LoggedOff) {
+            if (bytesReceived == 0 || SessionState == EnumSessionState.LoggedOff)
+            {
                 return;
             }
 
@@ -193,23 +196,29 @@ namespace MBBSEmu.Session
         /// <param name="socketError"></param>
         private void ValidateSocketState(SocketError socketError)
         {
-            if (socketError != SocketError.Success) {
+            if (socketError != SocketError.Success)
+            {
                 CloseSocket($"socket error: {socketError}");
             }
         }
 
-        private void ListenForData() {
-            if (_socket.Connected && SessionState != EnumSessionState.LoggedOff) {
+        private void ListenForData()
+        {
+            if (_socket.Connected && SessionState != EnumSessionState.LoggedOff)
+            {
                 _socket.BeginReceive(_socketReceiveBuffer, 0, _socketReceiveBuffer.Length, SocketFlags.None, OnReceiveData, this);
             }
         }
 
-        protected void CloseSocket(string reason) {
-            if (Interlocked.Exchange(ref _socketClosed, 1) != 0) {
+        protected void CloseSocket(string reason)
+        {
+            if (Interlocked.Exchange(ref _socketClosed, 1) != 0)
+            {
                 return;
             }
 
-            if (SessionState != EnumSessionState.LoggedOff) {
+            if (SessionState != EnumSessionState.LoggedOff)
+            {
                 _logger.Warn($"Session {SessionId} (Channel: {Channel}) {reason}");
             }
 

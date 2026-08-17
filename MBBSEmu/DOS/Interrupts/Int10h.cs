@@ -94,7 +94,7 @@ namespace MBBSEmu.DOS.Interrupts
             switch (_registers.BL)
             {
                 case 0x10: //Return EGA Information
-                {
+                    {
                         /*
                          * BL = 10h: return EGA information
                            Return: BH = 0: color mode in effect (3Dx)
@@ -107,11 +107,11 @@ namespace MBBSEmu.DOS.Interrupts
                            CL = switch settings
                          */
                         _registers.BH = 0; //Color Mode
-                    _registers.BL = 3; //256k bytes Memory Installed
-                    _registers.CH = 0; //TODO -- Feature Bits?
-                    _registers.CL = 0; //TODO -- Switch Settings?
-                    return;
-                }
+                        _registers.BL = 3; //256k bytes Memory Installed
+                        _registers.CH = 0; //TODO -- Feature Bits?
+                        _registers.CL = 0; //TODO -- Switch Settings?
+                        return;
+                    }
             }
         }
 

@@ -57,7 +57,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         public void strtol_nullsuffix_Test()
         {
             Reset();
-            
+
             const string srcString = "123456 Hello some text";
             const ushort numBase = 10;
             const int expectedValue = 123456;

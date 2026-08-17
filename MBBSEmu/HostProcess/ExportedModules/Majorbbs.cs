@@ -5141,7 +5141,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
             var key = Module.Memory.GetArray(keyPointer,
-                (ushort) currentBtrieveFile.Keys[keyNumber].Length);
+                (ushort)currentBtrieveFile.Keys[keyNumber].Length);
 
             var result = currentBtrieveFile.PerformOperation(keyNumber, key, queryOption);
             if (result)
@@ -6147,7 +6147,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 {
                     tokenList.Add(Encoding.ASCII.GetString(Module.Memory.GetString(messagePointer).ToArray()));
                 }
-                catch 
+                catch
                 {
                     _logger.Warn($"Error Reading string at {messagePointer}, terminating list at {tokenList.Count} elements");
                     break;

@@ -1,6 +1,6 @@
-﻿using Xunit;
-using MBBSEmu.Extensions;
+﻿using MBBSEmu.Extensions;
 using System;
+using Xunit;
 
 namespace MBBSEmu.Tests.Extensions
 {

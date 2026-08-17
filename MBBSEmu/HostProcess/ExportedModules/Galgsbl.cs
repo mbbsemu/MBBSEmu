@@ -317,7 +317,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void btuinj()
         {
             var channelNumber = GetParameter(0);
-            var status = (EnumUserStatus) GetParameter(1);
+            var status = (EnumUserStatus)GetParameter(1);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
@@ -328,7 +328,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Status Change
             //Set the Memory Value
             channel.Status.Enqueue(status);
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort) status);
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)status);
 
 #if DEBUG
             _logger.Debug($"Injecting Status {status} on channel {channelNumber}");
@@ -788,7 +788,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (channel.DataToProcess && channel.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
             {
-                Registers.AX = (ushort) EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE;
+                Registers.AX = (ushort)EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE;
             }
             else
             {
@@ -916,7 +916,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void chiinj()
         {
             var channel = GetParameter(0);
-            var status = (EnumUserStatus) GetParameter(1);
+            var status = (EnumUserStatus)GetParameter(1);
 
             ChannelDictionary[channel].Status.Enqueue(status);
 
@@ -1020,7 +1020,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if(character != 0xD)
+            if (character != 0xD)
                 channel.InputBuffer.WriteByte(character);
         }
 

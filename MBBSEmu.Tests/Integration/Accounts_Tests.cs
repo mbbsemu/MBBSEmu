@@ -14,7 +14,7 @@ namespace MBBSEmu.Tests.Integration
         {
             var account = _serviceResolver.GetService<IAccountRepository>().GetAccountByUsername(userName);
 
-            if(shouldExist)
+            if (shouldExist)
                 Assert.NotNull(account);
             else
                 Assert.Null(account);

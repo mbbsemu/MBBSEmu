@@ -1,6 +1,6 @@
-﻿using System;
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.CPU;
+using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 

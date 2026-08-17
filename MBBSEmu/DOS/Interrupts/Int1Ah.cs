@@ -28,7 +28,7 @@ namespace MBBSEmu.DOS.Interrupts
             switch (_registers.AH)
             {
                 case 0x0:
-                {
+                    {
                         /*
                             INT 1A - AH = 00h CLOCK - GET TIME OF DAY
                             Return: CX:DX = clock count
@@ -44,10 +44,10 @@ namespace MBBSEmu.DOS.Interrupts
                             (uint)((_clock.Now - new DateTime(_clock.Now.Year, _clock.Now.Month, _clock.Now.Day)).TotalSeconds * 18.2);
 
                         _registers.AL = 0;
-                        _registers.CX = (ushort) (secondsSinceMidnight & 0xFFFF);
+                        _registers.CX = (ushort)(secondsSinceMidnight & 0xFFFF);
                         _registers.DX = (ushort)(secondsSinceMidnight >> 8);
                         break;
-                }
+                    }
 
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported Int {Vector:X2} Function: 0x{_registers.AH:X2}");

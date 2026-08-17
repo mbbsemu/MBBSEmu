@@ -89,7 +89,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CNCINT_ORDINAL, new List<FarPtr>());
 
             //Verify Results
-            Assert.Equal(expectedResult, (short) mbbsEmuCpuCore.Registers.AX);
+            Assert.Equal(expectedResult, (short)mbbsEmuCpuCore.Registers.AX);
             Assert.Equal(expectedNxtCmd, mbbsEmuMemoryCore.GetPointer("NXTCMD"));
         }
     }

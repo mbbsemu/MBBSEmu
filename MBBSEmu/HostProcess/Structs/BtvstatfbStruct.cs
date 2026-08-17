@@ -24,7 +24,7 @@ namespace MBBSEmu.HostProcess.Structs
             get
             {
                 var output = new List<BtvkeyspecStruct>();
-                for (var i = 0; i <  MAXSEG; i++)
+                for (var i = 0; i < MAXSEG; i++)
                 {
                     output.Add(new BtvkeyspecStruct(new ReadOnlySpan<byte>(Data).Slice(BtvfilespecStruct.Size + (i * BtvkeyspecStruct.Size), BtvkeyspecStruct.Size)));
                 }
@@ -53,7 +53,7 @@ namespace MBBSEmu.HostProcess.Structs
 
         public BtvstatfbStruct()
         {
-            
+
         }
 
         public BtvstatfbStruct(byte[] data)

@@ -12,7 +12,6 @@ using MBBSEmu.Memory;
 using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
-using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.IO;

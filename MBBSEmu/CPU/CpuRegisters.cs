@@ -12,16 +12,16 @@ namespace MBBSEmu.CPU
 
         public uint EAX { get => Registers.EAX; set => Registers.EAX = value; }
         public ushort AX { get => Registers.AX; set => Registers.AX = value; }
-        public byte AH  { get => Registers.AH; set => Registers.AH = value; }
-        public byte AL  { get => Registers.AL; set => Registers.AL = value; }
-        public uint EBX  { get => Registers.EBX; set => Registers.EBX = value; }
-        public ushort BX  { get => Registers.BX; set => Registers.BX = value; }
+        public byte AH { get => Registers.AH; set => Registers.AH = value; }
+        public byte AL { get => Registers.AL; set => Registers.AL = value; }
+        public uint EBX { get => Registers.EBX; set => Registers.EBX = value; }
+        public ushort BX { get => Registers.BX; set => Registers.BX = value; }
         public byte BH { get => Registers.BH; set => Registers.BH = value; }
-        public byte BL  { get => Registers.BL; set => Registers.BL = value; }
-        public uint ECX  { get => Registers.ECX; set => Registers.ECX = value; }
-        public ushort CX  { get => Registers.CX; set => Registers.CX = value; }
-        public byte CH  { get => Registers.CH; set => Registers.CH = value; }
-        public byte CL  { get => Registers.CL; set => Registers.CL = value; }
+        public byte BL { get => Registers.BL; set => Registers.BL = value; }
+        public uint ECX { get => Registers.ECX; set => Registers.ECX = value; }
+        public ushort CX { get => Registers.CX; set => Registers.CX = value; }
+        public byte CH { get => Registers.CH; set => Registers.CH = value; }
+        public byte CL { get => Registers.CL; set => Registers.CL = value; }
         public uint EDX { get => Registers.EDX; set => Registers.EDX = value; }
         public ushort DX { get => Registers.DX; set => Registers.DX = value; }
         public byte DH { get => Registers.DH; set => Registers.DH = value; }
@@ -54,8 +54,8 @@ namespace MBBSEmu.CPU
 
         public void SetPointer(FarPtr ptr)
         {
-          Registers.DX = ptr.Segment;
-          Registers.AX = ptr.Offset;
+            Registers.DX = ptr.Segment;
+            Registers.AX = ptr.Offset;
         }
 
         public FarPtr GetPointer() => new FarPtr(Registers.DX, Registers.AX);
@@ -65,7 +65,7 @@ namespace MBBSEmu.CPU
         public void FromRegs(ReadOnlySpan<byte> regs) => Registers.FromRegs(regs);
         public ReadOnlySpan<byte> ToRegs() => Registers.ToRegs();
 
-        public ushort StatusWord { get => Registers.Fpu.StatusWord;  set => Registers.Fpu.StatusWord = value; }
+        public ushort StatusWord { get => Registers.Fpu.StatusWord; set => Registers.Fpu.StatusWord = value; }
 
         public ushort ControlWord { get => Registers.Fpu.ControlWord; set => Registers.Fpu.ControlWord = value; }
 

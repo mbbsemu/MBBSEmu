@@ -97,7 +97,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var selectorPointer = GetParameterPointer(1);
             var flags = GetParameter(3);
 
-            var allocatedSegment = (ushort) (DosSegmentBase + DosSegmentOffset);
+            var allocatedSegment = (ushort)(DosSegmentBase + DosSegmentOffset);
 
             Module.ProtectedMemory.AddSegment(allocatedSegment);
             Module.Memory.SetWord(selectorPointer, allocatedSegment);
@@ -107,7 +107,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             RealignStack(8);
         }
 
-        private ReadOnlySpan<byte> dossetvec => new byte[] {0x0, 0x0, 0x0, 0x0};
+        private ReadOnlySpan<byte> dossetvec => new byte[] { 0x0, 0x0, 0x0, 0x0 };
 
         /// <summary>
         ///     DosLoadModule tries to load a dynamic link module.
