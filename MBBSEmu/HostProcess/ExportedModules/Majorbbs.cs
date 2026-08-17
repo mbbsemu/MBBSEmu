@@ -2647,8 +2647,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
-            // TODO SET LOGICAL POSITION FOR NEXT/PREVIOUS
-
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
 
@@ -2744,7 +2742,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
-            // TODO have this bomb or not based on log level
             return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
         }
 
@@ -2761,7 +2758,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            // TODO make sure this bombs if error
             currentBtrieveFile.Insert(record.ToArray());
         }
 
