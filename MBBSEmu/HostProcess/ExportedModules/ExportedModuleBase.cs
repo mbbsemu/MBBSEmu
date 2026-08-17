@@ -864,7 +864,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     resultStream.WriteByte(inputSpan[i]);
 
                     //Process ~~ escape
-                    if (inputSpan[i] == '~' && inputSpan[i + 1] == '~')
+                    if (inputSpan[i] == '~' && i + 1 < inputSpan.Length && inputSpan[i + 1] == '~')
                         i++;
 
                     continue;
@@ -877,15 +877,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     continue;
                 }
 
-                //Normal ANSI (ESC + '[' + not '[')
-                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] != '[')
+                //Normal ANSI (ESC + '[' + not '[', or a truncated ESC[ at end of buffer)
+                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && (i + 2 >= inputSpan.Length || inputSpan[i + 2] != '['))
                 {
                     resultStream.WriteByte(inputSpan[i]);
                     continue;
                 }
 
                 //Found IF-ANSI (ESC + '[[')
-                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && inputSpan[i + 2] == '[')
+                if (inputSpan[i] == 0x1B && inputSpan[i + 1] == '[' && i + 2 < inputSpan.Length && inputSpan[i + 2] == '[')
                 {
                     i += 3;
                     var substringStart = i;
