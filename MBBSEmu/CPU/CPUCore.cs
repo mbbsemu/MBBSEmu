@@ -5,6 +5,8 @@ using MBBSEmu.Logging;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
