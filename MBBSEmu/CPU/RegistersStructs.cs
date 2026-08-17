@@ -67,7 +67,8 @@ namespace MBBSEmu.CPU
                 _ => throw new Exception($"Unsupported FPU Register: {register}")
             };
 
-            return GetStackTop() - registerOffset;
+            //Wrap around the circular 8-slot stack instead of going negative
+            return (GetStackTop() - registerOffset) & 0x7;
         }
 
         public void PopStackTop()

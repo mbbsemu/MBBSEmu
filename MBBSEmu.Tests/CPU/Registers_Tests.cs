@@ -131,5 +131,21 @@ namespace MBBSEmu.Tests.CPU
 
             regs.ESI.Should().Be(0);
         }
+
+        [Fact]
+        public void Fpu_GetStackPointer_WrapsAroundCircularStack()
+        {
+            var fpu = FpuRegistersStruct.Create();
+
+            //After a single push, StackTop points at physical slot 0 (ST0)
+            fpu.PushStackTop();
+            fpu.GetStackTop().Should().Be(0);
+
+            //ST7 relative to a StackTop of 0 must wrap around to physical slot 1,
+            //not go negative and throw when used to index the FpuStack array
+            fpu.GetStackPointer(Iced.Intel.Register.ST0).Should().Be(0);
+            fpu.GetStackPointer(Iced.Intel.Register.ST1).Should().Be(7);
+            fpu.GetStackPointer(Iced.Intel.Register.ST7).Should().Be(1);
+        }
     }
 }

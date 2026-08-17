@@ -13,6 +13,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0xFFFF0000, 0xFFFF0000, 16, 0x0000FFFF, true, false, false, false)]
         [InlineData(0x7FFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, false, true, true, false)]
         [InlineData(0x80000000, 0x00000000, 1, 0x00000000, true, true, false, true)]
+        [InlineData(0x40000000, 0x00000000, 1, 0x80000000, false, true, true, false)] // Sign change with a source operand that is not itself negative
         public void SHLD_EAX_EBX_IMM8(uint eaxValue, uint ebxValue, byte count, uint expectedValue, bool carryFlag, bool overflowFlag, bool signFlag, bool zeroFlag)
         {
             Reset();
@@ -40,6 +41,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0xFFFF0000, 0xFFFF0000, 16, 0x0000FFFF, true, false, false, false)]
         [InlineData(0x7FFFFFFF, 0xFFFFFFFF, 1, 0xFFFFFFFF, false, true, true, false)]
         [InlineData(0x80000000, 0x00000000, 1, 0x00000000, true, true, false, true)]
+        [InlineData(0x40000000, 0x00000000, 1, 0x80000000, false, true, true, false)] // Sign change with a source operand that is not itself negative
         public void SHLD_EAX_EBX_CL(uint eaxValue, uint ebxValue, byte count, uint expectedValue, bool carryFlag, bool overflowFlag, bool signFlag, bool zeroFlag)
         {
             Reset();

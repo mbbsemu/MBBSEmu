@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Iced.Intel;
+using System;
 using Xunit;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.Tests.CPU
 {
@@ -613,6 +615,48 @@ namespace MBBSEmu.Tests.CPU
             Assert.False(mbbsEmuCpuRegisters.ZeroFlag);
             Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
             Assert.False(mbbsEmuCpuRegisters.SignFlag);
+        }
+
+        [Theory]
+        [InlineData(0x0F, 0x01, true)] // Low nibble carries out of bit 3 (0xF + 0x1 == 0x10)
+        [InlineData(0x08, 0x08, true)] // Low nibble carries out of bit 3 (0x8 + 0x8 == 0x10)
+        [InlineData(0x01, 0x01, false)] // No carry out of the low nibble
+        [InlineData(0x0F, 0x00, false)] // No carry, addend contributes nothing to the low nibble
+        public void ADD_AL_IMM8_AuxiliaryCarryFlag(byte alValue, byte value, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.AL = alValue;
+            CreateCodeSegment(new byte[] { 0x04, value });
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Flags
+            Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+        }
+
+        [Theory]
+        [InlineData(0x00010000u, 0x00010000u, 0x00020000u, false, false)] // Result needs more than 16 bits, must not be truncated
+        [InlineData(0xFFFFFFFFu, 0x00000001u, 0x00000000u, true, false)] // Full 32-bit wraparound sets Carry
+        [InlineData(0x7FFFFFFFu, 0x00000001u, 0x80000000u, false, true)] // Full 32-bit signed overflow sets Overflow
+        public void ADD_EAX_EBX_32Bit(uint eaxValue, uint ebxValue, uint expectedValue, bool expectedCarryFlag,
+            bool expectedOverflowFlag)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.EAX = eaxValue;
+            mbbsEmuCpuRegisters.EBX = ebxValue;
+
+            var instructions = new Assembler(16);
+            instructions.add(eax, ebx);
+            CreateCodeSegment(instructions);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(expectedCarryFlag, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(expectedOverflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
         }
     }
 }
