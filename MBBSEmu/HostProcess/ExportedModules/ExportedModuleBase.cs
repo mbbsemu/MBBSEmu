@@ -854,7 +854,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <param name="isAnsi"></param>
         /// <returns></returns>
-        private protected ReadOnlySpan<byte> ProcessIfANSI(ReadOnlySpan<byte> inputSpan, bool isAnsi = false)
+        internal ReadOnlySpan<byte> ProcessIfANSI(ReadOnlySpan<byte> inputSpan, bool isAnsi = false)
         {
             using var resultStream = new MemoryStream(inputSpan.Length);
             for (var i = 0; i < inputSpan.Length; i++)
