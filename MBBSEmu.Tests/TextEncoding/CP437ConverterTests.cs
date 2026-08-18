@@ -22,8 +22,9 @@ namespace MBBSEmu.Tests.TextEncoding
         [Fact]
         public void ConvertToUtf8_ControlCodes_PassThroughUnchanged()
         {
-            // All C0 control codes pass through as-is (not converted to CP437 glyphs)
-            byte[] input = { 0x00, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0D, 0x11, 0x13, 0x1B };
+            // Genuine C0 control codes pass through as-is. DC1-DC4 (0x11-0x14) are the
+            // exception - they are converted to CP437 display glyphs (see the DC1-DC4 test).
+            byte[] input = { 0x00, 0x01, 0x07, 0x08, 0x09, 0x0A, 0x0D, 0x1B };
             var result = CP437Converter.ConvertToUtf8(input);
 
             result.Should().BeEquivalentTo(input);
@@ -32,13 +33,25 @@ namespace MBBSEmu.Tests.TextEncoding
         [Fact]
         public void ConvertToUtf8_AllLowBytes_PassThroughUnchanged()
         {
-            // Entire 0x00-0x1F range should pass through as control codes
-            var input = new byte[0x20];
-            for (byte i = 0; i < 0x20; i++)
-                input[i] = i;
+            // Every C0 control code except DC1-DC4 (0x11-0x14) passes through unchanged;
+            // DC1-DC4 convert to display glyphs and are covered separately.
+            byte[] input = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                             0x10, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F };
 
             var result = CP437Converter.ConvertToUtf8(input);
-            result.Should().BeEquivalentTo(input);
+            result.Should().Equal(input);
+        }
+
+        [Fact]
+        public void ConvertToUtf8_Dc1ThroughDc4_ConvertToDisplayGlyphs()
+        {
+            // DC1-DC4 (0x11-0x14) are CP437 display glyphs, not control codes, for the
+            // modules that emit them (e.g. MajorMUD's full-screen editor): ◄ ↕ ‼ ¶.
+            byte[] input = { 0x11, 0x12, 0x13, 0x14 };
+            var result = CP437Converter.ConvertToUtf8(input);
+
+            var expected = Encoding.UTF8.GetBytes("◄↕‼¶"); // ◄ ↕ ‼ ¶
+            result.Should().Equal(expected);
         }
 
         [Fact]

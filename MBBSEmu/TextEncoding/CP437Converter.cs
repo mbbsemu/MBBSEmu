@@ -48,6 +48,16 @@ namespace MBBSEmu.TextEncoding
         };
 
         /// <summary>
+        ///     CP437 display glyphs for DC1-DC4 (0x11-0x14): ◄ ↕ ‼ ¶. Unlike the other C0
+        ///     control codes, these are drawn as glyphs by the modules that emit them
+        ///     (e.g. MajorMUD's full-screen editor), so ConvertToUtf8 renders them.
+        /// </summary>
+        private const byte FirstGlyphControl = 0x11;
+        private const byte LastGlyphControl = 0x14;
+
+        private static readonly ushort[] GlyphControlToUnicode = { 0x25C4, 0x2195, 0x203C, 0x00B6 };
+
+        /// <summary>
         ///     Per-byte UTF-8 encoding of <see cref="CP437ToUnicode"/>, built once at type
         ///     initialization. The telnet send path converts every outbound write, so encoding
         ///     each extended byte on demand would allocate a char[] and a byte[] per character.
@@ -62,8 +72,21 @@ namespace MBBSEmu.TextEncoding
             for (var i = 0; i < table.Length; i++)
                 table[i] = Encoding.UTF8.GetBytes(new[] { (char)CP437ToUnicode[i] });
 
+            // CP437ToUnicode maps DC1-DC4 to the C0 control codes, which is the right
+            // answer for every other consumer of the table. Override just those four with
+            // their display glyphs so ConvertToUtf8 stays a single table lookup.
+            for (var b = FirstGlyphControl; b <= LastGlyphControl; b++)
+                table[b] = Encoding.UTF8.GetBytes(new[] { (char)GlyphControlToUnicode[b - FirstGlyphControl] });
+
             return table;
         }
+
+        /// <summary>
+        ///     True for the DC1-DC4 bytes that render as CP437 display glyphs rather than
+        ///     passing through as control codes. Kept as a single predicate so the length
+        ///     pass and the write pass below cannot disagree about the output size.
+        /// </summary>
+        private static bool IsGlyphControl(byte b) => b >= FirstGlyphControl && b <= LastGlyphControl;
 
         /// <summary>
         ///     Converts CP437 bytes to UTF-8 encoded bytes.
@@ -71,9 +94,15 @@ namespace MBBSEmu.TextEncoding
         ///     Standard ASCII (0x20-0x7E) passes through unchanged.
         ///     Extended ASCII (0x80-0xFF) is converted to multi-byte UTF-8 sequences.
         ///
-        ///     Low bytes are not converted to CP437 glyphs because BBS modules commonly
-        ///     use them as control/formatting markers over telnet connections, not as
-        ///     display characters. See issue #49 (T-LORD) for context.
+        ///     Low bytes other than DC1-DC4 are not converted to CP437 glyphs because BBS
+        ///     modules commonly use them as control/formatting markers over telnet
+        ///     connections, not as display characters. See issue #49 (T-LORD) for context.
+        ///
+        ///     DC1-DC4 are the exception: modules that use those byte values as screen-pause
+        ///     markers register them through GSBL's btupbc/btucpc, and SessionBase consumes
+        ///     the registered markers before output reaches this converter. What survives to
+        ///     here is display content, so rendering it as glyphs is safe. See
+        ///     docs/reverse-engineering/tlord-screen-pause.md.
         /// </summary>
         /// <param name="cp437Bytes">Input bytes in CP437 encoding</param>
         /// <returns>UTF-8 encoded bytes</returns>
@@ -84,14 +113,14 @@ namespace MBBSEmu.TextEncoding
             var length = 0;
 
             foreach (var b in cp437Bytes)
-                length += b < 0x80 ? 1 : CP437ToUtf8[b].Length;
+                length += b < 0x80 && !IsGlyphControl(b) ? 1 : CP437ToUtf8[b].Length;
 
             var result = new byte[length];
             var offset = 0;
 
             foreach (var b in cp437Bytes)
             {
-                if (b < 0x80)
+                if (b < 0x80 && !IsGlyphControl(b))
                 {
                     // ASCII + control chars (0x00-0x7F) - pass through unchanged
                     result[offset++] = b;
