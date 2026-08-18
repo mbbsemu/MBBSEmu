@@ -604,6 +604,7 @@ namespace MBBSEmu.HostProcess
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
             session.PromptCharacter = 0;
+            session.ResetScreenPauseState();
 
             //Reset States
             session.Status.Clear();
