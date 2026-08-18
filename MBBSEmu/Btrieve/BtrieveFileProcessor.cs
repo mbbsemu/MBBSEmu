@@ -132,9 +132,14 @@ namespace MBBSEmu.Btrieve
             }
             _sqlCommands.Clear();
 
-            Connection.Close();
-            Connection.Dispose();
-            Connection = null;
+            //Processors shared through the global cache (BtrieveSetupGlobalPointer)
+            //can be disposed from more than one owner during shutdown
+            if (Connection != null)
+            {
+                Connection.Close();
+                Connection.Dispose();
+                Connection = null;
+            }
 
             _cache.Clear();
         }
