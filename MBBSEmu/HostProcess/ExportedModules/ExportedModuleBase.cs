@@ -912,7 +912,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             case (byte)']':
                             case (byte)'~':
                                 {
-                                    if (substringSpan[j - 1] == '~')
+                                    // Only a ~-escaped delimiter is literal output; an
+                                    // unescaped one (including at j == 0, where there is no
+                                    // preceding byte) is a segment delimiter and is dropped.
+                                    if (j > 0 && substringSpan[j - 1] == '~')
                                         resultStream.WriteByte(substringSpan[j]);
 
                                     break;

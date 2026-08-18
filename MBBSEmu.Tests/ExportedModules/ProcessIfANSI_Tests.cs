@@ -29,23 +29,38 @@ namespace MBBSEmu.Tests.ExportedModules
         }
 
         [Fact]
-        public void ProcessIfANSI_IfAnsiSequence_DoesNotOverread()
+        public void ProcessIfANSI_CompleteIfAnsiSequence_KeepsAnsiComponent()
         {
             Reset();
 
-            // IF-ANSI sequence (ESC[[ansi|non-ansi|). MBBSEmu keeps the ANSI component;
-            // the point of the test is that parsing it does not read past the buffer.
+            // A properly terminated IF-ANSI sequence: ESC[[<ansi>|<non-ansi>]. The
+            // non-ANSI alternative terminates on ']', not '|'.
             var input = new byte[]
             {
                 0x1B, 0x5B, 0x5B,                                        // ESC[[
-                0x1B, 0x5B, (byte)'3', (byte)'1', (byte)'m',            // ansi part: ESC[31m
-                (byte)'|', (byte)'X', (byte)'|'                         // |non-ansi|
+                0x1B, 0x5B, (byte)'3', (byte)'1', (byte)'m',            // ansi:      ESC[31m
+                (byte)'|', (byte)'X', (byte)']'                         // |non-ansi]
             };
 
             var result = galgsbl.ProcessIfANSI(input).ToArray();
 
             // The ANSI component is preserved; the non-ANSI alternative is dropped.
             Assert.Equal(new byte[] { 0x1B, 0x5B, (byte)'3', (byte)'1', (byte)'m' }, result);
+        }
+
+        [Fact]
+        public void ProcessIfANSI_IfAnsiSegmentStartingWithDelimiter_DoesNotReadBeforeStart()
+        {
+            Reset();
+
+            // An IF-ANSI segment whose first byte is a delimiter (~, |, ]) previously read
+            // substringSpan[j - 1] with j == 0 and threw. It must be treated as an
+            // unescaped (empty) segment instead.
+            var input = new byte[] { 0x1B, 0x5B, 0x5B, (byte)'~' };     // ESC[[~
+
+            var result = galgsbl.ProcessIfANSI(input).ToArray();
+
+            Assert.Empty(result);
         }
     }
 }
