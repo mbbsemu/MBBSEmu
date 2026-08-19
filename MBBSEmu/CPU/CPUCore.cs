@@ -4339,11 +4339,20 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
             unchecked
             {
-                var result = (byte)((destination >> (sbyte)source) | (destination << (8 - (sbyte)source)));
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 8, 16, 24) is the identity but still updates CF below
+                var rotate = source % 8;
+                var result = (byte)((destination >> rotate) | (destination << (8 - rotate)));
 
-                //CF Set if Most Significant Bit set to 1
+                //CF Set if Most Significant Bit set to 1 (the bit rotated out of the bottom)
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
@@ -4364,11 +4373,20 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
             unchecked
             {
-                var result = (ushort)((destination >> (sbyte)source) | (destination << (16 - (sbyte)source)));
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 16) is the identity but still updates CF below
+                var rotate = source % 16;
+                var result = (ushort)((destination >> rotate) | (destination << (16 - rotate)));
 
-                //CF Set if Most Significant Bit set to 1
+                //CF Set if Most Significant Bit set to 1 (the bit rotated out of the bottom)
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 15 & 14 are not the same, then we overflowed for 1 bit rotations
