@@ -62,5 +62,49 @@ namespace MBBSEmu.Tests.CPU
             Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
             Assert.False(mbbsEmuCpuRegisters.SignFlag);
         }
+
+        [Fact]
+        public void ADC_AL_IMM8_SourceMaxValueWithCarryIn_DoesNotWrapCarryFlag()
+        {
+            Reset();
+            CreateCodeSegment(new byte[]
+            {
+                //ADC AL, 0xFF
+                0x14, 0xFF
+            });
+            mbbsEmuCpuRegisters.AL = 0x00;
+            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.CF);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results: 0x00 + 0xFF + 1 == 0x100, so AL wraps to 0x00 but Carry must be set
+            Assert.Equal(0x00, mbbsEmuCpuRegisters.AL);
+            Assert.True(mbbsEmuCpuRegisters.CarryFlag);
+            Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
+        }
+
+        [Fact]
+        public void ADC_AX_IMM16_SourceMaxValueWithCarryIn_DoesNotWrapCarryFlag()
+        {
+            Reset();
+            CreateCodeSegment(new byte[]
+            {
+                //ADC AX, 0xFFFF
+                0x15, 0xFF, 0xFF
+            });
+            mbbsEmuCpuRegisters.AX = 0x0000;
+            mbbsEmuCpuRegisters.F = mbbsEmuCpuRegisters.F.SetFlag((ushort)EnumFlags.CF);
+
+            //Process Instruction
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results: 0x0000 + 0xFFFF + 1 == 0x10000, so AX wraps to 0x0000 but Carry must be set
+            Assert.Equal(0x0000, mbbsEmuCpuRegisters.AX);
+            Assert.True(mbbsEmuCpuRegisters.CarryFlag);
+            Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.False(mbbsEmuCpuRegisters.OverflowFlag);
+        }
     }
 }
