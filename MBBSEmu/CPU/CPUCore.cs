@@ -1573,7 +1573,9 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte)-destination;
                 Registers.CarryFlag = destination != 0;
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                //NEG is 0 - destination, so the operand is the source of the subtraction;
+                //OF is set only for 0x80, the value whose negation doesn't fit
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1587,7 +1589,9 @@ namespace MBBSEmu.CPU
             {
                 var result = (ushort)-destination;
                 Registers.CarryFlag = destination != 0;
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                //NEG is 0 - destination, so the operand is the source of the subtraction;
+                //OF is set only for 0x8000, the value whose negation doesn't fit
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
