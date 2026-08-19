@@ -1936,14 +1936,13 @@ namespace MBBSEmu.CPU
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
-                // So result becomes 0xDDLL where DD is the value and LL are the lost bits
-                var uresult = (ushort)((destination << 8) >> source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(uresult & 0x80));
+                // So result becomes 0xDDLL where DD is the value and LL are the lost bits.
+                // The container is sign-extended so the right shift is arithmetic and fills
+                // every vacated bit with the sign bit, as SAR requires for any count
+                var sresult = ((int)(sbyte)destination << 8) >> source;
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(sresult & 0x80));
 
-                var result = (byte)(uresult >> 8);
-                // maintain sign bit
-                if (destination.IsNegative())
-                    result |= 0x80;
+                var result = (byte)((uint)sresult >> 8);
 
                 Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
@@ -1963,14 +1962,13 @@ namespace MBBSEmu.CPU
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
-                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
-                var uresult = ((uint)destination << 16) >> source;
-                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(uresult & 0x8000));
+                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits.
+                // The container is sign-extended so the right shift is arithmetic and fills
+                // every vacated bit with the sign bit, as SAR requires for any count
+                var sresult = ((int)(short)destination << 16) >> source;
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(sresult & 0x8000));
 
-                var result = (ushort)(uresult >> 16);
-                // maintain sign bit
-                if (destination.IsNegative())
-                    result |= 0x8000;
+                var result = (ushort)((uint)sresult >> 16);
 
                 Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
