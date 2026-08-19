@@ -69,13 +69,19 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(0x00000005u, 0x00000003u, false, 0x00000002u, false)] // Simple subtraction, no borrow-in
-        [InlineData(0x00000005u, 0x00000003u, true, 0x00000001u, false)] // Borrow-in, no resulting borrow
-        [InlineData(0x00000000u, 0x00000000u, true, 0xFFFFFFFFu, true)] // Borrow-in on zero operands must borrow
-        [InlineData(0x00010000u, 0x00000001u, false, 0x0000FFFFu, false)] // Borrow across the low word
-        [InlineData(0x00000000u, 0x00000001u, false, 0xFFFFFFFFu, true)] // Plain underflow
+        //                eax          ebx          carry-in  expected     OF     SF     ZF     CF
+        [InlineData(0x00000005u, 0x00000003u, false, 0x00000002u, false, false, false, false)] // Simple subtraction, no borrow-in
+        [InlineData(0x00000005u, 0x00000003u, true, 0x00000001u, false, false, false, false)] // Borrow-in, no resulting borrow
+        [InlineData(0x00000005u, 0x00000005u, false, 0x00000000u, false, false, true, false)] // Equal operands zero the result
+        [InlineData(0x00000000u, 0x00000000u, true, 0xFFFFFFFFu, false, true, false, true)] // Borrow-in on zero operands must borrow
+        [InlineData(0x00010000u, 0x00000001u, false, 0x0000FFFFu, false, false, false, false)] // Borrow across the low word
+        [InlineData(0x00000000u, 0x00000001u, false, 0xFFFFFFFFu, false, true, false, true)] // Plain underflow
+        [InlineData(0x80000000u, 0x00000001u, false, 0x7FFFFFFFu, true, false, false, false)] // Signed underflow past INT_MIN sets OF, not CF
+        [InlineData(0x7FFFFFFFu, 0xFFFFFFFFu, false, 0x80000000u, true, true, false, true)] // Signed overflow past INT_MAX sets both OF and CF
+        [InlineData(0x80000000u, 0x00000000u, true, 0x7FFFFFFFu, true, false, false, false)] // OF must account for the borrow-in: INT_MIN - 0 - 1 overflows
         public void SBB_EAX_EBX_32Bit(uint eaxValue, uint ebxValue, bool initialCarryFlag,
-            uint expectedValue, bool expectedCarryFlag)
+            uint expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue,
+            bool carryFlagValue)
         {
             Reset();
             mbbsEmuCpuRegisters.EAX = eaxValue;
@@ -89,7 +95,10 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
-            Assert.Equal(expectedCarryFlag, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(overflowFlagValue, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagValue, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(zeroFlagValue, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(carryFlagValue, mbbsEmuCpuRegisters.CarryFlag);
         }
 
         [Fact]
