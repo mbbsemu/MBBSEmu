@@ -67,5 +67,40 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);
             Assert.Equal(destinationStringPointer.Offset, mbbsEmuCpuRegisters.AX);
         }
+
+        /// <summary>
+        ///     Regression test for the live MajorMUD crash where a module passed a destination
+        ///     pointer into a segment that was never allocated. SetArray throws before a single
+        ///     byte is written, so strcpy has nothing to truncate -- it must still return dest
+        ///     in DX:AX rather than letting the exception escape into the CPU loop.
+        ///
+        ///     Both offsets matter: a non-zero offset faults inside AsSpan, while offset 0 yields
+        ///     an empty span that faults on the indexer instead, raising a different exception.
+        /// </summary>
+        [Theory]
+        [InlineData(0x022A)] // offset != 0 -> AsSpan(offset) throws ArgumentOutOfRangeException
+        [InlineData(0x0000)] // offset == 0 -> empty span, indexer throws IndexOutOfRangeException
+        public void strcpy_DoesNotThrow_WhenDestinationSegmentUnallocated(int destinationOffset)
+        {
+            // Reset State
+            Reset();
+
+            const ushort UNALLOCATED_SEGMENT = 0x1001;
+            Assert.False(mbbsEmuProtectedModeMemoryCore.HasSegment(UNALLOCATED_SEGMENT));
+
+            var destinationStringPointer = new FarPtr(UNALLOCATED_SEGMENT, (ushort)destinationOffset);
+
+            var sourceStringPointer = mbbsEmuMemoryCore.AllocateVariable("SOURCE_STRING", 9);
+            mbbsEmuMemoryCore.SetArray("SOURCE_STRING", Encoding.ASCII.GetBytes("ABCDEFG\0"));
+
+            ExecuteApiTest(
+                HostProcess.ExportedModules.Majorbbs.Segment,
+                STRCPY_ORDINAL,
+                new List<FarPtr> { destinationStringPointer, sourceStringPointer });
+
+            Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);
+            Assert.Equal(destinationStringPointer.Offset, mbbsEmuCpuRegisters.AX);
+            Assert.False(mbbsEmuProtectedModeMemoryCore.HasSegment(UNALLOCATED_SEGMENT));
+        }
     }
 }
