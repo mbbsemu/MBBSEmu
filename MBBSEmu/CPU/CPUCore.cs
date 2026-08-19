@@ -733,6 +733,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Ror:
                     Op_Ror();
                     break;
+                case Mnemonic.Rol:
+                    Op_Rol();
+                    break;
                 case Mnemonic.Ftst:
                     Op_Ftst();
                     break;
@@ -4226,6 +4229,88 @@ namespace MBBSEmu.CPU
         private void Op_Frndint()
         {
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Round(FpuStack[Registers.Fpu.GetStackTop()], Registers.Fpu.GetRoundingControl());
+        }
+
+        /// <summary>
+        ///     Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Rol()
+        {
+            var result = _currentOperationSize switch
+            {
+                1 => Op_Rol_8(),
+                2 => Op_Rol_16(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     8-bit Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private byte Op_Rol_8()
+        {
+            var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
+            unchecked
+            {
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 8, 16, 24) is the identity but still updates CF below
+                var rotate = source % 8;
+                var result = (byte)((destination << rotate) | (destination >> (8 - rotate)));
+
+                //CF Set if Least Significant Bit set to 1 (the bit rotated out of the top)
+                Registers.CarryFlag = result.IsBitSet(0);
+
+                //If the Most Significant Bit and CF are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) != Registers.CarryFlag;
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        ///     16-bit Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private ushort Op_Rol_16()
+        {
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
+            unchecked
+            {
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 16) is the identity but still updates CF below
+                var rotate = source % 16;
+                var result = (ushort)((destination << rotate) | (destination >> (16 - rotate)));
+
+                //CF Set if Least Significant Bit set to 1 (the bit rotated out of the top)
+                Registers.CarryFlag = result.IsBitSet(0);
+
+                //If the Most Significant Bit and CF are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) != Registers.CarryFlag;
+
+                return result;
+            }
         }
 
         /// <summary>
