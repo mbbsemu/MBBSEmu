@@ -68,7 +68,7 @@ namespace MBBSEmu.Session.LocalConsole
 
             Console.Clear();
 
-            Console.OutputEncoding = Encoding.Unicode;
+            Console.OutputEncoding = GetConsoleOutputEncoding(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
 
             //Detect if we're on Windows and enable VT100 on the current Terminal Window
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -86,6 +86,21 @@ namespace MBBSEmu.Session.LocalConsole
 
             _host?.AddSession(this);
         }
+
+        /// <summary>
+        ///     Returns the console output encoding appropriate for the host platform.
+        ///
+        ///     The Windows console renders UTF-16 correctly because .NET routes it through
+        ///     WriteConsoleW, but a Unix terminal reads the raw UTF-16LE bytes as UTF-8: the
+        ///     box-drawing character U+2551 emits 0x51 0x25 and prints as "Q%", which garbles
+        ///     every piece of ANSI art. ASCII appears to survive only because its high byte is
+        ///     NUL, which terminals discard.
+        ///
+        ///     The UTF-8 encoding is explicitly BOM-free. Console suppresses preambles on its
+        ///     own, but returning a BOM-free encoding keeps the result correct for any writer.
+        /// </summary>
+        public static Encoding GetConsoleOutputEncoding(bool isWindows) =>
+            isWindows ? Encoding.Unicode : new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         private void InputThread()
         {
