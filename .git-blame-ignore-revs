@@ -1,0 +1,6 @@
+# Solution-wide formatting passes. Configure locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub applies this file automatically.
+
+# Run the code formatter over the entire solution (#661)
+01aa856b2a5a766614eb1ab30eea3c820b8fdd3e
