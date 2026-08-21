@@ -141,6 +141,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 39:
                     btupbc();
                     break;
+                case 86:
+                    btucpc();
+                    break;
                 case 87:
                     btuica();
                     break;
@@ -361,7 +364,45 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btupbc()
         {
-            //TODO -- Handle this?
+            var channelNumber = GetParameter(0);
+            var pauseCharacter = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            // Overrides the Major BBS per-channel default (Control-T/0x14, armed at
+            // session start); pausch == 0 disables screen pause (GSBL btupbc). When
+            // enabled, the pause character is a host-side marker consumed from ASCII
+            // output, never transmitted. See docs/reverse-engineering/tlord-screen-pause.md.
+            channel.PauseCharacter = pauseCharacter;
+            channel.ScreenPauseEnabled = pauseCharacter != 0;
+
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Set the clear pause-counter character (puts off screen pauses when in
+        ///     the output stream). The character resets the pause line counter and is
+        ///     never transmitted to the client.
+        ///
+        ///     Signature: int btucpc(int chan, char clrpch)
+        ///     Result: AX == 0 = OK
+        /// </summary>
+        public void btucpc()
+        {
+            var channelNumber = GetParameter(0);
+            var clearCharacter = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.ClearPauseCounterCharacter = clearCharacter;
             Registers.AX = 0;
         }
 

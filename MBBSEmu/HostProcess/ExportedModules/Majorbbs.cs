@@ -6966,9 +6966,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void fsdbkg()
         {
+            //FSD painting is GSBL binary-mode output: armed screen-pause markers in
+            //the template are CP437 glyphs here (e.g. MajorMUD's ◄) and must not be
+            //consumed. The session is still InModule at this point, so mark the sends
+            //explicitly rather than relying on the full-screen session states.
             var templatePointer = GetParameterPointer(0);
-            ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
-            ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(Module.Memory.GetString(templatePointer)));
+            var channel = ChannelDictionary[ChannelNumber];
+            channel.BinaryOutputMode = true;
+            try
+            {
+                channel.SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
+                channel.SendToClient(FormatNewLineCarriageReturn(Module.Memory.GetString(templatePointer)));
+            }
+            finally
+            {
+                channel.BinaryOutputMode = false;
+            }
         }
 
         /// <summary>

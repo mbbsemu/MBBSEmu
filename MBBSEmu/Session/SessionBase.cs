@@ -138,6 +138,32 @@ namespace MBBSEmu.Session
         public byte PromptCharacter { get; set; }
 
         /// <summary>
+        ///     GSBL screen-pause state (btupbc/btucpc). The Major BBS arms these
+        ///     host-side for every channel — pause = Control-T (0x14), clear pause
+        ///     counter = Control-S (0x13) — so modules like T-LORD embed the markers
+        ///     without ever registering them (verified against real MajorBBS 6.25
+        ///     wire captures, which transmit zero of either from the first byte).
+        ///     btupbc/btucpc override the defaults per channel (0 disables). Both
+        ///     markers are consumed from ASCII-mode output, never transmitted; FSD
+        ///     full-screen output is binary mode, where the same byte values pass
+        ///     through as CP437 display glyphs (e.g. MajorMUD, see
+        ///     ConsumeScreenPauseMarkers). See docs/reverse-engineering/tlord-screen-pause.md.
+        /// </summary>
+        public const byte DefaultPauseCharacter = 0x14;
+        public const byte DefaultClearPauseCounterCharacter = 0x13;
+
+        public bool ScreenPauseEnabled { get; set; } = true;
+        public byte PauseCharacter { get; set; } = DefaultPauseCharacter;
+        public byte ClearPauseCounterCharacter { get; set; } = DefaultClearPauseCounterCharacter;
+
+        /// <summary>
+        ///     Marks output sent while set as GSBL binary-mode (no screen-pause marker
+        ///     consumption). Set by host FSD painting that occurs outside the
+        ///     full-screen session states (e.g. fsdbkg).
+        /// </summary>
+        public bool BinaryOutputMode { get; set; }
+
+        /// <summary>
         ///     Queue to hold data to be sent async to Client
         /// </summary>
         public BlockingCollection<byte[]> DataToClient { get; set; }
@@ -278,6 +304,8 @@ namespace MBBSEmu.Session
         {
             if (!OutputEnabled) return;
 
+            dataToSend = ConsumeScreenPauseMarkers(dataToSend);
+
             if (_textVariableService == null)
             {
                 SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
@@ -350,7 +378,8 @@ namespace MBBSEmu.Session
                 }
             };
 
-            OnSessionStateChanged += (_, _) => mbbsHost.TriggerProcessing();
+            //mbbsHost is null for host-less TestSessions
+            OnSessionStateChanged += (_, _) => mbbsHost?.TriggerProcessing();
         }
 
         public void ProcessDataFromClient()
@@ -374,16 +403,66 @@ namespace MBBSEmu.Session
             printableCharacters[1] = false; // mmud crap
             printableCharacters[2] = false;
             printableCharacters[3] = false;
-            printableCharacters[17] = false; // DC1   used by T-LORD
-            printableCharacters[18] = false; // DC2
-            printableCharacters[19] = false; // DC3
-            printableCharacters[20] = false; // DC4
+            // DC1-DC4 (0x11-0x14) are intentionally left printable. In binary-mode
+            // (FSD) output they are CP437 display glyphs (◄↕‼¶, e.g. MajorMUD); in
+            // ASCII-mode output the armed pause/counter markers among them are
+            // consumed per session by ConsumeScreenPauseMarkers, not filtered
+            // globally. See docs/reverse-engineering/tlord-screen-pause.md.
             printableCharacters[255] = false; // 0xFF, make Telnet happier
 
             return printableCharacters;
         }
 
         public static bool shouldSendToClient(byte b) => IS_CHARACTER_PRINTABLE[b];
+
+        /// <summary>
+        ///     Consumes GSBL screen-pause markers from ASCII-mode output. The pause
+        ///     character is active while screen pause is enabled; a nonzero
+        ///     clear-pause-counter character is active independently. Full-screen
+        ///     (FSD) output is GSBL binary mode, where these byte values are CP437
+        ///     display glyphs and must pass through untouched — MBBSEmu doesn't model
+        ///     per-channel output mode yet, so the session's full-screen states stand
+        ///     in for it (the FSD background template itself is sent raw by fsdbkg).
+        /// </summary>
+        private byte[] ConsumeScreenPauseMarkers(byte[] dataToSend)
+        {
+            if (BinaryOutputMode)
+                return dataToSend;
+
+            switch (SessionState)
+            {
+                case EnumSessionState.EnteringFullScreenDisplay:
+                case EnumSessionState.InFullScreenDisplay:
+                case EnumSessionState.EnteringFullScreenEditor:
+                case EnumSessionState.InFullScreenEditor:
+                case EnumSessionState.ExitingFullScreenDisplay:
+                case EnumSessionState.ExitingFullScreenEditor:
+                    return dataToSend;
+            }
+
+            var consumePauseCharacter = ScreenPauseEnabled && PauseCharacter != 0;
+            var consumeClearCharacter = ClearPauseCounterCharacter != 0;
+
+            if (!consumePauseCharacter && !consumeClearCharacter)
+                return dataToSend;
+
+            return dataToSend
+                .Where(b => (!consumePauseCharacter || b != PauseCharacter) &&
+                            (!consumeClearCharacter || b != ClearPauseCounterCharacter))
+                .ToArray();
+        }
+
+        /// <summary>
+        ///     Restores the Major BBS default screen-pause arming. Called when a module
+        ///     is exited so a btupbc/btucpc override made by one door (including
+        ///     disabling via 0) doesn't follow the user into the next.
+        /// </summary>
+        public void ResetScreenPauseState()
+        {
+            ScreenPauseEnabled = true;
+            PauseCharacter = DefaultPauseCharacter;
+            ClearPauseCounterCharacter = DefaultClearPauseCounterCharacter;
+        }
 
         /// <summary>
         ///     Safe Method for returning Status of a Channel
