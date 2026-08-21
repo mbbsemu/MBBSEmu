@@ -7,9 +7,11 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace MBBSEmu.Btrieve
 {
@@ -28,6 +30,7 @@ namespace MBBSEmu.Btrieve
     /// </summary>
     public class BtrieveFileProcessor : IDisposable
     {
+        public const int SQLITE_BUSY = 5;
         public const int SQLITE_CONSTRAINT = 19;
         public const int SQLITE_CONSTRAINT_UNIQUE = 2067;
         public const int SQLITE_CONSTRAINT_TRIGGER = 1811;
@@ -205,9 +208,21 @@ namespace MBBSEmu.Btrieve
 
             Connection = new SqliteConnection(GetDefaultConnectionStringBuilder(fullPath).ToString());
             Connection.Open();
+            ConfigureSqliteConnection();
 
             LoadSqliteMetadata();
             Keys = LoadSqliteKeys();
+        }
+
+        private void ConfigureSqliteConnection()
+        {
+            using var busyCmd = new SqliteCommand("PRAGMA busy_timeout = 5000", Connection);
+            busyCmd.ExecuteNonQuery();
+
+            using var walCmd = new SqliteCommand("PRAGMA journal_mode = WAL", Connection);
+            var journalMode = walCmd.ExecuteScalar()?.ToString();
+            if (journalMode != "wal" && journalMode != "memory")
+                _logger.Warn($"Failed to set WAL journal mode on {FullPath}, got: {journalMode}");
         }
 
         /// <summary>
@@ -276,23 +291,25 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         private void UpgradeDatabaseFromVersion1To2()
         {
-            var transaction = Connection.BeginTransaction();
-            // creates the missing triggers
-            var keys = LoadSqliteKeys(transaction);
-            CreateSqliteTriggers(transaction, keys.Values);
-
-            // and bump the version
-            // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
-            cmd.ExecuteNonQuery();
+            using var transaction = Connection.BeginTransaction();
 
             try
             {
+                // creates the missing triggers
+                var keys = LoadSqliteKeys(transaction);
+                CreateSqliteTriggers(transaction, keys.Values);
+
+                // and bump the version
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
+                using var cmd = new SqliteCommand("UPDATE metadata_t SET version = 2", Connection, transaction);
+                cmd.ExecuteNonQuery();
+
                 transaction.Commit();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                transaction.Rollback();
+                SafeRollback(transaction, "UpgradeDatabaseFromVersion1To2");
+                throw new InvalidOperationException("Failed to upgrade sqlite DB from version 1 to 2", ex);
             }
         }
 
@@ -504,6 +521,51 @@ namespace MBBSEmu.Btrieve
             return ret;
         }
 
+        private static readonly int[] CommitRetryDelaysMs = { 50, 200, 500 };
+
+        private void SafeRollback(SqliteTransaction transaction, string operation)
+        {
+            try
+            {
+                transaction.Rollback();
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, $"{FullPath}: {operation} rollback failed: {ex.Message}");
+            }
+        }
+
+        private bool TryCommitWithRetry(SqliteTransaction transaction, string operation)
+        {
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    transaction.Commit();
+                    if (attempt > 0)
+                        _logger.Info($"{FullPath}: {operation} committed after {attempt + 1} attempts");
+                    return true;
+                }
+                catch (SqliteException ex) when (ex.SqliteErrorCode == SQLITE_BUSY && attempt < CommitRetryDelaysMs.Length)
+                {
+                    _logger.Warn($"{FullPath}: {operation} commit got SQLITE_BUSY, retry {attempt + 1}/{CommitRetryDelaysMs.Length}");
+                    Thread.Sleep(CommitRetryDelaysMs[attempt]);
+                }
+                catch (SqliteException ex) when (ex.SqliteErrorCode == SQLITE_BUSY)
+                {
+                    _logger.Warn(ex, $"{FullPath}: {operation} commit failed after {CommitRetryDelaysMs.Length + 1} attempts with SQLITE_BUSY");
+                    SafeRollback(transaction, operation);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(ex, $"{FullPath}: {operation} commit failed: {ex.Message}");
+                    SafeRollback(transaction, operation);
+                    return false;
+                }
+            }
+        }
+
         /// <summary>
         ///     Updates the Record at the current Position.
         /// </summary>
@@ -524,11 +586,12 @@ namespace MBBSEmu.Btrieve
                 recordData = ForceSize(recordData, RecordLength);
             }
 
+            var sw = Stopwatch.StartNew();
             using var transaction = Connection.BeginTransaction();
 
             if (!InsertAutoincrementValues(transaction, recordData))
             {
-                transaction.Rollback();
+                SafeRollback(transaction, $"Update(offset={offset})");
                 return BtrieveError.DuplicateKeyValue;
             }
 
@@ -560,8 +623,8 @@ namespace MBBSEmu.Btrieve
             }
             catch (SqliteException ex)
             {
-                _logger.Warn(ex, $"Failed to update record because {ex.SqliteErrorCode} {ex.SqliteExtendedErrorCode} {ex.Message}");
-                transaction.Rollback();
+                _logger.Warn(ex, $"{FullPath}: Failed to update record at offset {offset}: {ex.SqliteErrorCode} {ex.SqliteExtendedErrorCode} {ex.Message}");
+                SafeRollback(transaction, $"Update(offset={offset})");
 
                 // emulating strange MBBS behavior here. If an update fails on a constraint check,
                 // it returns 0. If a key is modified, it catastro's
@@ -574,16 +637,11 @@ namespace MBBSEmu.Btrieve
                 throw;
             }
 
-            try
-            {
-                transaction.Commit();
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn(ex, $"Failed to commit during update record because {ex.Message}");
-                transaction.Rollback();
-                queryResult = 0;
-            }
+            if (!TryCommitWithRetry(transaction, $"Update(offset={offset})"))
+                return BtrieveError.IOError;
+
+            if (sw.ElapsedMilliseconds > 1000)
+                _logger.Warn($"{FullPath}: Update(offset={offset}) took {sw.ElapsedMilliseconds}ms");
 
             if (queryResult == 0)
                 return BtrieveError.InvalidKeyNumber;
@@ -666,11 +724,12 @@ namespace MBBSEmu.Btrieve
                 record = ForceSize(record, RecordLength);
             }
 
+            var sw = Stopwatch.StartNew();
             using var transaction = Connection.BeginTransaction();
 
             if (!InsertAutoincrementValues(transaction, record))
             {
-                transaction.Rollback();
+                SafeRollback(transaction, "Insert");
                 return 0;
             }
 
@@ -705,22 +764,17 @@ namespace MBBSEmu.Btrieve
             catch (SqliteException ex)
             {
                 _logger.Log(logLevel, $"{FullPath}: Failed to insert record because {ex.Message}", ex);
-                transaction.Rollback();
+                SafeRollback(transaction, "Insert");
                 return 0;
             }
 
             var lastInsertRowId = Convert.ToUInt32(GetSqliteCommand("SELECT last_insert_rowid()", transaction).ExecuteScalar());
 
-            try
-            {
-                transaction.Commit();
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(logLevel, $"Failed to commit during insert: {ex.Message}");
-                transaction.Rollback();
+            if (!TryCommitWithRetry(transaction, "Insert"))
                 queryResult = 0;
-            }
+
+            if (sw.ElapsedMilliseconds > 1000)
+                _logger.Warn($"{FullPath}: Insert took {sw.ElapsedMilliseconds}ms");
 
             if (queryResult == 0)
                 return 0;
@@ -786,10 +840,10 @@ namespace MBBSEmu.Btrieve
                 currentQuery = new BtrieveQuery(this)
                 {
                     Key = Keys[(ushort)keyNumber],
-                    KeyData = key == null ? null : new byte[key.Length],
+                    KeyData = key.IsEmpty ? null : new byte[key.Length],
                 };
 
-                if (key != null)
+                if (!key.IsEmpty)
                 {
                     Array.Copy(key.ToArray(), 0, currentQuery.KeyData, 0, key.Length);
                 }
@@ -1052,50 +1106,51 @@ namespace MBBSEmu.Btrieve
         {
             using var transaction = Connection.BeginTransaction();
 
-            string insertSql;
-            if (Keys.Count > 0)
-            {
-                var sb = new StringBuilder("INSERT INTO data_t(data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
-                sb.Append(") VALUES(@data, ");
-                sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
-                sb.Append(");");
-                insertSql = sb.ToString();
-            }
-            else
-            {
-                insertSql = "INSERT INTO data_t(data) VALUES (@data)";
-            }
-
-            // not using GetSqliteCommand since this is used once and caching it provides no benefit
-            using var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
-            insertCmd.Prepare();
-
-            foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
-            {
-                insertCmd.Parameters.Clear();
-                insertCmd.Parameters.AddWithValue("@data", record.Data);
-                foreach (var key in btrieveFile.Keys.Values)
-                    insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
-                        key.ExtractKeyInRecordToSqliteObject(record.Data));
-
-                try
-                {
-                    insertCmd.ExecuteNonQuery();
-                }
-                catch (SqliteException ex)
-                {
-                    _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
-                }
-            }
-
             try
             {
+                string insertSql;
+                if (Keys.Count > 0)
+                {
+                    var sb = new StringBuilder("INSERT INTO data_t(data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => key.SqliteKeyName).ToList()));
+                    sb.Append(") VALUES(@data, ");
+                    sb.Append(string.Join(", ", Keys.Values.Select(key => $"@{key.SqliteKeyName}").ToList()));
+                    sb.Append(");");
+                    insertSql = sb.ToString();
+                }
+                else
+                {
+                    insertSql = "INSERT INTO data_t(data) VALUES (@data)";
+                }
+
+                // not using GetSqliteCommand since this is used once and caching it provides no benefit
+                using var insertCmd = new SqliteCommand(insertSql, Connection, transaction);
+                insertCmd.Prepare();
+
+                foreach (var record in btrieveFile.Records.OrderBy(x => x.Offset))
+                {
+                    insertCmd.Parameters.Clear();
+                    insertCmd.Parameters.AddWithValue("@data", record.Data);
+                    foreach (var key in btrieveFile.Keys.Values)
+                        insertCmd.Parameters.AddWithValue($"@{key.SqliteKeyName}",
+                            key.ExtractKeyInRecordToSqliteObject(record.Data));
+
+                    try
+                    {
+                        insertCmd.ExecuteNonQuery();
+                    }
+                    catch (SqliteException ex)
+                    {
+                        _logger.Error(ex, $"Error importing btrieve data {ex.Message}");
+                    }
+                }
+
                 transaction.Commit();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                transaction.Rollback();
+                SafeRollback(transaction, "CreateSqliteDataTable");
+                throw new InvalidOperationException($"Failed to commit imported data for {FullPath}", ex);
             }
         }
 
@@ -1182,6 +1237,7 @@ namespace MBBSEmu.Btrieve
         {
             Connection = new SqliteConnection(connectionString);
             Connection.Open();
+            ConfigureSqliteConnection();
 
             RecordLength = btrieveFile.RecordLength;
             PageLength = btrieveFile.PageLength;
