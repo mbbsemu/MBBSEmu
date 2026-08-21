@@ -121,5 +121,32 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(carryFlag, mbbsEmuCpuRegisters.CarryFlag);
             Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
         }
+
+        [Theory]
+        [InlineData(1, -1, -1, false, false)] // Simple negative result, must not treat EAX as unsigned
+        [InlineData(-1, -1, 1, false, false)] // Negative * Negative == Positive
+        [InlineData(-127, -1, 127, false, false)]
+        [InlineData(int.MaxValue, -1, int.MinValue + 1, false, false)]
+        [InlineData(int.MaxValue, 2, -2, true, true)] // Overflows 32 bits, CF/OF must be set
+        [InlineData(int.MinValue, -1, int.MinValue, true, true)] // Overflows 32 bits
+        [InlineData(0, -1, 0, false, false)]
+        public void IMUL_32_R32_Test(int eaxValue, int valueToMultiply, int expectedValue, bool carryFlag,
+            bool overflowFlag)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.EAX = unchecked((uint)eaxValue);
+            mbbsEmuCpuRegisters.EBX = unchecked((uint)valueToMultiply);
+
+            var instructions = new Assembler(16);
+            instructions.imul(ebx);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results
+            Assert.Equal(expectedValue, (int)mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(carryFlag, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(overflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
+        }
     }
 }

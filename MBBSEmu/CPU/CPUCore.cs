@@ -733,6 +733,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Ror:
                     Op_Ror();
                     break;
+                case Mnemonic.Rol:
+                    Op_Rol();
+                    break;
                 case Mnemonic.Ftst:
                     Op_Ftst();
                     break;
@@ -1570,7 +1573,9 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte)-destination;
                 Registers.CarryFlag = destination != 0;
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                //NEG is 0 - destination, so the operand is the source of the subtraction;
+                //OF is set only for 0x80, the value whose negation doesn't fit
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1584,7 +1589,9 @@ namespace MBBSEmu.CPU
             {
                 var result = (ushort)-destination;
                 Registers.CarryFlag = destination != 0;
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination);
+                //NEG is 0 - destination, so the operand is the source of the subtraction;
+                //OF is set only for 0x8000, the value whose negation doesn't fit
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
                 Flags_EvaluateSignZero(result);
                 return result;
             }
@@ -1610,11 +1617,11 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             unchecked
             {
-                if (Registers.CarryFlag)
-                    source += 1;
+                var borrowIn = Registers.CarryFlag ? 1 : 0;
+                var wideResult = destination - source - borrowIn;
+                var result = (byte)wideResult;
 
-                var result = (byte)(destination - source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.CarryFlag = wideResult < 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1629,11 +1636,11 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (Registers.CarryFlag)
-                    source += 1;
+                var borrowIn = Registers.CarryFlag ? 1 : 0;
+                var wideResult = destination - source - borrowIn;
+                var result = (ushort)wideResult;
 
-                var result = (ushort)(destination - source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.CarryFlag = wideResult < 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1734,6 +1741,12 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //x86 masks the rotate count to 5 bits, then reduces it modulo (width+1) since
+            //the Carry Flag participates in the rotation as an extra, 9th bit
+            source &= 0x1F;
+            source %= 9;
+
             unchecked
             {
                 var result = destination;
@@ -1779,6 +1792,12 @@ namespace MBBSEmu.CPU
         {
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //x86 masks the rotate count to 5 bits, then reduces it modulo (width+1) since
+            //the Carry Flag participates in the rotation as an extra, 17th bit
+            source &= 0x1F;
+            source %= 17;
+
             unchecked
             {
                 var result = destination;
@@ -1829,6 +1848,11 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //x86 masks the rotate count to 5 bits, then reduces it modulo (width+1) since
+            //the Carry Flag participates in the rotation as an extra, 9th bit
+            source &= 0x1F;
+            source %= 9;
+
             unchecked
             {
                 var result = destination;
@@ -1862,6 +1886,11 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //x86 masks the rotate count to 5 bits, then reduces it modulo (width+1) since
+            //the Carry Flag participates in the rotation as an extra, 17th bit
+            source &= 0x1F;
+            source %= 17;
+
             unchecked
             {
                 var result = destination;
@@ -1883,7 +1912,7 @@ namespace MBBSEmu.CPU
 
                 //For 1 Bit Rotations, we evaluate Overflow
                 if (source == 1)
-                    Registers.OverflowFlag = result.IsBitSet(7) ^ Registers.CarryFlag;
+                    Registers.OverflowFlag = result.IsBitSet(15) ^ Registers.CarryFlag;
 
                 return result;
             }
@@ -1914,14 +1943,13 @@ namespace MBBSEmu.CPU
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
-                // So result becomes 0xDDLL where DD is the value and LL are the lost bits
-                var uresult = (ushort)((destination << 8) >> source);
-                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(uresult & 0x80));
+                // So result becomes 0xDDLL where DD is the value and LL are the lost bits.
+                // The container is sign-extended so the right shift is arithmetic and fills
+                // every vacated bit with the sign bit, as SAR requires for any count
+                var sresult = ((int)(sbyte)destination << 8) >> source;
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (byte)(sresult & 0x80));
 
-                var result = (byte)(uresult >> 8);
-                // maintain sign bit
-                if (destination.IsNegative())
-                    result |= 0x80;
+                var result = (byte)((uint)sresult >> 8);
 
                 Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
@@ -1941,14 +1969,13 @@ namespace MBBSEmu.CPU
             {
                 // in order to inspect bits lost during shift when computing the carry flag, we
                 // extend the size of the operation first by shifting left and then shifting right.
-                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits
-                var uresult = ((uint)destination << 16) >> source;
-                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(uresult & 0x8000));
+                // So result becomes 0xDDDDLLLL where DDDD is the value and LLLL are the lost bits.
+                // The container is sign-extended so the right shift is arithmetic and fills
+                // every vacated bit with the sign bit, as SAR requires for any count
+                var sresult = ((int)(short)destination << 16) >> source;
+                Flags_EvaluateCarry(EnumArithmeticOperation.ShiftArithmeticRight, (ushort)(sresult & 0x8000));
 
-                var result = (ushort)(uresult >> 16);
-                // maintain sign bit
-                if (destination.IsNegative())
-                    result |= 0x8000;
+                var result = (ushort)((uint)sresult >> 16);
 
                 Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftArithmeticRight, result, destination, source);
                 Flags_EvaluateSignZero(result);
@@ -2764,11 +2791,12 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.CarryFlag)
-                    source++;
+                var carryIn = addCarry && Registers.CarryFlag ? 1 : 0;
+                var wideResult = destination + source + carryIn;
+                var result = (byte)wideResult;
 
-                var result = (byte)(source + destination);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Registers.CarryFlag = wideResult > byte.MaxValue;
+                Registers.AuxiliaryCarryFlag = (((source & 0xF) + (destination & 0xF) + carryIn) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2783,11 +2811,11 @@ namespace MBBSEmu.CPU
 
             unchecked
             {
-                if (addCarry && Registers.CarryFlag)
-                    source++;
+                var carryIn = addCarry && Registers.CarryFlag ? 1 : 0;
+                var wideResult = destination + source + carryIn;
+                var result = (ushort)wideResult;
 
-                var result = (ushort)(source + destination);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Registers.CarryFlag = wideResult > ushort.MaxValue;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2795,18 +2823,18 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
-        private ushort Op_Add_32(bool addCarry)
+        private uint Op_Add_32(bool addCarry)
         {
             var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
             unchecked
             {
-                if (addCarry && Registers.CarryFlag)
-                    source++;
+                var carryIn = addCarry && Registers.CarryFlag ? 1u : 0u;
+                var wideResult = (ulong)destination + source + carryIn;
+                var result = (uint)wideResult;
 
-                var result = (ushort)(source + destination);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination, source);
+                Registers.CarryFlag = wideResult > uint.MaxValue;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2887,9 +2915,10 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
         private void Op_Imul_1operand_32()
         {
-            var operand2 = Registers.EAX;
+            // Get the value from EAX and the operand, ensuring they are sign-extended properly
+            var operand2 = (int)Registers.EAX;
             var operand3 = GetOperandValueInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            long result = operand2 * operand3;
+            long result = (long)operand2 * operand3;
 
 
             //EDX is High 32-bits, EAX is low 32-bits
@@ -2897,7 +2926,7 @@ namespace MBBSEmu.CPU
             Registers.EAX = (uint)(result & 0xFFFFFFFF);
 
             //Set CarryFlag and OverflowFlag if the result is too large to fit in the destination
-            Registers.OverflowFlag = Registers.CarryFlag = Register.EDX != 0;
+            Registers.OverflowFlag = Registers.CarryFlag = (long)(int)Registers.EAX != result;
         }
 
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
@@ -3435,7 +3464,7 @@ namespace MBBSEmu.CPU
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
-            var result = (ushort)~destination;
+            var result = ~destination;
 
             WriteToDestination(result);
         }
@@ -4207,6 +4236,88 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
+        ///     Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Rol()
+        {
+            var result = _currentOperationSize switch
+            {
+                1 => Op_Rol_8(),
+                2 => Op_Rol_16(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     8-bit Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private byte Op_Rol_8()
+        {
+            var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
+            unchecked
+            {
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 8, 16, 24) is the identity but still updates CF below
+                var rotate = source % 8;
+                var result = (byte)((destination << rotate) | (destination >> (8 - rotate)));
+
+                //CF Set if Least Significant Bit set to 1 (the bit rotated out of the top)
+                Registers.CarryFlag = result.IsBitSet(0);
+
+                //If the Most Significant Bit and CF are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(7) != Registers.CarryFlag;
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        ///     16-bit Rotate Left
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private ushort Op_Rol_16()
+        {
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
+            unchecked
+            {
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 16) is the identity but still updates CF below
+                var rotate = source % 16;
+                var result = (ushort)((destination << rotate) | (destination >> (16 - rotate)));
+
+                //CF Set if Least Significant Bit set to 1 (the bit rotated out of the top)
+                Registers.CarryFlag = result.IsBitSet(0);
+
+                //If the Most Significant Bit and CF are not the same, then we overflowed for 1 bit rotations
+                if (source == 1)
+                    Registers.OverflowFlag = result.IsBitSet(15) != Registers.CarryFlag;
+
+                return result;
+            }
+        }
+
+        /// <summary>
         ///     Rotate Right
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
@@ -4232,11 +4343,20 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt8(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt8(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
             unchecked
             {
-                var result = (byte)((destination >> (sbyte)source) | (destination << (8 - (sbyte)source)));
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 8, 16, 24) is the identity but still updates CF below
+                var rotate = source % 8;
+                var result = (byte)((destination >> rotate) | (destination << (8 - rotate)));
 
-                //CF Set if Most Significant Bit set to 1
+                //CF Set if Most Significant Bit set to 1 (the bit rotated out of the bottom)
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 7 & 6 are not the same, then we overflowed for 1 bit rotations
@@ -4257,11 +4377,20 @@ namespace MBBSEmu.CPU
             var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
             var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
 
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            source &= 0x1F;
+            if (source == 0)
+                return destination;
+
             unchecked
             {
-                var result = (ushort)((destination >> (sbyte)source) | (destination << (16 - (sbyte)source)));
+                //rotation is modulo the operand width; a multiple of the width
+                //(count 16) is the identity but still updates CF below
+                var rotate = source % 16;
+                var result = (ushort)((destination >> rotate) | (destination << (16 - rotate)));
 
-                //CF Set if Most Significant Bit set to 1
+                //CF Set if Most Significant Bit set to 1 (the bit rotated out of the bottom)
                 Registers.CarryFlag = result.IsNegative();
 
                 //If Bits 15 & 14 are not the same, then we overflowed for 1 bit rotations
@@ -4643,7 +4772,7 @@ namespace MBBSEmu.CPU
 
             //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
             if (count == 1)
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftLeft, result, destination, count);
             else
                 Registers.OverflowFlag = false;
 
@@ -4681,7 +4810,7 @@ namespace MBBSEmu.CPU
             // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
             if (arithmeticOperation == EnumArithmeticOperation.Addition)
             {
-                Registers.AuxiliaryCarryFlag = ((((source & 0xF) + (destination & 0xF))) & 0xFF00) != 0;
+                Registers.AuxiliaryCarryFlag = ((((source & 0xF) + (destination & 0xF))) & 0x10) != 0;
             }
         }
 

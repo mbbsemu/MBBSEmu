@@ -17,6 +17,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0x3E, 2, 0xF, true, false)]
         [InlineData(0xFFFF, 1, 0x7FFF, true, true)]
         [InlineData(0xFFFF, 2, 0xBFFF, true, false)]
+        [InlineData(0xFFFF, 18, 0x7FFF, true, true)] // Count must mask to 0x1F (18 stays 18), then reduce mod 17 == 1
         public void RCR_AX_IMM16_CF_CLEAR(ushort axValue, byte bitsToRotate, ushort expectedValue,
             bool expectedCFValue, bool expectedOFValue)
         {
@@ -67,6 +68,7 @@ namespace MBBSEmu.Tests.CPU
         [InlineData(0xFF, 2, 0xBF, true, false)]
         [InlineData(0x0, 1, 0x0, false, false)]
         [InlineData(0xE, 1, 0x7, false, false)]
+        [InlineData(0xF, 10, 0x7, true, false)] // Count must mask to 0x1F (10 stays 10), then reduce mod 9 == 1
         public void RCR_AH_IMM8_CF_CLEAR(byte ahValue, byte bitsToRotate, byte expectedValue, bool expectedCFValue, bool expectedOFValue)
         {
             Reset();

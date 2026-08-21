@@ -22,6 +22,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7879,7 +7880,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var inputDate = GetParameterString(0, true);
 
-            if (!DateTime.TryParse(inputDate, out var inputDateTime))
+            //Module date strings are always MM/DD/YY, so they must be parsed independently of the
+            //host's culture. Under a day-first culture (en-GB, en-IN, most of Europe) the current
+            //culture would read "12/31/90" as day 12 of month 31 and reject a valid date.
+            if (!DateTime.TryParse(inputDate, CultureInfo.InvariantCulture, DateTimeStyles.None,
+                    out var inputDateTime))
             {
                 Registers.AX = 0xFFFF;
                 return;
