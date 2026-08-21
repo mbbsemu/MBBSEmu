@@ -410,7 +410,7 @@ namespace MBBSEmu.CPU
 
             InstructionCounter++;
 
-            //Jump Table
+        //Jump Table
         Switch:
             switch (_currentInstruction.Mnemonic)
             {

@@ -16,6 +16,18 @@ on:
         required: false
         default: 'Manual Build'
 jobs:
+  # Verify formatting matches .editorconfig before spending time on build and test
+  format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - name: Verify formatting
+      run: dotnet format whitespace --verify-no-changes
+
   build:
     runs-on: ubuntu-latest
     steps:
