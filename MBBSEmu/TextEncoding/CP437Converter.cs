@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Text;
 
 namespace MBBSEmu.TextEncoding
@@ -49,6 +48,24 @@ namespace MBBSEmu.TextEncoding
         };
 
         /// <summary>
+        ///     Per-byte UTF-8 encoding of <see cref="CP437ToUnicode"/>, built once at type
+        ///     initialization. The telnet send path converts every outbound write, so encoding
+        ///     each extended byte on demand would allocate a char[] and a byte[] per character.
+        ///     Declared after CP437ToUnicode so the field initializers run in the right order.
+        /// </summary>
+        private static readonly byte[][] CP437ToUtf8 = BuildUtf8Table();
+
+        private static byte[][] BuildUtf8Table()
+        {
+            var table = new byte[CP437ToUnicode.Length][];
+
+            for (var i = 0; i < table.Length; i++)
+                table[i] = Encoding.UTF8.GetBytes(new[] { (char)CP437ToUnicode[i] });
+
+            return table;
+        }
+
+        /// <summary>
         ///     Converts CP437 bytes to UTF-8 encoded bytes.
         ///     C0 control characters (0x00-0x1F) and DEL (0x7F) pass through as control codes.
         ///     Standard ASCII (0x20-0x7E) passes through unchanged.
@@ -62,27 +79,33 @@ namespace MBBSEmu.TextEncoding
         /// <returns>UTF-8 encoded bytes</returns>
         public static byte[] ConvertToUtf8(ReadOnlySpan<byte> cp437Bytes)
         {
-            using var output = new MemoryStream(cp437Bytes.Length * 2);
+            // Size the result up front so the common all-ASCII write is a straight copy
+            // into a right-sized array rather than a growing buffer plus a final copy.
+            var length = 0;
 
-            for (var i = 0; i < cp437Bytes.Length; i++)
+            foreach (var b in cp437Bytes)
+                length += b < 0x80 ? 1 : CP437ToUtf8[b].Length;
+
+            var result = new byte[length];
+            var offset = 0;
+
+            foreach (var b in cp437Bytes)
             {
-                var b = cp437Bytes[i];
-
                 if (b < 0x80)
                 {
                     // ASCII + control chars (0x00-0x7F) - pass through unchanged
-                    output.WriteByte(b);
+                    result[offset++] = b;
                 }
                 else
                 {
-                    // Extended ASCII (0x80-0xFF) - convert via lookup table
-                    var unicodeChar = (char)CP437ToUnicode[b];
-                    var utf8Bytes = Encoding.UTF8.GetBytes(new[] { unicodeChar });
-                    output.Write(utf8Bytes, 0, utf8Bytes.Length);
+                    // Extended ASCII (0x80-0xFF) - copy the precomputed UTF-8 sequence
+                    var utf8Bytes = CP437ToUtf8[b];
+                    utf8Bytes.CopyTo(result, offset);
+                    offset += utf8Bytes.Length;
                 }
             }
 
-            return output.ToArray();
+            return result;
         }
 
         /// <summary>
