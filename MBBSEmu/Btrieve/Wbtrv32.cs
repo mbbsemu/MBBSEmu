@@ -44,7 +44,7 @@ namespace MBBSEmu.Btrieve
         // the caller's managed arrays/locals for the duration of the call instead of copying
         // them into separately allocated unmanaged memory, so wbtrv32.dll reads and writes
         // land straight back in the caller's own buffers with no extra alloc/copy/free.
-        [LibraryImport("wbtrv32.dll", EntryPoint = "BTRCALL")]
+        [LibraryImport("wbtrv32", EntryPoint = "BTRCALL")]
         private static partial int BTRCALL(ushort wOperation, nint lpPositionBlock, byte[] lpDataBuffer,
                                            ref int lpdwDataBufferLength, byte[] lpKeyBuffer, byte bKeyLength,
                                            byte sbKeyNumber);
