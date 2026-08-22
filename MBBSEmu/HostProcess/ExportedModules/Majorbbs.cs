@@ -2648,8 +2648,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 Module.Memory.SetArray(destinationRecordBuffer, record.Data);
             }
 
-            // TODO SET LOGICAL POSITION FOR NEXT/PREVIOUS
-
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
                 Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
 
@@ -2745,7 +2743,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
-            return currentBtrieveFile.Insert(dataToWrite.ToArray(), logLevel) != 0;
+            return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
         }
 
 
@@ -2761,7 +2759,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
 
-            currentBtrieveFile.Insert(record.ToArray(), LogLevel.Error);
+            currentBtrieveFile.Insert(record.ToArray());
         }
 
         /// <summary>
@@ -3072,7 +3070,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         {
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
-            var keyValue = !keyPointer.IsNull() ? Module.Memory.GetArray(keyPointer, currentBtrieveFile.GetKeyLength((ushort)keyNumber)) : null;
+            var keyValue = !keyPointer.IsNull()
+                ? Module.Memory.GetArray(keyPointer, (ushort)currentBtrieveFile.Keys[(ushort)keyNumber].Length)
+                : null;
             var result = currentBtrieveFile.PerformOperation(keyNumber, keyValue, obtopt);
             if (result)
                 UpdateBB(currentBtrieveFile, recordPointer, obtopt, (short)keyNumber);
@@ -5138,7 +5138,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
             var key = Module.Memory.GetArray(keyPointer,
-                currentBtrieveFile.GetKeyLength(keyNumber));
+                (ushort)currentBtrieveFile.Keys[keyNumber].Length);
 
             var result = currentBtrieveFile.PerformOperation(keyNumber, key, queryOption);
             if (result)
@@ -5936,7 +5936,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var queryOption = (EnumBtrieveOperationCodes)GetParameter(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.PreviousQuery.Key.Number, currentBtrieveFile.PreviousQuery.KeyData, queryOption);
+            var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.LastUsedKey, currentBtrieveFile.LastUsedKeyData, queryOption);
             if (result)
                 UpdateBB(currentBtrieveFile, FarPtr.Empty, queryOption, keyNumber: -1);
 

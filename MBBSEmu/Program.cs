@@ -21,7 +21,6 @@ using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
 using MBBSEmu.UI.Main;
 using MBBSEmu.UI.Setup;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -104,7 +103,6 @@ namespace MBBSEmu
         /// </summary>
         private bool _isConsoleSession;
 
-
         /// <summary>
         ///     Specified if the -CLI Command Line Argument was passed
         /// </summary>
@@ -127,7 +125,7 @@ namespace MBBSEmu
 
         static void Main(string[] args)
         {
-            //Setup Logging
+            // Setup Logging
             var factory = new LogFactory();
             factory.AddLogger(new MessageLogger(new ConsoleTarget()));
             factory.AddLogger(new AuditLogger(new ConsoleTarget()));
@@ -149,7 +147,8 @@ namespace MBBSEmu
                         setupWizard.Setup();
                         setupWizard.Run();
                         Console.WriteLine("Setup Wizard Complete!");
-                        Console.WriteLine("Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
+                        Console.WriteLine(
+                            "Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
                         return;
                     }
                     else
@@ -217,8 +216,10 @@ namespace MBBSEmu
                             i++;
                             break;
                         case "-?":
-                            Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
-                            Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                            Console.WriteLine(
+                                new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
+                            Console.WriteLine(
+                                $"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
                             Console.WriteLine("(Press Any Key to Exit)");
                             Console.ReadKey();
                             return;
@@ -226,37 +227,38 @@ namespace MBBSEmu
                         case "-C":
                             {
                                 _isModuleConfigFile = true;
-                                //Is there a following argument that doesn't start with '-'
-                                //If so, it's the config file name
+                                // Is there a following argument that doesn't start with '-'
+                                // If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
                                     _moduleConfigFileName = args[i + 1];
 
                                     if (!File.Exists(_moduleConfigFileName))
                                     {
-                                        Console.Write($"Specified Module Configuration File not found: {_moduleConfigFileName}");
+                                        Console.Write(
+                                            $"Specified Module Configuration File not found: {_moduleConfigFileName}");
                                         return;
                                     }
                                     i++;
                                 }
                                 else
                                 {
-                                    Console.WriteLine("Please specify a Module Configuration File when using the -C command line option");
+                                    Console.WriteLine(
+                                        "Please specify a Module Configuration File when using the -C command line option");
                                 }
 
                                 break;
                             }
                         case "-S":
                             {
-                                //Is there a following argument that doesn't start with '-'
-                                //If so, it's the config file name
+                                // Is there a following argument that doesn't start with '-'
+                                // If so, it's the config file name
                                 if (i + 1 < args.Length && args[i + 1][0] != '-')
                                 {
                                     _settingsFileName = args[i + 1];
 
                                     if (!File.Exists(_settingsFileName))
                                     {
-
                                         Console.WriteLine($"Specified MBBSEmu settings not found: {_settingsFileName}");
                                         return;
                                     }
@@ -264,17 +266,19 @@ namespace MBBSEmu
                                 }
                                 else
                                 {
-                                    Console.WriteLine("Please specify an MBBSEmu configuration file when using the -S command line option");
+                                    Console.WriteLine(
+                                        "Please specify an MBBSEmu configuration file when using the -S command line option");
                                 }
 
                                 break;
                             }
                         case "-CONSOLE":
                             {
-                                //Check to see if running Windows and earlier then Windows 8.0
+                                // Check to see if running Windows and earlier then Windows 8.0
                                 if (OperatingSystem.IsWindows() && !OperatingSystem.IsWindowsVersionAtLeast(6, 2))
                                 {
-                                    throw new ArgumentException("Console not supported on versions of Windows earlier than 8.0");
+                                    throw new ArgumentException(
+                                        "Console not supported on versions of Windows earlier than 8.0");
                                 }
 
                                 _isConsoleSession = true;
@@ -292,7 +296,8 @@ namespace MBBSEmu
                                 break;
                             }
                         case "-V":
-                            Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                            Console.WriteLine(
+                                $"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
                             return;
                         default:
                             Console.WriteLine($"Unknown Command Line Argument: {args[i]}");
@@ -303,30 +308,22 @@ namespace MBBSEmu
                 _serviceResolver = new ServiceResolver();
                 _logger = new LogFactory().GetLogger<MessageLogger>();
 
-                //EXE File Execution
+                // EXE File Execution
                 if (!string.IsNullOrEmpty(_exeFile))
                 {
                     var mzFile = new MZFile(_exeFile);
                     ExeRuntime exe;
                     if (_isConsoleSession)
                         exe = new ExeRuntime(
-                            mzFile,
-                            _serviceResolver.GetService<IClock>(),
-                            _logger,
-                            _serviceResolver.GetService<IFileUtility>(),
-                            Directory.GetCurrentDirectory(),
+                            mzFile, _serviceResolver.GetService<IClock>(), _logger,
+                            _serviceResolver.GetService<IFileUtility>(), Directory.GetCurrentDirectory(),
                             new LocalConsoleSession(_logger, "CONSOLE", null, null, false, false));
                     else
                         exe = new ExeRuntime(
-                            mzFile,
-                            _serviceResolver.GetService<IClock>(),
-                            _logger,
-                            _serviceResolver.GetService<IFileUtility>(),
-                            Directory.GetCurrentDirectory(),
-                            sessionBase: null,
-                            new TextReaderStream(Console.In),
-                            new TextWriterStream(Console.Out),
-                            new TextWriterStream(Console.Error));
+                            mzFile, _serviceResolver.GetService<IClock>(), _logger,
+                            _serviceResolver.GetService<IFileUtility>(), Directory.GetCurrentDirectory(),
+                            sessionBase: null, new TextReaderStream(Console.In),
+                            new TextWriterStream(Console.Out), new TextWriterStream(Console.Error));
                     exe.Load(programArgs);
                     exe.Run();
 
@@ -341,39 +338,47 @@ namespace MBBSEmu
                 var globalCache = _serviceResolver.GetService<IGlobalCache>();
                 var fileHandler = _serviceResolver.GetService<IFileUtility>();
 
-                //Setup Generic Database
+                // Setup Generic Database
                 if (!File.Exists($"BBSGEN.DB"))
                 {
-                    _logger.Warn($"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
-                    File.WriteAllBytes($"BBSGEN.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
+                    _logger.Warn(
+                        $"Unable to find MajorBBS/WG Generic Database, creating new copy of BBSGEN.DB");
+                    File.WriteAllBytes($"BBSGEN.DB",
+                                       resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
                 }
-                globalCache.Set("GENBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSGEN.DAT", configuration.BtrieveCacheSize));
+                globalCache.Set("GENBB-PROCESSOR",
+                                new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(),
+                                                         "BBSGEN.DAT", configuration.BtrieveCacheSize));
 
-                //Setup User Database
+                // Setup User Database
                 if (!File.Exists($"BBSUSR.DB"))
                 {
                     _logger.Warn($"Unable to find MajorBBS/WG User Database, creating new copy of BBSUSR.DB");
-                    File.WriteAllBytes($"BBSUSR.DB", resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
+                    File.WriteAllBytes($"BBSUSR.DB",
+                                       resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
                 }
-                globalCache.Set("ACCBB-PROCESSOR", new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(), "BBSUSR.DAT", configuration.BtrieveCacheSize));
+                globalCache.Set("ACCBB-PROCESSOR",
+                                new BtrieveFileProcessor(fileHandler, Directory.GetCurrentDirectory(),
+                                                         "BBSUSR.DAT", configuration.BtrieveCacheSize));
 
-                //Database Reset
+                // Database Reset
                 if (_doResetDatabase)
                     DatabaseReset();
 
-                //Password Reset
+                // Password Reset
                 if (_doResetPassword)
                     PasswordReset();
 
-                //Database Sanity Checks
+                // Database Sanity Checks
                 var databaseFile = configuration.DatabaseFile;
                 if (!File.Exists($"{databaseFile}"))
                 {
-                    _logger.Warn($"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
+                    _logger.Warn(
+                        $"SQLite Database File {databaseFile} missing, performing Database Reset to perform initial configuration");
                     DatabaseReset();
                 }
 
-                //Database Rebuild
+                // Database Rebuild
                 if (_doDatabaseRebuild)
                 {
                     switch (_databaseRebuildFileName)
@@ -387,15 +392,23 @@ namespace MBBSEmu
                     }
                 }
 
-                //Setup Modules
+                // Setup Modules
                 if (!string.IsNullOrEmpty(_modulePath) && string.IsNullOrEmpty(_moduleIdentifier))
                 {
                     var menuKeyOption = 'A';
-                    //Load Every Module within the specified Folder by scanning for .MDF files (with the file name of the MDF being the module identifier)
+                    // Load Every Module within the specified Folder by scanning for .MDF files (with the file
+                    // name of the MDF being the module identifier)
                     foreach (var file in Directory.GetFiles(_modulePath, "*.MDF"))
                     {
                         var moduleIdentifier = Path.GetFileNameWithoutExtension(file);
-                        _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = moduleIdentifier, ModulePath = _modulePath, ModuleEnabled = true, MenuOptionKey = menuKeyOption.ToString() });
+                        _moduleConfigurations.Add(
+                            new ModuleConfiguration
+                            {
+                                ModuleIdentifier = moduleIdentifier,
+                                ModulePath = _modulePath,
+                                ModuleEnabled = true,
+                                MenuOptionKey = menuKeyOption.ToString()
+                            });
                         menuKeyOption++;
                     }
 
@@ -404,8 +417,14 @@ namespace MBBSEmu
                 {
                     _menuOptionKey ??= "A";
 
-                    //Load Command Line
-                    _moduleConfigurations.Add(new ModuleConfiguration { ModuleIdentifier = _moduleIdentifier, ModulePath = _modulePath, MenuOptionKey = _menuOptionKey, ModuleEnabled = true });
+                    // Load Command Line
+                    _moduleConfigurations.Add(new ModuleConfiguration
+                    {
+                        ModuleIdentifier = _moduleIdentifier,
+                        ModulePath = _modulePath,
+                        MenuOptionKey = _menuOptionKey,
+                        ModuleEnabled = true
+                    });
                 }
                 else if (_isModuleConfigFile)
                 {
@@ -415,53 +434,61 @@ namespace MBBSEmu
                     var options = new JsonSerializerOptions
                     {
                         Converters = {
-                            new JsonModuleConfigurationFileConverter(), //Handles BasePath processing for Module Configuration
-                            new JsonBooleanConverter(), //Allows TRUE/FALSE values to be parsed
-                            new JsonStringEnumConverter(), //Allows Enums to be parsed from Strings
-                            new JsonFarPtrConverter() //Allows FarPtr to be parsed from Strings
-                        }
+            new JsonModuleConfigurationFileConverter(),  // Handles BasePath processing for Module
+                                                         // Configuration
+            new JsonBooleanConverter(),                  // Allows TRUE/FALSE values to be parsed
+            new JsonStringEnumConverter(),               // Allows Enums to be parsed from Strings
+            new JsonFarPtrConverter()                    // Allows FarPtr to be parsed from Strings
+          }
                     };
 
-                    var moduleConfigurationFile =
-                        JsonSerializer.Deserialize<ModuleConfigurationFile>(File.ReadAllText(_moduleConfigFileName), options);
+                    var moduleConfigurationFile = JsonSerializer.Deserialize<ModuleConfigurationFile>(
+                        File.ReadAllText(_moduleConfigFileName), options);
 
                     foreach (var m in moduleConfigurationFile.Modules)
                     {
                         m.ModuleEnabled ??= true;
 
-                        //Check for Non Character/Number in MenuOptionKey and Length of 2 or less
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && !(m.MenuOptionKey).All(char.IsLetterOrDigit))
+                        // Check for Non Character/Number in MenuOptionKey and Length of 2 or less
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
+                            !(m.MenuOptionKey).All(char.IsLetterOrDigit))
                         {
-                            _logger.Error($"Invalid menu option key character (NOT A-Z or 0-9) for {m.ModuleIdentifier}, auto assigning menu option key");
+                            _logger.Error(
+                                $"Invalid menu option key character (NOT A-Z or 0-9) for {m.ModuleIdentifier}, auto assigning menu option key");
                             m.MenuOptionKey = "";
                         }
 
-                        //Check MenuOptionKey is Length of 2 or less
+                        // Check MenuOptionKey is Length of 2 or less
                         if (!string.IsNullOrEmpty(m.MenuOptionKey) && m.MenuOptionKey.Length > 2)
                         {
-                            _logger.Error($"Invalid menu option key length (MAX Length: 2) {m.ModuleIdentifier}, auto assigning menu option key");
+                            _logger.Error(
+                                $"Invalid menu option key length (MAX Length: 2) {m.ModuleIdentifier}, auto assigning menu option key");
                             m.MenuOptionKey = "";
                         }
 
-                        //Check for duplicate MenuOptionKey
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && _moduleConfigurations.Any(x => x.MenuOptionKey == m.MenuOptionKey) && menuOptionKeys.Any(x => x.Equals(m.MenuOptionKey)))
+                        // Check for duplicate MenuOptionKey
+                        if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
+                            _moduleConfigurations.Any(x => x.MenuOptionKey == m.MenuOptionKey) &&
+                            menuOptionKeys.Any(x => x.Equals(m.MenuOptionKey)))
                         {
-                            _logger.Error($"Duplicate menu option key for {m.ModuleIdentifier}, auto assigning menu option key");
+                            _logger.Error(
+                                $"Duplicate menu option key for {m.ModuleIdentifier}, auto assigning menu option key");
                             m.MenuOptionKey = "";
                         }
 
-                        //Check for duplicate module in moduleConfig
+                        // Check for duplicate module in moduleConfig
                         if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m.ModuleIdentifier))
                         {
-                            _logger.Error($"Module {m.ModuleIdentifier} already loaded, duplicate instance not loaded");
+                            _logger.Error(
+                                $"Module {m.ModuleIdentifier} already loaded, duplicate instance not loaded");
                             continue;
                         }
 
-                        //If MenuOptionKey, add to list
+                        // If MenuOptionKey, add to list
                         if (!string.IsNullOrEmpty(m.MenuOptionKey))
                             menuOptionKeys.Add(m.MenuOptionKey);
 
-                        //Check for missing MenuOptionKey, assign, add to list
+                        // Check for missing MenuOptionKey, assign, add to list
                         if (string.IsNullOrEmpty(m.MenuOptionKey))
                         {
                             m.MenuOptionKey = autoMenuOptionSeed.ToString();
@@ -469,7 +496,7 @@ namespace MBBSEmu
                             menuOptionKeys.Add(m.MenuOptionKey);
                         }
 
-                        //Load Modules
+                        // Load Modules
                         _logger.Info($"Loading {m.ModuleIdentifier}");
                         _moduleConfigurations.Add(m);
                     }
@@ -481,19 +508,19 @@ namespace MBBSEmu
                     return;
                 }
 
-                //If the user specified CLI mode, don't start the UI
+                // If the user specified CLI mode, don't start the UI
                 if (!_cliMode && !_isConsoleSession)
                 {
                     var mainMBBSEmuWindow = new MainView(_serviceResolver);
 
-                    //Start UI in a Task as to not block this thread
+                    // Start UI in a Task as to not block this thread
                     Task.Run(() =>
                     {
                         mainMBBSEmuWindow.Setup();
                         mainMBBSEmuWindow.Run();
                     });
 
-                    //Wait for the UI to be running before continuing
+                    // Wait for the UI to be running before continuing
                     Console.Write("Waiting for MBBSEmu GUI to start...");
                     while (!mainMBBSEmuWindow.isRunning)
                     {
@@ -503,11 +530,11 @@ namespace MBBSEmu
                     Console.WriteLine();
                 }
 
-                //Setup and Run Host
+                // Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
                 host.Start(_moduleConfigurations);
 
-                //API Report
+                // API Report
                 if (_doApiReport)
                 {
                     host.GenerateAPIReport();
@@ -518,7 +545,7 @@ namespace MBBSEmu
 
                 _runningServices.Add(host);
 
-                //Setup and Run Telnet Server
+                // Setup and Run Telnet Server
                 if (configuration.TelnetEnabled)
                 {
                     var telnetService = _serviceResolver.GetService<ISocketServer>();
@@ -530,7 +557,7 @@ namespace MBBSEmu
                     _runningServices.Add(telnetService);
                 }
 
-                //Setup and Run Rlogin Server
+                // Setup and Run Rlogin Server
                 if (configuration.RloginEnabled)
                 {
                     var rloginService = _serviceResolver.GetService<ISocketServer>();
@@ -548,7 +575,8 @@ namespace MBBSEmu
                         {
                             _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
                             rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++, m.ModuleIdentifier);
+                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++,
+                                                m.ModuleIdentifier);
                             _runningServices.Add(rloginService);
                         }
                     }
@@ -558,7 +586,8 @@ namespace MBBSEmu
                     _logger.Info("Rlogin Server Disabled (via appsettings.json)");
                 }
 
-                _logger.Info($"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                _logger.Info(
+                    $"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
 
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
@@ -615,14 +644,16 @@ namespace MBBSEmu
             var keys = _serviceResolver.GetService<IAccountKeyRepository>();
             keys.Reset();
 
-            //Insert Into BBS Account Btrieve File
-            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            // Insert Into BBS Account Btrieve File
+            var _accountBtrieve =
+                _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
-            _accountBtrieve.Insert(new UserAccount("sysop").Data, LogLevel.Error);
-            _accountBtrieve.Insert(new UserAccount("guest").Data, LogLevel.Error);
+            _accountBtrieve.Insert(new UserAccount("sysop").Data);
+            _accountBtrieve.Insert(new UserAccount("guest").Data);
 
-            //Reset BBSGEN
-            var _genbbBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
+            // Reset BBSGEN
+            var _genbbBtrieve =
+                _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("GENBB-PROCESSOR");
             _genbbBtrieve.DeleteAll();
 
             _logger.Info("Database Reset!");
@@ -643,11 +674,11 @@ namespace MBBSEmu
                 Console.Write($"Re-Enter New Password for {username}: ");
                 var password2 = Console.ReadLine();
 
-                //If they match, return the password
+                // If they match, return the password
                 if (password1 == password2)
                     return password1;
 
-                //Otherwise infinite loop until they match
+                // Otherwise infinite loop until they match
                 Console.WriteLine("Password mismatch, please try again.");
             }
         }
@@ -657,56 +688,61 @@ namespace MBBSEmu
         /// </summary>
         private void PasswordReset()
         {
-            //Interactive Password Reset via Console if one wasn't specified in the command line
+            // Interactive Password Reset via Console if one wasn't specified in the command line
             if (string.IsNullOrEmpty(_newSysopPassword))
                 _newSysopPassword = PasswordPrompt("sysop");
 
             var acct = _serviceResolver.GetService<IAccountRepository>();
             var sysopAccount = acct.GetAccountByUsername("sysop");
-            acct.UpdateAccountById(sysopAccount.accountId, sysopAccount.userName, _newSysopPassword, sysopAccount.email);
+            acct.UpdateAccountById(sysopAccount.accountId, sysopAccount.userName, _newSysopPassword,
+                                   sysopAccount.email);
             _logger.Info("Sysop Password Reset!");
             _doResetPassword = false;
         }
 
         /// <summary>
-        ///     Rebuilds the internal MajorBBS/WG Account Database (BBSUSR.DAT) using the current SQLite Database
-        ///     and users that are already created. This is useful if you have a corrupted or missing BBSUSR.DB.
+        ///     Rebuilds the internal MajorBBS/WG Account Database (BBSUSR.DAT) using the current SQLite
+        ///     Database and users that are already created. This is useful if you have a corrupted or
+        ///     missing BBSUSR.DB.
         ///
-        ///     The BBSUSR.DAT file (ACCDB) is used by MajorBBS/WG to store user accounts. It is referenced by several
-        ///     internal API calls and is required for the system to function properly. Because of this, we only store the
-        ///     bare minimum amount of inofrmation required for this file to exist and be valid. Full user account information
-        ///     is stored within the internal MBBSEmu SQLite Database.
+        ///     The BBSUSR.DAT file (ACCDB) is used by MajorBBS/WG to store user accounts. It is
+        ///     referenced by several internal API calls and is required for the system to function
+        ///     properly. Because of this, we only store the bare minimum amount of inofrmation required
+        ///     for this file to exist and be valid. Full user account information is stored within the
+        ///     internal MBBSEmu SQLite Database.
         ///
-        ///     This might seem a little confusing, but internally in the MajorBBS code this database is referenced
-        ///     as "ACCDB" but the actual file name is BBSUSR.DAT.
+        ///     This might seem a little confusing, but internally in the MajorBBS code this database is
+        ///     referenced as "ACCDB" but the actual file name is BBSUSR.DAT.
         /// </summary>
         private void RebuildAccDb()
         {
             _logger.Info("Rebuilding BBSUSR.DAT...");
 
-            //Get Internal MBBSEmu User Account Database
+            // Get Internal MBBSEmu User Account Database
             var acct = _serviceResolver.GetService<IAccountRepository>();
             var accounts = acct.GetAccounts();
 
-            //Verify there are valid accounts in the MBBSEmu Accounts Database
+            // Verify there are valid accounts in the MBBSEmu Accounts Database
             if (!accounts.Any())
             {
                 _logger.Error("No Accounts Found in MBBSEmu Database, skipping rebuild of BBSUSR.DAT");
-                _logger.Error("Please consider using the -DBRESET command line argument to reset the internal databases to their default state");
+                _logger.Error(
+                    "Please consider using the -DBRESET command line argument to reset the internal databases to their default state");
                 return;
             }
 
-            //Get BBSUSR.DAT and clear out existing records
-            var _accountBtrieve = _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
+            // Get BBSUSR.DAT and clear out existing records
+            var _accountBtrieve =
+                _serviceResolver.GetService<IGlobalCache>().Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.DeleteAll();
 
-            //Insert each record into BBSUSR.DAT
-            foreach (var a in accounts)
-                _accountBtrieve.Insert(new UserAccount(a.userName).Data, LogLevel.Error);
+            // Insert each record into BBSUSR.DAT
+            foreach (var a in accounts) _accountBtrieve.Insert(new UserAccount(a.userName).Data);
 
-            //Verify the Counts are Equal
+            // Verify the Counts are Equal
             if (accounts.Count() != _accountBtrieve.GetRecordCount())
-                _logger.Warn($"MBBSEmu Database Account Count ({accounts.Count()}) does not match BBSUSR.DAT Account Count ({_accountBtrieve.GetRecordCount()})");
+                _logger.Warn(
+                    $"MBBSEmu Database Account Count ({accounts.Count()}) does not match BBSUSR.DAT Account Count ({_accountBtrieve.GetRecordCount()})");
 
             _logger.Info("BBSUSR.DAT (BBSUSR.DB) Rebuilt!");
             _logger.Info($"{accounts.Count()} Accounts Inserted");

@@ -25,6 +25,13 @@
     public class QueryOnly : System.Attribute { }
 
     /// <summary>
+    ///     Specifies that the operation code operates on physical record position rather than
+    ///     a key, so any key number supplied by the caller is meaningless and must be ignored.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Field)]
+    public class IgnoresKeyNumber : System.Attribute { }
+
+    /// <summary>
     ///     Btrieve Operation Codes that are passed into Btrieve
     /// </summary>
     public enum EnumBtrieveOperationCodes : ushort
@@ -34,6 +41,8 @@
         Close = 0x1,
         Insert = 0x2,
         Update = 0x3,
+
+        [IgnoresKeyNumber]
         Delete = 0x4,
 
         // Acquire Operations
@@ -81,25 +90,31 @@
 
         // Step Operations, operates on physical offset not keys
         [AcquiresData]
+        [IgnoresKeyNumber]
         StepFirst = 0x21,
 
         [AcquiresData]
+        [IgnoresKeyNumber]
         StepLast = 0x22,
 
         [AcquiresData]
         [UsesPreviousQuery]
+        [IgnoresKeyNumber]
         StepNext = 0x18,
 
         [AcquiresData]
         [UsesPreviousQuery]
+        [IgnoresKeyNumber]
         StepNextExtended = 0x26,
 
         [AcquiresData]
         [UsesPreviousQuery]
+        [IgnoresKeyNumber]
         StepPrevious = 0x23,
 
         [AcquiresData]
         [UsesPreviousQuery]
+        [IgnoresKeyNumber]
         StepPreviousExtended = 0x27,
 
         // Query Operations
@@ -210,5 +225,31 @@ key-only file or a Get operation on a data only file */
 
             return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(AcquiresData)) != null;
         }
+
+        public static bool IgnoresKeyNumber(this EnumBtrieveOperationCodes code)
+        {
+            var memberInstance = code.GetType().GetMember(code.ToString());
+            if (memberInstance.Length <= 0) return false;
+
+            return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(IgnoresKeyNumber)) != null;
+        }
+
+        public static bool QueryOnly(this EnumBtrieveOperationCodes code)
+        {
+            var memberInstance = code.GetType().GetMember(code.ToString());
+            if (memberInstance.Length <= 0) return false;
+
+            return System.Attribute.GetCustomAttribute(memberInstance[0], typeof(QueryOnly)) != null;
+        }
+
+        /// <summary>
+        ///     Whether this operation code positions/acts on the currently open database via
+        ///     PerformOperation (Delete, Step*, Acquire*, Query*), as opposed to a utility or
+        ///     information operation (Open, Close, Stat, Insert, Update, GetPosition, etc.)
+        ///     handled separately.
+        /// </summary>
+        public static bool IsPositioningOperation(this EnumBtrieveOperationCodes code) =>
+            code.IgnoresKeyNumber() || code.RequiresKey() || code.AcquiresData() ||
+            code.UsesPreviousQuery() || code.QueryOnly();
     }
 }

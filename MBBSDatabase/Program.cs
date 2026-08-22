@@ -43,13 +43,11 @@ namespace MBBSDatabase
                     file.LoadFile(logger, s);
                     if (convert)
                     {
-                        using var processor = new BtrieveFileProcessor();
-
                         var dbPath = Path.ChangeExtension(s, ".DB");
                         if (File.Exists(dbPath))
                             File.Delete(dbPath);
 
-                        processor.CreateSqliteDB(dbPath, file);
+                        using var processor = new BtrieveFileProcessor(file, dbPath);
                     }
                 }
                 catch (Exception e)

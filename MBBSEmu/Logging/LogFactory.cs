@@ -32,6 +32,8 @@ namespace MBBSEmu.Logging
             return (T)Loggers[typeof(T)];
         }
 
+        public bool HasLogger<T>() => Loggers.ContainsKey(typeof(T));
+
         /// <summary>
         ///     Sets the Default Log Level for all Loggers
         /// </summary>
