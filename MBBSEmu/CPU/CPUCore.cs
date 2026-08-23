@@ -1604,6 +1604,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Sbb_8(),
                 2 => Op_Sbb_16(),
+                4 => Op_Sbb_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1639,6 +1640,26 @@ namespace MBBSEmu.CPU
                 var borrowIn = Registers.CarryFlag ? 1 : 0;
                 var wideResult = destination - source - borrowIn;
                 var result = (ushort)wideResult;
+
+                Registers.CarryFlag = wideResult < 0;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Sbb_32()
+        {
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            unchecked
+            {
+                //Widened to long because uint arithmetic would wrap before the borrow can be observed
+                var borrowIn = Registers.CarryFlag ? 1L : 0L;
+                var wideResult = (long)destination - source - borrowIn;
+                var result = (uint)wideResult;
 
                 Registers.CarryFlag = wideResult < 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);

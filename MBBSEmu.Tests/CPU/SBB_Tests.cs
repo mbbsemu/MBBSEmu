@@ -1,6 +1,8 @@
+using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using Xunit;
+using static Iced.Intel.AssemblerRegisters;
 
 namespace MBBSEmu.Tests.CPU
 {
@@ -62,6 +64,61 @@ namespace MBBSEmu.Tests.CPU
 
             //Verify Results: 0x0000 - 0xFFFF - 1 == -65536, which is congruent to 0x0000 (mod 65536), and a borrow occurred
             Assert.Equal(0x0000, mbbsEmuCpuRegisters.AX);
+            Assert.True(mbbsEmuCpuRegisters.CarryFlag);
+            Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
+        }
+
+        [Theory]
+        //                eax          ebx          carry-in  expected     OF     SF     ZF     CF
+        [InlineData(0x00000005u, 0x00000003u, false, 0x00000002u, false, false, false, false)] // Simple subtraction, no borrow-in
+        [InlineData(0x00000005u, 0x00000003u, true, 0x00000001u, false, false, false, false)] // Borrow-in, no resulting borrow
+        [InlineData(0x00000005u, 0x00000005u, false, 0x00000000u, false, false, true, false)] // Equal operands zero the result
+        [InlineData(0x00000000u, 0x00000000u, true, 0xFFFFFFFFu, false, true, false, true)] // Borrow-in on zero operands must borrow
+        [InlineData(0x00010000u, 0x00000001u, false, 0x0000FFFFu, false, false, false, false)] // Borrow across the low word
+        [InlineData(0x00000000u, 0x00000001u, false, 0xFFFFFFFFu, false, true, false, true)] // Plain underflow
+        [InlineData(0x80000000u, 0x00000001u, false, 0x7FFFFFFFu, true, false, false, false)] // Signed underflow past INT_MIN sets OF, not CF
+        [InlineData(0x7FFFFFFFu, 0xFFFFFFFFu, false, 0x80000000u, true, true, false, true)] // Signed overflow past INT_MAX sets both OF and CF
+        [InlineData(0x80000000u, 0x00000000u, true, 0x7FFFFFFFu, true, false, false, false)] // OF must account for the borrow-in: INT_MIN - 0 - 1 overflows
+        public void SBB_EAX_EBX_32Bit(uint eaxValue, uint ebxValue, bool initialCarryFlag,
+            uint expectedValue, bool overflowFlagValue, bool signFlagValue, bool zeroFlagValue,
+            bool carryFlagValue)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.EAX = eaxValue;
+            mbbsEmuCpuRegisters.EBX = ebxValue;
+            mbbsEmuCpuRegisters.CarryFlag = initialCarryFlag;
+
+            var instructions = new Assembler(16);
+            instructions.sbb(eax, ebx);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(overflowFlagValue, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(signFlagValue, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(zeroFlagValue, mbbsEmuCpuRegisters.ZeroFlag);
+            Assert.Equal(carryFlagValue, mbbsEmuCpuRegisters.CarryFlag);
+        }
+
+        [Fact]
+        public void SBB_EAX_EBX_SourceMaxValueWithBorrowIn_DoesNotWrapCarryFlag()
+        {
+            Reset();
+            mbbsEmuCpuRegisters.EAX = 0x00000000;
+            mbbsEmuCpuRegisters.EBX = 0xFFFFFFFF;
+            mbbsEmuCpuRegisters.CarryFlag = true;
+
+            var instructions = new Assembler(16);
+            instructions.sbb(eax, ebx);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            //Verify Results: 0x00000000 - 0xFFFFFFFF - 1 == -4294967296, congruent to 0x00000000
+            //(mod 2^32), and a borrow occurred. Computing this in 32-bit arithmetic would wrap the
+            //subtrahend to zero and report no borrow.
+            Assert.Equal(0x00000000u, mbbsEmuCpuRegisters.EAX);
             Assert.True(mbbsEmuCpuRegisters.CarryFlag);
             Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
         }

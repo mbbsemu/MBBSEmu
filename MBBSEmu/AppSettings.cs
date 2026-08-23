@@ -58,6 +58,14 @@ namespace MBBSEmu
         public bool TelnetHeartbeat { get; set; }
 
         /// <summary>
+        ///     Convert CP437 extended ASCII (0x80-0xFF) to UTF-8 Unicode before sending to telnet clients.
+        ///     Enable this for modern UTF-8 terminals to correctly display box-drawing characters.
+        ///     Disable for CP437-capable terminals like SyncTERM.
+        /// </summary>
+        [JsonPropertyName("Telnet.ConvertCP437ToUTF8")]
+        public bool TelnetConvertCP437ToUTF8 { get; set; }
+
+        /// <summary>
         ///     Specifies if the MBBSEmu Rlogin Daemon should be enabled
         /// </summary>
         [JsonPropertyName("Rlogin.Enabled")]
