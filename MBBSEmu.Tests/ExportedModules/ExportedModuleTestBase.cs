@@ -47,6 +47,7 @@ namespace MBBSEmu.Tests.ExportedModules
         protected MbbsModule mbbsModule;
         protected HostProcess.ExportedModules.Majorbbs majorbbs;
         protected HostProcess.ExportedModules.Galgsbl galgsbl;
+        protected HostProcess.ExportedModules.Phapi phapi;
         protected PointerDictionary<SessionBase> testSessions;
         protected readonly ServiceResolver _serviceResolver;
 
@@ -92,6 +93,13 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IFileUtility>(), _serviceResolver.GetService<IGlobalCache>(),
                 mbbsModule, testSessions, textVariableService);
 
+            phapi = new HostProcess.ExportedModules.Phapi(
+                _serviceResolver.GetService<IClock>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
+                _serviceResolver.GetService<IFileUtility>(), _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule, testSessions, textVariableService);
+
             mbbsEmuCpuCore.Reset(mbbsEmuMemoryCore,
                                  (ordinal, functionOrdinal) => ExportedFunctionDelegate(
                                      ordinal, functionOrdinal, offsetsOnly: false),
@@ -118,6 +126,11 @@ namespace MBBSEmu.Tests.ExportedModules
                     {
                         galgsbl.SetRegisters(mbbsEmuCpuRegisters);
                         return galgsbl.Invoke(functionOrdinal, offsetsOnly);
+                    }
+                case HostProcess.ExportedModules.Phapi.Segment:
+                    {
+                        phapi.SetRegisters(mbbsEmuCpuRegisters);
+                        return phapi.Invoke(functionOrdinal, offsetsOnly);
                     }
                 default:
                     throw new Exception($"Unsupported Exported Module Segment: {ordinal}");
@@ -147,6 +160,13 @@ namespace MBBSEmu.Tests.ExportedModules
                 _serviceResolver.GetService<IAccountRepository>(), textVariableService);
 
             galgsbl = new HostProcess.ExportedModules.Galgsbl(
+                _serviceResolver.GetService<IClock>(),
+                _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
+                _serviceResolver.GetService<AppSettingsManager>(),
+                _serviceResolver.GetService<IFileUtility>(), _serviceResolver.GetService<IGlobalCache>(),
+                mbbsModule, testSessions, textVariableService);
+
+            phapi = new HostProcess.ExportedModules.Phapi(
                 _serviceResolver.GetService<IClock>(),
                 _serviceResolver.GetService<LogFactory>().GetLogger<MessageLogger>(),
                 _serviceResolver.GetService<AppSettingsManager>(),

@@ -57,9 +57,13 @@ namespace MBBSEmu.Btrieve
         /// </summary>
         public void Dispose()
         {
+            if (unmanagedPosBlock == 0)
+                return;
+
             Close();
-            // close the database
+
             Marshal.FreeHGlobal(unmanagedPosBlock);
+            unmanagedPosBlock = 0;
         }
 
         /// <summary>
