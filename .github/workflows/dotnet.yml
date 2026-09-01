@@ -24,7 +24,12 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 10.0.x
+        # Pinned, not 10.0.x: `dotnet format` output differs across SDK feature
+        # bands, so a floating version makes this job's verdict depend on which
+        # SDK the runner image happens to ship. 10.0.101 and 10.0.400 disagree
+        # about the comment above the `Switch:` label in CPUCore.cs. Only this
+        # job is pinned -- build and test still float.
+        dotnet-version: 10.0.400
     - name: Verify formatting
       run: dotnet format whitespace --verify-no-changes
 
