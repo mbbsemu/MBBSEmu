@@ -2130,7 +2130,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Send prfbuf to a channel & clear
+        ///     Send prfbuf to a channel
+        ///
+        ///     Does NOT clear prfbuf -- that's clrprf()'s job. This allows the same
+        ///     buffered output to be sent to multiple channels via repeated outprf() calls.
         ///
         ///     Signature: void outprf (unum)
         /// </summary>
@@ -2154,11 +2157,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Sent {outputBuffer.Length} bytes to Channel {userChannel}");
 #endif
-
-            Module.Memory.SetZero(basePointer, outputLength);
-
-            //Set prfptr to the base address of prfbuf
-            Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
         }
 
         /// <summary>
