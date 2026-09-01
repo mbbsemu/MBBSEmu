@@ -782,6 +782,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Shld:
                     Op_Shld();
                     break;
+                case Mnemonic.Shrd:
+                    Op_Shrd();
+                    break;
                 case Mnemonic.Mul:
                     Op_Mul();
                     break;
@@ -4857,6 +4860,95 @@ namespace MBBSEmu.CPU
             return result;
         }
 
+        /// <summary>
+        ///     Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Shrd()
+        {
+            var result = _currentOperationSize switch
+            {
+                2 => Op_Shrd_16(),
+                4 => Op_Shrd_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     16-bit Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private ushort Op_Shrd_16()
+        {
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            count &= 0x1F;
+            if (count == 0)
+                return destination;
+
+            //Source feeds in from the top, so it occupies the high half of the pair
+            var pair = ((uint)source << 16) | destination;
+
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = (pair & (1u << (count - 1))) != 0;
+
+            var result = (ushort)(pair >> count);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear.
+            //SHRD shifts the source's bits into the top of the destination, so the
+            //SHR convention (OF == the destination's old sign) does not hold here --
+            //OF is set when the sign bit actually changed
+            if (count == 1)
+                Registers.OverflowFlag = result.IsNegative() != destination.IsNegative();
+            else
+                Registers.OverflowFlag = false;
+
+            Flags_EvaluateSignZero(result);
+
+            return result;
+        }
+
+        /// <summary>
+        ///     32-bit Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Shrd_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            count &= 0x1F;
+            if (count == 0)
+                return destination;
+
+            //The vacated high bits take the BOTTOM count bits of the source
+            var result = (destination >> count) | (source << ((sizeof(uint) * 8) - count));
+
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = destination.IsBitSet(count - 1);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear.
+            //SHRD shifts the source's bits into the top of the destination, so the
+            //SHR convention (OF == the destination's old sign) does not hold here --
+            //OF is set when the sign bit actually changed
+            if (count == 1)
+                Registers.OverflowFlag = result.IsNegative() != destination.IsNegative();
+            else
+                Registers.OverflowFlag = false;
+
+            Flags_EvaluateSignZero(result);
+
+            return result;
+        }
 
         /// <summary>
         ///     Evaluates the given 8-bit operation and parameters to evaluate the status of the Carry Flag
