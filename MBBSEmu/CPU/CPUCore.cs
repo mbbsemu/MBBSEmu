@@ -782,6 +782,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Shld:
                     Op_Shld();
                     break;
+                case Mnemonic.Shrd:
+                    Op_Shrd();
+                    break;
                 case Mnemonic.Mul:
                     Op_Mul();
                     break;
@@ -4775,37 +4778,41 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Shld()
         {
-            uint result;
-            switch (_currentOperationSize)
+            var result = _currentOperationSize switch
             {
-                case 4:
-                    result = Op_Shld_32();
-                    break;
-                default:
-                    throw new Exception("Unsupported Operation Size");
-            }
+                2 => Op_Shld_16(),
+                4 => Op_Shld_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
 
             WriteToDestination(result);
         }
 
+        /// <summary>
+        ///     16-bit Extended Shift Left
+        /// </summary>
         [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
-        private uint Op_Shld_32()
+        private ushort Op_Shld_16()
         {
-            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
             var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
 
-            //Make sure Count isn't > 32 bits
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
             count &= 0x1F;
+            if (count == 0)
+                return destination;
 
-            var result = destination << count;
-            result |= (source >> count);
+            //Shifting the pair as one 32-bit value keeps the fill and the carry bit
+            //in range for counts above the 16-bit operand width, where the result is
+            //undefined on hardware but must still not throw
+            var pair = ((uint)destination << 16) | source;
 
-            if (count > 0)
-            {
-                //CF == the last bit shifted out of the destination
-                Registers.CarryFlag = destination.IsBitSet((sizeof(uint) * 8) - count);
-            }
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = (pair & (1u << (32 - count))) != 0;
+
+            var result = (ushort)((pair << count) >> 16);
 
             //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
             if (count == 1)
@@ -4816,7 +4823,131 @@ namespace MBBSEmu.CPU
             Flags_EvaluateSignZero(result);
 
             return result;
+        }
 
+        /// <summary>
+        ///     32-bit Extended Shift Left
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Shld_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            count &= 0x1F;
+            if (count == 0)
+                return destination;
+
+            //The vacated low bits take the TOP count bits of the source, not its
+            //bottom ones -- source >> count only happens to agree at counts 1, 16
+            //and 32, which is every count the original tests covered
+            var result = (destination << count) | (source >> ((sizeof(uint) * 8) - count));
+
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = destination.IsBitSet((sizeof(uint) * 8) - count);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear
+            if (count == 1)
+                Flags_EvaluateOverflow(EnumArithmeticOperation.ShiftLeft, result, destination, count);
+            else
+                Registers.OverflowFlag = false;
+
+            Flags_EvaluateSignZero(result);
+
+            return result;
+        }
+
+        /// <summary>
+        ///     Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Shrd()
+        {
+            var result = _currentOperationSize switch
+            {
+                2 => Op_Shrd_16(),
+                4 => Op_Shrd_32(),
+                _ => throw new Exception("Unsupported Operation Size")
+            };
+
+            WriteToDestination(result);
+        }
+
+        /// <summary>
+        ///     16-bit Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private ushort Op_Shrd_16()
+        {
+            var destination = GetOperandValueUInt16(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt16(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            count &= 0x1F;
+            if (count == 0)
+                return destination;
+
+            //Source feeds in from the top, so it occupies the high half of the pair
+            var pair = ((uint)source << 16) | destination;
+
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = (pair & (1u << (count - 1))) != 0;
+
+            var result = (ushort)(pair >> count);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear.
+            //SHRD shifts the source's bits into the top of the destination, so the
+            //SHR convention (OF == the destination's old sign) does not hold here --
+            //OF is set when the sign bit actually changed
+            if (count == 1)
+                Registers.OverflowFlag = result.IsNegative() != destination.IsNegative();
+            else
+                Registers.OverflowFlag = false;
+
+            Flags_EvaluateSignZero(result);
+
+            return result;
+        }
+
+        /// <summary>
+        ///     32-bit Extended Shift Right
+        /// </summary>
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Shrd_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            var source = GetOperandValueUInt32(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var count = GetOperandValueUInt8(_currentInstruction.Op2Kind, EnumOperandType.Count);
+
+            //286+ masks the count to 5 bits; a masked count of 0 leaves the
+            //destination and all flags untouched
+            count &= 0x1F;
+            if (count == 0)
+                return destination;
+
+            //The vacated high bits take the BOTTOM count bits of the source
+            var result = (destination >> count) | (source << ((sizeof(uint) * 8) - count));
+
+            //CF == the last bit shifted out of the destination
+            Registers.CarryFlag = destination.IsBitSet(count - 1);
+
+            //Only evaluate Overflow on Shift of 1 Bit, otherwise it's clear.
+            //SHRD shifts the source's bits into the top of the destination, so the
+            //SHR convention (OF == the destination's old sign) does not hold here --
+            //OF is set when the sign bit actually changed
+            if (count == 1)
+                Registers.OverflowFlag = result.IsNegative() != destination.IsNegative();
+            else
+                Registers.OverflowFlag = false;
+
+            Flags_EvaluateSignZero(result);
+
+            return result;
         }
 
         /// <summary>
