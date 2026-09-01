@@ -229,6 +229,10 @@ namespace MBBSEmu.HostProcess
                 module.Value.Dispose();
 
             _modules.Clear();
+
+            // close any Btrieve files (module-owned, and the shared GENBB/ACCBB databases)
+            // left open in the global cache
+            _globalCache.Dispose();
         }
 
         /// <summary>
@@ -469,6 +473,10 @@ namespace MBBSEmu.HostProcess
             {
                 RemoveModuleArtifacts(module.ModuleIdentifier);
             }
+
+            // close any Btrieve files (module-owned, and the shared GENBB/ACCBB databases)
+            // left open in the global cache
+            _globalCache.Dispose();
         }
 
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)

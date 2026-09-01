@@ -205,9 +205,31 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     Registers.AX = 0;
                                     break;
                                 }
+                            case EnumBtrieveOperationCodes.Close:
+                                {
+                                    //Btrieve identifies the file to close by the caller's position block,
+                                    //the same pointer Open used -- not whichever file "BB" currently points to
+                                    var btvFileStructPointer = new FarPtr(btvda.posblkseg, btvda.posblkoff);
+                                    BtrieveDeleteProcessor(btvFileStructPointer);
+
+                                    //Only clear the active file (BB) if it's the one being closed, otherwise
+                                    //we'd blow away a different file that's still open and in use
+                                    if (Module.Memory.GetPointer("BB") == btvFileStructPointer)
+                                        Module.Memory.SetPointer("BB", FarPtr.Null);
+
+#if DEBUG
+                                    _logger.Debug($"({Module.ModuleIdentifier}) Closed Btrieve file at {btvFileStructPointer}");
+#endif
+
+                                    Registers.AX = 0;
+                                    break;
+                                }
                             case EnumBtrieveOperationCodes.Stat:
                                 {
-                                    var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
+                                    //Btrieve identifies the file to stat by the caller's position block,
+                                    //the same pointer Open and Close use -- not whichever file "BB" currently points to
+                                    var btvFileStructPointer = new FarPtr(btvda.posblkseg, btvda.posblkoff);
+                                    var currentBtrieveFile = BtrieveGetProcessor(btvFileStructPointer);
                                     var btvStats = new BtvstatfbStruct
                                     {
                                         fs = new BtvfilespecStruct()
