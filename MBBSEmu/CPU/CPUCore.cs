@@ -405,8 +405,6 @@ namespace MBBSEmu.CPU
             _currentInstructionPointer.Offset = Registers.IP;
             _currentInstructionPointer.Segment = Registers.CS;
 #endif
-            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
-            _currentOperationSize = GetCurrentOperationSize();
 
             InstructionCounter++;
 
@@ -1375,9 +1373,13 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory:
-                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(result));
-                    break;
+                    {
+                        Span<byte> bytes = stackalloc byte[4];
+                        BitConverter.TryWriteBytes(bytes, result);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
+                        break;
+                    }
                 case OpKind.Register:
                     FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
                     break;
@@ -1394,13 +1396,21 @@ namespace MBBSEmu.CPU
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
-                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes((float)result));
-                    break;
+                    {
+                        Span<byte> bytes = stackalloc byte[4];
+                        BitConverter.TryWriteBytes(bytes, (float)result);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
+                        break;
+                    }
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
-                    Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                        GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(result));
-                    break;
+                    {
+                        Span<byte> bytes = stackalloc byte[8];
+                        BitConverter.TryWriteBytes(bytes, result);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
+                        break;
+                    }
                 case OpKind.Register:
                     FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
                     break;
@@ -3726,7 +3736,9 @@ namespace MBBSEmu.CPU
                             break;
                         }
 
-                        Memory.SetArray(destinationSegment, offset, BitConverter.GetBytes(valueToSave));
+                        Span<byte> bytes = stackalloc byte[4];
+                        BitConverter.TryWriteBytes(bytes, valueToSave);
+                        Memory.SetArray(destinationSegment, offset, bytes);
                         break;
                     }
                 default:
@@ -3776,13 +3788,17 @@ namespace MBBSEmu.CPU
             {
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
                     {
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes((float)valueToSave));
+                        Span<byte> bytes = stackalloc byte[4];
+                        BitConverter.TryWriteBytes(bytes, (float)valueToSave);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80:
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
                     {
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), BitConverter.GetBytes(valueToSave));
+                        Span<byte> bytes = stackalloc byte[8];
+                        BitConverter.TryWriteBytes(bytes, valueToSave);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
                 case OpKind.Register:
