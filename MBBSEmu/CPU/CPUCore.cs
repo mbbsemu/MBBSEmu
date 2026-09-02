@@ -4929,12 +4929,24 @@ namespace MBBSEmu.CPU
         ///     Floating Point Operation (x87)
         ///
         ///     Computes (ST(1) * log2(ST(0))), stores the result in ST(1), and pops the FPU register stack.
+        ///     ST(0) must be positive and neither operand may be NaN; per the x87 spec, a negative or NaN
+        ///     ST(0)/ST(1), or an indeterminate 0 * Infinity combination, is an invalid operation and yields
+        ///     a NaN result (the stack still pops).
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
         {
             var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || ST0x < 0 ||
+                (ST0x == 0 && ST1y == 0) || (double.IsPositiveInfinity(ST0x) && ST1y == 0))
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
 
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(ST0x);
 
@@ -4945,14 +4957,26 @@ namespace MBBSEmu.CPU
         ///     Floating Point Operation (x87)
         ///
         ///     Computes (ST(1) * log2(ST(0) + 1.0)), stores the result in ST(1), and pops the FPU register stack.
+        ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
+        ///     passed to log2.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
         {
             var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var argument = ST0x + 1.0;
 
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(ST0x + 1.0);
+            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || argument < 0 ||
+                (argument == 0 && ST1y == 0) || (double.IsPositiveInfinity(argument) && ST1y == 0))
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(argument);
 
             Registers.Fpu.PopStackTop();
         }
