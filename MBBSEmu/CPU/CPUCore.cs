@@ -791,6 +791,48 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Cdq:
                     Op_Cdq();
                     break;
+                case Mnemonic.Fabs:
+                    Op_Fabs();
+                    break;
+                case Mnemonic.Fsincos:
+                    Op_Fsincos();
+                    break;
+                case Mnemonic.Fxtract:
+                    Op_Fxtract();
+                    break;
+                case Mnemonic.Fprem:
+                    Op_Fprem();
+                    break;
+                case Mnemonic.F2xm1:
+                    Op_F2xm1();
+                    break;
+                case Mnemonic.Fyl2x:
+                    Op_Fyl2x();
+                    break;
+                case Mnemonic.Fyl2xp1:
+                    Op_Fyl2xp1();
+                    break;
+                case Mnemonic.Fptan:
+                    Op_Fptan();
+                    break;
+                case Mnemonic.Fldl2e:
+                    Op_Fldl2e();
+                    break;
+                case Mnemonic.Fldln2:
+                    Op_Fldln2();
+                    break;
+                case Mnemonic.Fldlg2:
+                    Op_Fldlg2();
+                    break;
+                case Mnemonic.Fldl2t:
+                    Op_Fldl2t();
+                    break;
+                case Mnemonic.Fincstp:
+                    Op_Fincstp();
+                    break;
+                case Mnemonic.Fdecstp:
+                    Op_Fdecstp();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
@@ -4770,6 +4812,258 @@ namespace MBBSEmu.CPU
         private void Op_Fchs()
         {
             FpuStack[Registers.Fpu.GetStackTop()] = -FpuStack[Registers.Fpu.GetStackTop()];
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes the absolute value of ST(0) and stores the result in ST(0).
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fabs()
+        {
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Abs(FpuStack[Registers.Fpu.GetStackTop()]);
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fsincos()
+        {
+            var value = FpuStack[Registers.Fpu.GetStackTop()];
+
+            switch (value)
+            {
+                case double.PositiveInfinity:
+                case double.NegativeInfinity:
+                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                case double.NaN:
+                    return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(value);
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(value);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Separates ST(0) into its exponent and significand, stores the significand (in the range [1, 2)) in ST(0),
+        ///     and pushes the unbiased exponent onto the register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fxtract()
+        {
+            var value = FpuStack[Registers.Fpu.GetStackTop()];
+
+            double exponent;
+            double significand;
+            switch (value)
+            {
+                case 0:
+                    exponent = double.NegativeInfinity;
+                    significand = value;
+                    Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.ZeroDivide);
+                    break;
+                case double.NaN:
+                case double.PositiveInfinity:
+                case double.NegativeInfinity:
+                    exponent = value;
+                    significand = value;
+                    break;
+                default:
+                    var unbiasedExponent = Math.ILogB(value);
+                    exponent = unbiasedExponent;
+                    significand = Math.ScaleB(value, -unbiasedExponent);
+                    break;
+            }
+
+            FpuStack[Registers.Fpu.GetStackTop()] = exponent;
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = significand;
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes the partial remainder obtained from dividing ST(0) by ST(1) and stores the result in ST(0).
+        ///     The result has the same sign as the dividend ST(0), matching the semantics of the C runtime's fmod().
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fprem()
+        {
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            if (double.IsNaN(ST0) || double.IsNaN(ST1) || double.IsInfinity(ST0) || ST1 == 0)
+            {
+                FpuStack[Registers.Fpu.GetStackTop()] = double.NaN;
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                return;
+            }
+
+            if (double.IsInfinity(ST1))
+                return;
+
+            FpuStack[Registers.Fpu.GetStackTop()] = ST0 % ST1;
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes 2^ST(0) - 1 and stores the result in ST(0). Valid for ST(0) in the range [-1, 1].
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_F2xm1()
+        {
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Pow(2, FpuStack[Registers.Fpu.GetStackTop()]) - 1;
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes (ST(1) * log2(ST(0))), stores the result in ST(1), and pops the FPU register stack.
+        ///     ST(0) must be positive and neither operand may be NaN; per the x87 spec, a negative or NaN
+        ///     ST(0)/ST(1), or an indeterminate 0 * Infinity combination, is an invalid operation and yields
+        ///     a NaN result (the stack still pops).
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fyl2x()
+        {
+            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || ST0x < 0 ||
+                (ST0x == 0 && ST1y == 0) || (double.IsPositiveInfinity(ST0x) && ST1y == 0))
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(ST0x);
+
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes (ST(1) * log2(ST(0) + 1.0)), stores the result in ST(1), and pops the FPU register stack.
+        ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
+        ///     passed to log2.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fyl2xp1()
+        {
+            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var argument = ST0x + 1.0;
+
+            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || argument < 0 ||
+                (argument == 0 && ST1y == 0) || (double.IsPositiveInfinity(argument) && ST1y == 0))
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
+                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(argument);
+
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Operation (x87)
+        ///
+        ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fptan()
+        {
+            var value = FpuStack[Registers.Fpu.GetStackTop()];
+
+            switch (value)
+            {
+                case double.PositiveInfinity:
+                case double.NegativeInfinity:
+                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                case double.NaN:
+                    return;
+            }
+
+            FpuStack[Registers.Fpu.GetStackTop()] = Math.Tan(value);
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 1d;
+        }
+
+        /// <summary>
+        ///     Pushes log2(e) onto the FPU register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fldl2e()
+        {
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 1.4426950408889634d;
+        }
+
+        /// <summary>
+        ///     Pushes ln(2) onto the FPU register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fldln2()
+        {
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 0.6931471805599453d;
+        }
+
+        /// <summary>
+        ///     Pushes log10(2) onto the FPU register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fldlg2()
+        {
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 0.3010299956639812d;
+        }
+
+        /// <summary>
+        ///     Pushes log2(10) onto the FPU register stack.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fldl2t()
+        {
+            Registers.Fpu.PushStackTop();
+            FpuStack[Registers.Fpu.GetStackTop()] = 3.3219280948873623d;
+        }
+
+        /// <summary>
+        ///     Increments the FPU stack pointer without storing a value, equivalent to discarding ST(0)
+        ///     and promoting ST(1) to ST(0). Our internal stack-top counter runs in the opposite direction
+        ///     of the physical x87 TOP field, so this maps to PopStackTop() (see Fpatan/Fyl2x for the same pattern).
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fincstp()
+        {
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Decrements the FPU stack pointer without storing a value, making room for a new ST(0)
+        ///     and demoting the old ST(0) to ST(1). Maps to PushStackTop() for the same reason as Op_Fincstp().
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fdecstp()
+        {
+            Registers.Fpu.PushStackTop();
         }
 
         /// <summary>
