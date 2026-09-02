@@ -3855,10 +3855,29 @@ namespace MBBSEmu.CPU
 
         /// <summary>
         ///     Store AL at address ES:(E)DI.
+        ///
+        ///     For a forward (DF=0) REP STOSB that stays within its segment, fills the whole
+        ///     run in one shot via Memory.FillArray instead of looping byte-by-byte.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Stosb()
         {
+            if (IsRepInstruction() && !Registers.DirectionFlag && !_currentInstruction.HasRepnePrefix)
+            {
+                var count = Registers.CX;
+                if ((uint)Registers.DI + count <= 0x10000)
+                {
+                    if (count > 0)
+                    {
+                        Memory.FillArray(Registers.ES, Registers.DI, count, Registers.AL);
+                        Registers.DI += count;
+                    }
+
+                    Registers.CX = 0;
+                    return;
+                }
+            }
+
             Repeat(() =>
             {
                 Memory.SetByte(Registers.ES, Registers.DI, Registers.AL);
@@ -4572,11 +4591,34 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
+        ///     Move data from String to String
+        ///
+        ///     For a forward (DF=0) REP MOVSB that stays within its segments, copies the whole
+        ///     run in one shot via Memory.GetArray/SetArray instead of looping byte-by-byte.
+        ///     Falls back to the byte-at-a-time path for the backward-direction, unprefixed,
+        ///     or segment-wraparound cases so behavior is unchanged there.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsb()
         {
+            if (IsRepInstruction() && !Registers.DirectionFlag && !_currentInstruction.HasRepnePrefix)
+            {
+                var count = Registers.CX;
+                if ((uint)Registers.SI + count <= 0x10000 && (uint)Registers.DI + count <= 0x10000)
+                {
+                    if (count > 0)
+                    {
+                        var source = Memory.GetArray(Registers.DS, Registers.SI, count);
+                        Memory.SetArray(Registers.ES, Registers.DI, source);
+                        Registers.SI += count;
+                        Registers.DI += count;
+                    }
+
+                    Registers.CX = 0;
+                    return;
+                }
+            }
+
             Repeat(() =>
             {
                 Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
@@ -4595,11 +4637,32 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Move data from String to String. TODO we can probably optimize this to copy as a chunk
+        ///     Move data from String to String
+        ///
+        ///     Same forward-run bulk-copy fast path as <see cref="Op_Movsb"/>, sized in words.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsw()
         {
+            if (IsRepInstruction() && !Registers.DirectionFlag && !_currentInstruction.HasRepnePrefix)
+            {
+                var count = Registers.CX;
+                var byteCount = count * 2;
+                if (byteCount <= ushort.MaxValue && (uint)Registers.SI + byteCount <= 0x10000 && (uint)Registers.DI + byteCount <= 0x10000)
+                {
+                    if (count > 0)
+                    {
+                        var source = Memory.GetArray(Registers.DS, Registers.SI, (ushort)byteCount);
+                        Memory.SetArray(Registers.ES, Registers.DI, source);
+                        Registers.SI += (ushort)byteCount;
+                        Registers.DI += (ushort)byteCount;
+                    }
+
+                    Registers.CX = 0;
+                    return;
+                }
+            }
+
             Repeat(() =>
             {
                 Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
