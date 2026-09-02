@@ -1,5 +1,6 @@
 ﻿using Iced.Intel;
 using System;
+using System.Collections.Generic;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -96,6 +97,67 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(st0, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
             Assert.Equal(st1, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+        }
+
+        public static IEnumerable<object[]> M80TestData => new List<object[]>
+        {
+            new object[] { new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, 0.0d }, //+0.0
+            new object[] { new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0x3F }, 1.0d },
+            new object[] { new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0xBF }, -1.0d },
+            new object[] { new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0x00, 0x40 }, 2.0d },
+            new object[] { new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFE, 0x3F }, 0.5d },
+        };
+
+        [Theory]
+        [MemberData(nameof(M80TestData))]
+        public void FLD_Test_M80(byte[] tbyteValue, double expectedValue)
+        {
+            Reset();
+
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuMemoryCore.SetArray(2, 0, tbyteValue);
+            mbbsEmuCpuRegisters.DS = 2;
+
+            var instructions = new Assembler(16);
+            instructions.fld(__tbyte_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+        }
+
+        [Theory]
+        [InlineData(0.0d)]
+        [InlineData(1.0d)]
+        [InlineData(-1.0d)]
+        [InlineData(double.MaxValue)]
+        [InlineData(double.MinValue)]
+        [InlineData(double.Epsilon)]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NegativeInfinity)]
+        [InlineData(double.NaN)]
+        [InlineData(1e32)]
+        [InlineData(-1e300)]
+        [InlineData(Math.PI)]
+        public void FLD_FSTP_M80_RoundTrip(double value)
+        {
+            Reset();
+
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
+            mbbsEmuCpuCore.FpuStack[0] = value;
+
+            var instructions = new Assembler(16);
+            instructions.fstp(__tbyte_ptr[0]);
+            instructions.fld(__tbyte_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(value, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }
 
         [Theory]

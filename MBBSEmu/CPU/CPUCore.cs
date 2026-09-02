@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -1206,15 +1207,94 @@ namespace MBBSEmu.CPU
                 OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64 => BitConverter.ToDouble(
                     Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
                         8)),
-                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80 => BitConverter.ToDouble(
+                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80 => Float80BytesToDouble(
                     Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
-                        8)),
+                        10)),
                 OpKind.Register when operandType == EnumOperandType.Destination => FpuStack[
                     Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
                 OpKind.Register when operandType == EnumOperandType.Source => FpuStack[
                     Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
                 _ => throw new Exception($"Unknown Double Operand: {opKind}")
             };
+        }
+
+        /// <summary>
+        ///     Decodes a 10-byte x87 80-bit extended precision value (as read from memory, little-endian)
+        ///     into the closest representable 64-bit Double.
+        ///
+        ///     Format: bytes[0..7] are the 64-bit mantissa (with an explicit integer bit at bit 63),
+        ///     bytes[8..9] are a 15-bit biased exponent (bias 16383) plus the sign bit (bit 15).
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private static double Float80BytesToDouble(ReadOnlySpan<byte> bytes)
+        {
+            var mantissa = BitConverter.ToUInt64(bytes.Slice(0, 8));
+            var signAndExponent = BitConverter.ToUInt16(bytes.Slice(8, 2));
+            var exponent = signAndExponent & 0x7FFF;
+            var isNegative = (signAndExponent & 0x8000) != 0;
+
+            if (exponent == 0 && mantissa == 0)
+                return isNegative ? -0.0 : 0.0;
+
+            if (exponent == 0x7FFF)
+            {
+                //Fraction bits set (ignoring the explicit integer bit) indicates a NaN, otherwise Infinity
+                if ((mantissa & 0x7FFFFFFFFFFFFFFF) != 0)
+                    return double.NaN;
+
+                return isNegative ? double.NegativeInfinity : double.PositiveInfinity;
+            }
+
+            //Unnormal/denormal 80-bit values (exponent == 0) use the smallest normal exponent with no implicit bit
+            var unbiasedExponent = exponent == 0 ? 1 - 16383 : exponent - 16383;
+
+            var result = Math.ScaleB((double)mantissa, unbiasedExponent - 63);
+            return isNegative ? -result : result;
+        }
+
+        /// <summary>
+        ///     Encodes a 64-bit Double into a 10-byte x87 80-bit extended precision value (little-endian),
+        ///     suitable for writing to memory via FST/FSTP.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private static void DoubleToFloat80Bytes(double value, Span<byte> destination)
+        {
+            var bits = BitConverter.DoubleToInt64Bits(value);
+            var isNegative = bits < 0;
+            var biasedExponent = (int)((bits >> 52) & 0x7FF);
+            var fraction = (ulong)bits & 0xFFFFFFFFFFFFFUL;
+
+            ulong mantissa80;
+            int exponent80;
+
+            if (biasedExponent == 0x7FF)
+            {
+                //Infinity or NaN
+                exponent80 = 0x7FFF;
+                mantissa80 = fraction == 0 ? 0x8000000000000000UL : 0xC000000000000000UL | (fraction << 11);
+            }
+            else if (biasedExponent == 0 && fraction == 0)
+            {
+                //Zero
+                exponent80 = 0;
+                mantissa80 = 0;
+            }
+            else
+            {
+                //Normal doubles have an implicit integer bit; denormals do not and use the minimum exponent
+                var significand = biasedExponent == 0 ? fraction : fraction | (1UL << 52);
+                var unbiasedExponent = biasedExponent == 0 ? -1022 : biasedExponent - 1023;
+
+                //Normalize so the explicit integer bit lands at bit 63
+                var shift = BitOperations.LeadingZeroCount(significand);
+                mantissa80 = significand << shift;
+                exponent80 = unbiasedExponent + 11 - shift + 16383;
+            }
+
+            var signAndExponent = (ushort)((exponent80 & 0x7FFF) | (isNegative ? 0x8000 : 0));
+
+            BitConverter.TryWriteBytes(destination, mantissa80);
+            BitConverter.TryWriteBytes(destination.Slice(8, 2), signAndExponent);
         }
 
         /// <summary>
@@ -3796,11 +3876,17 @@ namespace MBBSEmu.CPU
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
-                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80:
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
                     {
                         Span<byte> bytes = stackalloc byte[8];
                         BitConverter.TryWriteBytes(bytes, valueToSave);
+                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
+                        break;
+                    }
+                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80:
+                    {
+                        Span<byte> bytes = stackalloc byte[10];
+                        DoubleToFloat80Bytes(valueToSave, bytes);
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
