@@ -1,5 +1,6 @@
 ﻿using Iced.Intel;
 using System;
+using System.Collections.Generic;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -71,6 +72,35 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(ST0Value, BitConverter.ToDouble(mbbsEmuMemoryCore.GetArray(2, 0, 8)));
+            Assert.Equal(7, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+        }
+
+        public static IEnumerable<object[]> M80TestData => new List<object[]>
+        {
+            new object[] { 0.0d, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } }, //+0.0
+            new object[] { 1.0d, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0x3F } },
+            new object[] { -1.0d, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0xBF } },
+            new object[] { 2.0d, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0x00, 0x40 } },
+            new object[] { 0.5d, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFE, 0x3F } },
+        };
+
+        [Theory]
+        [MemberData(nameof(M80TestData))]
+        public void FSTP_Test_M80(double ST0Value, byte[] expectedTbyteValue)
+        {
+            Reset();
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
+            mbbsEmuCpuCore.FpuStack[0] = ST0Value;
+
+            var instructions = new Assembler(16);
+            instructions.fstp(__tbyte_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(expectedTbyteValue, mbbsEmuMemoryCore.GetArray(2, 0, 10));
             Assert.Equal(7, mbbsEmuCpuRegisters.Fpu.GetStackTop());
         }
     }
