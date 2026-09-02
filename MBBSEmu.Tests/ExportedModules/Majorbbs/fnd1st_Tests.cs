@@ -14,11 +14,15 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         private const int FND1ST_ORDINAL = 694;
         private const int FNDNXT_ORDINAL = 695;
 
-        private const long FIVE_SECOND_TICKS = 5 * 1_000 * 10_000;
+        //DOS directory entries store the time to a two-second boundary, so a
+        //decoded timestamp can legitimately sit either side of the real one
+        private static readonly TimeSpan DOS_TIMESTAMP_GRANULARITY = TimeSpan.FromSeconds(2);
 
-        private readonly long ticksNow = DateTime.Now.Ticks;
+        //Timestamp each file as it is written, so the assertions compare what fnd1st
+        //decoded against the file itself rather than against the clock
+        private readonly Dictionary<string, DateTime> _createdFiles = new();
 
-        public fnd1st_Tests() : base(Path.Join(Path.GetTempPath(), "fnd1st"))
+        public fnd1st_Tests() : base(Path.Join(Path.GetTempPath(), $"fnd1st{Guid.NewGuid():N}"))
         {
             Directory.CreateDirectory(mbbsModule.ModulePath);
         }
@@ -121,7 +125,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             var fbs = new FndblkStruct(mbbsEmuMemoryCore.GetArray(fndblkPointer, FndblkStruct.StructSize));
             Assert.Equal(9, fbs.Size);
             Assert.Equal(0, (byte)fbs.Attributes & (byte)~FndblkStruct.AttributeFlags.Archive);
-            Assert.True(Math.Abs(ticksNow - fbs.DateTime.Ticks) <= FIVE_SECOND_TICKS);
+            Assert.True(_createdFiles.TryGetValue(fbs.Name, out var writtenAt),
+                $"fnd1st returned \"{fbs.Name}\", which this test never created");
+            Assert.True((fbs.DateTime - writtenAt).Duration() <= DOS_TIMESTAMP_GRANULARITY,
+                $"fnd1st reported {fbs.DateTime:O} for \"{fbs.Name}\", which was written at {writtenAt:O}");
 
             return fbs.Name;
         }
@@ -169,6 +176,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             {
                 writer.Write("Testing\r\n");
             }
+
+            _createdFiles[Path.GetFileName(path)] = File.GetLastWriteTime(path);
         }
     }
 }
