@@ -1,5 +1,6 @@
 using MBBSEmu.Memory;
 using Xunit;
+using MajorbbsModule = MBBSEmu.HostProcess.ExportedModules.Majorbbs;
 
 namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 {
@@ -10,17 +11,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [Fact]
         public void RSMODES_ExportsInitializedPerChannelArray()
         {
-            var pointer = new FarPtr(majorbbs.Invoke(RSMODES_ORDINAL));
-            var expectedPointer = mbbsEmuMemoryCore.GetVariablePointer("RSMODES");
+            var exportedPointer = new FarPtr(majorbbs.Invoke(RSMODES_ORDINAL));
+            var pointer = mbbsEmuMemoryCore.GetPointer("*RSMODES");
 
-            Assert.Equal(expectedPointer, pointer);
-            Assert.Equal(Majorbbs.NORMRS, mbbsEmuMemoryCore.GetWord(pointer));
-            Assert.Equal(Majorbbs.NORMRS, mbbsEmuMemoryCore.GetWord(pointer + sizeof(ushort)));
+            Assert.Equal(mbbsEmuMemoryCore.GetVariablePointer("*RSMODES"), exportedPointer);
+            Assert.Equal(mbbsEmuMemoryCore.GetVariablePointer("RSMODES"), pointer);
+            Assert.Equal(MajorbbsModule.NORMRS, mbbsEmuMemoryCore.GetWord(pointer));
+            Assert.Equal(MajorbbsModule.NORMRS, mbbsEmuMemoryCore.GetWord(pointer + sizeof(ushort)));
 
-            majorbbs.SetResetModes(Majorbbs.NANSRS);
+            majorbbs.SetResetModes(MajorbbsModule.NANSRS);
 
-            Assert.Equal(Majorbbs.NANSRS, mbbsEmuMemoryCore.GetWord(pointer));
-            Assert.Equal(Majorbbs.NANSRS, mbbsEmuMemoryCore.GetWord(pointer + sizeof(ushort)));
+            Assert.Equal(MajorbbsModule.NANSRS, mbbsEmuMemoryCore.GetWord(pointer));
+            Assert.Equal(MajorbbsModule.NANSRS, mbbsEmuMemoryCore.GetWord(pointer + sizeof(ushort)));
         }
     }
 }
